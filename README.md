@@ -128,4 +128,4 @@ system definition for any game and use it on your own machine. See
 ## Support
 
 Incudo is free and always will be. If you'd like to buy me a coffee:
-**[ko-fi.com/…](https://ko-fi.com/)** *(link to be filled in)*
+**[ko-fi.com/willcaphir](https://ko-fi.com/willcaphir)**
