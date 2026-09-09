@@ -1,5 +1,5 @@
 {
-  "name": "@heroforge/content",
+  "name": "@incudo/content",
   "version": "0.0.1",
   "private": true,
   "description": "Content sources: live from a repo, downloaded for offline, or bundled.",
@@ -10,7 +10,7 @@
   "exports": { ".": "./dist/index.js" },
   "scripts": { "build": "tsc --build" },
   "dependencies": {
-    "@heroforge/core": "*",
-    "@heroforge/aurora-import": "*"
+    "@incudo/core": "*",
+    "@incudo/aurora-import": "*"
   }
 }

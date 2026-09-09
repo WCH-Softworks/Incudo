@@ -2,7 +2,7 @@
 
 Two separate things, kept separate on purpose.
 
-## 1. HeroForge's own code
+## 1. Incudo's own code
 
 MIT. See [LICENSE](../LICENSE). That is the whole story.
 
@@ -10,10 +10,10 @@ MIT. See [LICENSE](../LICENSE). That is the whole story.
 
 **Policy ([ADR 0010](./adr/0010-licensing-and-funding.md)):** a system is added to `systems/`
 only after its licence has been read and recorded as permitting third-party tools that accept
-donations. HeroForge is funded by a Ko-fi link, so "permits third-party tools but restricts
+donations. Incudo is funded by a Ko-fi link, so "permits third-party tools but restricts
 monetization" is not good enough.
 
-HeroForge ships **no rulebook content** — users point it at content indexes themselves. But an
+Incudo ships **no rulebook content** — users point it at content indexes themselves. But an
 official `system.json` is the project asserting support for a game and encoding its rules
 structure, so it gets checked.
 
@@ -38,7 +38,7 @@ structure, so it gets checked.
 
 **D&D 5e detail.** SRD 5.1 and SRD 5.2/5.2.1 are published under Creative Commons Attribution
 4.0 International. CC-BY-4.0 permits commercial use, is irrevocable, and requires only
-attribution. This is why 5e is the system HeroForge ships first — the licence position is
+attribution. This is why 5e is the system Incudo ships first — the licence position is
 unusually clean. Attribution text goes in the system's `licence.attribution` field and is shown
 in the app's About screen.
 
@@ -52,7 +52,7 @@ recorded here before `systems/pf2e` exists.
 Not covered by this policy, because the project does not distribute them.
 
 Anyone can write a `system.json` for any game and use it locally
-([ADR 0011](./adr/0011-user-systems.md)). HeroForge does not host, index, link to, or bless
+([ADR 0011](./adr/0011-user-systems.md)). Incudo does not host, index, link to, or bless
 user systems. What a user does on their own machine with rules they have legitimate access to is
 between them and the publisher.
 
@@ -61,8 +61,8 @@ conservative.**
 
 ## 4. Content indexes
 
-HeroForge loads content the user points it at — AuroraLegacy's indexes or anyone else's. That
-content is under whatever licence its publisher chose; HeroForge neither relicenses it nor
+Incudo loads content the user points it at — AuroraLegacy's indexes or anyone else's. That
+content is under whatever licence its publisher chose; Incudo neither relicenses it nor
 redistributes it. Content is fetched by the user's own app, from the user's chosen URL.
 
 ---

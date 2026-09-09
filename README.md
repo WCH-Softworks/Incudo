@@ -1,4 +1,6 @@
-# HeroForge
+# Incudo
+
+*(in-KU-do — Latin *incus*, an anvil)*
 
 A modern, system-agnostic tabletop character builder for desktop and mobile.
 Free, open source, and able to read the entire Aurora Builder content ecosystem.
@@ -11,7 +13,7 @@ Free, open source, and able to read the entire Aurora Builder content ecosystem.
 [Aurora Builder](https://aurorabuilder.com/) is the best offline D&D 5e character builder
 there is, and it is effectively abandoned. A decade of community content lives in its XML
 format — content that is still actively maintained at
-[AuroraLegacy/elements](https://github.com/AuroraLegacy/elements). HeroForge is a
+[AuroraLegacy/elements](https://github.com/AuroraLegacy/elements). Incudo is a
 replacement that keeps all of it.
 
 What it aims to do differently:
@@ -26,7 +28,7 @@ What it aims to do differently:
   it first (Aurora can't), or download it for full offline use. Streaming still writes
   through to the cache, so there is no offline switch to forget to flip.
 - **Aurora import from day one** — content *and* saved characters — as a native input format,
-  not a migration step. HeroForge keeps none of Aurora's formats: its own are JSON, and
+  not a migration step. Incudo keeps none of Aurora's formats: its own are JSON, and
   portraits are files rather than 5 MB of base64 inside the save.
 - **Free.** MIT, no accounts, no paywall. If it helps you, there's a Ko-fi link below.
 
@@ -36,9 +38,9 @@ There is no app yet, but there is a CLI, and it does real work:
 
 ```bash
 npm install
-npm run hf -- validate https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index
-npm run hf -- types    https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index
-npm run hf -- inspect  https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index ID_WOTC_PHB_CLASS_ROGUE
+npm run incudo -- validate https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index
+npm run incudo -- types    https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index
+npm run incudo -- inspect  https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index ID_WOTC_PHB_CLASS_ROGUE
 ```
 
 Against a full local checkout of AuroraLegacy: **740 files, 12,058 elements, 0 errors.**
@@ -50,14 +52,14 @@ generates, and 12 are genuine typos in upstream content.
 
 ```
 packages/core            model + rules engine   (no dependencies, no platform APIs)
-packages/aurora-import   Aurora XML -> HeroForge model
+packages/aurora-import   Aurora XML -> Incudo model
 packages/content         content sources: live, cached, bundled, layered
 packages/ui              shared view-models and components
 apps/desktop             Tauri + React shell        (Phase 1)
 apps/mobile              Expo shell                 (Phase 4)
 systems/dnd5e            the D&D 5e system definition — data, not code
 systems/cairn            a tiny non-D&D system, to keep the engine honest
-tools/hf                 the CLI
+tools/incudo                 the CLI
 ```
 
 ## Documentation
@@ -80,12 +82,12 @@ definition for a game you play, or a fix for something the CLI reports.
 
 ## Content and licensing
 
-HeroForge ships **no rulebook content**. It is an engine; you point it at content indexes,
+Incudo ships **no rulebook content**. It is an engine; you point it at content indexes,
 exactly as Aurora's "Additional Content" tab does. The code is MIT ([LICENSE](./LICENSE)); the
 content you load is under whatever licence its publisher chose.
 
 A system ships *officially* only if its licence permits third-party tools that accept donations
-— HeroForge is Ko-fi funded, so that is the bar. D&D 5e clears it (SRD 5.1 and 5.2.1 are
+— Incudo is Ko-fi funded, so that is the bar. D&D 5e clears it (SRD 5.1 and 5.2.1 are
 CC-BY-4.0: commercial use permitted, irrevocable, attribution required). Anything unassessed is
 treated as not permitted. That policy governs what the *project distributes*; you can write a
 system definition for any game and use it on your own machine. See
@@ -93,5 +95,5 @@ system definition for any game and use it on your own machine. See
 
 ## Support
 
-HeroForge is free and always will be. If you'd like to buy me a coffee:
+Incudo is free and always will be. If you'd like to buy me a coffee:
 **[ko-fi.com/…](https://ko-fi.com/)** *(link to be filled in)*

@@ -16,19 +16,19 @@ One repository, npm workspaces, with a strict layering:
 
 ```
 packages/core            model + rules engine        (no deps, no platform)
-packages/aurora-import   Aurora XML → HeroForge      (depends on core)
+packages/aurora-import   Aurora XML → Incudo      (depends on core)
 packages/content         sources, cache, indexes     (depends on core)
 packages/ui              shared components + hooks   (depends on the above + react)
 apps/desktop             Tauri shell
 apps/mobile              Expo shell
 systems/<id>             game system definitions (data)
-tools/hf                 CLI — validates the engine with no UI
+tools/incudo                 CLI — validates the engine with no UI
 ```
 
 Import rules are in `docs/CODE-REUSE-POLICY.md` and enforced by TypeScript project references
 plus ESLint `no-restricted-imports`.
 
-Game content stays **out** of this repo: HeroForge points at content indexes (AuroraLegacy's, or
+Game content stays **out** of this repo: Incudo points at content indexes (AuroraLegacy's, or
 anyone's) rather than hosting rulebook material. Only SRD-safe bundled content, if any, would
 live here.
 
@@ -48,7 +48,7 @@ live here.
 
 ## Alternatives considered
 
-- **Separate repos per app** with `@heroforge/core` on npm: correct at scale, wrong for a solo
+- **Separate repos per app** with `@incudo/core` on npm: correct at scale, wrong for a solo
   project — every engine change becomes publish-then-bump across three repos.
 - **Code repo + separate content repo:** the split is real and may happen later for *homebrew
   authored by this project*, but with no first-party content today it would be an empty repo.

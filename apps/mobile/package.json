@@ -1,8 +1,8 @@
 {
-  "name": "@heroforge/mobile",
+  "name": "@incudo/mobile",
   "version": "0.0.1",
   "private": true,
-  "description": "HeroForge mobile shell (Expo). Layout and platform I/O only.",
+  "description": "Incudo mobile shell (Expo). Layout and platform I/O only.",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -10,10 +10,10 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
-    "@heroforge/core": "*",
-    "@heroforge/content": "*",
-    "@heroforge/aurora-import": "*",
-    "@heroforge/ui": "*",
+    "@incudo/core": "*",
+    "@incudo/content": "*",
+    "@incudo/aurora-import": "*",
+    "@incudo/ui": "*",
     "expo": "~51.0.0",
     "expo-file-system": "~17.0.0",
     "react": "18.2.0",

@@ -1,4 +1,4 @@
-# HeroForge desktop
+# Incudo desktop
 
 Tauri 2 + React + Vite. **Not scaffolded yet** — this is ROADMAP Phase 1.
 
@@ -9,8 +9,8 @@ it is the only file in this app allowed to know it is running in Tauri.
 
 ```bash
 npm create tauri-app@latest -- --template react-ts   # into a scratch dir, then merge
-npm install -w @heroforge/desktop
-npm run tauri:dev -w @heroforge/desktop
+npm install -w @incudo/desktop
+npm run tauri:dev -w @incudo/desktop
 ```
 
 Requires a Rust toolchain (`rustup`) plus the platform prerequisites listed at

@@ -18,11 +18,11 @@ apps/mobile/ios/
 # Real Aurora saves and characters are personal data — never commit them.
 # They stay local and are read as test fixtures only (ADR 0012, CLAUDE.md).
 *.dnd5e
-*.heroforge
+*.incu
 fixtures/local/
 
 # Local content cache / scratch
-.heroforge-cache/
+.incudo-cache/
 tmp/
 scratch/
 

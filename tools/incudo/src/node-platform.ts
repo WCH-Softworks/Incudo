@@ -5,7 +5,7 @@
 
 import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { Fetcher, FetchOptions, FetchResult, Storage } from '@heroforge/core';
+import type { Fetcher, FetchOptions, FetchResult, Storage } from '@incudo/core';
 
 export class NodeFetcher implements Fetcher {
   async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
@@ -24,6 +24,56 @@ export class NodeFetcher implements Fetcher {
       text: await response.text(),
       etag: response.headers.get('etag') ?? undefined,
     };
+  }
+}
+
+/**
+ * Resolves remote content URLs against a local mirror of the same repository.
+ *
+ * Aurora indexes hard-code absolute raw.githubusercontent.com URLs, so pointing the
+ * CLI at a local checkout still hits the network for every file. This maps each URL
+ * back onto the mirror by taking the path after the git ref segment:
+ *
+ *   https://raw.githubusercontent.com/AuroraLegacy/elements/master/core/internal.xml
+ *   -> <root>/core/internal.xml
+ *
+ * It is a heuristic, deliberately: if the mapped file is missing it falls through to
+ * the network rather than failing, so a partial mirror still works. This is what makes
+ * CI able to validate the whole corpus with no network at all.
+ */
+export class LocalMirrorFetcher implements Fetcher {
+  private readonly root: string;
+  private readonly fallback: Fetcher;
+
+  constructor(root: string, fallback: Fetcher) {
+    this.root = root;
+    this.fallback = fallback;
+  }
+
+  async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
+    const local = this.toLocalPath(url);
+    if (local) {
+      try {
+        return { url, text: await readFile(local, 'utf8'), fromCache: true };
+      } catch {
+        // Fall through: a partial mirror is still useful.
+      }
+    }
+    return this.fallback.fetchText(url, opts);
+  }
+
+  private toLocalPath(url: string): string | null {
+    if (!/^https?:\/\//i.test(url)) return null;
+    let path: string;
+    try {
+      path = new URL(url).pathname.replace(/^\/+/, '');
+    } catch {
+      return null;
+    }
+    // raw.githubusercontent.com/<owner>/<repo>/<ref>/<...>  -> drop the first three
+    const segments = path.split('/');
+    const rest = segments.length > 3 ? segments.slice(3) : segments;
+    return join(this.root, ...rest);
   }
 }
 

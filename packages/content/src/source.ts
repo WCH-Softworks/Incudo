@@ -7,7 +7,7 @@
  * rather than failing. See docs/adr/0004.
  */
 
-import type { Element } from '@heroforge/core';
+import type { Element } from '@incudo/core';
 
 export type SourceMode = 'stream' | 'download';
 
@@ -25,7 +25,7 @@ export interface ContentIndex {
   version?: string;
   files: FileRef[];
   /** Which nested indexes this one pulls in, resolved lazily. */
-  format: 'aurora' | 'heroforge';
+  format: 'aurora' | 'incudo';
 }
 
 export interface ElementFile {
@@ -56,9 +56,9 @@ export interface ContentSource {
 }
 
 /** Detect the content format from a URL. Aurora is the only one that exists today. */
-export function detectFormat(url: string): 'aurora' | 'heroforge' {
-  return url.toLowerCase().endsWith('.hfcontent') || url.toLowerCase().endsWith('.json')
-    ? 'heroforge'
+export function detectFormat(url: string): 'aurora' | 'incudo' {
+  return url.toLowerCase().endsWith('.incuc') || url.toLowerCase().endsWith('.json')
+    ? 'incudo'
     : 'aurora';
 }
 

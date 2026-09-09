@@ -10,7 +10,7 @@
  * not a web page.
  */
 
-import type { Fetcher, FetchOptions, FetchResult, Storage } from '@heroforge/core';
+import type { Fetcher, FetchOptions, FetchResult, Storage } from '@incudo/core';
 
 export class DesktopFetcher implements Fetcher {
   async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
@@ -24,7 +24,7 @@ export class DesktopFetcher implements Fetcher {
 
 /** Placeholder until the Tauri fs plugin is wired up in Phase 1. */
 export class DesktopStorage implements Storage {
-  private readonly prefix = 'heroforge:';
+  private readonly prefix = 'incudo:';
 
   async read(key: string): Promise<string | null> {
     return localStorage.getItem(this.prefix + key);

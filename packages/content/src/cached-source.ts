@@ -2,8 +2,8 @@
  * A local, versioned copy of a source. Fully offline.
  */
 
-import { parseAuroraIndex, parseAuroraElements } from '@heroforge/aurora-import';
-import type { Storage } from '@heroforge/core';
+import { parseAuroraIndex, parseAuroraElements } from '@incudo/aurora-import';
+import type { Storage } from '@incudo/core';
 import { cacheKey } from './http-source.ts';
 import {
   detectFormat,

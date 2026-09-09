@@ -6,7 +6,7 @@ Three things: **content** (elements), **system** (what the elements mean), **cha
 ## Content
 
 ```ts
-type ElementId = string;   // "ID_WOTC_PHB_CLASS_ROGUE" or "hf:cairn:class-knave"
+type ElementId = string;   // "ID_WOTC_PHB_CLASS_ROGUE" or "incudo:cairn:class-knave"
 
 interface Element {
   id: ElementId;
@@ -20,7 +20,7 @@ interface Element {
   sheet?: SheetHints;
   multiclass?: MulticlassBlock;
   spellcasting?: SpellcastingBlock[];
-  origin: { sourceId: string; fileUrl?: string; format: 'aurora' | 'heroforge' };
+  origin: { sourceId: string; fileUrl?: string; format: 'aurora' | 'incudo' };
 }
 ```
 
@@ -157,16 +157,16 @@ own diagnostics rather than a second implementation of the rules.
 
 | extension | what |
 |---|---|
-| `.heroforge` | a character. JSON, `formatVersion` first, safe to commit to git |
-| `.hfcontent` | a compiled content bundle (an imported index, normalized) |
+| `.incu` | a character. JSON, `formatVersion` first, safe to commit to git |
+| `.incuc` | a compiled content bundle (an imported index, normalized) |
 | `system.json` | a game system definition |
 
 
-**A `.heroforge` save is a zip container, and it is self-contained** — it opens on a fresh
+**A `.incu` save is a zip container, and it is self-contained** — it opens on a fresh
 install with zero content sources configured ([ADR 0012](./adr/0012-self-contained-saves.md)):
 
 ```
-character.heroforge   (a zip; the same tree can also live unpacked as a folder)
+character.incu   (a zip; the same tree can also live unpacked as a folder)
 ├── manifest.json     formatVersion, systemId, kind, integrity
 ├── character.json    choices, rolls, progress, freeform, overrides, source refs
 ├── content.json      the element subset this character references (~60–200 elements)

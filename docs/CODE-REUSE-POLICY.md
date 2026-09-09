@@ -8,11 +8,11 @@ mobile is later rewritten in something else, everything below the shell survives
 
 | layer | package | may import | must never import |
 |---|---|---|---|
-| 1. Model & engine | `@heroforge/core` | nothing but stdlib | anything platform-shaped |
-| 2. Content | `@heroforge/content` | `core` | `fs`, `fetch`, `localStorage`, Tauri, Expo |
-| 3. Import | `@heroforge/aurora-import` | `core` | same |
-| 4. View-models | `@heroforge/ui/hooks` | 1–3, `react` | `react-native`, `react-dom`, Tauri, Expo |
-| 5. Components | `@heroforge/ui` | 1–4, `react` | platform-specific widget libs |
+| 1. Model & engine | `@incudo/core` | nothing but stdlib | anything platform-shaped |
+| 2. Content | `@incudo/content` | `core` | `fs`, `fetch`, `localStorage`, Tauri, Expo |
+| 3. Import | `@incudo/aurora-import` | `core` | same |
+| 4. View-models | `@incudo/ui/hooks` | 1–3, `react` | `react-native`, `react-dom`, Tauri, Expo |
+| 5. Components | `@incudo/ui` | 1–4, `react` | platform-specific widget libs |
 | 6. Shell | `apps/*` | everything | — |
 
 Layers 1–3 are plain TypeScript that runs in Node, in a browser, and in Hermes unchanged. That is
@@ -55,7 +55,7 @@ layering violation worth fixing.
 
 ## Rule 3 — no shared UI primitives across React DOM and React Native
 
-`@heroforge/ui` components are written against a small primitive set (`Box`, `Text`, `Pressable`,
+`@incudo/ui` components are written against a small primitive set (`Box`, `Text`, `Pressable`,
 `ScrollArea`) that each shell supplies. This keeps genuinely shared presentational code possible
 (a spell card, a stat block) without pretending a `<div>` and a `<View>` are the same thing.
 When a component cannot be written that way, it belongs in the shell. That is a normal outcome,

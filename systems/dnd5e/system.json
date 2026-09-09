@@ -1,7 +1,7 @@
 {
   "id": "dnd5e",
   "name": "Dungeons & Dragons 5th Edition",
-  "description": "The first system definition, and the one HeroForge is tested against. Nothing in @heroforge/core imports this file — it is data. See docs/adr/0003.",
+  "description": "The first system definition, and the one Incudo is tested against. Nothing in @incudo/core imports this file — it is data. See docs/adr/0003.",
   "version": "0.1.0",
   "levelRange": { "min": 1, "max": 20 },
 

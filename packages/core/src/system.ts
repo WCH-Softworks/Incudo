@@ -77,7 +77,7 @@ export interface GameSystem {
   sheet: SheetLayoutDef;
   /**
    * Aurora element types that map onto this system's types. Only needed for systems that
-   * want to consume Aurora content; a native HeroForge system omits it.
+   * want to consume Aurora content; a native Incudo system omits it.
    */
   auroraTypeMap?: Record<string, ElementType>;
 }

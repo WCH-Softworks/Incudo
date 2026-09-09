@@ -1,8 +1,8 @@
 {
-  "name": "@heroforge/aurora-import",
+  "name": "@incudo/aurora-import",
   "version": "0.0.1",
   "private": true,
-  "description": "Reads Aurora Builder .index and elements XML into the HeroForge model.",
+  "description": "Reads Aurora Builder .index and elements XML into the Incudo model.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,6 +10,6 @@
   "exports": { ".": "./dist/index.js" },
   "scripts": { "build": "tsc --build" },
   "dependencies": {
-    "@heroforge/core": "*"
+    "@incudo/core": "*"
   }
 }

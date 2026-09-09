@@ -1,6 +1,6 @@
-# HeroForge Roadmap
+# Incudo Roadmap
 
-This file is the long-lived plan for HeroForge. It is meant to be edited as the project
+This file is the long-lived plan for Incudo. It is meant to be edited as the project
 evolves — every phase below should either get shipped, get re-scoped, or get explicitly
 dropped with a note saying why. Nothing here is a promise or a date; the ordering is the
 commitment, not the calendar.
@@ -12,7 +12,7 @@ commitment, not the calendar.
 ## The point of the project
 
 Aurora Builder is the best offline D&D 5e character builder that exists, and it is
-discontinued. HeroForge aims to be:
+discontinued. Incudo aims to be:
 
 1. **A modern replacement** — actively maintained, cross-platform, not Windows-only.
 2. **Not D&D-exclusive.** The engine knows nothing about D&D. 5e is the first *system
@@ -30,7 +30,7 @@ discontinued. HeroForge aims to be:
 
 - No virtual tabletop, no combat tracker, no dice roller with 3D physics.
 - No server, no account system, no cloud sync in 1.0. Files are files.
-- No hosting of copyrighted rulebook content. HeroForge ships an engine; users point it at
+- No hosting of copyrighted rulebook content. Incudo ships an engine; users point it at
   content indexes, exactly like Aurora's "Additional Content" tab.
 - **No Aurora export.** Aurora is discontinued; nothing would read it ([ADR 0008](./docs/adr/0008-aurora-compatibility-frozen.md)).
 
@@ -42,21 +42,21 @@ discontinued. HeroForge aims to be:
 
 - [x] Monorepo scaffolding, workspaces, TypeScript project references
 - [x] `ROADMAP.md`, `docs/ARCHITECTURE.md`, ADR process
-- [x] `@heroforge/core`: element/rule/stat model, requirements parser, stat resolver
-- [x] `@heroforge/core`: `GameSystem` descriptor
-- [x] `@heroforge/aurora-import`: Aurora `.index` + elements XML
-- [x] `@heroforge/content`: `ContentSource` abstraction (live / cached / layered)
-- [x] CLI (`tools/hf`) — the engine's first consumer, before any UI
+- [x] `@incudo/core`: element/rule/stat model, requirements parser, stat resolver
+- [x] `@incudo/core`: `GameSystem` descriptor
+- [x] `@incudo/aurora-import`: Aurora `.index` + elements XML
+- [x] `@incudo/content`: `ContentSource` abstraction (live / cached / layered)
+- [x] CLI (`tools/incudo`) — the engine's first consumer, before any UI
 - [x] Aurora **save** format reverse-engineered ([docs/AURORA-SAVE-FORMAT.md](./docs/AURORA-SAVE-FORMAT.md))
 - [ ] **Restructure `GameSystem` for character kinds** ([ADR 0009](./docs/adr/0009-character-kinds.md)) — breaking, so do it now
-- [ ] **Define the native formats** ([ADR 0007](./docs/adr/0007-native-formats.md)): `.heroforge`, `.hfcontent`, `system.json`, plus JSON Schemas
-- [ ] **`.heroforge` as a self-contained zip container** ([ADR 0012](./docs/adr/0012-self-contained-saves.md)) — embed the element subset + assets; read/write the unpacked folder form too
+- [ ] **Define the native formats** ([ADR 0007](./docs/adr/0007-native-formats.md)): `.incu`, `.incuc`, `system.json`, plus JSON Schemas
+- [ ] **`.incu` as a self-contained zip container** ([ADR 0012](./docs/adr/0012-self-contained-saves.md)) — embed the element subset + assets; read/write the unpacked folder form too
 - [ ] Add `rolls` to the character model — recorded random results are inputs, not derivations
 - [ ] Unit tests for the stat resolver and the engine's fixed-point derivation
 - [ ] CI: typecheck, test, and the corpus baseline
 
-**Exit criteria:** `hf validate` resolves the whole AuroraLegacy index with no new unresolved
-references, and a character round-trips through `.heroforge` JSON unchanged.
+**Exit criteria:** `incudo validate` resolves the whole AuroraLegacy index with no new unresolved
+references, and a character round-trips through `.incu` JSON unchanged.
 
 ---
 
@@ -90,7 +90,7 @@ every difference is explained and recorded.
       equipment → spells
 - [ ] Level-up with `level="N"` grants and pending `<select>` choices
 - [ ] Character sheet
-- [ ] Save/load `.heroforge` files; import `.dnd5e`
+- [ ] Save/load `.incu` files; import `.dnd5e`
 - [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope.
 - [ ] Multiclassing
@@ -129,7 +129,7 @@ engine has no code that names any of them.
 
 ## Phase 5 — Export & sharing ⬜
 
-- [ ] PDF character sheet (fillable official sheet + a clean HeroForge sheet)
+- [ ] PDF character sheet (fillable official sheet + a clean Incudo sheet)
 - [ ] Plain-text / Markdown export
 - [ ] "Content has been updated — refresh?" flow, diffing recorded source versions against
       available ones and showing what would change before touching the character
@@ -147,8 +147,8 @@ engine has no code that names any of them.
 - [ ] Import/export via share sheet and file picker
 - [ ] Download mode as the default on metered connections
 
-**Exit criteria:** the same `.heroforge` file opens identically on desktop and mobile, and
-`@heroforge/core` still has zero platform-specific code.
+**Exit criteria:** the same `.incu` file opens identically on desktop and mobile, and
+`@incudo/core` still has zero platform-specific code.
 
 ---
 
@@ -157,11 +157,11 @@ engine has no code that names any of them.
 *This is the phase that makes or breaks the project's premise. It should not slip.*
 See [ADR 0011](./docs/adr/0011-user-systems.md).
 
-- [ ] `schemas/system.schema.json` published, with `hf system validate` and in-app validation
+- [ ] `schemas/system.schema.json` published, with `incudo system validate` and in-app validation
       sharing one implementation
 - [ ] **Fork** an official system into user space
 - [ ] **Overlay** an official system (`extends` + patch), so house rules survive upstream updates
-- [ ] `hf system new <id>` — scaffold a working system, never an empty file
+- [ ] `incudo system new <id>` — scaffold a working system, never an empty file
 - [ ] User systems load through *exactly* the same path as official ones, clearly labelled
 - [ ] Validation errors that a non-programmer can act on
 - [ ] "How to write a system definition" guide
@@ -206,7 +206,7 @@ systems. Phase 4's NPC kinds are a prerequisite worth having first.
 
 ### 3.x — Mapmaking ❄️
 Battle maps and/or region maps. Likely a canvas editor with asset packs, exportable to image and
-to a HeroForge map file. Two open questions: whether it is a mode in the app or a sibling app
+to a Incudo map file. Two open questions: whether it is a mode in the app or a sibling app
 sharing the shell and file layer, and **whether Tauri's OS webview is adequate for canvas-heavy
 work** — that is the trigger to revisit [ADR 0001](./docs/adr/0001-tech-stack.md).
 

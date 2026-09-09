@@ -7,7 +7,7 @@
  * (ADR 0004), so this path carries real weight.
  */
 
-import type { Fetcher, FetchOptions, FetchResult, Storage } from '@heroforge/core';
+import type { Fetcher, FetchOptions, FetchResult, Storage } from '@incudo/core';
 
 export class MobileFetcher implements Fetcher {
   async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
@@ -22,7 +22,7 @@ export class MobileFetcher implements Fetcher {
 /**
  * Phase 4 fills this in with expo-file-system:
  *   import * as FileSystem from 'expo-file-system';
- *   const root = FileSystem.documentDirectory + 'heroforge/';
+ *   const root = FileSystem.documentDirectory + 'incudo/';
  * Left unimplemented rather than stubbed with AsyncStorage, so nobody ships the wrong
  * storage backend by accident.
  */

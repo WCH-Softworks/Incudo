@@ -37,4 +37,4 @@ jobs:
           repository: AuroraLegacy/elements
           path: .corpus
       - name: Import and validate
-        run: npm run hf -- validate .corpus/core.index --local --strict
+        run: npm run incudo -- validate .corpus/AuroraLegacy.index --local --root .corpus --strict

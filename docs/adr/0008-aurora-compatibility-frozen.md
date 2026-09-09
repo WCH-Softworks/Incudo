@@ -15,8 +15,8 @@ Here it does not. That is unusual and worth exploiting.
 
 **Aurora support is import-only, and it is a task that completes.**
 
-- HeroForge reads Aurora `.index`, elements `.xml`, and `.dnd5e` saves.
-- HeroForge **does not export** to Aurora formats. Nothing is going to read them.
+- Incudo reads Aurora `.index`, elements `.xml`, and `.dnd5e` saves.
+- Incudo **does not export** to Aurora formats. Nothing is going to read them.
 - Once the importer round-trips the AuroraLegacy corpus and a sample of real saves, the Aurora
   packages are marked **DONE** and enter bugfix-only maintenance. No feature work, no
   refactoring for its own sake, no speculative support for formats that will never exist.

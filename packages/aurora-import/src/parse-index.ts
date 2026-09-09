@@ -29,7 +29,28 @@ export interface AuroraIndex {
   files: AuroraFileRef[];
 }
 
-export function parseAuroraIndex(xml: string, url: string): AuroraIndex {
+export interface ParseIndexOptions {
+  /**
+   * Read an Aurora *download folder* rather than a repository.
+   *
+   * Aurora's downloader does not mirror the upstream repo. It gives every index a folder
+   * named after it, and drops that index's files inside by their `name` attribute —
+   * recursively. So `custom/AuroraLegacy.index` puts `core.index` at
+   * `custom/AuroraLegacy/core.index`, which in turn puts `players-handbook.index` at
+   * `custom/AuroraLegacy/core/players-handbook.index`, and so on.
+   *
+   * For AuroraLegacy this happens to coincide with the repo layout; for the original
+   * `aurorabuilder/elements` third-party index it does not, which is how the rule was
+   * found. Verified against a real 740-file Aurora install.
+   */
+  resolveByName?: boolean;
+}
+
+export function parseAuroraIndex(
+  xml: string,
+  url: string,
+  options: ParseIndexOptions = {},
+): AuroraIndex {
   const doc = parseXml(xml);
   const index = findFirst(doc, 'index') ?? doc;
   const info = firstChild(index, 'info');
@@ -40,7 +61,7 @@ export function parseAuroraIndex(xml: string, url: string): AuroraIndex {
 
   const filesNode = firstChild(index, 'files');
   const files = (filesNode ? childrenNamed(filesNode, 'file') : []).map((node) =>
-    toFileRef(node, url),
+    toFileRef(node, url, options.resolveByName ?? false),
   );
 
   return {
@@ -55,14 +76,20 @@ export function parseAuroraIndex(xml: string, url: string): AuroraIndex {
   };
 }
 
-function toFileRef(node: XmlNode, baseUrl: string): AuroraFileRef {
+function toFileRef(node: XmlNode, baseUrl: string, resolveByName: boolean): AuroraFileRef {
   const name = node.attrs['name'] ?? '';
-  const raw = node.attrs['url'] ?? name;
-  return {
-    name,
-    url: resolveUrl(raw, baseUrl),
-    isIndex: name.toLowerCase().endsWith('.index') || raw.toLowerCase().endsWith('.index'),
-  };
+  const remote = node.attrs['url'] ?? name;
+  const isIndex =
+    name.toLowerCase().endsWith('.index') || remote.toLowerCase().endsWith('.index');
+
+  if (resolveByName && name !== '') {
+    // Children live in a folder named after this index, addressed by `name`.
+    const folder = baseUrl.replace(/\.index$/i, '');
+    const sep = folder.includes('\\') && !folder.includes('/') ? '\\' : '/';
+    return { name, url: `${folder}${sep}${name}`, isIndex };
+  }
+
+  return { name, url: resolveUrl(remote, baseUrl), isIndex };
 }
 
 function textOf(node: XmlNode | undefined, name: string): string | undefined {

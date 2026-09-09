@@ -18,12 +18,12 @@ carries character data and the content it depends on, not the rules-structure me
 
 ## Decision
 
-**A `.heroforge` save embeds the content its character actually uses.**
+**A `.incu` save embeds the content its character actually uses.**
 
 A save is a **zip container** with a defined layout:
 
 ```
-character.heroforge   (a zip)
+character.incu   (a zip)
 ├── manifest.json     formatVersion, systemId, kind, integrity, created/updated
 ├── character.json    choices, rolls, progress, freeform, overrides, source refs
 ├── content.json      the resolved element subset this character references
@@ -78,10 +78,10 @@ an update path rather than a load-time dependency.
 An embedded save contains rulebook-derived content. For the user's own file on their own machine
 this is unremarkable — they already have that content. Sharing a save shares that content, which
 is the user's responsibility and no different from sending someone a filled-in character sheet.
-HeroForge does not host, index, or transmit saves. See [ADR 0010](./0010-licensing-and-funding.md)
+Incudo does not host, index, or transmit saves. See [ADR 0010](./0010-licensing-and-funding.md)
 and `docs/LICENSING.md`.
 
 ## What this replaces
 
-`.hfpack` from ADR 0007 is **dropped**. It existed to make a shareable, self-contained character
+`.incupack` from ADR 0007 is **dropped**. It existed to make a shareable, self-contained character
 an export option; that is now simply what a save is, so a second format has nothing left to do.

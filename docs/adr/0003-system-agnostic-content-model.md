@@ -4,7 +4,7 @@
 
 ## Context
 
-The project's premise is that HeroForge is not D&D-exclusive. But in practice it will be built
+The project's premise is that Incudo is not D&D-exclusive. But in practice it will be built
 and tested almost entirely against D&D 5e content for a long time. Every project that has made
 this promise has broken it the same way: 5e concepts leak into the engine, and the second system
 turns out to need a rewrite.
@@ -25,7 +25,7 @@ hardcoded in Aurora's C#. That hardcoded knowledge is exactly the boundary to mo
 - `sheet` — layout hints
 - `levelRange`
 
-`@heroforge/core` must not contain the strings `strength`, `spell`, `armor class`, `d20` or any
+`@incudo/core` must not contain the strings `strength`, `spell`, `armor class`, `d20` or any
 other game-specific noun outside of tests and fixtures. Stats are opaque namespaced keys; element
 types are opaque strings.
 
@@ -52,7 +52,7 @@ not ship JavaScript.
 
 ## How this gets kept honest
 
-1. `tools/hf` exercises the engine with no UI, so no UI assumption can hide in it.
+1. `tools/incudo` exercises the engine with no UI, so no UI assumption can hide in it.
 2. `systems/cairn` — a deliberately tiny, classless, non-D&D system — is added early. Small
    enough to maintain as a side-effect, different enough that 5e-shaped assumptions break it.
 3. Roadmap Phase 5 is a real second system, and it is explicitly flagged as the phase that must

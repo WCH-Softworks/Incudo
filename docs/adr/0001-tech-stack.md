@@ -4,7 +4,7 @@
 
 ## Context
 
-HeroForge needs a desktop app (character building, the Aurora replacement) and a mobile app
+Incudo needs a desktop app (character building, the Aurora replacement) and a mobile app
 (at minimum, playing from a sheet). The bulk of the work is a rules engine and an Aurora XML
 importer — neither of which cares about the UI framework.
 

@@ -4,7 +4,7 @@
 
 ## Context
 
-HeroForge is free and open source, with a Ko-fi link. That link is the entire funding model, and
+Incudo is free and open source, with a Ko-fi link. That link is the entire funding model, and
 it is also the thing that complicates licensing: some game publishers permit third-party tools,
 but restrict monetization, and "accepting donations for a tool that implements our rules" is
 exactly the grey area those clauses are written about.
@@ -13,8 +13,8 @@ The project's position, in the owner's words: *unless the system we're incorpora
 Ko-fi (or other donation-based funding) to be done by third-party apps, we'll never support it
 officially.*
 
-Note the shape of the risk. HeroForge ships **no rulebook content** — users point it at content
-indexes themselves. But an *official* `systems/<id>/system.json` is HeroForge asserting support
+Note the shape of the risk. Incudo ships **no rulebook content** — users point it at content
+indexes themselves. But an *official* `systems/<id>/system.json` is Incudo asserting support
 for a game, and it necessarily encodes rules structure (stat names, progression, what a build
 step is). That is a much smaller surface than reproducing text, but it is not zero.
 
@@ -44,7 +44,7 @@ the date it was checked:
 
 - **D&D 5e — clear.** SRD 5.1 and SRD 5.2/5.2.1 are released under **CC-BY-4.0**, which permits
   commercial use with attribution and is irrevocable. Donations are unambiguously fine. This is
-  the system HeroForge ships first, and the licence position is the reason it is safe to.
+  the system Incudo ships first, and the licence position is the reason it is safe to.
 - **Pathfinder 2e — needs the licence read before any work starts.** Paizo's ORC License is an
   open, irrevocable, system-neutral licence and Pathfinder 2e Remaster content is published
   under it, which is promising. But "promising" is not the standard set above: the ORC text and
@@ -55,7 +55,7 @@ the date it was checked:
 
 This policy governs **what the project distributes**, not what users may do on their own
 machines. Anyone can write a `system.json` for any game and use it locally
-([ADR 0011](./0011-user-systems.md)). HeroForge does not host it, index it, link to it, or
+([ADR 0011](./0011-user-systems.md)). Incudo does not host it, index it, link to it, or
 bless it. That separation is the point: the tool stays general, the project's distribution stays
 conservative.
 
@@ -76,6 +76,6 @@ conservative.
 
 ## Consequence for the Ko-fi link
 
-The link goes on the README and in the app's About screen, described as supporting **HeroForge's
+The link goes on the README and in the app's About screen, described as supporting **Incudo's
 development** — never as buying access to content, and never on a screen that displays licensed
-material. Nothing in HeroForge is paywalled, ever; that is what keeps "donation" accurate.
+material. Nothing in Incudo is paywalled, ever; that is what keeps "donation" accurate.

@@ -1,5 +1,5 @@
 /**
- * @heroforge/ui — the shared layer between the two shells.
+ * @incudo/ui — the shared layer between the two shells.
  *
  * What lives here: view-models (the state machine of a screen) and presentational
  * components written against primitives each shell supplies.

@@ -32,7 +32,7 @@ short version:
 
 - **A system definition** for a game you play (`systems/<id>/system.json`). This is the most
   valuable thing anyone can add, because it is what keeps the engine honest.
-- **Anything the CLI reports.** `npm run hf -- validate <index> --strict` against a homebrew
+- **Anything the CLI reports.** `npm run incudo -- validate <index> --strict` against a homebrew
   source you use is likely to find real bugs.
 - **Aurora format edge cases.** If content in the wild breaks the importer, a failing test
   with the offending XML snippet is a perfect issue.
@@ -41,7 +41,7 @@ short version:
 
 ```bash
 npm test                                    # unit tests
-npm run hf -- validate ./path/to/core.index # the real regression suite
+npm run incudo -- validate ./path/to/core.index # the real regression suite
 ```
 
 CI runs the importer over the whole AuroraLegacy corpus. A change that increases the count

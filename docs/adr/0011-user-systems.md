@@ -32,7 +32,7 @@ by writing a JSON file, and **if it parses, the app should be able to build in i
    ```
 
    Upstream fixes still flow in. This is the same `extends` mechanic character kinds use.
-3. **Author a new system** from a scaffold. `hf system new <id>` writes a documented, minimal,
+3. **Author a new system** from a scaffold. `incudo system new <id>` writes a documented, minimal,
    *working* system — the Cairn definition is deliberately small enough to serve as that
    starting point — which the user then grows.
 
@@ -41,7 +41,7 @@ by writing a JSON file, and **if it parses, the app should be able to build in i
 "If it parses, the app can build in it" only holds if parsing means something. So:
 
 - A published **JSON Schema** (`schemas/system.schema.json`) is the definition of the format.
-- `hf system validate <path>` reports errors with line numbers and plain-language messages,
+- `incudo system validate <path>` reports errors with line numbers and plain-language messages,
   and it is the same validator the app runs on load.
 - Validation is **structural, not semantic**. A system can be valid and still be a bad model of
   its game; that is the user's business. What validation guarantees is that the app will not

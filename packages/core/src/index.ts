@@ -1,5 +1,5 @@
 /**
- * @heroforge/core — the system-agnostic content model and rules engine.
+ * @incudo/core — the system-agnostic content model and rules engine.
  *
  * Hard rule for this package: no platform APIs (no fs, fetch, window, react-native)
  * and no game-specific nouns. If you are about to write the word "strength" outside a

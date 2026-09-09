@@ -1,4 +1,4 @@
-# HeroForge — working notes for Claude Code
+# Incudo — working notes for Claude Code
 
 A system-agnostic tabletop character builder for desktop and mobile. Free, MIT, open source.
 A replacement for the discontinued Aurora Builder that reads its entire content ecosystem.
@@ -13,13 +13,22 @@ when something here looks odd, the ADR usually says why.
 npm install            # ~8s. If it starts pulling Expo, apps/* got added to workspaces — don't.
 npm run typecheck      # tsc --build --force
 npm test               # node --test, no build step
-npm run hf -- --help   # the CLI: validate | types | inspect
-npm run hf -- validate <index-url-or-local-path> [--strict] [--json]
+npm run incudo -- --help   # the CLI: validate | types | inspect
+npm run incudo -- validate <index-url-or-local-path> [--strict] [--json]
 ```
 
-The real regression suite is the CLI against a local checkout of `AuroraLegacy/elements`.
-A full content mirror already exists on this machine at
-`C:\Users\gcorn\Documents\5e Character Builder\custom\` — use it, it needs no network.
+The real regression suite is the CLI against the full Aurora corpus. A complete Aurora install
+already exists on this machine and works **entirely offline**:
+
+```bash
+npm run incudo -- validate \
+  "C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index" --aurora-folder
+# 740 files, 12,058 elements, 0 errors, 57 unresolved, ~10s
+```
+
+`--aurora-folder` resolves files the way Aurora's downloader stores them (a folder per index,
+files by `name`); `--local [--root DIR]` resolves them by repository path, for a git checkout.
+They are different layouts — see docs/AURORA-FORMAT.md. Do not use one for the other.
 Eight real Aurora saves sit beside it as `*.dnd5e`. They stay **local and out of the repo**:
 read them for verification, never commit them or their contents.
 
@@ -49,7 +58,7 @@ opaque strings declared by `systems/<id>/system.json` (ADR 0003).
 **Characters store choices, never derived numbers** (ADR 0006) — with one exception: recorded
 random results (`rolls`) are *inputs*, because a die roll has no formula (ADR 0007).
 
-**A save must open with zero content sources** (ADR 0012). `.heroforge` is a zip embedding the
+**A save must open with zero content sources** (ADR 0012). `.incu` is a zip embedding the
 element subset the character uses, plus assets as real bytes. This is the product requirement,
 not an optimization — if a change makes a save depend on configured sources to open, it is wrong.
 

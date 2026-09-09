@@ -1,4 +1,4 @@
-# HeroForge mobile
+# Incudo mobile
 
 Expo (React Native). **Not scaffolded yet** — this is ROADMAP Phase 4, deliberately after
 the desktop builder so the shared core is proven first.
@@ -16,5 +16,5 @@ the desktop builder so the shared core is proven first.
 
 ## Exit criteria
 
-The same `.heroforge` file opens identically on desktop and mobile, and `@heroforge/core`
+The same `.incu` file opens identically on desktop and mobile, and `@incudo/core`
 still has zero platform-specific code.

@@ -4,6 +4,6 @@
     { "path": "./packages/core" },
     { "path": "./packages/aurora-import" },
     { "path": "./packages/content" },
-    { "path": "./tools/hf" }
+    { "path": "./tools/incudo" }
   ]
 }

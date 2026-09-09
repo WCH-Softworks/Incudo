@@ -1,5 +1,5 @@
 {
-  "name": "@heroforge/core",
+  "name": "@incudo/core",
   "version": "0.0.1",
   "private": true,
   "description": "System-agnostic content model and rules engine. No platform APIs, no game-specific nouns.",

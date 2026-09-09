@@ -1,17 +1,17 @@
-# 0007 — HeroForge's own formats are JSON, and images are never inlined
+# 0007 — Incudo's own formats are JSON, and images are never inlined
 
 **Status:** Accepted · 2026-09-09 · **amended by [ADR 0012](./0012-self-contained-saves.md)**
 
-> **Amendment.** `.heroforge` is now a zip container that embeds the content a character uses,
-> and `.hfpack` is dropped — a separate "shareable" format has nothing left to do once every
+> **Amendment.** `.incu` is now a zip container that embeds the content a character uses,
+> and `.incupack` is dropped — a separate "shareable" format has nothing left to do once every
 > save is self-contained. The JSON-not-XML decision and the no-inline-images rule below are
 > unchanged, and assets now live as real bytes inside the container.
 
 ## Context
 
-HeroForge reads Aurora's XML, but it is not keeping it. Aurora is discontinued
+Incudo reads Aurora's XML, but it is not keeping it. Aurora is discontinued
 ([ADR 0008](./0008-aurora-compatibility-frozen.md)), so its format is an import target, not a
-foundation. HeroForge needs its own character format, content format and system format.
+foundation. Incudo needs its own character format, content format and system format.
 
 XML is a reasonable standard and the owner has no objection to it. But the stack is TypeScript
 end to end, where JSON is the native literal: `JSON.parse` is built in, correct, and fast, while
@@ -24,12 +24,12 @@ with 5 MB portraits inline as base64 and a 37,000-entry exclusion list.
 
 ## Decision
 
-**Everything HeroForge writes is JSON.**
+**Everything Incudo writes is JSON.**
 
 | file | contents |
 |---|---|
-| `<name>.heroforge` | a character. JSON. |
-| `<name>.hfcontent` | a compiled content bundle (an imported index, normalized). JSON. |
+| `<name>.incu` | a character. JSON. |
+| `<name>.incuc` | a compiled content bundle (an imported index, normalized). JSON. |
 | `system.json` | a game system definition. JSON. |
 
 Every one carries `formatVersion` as its first field.
@@ -40,8 +40,8 @@ Every one carries `formatVersion` as its first field.
 "assets": { "portrait": "assets/vigaro-portrait.png" }
 ```
 
-A bare `.heroforge` file is text and stays small. When one portable file is wanted — sending a
-character to a DM — that is `.hfpack`, a zip with the JSON, the assets, and optionally the
+A bare `.incu` file is text and stays small. When one portable file is wanted — sending a
+character to a DM — that is `.incupack`, a zip with the JSON, the assets, and optionally the
 subset of content elements the character uses. Zip because it is a boring, universal container
 that keeps images as bytes rather than as 33%-inflated text.
 
@@ -64,7 +64,7 @@ exclusion list.
 - A character file is a couple of KB and reviewable in a diff.
 - Assets stay bytes. A 5 MB PNG is 5 MB, not 6.7 MB of text inside a document you have to parse
   before you can show a name.
-- `.hfpack` gives portability without making every save pay for it.
+- `.incupack` gives portability without making every save pay for it.
 
 **Bad / accepted**
 - Two artefacts to manage instead of one, and the app must handle a missing asset gracefully

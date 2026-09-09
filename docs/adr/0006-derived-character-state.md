@@ -16,7 +16,7 @@ store some of both and drift.
 
 ## Decision
 
-A `.heroforge` character stores **only**: system id, level, the list of chosen element IDs, free
+A `.incu` character stores **only**: system id, level, the list of chosen element IDs, free
 text (name, notes, portrait), the source versions it was built against, and an explicit
 `overrides` map. Every number on the sheet is derived by running the rules at read time.
 

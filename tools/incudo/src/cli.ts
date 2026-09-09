@@ -1,26 +1,28 @@
 #!/usr/bin/env node --experimental-strip-types
 /**
- * hf — the HeroForge CLI.
+ * incudo — the Incudo CLI.
  *
  * This exists before any UI on purpose (ROADMAP Phase 0): it exercises the model, the
  * importer and the content layer with no UI assumptions anywhere, and it is what CI runs
  * against the whole AuroraLegacy corpus.
  *
- *   hf validate <index-url-or-path> [--strict] [--json]
- *   hf inspect  <index-url-or-path> <element-id>
- *   hf types    <index-url-or-path>
+ *   incudo validate <index-url-or-path> [--strict] [--json]
+ *   incudo inspect  <index-url-or-path> <element-id>
+ *   incudo types    <index-url-or-path>
  */
 
-import { referencedElementIds } from '@heroforge/core';
-import { ContentLibrary, HttpContentSource } from '@heroforge/content';
-import { NodeFetcher, NodeStorage } from './node-platform.ts';
+import { basename, dirname, join } from 'node:path';
+import { statSync } from 'node:fs';
+import { referencedElementIds } from '@incudo/core';
+import { ContentLibrary, HttpContentSource } from '@incudo/content';
+import { LocalMirrorFetcher, NodeFetcher, NodeStorage } from './node-platform.ts';
 
-const USAGE = `hf — HeroForge content tool
+const USAGE = `incudo — Incudo content tool
 
 Usage:
-  hf validate <index>   [--strict] [--json]   Load an index and report anything that does not resolve
-  hf inspect  <index> <element-id>            Show one element as HeroForge sees it
-  hf types    <index>                         Count elements by type
+  incudo validate <index>   [--strict] [--json]   Load an index and report anything that does not resolve
+  incudo inspect  <index> <element-id>            Show one element as Incudo sees it
+  incudo types    <index>                         Count elements by type
 
 <index> is a URL or a local path, e.g.
   https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index
@@ -29,7 +31,15 @@ Usage:
 Options:
   --strict     exit non-zero on warnings as well as errors
   --json       machine-readable output
-  --cache DIR  write fetched files through to DIR (default: .heroforge-cache)
+  --local      resolve remote URLs against a local mirror instead of the network.
+               Aurora indexes hard-code absolute GitHub URLs, so this is what lets you
+               validate a local checkout offline. Root defaults to the index's folder.
+  --root DIR   the local mirror's root (implies --local)
+  --aurora-folder
+               read an existing Aurora install's "custom" folder. Aurora gives each index
+               a folder named after it and stores files by name inside, so this resolves
+               by name rather than by URL. Fully offline; no --root needed.
+  --cache DIR  write fetched files through to DIR (default: .incudo-cache)
 `;
 
 async function main(argv: string[]): Promise<number> {
@@ -41,7 +51,7 @@ async function main(argv: string[]): Promise<number> {
 
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
   const positional = rest.filter((a) => !a.startsWith('--'));
-  const cacheDir = valueOf(rest, '--cache') ?? '.heroforge-cache';
+  const cacheDir = valueOf(rest, '--cache') ?? '.incudo-cache';
 
   const indexUrl = positional[0];
   if (!indexUrl) {
@@ -49,11 +59,19 @@ async function main(argv: string[]): Promise<number> {
     return 2;
   }
 
+  const mirrorRoot = valueOf(rest, '--root');
+  const useLocal = flags.has('--local') || mirrorRoot !== undefined;
+  const baseFetcher = new NodeFetcher();
+  const fetcher = useLocal
+    ? new LocalMirrorFetcher(mirrorRoot ?? inferMirrorRoot(indexUrl), baseFetcher)
+    : baseFetcher;
+
   const library = new ContentLibrary();
   const source = new HttpContentSource({
     id: indexUrl,
-    fetcher: new NodeFetcher(),
+    fetcher,
     writeThrough: new NodeStorage(cacheDir),
+    resolveByName: flags.has('--aurora-folder'),
   });
 
   const started = Date.now();
@@ -150,6 +168,25 @@ function types(library: ContentLibrary): number {
   return 0;
 }
 
+/**
+ * Where a local mirror is rooted, given the index the user pointed at.
+ *
+ * Aurora stores a downloaded index as `custom/Foo.index` with everything it pulls in
+ * under `custom/Foo/`, mirroring the upstream repository's folder structure. So for
+ * `<dir>/Foo.index` the mirror root is `<dir>/Foo` when that folder exists; otherwise
+ * the index's own directory, which is the layout of a plain git checkout.
+ */
+function inferMirrorRoot(indexPath: string): string {
+  const dir = dirname(indexPath);
+  const sibling = join(dir, basename(indexPath).replace(/\.index$/i, ''));
+  try {
+    if (statSync(sibling).isDirectory()) return sibling;
+  } catch {
+    // No sibling folder: a git checkout, where the index sits at the repo root.
+  }
+  return dir;
+}
+
 function valueOf(args: string[], flag: string): string | undefined {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : undefined;
@@ -163,20 +200,20 @@ main(process.argv.slice(2)).then(
   (code) => process.exit(code),
   (error: unknown) => {
     process.stderr.write(`\n${explain(error)}\n`);
-    if (process.env['HF_DEBUG']) process.stderr.write(`${(error as Error).stack}\n`);
+    if (process.env['INCUDO_DEBUG']) process.stderr.write(`${(error as Error).stack}\n`);
     process.exit(1);
   },
 );
 
 /**
  * A stack trace is the wrong answer to "you are offline" or "that file isn't there".
- * Set HF_DEBUG=1 to get the trace as well.
+ * Set INCUDO_DEBUG=1 to get the trace as well.
  */
 function explain(error: unknown): string {
   const err = error as NodeJS.ErrnoException;
   const message = err?.message ?? String(error);
   if (message.includes('fetch failed')) {
-    return `Could not reach the network.\n  Check the URL, your connection, and any proxy.\n  A local path works offline: hf validate ./path/to/core.index`;
+    return `Could not reach the network.\n  Check the URL, your connection, and any proxy.\n  A local path works offline: incudo validate ./path/to/core.index`;
   }
   if (err?.code === 'ENOENT') {
     return `No such file: ${err.path ?? 'unknown'}`;

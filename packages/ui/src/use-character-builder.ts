@@ -17,7 +17,7 @@ import {
   type ElementId,
   type ElementIndex,
   type GameSystem,
-} from '@heroforge/core';
+} from '@incudo/core';
 
 export interface BuilderStep {
   id: string;

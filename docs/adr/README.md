@@ -20,9 +20,10 @@ new one that supersedes it.
 | [0004](./0004-live-vs-downloaded-content.md) | Content sources are composable; live and offline are both first-class | Accepted |
 | [0005](./0005-aurora-import.md) | Aurora import is a first-class, day-one feature | Accepted |
 | [0006](./0006-derived-character-state.md) | Characters store choices, never derived numbers | Accepted |
-| [0007](./0007-native-formats.md) | HeroForge's own formats are JSON; images are never inlined | Accepted |
+| [0007](./0007-native-formats.md) | Incudo's own formats are JSON; images are never inlined | Accepted |
 | [0008](./0008-aurora-compatibility-frozen.md) | Aurora compatibility is import-only, and it gets to be finished | Accepted |
 | [0009](./0009-character-kinds.md) | A system declares several character kinds, not one | Accepted |
 | [0010](./0010-licensing-and-funding.md) | A system ships officially only if its licence permits donation-funded tools | Accepted |
 | [0011](./0011-user-systems.md) | Users can fork official systems and author entirely new ones | Accepted |
 | [0012](./0012-self-contained-saves.md) | A save is self-contained: it opens with zero content sources | Accepted (amends 0006, 0007) |
+| [0013](./0013-project-name.md) | The project is called Incudo | Accepted |

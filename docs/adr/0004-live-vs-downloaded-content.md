@@ -9,7 +9,7 @@ everything into a folder. That is good for offline play and bad for everything e
 browse a source before committing to it, updates are a manual re-download, and a phone with a
 few hundred MB of homebrew is a poor experience.
 
-The requirement is that HeroForge offer both: read straight from the repo, or download for
+The requirement is that Incudo offer both: read straight from the repo, or download for
 offline.
 
 ## Decision

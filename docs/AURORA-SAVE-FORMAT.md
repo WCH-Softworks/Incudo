@@ -2,7 +2,7 @@
 
 Reverse-engineered from 8 real `.dnd5e` files (2024–2026, Aurora save `version="1.0.3"`).
 This is the reference for importing existing characters, and — just as usefully — a catalogue
-of what **not** to do in HeroForge's own format.
+of what **not** to do in Incudo's own format.
 
 ## Shape
 
@@ -44,7 +44,7 @@ The only part that is genuinely input. Two kinds of node:
   anyway.
 - `checksum` — Aurora's guard against the underlying content changing under a saved choice.
 - `number="1"`/`"2"` — disambiguates repeated selects with the same name (e.g. picking two
-  Fighter skills). HeroForge needs the same thing; its `select` rules are keyed by name for
+  Fighter skills). Incudo needs the same thing; its `select` rules are keyed by name for
   exactly this reason.
 - `rndhp="10,10,1,3,…"` — **rolled hit points per level.** See "What this taught us", below.
 
@@ -75,7 +75,7 @@ an exclusion list.
 
 ## What this taught us
 
-Three of these landed directly in HeroForge's design:
+Three of these landed directly in Incudo's design:
 
 **Rolled values are inputs, not derivations.** `rndhp` is the one thing in `<sum>`-adjacent
 territory that genuinely cannot be recomputed — a die roll has no formula. This refines
@@ -88,7 +88,7 @@ stays correct when new content appears upstream — an exclusion list silently *
 everything published after it was written.
 
 **`checksum` is the right instinct in the wrong place.** Aurora checksums each individual
-choice. HeroForge records a version per source instead, which catches the same drift with one
+choice. Incudo records a version per source instead, which catches the same drift with one
 field instead of fifty and gives a better error ("Xanathar's changed since you built this")
 than a per-element mismatch.
 
@@ -99,7 +99,7 @@ and the *enabled* sources (derived by inverting `<restricted>` against the loade
 
 Ignore: everything with a bare `id=` in the elements tree, `<sum>`, `<magic>`,
 `<display-properties>`. All of it is re-derived, and re-deriving it is how the import gets
-verified — if HeroForge's engine produces a different `<sum>` than Aurora recorded, one of
+verified — if Incudo's engine produces a different `<sum>` than Aurora recorded, one of
 them is wrong and it is worth knowing which.
 
 Portraits: decode the base64 once, write it beside the character as an ordinary image file,

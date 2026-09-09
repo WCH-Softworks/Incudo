@@ -3,7 +3,7 @@
  * element index the engine can query. It walks nested indexes and can load lazily.
  */
 
-import { MapElementIndex, type Element, type ElementIndex } from '@heroforge/core';
+import { MapElementIndex, type Element, type ElementIndex } from '@incudo/core';
 import type { ContentIndex, ContentSource, FileRef, SourceDiagnostic } from './source.ts';
 
 export interface LoadOptions {

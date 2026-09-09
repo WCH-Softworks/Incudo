@@ -2,7 +2,7 @@
 
 ## One sentence
 
-HeroForge is a **generic rules-element engine** (`@heroforge/core`) with a **content layer**
+Incudo is a **generic rules-element engine** (`@incudo/core`) with a **content layer**
 that can read from a remote repo or a local cache, wrapped by **two thin UI shells** — Tauri on
 desktop and Expo on mobile — that share a React component library and shared view-models.
 
@@ -14,26 +14,26 @@ desktop and Expo on mobile — that share a React component library and shared v
                   └───────────────┬───────────────┘
                                   │  UI only: layout, navigation, platform I/O
                   ┌───────────────▼───────────────┐
-                  │        @heroforge/ui           │  shared components + view-model hooks
+                  │        @incudo/ui           │  shared components + view-model hooks
                   └───────────────┬───────────────┘
                   ┌───────────────▼───────────────┐
-                  │      @heroforge/content        │  sources, cache, sync, indexes
+                  │      @incudo/content        │  sources, cache, sync, indexes
                   └───────────────┬───────────────┘
       ┌───────────────────────────┼───────────────────────────┐
 ┌─────▼────────────┐    ┌─────────▼─────────┐    ┌────────────▼────────┐
-│ @heroforge/core  │◄───┤ @heroforge/       │    │ systems/*           │
+│ @incudo/core  │◄───┤ @incudo/       │    │ systems/*           │
 │ model + engine   │    │ aurora-import     │    │ (dnd5e, cairn, ...) │
 └──────────────────┘    └───────────────────┘    └─────────────────────┘
 ```
 
-Everything below `@heroforge/ui` is **pure TypeScript with no platform APIs** — no `fs`, no
+Everything below `@incudo/ui` is **pure TypeScript with no platform APIs** — no `fs`, no
 `window`, no `react-native`. That is what makes the two apps cheap.
 
 ---
 
 ## The central idea: elements and rules
 
-Aurora got one thing very right, and HeroForge keeps it: **all game content is the same shape.**
+Aurora got one thing very right, and Incudo keeps it: **all game content is the same shape.**
 A race, a class feature, a magic item and a spell are all *elements*. An element has:
 
 - an **id** (stable, globally unique, e.g. `ID_WOTC_PHB_CLASS_ROGUE`)
@@ -71,7 +71,7 @@ definition** (`systems/<id>/system.json`) is data that declares:
 - the shape of the build flow (which steps, in which order, which are required)
 - character sheet layout hints
 
-D&D 5e is `systems/dnd5e`. Nothing in `@heroforge/core` imports it. Phase 5 of the roadmap
+D&D 5e is `systems/dnd5e`. Nothing in `@incudo/core` imports it. Phase 5 of the roadmap
 exists specifically to prove this by shipping a second one.
 
 > **Reality check:** 5e will be the only serious test for a long time, so the engine *will*
@@ -81,7 +81,7 @@ exists specifically to prove this by shipping a second one.
 
 ## Content sources: live vs downloaded
 
-`@heroforge/content` exposes one interface with several implementations:
+`@incudo/content` exposes one interface with several implementations:
 
 - **`HttpContentSource`** — fetches an index and its files on demand, straight from the repo.
   Aurora cannot do this; it is the headline feature. Resolves relative URLs against the index
@@ -116,10 +116,10 @@ is testable in Node with no mocks beyond a fake fetcher.
 
 The short version, in priority order:
 
-1. **Domain logic goes in `@heroforge/core`.** If a rule about the game lives in a component,
+1. **Domain logic goes in `@incudo/core`.** If a rule about the game lives in a component,
    that is a bug.
 2. **Platform I/O is injected, never imported** (above).
-3. **`@heroforge/ui` holds components with no platform imports.** React Native Web is *not*
+3. **`@incudo/ui` holds components with no platform imports.** React Native Web is *not*
    used to force sharing.
 4. **View-models are shared, views are not.** A `useCharacterBuilder()` hook is shared; the
    screen that renders it is per-app. This is where the real leverage is — the hard logic is

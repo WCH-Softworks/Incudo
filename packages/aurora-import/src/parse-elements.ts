@@ -1,5 +1,5 @@
 /**
- * Aurora elements XML -> HeroForge `Element`s.
+ * Aurora elements XML -> Incudo `Element`s.
  *
  * Where Aurora's format is ambiguous, this reports a diagnostic rather than guessing
  * silently (docs/adr/0005). The importer never mutates upstream content.
@@ -15,7 +15,7 @@ import {
   type Setter,
   type SpellcastingBlock,
   type SheetHints,
-} from '@heroforge/core';
+} from '@incudo/core';
 import { parseXml, childrenNamed, firstChild, findFirst, type XmlNode } from './xml.ts';
 
 export interface ImportDiagnostic {

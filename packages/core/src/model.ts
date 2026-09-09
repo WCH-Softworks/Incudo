@@ -120,7 +120,7 @@ export interface ElementOrigin {
   /** Which content source this came from. */
   sourceId: string;
   fileUrl?: string;
-  format: 'aurora' | 'heroforge';
+  format: 'aurora' | 'incudo';
 }
 
 export interface Element {

@@ -5,8 +5,8 @@
  * downloading it first, and lazily fetch only the files a character actually needs.
  */
 
-import { parseAuroraIndex, parseAuroraElements } from '@heroforge/aurora-import';
-import type { Fetcher, Storage } from '@heroforge/core';
+import { parseAuroraIndex, parseAuroraElements } from '@incudo/aurora-import';
+import type { Fetcher, Storage } from '@incudo/core';
 import {
   compareVersions,
   detectFormat,
@@ -26,23 +26,30 @@ export interface HttpContentSourceOptions {
    * separate "offline mode" switch to forget to flip.
    */
   writeThrough?: Storage;
+  /**
+   * Read an existing Aurora download folder (its `custom/` directory) instead of a
+   * repository. Lets Incudo work straight off a user's Aurora install, fully offline.
+   */
+  resolveByName?: boolean;
 }
 
 export class HttpContentSource implements ContentSource {
   readonly id: string;
   private readonly fetcher: Fetcher;
   private readonly writeThrough: Storage | undefined;
+  private readonly resolveByName: boolean;
 
   constructor(options: HttpContentSourceOptions) {
     this.id = options.id;
     this.fetcher = options.fetcher;
     this.writeThrough = options.writeThrough;
+    this.resolveByName = options.resolveByName ?? false;
   }
 
   async loadIndex(url: string): Promise<ContentIndex> {
     const result = await this.fetcher.fetchText(url);
     await this.writeThrough?.write(cacheKey(this.id, url), result.text);
-    const parsed = parseAuroraIndex(result.text, url);
+    const parsed = parseAuroraIndex(result.text, url, { resolveByName: this.resolveByName });
     return {
       url: parsed.url,
       name: parsed.name,

@@ -1,8 +1,8 @@
 {
-  "name": "@heroforge/desktop",
+  "name": "@incudo/desktop",
   "version": "0.0.1",
   "private": true,
-  "description": "HeroForge desktop shell (Tauri + React). Layout and platform I/O only.",
+  "description": "Incudo desktop shell (Tauri + React). Layout and platform I/O only.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,10 +12,10 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@heroforge/core": "*",
-    "@heroforge/content": "*",
-    "@heroforge/aurora-import": "*",
-    "@heroforge/ui": "*",
+    "@incudo/core": "*",
+    "@incudo/content": "*",
+    "@incudo/aurora-import": "*",
+    "@incudo/ui": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
