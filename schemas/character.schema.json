@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://incudo.dev/schemas/character.schema.json",
+  "title": "Incudo character",
+  "description": "The `character.json` inside a `.incu` container (ADR 0012), and the whole of a character as a value. A character records the choices that produce it and nothing that can be computed from them (ADR 0006) — with one exception, `rolls`, because a die roll has no formula (ADR 0007). This file is a public API: it is the user's own saved work.",
+  "type": "object",
+  "required": ["formatVersion", "id", "systemId", "kind", "name", "progress", "sources", "choices", "rolls", "freeform"],
+  "additionalProperties": false,
+
+  "properties": {
+    "$schema": { "type": "string" },
+
+    "formatVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "systemId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The system this was built in. The system definition itself is NOT embedded in the save — it comes from the app (ADR 0012)."
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Which of the system's character kinds this is: \"pc\", \"npc\", … (ADR 0009)."
+    },
+    "name": { "type": "string" },
+    "progress": {
+      "type": "number",
+      "description": "One number whose meaning comes from the kind's progression: a level, a challenge rating, an xp total, or nothing at all. Fractional values are legal — a challenge rating of 1/4 is 0.25."
+    },
+
+    "sources": {
+      "type": "array",
+      "description": "An ALLOWLIST of the content sources this character was built from, with the versions it was built against. Never a blocklist: Aurora stored 37,235 disabled ids in one save, and a blocklist silently includes everything published after it was written. Since ADR 0012 these are provenance and an update path, not a load-time dependency.",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string" },
+          "version": { "type": "string" },
+          "mode": { "enum": ["stream", "download"] }
+        }
+      }
+    },
+
+    "choices": {
+      "type": "array",
+      "description": "The entire build, as element ids.",
+      "items": {
+        "type": "object",
+        "required": ["ruleKey", "elementIds"],
+        "additionalProperties": false,
+        "properties": {
+          "ruleKey": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Which select rule this answers: \"<granting element id>/<rule key>\". Stable across rebuilds."
+          },
+          "elementIds": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+
+    "rolls": {
+      "type": "object",
+      "description": "Recorded random results, keyed by what was rolled for: {\"hp:level:2\": 7}. INPUTS, not derivations — Aurora's rndhp is the discovery that forced this. Treating them as derived would silently reroll everyone's hit points on load.",
+      "additionalProperties": { "type": "number" }
+    },
+
+    "freeform": {
+      "type": "object",
+      "description": "Text the rules never touch: notes, appearance, backstory.",
+      "additionalProperties": { "type": "string" }
+    },
+
+    "assets": {
+      "type": "object",
+      "description": "Relative paths into the container's assets/ folder: {\"portrait\": \"assets/vigaro.png\"}. Never base64 — the bytes live beside the JSON (ADR 0007).",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^assets/[^/\\\\]+$",
+        "patternDescription": "must be a plain file name inside assets/, e.g. \"assets/portrait.png\""
+      }
+    },
+
+    "overrides": {
+      "type": "object",
+      "description": "Manual escape hatch for wrong or missing content. Present because the alternative is a user being stuck; the UI should present it as a repair tool, clearly marked.",
+      "additionalProperties": { "type": ["number", "string"] }
+    },
+
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" }
+  }
+}

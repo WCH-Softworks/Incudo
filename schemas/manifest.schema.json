@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://incudo.dev/schemas/manifest.schema.json",
+  "title": "Incudo container manifest",
+  "description": "The `manifest.json` at the root of a `.incu` save or a `.incuc` content bundle (ADR 0012). It is the first thing a reader parses, so it carries everything needed to decide whether to go on: the format version, what is inside, and a checksum per entry.",
+  "type": "object",
+  "required": ["formatVersion", "kind", "created"],
+  "additionalProperties": false,
+
+  "properties": {
+    "$schema": { "type": "string" },
+
+    "formatVersion": { "const": 1 },
+    "kind": {
+      "enum": ["character", "content"],
+      "description": "What this container holds: a character (.incu) or a content bundle (.incuc)."
+    },
+
+    "systemId": {
+      "type": "string",
+      "description": "Required for a character container. The system definition itself is not embedded — it comes from the app (ADR 0012)."
+    },
+    "characterKind": {
+      "type": "string",
+      "description": "Which of the system's kinds the character is, duplicated here so a reader can tell without unpacking character.json."
+    },
+    "characterId": { "type": "string" },
+    "name": {
+      "type": "string",
+      "description": "Display name, so a file browser or an import list can show something before unpacking."
+    },
+
+    "elementCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How many elements content.json carries. Typically 60–200 for a character out of a 12,000-element corpus."
+    },
+    "assets": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths of the files under assets/, so a reader can list them without scanning the archive."
+    },
+    "sources": {
+      "type": "array",
+      "description": "Provenance: which sources contributed the embedded content, at which versions. Enough to offer \"Xanathar's has been updated since you built this — refresh?\" when those sources are available.",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string" },
+          "version": { "type": "string" },
+          "mode": { "enum": ["stream", "download"] }
+        }
+      }
+    },
+
+    "integrity": {
+      "type": "object",
+      "description": "SHA-256 of each entry, as \"sha256-<hex>\", keyed by path within the container. Detects a truncated download or a hand-edit that went wrong; it is not a signature and proves nothing about who wrote the file.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^sha256-[0-9a-f]{64}$",
+        "patternDescription": "must look like \"sha256-\" followed by 64 hex digits"
+      }
+    },
+
+    "generator": {
+      "type": "string",
+      "description": "What wrote this, e.g. \"incudo-cli/0.0.1\". Useful in a bug report, ignored on read."
+    },
+    "created": { "type": "string", "minLength": 1 },
+    "updated": { "type": "string" }
+  }
+}
