@@ -64,6 +64,17 @@ not an optimization — if a change makes a save depend on configured sources to
 
 **Aurora is import-only and frozen when done** (ADR 0008). No export. No speculative support.
 
+**Nothing is ever published to npm.** Every package stays `"private": true`. The `@incudo/`
+prefix is a local workspace naming convention, not a registry claim — the app is the product,
+and the packages exist to organise it. Do not add `publishConfig`, a release workflow, changesets,
+or per-package versioning, and do not remove `private`. If someone else claims the `@incudo` npm
+scope, that is fine and changes nothing here.
+
+That does **not** mean nothing is a public API. Two things are, and they need real versioning
+discipline: the **system definition format** (users author these — ADR 0011) and the **`.incu`
+save format** (users' own files — ADR 0012). Both carry `formatVersion`. Package versions do not
+matter; those two do.
+
 **Never generate artwork.** No AI-generated images, logos, icons, textures or sample art, not
 even as a temporary placeholder. This is a stated project commitment in the README, not a
 preference. If a visual asset is needed, leave a clearly-marked gap and say so — do not fill it.
