@@ -22,7 +22,12 @@ import {
   type ElementIndex,
 } from '@incudo/core';
 import { ContentLibrary, HttpContentSource } from '@incudo/content';
-import { LocalMirrorFetcher, NodeFetcher, NodeStorage } from './node-platform.ts';
+import {
+  LocalMirrorFetcher,
+  NodeFetcher,
+  NodeStorage,
+  OfflineFetcher,
+} from './node-platform.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { characterCommand, CHARACTER_USAGE, type CommandContext } from './character-commands.ts';
 import { loadSystem } from './node-system.ts';
@@ -54,6 +59,9 @@ Options:
                a folder named after it and stores files by name inside, so this resolves
                by name rather than by URL. Fully offline; no --root needed.
   --cache DIR  write fetched files through to DIR (default: .incudo-cache)
+  --offline    refuse the network. Any remote URL becomes a named error instead of a
+               fetch, so a run that claims to be local can be shown to be local. Use it
+               with --local or --aurora-folder; on its own it allows only local paths.
 
 Baseline budgets for \`validate\`. Real content is permanently imperfect — the
 AuroraLegacy corpus has 57 references that will never resolve — so the question
@@ -155,7 +163,11 @@ async function loadLibrary(
   const cacheDir = valueOf(args, '--cache') ?? '.incudo-cache';
   const mirrorRoot = valueOf(args, '--root');
   const useLocal = flags.has('--local') || mirrorRoot !== undefined;
-  const baseFetcher = new NodeFetcher();
+
+  // --offline makes the local-only claim enforceable: any remote URL becomes a named error
+  // rather than a quiet fetch. It wraps whichever fetcher would otherwise reach the network,
+  // so it works the same for --local, for --aurora-folder, and for a bare local path.
+  const baseFetcher = flags.has('--offline') ? new OfflineFetcher() : new NodeFetcher();
   const fetcher = useLocal
     ? new LocalMirrorFetcher(mirrorRoot ?? inferMirrorRoot(indexUrl), baseFetcher)
     : baseFetcher;

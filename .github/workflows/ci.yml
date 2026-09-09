@@ -44,8 +44,16 @@ jobs:
       #
       # --expect-* is not redundant with the budgets above it: a corpus that failed to check
       # out loads nothing, and nothing has no unresolved references.
+      #
+      # --offline makes "no network" enforced rather than assumed. Without it a file missing
+      # from the mirror is silently fetched from GitHub, so the job could pass by accident and
+      # this whole step would depend on raw.githubusercontent.com being up.
+      #
+      # If this fails with "refused to fetch … and the mirror has no …", the mapping from the
+      # index's hard-coded URLs to .corpus paths is wrong for that file — the message names it.
+      # That is worth fixing, not worth papering over by dropping the flag.
       - name: Import and validate
         run: |
-          npm run incudo -- validate .corpus/AuroraLegacy.index --local --root .corpus \
+          npm run incudo -- validate .corpus/AuroraLegacy.index --local --root .corpus --offline \
             --expect-files 740 --expect-elements 12058 \
             --max-unresolved 57 --max-warnings 57

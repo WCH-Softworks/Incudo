@@ -7,6 +7,32 @@ import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { Fetcher, FetchOptions, FetchResult, Storage } from '@incudo/core';
 
+/**
+ * A Fetcher that reads local paths and refuses the network.
+ *
+ * This exists because "fully offline" was a claim, not a guarantee. `LocalMirrorFetcher`
+ * deliberately falls through to the network when a file is not in the mirror — good for a
+ * partial mirror on a laptop, quietly wrong in CI, where a mirror miss became a live fetch
+ * that could pass by accident, hang, or make an "offline" run depend on GitHub being up.
+ *
+ * Used as `LocalMirrorFetcher`'s fallback, it turns that silent fetch into a named error. Used
+ * on its own it refuses any remote URL outright.
+ */
+export class OfflineFetcher implements Fetcher {
+  private readonly local: Fetcher;
+
+  constructor(local: Fetcher = new NodeFetcher()) {
+    this.local = local;
+  }
+
+  async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
+    if (/^https?:\/\//i.test(url)) {
+      throw new Error(`refused to fetch ${url} — running with --offline`);
+    }
+    return this.local.fetchText(url, opts);
+  }
+}
+
 export class NodeFetcher implements Fetcher {
   async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
     // A plain path (or file: URL) reads from disk, so a local checkout of a content
@@ -37,9 +63,10 @@ export class NodeFetcher implements Fetcher {
  *   https://raw.githubusercontent.com/AuroraLegacy/elements/master/core/internal.xml
  *   -> <root>/core/internal.xml
  *
- * It is a heuristic, deliberately: if the mapped file is missing it falls through to
- * the network rather than failing, so a partial mirror still works. This is what makes
- * CI able to validate the whole corpus with no network at all.
+ * It is a heuristic, deliberately: if the mapped file is missing it falls through to the
+ * `fallback` rather than failing, so a partial mirror still works. Pass an
+ * {@link OfflineFetcher} as that fallback to turn a miss into an error instead — which is
+ * what `--offline` does, and what makes "no network at all" a guarantee rather than a hope.
  */
 export class LocalMirrorFetcher implements Fetcher {
   private readonly root: string;
@@ -59,7 +86,17 @@ export class LocalMirrorFetcher implements Fetcher {
         // Fall through: a partial mirror is still useful.
       }
     }
-    return this.fallback.fetchText(url, opts);
+    try {
+      return await this.fallback.fetchText(url, opts);
+    } catch (error) {
+      // Where the mirror was supposed to have it, say where it looked. "Refused to fetch
+      // https://raw.githubusercontent.com/…" on its own sends people to check their network,
+      // which is the one thing that is not the problem.
+      if (local) {
+        throw new Error(`${(error as Error).message}, and the mirror has no ${local}`);
+      }
+      throw error;
+    }
   }
 
   private toLocalPath(url: string): string | null {

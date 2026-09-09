@@ -32,6 +32,12 @@ npm run incudo -- validate \
 `--aurora-folder` resolves files the way Aurora's downloader stores them (a folder per index,
 files by `name`); `--local [--root DIR]` resolves them by repository path, for a git checkout.
 They are different layouts — see docs/AURORA-FORMAT.md. Do not use one for the other.
+
+Add `--offline` to make that enforceable. `LocalMirrorFetcher` falls through to the network
+when a file is not in the mirror, which is right for a partial mirror and quietly wrong
+everywhere else: an "offline" run that silently fetches proves nothing. With `--offline` a
+miss is a named error giving both the URL refused and the mirror path checked. The command
+above passes all 740 files with `--offline`, so that corpus really is complete.
 Eight real Aurora saves sit beside it as `*.dnd5e`. They stay **local and out of the repo**:
 read them for verification, never commit them or their contents.
 
