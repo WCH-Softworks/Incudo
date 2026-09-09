@@ -1,0 +1,356 @@
+{
+  "formatVersion": 1,
+  "elements": [
+    {
+      "id": "ID_CALLING_WARDEN",
+      "type": "Calling",
+      "name": "Warden",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "grant",
+          "key": "grant-0",
+          "type": "Calling Feature",
+          "id": "ID_FEATURE_WATCHFUL",
+          "prepared": false,
+          "equipped": false,
+          "allowReplace": false
+        },
+        {
+          "kind": "grant",
+          "key": "grant-1",
+          "type": "Calling Feature",
+          "id": "ID_FEATURE_SECOND_WIND",
+          "level": 3,
+          "prepared": false,
+          "equipped": false,
+          "allowReplace": false
+        },
+        {
+          "kind": "grant",
+          "key": "grant-2",
+          "type": "Calling Feature",
+          "id": "ID_FEATURE_UNBROKEN",
+          "level": 7,
+          "prepared": false,
+          "equipped": false,
+          "allowReplace": false
+        },
+        {
+          "kind": "stat",
+          "key": "stat-3",
+          "name": "guard",
+          "value": {
+            "kind": "number",
+            "value": 2
+          },
+          "equipped": false,
+          "inline": false
+        },
+        {
+          "kind": "select",
+          "key": "select:Starting Gear",
+          "type": "Gear",
+          "name": "Starting Gear",
+          "number": 1,
+          "optional": false,
+          "prepared": false,
+          "allowReplace": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_FEATURE_SECOND_WIND",
+      "type": "Calling Feature",
+      "name": "Second Wind",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "wounds",
+          "value": {
+            "kind": "number",
+            "value": -1
+          },
+          "equipped": false,
+          "inline": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_FEATURE_UNBROKEN",
+      "type": "Calling Feature",
+      "name": "Unbroken",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "guard",
+          "value": {
+            "kind": "number",
+            "value": 3
+          },
+          "bonus": "unbroken",
+          "equipped": false,
+          "inline": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_FEATURE_WATCHFUL",
+      "type": "Calling Feature",
+      "name": "Watchful",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "guard",
+          "value": {
+            "kind": "number",
+            "value": 1
+          },
+          "equipped": false,
+          "inline": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_GEAR_SPEAR",
+      "type": "Gear",
+      "name": "Spear",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_KIN_RIVERFOLK",
+      "type": "Kin",
+      "name": "Riverfolk",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "grant",
+          "key": "grant-0",
+          "type": "Kin Trait",
+          "id": "ID_TRAIT_AMPHIBIOUS",
+          "prepared": false,
+          "equipped": false,
+          "allowReplace": false
+        },
+        {
+          "kind": "grant",
+          "key": "grant-1",
+          "type": "Kin Trait",
+          "id": "ID_TRAIT_TIDEBORN",
+          "prepared": false,
+          "equipped": false,
+          "allowReplace": false
+        },
+        {
+          "kind": "grant",
+          "key": "grant-2",
+          "type": "Kin Trait",
+          "id": "ID_TRAIT_MISSING_ON_PURPOSE",
+          "prepared": false,
+          "equipped": false,
+          "allowReplace": false
+        },
+        {
+          "kind": "stat",
+          "key": "stat-3",
+          "name": "speed",
+          "value": {
+            "kind": "number",
+            "value": 5
+          },
+          "equipped": false,
+          "inline": false
+        },
+        {
+          "kind": "select",
+          "key": "select:Riverfolk Knack",
+          "type": "Knack",
+          "name": "Riverfolk Knack",
+          "supports": {
+            "kind": "tag",
+            "tag": "Riverfolk"
+          },
+          "number": 1,
+          "optional": false,
+          "default": "ID_KNACK_SWIMMER",
+          "prepared": false,
+          "allowReplace": false
+        }
+      ],
+      "supports": [],
+      "description": "<p>Born to the water.</p>",
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_KNACK_DIVER",
+      "type": "Knack",
+      "name": "Diver",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "vigour",
+          "value": {
+            "kind": "number",
+            "value": 2
+          },
+          "equipped": false,
+          "inline": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_KNACK_SWIMMER",
+      "type": "Knack",
+      "name": "Swimmer",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "speed",
+          "value": {
+            "kind": "number",
+            "value": 5
+          },
+          "equipped": false,
+          "inline": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_TRAIT_AMPHIBIOUS",
+      "type": "Kin Trait",
+      "name": "Amphibious",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "vigour",
+          "value": {
+            "kind": "number",
+            "value": 1
+          },
+          "equipped": false,
+          "inline": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_TRAIT_TIDEBORN",
+      "type": "Kin Trait",
+      "name": "Tideborn",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "guard",
+          "value": {
+            "kind": "number",
+            "value": 2
+          },
+          "bonus": "tide",
+          "requirements": {
+            "kind": "has",
+            "id": "ID_KIN_RIVERFOLK"
+          },
+          "equipped": false,
+          "inline": false
+        },
+        {
+          "kind": "stat",
+          "key": "stat-1",
+          "name": "guard",
+          "value": {
+            "kind": "number",
+            "value": 1
+          },
+          "bonus": "tide",
+          "equipped": false,
+          "inline": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    }
+  ],
+  "unresolved": [
+    "ID_TRAIT_MISSING_ON_PURPOSE"
+  ]
+}

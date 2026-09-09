@@ -6,16 +6,20 @@
  * importer and the content layer with no UI assumptions anywhere, and it is what CI runs
  * against the whole AuroraLegacy corpus.
  *
- *   incudo validate <index-url-or-path> [--strict] [--json]
- *   incudo inspect  <index-url-or-path> <element-id>
- *   incudo types    <index-url-or-path>
+ *   incudo validate  <index-url-or-path> [--strict] [--json]
+ *   incudo inspect   <index-url-or-path> <element-id>
+ *   incudo types     <index-url-or-path>
+ *   incudo system    validate <system.json>
+ *   incudo character new|choose|set|show|pack|unpack|verify …
  */
 
 import { basename, dirname, join } from 'node:path';
 import { statSync } from 'node:fs';
-import { referencedElementIds } from '@incudo/core';
+import { referencedElementIds, type ElementIndex } from '@incudo/core';
 import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { LocalMirrorFetcher, NodeFetcher, NodeStorage } from './node-platform.ts';
+import { characterCommand, CHARACTER_USAGE, type CommandContext } from './character-commands.ts';
+import { loadSystem } from './node-system.ts';
 
 const USAGE = `incudo — Incudo content tool
 
@@ -23,6 +27,8 @@ Usage:
   incudo validate <index>   [--strict] [--json]   Load an index and report anything that does not resolve
   incudo inspect  <index> <element-id>            Show one element as Incudo sees it
   incudo types    <index>                         Count elements by type
+  incudo system   validate <system.json>          Check a system definition against the schema
+  incudo character <command> …                    Build and inspect characters (see below)
 
 <index> is a URL or a local path, e.g.
   https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index
@@ -40,7 +46,8 @@ Options:
                a folder named after it and stores files by name inside, so this resolves
                by name rather than by URL. Fully offline; no --root needed.
   --cache DIR  write fetched files through to DIR (default: .incudo-cache)
-`;
+
+${CHARACTER_USAGE}`;
 
 async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv;
@@ -50,8 +57,13 @@ async function main(argv: string[]): Promise<number> {
   }
 
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
-  const positional = rest.filter((a) => !a.startsWith('--'));
-  const cacheDir = valueOf(rest, '--cache') ?? '.incudo-cache';
+  const positional = rest.filter((a, i) => !a.startsWith('--') && !takesValue(rest, i));
+  const ctx = makeContext(rest, positional, flags);
+
+  // Commands that own a character or a system file, and never need a content index unless
+  // they say so. Handled before the index is loaded, because loading one is the slow part.
+  if (command === 'character') return characterCommand(ctx);
+  if (command === 'system') return systemCommand(ctx);
 
   const indexUrl = positional[0];
   if (!indexUrl) {
@@ -59,30 +71,9 @@ async function main(argv: string[]): Promise<number> {
     return 2;
   }
 
-  const mirrorRoot = valueOf(rest, '--root');
-  const useLocal = flags.has('--local') || mirrorRoot !== undefined;
-  const baseFetcher = new NodeFetcher();
-  const fetcher = useLocal
-    ? new LocalMirrorFetcher(mirrorRoot ?? inferMirrorRoot(indexUrl), baseFetcher)
-    : baseFetcher;
-
-  const library = new ContentLibrary();
-  const source = new HttpContentSource({
-    id: indexUrl,
-    fetcher,
-    writeThrough: new NodeStorage(cacheDir),
-    resolveByName: flags.has('--aurora-folder'),
-  });
-
   const started = Date.now();
-  const report = await library.loadSource(source, indexUrl, {
-    onProgress: (loaded, total, current) => {
-      if (!flags.has('--json')) {
-        process.stderr.write(`\r  ${loaded}/${total}  ${truncate(current, 48)}          `);
-      }
-    },
-  });
-  if (!flags.has('--json')) process.stderr.write('\r' + ' '.repeat(70) + '\r');
+  const library = new ContentLibrary();
+  const report = await loadLibrary(library, indexUrl, rest, flags);
 
   switch (command) {
     case 'validate':
@@ -95,6 +86,93 @@ async function main(argv: string[]): Promise<number> {
       process.stderr.write(`Unknown command "${command}".\n\n${USAGE}`);
       return 2;
   }
+}
+
+/**
+ * The flags that take a following value, so `--system foo.json build` does not read
+ * "foo.json" as a positional argument. Kept as a list rather than a parser: the CLI has
+ * eight flags, and a dependency to parse eight flags would be a poor trade.
+ */
+const VALUE_FLAGS = new Set(['--cache', '--root', '--system', '--index', '--kind', '--name', '--progress', '--roll']);
+
+function takesValue(args: string[], position: number): boolean {
+  const previous = args[position - 1];
+  return previous !== undefined && VALUE_FLAGS.has(previous);
+}
+
+function makeContext(args: string[], positional: string[], flags: Set<string>): CommandContext {
+  return {
+    positional,
+    flags,
+    value: (flag) => valueOf(args, flag),
+    values: (flag) => valuesOf(args, flag),
+    loadIndex: async (indexUrl) => {
+      const library = new ContentLibrary();
+      await loadLibrary(library, indexUrl, args, flags);
+      return library.elements as ElementIndex;
+    },
+    out: (text) => process.stdout.write(text),
+    err: (text) => process.stderr.write(text),
+  };
+}
+
+async function loadLibrary(
+  library: ContentLibrary,
+  indexUrl: string,
+  args: string[],
+  flags: Set<string>,
+): Promise<{ filesLoaded: number; elementsLoaded: number }> {
+  const cacheDir = valueOf(args, '--cache') ?? '.incudo-cache';
+  const mirrorRoot = valueOf(args, '--root');
+  const useLocal = flags.has('--local') || mirrorRoot !== undefined;
+  const baseFetcher = new NodeFetcher();
+  const fetcher = useLocal
+    ? new LocalMirrorFetcher(mirrorRoot ?? inferMirrorRoot(indexUrl), baseFetcher)
+    : baseFetcher;
+
+  const source = new HttpContentSource({
+    id: indexUrl,
+    fetcher,
+    writeThrough: new NodeStorage(cacheDir),
+    resolveByName: flags.has('--aurora-folder'),
+  });
+
+  const quiet = flags.has('--json') || flags.has('--quiet');
+  const report = await library.loadSource(source, indexUrl, {
+    onProgress: (loaded, total, current) => {
+      if (!quiet) process.stderr.write(`\r  ${loaded}/${total}  ${truncate(current, 48)}          `);
+    },
+  });
+  if (!quiet) process.stderr.write('\r' + ' '.repeat(70) + '\r');
+  return report;
+}
+
+/**
+ * `incudo system validate` — the CLI half of ADR 0011's contract.
+ *
+ * There is no separate validator here: this calls the same `validateGameSystem` the app
+ * calls on load. That is the whole point — a system that passes here and then fails to load
+ * would make "if it parses, the app can build in it" a lie.
+ */
+async function systemCommand(ctx: CommandContext): Promise<number> {
+  const [sub, path] = ctx.positional;
+  if (sub !== 'validate' || !path) {
+    ctx.err('Usage: incudo system validate <system.json>\n');
+    return 2;
+  }
+
+  const system = await loadSystem(path, ctx.err);
+  if (!system) return 1;
+
+  ctx.out(`${system.name} (${system.id} ${system.version}) is valid.\n`);
+  ctx.out(`  element types:   ${system.elementTypes.length}\n`);
+  ctx.out(`  stats:           ${system.stats.length}\n`);
+  ctx.out(`  character kinds: ${system.characterKinds.map((k) => k.id).join(', ')}\n`);
+  if (!system.licence) {
+    ctx.out('\n  No licence block. Fine for a personal system; required to ship one\n');
+    ctx.out('  officially (ADR 0010).\n');
+  }
+  return 0;
 }
 
 function validate(
@@ -190,6 +268,15 @@ function inferMirrorRoot(indexPath: string): string {
 function valueOf(args: string[], flag: string): string | undefined {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : undefined;
+}
+
+/** Flags that may repeat, like `--roll hp:level:2=7 --roll hp:level:3=4`. */
+function valuesOf(args: string[], flag: string): string[] {
+  const found: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === flag && args[i + 1] !== undefined) found.push(args[i + 1]!);
+  }
+  return found;
 }
 
 function truncate(text: string, max: number): string {

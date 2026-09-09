@@ -1,0 +1,42 @@
+{
+  "formatVersion": 1,
+  "id": "fixed-id-for-a-stable-test",
+  "systemId": "fixture",
+  "kind": "hero",
+  "name": "Aelin of the Reeds",
+  "progress": 7,
+  "sources": [],
+  "choices": [
+    {
+      "ruleKey": "build/kin",
+      "elementIds": [
+        "ID_KIN_RIVERFOLK"
+      ]
+    },
+    {
+      "ruleKey": "build/calling",
+      "elementIds": [
+        "ID_CALLING_WARDEN"
+      ]
+    },
+    {
+      "ruleKey": "ID_KIN_RIVERFOLK/select:Riverfolk Knack",
+      "elementIds": [
+        "ID_KNACK_DIVER"
+      ]
+    },
+    {
+      "ruleKey": "ID_CALLING_WARDEN/select:Starting Gear",
+      "elementIds": [
+        "ID_GEAR_SPEAR"
+      ]
+    }
+  ],
+  "rolls": {
+    "wounds:level:2": 5,
+    "wounds:level:3": 3
+  },
+  "freeform": {},
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-02T00:00:00.000Z"
+}

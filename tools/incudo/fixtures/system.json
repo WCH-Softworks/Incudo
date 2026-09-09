@@ -1,0 +1,69 @@
+{
+  "formatVersion": 1,
+  "id": "fixture",
+  "name": "Fixture System",
+  "description": "A committed, offline, three-second stand-in for the 12,058-element Aurora corpus. It exists so the ADR 0012 self-containment test runs everywhere, including CI, where nobody has an Aurora install. The same test also runs against the real corpus when one is present — see self-contained.test.ts.",
+  "version": "1.0.0",
+
+  "elementTypes": [
+    { "name": "Kin", "plural": "Kins", "selectable": true, "children": ["Kin Trait"] },
+    { "name": "Kin Trait" },
+    { "name": "Calling", "plural": "Callings", "selectable": true, "children": ["Calling Feature"] },
+    { "name": "Calling Feature" },
+    { "name": "Knack", "plural": "Knacks", "selectable": true },
+    { "name": "Gear", "plural": "Gear", "selectable": true },
+    { "name": "Beast", "plural": "Beasts", "selectable": true, "children": ["Beast Action"] },
+    { "name": "Beast Action" }
+  ],
+
+  "stats": [
+    { "name": "vigour", "label": "Vigour", "default": 10 },
+    { "name": "vigour:modifier",
+      "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "vigour" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },
+    { "name": "guard", "label": "Guard", "default": 10 },
+    { "name": "wounds", "label": "Wounds", "default": 0 },
+    { "name": "speed", "label": "Speed", "default": 30 }
+  ],
+
+  "characterKinds": [
+    {
+      "id": "hero",
+      "name": "Hero",
+      "default": true,
+      "progression": { "kind": "level", "min": 1, "max": 10, "stat": "level" },
+      "stats": [
+        { "name": "level", "label": "Level", "default": 1 },
+        { "name": "prowess", "label": "Prowess",
+          "derive": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 2 }, "right": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "level" }, "right": { "kind": "number", "value": 1 } }, "right": { "kind": "number", "value": 4 } }] } } }
+      ],
+      "elementTypes": ["Kin", "Kin Trait", "Calling", "Calling Feature", "Knack", "Gear"],
+      "buildSteps": [
+        { "id": "kin", "label": "Kin", "types": ["Kin"], "required": true },
+        { "id": "calling", "label": "Calling", "types": ["Calling"], "required": true },
+        { "id": "gear", "label": "Gear", "types": ["Gear"] }
+      ],
+      "sheet": {
+        "sections": [
+          { "id": "core", "label": "Core", "stats": ["level", "vigour", "guard", "speed", "prowess"] },
+          { "id": "features", "label": "Features", "types": ["Kin Trait", "Calling Feature", "Knack"] },
+          { "id": "gear", "label": "Gear", "types": ["Gear"] }
+        ]
+      }
+    },
+    {
+      "id": "beast",
+      "name": "Beast",
+      "description": "No levels, a threat rating instead. Here to prove the kind machinery is not decorative — the engine has no code that names either kind.",
+      "progression": { "kind": "rating", "stat": "threat", "min": 0, "max": 20 },
+      "stats": [{ "name": "threat", "label": "Threat", "default": 0 }],
+      "elementTypes": ["Beast", "Beast Action", "Gear"],
+      "buildSteps": [{ "id": "beast", "label": "Beast", "types": ["Beast"], "required": true }],
+      "sheet": {
+        "sections": [
+          { "id": "block", "label": "Stat Block", "stats": ["threat", "guard", "vigour", "speed"] },
+          { "id": "actions", "label": "Actions", "types": ["Beast Action"] }
+        ]
+      }
+    }
+  ]
+}

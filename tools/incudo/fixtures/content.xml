@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A fixture corpus in Aurora's own XML, deliberately, so the self-containment test runs
+  through the real importer rather than through hand-built Element objects. Everything a
+  character can reach is represented here at least once: a plain grant, a grant behind a
+  level gate, a select with a default, a requirement naming another element, a stat with a
+  named bonus bucket, and a dangling reference that no source defines.
+
+  The FILLER_* elements are the corpus a character does NOT use. They are what makes the
+  embedded subset a subset.
+-->
+<elements>
+  <info>
+    <name>Fixture Content</name>
+    <update version="1.0.0" />
+  </info>
+
+  <element name="Riverfolk" type="Kin" source="Fixture" id="ID_KIN_RIVERFOLK">
+    <description><p>Born to the water.</p></description>
+    <rules>
+      <grant type="Kin Trait" id="ID_TRAIT_AMPHIBIOUS" />
+      <grant type="Kin Trait" id="ID_TRAIT_TIDEBORN" />
+      <!-- Nothing in this file defines it. Aurora's own corpus has 57 of these. -->
+      <grant type="Kin Trait" id="ID_TRAIT_MISSING_ON_PURPOSE" />
+      <stat name="speed" value="5" />
+      <select type="Knack" name="Riverfolk Knack" supports="Riverfolk" number="1"
+              default="ID_KNACK_SWIMMER" />
+    </rules>
+  </element>
+
+  <element name="Amphibious" type="Kin Trait" source="Fixture" id="ID_TRAIT_AMPHIBIOUS">
+    <rules>
+      <stat name="vigour" value="1" />
+    </rules>
+  </element>
+
+  <element name="Tideborn" type="Kin Trait" source="Fixture" id="ID_TRAIT_TIDEBORN">
+    <rules>
+      <!-- Reaches an element only through a requirement, never through a grant. -->
+      <stat name="guard" value="2" bonus="tide" requirements="ID_KIN_RIVERFOLK" />
+      <stat name="guard" value="1" bonus="tide" />
+    </rules>
+  </element>
+
+  <element name="Swimmer" type="Knack" source="Fixture" id="ID_KNACK_SWIMMER">
+    <supports>Riverfolk</supports>
+    <rules>
+      <stat name="speed" value="5" />
+    </rules>
+  </element>
+
+  <element name="Diver" type="Knack" source="Fixture" id="ID_KNACK_DIVER">
+    <supports>Riverfolk</supports>
+    <rules>
+      <stat name="vigour" value="2" />
+    </rules>
+  </element>
+
+  <element name="Warden" type="Calling" source="Fixture" id="ID_CALLING_WARDEN">
+    <rules>
+      <grant type="Calling Feature" id="ID_FEATURE_WATCHFUL" />
+      <grant type="Calling Feature" id="ID_FEATURE_SECOND_WIND" level="3" />
+      <grant type="Calling Feature" id="ID_FEATURE_UNBROKEN" level="7" />
+      <stat name="guard" value="2" />
+      <select type="Gear" name="Starting Gear" number="1" />
+    </rules>
+  </element>
+
+  <element name="Watchful" type="Calling Feature" source="Fixture" id="ID_FEATURE_WATCHFUL">
+    <rules>
+      <stat name="guard" value="1" />
+    </rules>
+  </element>
+
+  <element name="Second Wind" type="Calling Feature" source="Fixture" id="ID_FEATURE_SECOND_WIND">
+    <rules>
+      <stat name="wounds" value="-1" />
+    </rules>
+  </element>
+
+  <element name="Unbroken" type="Calling Feature" source="Fixture" id="ID_FEATURE_UNBROKEN">
+    <rules>
+      <stat name="guard" value="3" bonus="unbroken" />
+    </rules>
+  </element>
+
+  <element name="Spear" type="Gear" source="Fixture" id="ID_GEAR_SPEAR" />
+  <element name="Net" type="Gear" source="Fixture" id="ID_GEAR_NET" />
+
+  <element name="River Drake" type="Beast" source="Fixture" id="ID_BEAST_RIVER_DRAKE">
+    <rules>
+      <grant type="Beast Action" id="ID_ACTION_BITE" />
+      <stat name="guard" value="5" />
+    </rules>
+  </element>
+
+  <element name="Bite" type="Beast Action" source="Fixture" id="ID_ACTION_BITE" />
+
+  <element name="Filler A" type="Knack" source="Fixture" id="ID_FILLER_A" />
+  <element name="Filler B" type="Knack" source="Fixture" id="ID_FILLER_B" />
+  <element name="Filler C" type="Gear" source="Fixture" id="ID_FILLER_C" />
+  <element name="Filler D" type="Gear" source="Fixture" id="ID_FILLER_D" />
+  <element name="Filler E" type="Calling" source="Fixture" id="ID_FILLER_E">
+    <rules>
+      <grant type="Calling Feature" id="ID_FEATURE_WATCHFUL" />
+    </rules>
+  </element>
+</elements>

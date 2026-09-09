@@ -18,6 +18,7 @@
     "clean": "tsc --build --clean",
     "test": "node --test --experimental-strip-types packages/*/src/**/*.test.ts tools/*/src/**/*.test.ts",
     "incudo": "node --experimental-strip-types tools/incudo/src/cli.ts",
+    "fixtures:rebuild": "node --experimental-strip-types tools/incudo/src/rebuild-fixtures.ts",
     "lint": "eslint .",
     "desktop": "echo \"Not scaffolded yet — see apps/desktop/README.md (ROADMAP Phase 1).\" && exit 1",
     "mobile": "echo \"Not scaffolded yet — see apps/mobile/README.md (ROADMAP Phase 4).\" && exit 1"

@@ -94,6 +94,8 @@
       "default": true,
       "progression": { "kind": "level", "min": 1, "max": 20, "stat": "level" },
 
+      "stats": [{ "name": "level", "label": "Level", "default": 1 }],
+
       "elementTypes": [
         "Race", "Sub Race", "Race Variant", "Racial Trait",
         "Class", "Multiclass", "Class Feature", "Archetype", "Archetype Feature",
