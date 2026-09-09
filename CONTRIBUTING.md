@@ -1,6 +1,25 @@
 # Contributing
 
-Thanks for looking. This is a solo project that would like not to be.
+Thanks for looking. Please read this section before you spend time on code.
+
+## The current phase: read, don't merge
+
+**Incudo is not merging contributions yet.** Until the tool is finished, the architecture stays
+under one pair of hands. At this stage a merged change costs more to live with than it does to
+write — the data model is still moving (see the breaking work queued in `ROADMAP.md` Phase 0),
+and every merged decision is one I would have to keep or unpick later.
+
+This is a phase, not a permanent policy, and it is not a brush-off:
+
+- **Open pull requests and issues.** I read all of them and I will tell you what I think. A PR I
+  cannot merge today is still the clearest possible bug report, and the review is real.
+- **Fork it.** MIT, no permission needed, no hard feelings. If your fork goes somewhere
+  interesting, I want to know.
+- **This is how maintainers get chosen.** When contributions open up, I will be inviting people
+  based on forks and PR history I have already been reading — not on a form.
+
+So: everything below is worth doing. Just know that its immediate value is the conversation and
+the record, not a merge commit.
 
 ## Setup
 
@@ -28,14 +47,20 @@ short version:
   `window`, `react-native`). They take injected `Fetcher` and `Storage`.
 - Adding a runtime dependency to those three packages needs an ADR.
 
-## Good first contributions
+## Most useful things to send
 
-- **A system definition** for a game you play (`systems/<id>/system.json`). This is the most
-  valuable thing anyone can add, because it is what keeps the engine honest.
+Ranked by how much they help, given nothing merges yet — the top two need no merge to be
+valuable at all:
+
 - **Anything the CLI reports.** `npm run incudo -- validate <index> --strict` against a homebrew
-  source you use is likely to find real bugs.
-- **Aurora format edge cases.** If content in the wild breaks the importer, a failing test
-  with the offending XML snippet is a perfect issue.
+  source you actually use is likely to find real bugs. An issue with the index URL and the
+  output is immediately actionable.
+- **Importer edge cases.** If content in the wild breaks it, a failing test plus the offending
+  XML snippet is the perfect issue — it goes straight into the corpus suite.
+- **A system definition** for a game you play (`systems/<id>/system.json`). The most valuable
+  *code* anyone can write, because a second real system is what keeps the engine honest. Note
+  that shipping one officially also depends on its licence — see
+  [docs/LICENSING.md](./docs/LICENSING.md).
 
 ## Testing
 
@@ -59,3 +84,6 @@ recording the choice.
 
 Small and focused beats large and complete. Explain what you tried that did not work, if
 anything — that is often the most useful part of the review.
+
+Expect a reply rather than a merge, for now. If a PR is right and I cannot take it yet, I will
+say so and say why, and it stays open.
