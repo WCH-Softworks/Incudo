@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+
+  aurora-corpus:
+    # The real regression suite: import every element in the AuroraLegacy repo
+    # and fail if anything newly fails to resolve. See ADR 0005.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Checkout Aurora content corpus
+        uses: actions/checkout@v4
+        with:
+          repository: AuroraLegacy/elements
+          path: .corpus
+      - name: Import and validate
+        run: npm run hf -- validate .corpus/core.index --local --strict

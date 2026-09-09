@@ -1,0 +1,98 @@
+{
+  "id": "dnd5e",
+  "name": "Dungeons & Dragons 5th Edition",
+  "description": "The first system definition, and the one HeroForge is tested against. Nothing in @heroforge/core imports this file — it is data. See docs/adr/0003.",
+  "version": "0.1.0",
+  "levelRange": { "min": 1, "max": 20 },
+
+  "elementTypes": [
+    { "name": "Source", "browsable": false },
+    { "name": "Race", "plural": "Races", "selectable": true, "browsable": true, "children": ["Sub Race", "Race Variant", "Racial Trait"] },
+    { "name": "Sub Race", "plural": "Subraces", "selectable": true },
+    { "name": "Race Variant", "selectable": true },
+    { "name": "Racial Trait", "plural": "Racial Traits" },
+    { "name": "Class", "plural": "Classes", "selectable": true, "browsable": true, "children": ["Archetype", "Class Feature"] },
+    { "name": "Multiclass", "plural": "Multiclasses" },
+    { "name": "Class Feature", "plural": "Class Features" },
+    { "name": "Archetype", "plural": "Subclasses", "selectable": true, "children": ["Archetype Feature"] },
+    { "name": "Archetype Feature", "plural": "Subclass Features" },
+    { "name": "Background", "plural": "Backgrounds", "selectable": true, "browsable": true, "children": ["Background Feature", "Background Variant"] },
+    { "name": "Background Feature" },
+    { "name": "Background Variant", "selectable": true },
+    { "name": "Background Characteristics" },
+    { "name": "Feat", "plural": "Feats", "selectable": true, "browsable": true, "children": ["Feat Feature"] },
+    { "name": "Feat Feature" },
+    { "name": "Spell", "plural": "Spells", "selectable": true, "browsable": true },
+    { "name": "Item", "plural": "Items", "selectable": true, "browsable": true },
+    { "name": "Magic Item", "plural": "Magic Items", "selectable": true, "browsable": true },
+    { "name": "Weapon", "plural": "Weapons", "selectable": true, "browsable": true },
+    { "name": "Armor", "plural": "Armor", "selectable": true, "browsable": true },
+    { "name": "Weapon Property" },
+    { "name": "Weapon Group" },
+    { "name": "Proficiency", "plural": "Proficiencies" },
+    { "name": "Language", "plural": "Languages", "selectable": true },
+    { "name": "Deity", "plural": "Deities", "selectable": true, "browsable": true },
+    { "name": "Alignment", "selectable": true },
+    { "name": "Vision" },
+    { "name": "Companion", "plural": "Companions", "children": ["Companion Trait", "Companion Action", "Companion Reaction"] },
+    { "name": "Companion Trait" },
+    { "name": "Companion Action" },
+    { "name": "Companion Reaction" },
+    { "name": "Ability Score Improvement" },
+    { "name": "Dragonmark", "selectable": true },
+    { "name": "Grants" },
+    { "name": "Support" },
+    { "name": "Option" },
+    { "name": "Information", "browsable": true },
+    { "name": "Rule", "browsable": true }
+  ],
+
+  "stats": [
+    { "name": "strength", "label": "Strength", "default": 10 },
+    { "name": "dexterity", "label": "Dexterity", "default": 10 },
+    { "name": "constitution", "label": "Constitution", "default": 10 },
+    { "name": "intelligence", "label": "Intelligence", "default": 10 },
+    { "name": "wisdom", "label": "Wisdom", "default": 10 },
+    { "name": "charisma", "label": "Charisma", "default": 10 },
+
+    { "name": "strength:modifier", "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "strength" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },
+    { "name": "dexterity:modifier", "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "dexterity" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },
+    { "name": "constitution:modifier", "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "constitution" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },
+    { "name": "intelligence:modifier", "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "intelligence" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },
+    { "name": "wisdom:modifier", "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "wisdom" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },
+    { "name": "charisma:modifier", "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "charisma" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },
+
+    { "name": "proficiency", "label": "Proficiency Bonus",
+      "derive": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 2 },
+        "right": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "level" }, "right": { "kind": "number", "value": 1 } }, "right": { "kind": "number", "value": 4 } }] } } },
+
+    { "name": "speed", "label": "Speed", "default": 30 },
+    { "name": "initiative", "label": "Initiative", "derive": { "kind": "ref", "stat": "dexterity:modifier" } },
+    { "name": "hp", "label": "Hit Points", "default": 0 },
+    { "name": "ac", "label": "Armor Class", "default": 10 }
+  ],
+
+  "buildSteps": [
+    { "id": "race", "label": "Race", "types": ["Race"], "required": true },
+    { "id": "class", "label": "Class", "types": ["Class"], "required": true },
+    { "id": "background", "label": "Background", "types": ["Background"], "required": true },
+    { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "Point buy, standard array, or manual entry." },
+    { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true },
+    { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
+    { "id": "spells", "label": "Spells", "types": ["Spell"] },
+    { "id": "details", "label": "Details", "types": ["Alignment", "Deity", "Language"] }
+  ],
+
+  "sheet": {
+    "sections": [
+      { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] },
+      { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency"] },
+      { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"] },
+      { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language"] },
+      { "id": "spells", "label": "Spells", "types": ["Spell"] },
+      { "id": "inventory", "label": "Inventory", "types": ["Item", "Weapon", "Armor", "Magic Item"] }
+    ]
+  },
+
+  "auroraTypeMap": {}
+}

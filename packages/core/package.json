@@ -1,0 +1,13 @@
+{
+  "name": "@heroforge/core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "System-agnostic content model and rules engine. No platform APIs, no game-specific nouns.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": { "build": "tsc --build" },
+  "dependencies": {}
+}

@@ -1,0 +1,29 @@
+{
+  "name": "heroforge",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A modern, system-agnostic tabletop character builder for desktop and mobile. A free and open replacement for Aurora Builder.",
+  "license": "MIT",
+  "_workspaces_note": "apps/* are deliberately NOT workspaces yet. Their package.json files declare Expo/Tauri deps for shells that do not exist, and including them makes a fresh `npm install` pull ~700MB before there is anything to run. Add \"apps/*\" here when Phase 1 scaffolds the desktop shell.",
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build --force",
+    "clean": "tsc --build --clean",
+    "test": "node --test --experimental-strip-types packages/*/src/**/*.test.ts",
+    "hf": "node --experimental-strip-types tools/hf/src/cli.ts",
+    "lint": "eslint .",
+    "desktop": "echo \"Not scaffolded yet — see apps/desktop/README.md (ROADMAP Phase 1).\" && exit 1",
+    "mobile": "echo \"Not scaffolded yet — see apps/mobile/README.md (ROADMAP Phase 4).\" && exit 1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

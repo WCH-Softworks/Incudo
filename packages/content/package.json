@@ -1,0 +1,16 @@
+{
+  "name": "@heroforge/content",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Content sources: live from a repo, downloaded for offline, or bundled.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": { "build": "tsc --build" },
+  "dependencies": {
+    "@heroforge/core": "*",
+    "@heroforge/aurora-import": "*"
+  }
+}

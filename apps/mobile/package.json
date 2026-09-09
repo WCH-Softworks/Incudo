@@ -1,0 +1,23 @@
+{
+  "name": "@heroforge/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "description": "HeroForge mobile shell (Expo). Layout and platform I/O only.",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "@heroforge/core": "*",
+    "@heroforge/content": "*",
+    "@heroforge/aurora-import": "*",
+    "@heroforge/ui": "*",
+    "expo": "~51.0.0",
+    "expo-file-system": "~17.0.0",
+    "react": "18.2.0",
+    "react-native": "0.74.5"
+  },
+  "comment": "Not installed yet — ROADMAP Phase 4. Pin versions when the shell work starts."
+}

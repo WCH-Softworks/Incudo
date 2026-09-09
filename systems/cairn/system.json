@@ -1,0 +1,36 @@
+{
+  "id": "cairn",
+  "name": "Cairn (example non-D&D system)",
+  "description": "A deliberately tiny, classless, level-less system. It exists to break 5e-shaped assumptions in the engine early, while they are still cheap to fix. See docs/adr/0003. This is a structural sketch, not a licensed implementation — replace the content before shipping.",
+  "version": "0.0.1",
+  "levelRange": { "min": 1, "max": 1 },
+
+  "elementTypes": [
+    { "name": "Background", "plural": "Backgrounds", "selectable": true, "browsable": true },
+    { "name": "Trait", "plural": "Traits" },
+    { "name": "Item", "plural": "Items", "selectable": true, "browsable": true },
+    { "name": "Spellbook", "plural": "Spellbooks", "selectable": true, "browsable": true }
+  ],
+
+  "stats": [
+    { "name": "strength", "label": "STR", "default": 10 },
+    { "name": "dexterity", "label": "DEX", "default": 10 },
+    { "name": "willpower", "label": "WIL", "default": 10 },
+    { "name": "hp", "label": "Hit Protection", "default": 1 },
+    { "name": "slots", "label": "Inventory Slots", "default": 10 }
+  ],
+
+  "buildSteps": [
+    { "id": "abilities", "label": "Abilities", "types": [], "required": true },
+    { "id": "background", "label": "Background", "types": ["Background"], "required": true },
+    { "id": "gear", "label": "Gear", "types": ["Item", "Spellbook"] }
+  ],
+
+  "sheet": {
+    "sections": [
+      { "id": "abilities", "label": "Abilities", "stats": ["strength", "dexterity", "willpower", "hp"] },
+      { "id": "inventory", "label": "Inventory", "stats": ["slots"], "types": ["Item", "Spellbook"] },
+      { "id": "traits", "label": "Traits", "types": ["Trait"] }
+    ]
+  }
+}
