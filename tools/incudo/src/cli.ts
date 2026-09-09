@@ -55,6 +55,14 @@ Options:
                by name rather than by URL. Fully offline; no --root needed.
   --cache DIR  write fetched files through to DIR (default: .incudo-cache)
 
+Baseline budgets for \`validate\`. Real content is permanently imperfect — the
+AuroraLegacy corpus has 57 references that will never resolve — so the question
+worth asking is "did it get worse", not "is it zero":
+  --max-unresolved N   allow up to N unresolved references (default 0)
+  --max-warnings N     allow up to N warnings (default unlimited; --strict means 0)
+  --expect-files N     fail if fewer than N files loaded
+  --expect-elements N  fail if fewer than N elements loaded
+
 ${CHARACTER_USAGE}`;
 
 async function main(argv: string[]): Promise<number> {
@@ -86,7 +94,7 @@ async function main(argv: string[]): Promise<number> {
 
   switch (command) {
     case 'validate':
-      return validate(library, report, flags, Date.now() - started);
+      return validate(library, report, flags, Date.now() - started, budgetFrom(rest, flags));
     case 'inspect':
       return inspect(library, positional[1]);
     case 'types':
@@ -102,7 +110,20 @@ async function main(argv: string[]): Promise<number> {
  * "foo.json" as a positional argument. Kept as a list rather than a parser: the CLI has
  * eight flags, and a dependency to parse eight flags would be a poor trade.
  */
-const VALUE_FLAGS = new Set(['--cache', '--root', '--system', '--index', '--kind', '--name', '--progress', '--roll']);
+const VALUE_FLAGS = new Set([
+  '--cache',
+  '--root',
+  '--system',
+  '--index',
+  '--kind',
+  '--name',
+  '--progress',
+  '--roll',
+  '--max-unresolved',
+  '--max-warnings',
+  '--expect-files',
+  '--expect-elements',
+]);
 
 function takesValue(args: string[], position: number): boolean {
   const previous = args[position - 1];
@@ -244,11 +265,27 @@ async function contentShow(ctx: CommandContext, path: string | undefined): Promi
   return 0;
 }
 
+/**
+ * `incudo validate` — load a content index and report what does not resolve.
+ *
+ * The exit code is a **budget check**, not a demand for zero. Real content has permanent
+ * imperfections: the AuroraLegacy corpus has 57 references that will never resolve (45 are
+ * `ID_INTERNAL_*`, which Aurora generates at runtime; 12 are upstream typos) and 57 warnings
+ * that are a *different* 57 — 56 `<grant>` elements with no id, and one id defined twice.
+ * The numbers matching is a coincidence, and a confusing one.
+ *
+ * So the useful question is not "is it zero" but "did it get worse", which is what CLAUDE.md
+ * has always claimed CI enforces. `--max-unresolved` and `--max-warnings` say what today's
+ * number is; `--expect-files` and `--expect-elements` guard the failure mode those two cannot
+ * see on their own, which is a corpus that did not load at all — nothing loaded resolves
+ * perfectly.
+ */
 function validate(
   library: ContentLibrary,
   report: { filesLoaded: number; elementsLoaded: number },
   flags: Set<string>,
   elapsedMs: number,
+  budget: Budget,
 ): number {
   const referenced = referencedElementIds(library.elements.all());
   const missing = [...referenced].filter((id) => !library.elements.get(id)).sort();
@@ -282,9 +319,64 @@ function validate(
     if (missing.length > 20) process.stdout.write(`  ... and ${missing.length - 20} more\n`);
   }
 
-  if (errors.length || missing.length) return 1;
-  if (flags.has('--strict') && warnings.length) return 1;
-  return 0;
+  const failures: string[] = [];
+  if (errors.length) {
+    failures.push(`${errors.length} error(s). Content that does not parse is never a baseline.`);
+  }
+  if (missing.length > budget.maxUnresolved) {
+    failures.push(
+      `${missing.length} unresolved references, budget ${budget.maxUnresolved}. ` +
+        `${missing.length - budget.maxUnresolved} more than expected.`,
+    );
+  }
+  if (warnings.length > budget.maxWarnings) {
+    failures.push(`${warnings.length} warnings, budget ${budget.maxWarnings}.`);
+  }
+  // A corpus that failed to check out loads nothing, and nothing resolves perfectly. Without
+  // this, the budgets above would wave it straight through.
+  if (report.filesLoaded < budget.expectFiles) {
+    failures.push(`only ${report.filesLoaded} files loaded, expected at least ${budget.expectFiles}.`);
+  }
+  if (report.elementsLoaded < budget.expectElements) {
+    failures.push(
+      `only ${report.elementsLoaded} elements loaded, expected at least ${budget.expectElements}.`,
+    );
+  }
+
+  if (!failures.length) return 0;
+  if (!flags.has('--json')) {
+    process.stderr.write('\nBaseline not met:\n');
+    for (const failure of failures) process.stderr.write(`  ${failure}\n`);
+  }
+  return 1;
+}
+
+interface Budget {
+  maxUnresolved: number;
+  maxWarnings: number;
+  expectFiles: number;
+  expectElements: number;
+}
+
+function budgetFrom(args: string[], flags: Set<string>): Budget {
+  return {
+    maxUnresolved: numberFlag(args, '--max-unresolved') ?? 0,
+    // `--strict` predates the budgets and still means what it always did: no warnings at all.
+    // An explicit --max-warnings wins, so CI can state the corpus's real number.
+    maxWarnings: numberFlag(args, '--max-warnings') ?? (flags.has('--strict') ? 0 : Infinity),
+    expectFiles: numberFlag(args, '--expect-files') ?? 0,
+    expectElements: numberFlag(args, '--expect-elements') ?? 0,
+  };
+}
+
+function numberFlag(args: string[], flag: string): number | undefined {
+  const raw = valueOf(args, flag);
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${flag} wants a non-negative number, got "${raw}".`);
+  }
+  return value;
 }
 
 function inspect(library: ContentLibrary, id: string | undefined): number {

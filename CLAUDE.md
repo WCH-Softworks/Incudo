@@ -85,9 +85,20 @@ Diagrams drawn in code (SVG, Mermaid) and UI built from CSS are not artwork and 
 
 ## Baselines that must not regress
 
-Content corpus: **740 files · 12,058 elements · 0 errors · 57 unresolved references.**
-45 of the 57 are `ID_INTERNAL_*` (Aurora generates them at runtime); 12 are upstream typos.
-CI fails if that count grows.
+Content corpus: **740 files · 12,058 elements · 0 errors · 57 unresolved references · 57 warnings.**
+
+The two 57s are different things and equal by coincidence, which has already confused one
+reading of the CI output:
+
+- **57 unresolved references** — 45 `ID_INTERNAL_*` (Aurora generates them at runtime), 12
+  upstream typos.
+- **57 warnings** — 56 `<grant>` elements with no id, and one id defined in two files.
+
+CI enforces this as a **budget, not a target**: `validate` takes `--max-unresolved`,
+`--max-warnings`, `--expect-files` and `--expect-elements`, and the numbers live in
+`.github/workflows/ci.yml`. Moving one is a deliberate edit to that file. The `--expect-*`
+pair is not redundant — a corpus that failed to check out loads nothing, and nothing has no
+unresolved references.
 
 ## State of play
 
