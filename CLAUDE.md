@@ -64,6 +64,11 @@ not an optimization — if a change makes a save depend on configured sources to
 
 **Aurora is import-only and frozen when done** (ADR 0008). No export. No speculative support.
 
+**Never generate artwork.** No AI-generated images, logos, icons, textures or sample art, not
+even as a temporary placeholder. This is a stated project commitment in the README, not a
+preference. If a visual asset is needed, leave a clearly-marked gap and say so — do not fill it.
+Diagrams drawn in code (SVG, Mermaid) and UI built from CSS are not artwork and are fine.
+
 ## Baselines that must not regress
 
 Content corpus: **740 files · 12,058 elements · 0 errors · 57 unresolved references.**

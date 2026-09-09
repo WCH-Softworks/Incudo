@@ -32,6 +32,28 @@ What it aims to do differently:
   portraits are files rather than 5 MB of base64 inside the save.
 - **Free.** MIT, no accounts, no paywall. If it helps you, there's a Ko-fi link below.
 
+## Built with AI
+
+Incudo's code is written by AI coding tools, start to finish, and it will go on being maintained
+that way. You should know that before you run it, so:
+
+- Every change is directed and reviewed by a human before it lands. Nothing merges unread.
+- Bugs are the maintainer's responsibility, not the tool's. Report them normally.
+- Read the code before you trust it with anything that matters. That is ordinary advice for any
+  dependency, not special pleading here.
+
+**There will never be AI-generated artwork in this project.** Not the logo, not icons, not
+sample content, and not as a placeholder "until something better turns up" — placeholders have a
+way of becoming permanent.
+
+Art arrives one of two ways: an artist offers their own original work because they want it
+featured here, or it is commissioned and paid for. Either way the artist is credited and keeps
+their rights. If you make art and that interests you, open an issue.
+
+Game content is not AI-generated either. It comes from the content indexes you point Incudo at,
+written and maintained by people. Incudo reads that content — it does not generate, rewrite or
+"improve" it.
+
 ## Try the engine
 
 There is no app yet, but there is a CLI, and it does real work:
