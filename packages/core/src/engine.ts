@@ -156,7 +156,9 @@ export function deriveCharacter(
     elementIds: new Set(active.keys()),
     stats,
     pendingChoices,
-    problems,
+    // The derivation is a fixed point, so an unresolvable grant is discovered again on
+    // every pass. The user has one broken reference, not four, and should be told once.
+    problems: dedupeProblems(problems),
   };
 }
 
@@ -442,6 +444,16 @@ export function referencedElementIds(elements: Iterable<Element>): Set<string> {
 }
 
 // ---------------------------------------------------------------------------
+
+function dedupeProblems(problems: Problem[]): Problem[] {
+  const seen = new Set<string>();
+  return problems.filter((problem) => {
+    const key = `${problem.code} ${problem.elementId ?? ''} ${problem.ruleKey ?? ''} ${problem.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 function sameKeys(a: Map<ElementId, unknown>, b: Map<ElementId, unknown>): boolean {
   if (a.size !== b.size) return false;
