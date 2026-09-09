@@ -1,9 +1,19 @@
 {
+  "formatVersion": 1,
   "id": "dnd5e",
   "name": "Dungeons & Dragons 5th Edition",
   "description": "The first system definition, and the one Incudo is tested against. Nothing in @incudo/core imports this file — it is data. See docs/adr/0003.",
-  "version": "0.1.0",
-  "levelRange": { "min": 1, "max": 20 },
+  "version": "0.2.0",
+
+  "licence": {
+    "id": "CC-BY-4.0",
+    "name": "Creative Commons Attribution 4.0 International",
+    "source": "System Reference Document 5.2.1",
+    "attribution": "This work includes material from the System Reference Document 5.2.1, available at https://www.dndbeyond.com/srd, licensed under CC-BY-4.0.",
+    "permitsCommercialUse": true,
+    "verified": "2026-09-09",
+    "url": "https://www.dndbeyond.com/srd"
+  },
 
   "elementTypes": [
     { "name": "Source", "browsable": false },
@@ -34,10 +44,14 @@
     { "name": "Deity", "plural": "Deities", "selectable": true, "browsable": true },
     { "name": "Alignment", "selectable": true },
     { "name": "Vision" },
-    { "name": "Companion", "plural": "Companions", "children": ["Companion Trait", "Companion Action", "Companion Reaction"] },
-    { "name": "Companion Trait" },
-    { "name": "Companion Action" },
-    { "name": "Companion Reaction" },
+    { "name": "Creature", "plural": "Creatures", "selectable": true, "browsable": true, "children": ["Companion Trait", "Companion Action", "Companion Reaction", "Legendary Action", "Lair Action", "Regional Effect"] },
+    { "name": "Companion", "plural": "Companions", "selectable": true, "browsable": true, "children": ["Companion Trait", "Companion Action", "Companion Reaction"] },
+    { "name": "Companion Trait", "plural": "Traits" },
+    { "name": "Companion Action", "plural": "Actions" },
+    { "name": "Companion Reaction", "plural": "Reactions" },
+    { "name": "Legendary Action", "plural": "Legendary Actions" },
+    { "name": "Lair Action", "plural": "Lair Actions" },
+    { "name": "Regional Effect", "plural": "Regional Effects" },
     { "name": "Ability Score Improvement" },
     { "name": "Dragonmark", "selectable": true },
     { "name": "Grants" },
@@ -72,27 +86,121 @@
     { "name": "ac", "label": "Armor Class", "default": 10 }
   ],
 
-  "buildSteps": [
-    { "id": "race", "label": "Race", "types": ["Race"], "required": true },
-    { "id": "class", "label": "Class", "types": ["Class"], "required": true },
-    { "id": "background", "label": "Background", "types": ["Background"], "required": true },
-    { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "Point buy, standard array, or manual entry." },
-    { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true },
-    { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
-    { "id": "spells", "label": "Spells", "types": ["Spell"] },
-    { "id": "details", "label": "Details", "types": ["Alignment", "Deity", "Language"] }
-  ],
+  "characterKinds": [
+    {
+      "id": "pc",
+      "name": "Player Character",
+      "description": "Levels 1–20, a class, a background, and the two-page sheet everyone means when they say \"character\".",
+      "default": true,
+      "progression": { "kind": "level", "min": 1, "max": 20, "stat": "level" },
 
-  "sheet": {
-    "sections": [
-      { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] },
-      { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency"] },
-      { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"] },
-      { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language"] },
-      { "id": "spells", "label": "Spells", "types": ["Spell"] },
-      { "id": "inventory", "label": "Inventory", "types": ["Item", "Weapon", "Armor", "Magic Item"] }
-    ]
-  },
+      "elementTypes": [
+        "Race", "Sub Race", "Race Variant", "Racial Trait",
+        "Class", "Multiclass", "Class Feature", "Archetype", "Archetype Feature",
+        "Background", "Background Feature", "Background Variant", "Background Characteristics",
+        "Feat", "Feat Feature", "Spell",
+        "Item", "Magic Item", "Weapon", "Armor", "Weapon Property", "Weapon Group",
+        "Proficiency", "Language", "Deity", "Alignment", "Vision",
+        "Companion", "Companion Trait", "Companion Action", "Companion Reaction",
+        "Ability Score Improvement", "Dragonmark",
+        "Grants", "Support", "Option", "Information", "Rule"
+      ],
+
+      "buildSteps": [
+        { "id": "race", "label": "Race", "types": ["Race"], "required": true },
+        { "id": "class", "label": "Class", "types": ["Class"], "required": true },
+        { "id": "background", "label": "Background", "types": ["Background"], "required": true },
+        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "Point buy, standard array, or manual entry." },
+        { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true },
+        { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
+        { "id": "spells", "label": "Spells", "types": ["Spell"] },
+        { "id": "details", "label": "Details", "types": ["Alignment", "Deity", "Language"] }
+      ],
+
+      "sheet": {
+        "sections": [
+          { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] },
+          { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency", "level"] },
+          { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"] },
+          { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language"] },
+          { "id": "spells", "label": "Spells", "types": ["Spell"] },
+          { "id": "inventory", "label": "Inventory", "types": ["Item", "Weapon", "Armor", "Magic Item"] }
+        ]
+      }
+    },
+
+    {
+      "id": "npc",
+      "name": "NPC / Monster",
+      "description": "A stat block rather than a sheet: challenge rating instead of a level, traits and actions picked directly instead of a build flow. Aurora files creature content under the Companion types, which is why they appear here.",
+      "progression": { "kind": "rating", "stat": "challenge", "min": 0, "max": 30 },
+
+      "elementTypes": [
+        "Creature", "Companion", "Companion Trait", "Companion Action", "Companion Reaction",
+        "Spell", "Item", "Magic Item", "Weapon", "Armor",
+        "Proficiency", "Language", "Alignment", "Vision", "Information", "Rule"
+      ],
+
+      "stats": [
+        { "name": "challenge", "label": "Challenge Rating", "default": 0 },
+        { "name": "proficiency", "label": "Proficiency Bonus",
+          "derive": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 2 },
+            "right": { "kind": "call", "fn": "max", "args": [{ "kind": "number", "value": 0 }, { "kind": "call", "fn": "ceil", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "challenge" }, "right": { "kind": "number", "value": 4 } }, "right": { "kind": "number", "value": 4 } }] }] } } }
+      ],
+
+      "buildSteps": [
+        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
+        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true },
+        { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
+        { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"] },
+        { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
+        { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
+      ],
+
+      "sheet": {
+        "sections": [
+          { "id": "header", "label": "Stat Block", "stats": ["challenge", "ac", "hp", "speed", "proficiency"] },
+          { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] },
+          { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
+          { "id": "actions", "label": "Actions", "types": ["Companion Action"] },
+          { "id": "reactions", "label": "Reactions", "types": ["Companion Reaction"] },
+          { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
+        ]
+      }
+    },
+
+    {
+      "id": "legendary",
+      "name": "Legendary Creature",
+      "description": "An NPC plus the three things that make a boss fight: legendary actions, lair actions, regional effects. A delta on \"npc\", not a copy of it — ADR 0009.",
+      "extends": "npc",
+      "elementTypes": ["+Legendary Action", "+Lair Action", "+Regional Effect"],
+
+      "buildSteps": [
+        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
+        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true },
+        { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
+        { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"] },
+        { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"] },
+        { "id": "lair", "label": "Lair", "types": ["Lair Action", "Regional Effect"] },
+        { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
+        { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
+      ],
+
+      "sheet": {
+        "sections": [
+          { "id": "header", "label": "Stat Block", "stats": ["challenge", "ac", "hp", "speed", "proficiency"] },
+          { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] },
+          { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
+          { "id": "actions", "label": "Actions", "types": ["Companion Action"] },
+          { "id": "reactions", "label": "Reactions", "types": ["Companion Reaction"] },
+          { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"] },
+          { "id": "lair", "label": "Lair Actions & Regional Effects", "types": ["Lair Action", "Regional Effect"] },
+          { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
+        ]
+      }
+    }
+  ],
 
   "auroraTypeMap": {}
 }

@@ -1,9 +1,9 @@
 {
+  "formatVersion": 1,
   "id": "cairn",
   "name": "Cairn (example non-D&D system)",
   "description": "A deliberately tiny, classless, level-less system. It exists to break 5e-shaped assumptions in the engine early, while they are still cheap to fix. See docs/adr/0003. This is a structural sketch, not a licensed implementation — replace the content before shipping.",
-  "version": "0.0.1",
-  "levelRange": { "min": 1, "max": 1 },
+  "version": "0.1.0",
 
   "elementTypes": [
     { "name": "Background", "plural": "Backgrounds", "selectable": true, "browsable": true },
@@ -20,17 +20,29 @@
     { "name": "slots", "label": "Inventory Slots", "default": 10 }
   ],
 
-  "buildSteps": [
-    { "id": "abilities", "label": "Abilities", "types": [], "required": true },
-    { "id": "background", "label": "Background", "types": ["Background"], "required": true },
-    { "id": "gear", "label": "Gear", "types": ["Item", "Spellbook"] }
-  ],
+  "characterKinds": [
+    {
+      "id": "adventurer",
+      "name": "Adventurer",
+      "description": "The only kind Cairn has. Characters do not level: they get better by surviving, which is not a number the sheet tracks.",
+      "default": true,
+      "progression": { "kind": "none" },
 
-  "sheet": {
-    "sections": [
-      { "id": "abilities", "label": "Abilities", "stats": ["strength", "dexterity", "willpower", "hp"] },
-      { "id": "inventory", "label": "Inventory", "stats": ["slots"], "types": ["Item", "Spellbook"] },
-      { "id": "traits", "label": "Traits", "types": ["Trait"] }
-    ]
-  }
+      "elementTypes": ["Background", "Trait", "Item", "Spellbook"],
+
+      "buildSteps": [
+        { "id": "abilities", "label": "Abilities", "types": [], "required": true },
+        { "id": "background", "label": "Background", "types": ["Background"], "required": true },
+        { "id": "gear", "label": "Gear", "types": ["Item", "Spellbook"] }
+      ],
+
+      "sheet": {
+        "sections": [
+          { "id": "abilities", "label": "Abilities", "stats": ["strength", "dexterity", "willpower", "hp"] },
+          { "id": "inventory", "label": "Inventory", "stats": ["slots"], "types": ["Item", "Spellbook"] },
+          { "id": "traits", "label": "Traits", "types": ["Trait"] }
+        ]
+      }
+    }
+  ]
 }

@@ -15,7 +15,8 @@
 
 import type { Element, ElementId, ElementIndex, Rule, StatKey, SelectRule, StatRule } from './model.ts';
 import type { Character } from './character.ts';
-import type { GameSystem, StatDef } from './system.ts';
+import type { GameSystem, ResolvedCharacterKind, StatDef } from './system.ts';
+import { progressionStat, resolveCharacterKind } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import { evaluateExpr, evaluateExprAsString, type ExpressionContext } from './expression.ts';
 import { matchesSupports, type SupportsContext } from './supports.ts';
@@ -66,6 +67,8 @@ export interface Problem {
 export interface DerivedCharacter {
   character: Character;
   system: GameSystem;
+  /** The character's kind with its `extends` chain applied — ADR 0009. */
+  kind: ResolvedCharacterKind;
   /** Every element the character has, granted or chosen. */
   elements: Element[];
   elementIds: ReadonlySet<ElementId>;
@@ -77,6 +80,11 @@ export interface DerivedCharacter {
 export interface DeriveOptions {
   /** Cap on fixed-point passes. Exposed for tests and for diagnosing cyclic content. */
   maxPasses?: number;
+  /**
+   * A kind the caller already resolved. Resolving walks the `extends` chain, so a UI that
+   * derives on every keystroke passes it in rather than redoing that work.
+   */
+  kind?: ResolvedCharacterKind;
 }
 
 export function deriveCharacter(
@@ -87,6 +95,7 @@ export function deriveCharacter(
 ): DerivedCharacter {
   const maxPasses = options.maxPasses ?? MAX_PASSES;
   const problems: Problem[] = [];
+  const kind = options.kind ?? resolveCharacterKind(system, character.kind);
 
   const chosenIds = new Set<ElementId>();
   for (const choice of character.choices) for (const id of choice.elementIds) chosenIds.add(id);
@@ -99,7 +108,7 @@ export function deriveCharacter(
   while (changed && passes < maxPasses) {
     passes++;
     const next = new Map<ElementId, Element>();
-    const ctx = makeContext(active, stats, character);
+    const ctx = makeContext(active, stats, character, kind);
 
     // Seed: everything the user explicitly chose.
     for (const id of chosenIds) addElement(next, index, id, problems);
@@ -110,7 +119,7 @@ export function deriveCharacter(
     while (frontier.length) {
       const nextFrontier: Element[] = [];
       for (const element of frontier) {
-        for (const rule of activeRules(element, character, ctx)) {
+        for (const rule of activeRules(element, character, kind, ctx)) {
           if (rule.kind !== 'grant') continue;
           if (seen.has(rule.id)) continue;
           const granted = addElement(next, index, rule.id, problems, element.id);
@@ -121,7 +130,7 @@ export function deriveCharacter(
       frontier = nextFrontier;
     }
 
-    const nextStats = computeStats(next, character, system, makeContext(next, stats, character));
+    const nextStats = computeStats(next, character, kind, makeContext(next, stats, character, kind));
 
     changed = !sameKeys(active, next) || !sameStats(stats, nextStats);
     active = next;
@@ -136,12 +145,13 @@ export function deriveCharacter(
     });
   }
 
-  const ctx = makeContext(active, stats, character);
-  const pendingChoices = collectPendingChoices(active, character, index, ctx, problems);
+  const ctx = makeContext(active, stats, character, kind);
+  const pendingChoices = collectPendingChoices(active, character, kind, index, ctx, problems);
 
   return {
     character,
     system,
+    kind,
     elements: [...active.values()],
     elementIds: new Set(active.keys()),
     stats,
@@ -158,14 +168,18 @@ function makeContext(
   active: Map<ElementId, Element>,
   stats: Map<StatKey, ResolvedStat>,
   character: Character,
+  kind: ResolvedCharacterKind,
 ): EngineContext {
+  // The kind names the stat its progress number is published as: "level" for a 5e PC,
+  // "challenge" for a monster, nothing at all for Cairn. Core never spells it — ADR 0009.
+  const progressKey = progressionStat(kind.progression)?.toLowerCase();
   return {
     hasElement: (id) => active.has(id),
     statNumber: (stat) => {
       const key = stat.toLowerCase();
       const override = character.overrides?.[key];
       if (typeof override === 'number') return override;
-      if (key === 'level') return character.level;
+      if (progressKey !== undefined && key === progressKey) return character.progress;
       return stats.get(key)?.value ?? 0;
     },
     statString: (stat) => {
@@ -202,10 +216,24 @@ function addElement(
   return element;
 }
 
-/** Rules of an element that currently apply: level gate met and requirements satisfied. */
-function activeRules(element: Element, character: Character, ctx: EngineContext): Rule[] {
+/**
+ * Rules of an element that currently apply: progression gate met, requirements satisfied.
+ *
+ * `rule.level` is Aurora's `level="N"` attribute and keeps that name because that is what
+ * the content says. It gates on the kind's progression number, whatever that number counts.
+ * A kind with `progression.kind: "none"` has nothing to compare against, so gates are
+ * ignored rather than read as unmet: a level-less system cannot express "at level N", and
+ * dropping every gated rule would be the wrong reading of content imported from one that can.
+ */
+function activeRules(
+  element: Element,
+  character: Character,
+  kind: ResolvedCharacterKind,
+  ctx: EngineContext,
+): Rule[] {
+  const gated = kind.progression.kind !== 'none';
   return element.rules.filter((rule) => {
-    if (rule.level !== undefined && character.level < rule.level) return false;
+    if (gated && rule.level !== undefined && character.progress < rule.level) return false;
     return evaluateRequirements(rule.requirements, ctx);
   });
 }
@@ -213,14 +241,14 @@ function activeRules(element: Element, character: Character, ctx: EngineContext)
 function computeStats(
   active: Map<ElementId, Element>,
   character: Character,
-  system: GameSystem,
+  kind: ResolvedCharacterKind,
   ctx: EngineContext,
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
 
   for (const element of active.values()) {
-    for (const rule of activeRules(element, character, ctx)) {
+    for (const rule of activeRules(element, character, kind, ctx)) {
       if (rule.kind !== 'stat') continue;
       const key = rule.name.toLowerCase();
       const list = buckets.get(key);
@@ -232,8 +260,9 @@ function computeStats(
 
   const result = new Map<StatKey, ResolvedStat>();
 
-  // System-declared defaults first, so a stat exists even with no contributions.
-  for (const def of system.stats) {
+  // Declared defaults first, so a stat exists even with no contributions. A kind's stat
+  // list already carries the system's — see resolveCharacterKind.
+  for (const def of kind.stats) {
     if (def.default === undefined) continue;
     const key = def.name.toLowerCase();
     result.set(key, {
@@ -281,7 +310,7 @@ function computeStats(
   }
 
   // Derived stats last — they read the contributed values above.
-  for (const def of system.stats) {
+  for (const def of kind.stats) {
     if (!def.derive) continue;
     const key = def.name.toLowerCase();
     const derivedCtx: ExpressionContext = {
@@ -295,6 +324,19 @@ function computeStats(
       value,
       text: result.get(key)?.text,
       contributions: result.get(key)?.contributions ?? [],
+    });
+  }
+
+  // The progression number is a stat too, so a sheet can show it without knowing whether
+  // it is a level or a challenge rating. Published last because it is an input: nothing
+  // contributes to it and nothing derives it. `statNumber` already reads it directly, so
+  // this is what puts it on the sheet rather than what makes the maths work.
+  const progressKey = progressionStat(kind.progression);
+  if (progressKey !== undefined) {
+    result.set(progressKey.toLowerCase(), {
+      name: progressKey,
+      value: character.progress,
+      contributions: [{ value: character.progress, from: 'progress' }],
     });
   }
 
@@ -322,6 +364,7 @@ function clamp(value: number, def: StatDef): number {
 function collectPendingChoices(
   active: Map<ElementId, Element>,
   character: Character,
+  kind: ResolvedCharacterKind,
   index: ElementIndex,
   ctx: EngineContext,
   problems: Problem[],
@@ -329,7 +372,7 @@ function collectPendingChoices(
   const pending: PendingChoice[] = [];
 
   for (const element of active.values()) {
-    for (const rule of activeRules(element, character, ctx)) {
+    for (const rule of activeRules(element, character, kind, ctx)) {
       if (rule.kind !== 'select') continue;
       const ruleKey = `${element.id}/${rule.key}`;
       const chosen = character.choices.find((c) => c.ruleKey === ruleKey)?.elementIds ?? [];

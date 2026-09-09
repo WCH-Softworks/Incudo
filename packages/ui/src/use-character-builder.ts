@@ -10,13 +10,17 @@
  */
 
 import {
+  clampProgress,
   deriveCharacter,
+  resolveCharacterKind,
   setChoice,
+  setRoll,
   type Character,
   type DerivedCharacter,
   type ElementId,
   type ElementIndex,
   type GameSystem,
+  type ResolvedCharacterKind,
 } from '@incudo/core';
 
 export interface BuilderStep {
@@ -31,6 +35,8 @@ export interface BuilderStep {
 export interface BuilderState {
   character: Character;
   derived: DerivedCharacter;
+  /** The kind being built. Its `buildSteps` are what the screens below are made of. */
+  kind: ResolvedCharacterKind;
   steps: BuilderStep[];
   currentStepId: string;
 }
@@ -38,6 +44,7 @@ export interface BuilderState {
 export class CharacterBuilder {
   private character: Character;
   private readonly system: GameSystem;
+  private readonly kind: ResolvedCharacterKind;
   private readonly elements: ElementIndex;
   private currentStepId: string;
   private readonly listeners = new Set<() => void>();
@@ -46,8 +53,11 @@ export class CharacterBuilder {
   constructor(character: Character, system: GameSystem, elements: ElementIndex) {
     this.character = character;
     this.system = system;
+    // The build flow comes from the kind, not the system: a monster stat block and a PC
+    // sheet share nothing but the stats underneath (ADR 0009).
+    this.kind = resolveCharacterKind(system, character.kind);
     this.elements = elements;
-    this.currentStepId = system.buildSteps[0]?.id ?? '';
+    this.currentStepId = this.kind.buildSteps[0]?.id ?? '';
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -65,12 +75,21 @@ export class CharacterBuilder {
     this.invalidate();
   };
 
-  setLevel = (level: number): void => {
-    const clamped = Math.min(
-      Math.max(level, this.system.levelRange.min),
-      this.system.levelRange.max,
-    );
-    this.character = { ...this.character, level: clamped };
+  /**
+   * Move the character along its progression — a level, a challenge rating, an xp total.
+   * A kind with no progression pins this at 0, so the caller does not have to know which.
+   */
+  setProgress = (progress: number): void => {
+    this.character = {
+      ...this.character,
+      progress: clampProgress(this.kind.progression, progress),
+    };
+    this.invalidate();
+  };
+
+  /** Record a die result. An input, never re-derived — see ADR 0007. */
+  recordRoll = (key: string, value: number | undefined): void => {
+    this.character = setRoll(this.character, key, value);
     this.invalidate();
   };
 
@@ -85,9 +104,11 @@ export class CharacterBuilder {
   }
 
   private compute(): BuilderState {
-    const derived = deriveCharacter(this.character, this.system, this.elements);
+    const derived = deriveCharacter(this.character, this.system, this.elements, {
+      kind: this.kind,
+    });
 
-    const steps: BuilderStep[] = this.system.buildSteps.map((step) => {
+    const steps: BuilderStep[] = this.kind.buildSteps.map((step) => {
       const pending = derived.pendingChoices.filter((choice) =>
         step.types.includes(choice.type),
       );
@@ -101,6 +122,12 @@ export class CharacterBuilder {
       };
     });
 
-    return { character: this.character, derived, steps, currentStepId: this.currentStepId };
+    return {
+      character: this.character,
+      derived,
+      kind: this.kind,
+      steps,
+      currentStepId: this.currentStepId,
+    };
   }
 }
