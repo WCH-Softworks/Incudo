@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://incudo.dev/schemas/manifest.schema.json",
   "title": "Incudo container manifest",
-  "description": "The `manifest.json` at the root of a `.incu` save or a `.incuc` content bundle (ADR 0012). It is the first thing a reader parses, so it carries everything needed to decide whether to go on: the format version, what is inside, and a checksum per entry.",
+  "description": "The `manifest.json` at the root of a `.incu` save or a `.incuset` content bundle (ADR 0012). It is the first thing a reader parses, so it carries everything needed to decide whether to go on: the format version, what is inside, and a checksum per entry.",
   "type": "object",
   "required": ["formatVersion", "kind", "created"],
   "additionalProperties": false,
@@ -13,7 +13,7 @@
     "formatVersion": { "const": 1 },
     "kind": {
       "enum": ["character", "content"],
-      "description": "What this container holds: a character (.incu) or a content bundle (.incuc)."
+      "description": "What this container holds: a character (.incu) or a content bundle (.incuset)."
     },
 
     "systemId": {

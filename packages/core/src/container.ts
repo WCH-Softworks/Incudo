@@ -54,7 +54,7 @@ export interface ContainerManifest {
   updated?: string;
 }
 
-/** The body of `content.json`, and of a standalone `.incuc` content bundle. */
+/** The body of `content.json`, and of a standalone `.incuset` content bundle. */
 export interface ContentBundle {
   formatVersion: 1;
   elements: Element[];
@@ -260,7 +260,7 @@ export function packCharacterContainer(
   return files;
 }
 
-/** The same tree for a standalone content bundle — a `.incuc`. */
+/** The same tree for a standalone content bundle — a `.incuset`. */
 export function packContentBundle(
   elements: Element[],
   options: PackOptions & { name?: string; sources?: SourceRef[] } = {},
@@ -358,6 +358,47 @@ export function readCharacterContainer(files: ContainerFiles): ReadResult {
   }
 
   return { container: { manifest, character, content, assets }, problems };
+}
+
+export interface ReadBundleResult {
+  manifest: ContainerManifest | undefined;
+  bundle: ContentBundle | undefined;
+  problems: ContainerProblem[];
+}
+
+/**
+ * Read a `.incuset` — a compiled content bundle, which is the same container with the
+ * character left out.
+ *
+ * It is what an imported Aurora index becomes once normalized: the elements, already
+ * parsed, with no XML left anywhere. A save embeds its own subset and does not need one
+ * (ADR 0012); a bundle is for shipping *content*, which is a different job.
+ */
+export function readContentBundle(files: ContainerFiles): ReadBundleResult {
+  const problems: ContainerProblem[] = [];
+  const manifest = parseEntry<ContainerManifest>(files, MANIFEST_PATH, problems);
+  const bundle = parseEntry<ContentBundle>(files, CONTENT_PATH, problems);
+  if (!manifest || !bundle) return { manifest, bundle: undefined, problems };
+
+  if (manifest.kind !== 'content') {
+    problems.push({
+      level: 'error',
+      path: MANIFEST_PATH,
+      message: `is a "${manifest.kind}" container, not a content bundle.`,
+    });
+    return { manifest, bundle: undefined, problems };
+  }
+
+  const expected = manifest.integrity?.[CONTENT_PATH];
+  if (expected && integrityOf(files.get(CONTENT_PATH)!) !== expected) {
+    problems.push({
+      level: 'warning',
+      path: CONTENT_PATH,
+      message: 'has changed since the bundle was written.',
+    });
+  }
+
+  return { manifest, bundle, problems };
 }
 
 /** An element index over a container's embedded content, ready to derive against. */

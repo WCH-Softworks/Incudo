@@ -13,8 +13,11 @@ when something here looks odd, the ADR usually says why.
 npm install            # ~8s. If it starts pulling Expo, apps/* got added to workspaces — don't.
 npm run typecheck      # tsc --build --force
 npm test               # node --test, no build step
-npm run incudo -- --help   # the CLI: validate | types | inspect
+npm run incudo -- --help   # the CLI: validate | types | inspect | system | content | character
 npm run incudo -- validate <index-url-or-local-path> [--strict] [--json]
+npm run incudo -- system validate systems/dnd5e/system.json
+npm run incudo -- character show <file.incu>   # derives from the save alone — ADR 0012
+npm run fixtures:rebuild   # regenerate tools/incudo/fixtures/aelin/ after a format change
 ```
 
 The real regression suite is the CLI against the full Aurora corpus. A complete Aurora install
@@ -88,13 +91,25 @@ CI fails if that count grows.
 
 ## State of play
 
-Working: core engine, Aurora content importer, content sources, CLI, two system definitions.
+Working: core engine, Aurora content importer, content sources, CLI, two system definitions,
+the `.incu` container, the JSON Schemas and the validator behind them.
 Not started: both app shells (only their `platform.ts` contracts exist).
 
-**The code has not yet caught up to ADRs 0007, 0009 and 0012.** `GameSystem` still has flat
-`buildSteps`/`sheet`/`levelRange`; `Character` still has `level` and lacks `kind`, `rolls` and
-`assets`. Restructuring that is the current task, and it is deliberately breaking — better now
-than after the system format becomes a public API (ADR 0011).
+ADRs 0007, 0009 and 0012 are now implemented. `GameSystem` declares `characterKinds[]`, each
+owning its `buildSteps`, `sheet`, element types and `progression` (level | rating | xp | none);
+`Character` has `kind`, `progress`, `rolls` and `assets`. A `.incu` is a zip of
+`manifest.json` + `character.json` + `content.json` + `assets/`, readable and writable as an
+unpacked folder too, and `incudo character verify` proves a save re-derives identically with
+zero sources configured.
+
+Two things that follow from that, for anyone changing this code:
+
+- **The system format is now a public API in practice.** Breaking it again is expensive.
+  `schemas/system.schema.json` is the contract; `packages/core/src/json-schema.ts` is the *one*
+  validator the CLI and the app share. Do not write a second one.
+- **`summarize()` in the CLI is the definition of "derived output".** The self-containment test
+  compares it, so anything added to a derivation that depends on *what content is loaded* rather
+  than on the character must stay out of it — candidate lists are the example.
 
 ## Conventions
 

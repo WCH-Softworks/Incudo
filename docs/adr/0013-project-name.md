@@ -66,8 +66,13 @@ Naming scheme:
 | packages | `@incudo/core`, `@incudo/content`, `@incudo/aurora-import`, `@incudo/ui` |
 | CLI | `incudo` |
 | character save | `.incu` |
-| content bundle | `.incuc` |
+| content bundle | `.incuset` |
 | cache | `.incudo-cache` |
+
+The content bundle was `.incuc` for about a day. Abbreviating the prefix to a single letter
+produced a string that reads badly out loud, which is precisely the failure mode this ADR
+exists to avoid — a name has to survive being said in Portuguese as well as typed in English.
+The rule that came out of it: **extensions get a whole word, not a letter.**
 
 ## Consequences
 

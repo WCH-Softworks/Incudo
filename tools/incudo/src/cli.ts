@@ -15,9 +15,15 @@
 
 import { basename, dirname, join } from 'node:path';
 import { statSync } from 'node:fs';
-import { referencedElementIds, type ElementIndex } from '@incudo/core';
+import {
+  packContentBundle,
+  readContentBundle,
+  referencedElementIds,
+  type ElementIndex,
+} from '@incudo/core';
 import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { LocalMirrorFetcher, NodeFetcher, NodeStorage } from './node-platform.ts';
+import { readContainer, writeContainer } from './node-save.ts';
 import { characterCommand, CHARACTER_USAGE, type CommandContext } from './character-commands.ts';
 import { loadSystem } from './node-system.ts';
 
@@ -28,6 +34,8 @@ Usage:
   incudo inspect  <index> <element-id>            Show one element as Incudo sees it
   incudo types    <index>                         Count elements by type
   incudo system   validate <system.json>          Check a system definition against the schema
+  incudo content  bundle <index> <out.incuset>      Compile an index into a content bundle
+  incudo content  show <file.incuset>               What a bundle contains
   incudo character <command> …                    Build and inspect characters (see below)
 
 <index> is a URL or a local path, e.g.
@@ -64,6 +72,7 @@ async function main(argv: string[]): Promise<number> {
   // they say so. Handled before the index is loaded, because loading one is the slow part.
   if (command === 'character') return characterCommand(ctx);
   if (command === 'system') return systemCommand(ctx);
+  if (command === 'content') return contentCommand(ctx, rest, flags);
 
   const indexUrl = positional[0];
   if (!indexUrl) {
@@ -171,6 +180,66 @@ async function systemCommand(ctx: CommandContext): Promise<number> {
   if (!system.licence) {
     ctx.out('\n  No licence block. Fine for a personal system; required to ship one\n');
     ctx.out('  officially (ADR 0010).\n');
+  }
+  return 0;
+}
+
+/**
+ * `incudo content bundle <index> <out.incuset>` — compile an index into a content bundle.
+ *
+ * A `.incuset` is the same container as a `.incu` with the character left out: an imported
+ * index, normalized, with no XML left anywhere. Saves do not need one — they embed their own
+ * subset (ADR 0012) — so this is for shipping *content*, which is a different job and gets a
+ * different extension.
+ */
+async function contentCommand(
+  ctx: CommandContext,
+  args: string[],
+  flags: Set<string>,
+): Promise<number> {
+  const [sub, indexUrl, out] = ctx.positional;
+  if (sub === 'show') {
+    return contentShow(ctx, indexUrl);
+  }
+  if (sub !== 'bundle' || !indexUrl || !out) {
+    ctx.err('Usage: incudo content bundle <index> <out.incuset>\n       incudo content show <file.incuset>\n');
+    return 2;
+  }
+
+  const library = new ContentLibrary();
+  const report = await loadLibrary(library, indexUrl, args, flags);
+  const elements = [...library.elements.all()].sort((a, b) => (a.id < b.id ? -1 : 1));
+
+  const files = packContentBundle(elements, {
+    name: library.indexes[0]?.name ?? indexUrl,
+    sources: [{ id: indexUrl, name: library.indexes[0]?.name, version: library.indexes[0]?.version }],
+    generator: 'incudo-cli',
+  });
+  await writeContainer(out, files);
+
+  const bytes = [...files.values()].reduce((n, b) => n + b.length, 0);
+  ctx.out(`Bundled ${elements.length} elements from ${report.filesLoaded} files into ${out}\n`);
+  ctx.out(`  ${(bytes / 1024 / 1024).toFixed(1)} MB of JSON, before compression\n`);
+  return 0;
+}
+
+async function contentShow(ctx: CommandContext, path: string | undefined): Promise<number> {
+  if (!path) {
+    ctx.err('Usage: incudo content show <file.incuset>\n');
+    return 2;
+  }
+  const { manifest, bundle, problems } = readContentBundle(await readContainer(path));
+  for (const problem of problems) ctx.err(`  ${problem.level.toUpperCase()}  ${problem.message}\n`);
+  if (!bundle) return 1;
+
+  ctx.out(`${manifest!.name ?? path}\n`);
+  ctx.out(`  ${bundle.elements.length} elements, written ${manifest!.created}\n`);
+  const counts = new Map<string, number>();
+  for (const element of bundle.elements) {
+    counts.set(element.type, (counts.get(element.type) ?? 0) + 1);
+  }
+  for (const [type, count] of [...counts].sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+    ctx.out(`  ${String(count).padStart(6)}  ${type}\n`);
   }
   return 0;
 }

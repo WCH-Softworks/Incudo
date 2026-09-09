@@ -53,10 +53,16 @@ There are only a handful of rule kinds, and they compose into everything:
 | `supports` | tag this element so `select` filters can find it |
 | `requirements` | a boolean expression gating any of the above |
 
-A character is then **a list of chosen element IDs plus a few free-text fields**. Everything
-else — AC, speed, spell slots, proficiency bonus — is *derived* by running the rules. This makes
-characters tiny, diffable, and forward-compatible: if content is fixed upstream, the character
-re-derives correctly.
+A character is then **a list of chosen element IDs plus a few free-text fields**, and the recorded
+results of any dice it rolled. Everything else — AC, speed, spell slots, proficiency bonus — is
+*derived* by running the rules. Rolls are the one exception, and a principled one: a die roll has
+no formula, so re-deriving it would silently reroll it ([ADR 0007](./adr/0007-native-formats.md)).
+
+The **saved file** is bigger than the character, on purpose. A `.incu` is a zip carrying the
+character *and* the slice of content it references, so it opens on a fresh install with no
+content sources configured ([ADR 0012](./adr/0012-self-contained-saves.md)). The trade that buys
+it is real and stated there: upstream content fixes no longer apply silently, they become an
+offer to refresh.
 
 See [`DATA-MODEL.md`](./DATA-MODEL.md) for the concrete types and
 [`AURORA-FORMAT.md`](./AURORA-FORMAT.md) for the format this was reverse-engineered from.
@@ -68,8 +74,9 @@ definition** (`systems/<id>/system.json`) is data that declares:
 
 - which element types exist and how they relate (`Class` has `Archetype` children, etc.)
 - which stats exist, their defaults, and how derived stats are computed
-- the shape of the build flow (which steps, in which order, which are required)
-- character sheet layout hints
+- which **kinds of character** it can build, each declaring its own build flow (which steps, in
+  which order, which are required), its sheet layout, and how it progresses — a level, a
+  challenge rating, an xp total, or not at all ([ADR 0009](./adr/0009-character-kinds.md))
 
 D&D 5e is `systems/dnd5e`. Nothing in `@incudo/core` imports it. Phase 5 of the roadmap
 exists specifically to prove this by shipping a second one.

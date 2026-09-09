@@ -21,7 +21,7 @@ export type ContainerForm = 'zip' | 'folder';
 
 /** Where a path would be written, given only its name. */
 export function formOf(path: string): ContainerForm {
-  return /\.(incu|incuc|zip)$/i.test(path) ? 'zip' : 'folder';
+  return /\.(incu|incuset|zip)$/i.test(path) ? 'zip' : 'folder';
 }
 
 export async function readContainer(path: string): Promise<ContainerFiles> {

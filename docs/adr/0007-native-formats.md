@@ -6,6 +6,10 @@
 > and `.incupack` is dropped — a separate "shareable" format has nothing left to do once every
 > save is self-contained. The JSON-not-XML decision and the no-inline-images rule below are
 > unchanged, and assets now live as real bytes inside the container.
+>
+> The content bundle extension was also **`.incuc` until it was read aloud**, and is now
+> `.incuset`. See [ADR 0013](./0013-project-name.md), whose whole subject is names that survive
+> being read in several languages — the same test the extensions have to pass.
 
 ## Context
 
@@ -29,7 +33,7 @@ with 5 MB portraits inline as base64 and a 37,000-entry exclusion list.
 | file | contents |
 |---|---|
 | `<name>.incu` | a character. JSON. |
-| `<name>.incuc` | a compiled content bundle (an imported index, normalized). JSON. |
+| `<name>.incuset` | a compiled content bundle (an imported index, normalized). JSON. |
 | `system.json` | a game system definition. JSON. |
 
 Every one carries `formatVersion` as its first field.

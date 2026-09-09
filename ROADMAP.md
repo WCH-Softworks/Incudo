@@ -48,15 +48,22 @@ discontinued. Incudo aims to be:
 - [x] `@incudo/content`: `ContentSource` abstraction (live / cached / layered)
 - [x] CLI (`tools/incudo`) — the engine's first consumer, before any UI
 - [x] Aurora **save** format reverse-engineered ([docs/AURORA-SAVE-FORMAT.md](./docs/AURORA-SAVE-FORMAT.md))
-- [ ] **Restructure `GameSystem` for character kinds** ([ADR 0009](./docs/adr/0009-character-kinds.md)) — breaking, so do it now
-- [ ] **Define the native formats** ([ADR 0007](./docs/adr/0007-native-formats.md)): `.incu`, `.incuc`, `system.json`, plus JSON Schemas
-- [ ] **`.incu` as a self-contained zip container** ([ADR 0012](./docs/adr/0012-self-contained-saves.md)) — embed the element subset + assets; read/write the unpacked folder form too
-- [ ] Add `rolls` to the character model — recorded random results are inputs, not derivations
-- [ ] Unit tests for the stat resolver and the engine's fixed-point derivation
+- [x] **Restructure `GameSystem` for character kinds** ([ADR 0009](./docs/adr/0009-character-kinds.md)) — breaking, so do it now
+- [x] **Define the native formats** ([ADR 0007](./docs/adr/0007-native-formats.md)): `.incu`, `.incuset`, `system.json`, plus JSON Schemas in `schemas/`
+- [x] **`.incu` as a self-contained zip container** ([ADR 0012](./docs/adr/0012-self-contained-saves.md)) — embed the element subset + assets; read/write the unpacked folder form too
+- [x] Add `rolls` to the character model — recorded random results are inputs, not derivations
+- [x] Unit tests for the stat resolver and the engine's fixed-point derivation
+- [x] `incudo character` and `incudo system validate` — the whole lifecycle with no UI
+- [x] **Self-containment proved, not hoped**: `incudo character verify` derives a character twice,
+      once against the full corpus and once against the save alone, and diffs. A level 3 rogue
+      built from the 12,058-element corpus embeds 47 elements in 23 KB and opens identically with
+      zero sources. Same test on a committed fixture corpus, so CI runs it too.
 - [ ] CI: typecheck, test, and the corpus baseline
 
 **Exit criteria:** `incudo validate` resolves the whole AuroraLegacy index with no new unresolved
-references, and a character round-trips through `.incu` JSON unchanged.
+references, and a character round-trips through `.incu` JSON unchanged. **Both met**, and the
+second one turned out to be the weaker claim — the container round-trips *and* re-derives
+identically with no sources, which is what ADR 0012 actually asks for.
 
 ---
 

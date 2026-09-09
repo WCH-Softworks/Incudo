@@ -21,9 +21,14 @@ hardcoded in Aurora's C#. That hardcoded knowledge is exactly the boundary to mo
 
 - `elementTypes` — the type vocabulary and how types nest (a `Class` may have `Archetype` children)
 - `stats` — declared stat names, defaults, and derivations
-- `buildSteps` — the wizard structure
-- `sheet` — layout hints
-- `levelRange`
+- `characterKinds` — one entry per kind of character the system can build, each owning its own
+  `buildSteps` (the wizard structure), `sheet` (layout hints) and `progression`
+
+> **Amended by [ADR 0009](./0009-character-kinds.md).** `buildSteps` and `sheet` were flat fields
+> on the system, alongside a `levelRange`. They now belong to a character kind, and `levelRange`
+> is a `progression` union — `level`, `rating`, `xp` or `none`. Same principle, one level down:
+> modelling only PCs would have welded PC assumptions into the build flow and the sheet exactly
+> the way Aurora welded in D&D.
 
 `@incudo/core` must not contain the strings `strength`, `spell`, `armor class`, `d20` or any
 other game-specific noun outside of tests and fixtures. Stats are opaque namespaced keys; element

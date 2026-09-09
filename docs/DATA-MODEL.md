@@ -158,7 +158,7 @@ own diagnostics rather than a second implementation of the rules.
 | extension | what |
 |---|---|
 | `.incu` | a character. JSON, `formatVersion` first, safe to commit to git |
-| `.incuc` | a compiled content bundle (an imported index, normalized) |
+| `.incuset` | a compiled content bundle (an imported index, normalized) |
 | `system.json` | a game system definition |
 
 

@@ -12,6 +12,7 @@ import {
   packCharacterContainer,
   packContentBundle,
   readCharacterContainer,
+  readContentBundle,
   type ContainerFiles,
   type ContainerManifest,
 } from './container.ts';
@@ -220,6 +221,33 @@ test('a content bundle is refused where a character is expected', () => {
   const { container, problems } = readCharacterContainer(files);
   assert.equal(container, undefined);
   assert.match(problems.map((p) => p.message).join(' '), /not a character/);
+});
+
+test('a .incuset is the same container with the character left out', () => {
+  const files = packContentBundle([element('A'), element('B')], {
+    name: 'Fixture Content',
+    sources: [{ id: 'https://example.invalid/core.index', version: '1.2.3' }],
+    now: '2026-01-01T00:00:00.000Z',
+  });
+
+  assert.deepEqual([...files.keys()].sort(), [CONTENT_PATH, MANIFEST_PATH]);
+  assert.equal(files.has(CHARACTER_PATH), false);
+
+  const { manifest, bundle, problems } = readContentBundle(files);
+  assert.deepEqual(problems, []);
+  assert.equal(manifest!.kind, 'content');
+  assert.equal(manifest!.name, 'Fixture Content');
+  assert.equal(manifest!.sources![0]!.version, '1.2.3');
+  assert.deepEqual(bundle!.elements.map((e) => e.id), ['A', 'B']);
+});
+
+test('a character is refused where a content bundle is expected, and vice versa', () => {
+  const character = built();
+  const asCharacter = packCharacterContainer(character, collectCharacterContent(character, corpus()));
+  assert.match(
+    readContentBundle(asCharacter).problems.map((p) => p.message).join(' '),
+    /not a content bundle/,
+  );
 });
 
 test('a bundle index answers the same questions as the corpus index', () => {

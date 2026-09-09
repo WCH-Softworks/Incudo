@@ -57,7 +57,7 @@ export interface ContentSource {
 
 /** Detect the content format from a URL. Aurora is the only one that exists today. */
 export function detectFormat(url: string): 'aurora' | 'incudo' {
-  return url.toLowerCase().endsWith('.incuc') || url.toLowerCase().endsWith('.json')
+  return url.toLowerCase().endsWith('.incuset') || url.toLowerCase().endsWith('.json')
     ? 'incudo'
     : 'aurora';
 }
