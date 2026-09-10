@@ -171,6 +171,16 @@
             "index": { "$ref": "#/$defs/expr" },
             "values": { "type": "array", "items": { "type": "number" } }
           }
+        },
+        {
+          "type": "object",
+          "description": "The sum of the character's recorded results matching a pattern, one per point of progression (ADR 0019). \"hp:level:{n}\" at level 8 sums hp:level:1 through hp:level:8. Reading only: the engine does not roll and must never learn how — a roll is an input precisely because it has no formula (ADR 0007). Bounded by the progression rather than by the record, so dropping a level stops counting the rolls above it without deleting them.",
+          "required": ["kind", "pattern"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "rolls" },
+            "pattern": { "type": "string", "minLength": 1 }
+          }
         }
       ]
     },

@@ -173,6 +173,10 @@ sequence to walk. There is no `goToStep` and no Back button; `focus()` is presen
 nothing depends on it. A decision opened at level 4 arrives in the same list as every other.
 `Character` gained a sixth input, `generation`, recording which method a budgeted step used.
 
+**Hit points are the one number no oracle checks** (ADR 0019). Aurora's saves record the
+per-level rolls and never the total, so `aurora verify` has nothing to diff. Do not describe
+`hp` as verified; it is derived from the published rule and from the rolls, and that is all.
+
 Two things ADR 0018 added that are easy to reach for wrongly:
 
 - **A `table` expression, and `trackStats` on a character kind.** `trackStats` is the piece

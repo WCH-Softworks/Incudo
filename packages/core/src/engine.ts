@@ -23,6 +23,7 @@ import {
   resolveCharacterKind,
   trackStatKey,
   trackStatName,
+  sumRecordedRolls,
   TRACK_PROGRESS_STAT,
 } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
@@ -265,6 +266,10 @@ function makeContext(
       if (typeof override === 'string') return override;
       return stats.get(key)?.text;
     },
+    // The one place `character.rolls` is read — ADR 0019. Until this existed the field was
+    // written by the importer, round-tripped through the container, and consumed by nothing.
+    rollSum: (pattern) =>
+      sumRecordedRolls(character.rolls, kind.progression, character.progress, pattern),
     hasFlag: (name) => stats.has(name.toLowerCase()),
   };
 }
@@ -493,6 +498,7 @@ function computeStats(
     const trackCtx: ExpressionContext = {
       statNumber: (s) => (s.toLowerCase() === TRACK_PROGRESS_STAT ? count : ctx.statNumber(s)),
       statString: ctx.statString,
+      rollSum: ctx.rollSum,
     };
     for (const def of kind.trackStats) {
       if (def.when !== undefined && !trackMembers.get(def.when)?.has(rootId)) continue;
@@ -516,6 +522,7 @@ function computeStats(
     const derivedCtx: ExpressionContext = {
       statNumber: (s) => (s.toLowerCase() === key ? 0 : ctx.statNumber(s)),
       statString: ctx.statString,
+      rollSum: ctx.rollSum,
     };
     const value = evaluateExpr(def.derive, derivedCtx) + (result.get(key)?.value ?? 0);
     result.set(key, {
@@ -565,6 +572,7 @@ function computeStats(
   const boundsCtx: ExpressionContext = {
     statNumber: (s) => result.get(s.toLowerCase())?.value ?? ctx.statNumber(s),
     statString: ctx.statString,
+    rollSum: ctx.rollSum,
   };
   for (const def of kind.stats) {
     if (def.min === undefined && def.max === undefined) continue;

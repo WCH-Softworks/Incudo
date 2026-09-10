@@ -535,3 +535,73 @@ test('a kind that declares no trackStats behaves exactly as it did', () => {
   assert.equal(derived.stats.get('reach'), undefined);
   assert.equal(derived.stats.get('level:alpha')?.value, 3, 'ADR 0015 track stats still publish');
 });
+
+// --- recorded rolls (ADR 0019) ----------------------------------------------
+
+function rolledSystem(): GameSystem {
+  const base = trackedSystem();
+  base.characterKinds[0]!.stats = [
+    ...(base.characterKinds[0]!.stats ?? []),
+    {
+      name: 'stamina',
+      default: 0,
+      derive: { kind: 'rolls', pattern: 'stamina:step:{n}' },
+    },
+  ];
+  return base;
+}
+
+function rolled(progress: number, rolls: Record<string, number>): Character {
+  const character = createCharacter('test', 'levelled');
+  character.progress = progress;
+  character.rolls = rolls;
+  return character;
+}
+
+test('a derivation reads the recorded rolls, which nothing used to', () => {
+  const character = rolled(3, { 'stamina:step:1': 6, 'stamina:step:2': 4, 'stamina:step:3': 5 });
+  const derived = deriveCharacter(character, rolledSystem(), indexWith());
+  assert.equal(derived.stats.get('stamina')?.value, 15);
+});
+
+test('the sum is bounded by the progression, so dropping a level stops counting it', () => {
+  // And the record itself is untouched: ADR 0007 says a recorded result never silently
+  // disappears, so levelling back up finds the same numbers rather than rerolling.
+  const rolls = { 'stamina:step:1': 6, 'stamina:step:2': 4, 'stamina:step:3': 5 };
+  const character = rolled(2, rolls);
+  const derived = deriveCharacter(character, rolledSystem(), indexWith());
+  assert.equal(derived.stats.get('stamina')?.value, 10);
+  assert.equal(character.rolls['stamina:step:3'], 5, 'still recorded');
+});
+
+test('a missing roll counts as nothing rather than breaking the derivation', () => {
+  const character = rolled(3, { 'stamina:step:1': 6 });
+  assert.equal(
+    deriveCharacter(character, rolledSystem(), indexWith()).stats.get('stamina')?.value,
+    6,
+  );
+});
+
+test('contributions still add on top of a rolled derivation', () => {
+  const index = indexWith(
+    element('Tough', 'Widget', [
+      { kind: 'stat', key: 's', name: 'stamina', value: { kind: 'number', value: 12 } },
+    ]),
+  );
+  const character = rolled(1, { 'stamina:step:1': 6 });
+  character.choices = [{ ruleKey: 'k', elementIds: ['Tough'] }];
+  assert.equal(
+    deriveCharacter(character, rolledSystem(), index).stats.get('stamina')?.value,
+    18,
+  );
+});
+
+test('a kind with no progression sums nothing, because there are no steps to sum over', () => {
+  const noProgression = rolledSystem();
+  noProgression.characterKinds[0]!.progression = { kind: 'none' };
+  const character = rolled(3, { 'stamina:step:1': 6 });
+  assert.equal(
+    deriveCharacter(character, noProgression, indexWith()).stats.get('stamina')?.value,
+    0,
+  );
+});

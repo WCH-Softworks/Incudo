@@ -26,11 +26,27 @@ export type StatExpr =
    * description than the table itself. The index is floored and clamped to the array, so a
    * value below the row reads its first entry and one above reads its last.
    */
-  | { kind: 'table'; index: StatExpr; values: number[] };
+  | { kind: 'table'; index: StatExpr; values: number[] }
+  /**
+   * The sum of the character's recorded results matching a pattern, one per point of
+   * progression — ADR 0019. `"hp:level:{n}"` at level 8 sums `hp:level:1` … `hp:level:8`.
+   *
+   * Reading only, and only what is recorded: core does not roll and must never learn how.
+   * A roll is an input because it has no formula (ADR 0007), and an engine that could
+   * produce one could silently reroll it.
+   */
+  | { kind: 'rolls'; pattern: string };
 
 export interface ExpressionContext {
   statNumber(stat: string): number;
   statString(stat: string): string | undefined;
+  /**
+   * The sum of the recorded results matching a pattern, over the character's progression
+   * (ADR 0019). Optional: a context with no character behind it — a bare evaluator in a
+   * test, a validator checking that an expression parses — has no rolls to read and sums
+   * nothing.
+   */
+  rollSum?(pattern: string): number;
 }
 
 /**
@@ -93,6 +109,8 @@ export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {
       }
     }
     // eslint-disable-next-line no-fallthrough
+    case 'rolls':
+      return ctx.rollSum?.(expr.pattern) ?? 0;
     case 'table': {
       if (!expr.values.length) return 0;
       const raw = Math.floor(evaluateExpr(expr.index, ctx));

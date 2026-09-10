@@ -184,6 +184,16 @@ before any code, both touching a public API:
         What the oracle proves and what it does not is set out in the ADR — pact magic being
         outside the table is pinned; rounding down rather than up is not, because
         `floor(2/2)` and `ceil(2/2)` agree and no sample save has two Spellcasting classes.
+  - [x] **Hit points**, which needed [ADR 0019](./docs/adr/0019-recorded-rolls-are-readable.md).
+        Not a missing formula so much as a missing *reader*: `deriveCharacter` had never once
+        touched `character.rolls`, so the per-level results the importer writes and the `.incu`
+        round-trips were consumed by nothing. A `rolls` expression sums them over the
+        progression, and `hp` is that plus `constitution:modifier × level`. Every 5e character
+        used to have 0 hit points; the Hexadin now has 207.
+        **Not verified against Aurora, and it cannot be** — the save format records the rolls
+        and never the total, so there is no `<sum>`, no `<magic>` and no stat block to diff.
+        This is the first Phase 2 number settled by reading the rules rather than by the
+        differential check, and it should be read that way.
   - [ ] **Spell save DC and attack bonus as declared stats.** Less missing than it looked:
         `aurora verify` already rebuilds both and compares them, and reports 0 mismatches
         across all nine saves. What is missing is *publishing* them, so a sheet can show

@@ -605,6 +605,35 @@ export function baselineElementIds(kind: ResolvedCharacterKind, progress: number
   return ids;
 }
 
+/**
+ * The sum of recorded results matching a pattern, one per point of progression — ADR 0019.
+ *
+ * `"hp:level:{n}"` on a level 8 character sums `hp:level:1` … `hp:level:8`. Bounded by the
+ * progression rather than by what the record happens to contain, and that is the load-bearing
+ * part: a character who drops from 20 to 5 counts five, and the other fifteen stay in the file
+ * untouched. Deleting them on the way down and asking again on the way up would be a reroll
+ * with extra steps, which ADR 0007 exists to prevent.
+ *
+ * Shares `baselineElementIds`'s arithmetic deliberately: whole steps only, capped by the
+ * progression's own maximum so a corrupt `progress` cannot spin.
+ */
+export function sumRecordedRolls(
+  rolls: Record<string, number> | undefined,
+  progression: Progression,
+  progress: number,
+  pattern: string,
+): number {
+  if (!rolls || progression.kind === 'none') return 0;
+  const from = progression.min ?? 0;
+  if (!Number.isInteger(from) || !Number.isInteger(progress)) return 0;
+  const to = Math.min(progress, progression.max ?? progress);
+  let total = 0;
+  for (let step = from; step <= to; step++) {
+    total += rolls[pattern.replace('{n}', String(step))] ?? 0;
+  }
+  return total;
+}
+
 export function clampProgress(progression: Progression, value: number): number {
   if (progression.kind === 'none') return 0;
   let result = value;

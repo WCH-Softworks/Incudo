@@ -117,7 +117,13 @@
       "default": true,
       "progression": { "kind": "level", "min": 1, "max": 20, "stat": "level", "elementIdPattern": "ID_LEVEL_{n}", "trackStatPattern": "level:{name}" },
 
-      "stats": [{ "name": "level", "label": "Level", "default": 1 }],
+      "stats": [
+        { "name": "level", "label": "Level", "default": 1 },
+        { "name": "hp", "label": "Hit Points", "default": 0,
+          "derive": { "kind": "binary", "op": "+",
+            "left": { "kind": "rolls", "pattern": "hp:level:{n}" },
+            "right": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "constitution:modifier" }, "right": { "kind": "ref", "stat": "level" } } } }
+      ],
 
       "grants": [
         "ID_INTERNAL_GRANTS_CHARACTER_BASE",
