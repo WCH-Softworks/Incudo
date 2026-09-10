@@ -270,3 +270,35 @@ test('a kind with no budgeted step publishes no budget decisions', () => {
   assert.equal(state.decisions.some((d) => d.kind === 'budget'), false);
   assert.equal(state.steps.find((s) => s.id === 'scores')?.budget, undefined);
 });
+
+test('spending the last point does not close a budget with scores still unassigned', () => {
+  // The two are different questions. Point buy can exhaust the pool while two targets have
+  // never been touched, and closing the decision then would strand them.
+  const b = builder(indexWith());
+  b.setGenerationMethod('scores', 'buy');
+  b.setBaseStat('vigour', 11); // 4 of a 10-point pool; grit never set
+  const budget = b.getState().steps.find((s) => s.id === 'scores')!.budget!;
+  assert.equal(budget.remaining, 6);
+  assert.deepEqual(budget.unassigned, ['grit']);
+
+  const decision = b.getState().decisions.find((d) => d.kind === 'budget');
+  assert.ok(decision, 'still open on both counts');
+
+  // Now exhaust the pool exactly, leaving grit unassigned.
+  const spent = system().generationMethods!.find((m) => m.id === 'buy')!;
+  assert.equal(spent.costs!['11'], 4);
+  b.setBaseStat('vigour', 11);
+  b.setGenerationMethod('scores', 'buy');
+  const stillOpen = b.getState().decisions.find((d) => d.kind === 'budget');
+  assert.ok(stillOpen, 'a full pool with an untouched target is not a finished decision');
+});
+
+test('a rolled set is open on assignment alone, with no points to report', () => {
+  const b = builder(indexWith());
+  b.setGenerationMethod('scores', 'array');
+  const decision = b.getState().decisions.find((d) => d.kind === 'budget');
+  assert.equal(decision?.remaining, 2, 'two scores to place, not two points to spend');
+  b.setBaseStat('vigour', 11);
+  b.setBaseStat('grit', 9);
+  assert.equal(b.getState().decisions.some((d) => d.kind === 'budget'), false);
+});

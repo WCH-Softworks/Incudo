@@ -237,15 +237,22 @@ export class CharacterBuilder {
       if (!step.budget) continue;
       const state = this.budgetState(step, derived);
       budgets.set(step.id, state);
-      const outstanding = state.pooled ? state.remaining : state.unassigned.length;
-      if (outstanding > 0) {
+      // Open while there is anything left to do, and the two are not the same thing: a
+      // point-buy character can spend the last of the pool with two scores still untouched,
+      // and a rolled character has nothing to spend and six values to place.
+      const open = state.unassigned.length > 0 || (state.pooled && state.remaining > 0);
+      if (open) {
         decisions.push({
           id: state.stat,
           kind: 'budget',
           label: step.label,
           stepId: step.id,
           blocking: step.required ?? false,
-          remaining: outstanding,
+          // Points where there are points to spend, otherwise scores left to assign.
+          // Different units, deliberately: `BudgetState` on the step carries both, and a
+          // shell that wants to phrase it precisely reads that instead.
+          remaining:
+            state.pooled && state.remaining > 0 ? state.remaining : state.unassigned.length,
         });
       }
     }
