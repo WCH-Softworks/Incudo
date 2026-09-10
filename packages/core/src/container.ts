@@ -26,6 +26,7 @@ import type { Character, SourceRef } from './character.ts';
 import { chosenElementIds } from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { referencedElementIds } from './engine.ts';
+import { baselineElementIds, type ResolvedCharacterKind } from './system.ts';
 import { integrityOf } from './sha256.ts';
 
 export const MANIFEST_PATH = 'manifest.json';
@@ -90,8 +91,18 @@ export interface ContentSubset {
 
 export interface CollectOptions {
   /**
-   * Ids to include beyond what the character reaches on its own. The importer uses this for
-   * an overlay of elements Aurora generates at runtime.
+   * The character's kind, so its baseline `grants` and one element per step of progression
+   * are embedded too.
+   *
+   * Pass it. Those elements are part of every derivation and are reached through the system
+   * definition rather than through a choice, so a save written without them derives
+   * correctly against a corpus and reports them unresolved on its own — which is precisely
+   * the failure ADR 0012 exists to prevent.
+   */
+  kind?: ResolvedCharacterKind;
+  /**
+   * Ids to include beyond what the character reaches on its own. The Aurora importer uses
+   * this for the `<sum>` block: every element Aurora's own derivation ended up with.
    */
   extraIds?: Iterable<ElementId>;
   /** Guard against pathological content. Reaching it is reported, not silently truncated. */
@@ -130,7 +141,11 @@ export function collectCharacterContent(
   const unresolved = new Set<ElementId>();
   const seen = new Set<ElementId>();
 
-  let frontier: ElementId[] = [...chosenElementIds(character), ...(options.extraIds ?? [])];
+  let frontier: ElementId[] = [
+    ...chosenElementIds(character),
+    ...(options.kind ? baselineElementIds(options.kind, character.progress) : []),
+    ...(options.extraIds ?? []),
+  ];
   for (const id of frontier) seen.add(id);
 
   while (frontier.length && collected.size < limit) {

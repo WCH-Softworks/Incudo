@@ -35,6 +35,7 @@ import {
   type DerivedCharacter,
   type ElementIndex,
   type GameSystem,
+  type ResolvedCharacterKind,
 } from '@incudo/core';
 import { readContainer, writeContainer } from './node-save.ts';
 import { loadSystem, loadSystemForCharacter } from './node-system.ts';
@@ -124,7 +125,7 @@ async function characterNew(ctx: CommandContext): Promise<number> {
   });
   character.progress = clampProgress(kind.progression, character.progress);
 
-  await writeCharacter(out, character, new BundleElementIndex([]));
+  await writeCharacter(out, character, new BundleElementIndex([]), kind);
   ctx.out(`Created ${out}\n`);
   ctx.out(`  system:   ${system.name} (${system.id})\n`);
   ctx.out(`  kind:     ${kind.name} (${kind.id})\n`);
@@ -153,9 +154,11 @@ async function characterChoose(ctx: CommandContext): Promise<number> {
   }
 
   const character = setChoice(loaded.character, ruleKey, elementIds);
-  await writeCharacter(file, character, elements);
-
+  // The system first, because the kind decides which baseline elements the save embeds.
   const system = await loadSystemForCharacter(character, ctx.value('--system'), ctx.err);
+  const kind = system ? resolveCharacterKind(system, character.kind) : undefined;
+  await writeCharacter(file, character, elements, kind);
+
   if (system) {
     const derived = deriveCharacter(character, system, elements);
     ctx.out(`${character.name}: ${derived.elements.length} elements, `);
@@ -181,14 +184,16 @@ async function characterSet(ctx: CommandContext): Promise<number> {
   const name = ctx.value('--name');
   if (name !== undefined) character = { ...character, name };
 
+  // Loaded up front now, not just when --progress is given: the kind decides which baseline
+  // elements the save embeds, and every write re-collects them.
+  const system = await loadSystemForCharacter(character, ctx.value('--system'), ctx.err);
+  const kind = system ? resolveCharacterKind(system, character.kind) : undefined;
+
   const progress = numberOf(ctx.value('--progress'));
   if (progress !== undefined) {
-    const system = await loadSystemForCharacter(character, ctx.value('--system'), ctx.err);
     // Without the system there is no progression to clamp against; store what was asked
     // rather than refusing, and let the next derivation with a system sort it out.
-    const clamped = system
-      ? clampProgress(resolveCharacterKind(system, character.kind).progression, progress)
-      : progress;
+    const clamped = kind ? clampProgress(kind.progression, progress) : progress;
     if (clamped !== progress) {
       ctx.err(`Progress ${progress} is outside this kind's range; using ${clamped}.\n`);
     }
@@ -208,7 +213,7 @@ async function characterSet(ctx: CommandContext): Promise<number> {
   }
 
   character = { ...character, updatedAt: new Date().toISOString() };
-  await writeCharacter(file, character, new BundleElementIndex(loaded.embedded));
+  await writeCharacter(file, character, new BundleElementIndex(loaded.embedded), kind);
   ctx.out(`Updated ${file}\n`);
   return 0;
 }
@@ -284,6 +289,13 @@ async function characterVerify(ctx: CommandContext): Promise<number> {
   if (!system) return 1;
 
   const corpus = await ctx.loadIndex(indexUrl);
+
+  // Content the save carries that the corpus does not have at all. Normally empty. It is not
+  // empty for a character imported from Aurora, which embeds the elements Aurora's app
+  // invented at runtime and no content file declares — so for those the *corpus* is the
+  // incomplete side, and a difference confined to them is the save doing its job.
+  const corpusLacks = loaded.embedded.filter((e) => !corpus.get(e.id)).map((e) => e.id);
+
   const withSources = summarize(deriveCharacter(loaded.character, system, corpus));
   const withoutSources = summarize(
     deriveCharacter(loaded.character, system, new BundleElementIndex(loaded.embedded)),
@@ -302,9 +314,56 @@ async function characterVerify(ctx: CommandContext): Promise<number> {
     return 0;
   }
 
+  // The property ADR 0012 actually asks for is that the save alone loses nothing. Content the
+  // corpus is missing cannot be that failure: it is the save carrying more, not less.
+  const onlyTheCorpusIsShort = accountedFor(withSources, withoutSources, new Set(corpusLacks));
+  if (onlyTheCorpusIsShort) {
+    ctx.out(`\nThe save opens without its sources (ADR 0012).\n`);
+    ctx.out(`It also carries ${corpusLacks.length} element(s) the corpus does not have:\n`);
+    for (const id of corpusLacks.slice(0, 10)) ctx.out(`  ${id}\n`);
+    if (corpusLacks.length > 10) ctx.out(`  … and ${corpusLacks.length - 10} more\n`);
+    ctx.out(`So the corpus derivation is the short one here, not the save's.\n`);
+    return 0;
+  }
+
   ctx.err('\nThe two derivations differ. The save is NOT self-contained.\n');
   for (const line of firstDifferences(a, b, 20)) ctx.err(`  ${line}\n`);
   return 1;
+}
+
+/**
+ * Whether every difference between the two derivations is explained by the given ids.
+ *
+ * Deliberately strict about what counts as explained: the stats, the pending choices and the
+ * problems must match exactly, and the element lists may differ *only* by ids in the set. A
+ * save that carries an extra element which also changes a number is not explained — that is
+ * the case worth failing on.
+ */
+export function accountedFor(
+  withSources: DerivedSummary,
+  withoutSources: DerivedSummary,
+  expected: Set<string>,
+): boolean {
+  if (!expected.size) return false;
+
+  const strip = (summary: DerivedSummary): string =>
+    JSON.stringify({
+      ...summary,
+      elements: summary.elements.filter((id) => !expected.has(id)),
+      // The corpus side also reports each of these as unresolved, which is the same fact
+      // stated twice rather than a second difference.
+      problems: summary.problems.filter((p) => !p.elementId || !expected.has(p.elementId)),
+    });
+  if (strip(withSources) !== strip(withoutSources)) return false;
+
+  // And the ids that do differ must all be ones we said to expect, in either direction.
+  const a = new Set(withSources.elements);
+  const b = new Set(withoutSources.elements);
+  for (const id of [...a, ...b]) {
+    if (a.has(id) === b.has(id)) continue;
+    if (!expected.has(id)) return false;
+  }
+  return true;
 }
 
 // --- shared ----------------------------------------------------------------
@@ -342,8 +401,9 @@ async function writeCharacter(
   path: string,
   character: Character,
   elements: ElementIndex,
+  kind?: ResolvedCharacterKind,
 ): Promise<void> {
-  const content = collectCharacterContent(character, elements);
+  const content = collectCharacterContent(character, elements, { kind });
   const files = packCharacterContainer(character, content, { generator: 'incudo-cli' });
   await writeContainer(path, files);
 }
@@ -353,7 +413,7 @@ export interface DerivedSummary {
   elements: string[];
   stats: Record<string, number | string>;
   pendingChoices: Array<{ ruleKey: string; label: string; remaining: number }>;
-  problems: Array<{ level: string; code: string; message: string }>;
+  problems: Array<{ level: string; code: string; message: string; elementId?: string }>;
 }
 
 /**
@@ -386,7 +446,7 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
       .map((c) => ({ ruleKey: c.ruleKey, label: c.label, remaining: c.remaining }))
       .sort((a, b) => (a.ruleKey < b.ruleKey ? -1 : 1)),
     problems: derived.problems
-      .map((p) => ({ level: p.level, code: p.code, message: p.message }))
+      .map((p) => ({ level: p.level, code: p.code, message: p.message, elementId: p.elementId }))
       .sort((a, b) => (a.message < b.message ? -1 : 1)),
   };
 }

@@ -12,7 +12,7 @@
  * challenge rating and a stat block; they share only the stats underneath.
  */
 
-import type { ElementType, StatKey } from './model.ts';
+import type { ElementId, ElementType, StatKey } from './model.ts';
 import type { StatExpr } from './expression.ts';
 
 export interface ElementTypeDef {
@@ -81,9 +81,9 @@ export interface SheetLayoutDef {
  * a system-declared string; core never spells it.
  */
 export type Progression =
-  | { kind: 'level'; min: number; max: number; stat?: StatKey }
-  | { kind: 'rating'; stat: StatKey; min?: number; max?: number }
-  | { kind: 'xp'; stat: StatKey; min?: number; max?: number }
+  | { kind: 'level'; min: number; max: number; stat?: StatKey; elementIdPattern?: string }
+  | { kind: 'rating'; stat: StatKey; min?: number; max?: number; elementIdPattern?: string }
+  | { kind: 'xp'; stat: StatKey; min?: number; max?: number; elementIdPattern?: string }
   | { kind: 'none' };
 
 /** ADR 0010 — official systems record the licence of the material they describe. */
@@ -122,6 +122,20 @@ export interface CharacterKindDef {
   elementTypes?: ElementType[];
   /** Stats this kind adds to the system's. Kinds inherit the system's stats (ADR 0009). */
   stats?: StatDef[];
+  /**
+   * Elements every character of this kind has, without choosing them.
+   *
+   * The system-definition answer to a question Aurora answers in application code: a 5e
+   * character has a base armour class, adds its Dexterity modifier to it, and adds its
+   * Constitution modifier to hit points, and no content file says so. Aurora's saves record
+   * those as elements in every derivation; without a place to declare them, a character
+   * built in Incudo can never match one built in Aurora.
+   *
+   * They are not choices and are not stored on the character — the kind declares them, so
+   * they follow the system when it is updated. Replaced rather than merged along an
+   * `extends` chain, like `buildSteps`.
+   */
+  grants?: ElementId[];
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -136,6 +150,8 @@ export interface ResolvedCharacterKind {
   elementTypes: ElementType[];
   /** The system's stats, then this kind's. */
   stats: StatDef[];
+  /** Elements every character of this kind has without choosing them. */
+  grants: ElementId[];
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -250,6 +266,7 @@ export function resolveCharacterKind(
   // does not have. Insertion order is preserved, so declaration order still reads.
   const stats = new Map<string, StatDef>();
   for (const stat of system.stats) stats.set(stat.name.toLowerCase(), stat);
+  let grants: ElementId[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -261,6 +278,7 @@ export function resolveCharacterKind(
       elementTypes = applyElementTypeDelta(elementTypes, layer.elementTypes);
     }
     for (const stat of layer.stats ?? []) stats.set(stat.name.toLowerCase(), stat);
+    if (layer.grants !== undefined) grants = layer.grants;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -273,6 +291,7 @@ export function resolveCharacterKind(
     progression,
     elementTypes,
     stats: [...stats.values()],
+    grants,
     buildSteps,
     sheet,
   };
@@ -333,6 +352,35 @@ export function initialProgress(progression: Progression): number {
     case 'none':
       return 0;
   }
+}
+
+/**
+ * Elements a character of this kind has purely by existing: the kind's `grants`, plus one
+ * per step of progression when the progression declares an `elementIdPattern`.
+ *
+ * The pattern's `{n}` is the step number, so `"ID_LEVEL_{n}"` at progress 8 yields
+ * `ID_LEVEL_1` … `ID_LEVEL_8`. Aurora writes exactly those into every save, and content
+ * genuinely references them (`requirements="!ID_LEVEL_1"`). Steps are whole numbers from
+ * the progression's minimum, so a fractional challenge rating produces none — there is no
+ * `ID_CR_0.25` to grant and no system asks for one.
+ *
+ * Not stored on the character: these follow the system definition, so fixing the 5e
+ * baseline fixes every 5e character rather than only the ones saved afterwards (ADR 0006).
+ */
+export function baselineElementIds(kind: ResolvedCharacterKind, progress: number): ElementId[] {
+  const ids = [...kind.grants];
+  const progression = kind.progression;
+  if (progression.kind === 'none' || !progression.elementIdPattern) return ids;
+
+  const from = progression.min ?? 0;
+  if (!Number.isInteger(from) || !Number.isInteger(progress)) return ids;
+  // The cap is the progression's own maximum where it has one, so a corrupt `progress` of
+  // 10^9 cannot make this allocate for a very long time.
+  const to = Math.min(progress, progression.max ?? progress);
+  for (let step = from; step <= to; step++) {
+    ids.push(progression.elementIdPattern.replace('{n}', String(step)));
+  }
+  return ids;
 }
 
 export function clampProgress(progression: Progression, value: number): number {

@@ -172,6 +172,11 @@
               "type": "string",
               "minLength": 1,
               "description": "The stat the level is published as. Defaults to \"level\", which is what levelled content references."
+            },
+            "elementIdPattern": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An element id granted once per step of progression, with \"{n}\" replaced by the step number: \"ID_LEVEL_{n}\" gives a level 8 character ID_LEVEL_1 through ID_LEVEL_8. Aurora writes exactly those into every save and its content references them; without this, a character built in Incudo cannot match one built in Aurora. Only whole-numbered steps are granted."
             }
           }
         },
@@ -183,7 +188,12 @@
             "kind": { "const": "rating" },
             "stat": { "type": "string", "minLength": 1 },
             "min": { "type": "number" },
-            "max": { "type": "number" }
+            "max": { "type": "number" },
+            "elementIdPattern": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An element id granted once per step of progression, with \"{n}\" replaced by the step number: \"ID_LEVEL_{n}\" gives a level 8 character ID_LEVEL_1 through ID_LEVEL_8. Aurora writes exactly those into every save and its content references them; without this, a character built in Incudo cannot match one built in Aurora. Only whole-numbered steps are granted."
+            }
           }
         },
         {
@@ -194,7 +204,12 @@
             "kind": { "const": "xp" },
             "stat": { "type": "string", "minLength": 1 },
             "min": { "type": "number" },
-            "max": { "type": "number" }
+            "max": { "type": "number" },
+            "elementIdPattern": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An element id granted once per step of progression, with \"{n}\" replaced by the step number: \"ID_LEVEL_{n}\" gives a level 8 character ID_LEVEL_1 through ID_LEVEL_8. Aurora writes exactly those into every save and its content references them; without this, a character built in Incudo cannot match one built in Aurora. Only whole-numbered steps are granted."
+            }
           }
         },
         {
@@ -232,6 +247,11 @@
           "description": "When the kind extends another, an entry may be written \"+Type\" to add or \"-Type\" to remove; a list with no prefixed entry replaces the parent's outright."
         },
         "stats": { "type": "array", "items": { "$ref": "#/$defs/stat" } },
+        "grants": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Element ids every character of this kind has without choosing them. The system-definition home for what Aurora answers in application code: a 5e character has a base armour class and adds its Constitution modifier to hit points, and no content file says so. Not stored on the character, so fixing the baseline fixes every character rather than only the ones saved afterwards."
+        },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
       }

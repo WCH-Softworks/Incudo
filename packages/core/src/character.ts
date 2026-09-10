@@ -56,6 +56,15 @@ export interface Character {
    * Inputs, not derivations — see the file header and ADR 0007.
    */
   rolls: Record<string, number>;
+  /**
+   * Starting values for stats nothing computes: ability scores the user rolled, bought or
+   * typed in. They replace the kind's declared `default` and everything else adds on top,
+   * so a racial +2 still lands (ADR 0014).
+   *
+   * The same category as `rolls` — an input with no formula — and emphatically *not*
+   * `overrides`, which wins over every contribution and would silently discard that +2.
+   */
+  baseStats?: Record<StatKey, number>;
   /** Free text the rules never touch: notes, appearance, backstory. */
   freeform: Record<string, string>;
   /**

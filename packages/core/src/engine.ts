@@ -16,7 +16,7 @@
 import type { Element, ElementId, ElementIndex, Rule, StatKey, SelectRule, StatRule } from './model.ts';
 import type { Character } from './character.ts';
 import type { GameSystem, ResolvedCharacterKind, StatDef } from './system.ts';
-import { progressionStat, resolveCharacterKind } from './system.ts';
+import { baselineElementIds, progressionStat, resolveCharacterKind } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import { evaluateExpr, evaluateExprAsString, type ExpressionContext } from './expression.ts';
 import { matchesSupports, type SupportsContext } from './supports.ts';
@@ -97,7 +97,16 @@ export function deriveCharacter(
   const problems: Problem[] = [];
   const kind = options.kind ?? resolveCharacterKind(system, character.kind);
 
-  const chosenIds = new Set<ElementId>();
+  // What the character picked, plus what its kind gives everyone of that kind — the base
+  // armour class a 5e character has before any content says so, and one element per level.
+  // Both are seeds; the fixed point below does not care where a seed came from.
+  //
+  // The two are kept apart for one reason: how loudly to complain when a seed does not
+  // resolve. A choice that has vanished is the user's build broken, and an error. A kind's
+  // baseline missing means the system definition expects content this profile has not
+  // loaded — the system's problem, not the character's, and a warning.
+  const baselineIds = new Set<ElementId>(baselineElementIds(kind, character.progress));
+  const chosenIds = new Set<ElementId>(baselineIds);
   for (const choice of character.choices) for (const id of choice.elementIds) chosenIds.add(id);
 
   let active = new Map<ElementId, Element>();
@@ -110,8 +119,10 @@ export function deriveCharacter(
     const next = new Map<ElementId, Element>();
     const ctx = makeContext(active, stats, character, kind);
 
-    // Seed: everything the user explicitly chose.
-    for (const id of chosenIds) addElement(next, index, id, problems);
+    // Seed: everything the user explicitly chose, and the kind's own baseline.
+    for (const id of chosenIds) {
+      addElement(next, index, id, problems, undefined, baselineIds.has(id));
+    }
 
     // Fixed-point expansion of grants.
     let frontier = [...next.values()];
@@ -200,16 +211,19 @@ function addElement(
   id: ElementId,
   problems: Problem[],
   grantedBy?: ElementId,
+  fromKindBaseline = false,
 ): Element | undefined {
   if (into.has(id)) return into.get(id);
   const element = index.get(id);
   if (!element) {
     problems.push({
-      level: 'error',
+      level: fromKindBaseline ? 'warning' : 'error',
       code: 'unresolved-element',
-      message: grantedBy
-        ? `"${grantedBy}" grants "${id}", which is not in any loaded source.`
-        : `"${id}" is not in any loaded source.`,
+      message: fromKindBaseline
+        ? `The "${id}" element this character kind expects is not in any loaded source. The character is fine; the system definition is describing content this profile does not have.`
+        : grantedBy
+          ? `"${grantedBy}" grants "${id}", which is not in any loaded source.`
+          : `"${id}" is not in any loaded source.`,
       elementId: id,
     });
     return undefined;
@@ -272,6 +286,19 @@ function computeStats(
       value: typeof def.default === 'number' ? def.default : 0,
       text: typeof def.default === 'string' ? def.default : undefined,
       contributions: [],
+    });
+  }
+
+  // Then the character's own starting values, which replace those defaults (ADR 0014). This
+  // is a *base*, not an override: it lands before the contribution loop below, so a race's
+  // +2 adds to the score the user bought instead of being discarded by it.
+  for (const [key, value] of Object.entries(character.baseStats ?? {})) {
+    const lower = key.toLowerCase();
+    result.set(lower, {
+      name: result.get(lower)?.name ?? key,
+      value,
+      text: result.get(lower)?.text,
+      contributions: [{ value, from: 'base' }],
     });
   }
 
@@ -399,7 +426,7 @@ function collectPendingChoices(
         remaining,
         number: rule.number,
         optional: rule.optional ?? false,
-        candidates: candidatesFor(rule, index, chosen).map((e) => e.id),
+        candidates: candidatesFor(rule, index, chosen, ctx).map((e) => e.id),
         from: element.id,
       });
     }
@@ -408,12 +435,25 @@ function collectPendingChoices(
   return pending;
 }
 
-/** Elements a select rule would accept, excluding ones already chosen for it. */
-export function candidatesFor(rule: SelectRule, index: ElementIndex, exclude: ElementId[] = []): Element[] {
+/**
+ * Elements a select rule would accept, excluding ones already chosen for it.
+ *
+ * `context` is optional and only affects elements carrying their own `requirements` — the
+ * Human Variant, which exists only in a campaign using feats. Without a context those
+ * elements stay in the list: a candidate list built with no knowledge of the character is
+ * better over-inclusive than silently short.
+ */
+export function candidatesFor(
+  rule: SelectRule,
+  index: ElementIndex,
+  exclude: ElementId[] = [],
+  context?: RequirementContext,
+): Element[] {
   const excluded = new Set(exclude);
   const pool = index.byType(rule.type);
   return pool.filter((candidate) => {
     if (excluded.has(candidate.id)) return false;
+    if (context && !evaluateRequirements(candidate.requirements, context)) return false;
     const ctx: SupportsContext = {
       tags: new Set(candidate.supports.map((s) => s.toLowerCase())),
       id: candidate.id,
@@ -425,19 +465,46 @@ export function candidatesFor(rule: SelectRule, index: ElementIndex, exclude: El
   });
 }
 
+export interface ReferenceOptions {
+  /**
+   * Include ids named only by a requirement expression.
+   *
+   * On by default, because the save container wants them: embedding the target of
+   * `requirements="ID_X"` keeps a `.incu` self-describing rather than full of ids that mean
+   * nothing without a corpus.
+   *
+   * A validator wants them *off*. A grant to an id nothing declares is broken content — the
+   * character silently loses something. A requirement naming an id nothing declares is not:
+   * it is a membership test that evaluates to false, and `!ID_X` against an id that will
+   * never exist is a perfectly ordinary way to write "unless the 2024 replacement is in
+   * play". Counting the two together buries eight real breakages under eighteen deliberate
+   * ones.
+   */
+  requirements?: boolean;
+}
+
 /** Every element id the content references. Used by the CLI to validate a source. */
-export function referencedElementIds(elements: Iterable<Element>): Set<string> {
+export function referencedElementIds(
+  elements: Iterable<Element>,
+  options: ReferenceOptions = {},
+): Set<string> {
+  const withRequirements = options.requirements ?? true;
   const ids = new Set<string>();
+  const maybe = (expr: Element['requirements']): void => {
+    if (withRequirements) referencedIds(expr, ids);
+  };
+
   for (const element of elements) {
+    maybe(element.requirements);
     for (const rule of element.rules) {
       if (rule.kind === 'grant') ids.add(rule.id);
       if (rule.kind === 'select' && rule.default) ids.add(rule.default);
-      referencedIds(rule.requirements, ids);
+      maybe(rule.requirements);
     }
-    referencedIds(element.multiclass?.requirements, ids);
+    maybe(element.multiclass?.requirements);
     for (const rule of element.multiclass?.rules ?? []) {
       if (rule.kind === 'grant') ids.add(rule.id);
-      referencedIds(rule.requirements, ids);
+      maybe(rule.requirements);
     }
   }
   return ids;

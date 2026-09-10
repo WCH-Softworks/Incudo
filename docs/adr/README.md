@@ -27,3 +27,4 @@ new one that supersedes it.
 | [0011](./0011-user-systems.md) | Users can fork official systems and author entirely new ones | Accepted |
 | [0012](./0012-self-contained-saves.md) | A save is self-contained: it opens with zero content sources | Accepted (amends 0006, 0007) |
 | [0013](./0013-project-name.md) | The project is called Incudo | Accepted |
+| [0014](./0014-base-stats-are-inputs.md) | Ability scores are inputs, in their own field | Accepted (amends 0006) |

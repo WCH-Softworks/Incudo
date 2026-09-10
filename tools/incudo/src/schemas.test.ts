@@ -63,7 +63,12 @@ test('every kind of every shipped system can actually build', async () => {
       const character = createCharacter(system.id, kind.id);
       const derived = deriveCharacter(character, system, new MapElementIndex());
       assert.equal(derived.kind.id, kind.id);
-      assert.deepEqual(derived.problems, [], `${id}/${declared.id} derives with problems`);
+
+      // Errors, not warnings. A kind whose `grants` name content this empty index does not
+      // have warns and carries on, which is the point of that distinction: the system
+      // definition is describing content, and "no content loaded" is not a broken system.
+      const errors = derived.problems.filter((p) => p.level === 'error');
+      assert.deepEqual(errors, [], `${id}/${declared.id} derives with errors`);
     }
   }
 });
@@ -76,7 +81,15 @@ test('the 5e kinds are the ones ADR 0009 describes', async () => {
   assert.deepEqual(system.characterKinds.map((k) => k.id), ['pc', 'npc', 'legendary']);
 
   const pc = resolveCharacterKind(system, 'pc');
-  assert.deepEqual(pc.progression, { kind: 'level', min: 1, max: 20, stat: 'level' });
+  assert.deepEqual(pc.progression, {
+    kind: 'level',
+    min: 1,
+    max: 20,
+    stat: 'level',
+    // One ID_LEVEL_N element per level, which is what Aurora writes into every save and
+    // what its content references. See baselineElementIds.
+    elementIdPattern: 'ID_LEVEL_{n}',
+  });
   assert.equal(pc.default, true);
 
   const npc = resolveCharacterKind(system, 'npc');

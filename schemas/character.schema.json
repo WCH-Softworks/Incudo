@@ -68,6 +68,12 @@
       "additionalProperties": { "type": "number" }
     },
 
+    "baseStats": {
+      "type": "object",
+      "description": "Starting values for stats nothing computes: ability scores the user rolled, bought or typed in. They replace the kind's declared default and every contribution adds on top, so a racial +2 still lands. An INPUT in the same sense as rolls (ADR 0014) — deliberately not `overrides`, which wins over every contribution and would silently discard that +2. Keys are stat names, matched case-insensitively.",
+      "additionalProperties": { "type": "number" }
+    },
+
     "freeform": {
       "type": "object",
       "description": "Text the rules never touch: notes, appearance, backstory.",

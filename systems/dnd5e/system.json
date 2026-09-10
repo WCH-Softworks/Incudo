@@ -44,6 +44,8 @@
     { "name": "Deity", "plural": "Deities", "selectable": true, "browsable": true },
     { "name": "Alignment", "selectable": true },
     { "name": "Vision" },
+    { "name": "Size", "plural": "Sizes" },
+    { "name": "Condition", "plural": "Conditions" },
     { "name": "Creature", "plural": "Creatures", "selectable": true, "browsable": true, "children": ["Companion Trait", "Companion Action", "Companion Reaction", "Legendary Action", "Lair Action", "Regional Effect"] },
     { "name": "Companion", "plural": "Companions", "selectable": true, "browsable": true, "children": ["Companion Trait", "Companion Action", "Companion Reaction"] },
     { "name": "Companion Trait", "plural": "Traits" },
@@ -92,9 +94,19 @@
       "name": "Player Character",
       "description": "Levels 1–20, a class, a background, and the two-page sheet everyone means when they say \"character\".",
       "default": true,
-      "progression": { "kind": "level", "min": 1, "max": 20, "stat": "level" },
+      "progression": { "kind": "level", "min": 1, "max": 20, "stat": "level", "elementIdPattern": "ID_LEVEL_{n}" },
 
       "stats": [{ "name": "level", "label": "Level", "default": 1 }],
+
+      "grants": [
+        "ID_INTERNAL_GRANTS_CHARACTER_BASE",
+        "ID_INTERNAL_GRANTS_ARMOR_CLASS_BASE",
+        "ID_INTERNAL_GRANTS_ARMOR_CLASS_DEXTERITY_MODIFIER",
+        "ID_INTERNAL_GRANTS_HP_CONSTITUTION_MODIFIER",
+        "ID_INTERNAL_GRANTS_SPELLCASTING_BASE",
+        "ID_INTERNAL_GRANTS_MULTICLASS_SPELLCASTING",
+        "ID_INTERNAL_GRANTS_MULTICLASSING_PREREQUISITE"
+      ],
 
       "elementTypes": [
         "Race", "Sub Race", "Race Variant", "Racial Trait",
@@ -124,7 +136,7 @@
           { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] },
           { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency", "level"] },
           { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"] },
-          { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language"] },
+          { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language", "Condition"] },
           { "id": "spells", "label": "Spells", "types": ["Spell"] },
           { "id": "inventory", "label": "Inventory", "types": ["Item", "Weapon", "Armor", "Magic Item"] }
         ]

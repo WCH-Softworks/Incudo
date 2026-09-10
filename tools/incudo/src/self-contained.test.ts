@@ -29,6 +29,7 @@ import {
   deriveCharacter,
   packCharacterContainer,
   readCharacterContainer,
+  resolveCharacterKind,
   setChoice,
   setRoll,
   validateCharacter,
@@ -297,7 +298,9 @@ test(
 
     await withTempDir(async (dir) => {
       const path = join(dir, 'vigaro.incu');
-      const content = collectCharacterContent(character, corpus);
+      const content = collectCharacterContent(character, corpus, {
+        kind: resolveCharacterKind(system, character.kind),
+      });
       await writeContainer(path, packCharacterContainer(character, content));
 
       // A few dozen elements out of twelve thousand, in a file measured in kilobytes.
