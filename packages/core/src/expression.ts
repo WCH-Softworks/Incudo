@@ -28,11 +28,26 @@ export interface ExpressionContext {
  * Parse the value of a content `<stat value="...">`.
  * Content values are never arithmetic in the Aurora corpus, so this stays simple:
  * a number, or a stat reference, or a literal.
+ *
+ * With one exception, and it is arithmetic only in the loosest sense: a reference may be
+ * negated. `value="-warlock:spellcasting:slots:count"` is how the warlock's pact table takes
+ * back the slots of the previous tier, and reading it as a reference to a stat *named* with a
+ * leading minus resolves it to zero — so nothing is taken back and a warlock ends up with
+ * every tier of slots at once. Eight values in the corpus depend on this, all of them that
+ * one table.
  */
 export function parseStatValue(raw: string): StatExpr {
   const text = raw.trim();
   const asNumber = Number(text);
   if (text !== '' && Number.isFinite(asNumber)) return { kind: 'number', value: asNumber };
+  if (text.startsWith('-') && looksLikeStatRef(text.slice(1).trim())) {
+    return {
+      kind: 'binary',
+      op: '-',
+      left: { kind: 'number', value: 0 },
+      right: { kind: 'ref', stat: text.slice(1).trim().toLowerCase() },
+    };
+  }
   if (looksLikeStatRef(text)) return { kind: 'ref', stat: text.toLowerCase() };
   return { kind: 'literal', value: text };
 }

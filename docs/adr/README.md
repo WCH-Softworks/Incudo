@@ -31,3 +31,4 @@ new one that supersedes it.
 | [0015](./0015-class-levels.md) | A character records which track each point of progression was spent on | Accepted (amends 0006, 0009) |
 | [0016](./0016-stat-bounds-are-expressions.md) | A stat's bounds are expressions, and they apply to every stat | Accepted |
 | [0017](./0017-open-decisions-not-steps.md) | Building a character is a set of open decisions, not a sequence of steps | Accepted (amends 0009) |
+| [0018](./0018-tables-and-track-stats.md) | A stat may be read from a table, and a track may contribute one | Accepted |
