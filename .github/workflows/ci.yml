@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -25,14 +25,14 @@ jobs:
     # and fail if anything newly fails to resolve. See ADR 0005.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - name: Checkout Aurora content corpus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: AuroraLegacy/elements
           path: .corpus
