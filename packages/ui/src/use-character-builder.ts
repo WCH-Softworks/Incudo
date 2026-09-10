@@ -55,7 +55,10 @@ export interface OpenDecision {
   blocking: boolean;
   /** What opened it — "Rogue 4: Ability Score Improvement". */
   from?: ElementId;
-  /** The progression point it became available, where that is known. */
+  /**
+   * The progression point it became available, where that is known. A level in the granting
+   * element's own track, not the character's total — "Rogue 4", not "character level 9".
+   */
   openedAt?: number;
   /** A select's remaining picks, or a budget's unspent points. */
   remaining: number;

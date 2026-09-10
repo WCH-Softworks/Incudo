@@ -63,6 +63,10 @@ export interface PendingChoice {
    * The progression point this became available at — the `level` on the rule that opened
    * it, where it has one. What lets a builder say "Rogue 4: Ability Score Improvement"
    * instead of listing an unexplained choice (ADR 0017).
+   *
+   * Read it the way the gate reads it: this is a level in the granting element's *track*,
+   * not the character's total (ADR 0015). On a Rogue 5 / Wizard 3 a wizard rule's `level: 3`
+   * means wizard 3, which arrived at character level 8.
    */
   level?: number;
 }
