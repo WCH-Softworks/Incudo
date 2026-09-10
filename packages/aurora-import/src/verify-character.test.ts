@@ -38,6 +38,11 @@ function grant(id: string, key = 'grant-0'): Element['rules'][number] {
   return { kind: 'grant', key, type: '', id };
 }
 
+/** An element declaring one named block, which is what `blockStats` iterates (ADR 0020). */
+function caster(id: string, blockName: string, ability: string): Element {
+  return { ...element(id, 'Feature'), spellcasting: [{ name: blockName, ability }] };
+}
+
 const SYSTEM: GameSystem = {
   formatVersion: 1,
   id: 'test',
@@ -57,6 +62,34 @@ const SYSTEM: GameSystem = {
       progression: { kind: 'none' },
       elementTypes: ['Thing', 'Item', 'Feature'],
       buildSteps: [{ id: 'b', label: 'B', types: ['Thing'] }],
+      // ADR 0020: the DC the verifier compares is one the *system* publishes. Writing it
+      // out here is the point — the test system says 8 + proficiency + the block's ability
+      // modifier, and the verifier reads whatever comes out rather than recomputing it.
+      blockStats: [
+        {
+          stat: '{name}:spellcasting:dc',
+          value: {
+            kind: 'binary',
+            op: '+',
+            left: { kind: 'number', value: 8 },
+            right: {
+              kind: 'binary',
+              op: '+',
+              left: { kind: 'ref', stat: 'proficiency' },
+              right: { kind: 'ref', stat: '{ability}:modifier' },
+            },
+          },
+        },
+        {
+          stat: '{name}:spellcasting:attack',
+          value: {
+            kind: 'binary',
+            op: '+',
+            left: { kind: 'ref', stat: 'proficiency' },
+            right: { kind: 'ref', stat: '{ability}:modifier' },
+          },
+        },
+      ],
       sheet: { sections: [{ id: 's', label: 'S', types: ['Thing'] }] },
     },
   ],
@@ -184,36 +217,61 @@ test('what an item brought is not compared, because there is no inventory yet', 
   assert.equal(summarizeDifferences(result).get('not-modelled'), 2);
 });
 
-test('the save DC is rebuilt from the derivation, and a disagreement is reported', () => {
+test('the save DC compared is the one the system published, not one the check invented', () => {
   const index = new MapElementIndex();
-  index.addAll([element('ID_PICKED', 'Thing'), element('ID_CASTER', 'Feature')]);
-  // 8 + proficiency 3 + wisdom modifier 2 = 13. Aurora says 15.
+  index.addAll([element('ID_PICKED', 'Thing', [grant('ID_CASTER')]), caster('ID_CASTER', 'C', 'Wisdom')]);
+  // The system publishes c:spellcasting:dc as 8 + proficiency 3 + wisdom modifier 2 = 13,
+  // and c:spellcasting:attack as 5. Aurora says 15 and 7.
   const save = parseAuroraSave(
     saveXml({
-      sum: ['ID_PICKED'],
+      sum: ['ID_PICKED', 'ID_CASTER'],
       magic: '<spellcasting name="C" ability="Wisdom" dc="15" attack="7" source="ID_CASTER" />',
     }),
   );
 
-  const result = compareWithAurora(save, derive(picked(), index), { index });
+  const derived = derive(picked(), index);
+  assert.equal(derived.stats.get('c:spellcasting:dc')?.value, 13, 'the stat exists at all');
+  assert.equal(derived.stats.get('c:spellcasting:attack')?.value, 5);
+
+  const result = compareWithAurora(save, derived, { index });
   const stat = result.differences.filter((d) => d.kind === 'stat-mismatch');
   assert.equal(stat.length, 2, 'the DC and the attack bonus');
   assert.equal(stat[0]!.expected, 15);
   assert.equal(stat[0]!.actual, 13);
 });
 
+test('a block declaring no ability publishes nothing, and says so', () => {
+  const index = new MapElementIndex();
+  const extension: Element = {
+    ...element('ID_CASTER', 'Feature'),
+    spellcasting: [{ name: 'C' }],
+  };
+  index.addAll([element('ID_PICKED', 'Thing', [grant('ID_CASTER')]), extension]);
+
+  const derived = derive(picked(), index);
+  assert.equal(derived.stats.get('c:spellcasting:dc'), undefined);
+  // Reported rather than silently skipped: a caster with no DC on the sheet should be able
+  // to find out why without reading the engine.
+  assert.ok(
+    derived.problems.some(
+      (p) => p.code === 'unresolved-interpolation' && p.message.includes('{ability}:modifier'),
+    ),
+    JSON.stringify(derived.problems),
+  );
+});
+
 test('a DC the bag contributes to is not compared, because the two numbers differ honestly', () => {
   const index = new MapElementIndex();
   index.addAll([
-    element('ID_PICKED', 'Thing'),
-    element('ID_CASTER', 'Feature'),
+    element('ID_PICKED', 'Thing', [grant('ID_CASTER')]),
+    caster('ID_CASTER', 'C', 'Wisdom'),
     element('ID_TOME', 'Item', [
       { kind: 'stat', key: 'stat-0', name: 'wisdom', value: { kind: 'number', value: 2 } },
     ]),
   ]);
   const save = parseAuroraSave(
     saveXml({
-      sum: ['ID_PICKED'],
+      sum: ['ID_PICKED', 'ID_CASTER'],
       equipment: ['ID_TOME'],
       magic: '<spellcasting name="C" ability="Wisdom" dc="15" attack="7" source="ID_CASTER" />',
     }),

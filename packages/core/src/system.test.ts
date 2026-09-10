@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 
 import {
   clampProgress,
+  collectDeclaredBlocks,
   defaultCharacterKindId,
+  renderSheetSection,
+  substituteBlockPlaceholders,
   initialProgress,
   progressionStat,
   resolveCharacterKind,
@@ -12,6 +15,7 @@ import {
   type BuildStepDef,
   type GameSystem,
 } from './system.ts';
+import { declaredBlocks, type Element } from './model.ts';
 
 /**
  * A fixture with no game in it. The point of ADR 0009 is that the engine cannot name a
@@ -190,4 +194,74 @@ test('a requirement naming no step is ignored by the sort and left to validation
 
 test('a well-formed system has no cycles', () => {
   assert.deepEqual(buildStepCycles(steps(step('a'), step('b', ['a']))), []);
+});
+
+// --- declared blocks (ADR 0020) --------------------------------------------
+
+function withBlocks(id: string, blocks: Element['spellcasting']): Element {
+  return {
+    id,
+    type: 'Widget',
+    name: id,
+    source: 'Test',
+    setters: {},
+    rules: [],
+    supports: [],
+    spellcasting: blocks,
+    origin: { sourceId: 'test', format: 'incudo' },
+  };
+}
+
+test('a block is a name and some attributes, and a nameless one declares nothing', () => {
+  const element = withBlocks('ID_A', [
+    { name: 'Runesmith', ability: 'Grit' },
+    { name: '', all: true },
+  ]);
+  assert.deepEqual(declaredBlocks(element), [
+    { name: 'Runesmith', attributes: { ability: 'Grit' } },
+  ]);
+});
+
+test('two declarations of one block name are one block, first attribute winning', () => {
+  // The corpus's shape: one declaration carries the ability, and the continuations that
+  // extend it carry none. Contributing per declaration would double every number.
+  const blocks = collectDeclaredBlocks([
+    withBlocks('ID_A', [{ name: 'Runesmith', extend: 'true' }]),
+    withBlocks('ID_B', [{ name: 'Runesmith', ability: 'Grit' }]),
+  ]);
+  assert.equal(blocks.length, 1);
+  assert.deepEqual(blocks[0], { name: 'Runesmith', attributes: { extend: 'true', ability: 'Grit' } });
+});
+
+test('substitution reaches the block name and its attributes, and fails loudly', () => {
+  const block = { name: 'Runesmith', attributes: { ability: 'Grit' } };
+  assert.equal(substituteBlockPlaceholders('{name}:threshold', block), 'runesmith:threshold');
+  assert.equal(substituteBlockPlaceholders('{ability}:modifier', block), 'grit:modifier');
+  assert.equal(substituteBlockPlaceholders('plain', block), 'plain');
+  // Not "", and not a guess: a key nothing declares would read 0 and publish a wrong number.
+  assert.equal(substituteBlockPlaceholders('{focus}:modifier', block), undefined);
+});
+
+test('a perBlock section renders once per block, and skips one it cannot fill', () => {
+  const section = { id: 'casting', label: 'Casting', perBlock: true, stats: ['{name}:{ability}'] };
+  const rendered = renderSheetSection(section, [
+    { name: 'Runesmith', attributes: { ability: 'Grit' } },
+    { name: 'Silent', attributes: {} },
+  ]);
+  assert.deepEqual(rendered, [
+    {
+      id: 'casting:runesmith',
+      label: 'Casting — Runesmith',
+      stats: ['runesmith:grit'],
+      types: [],
+      blockName: 'Runesmith',
+    },
+  ]);
+});
+
+test('an ordinary section renders itself, blocks or no blocks', () => {
+  const section = { id: 's', label: 'S', stats: ['vigour'], types: ['Widget'] };
+  assert.deepEqual(renderSheetSection(section, [{ name: 'Runesmith', attributes: {} }]), [
+    { id: 's', label: 'S', stats: ['vigour'], types: ['Widget'] },
+  ]);
 });

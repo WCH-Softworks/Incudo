@@ -107,6 +107,14 @@ export interface MulticlassBlock {
   rules: Rule[];
 }
 
+/**
+ * A named block of context an element declares, alongside its rules.
+ *
+ * The field is called `spellcasting` because Aurora's tag is, and because the `.incu`
+ * content bundle serializes an Element verbatim — renaming it would move a format users
+ * already have files in, for no behaviour at all (ADR 0020). What the *engine* sees is the
+ * neutral shape {@link DeclaredBlock} below: a name and some attributes.
+ */
 export interface SpellcastingBlock {
   name: string;
   ability?: string;
@@ -114,6 +122,47 @@ export interface SpellcastingBlock {
   extend?: string;
   all?: boolean;
   allowReplace?: boolean;
+}
+
+/**
+ * The neutral view of the blocks an element declares — ADR 0020.
+ *
+ * A block is *a name plus attributes*, and nothing else. That is the whole of what a
+ * character kind's `blockStats` iterates, and it is why the mechanism can be described
+ * without saying "spell": 5e keys a save DC on the block's name and reads the ability it is
+ * built from out of an attribute, and a system keying a resonance threshold on the name of
+ * an attuned relic would use the identical machinery.
+ */
+export interface DeclaredBlock {
+  /** As written by content. Never empty — a nameless block declares no namespace. */
+  name: string;
+  /** Everything else the block said, as strings. A `{key}` placeholder reads this. */
+  attributes: Record<string, string>;
+}
+
+/**
+ * The blocks an element declares, in declaration order, skipping nameless ones.
+ *
+ * The one place core translates the Aurora-shaped field into the neutral shape. A native
+ * format that grows its own way of declaring blocks adds a branch here and nothing else.
+ */
+export function declaredBlocks(element: Element): DeclaredBlock[] {
+  const blocks: DeclaredBlock[] = [];
+  for (const block of element.spellcasting ?? []) {
+    const name = block.name.trim();
+    // `<spellcasting all="true" extend="true">` is how the corpus extends a list rather
+    // than declaring a namespace, and it names nothing at all — 91 of the 118 blocks in
+    // the corpus. A block with no name yields no stat key, so there is nothing to do.
+    if (!name) continue;
+    const attributes: Record<string, string> = {};
+    if (block.ability !== undefined) attributes['ability'] = block.ability;
+    if (block.prepare !== undefined) attributes['prepare'] = block.prepare;
+    if (block.extend !== undefined) attributes['extend'] = block.extend;
+    if (block.all) attributes['all'] = 'true';
+    if (block.allowReplace) attributes['allowreplace'] = 'true';
+    blocks.push({ name, attributes });
+  }
+  return blocks;
 }
 
 export interface ElementOrigin {

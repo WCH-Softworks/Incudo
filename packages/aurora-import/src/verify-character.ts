@@ -84,8 +84,21 @@ export interface CompareOptions {
     proficiency?: string;
     /** `"intelligence"` -> the stat holding its modifier. */
     abilityModifier?: (ability: string) => string;
-    /** Spell save DC = this + proficiency + ability modifier. */
-    saveDcBase?: number;
+    /**
+     * How the loaded system names the save DC and attack bonus of one casting source —
+     * ADR 0020. `"Bard"` -> `bard:spellcasting:dc`.
+     *
+     * These read a number Incudo *published*, which is the whole point of them existing.
+     * This file used to compute `8 + proficiency + <ability>:modifier` itself and compare
+     * it against Aurora's `8 + proficiency + <ability>:modifier`: the two agreed on all
+     * nine saves and the agreement proved only that the modifier and the bonus were right,
+     * because no stat held a DC and no sheet could have shown one. The 8 now lives in
+     * `systems/dnd5e/system.json`, where the rest of 5e's arithmetic lives.
+     */
+    spellcasting?: {
+      dc?: (blockName: string) => string;
+      attack?: (blockName: string) => string;
+    };
     /**
      * How the loaded system names spell slots — ADR 0018. Three questions, because 5e has
      * two pools and a way to tell them apart, and none of that knowledge belongs in code:
@@ -112,7 +125,10 @@ export interface CompareOptions {
 const DEFAULT_STATS = {
   proficiency: 'proficiency',
   abilityModifier: (ability: string) => `${ability.toLowerCase()}:modifier`,
-  saveDcBase: 8,
+  spellcasting: {
+    dc: (blockName: string) => `${blockName.trim().toLowerCase()}:spellcasting:dc`,
+    attack: (blockName: string) => `${blockName.trim().toLowerCase()}:spellcasting:attack`,
+  },
   slots: {
     shared: (level: number) => `spellcasting:slots:${level}`,
     own: (blockName: string, level: number) =>
@@ -131,6 +147,7 @@ export function compareWithAurora(
   const stats = {
     ...DEFAULT_STATS,
     ...options.stats,
+    spellcasting: { ...DEFAULT_STATS.spellcasting, ...options.stats?.spellcasting },
     slots: { ...DEFAULT_STATS.slots, ...options.stats?.slots },
   };
   const ignore = new Set(options.ignoreTypes ?? []);
@@ -452,16 +469,21 @@ function compareSpellcasting(
 
   compareSlots(block, derived, stats, where, differences);
 
-  if (block.dc === undefined || !block.ability) return;
+  if (block.dc === undefined && block.attack === undefined) return;
+  if (!block.ability) return;
 
-  const proficiency = derived.stats.get(stats.proficiency.toLowerCase())?.value;
-  const modifierKey = stats.abilityModifier(block.ability).toLowerCase();
-  const modifier = derived.stats.get(modifierKey)?.value;
+  const dcKey = stats.spellcasting.dc(block.name).toLowerCase();
+  const attackKey = stats.spellcasting.attack(block.name).toLowerCase();
+  const dc = derived.stats.get(dcKey)?.value;
+  const attack = derived.stats.get(attackKey)?.value;
 
-  if (proficiency === undefined || modifier === undefined) {
+  // Nothing published means nothing to compare, and saying so is the honest answer for
+  // every system that is not 5e. Until ADR 0020 this branch was the *only* possible one and
+  // the file quietly took the other road: it rebuilt the DC from a base it carried itself.
+  if (dc === undefined && attack === undefined) {
     differences.push({
       kind: 'not-modelled',
-      message: `${where}: Aurora recorded a save DC of ${block.dc}, but this system declares no "${proficiency === undefined ? stats.proficiency : modifierKey}" stat to rebuild it from.`,
+      message: `${where}: Aurora recorded a save DC of ${block.dc ?? '—'} and an attack bonus of ${block.attack ?? '—'}, but no loaded system publishes "${dcKey}" or "${attackKey}".`,
       expected: block.dc,
     });
     return;
@@ -469,11 +491,14 @@ function compareSpellcasting(
 
   // The bag is not on the sheet yet. If it contributes to the very ability this DC is built
   // from, the two numbers are answering different questions and comparing them says nothing.
+  const modifierKey = stats.abilityModifier(block.ability).toLowerCase();
   const ability = block.ability.toLowerCase();
   const carried =
     fromInventory.get(ability) ??
     fromInventory.get(modifierKey) ??
-    fromInventory.get(stats.proficiency.toLowerCase());
+    fromInventory.get(stats.proficiency.toLowerCase()) ??
+    fromInventory.get(dcKey) ??
+    fromInventory.get(attackKey);
   if (carried) {
     differences.push({
       kind: 'not-modelled',
@@ -484,26 +509,22 @@ function compareSpellcasting(
     return;
   }
 
-  const expected = stats.saveDcBase + proficiency + modifier;
-  if (expected !== block.dc) {
+  if (block.dc !== undefined && dc !== undefined && dc !== block.dc) {
     differences.push({
       kind: 'stat-mismatch',
-      message: `${where}: Aurora's save DC is ${block.dc}; ${stats.saveDcBase} + proficiency ${proficiency} + ${block.ability} modifier ${modifier} gives ${expected}.`,
+      message: `${where}: Aurora's save DC is ${block.dc}; Incudo publishes "${dcKey}" as ${dc}.`,
       expected: block.dc,
-      actual: expected,
+      actual: dc,
     });
   }
 
-  if (block.attack !== undefined) {
-    const expectedAttack = proficiency + modifier;
-    if (expectedAttack !== block.attack) {
-      differences.push({
-        kind: 'stat-mismatch',
-        message: `${where}: Aurora's spell attack bonus is ${block.attack}; proficiency ${proficiency} + ${block.ability} modifier ${modifier} gives ${expectedAttack}.`,
-        expected: block.attack,
-        actual: expectedAttack,
-      });
-    }
+  if (block.attack !== undefined && attack !== undefined && attack !== block.attack) {
+    differences.push({
+      kind: 'stat-mismatch',
+      message: `${where}: Aurora's spell attack bonus is ${block.attack}; Incudo publishes "${attackKey}" as ${attack}.`,
+      expected: block.attack,
+      actual: attack,
+    });
   }
 }
 

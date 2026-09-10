@@ -142,6 +142,23 @@
         { "stat": "{name}:spellcasting:solo", "when": "ID_INTERNAL_GRANT_MULTICLASS_SPELLCASTING_SLOTS_SOLO", "value": { "kind": "number", "value": 1 } }
       ],
 
+      "blockStats": [
+        { "stat": "{name}:spellcasting:dc",
+          "value": { "kind": "binary", "op": "+",
+            "left": { "kind": "number", "value": 8 },
+            "right": { "kind": "binary", "op": "+",
+              "left": { "kind": "ref", "stat": "proficiency" },
+              "right": { "kind": "binary", "op": "+",
+                "left": { "kind": "ref", "stat": "{ability}:modifier" },
+                "right": { "kind": "ref", "stat": "spellcasting:dc" } } } } },
+        { "stat": "{name}:spellcasting:attack",
+          "value": { "kind": "binary", "op": "+",
+            "left": { "kind": "ref", "stat": "proficiency" },
+            "right": { "kind": "binary", "op": "+",
+              "left": { "kind": "ref", "stat": "{ability}:modifier" },
+              "right": { "kind": "ref", "stat": "spellcasting:attack" } } } }
+      ],
+
       "elementTypes": [
         "Race", "Sub Race", "Race Variant", "Racial Trait",
         "Class", "Multiclass", "Class Feature", "Archetype", "Archetype Feature",
@@ -172,6 +189,8 @@
           { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency", "level"] },
           { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"] },
           { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language", "Condition"] },
+          { "id": "spellcasting", "label": "Spellcasting", "perBlock": true, "stats": ["{name}:spellcasting:dc", "{name}:spellcasting:attack"] },
+          { "id": "slots", "label": "Spell Slots", "stats": ["spellcasting:slots:1", "spellcasting:slots:2", "spellcasting:slots:3", "spellcasting:slots:4", "spellcasting:slots:5", "spellcasting:slots:6", "spellcasting:slots:7", "spellcasting:slots:8", "spellcasting:slots:9"] },
           { "id": "spells", "label": "Spells", "types": ["Spell"] },
           { "id": "inventory", "label": "Inventory", "types": ["Item", "Weapon", "Armor", "Magic Item"] }
         ]

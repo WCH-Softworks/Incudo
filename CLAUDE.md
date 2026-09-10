@@ -125,7 +125,10 @@ unresolved references.
 Aurora saves: **all 9 import; 1 element-missing, 0 spell-missing, 0 stat-mismatch**, and
 **53 element-extra**, with **51 not-modelled** and **13 content-missing** reported and not
 counted. All **8 recorded spell slot rows are compared and agree** since ADR 0018 — they used
-to be 8 of the not-modelled notes, which is where 59 became 51.
+to be 8 of the not-modelled notes, which is where 59 became 51. Since ADR 0020 the **7 save
+DC rows and 7 attack rows** are compared against stats Incudo publishes rather than against a
+formula the verifier owned; the eighth pair is the Tome of Clear Thought wizard, and it was
+already one of the not-modelled notes, so no count moved.
 The eight original saves are single-classed and contribute 52 of those
 extras, all one species — content AuroraLegacy added *after* those saves were written,
 confirmed against upstream commit dates.
@@ -189,6 +192,22 @@ Two things ADR 0018 added that are easy to reach for wrongly:
   corpus ships its own slot table as level-gated `<stat>` rules, and its weighting as a marker
   grant. Before modelling a number Aurora computes, grep the 740 files: twice now the answer
   has been "content says it and Incudo was not reading it".
+
+**There are three keyings of a stat, not two** (ADR 0020). A stat is contributed to a
+character, or once per *track* (`trackStats`, ADR 0018), or once per *declared block*
+(`blockStats`). The third exists because the second cannot reach it: the namespace content
+uses is the `<spellcasting>` block's name, and an Eldritch Knight's is `eldritch knight`
+while its ADR 0015 track is `fighter`. `blockStats` substitutes `{name}` from the block and
+`{anything else}` from the block's attributes — including inside a `ref`, which is how
+`{ability}:modifier` becomes `charisma:modifier`. If a placeholder does not resolve, nothing
+is contributed and the derivation says so.
+
+**`aurora verify` used to mark its own homework on the save DC**, and the way it did it is
+worth remembering before trusting the next agreeing number. It carried `saveDcBase: 8` and
+compared its own `8 + proficiency + ability` against Aurora's `8 + proficiency + ability`.
+That is real evidence about the modifier and the bonus and no evidence at all about the DC,
+which did not exist. The 8 is now in `systems/dnd5e/system.json` and the check reads the
+published stat. Both directions were proved live by perturbation, not by the check passing.
 
 Two things that follow from the format work, for anyone changing this code:
 

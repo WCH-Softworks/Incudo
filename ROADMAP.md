@@ -122,8 +122,8 @@ Each of these is reported by `aurora verify` as `not-modelled` rather than quiet
   for items, their equipped slot, or attunement. This is the `equipment` build step below.
 - **Spell slots and spell save DC as stats.** Aurora computes the multiclass slot table in its
   own code; the 5e system definition declares no slot table, no `spellcasting:dc`, and no
-  ability-score maximum. *(The maximum landed with ADR 0016 and the slot table with ADR 0018;
-  the DC is the one still outstanding.)*
+  ability-score maximum. *(All three landed: the maximum with ADR 0016, the slot table with
+  ADR 0018, and the save DC and attack bonus with ADR 0020.)*
 
 ---
 
@@ -194,10 +194,19 @@ before any code, both touching a public API:
         and never the total, so there is no `<sum>`, no `<magic>` and no stat block to diff.
         This is the first Phase 2 number settled by reading the rules rather than by the
         differential check, and it should be read that way.
-  - [ ] **Spell save DC and attack bonus as declared stats.** Less missing than it looked:
-        `aurora verify` already rebuilds both and compares them, and reports 0 mismatches
-        across all nine saves. What is missing is *publishing* them, so a sheet can show
-        them; the formula currently lives in the verifier's defaults.
+  - [x] **Spell save DC and attack bonus as declared stats**, which needed
+        [ADR 0020](./docs/adr/0020-stats-keyed-on-declared-blocks.md). Written here as though
+        only the *publishing* were missing, on the grounds that `aurora verify` already
+        rebuilt both and reported 0 mismatches. That reading was wrong in the way that
+        matters: the verifier carried its own `saveDcBase: 8` and was comparing
+        `8 + proficiency + ability` against Aurora's `8 + proficiency + ability` — real
+        evidence that the modifier and the bonus were right, and no evidence at all that
+        Incudo could show a DC, because no stat held one. A third keying was needed: stats
+        published per *declared block*, because the namespace is the block's name and an
+        Eldritch Knight's is `eldritch knight` while its ADR 0015 track is `fighter`.
+        Seven DC rows and seven attack rows are now compared against Incudo's own published
+        number and agree; the eighth pair belongs to a wizard whose Tome of Clear Thought
+        Incudo has nowhere to put, and is reported as `not-modelled` until inventory lands.
 - [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope.
 - [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md)) and

@@ -19,6 +19,8 @@
 import {
   BundleElementIndex,
   collectCharacterContent,
+  collectDeclaredBlocks,
+  renderSheetSection,
   createCharacter,
   defaultCharacterKindId,
   clampProgress,
@@ -458,15 +460,22 @@ function printSheet(derived: DerivedCharacter, embedded: number, ctx: CommandCon
   ctx.out(`  ${describeProgress(kind, character)}\n`);
   ctx.out(`  ${derived.elements.length} elements (${embedded} embedded in the save)\n\n`);
 
-  for (const section of kind.sheet.sections) {
-    const stats = (section.stats ?? [])
+  // A `perBlock` section expands into one rendering per block the character declares —
+  // the spell save DC of each casting source, which no section can name (ADR 0020).
+  const blocks = collectDeclaredBlocks(derived.elements);
+  const sections = kind.sheet.sections.flatMap((section) =>
+    renderSheetSection(section, blocks),
+  );
+
+  for (const section of sections) {
+    const stats = section.stats
       .map((name) => {
         const stat = derived.stats.get(name.toLowerCase());
         return stat ? `${name} ${stat.text ?? stat.value}` : undefined;
       })
       .filter((s): s is string => s !== undefined);
 
-    const elements = derived.elements.filter((e) => (section.types ?? []).includes(e.type));
+    const elements = derived.elements.filter((e) => section.types.includes(e.type));
     if (!stats.length && !elements.length) continue;
 
     ctx.out(`  ${section.label}\n`);

@@ -12,7 +12,8 @@
  * challenge rating and a stat block; they share only the stats underneath.
  */
 
-import type { ElementId, ElementType, StatKey } from './model.ts';
+import type { DeclaredBlock, Element, ElementId, ElementType, StatKey } from './model.ts';
+import { declaredBlocks } from './model.ts';
 import type { StatExpr } from './expression.ts';
 
 export interface ElementTypeDef {
@@ -99,6 +100,88 @@ export interface TrackStatDef {
 /** `"{name}:spellcasting:solo"` on a track rooted at Warlock -> `warlock:spellcasting:solo`. */
 export function trackStatName(def: TrackStatDef, elementName: string): StatKey {
   return def.stat.replace(TRACK_NAME_PLACEHOLDER, elementName.trim().toLowerCase());
+}
+
+/**
+ * A stat contributed once per declared block — ADR 0020.
+ *
+ * The third keying, after the character's own stats and ADR 0018's per-track ones, and it
+ * exists because the other two cannot reach this. An element may declare named blocks
+ * ({@link DeclaredBlock}), content keys stats on those names, and the name is *not* the
+ * track's: an Eldritch Knight's block is called `eldritch knight` while its track is
+ * `fighter`, so `trackStats`' `{name}` substitutes the wrong word and nothing else in the
+ * engine substitutes the right one.
+ *
+ * Read as: **for every distinct block name the character's elements declare, evaluate
+ * `value` and contribute it to `stat`.** Both are written with placeholders:
+ *
+ *  - `{name}` is the block's name, lowercased — `"{name}:spellcasting:dc"` publishes
+ *    `bard:spellcasting:dc`, which is the key content already contributes item bonuses to;
+ *  - `{anything else}` reads that attribute off the block, also lowercased, and it works
+ *    inside a `ref` as well as in `stat`, so `"{ability}:modifier"` resolves to
+ *    `charisma:modifier` for the Bard and `intelligence:modifier` for the Wizard.
+ *
+ * An entry whose placeholders do not all resolve contributes nothing and reports itself.
+ * Guessing an ability for a block that declares none would be exactly the invention ADR
+ * 0005 rules out.
+ */
+export interface BlockStatDef {
+  /** The stat contributed to, after substitution. Usually carries `{name}`. */
+  stat: StatKey;
+  /** Evaluated once per block. Placeholders inside a `ref`'s stat name resolve too. */
+  value: StatExpr;
+}
+
+/**
+ * Substitute a block's name and attributes into a stat key.
+ *
+ * Returns `undefined` when a placeholder names something the block does not declare —
+ * which is a real case, not a defect: 5e's `<spellcasting name="Warlock" extend="true">`
+ * carries no `ability`, and a character holding only such a block has no casting ability
+ * for the engine to build a DC from.
+ */
+export function substituteBlockPlaceholders(
+  text: string,
+  block: DeclaredBlock,
+): StatKey | undefined {
+  let missing = false;
+  const out = text.replace(/\{([^{}]*)\}/g, (_match, key: string) => {
+    const lower = key.trim().toLowerCase();
+    const value = lower === 'name' ? block.name : block.attributes[lower];
+    if (value === undefined || value.trim() === '') {
+      missing = true;
+      return '';
+    }
+    return value.trim().toLowerCase();
+  });
+  return missing ? undefined : out;
+}
+
+/**
+ * The blocks a set of elements declares, one entry per distinct name.
+ *
+ * Merging matters and is not tidiness. A block name is a stat *namespace*, so contributing
+ * once per declaration would double a Bard's save DC the day a character holds both the
+ * 2014 and the 2024 Bard — and 91 of the corpus's 118 blocks are `extend="true"`
+ * continuations that declare no ability at all, whose whole purpose is to be the same block
+ * as the one that does. First declaration wins per attribute, in element order.
+ */
+export function collectDeclaredBlocks(elements: Iterable<Element>): DeclaredBlock[] {
+  const byName = new Map<string, DeclaredBlock>();
+  for (const element of elements) {
+    for (const block of declaredBlocks(element)) {
+      const key = block.name.trim().toLowerCase();
+      const existing = byName.get(key);
+      if (!existing) {
+        byName.set(key, { name: block.name, attributes: { ...block.attributes } });
+        continue;
+      }
+      for (const [attr, value] of Object.entries(block.attributes)) {
+        if (existing.attributes[attr] === undefined) existing.attributes[attr] = value;
+      }
+    }
+  }
+  return [...byName.values()];
 }
 
 /**
@@ -235,6 +318,78 @@ export interface SheetSectionDef {
   stats?: StatKey[];
   /** Element types listed in this section. */
   types?: ElementType[];
+  /**
+   * Render this section once per block the character declares, substituting the block's
+   * name and attributes into every entry of `stats` — ADR 0020.
+   *
+   * Needed because {@link BlockStatDef} publishes stats a section cannot name. There is no
+   * `bard:spellcasting:dc` in any system definition and there never can be: the key comes
+   * from content, and enumerating the corpus's twelve block names would be wrong the day a
+   * source ships a thirteenth.
+   *
+   * The flag is what makes `{name}` mean something here. Everywhere else in a system
+   * definition `{name}` names the subject of an iteration — a track in `trackStats`, a block
+   * in `blockStats` — and a sheet section iterates nothing until it says what it iterates.
+   */
+  perBlock?: boolean;
+}
+
+/**
+ * One rendering of a sheet section: its label and the stat keys to read — ADR 0020.
+ *
+ * An ordinary section yields exactly itself. A `perBlock` section yields one entry per
+ * block the character declares, in declaration order, with the block's name in the label so
+ * two casting sources are told apart. A section whose stats do not all resolve for a block
+ * is skipped for that block rather than shown half-empty.
+ */
+export interface SheetSectionRendering {
+  id: string;
+  label: string;
+  stats: StatKey[];
+  types: ElementType[];
+  /** The block this rendering is for, when the section is `perBlock`. */
+  blockName?: string;
+}
+
+/**
+ * Expand a sheet section against the blocks a character's elements declare.
+ *
+ * The one piece of `perBlock` a shell must not reimplement: core owns the substitution so
+ * that the CLI's sheet, the desktop sheet and the mobile sheet cannot disagree about what a
+ * section shows.
+ */
+export function renderSheetSection(
+  section: SheetSectionDef,
+  blocks: readonly DeclaredBlock[],
+): SheetSectionRendering[] {
+  const base = { id: section.id, stats: section.stats ?? [], types: section.types ?? [] };
+  if (!section.perBlock) return [{ ...base, label: section.label }];
+
+  const renderings: SheetSectionRendering[] = [];
+  for (const block of blocks) {
+    const stats: StatKey[] = [];
+    let complete = true;
+    for (const stat of base.stats) {
+      const key = substituteBlockPlaceholders(stat, block);
+      if (key === undefined) {
+        complete = false;
+        break;
+      }
+      stats.push(key);
+    }
+    if (!complete) continue;
+    renderings.push({
+      id: `${section.id}:${block.name.trim().toLowerCase()}`,
+      label: `${section.label} — ${block.name}`,
+      stats,
+      // Element lists are not per-block: a block names a stat namespace, not a filter over
+      // the character's elements. Repeating the same spell list under every casting source
+      // would be a confident lie about which source it came from.
+      types: [],
+      blockName: block.name,
+    });
+  }
+  return renderings;
 }
 
 export interface SheetLayoutDef {
@@ -347,6 +502,11 @@ export interface CharacterKindDef {
    * `extends` chain, like `buildSteps` and `grants`.
    */
   trackStats?: TrackStatDef[];
+  /**
+   * Stats contributed once per declared block — ADR 0020. Replaced rather than merged along
+   * an `extends` chain, like `trackStats`.
+   */
+  blockStats?: BlockStatDef[];
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -365,6 +525,8 @@ export interface ResolvedCharacterKind {
   grants: ElementId[];
   /** Stats each of the character's tracks contributes — ADR 0018. */
   trackStats: TrackStatDef[];
+  /** Stats each block the character's elements declare contributes — ADR 0020. */
+  blockStats: BlockStatDef[];
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -487,6 +649,7 @@ export function resolveCharacterKind(
   for (const stat of system.stats) stats.set(stat.name.toLowerCase(), stat);
   let grants: ElementId[] = [];
   let trackStats: TrackStatDef[] = [];
+  let blockStats: BlockStatDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -500,6 +663,7 @@ export function resolveCharacterKind(
     for (const stat of layer.stats ?? []) stats.set(stat.name.toLowerCase(), stat);
     if (layer.grants !== undefined) grants = layer.grants;
     if (layer.trackStats !== undefined) trackStats = layer.trackStats;
+    if (layer.blockStats !== undefined) blockStats = layer.blockStats;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -514,6 +678,7 @@ export function resolveCharacterKind(
     stats: [...stats.values()],
     grants,
     trackStats,
+    blockStats,
     buildSteps,
     sheet,
   };

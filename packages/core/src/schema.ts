@@ -209,8 +209,24 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     const progress = progressionStat(resolved.progression);
     if (progress) statNames.add(progress.toLowerCase());
 
+    // A `perBlock` section names stats no system definition can declare — the key comes
+    // from content, so `bard:spellcasting:dc` is unknowable here (ADR 0020). What *is*
+    // checkable, and worth checking, is that its patterns are ones this kind publishes:
+    // a section showing "{name}:spellcasting:dc" with no matching blockStats entry renders
+    // a row of blanks, and that is the mistake an author actually makes.
+    const blockStatPatterns = new Set(resolved.blockStats.map((b) => b.stat.toLowerCase()));
+
     for (const section of resolved.sheet.sections) {
       for (const stat of section.stats ?? []) {
+        if (section.perBlock) {
+          if (!blockStatPatterns.has(stat.toLowerCase())) {
+            errors.push({
+              path: `${where}.sheet`,
+              message: `section "${section.id}" is perBlock and shows "${stat}", which no blockStats entry of this kind publishes`,
+            });
+          }
+          continue;
+        }
         if (!statNames.has(stat.toLowerCase())) {
           errors.push({
             path: `${where}.sheet`,

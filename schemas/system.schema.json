@@ -299,6 +299,7 @@
           "description": "Element ids every character of this kind has without choosing them. The system-definition home for what Aurora answers in application code: a 5e character has a base armour class and adds its Constitution modifier to hit points, and no content file says so. Not stored on the character, so fixing the baseline fixes every character rather than only the ones saved afterwards."
         },
         "trackStats": { "type": "array", "items": { "$ref": "#/$defs/trackStat" } },
+        "blockStats": { "type": "array", "items": { "$ref": "#/$defs/blockStat" } },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
       }
@@ -323,6 +324,24 @@
         "value": {
           "$ref": "#/$defs/expr",
           "description": "Evaluated once per matching track. The reserved reference \"track:progress\" reads that track's own count."
+        }
+      }
+    },
+
+    "blockStat": {
+      "description": "A stat contributed once per declared block (ADR 0020). An element may declare named blocks — Aurora's <spellcasting name=\"Bard\" ability=\"Charisma\"> is the corpus's only kind — and content keys stats on those names. It is a third keying, not a second: the block's name is not the track's, so an Eldritch Knight's stats live under \"eldritch knight\" while its track is \"fighter\", and trackStats' {name} substitutes the wrong word. For every distinct block name the character's elements declare, `value` is evaluated and added to `stat`. Block contributions land with content's and with trackStats', before derivations read them.",
+      "type": "object",
+      "required": ["stat", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "stat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The stat contributed to. `{name}` is the block's lowercased name, so \"{name}:spellcasting:dc\" publishes bard:spellcasting:dc — which is the key content already contributes item bonuses to. Any other `{key}` reads that attribute off the block."
+        },
+        "value": {
+          "$ref": "#/$defs/expr",
+          "description": "Evaluated once per block. Placeholders resolve inside a `ref`'s stat name too, so \"{ability}:modifier\" reads charisma:modifier for the Bard and intelligence:modifier for the Wizard. An entry with a placeholder the block does not declare contributes nothing and is reported."
         }
       }
     },
@@ -400,7 +419,11 @@
               "id": { "type": "string", "minLength": 1 },
               "label": { "type": "string", "minLength": 1 },
               "stats": { "type": "array", "items": { "type": "string" } },
-              "types": { "type": "array", "items": { "type": "string" } }
+              "types": { "type": "array", "items": { "type": "string" } },
+              "perBlock": {
+                "type": "boolean",
+                "description": "Render this section once per block the character declares, substituting the block's name and attributes into every entry of `stats` (ADR 0020). Needed because blockStats publishes keys a section cannot name: there is no bard:spellcasting:dc in any system definition and there never can be, because the key comes from content. The flag is also what makes `{name}` mean something here — elsewhere it names the subject of an iteration, and a sheet section iterates nothing until it says what it iterates."
+              }
             }
           }
         }

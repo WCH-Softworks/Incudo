@@ -13,14 +13,24 @@
  * The iteration cap exists because content from the internet can be cyclic.
  */
 
-import type { Element, ElementId, ElementIndex, Rule, StatKey, SelectRule, StatRule } from './model.ts';
+import type {
+  Element,
+  ElementId,
+  ElementIndex,
+  Rule,
+  StatKey,
+  SelectRule,
+  StatRule,
+} from './model.ts';
 import type { Character } from './character.ts';
 import { advancementCounts, advancementElementIds } from './character.ts';
 import type { GameSystem, ResolvedCharacterKind, StatDef } from './system.ts';
 import {
   baselineElementIds,
+  collectDeclaredBlocks,
   progressionStat,
   resolveCharacterKind,
+  substituteBlockPlaceholders,
   trackStatKey,
   trackStatName,
   sumRecordedRolls,
@@ -197,6 +207,7 @@ export function deriveCharacter(
       levelFor,
       trackLevels,
       nextMembers,
+      problems,
     );
 
     changed = !sameKeys(active, next) || !sameStats(stats, nextStats);
@@ -409,6 +420,7 @@ function computeStats(
   levelFor: TrackLevelReader,
   trackLevels: Map<ElementId, number>,
   trackMembers: Map<ElementId, Set<ElementId>>,
+  problems: Problem[],
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
@@ -511,6 +523,52 @@ function computeStats(
         value: (existing?.value ?? 0) + value,
         text: existing?.text,
         contributions: [...(existing?.contributions ?? []), { value, from: rootId }],
+      });
+    }
+  }
+
+  // What each declared block contributes — ADR 0020. Alongside the track contributions
+  // above, and for the same reason: the kind cannot name the blocks, so it says "for every
+  // block, publish this", and `{name}` and `{ability}` are filled in from the block itself.
+  //
+  // Landing here rather than in the derivations is what lets content's own item bonuses —
+  // a rod of the pact keeper's `warlock:spellcasting:dc` — sit in the same stat and sum.
+  for (const block of collectDeclaredBlocks(active.values())) {
+    for (const def of kind.blockStats) {
+      const key = substituteBlockPlaceholders(def.stat, block);
+      // A ref whose placeholder does not resolve would otherwise read a stat named
+      // `{ability}:modifier`, which nothing declares, and quietly contribute a DC eight
+      // points low. Better to publish nothing and say why (ADR 0005).
+      let unresolved: string | undefined;
+      const blockCtx: ExpressionContext = {
+        statNumber: (s) => {
+          const name = substituteBlockPlaceholders(s, block);
+          if (name === undefined) unresolved ??= s;
+          return name === undefined ? 0 : ctx.statNumber(name);
+        },
+        statString: (s) => {
+          const name = substituteBlockPlaceholders(s, block);
+          if (name === undefined) unresolved ??= s;
+          return name === undefined ? undefined : ctx.statString(name);
+        },
+        rollSum: ctx.rollSum,
+      };
+      const value = evaluateExpr(def.value, blockCtx);
+      if (key === undefined || unresolved !== undefined) {
+        problems.push({
+          level: 'warning',
+          code: 'unresolved-interpolation',
+          message: `The "${def.stat}" stat is published per block, and the "${block.name}" block declares nothing for "${key === undefined ? def.stat : unresolved}". Nothing is contributed for it.`,
+        });
+        continue;
+      }
+      const lower = key.toLowerCase();
+      const existing = result.get(lower);
+      result.set(lower, {
+        name: existing?.name ?? key,
+        value: (existing?.value ?? 0) + value,
+        text: existing?.text,
+        contributions: [...(existing?.contributions ?? []), { value, from: `block:${block.name}` }],
       });
     }
   }

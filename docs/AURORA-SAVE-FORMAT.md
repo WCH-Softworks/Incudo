@@ -170,6 +170,16 @@ pact magic being outside the multiclass table, and a half-caster's contribution 
 are both pinned by the ninth save. Rounding *down* rather than up is not — `floor(2/2)` and
 `ceil(2/2)` are both 1, and no sample save has two classes with the Spellcasting feature.
 
+The **spell save DC and attack bonus** joined them with
+[ADR 0020](./adr/0020-stats-keyed-on-declared-blocks.md), and that one changed what the check
+means rather than adding to it. Before, this file's own `saveDcBase: 8` rebuilt the DC and
+compared it against Aurora's identically-computed one — which confirmed the ability modifier
+and the proficiency bonus, and nothing about whether Incudo could show a DC, because no stat
+held one. Both numbers are now published per casting source by the system definition, and it
+is those that are compared: 7 DC rows and 7 attack rows across the nine saves. The eighth pair
+belongs to a wizard carrying a Tome of Clear Thought and stays `not-modelled` with the item
+named, for the same reason as everything else in the bag.
+
 **All 53 `element-extra` differences are one species: content AuroraLegacy added after these
 saves were written.** That is not a guess — each family was traced to its upstream commit:
 

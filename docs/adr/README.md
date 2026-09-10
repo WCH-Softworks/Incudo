@@ -33,3 +33,4 @@ new one that supersedes it.
 | [0017](./0017-open-decisions-not-steps.md) | Building a character is a set of open decisions, not a sequence of steps | Accepted (amends 0009) |
 | [0018](./0018-tables-and-track-stats.md) | A stat may be read from a table, and a track may contribute one | Accepted |
 | [0019](./0019-recorded-rolls-are-readable.md) | A recorded roll is readable by a derivation | Accepted |
+| [0020](./0020-stats-keyed-on-declared-blocks.md) | An element's declared blocks may publish stats | Accepted |
