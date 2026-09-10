@@ -10,7 +10,7 @@
   "sources": [],
   "integrity": {
     "character.json": "sha256-915652d150cd8274ce328d6952b868c1a6ee3f367bb955e76fc1667348d9bb11",
-    "content.json": "sha256-9c73a138fde5778b132afd6943dbe7c37bf2f0a603a3bf488d43b5c3753d8c82"
+    "content.json": "sha256-6b0dd119c269dc503e8e045e6bf573375f2835562a065738b85fd9d87b1a84c5"
   },
   "generator": "incudo-fixtures",
   "created": "2026-01-01T00:00:00.000Z",

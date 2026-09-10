@@ -166,9 +166,11 @@ Three things Phase 1 changed that are easy to trip over:
 - **`packages/aurora-import` supplies 80 elements no content file declares.** The 5e system
   definition names seven of them in `kind.grants`. That coupling is deliberate — 5e content in
   this project *is* Aurora content — but it is why a missing kind grant warns rather than errors.
-- **Three Aurora constructs were being silently dropped** until Phase 1: element-level
-  `<supports>` (3,611 blocks — *every* support tag in the corpus), element-level
-  `<requirements>` (1,845), and `<append>` (171). See docs/AURORA-FORMAT.md.
+- **Four Aurora constructs were being silently dropped**: element-level `<supports>`
+  (3,611 blocks — *every* support tag in the corpus), element-level `<requirements>` (1,845),
+  `<append>` (171), and — found later, fixed by ADR 0021 — `equipped=` (79, none of which is
+  `"true"`, all read as `false`). Every one was found by counting what the corpus contains
+  rather than by reading the format. See docs/AURORA-FORMAT.md.
 
 **The builder has no current step** (ADR 0017). `CharacterBuilder` publishes `decisions` — one
 flat, always-current list — and `steps` is a grouping with `available`/`blockedBy`, not a
@@ -192,6 +194,14 @@ Two things ADR 0018 added that are easy to reach for wrongly:
   corpus ships its own slot table as level-gated `<stat>` rules, and its weighting as a marker
   grant. Before modelling a number Aurora computes, grep the 740 files: twice now the answer
   has been "content says it and Incudo was not reading it".
+
+**`Rule.equipped` is parsed and read by nothing** (ADR 0021). It is a `RequirementExpr`, all
+79 in the corpus are conditions like `[armor:none]`, and the engine does not evaluate them —
+so all 79 rules still apply unconditionally. Deliberate, and measured: with no inventory
+there is no `armor` stat, so `[armor:none]` reads *false* for a character wearing nothing and
+`[armor:any]` reads false for one in plate, while every negation reads true. Evaluating today
+costs a monk their Unarmoured Defence and an armoured fighter the Defense fighting style. It
+waits for inventory; do not wire it up early.
 
 **There are three keyings of a stat, not two** (ADR 0020). A stat is contributed to a
 character, or once per *track* (`trackStats`, ADR 0018), or once per *declared block*

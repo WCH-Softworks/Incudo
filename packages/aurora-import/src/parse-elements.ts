@@ -301,7 +301,7 @@ function parseRules(
           requirements,
           spellcasting: child.attrs['spellcasting'],
           prepared: child.attrs['prepared'] === 'true',
-          equipped: child.attrs['equipped'] === 'true',
+          equipped: safeRequirements(child.attrs['equipped'], ownerId, diagnostics, fileUrl),
           allowReplace: child.attrs['allowReplace'] === 'true',
           name: child.attrs['name'],
         });
@@ -340,7 +340,7 @@ function parseRules(
           max: numberOrUndefined(child.attrs['max'] ?? child.attrs['maximum']),
           level,
           requirements,
-          equipped: child.attrs['equipped'] === 'true',
+          equipped: safeRequirements(child.attrs['equipped'], ownerId, diagnostics, fileUrl),
           alt: child.attrs['alt'],
           inline: child.attrs['inline'] === 'true',
         });

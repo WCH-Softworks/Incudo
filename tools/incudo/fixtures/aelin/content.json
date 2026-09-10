@@ -14,7 +14,6 @@
           "type": "Calling Feature",
           "id": "ID_FEATURE_WATCHFUL",
           "prepared": false,
-          "equipped": false,
           "allowReplace": false
         },
         {
@@ -24,7 +23,6 @@
           "id": "ID_FEATURE_SECOND_WIND",
           "level": 3,
           "prepared": false,
-          "equipped": false,
           "allowReplace": false
         },
         {
@@ -34,7 +32,6 @@
           "id": "ID_FEATURE_UNBROKEN",
           "level": 7,
           "prepared": false,
-          "equipped": false,
           "allowReplace": false
         },
         {
@@ -45,7 +42,6 @@
             "kind": "number",
             "value": 2
           },
-          "equipped": false,
           "inline": false
         },
         {
@@ -81,7 +77,6 @@
             "kind": "number",
             "value": -1
           },
-          "equipped": false,
           "inline": false
         }
       ],
@@ -108,7 +103,6 @@
             "value": 3
           },
           "bonus": "unbroken",
-          "equipped": false,
           "inline": false
         }
       ],
@@ -134,7 +128,6 @@
             "kind": "number",
             "value": 1
           },
-          "equipped": false,
           "inline": false
         }
       ],
@@ -172,7 +165,6 @@
           "type": "Kin Trait",
           "id": "ID_TRAIT_AMPHIBIOUS",
           "prepared": false,
-          "equipped": false,
           "allowReplace": false
         },
         {
@@ -181,7 +173,6 @@
           "type": "Kin Trait",
           "id": "ID_TRAIT_TIDEBORN",
           "prepared": false,
-          "equipped": false,
           "allowReplace": false
         },
         {
@@ -190,7 +181,6 @@
           "type": "Kin Trait",
           "id": "ID_TRAIT_MISSING_ON_PURPOSE",
           "prepared": false,
-          "equipped": false,
           "allowReplace": false
         },
         {
@@ -201,7 +191,6 @@
             "kind": "number",
             "value": 5
           },
-          "equipped": false,
           "inline": false
         },
         {
@@ -243,7 +232,6 @@
             "kind": "number",
             "value": 2
           },
-          "equipped": false,
           "inline": false
         }
       ],
@@ -271,7 +259,6 @@
             "kind": "number",
             "value": 5
           },
-          "equipped": false,
           "inline": false
         }
       ],
@@ -299,7 +286,6 @@
             "kind": "number",
             "value": 1
           },
-          "equipped": false,
           "inline": false
         }
       ],
@@ -330,7 +316,6 @@
             "kind": "has",
             "id": "ID_KIN_RIVERFOLK"
           },
-          "equipped": false,
           "inline": false
         },
         {
@@ -342,7 +327,6 @@
             "value": 1
           },
           "bonus": "tide",
-          "equipped": false,
           "inline": false
         }
       ],

@@ -1,10 +1,11 @@
 /**
- * The elements parser, on the three constructs it used to walk straight past.
+ * The elements parser, on the four constructs it used to walk straight past.
  *
- * All three were found by pointing the differential verification at real saves and then
+ * All four were found by pointing the differential verification at real saves and then
  * counting what the corpus actually contains: 3,611 element-level `<supports>` blocks, 1,845
- * element-level `<requirements>`, and 171 `<append>`. None of them were being read, and the
- * first of those meant no `<select supports="…">` had ever matched anything.
+ * element-level `<requirements>`, 171 `<append>`, and 79 `equipped=` attributes of which not
+ * one is `"true"`. None were being read, and the first of those meant no
+ * `<select supports="…">` had ever matched anything.
  */
 
 import { test } from 'node:test';
@@ -91,4 +92,40 @@ test('a requirements expression that will not parse is an error naming the eleme
   const errors = file.diagnostics.filter((d) => d.level === 'error');
   assert.equal(errors.length, 1);
   assert.equal(errors[0]!.elementId, 'ID_BROKEN');
+});
+
+test('`equipped=` is a condition, not a boolean — the corpus has 79 and none says "true"', () => {
+  const file = parse(`
+    <element name="Unarmored Defense" type="Class Feature" id="ID_UD">
+      <rules>
+        <stat name="ac:calculation" value="ac:unarmored defense barbarian"
+              bonus="calculation" equipped="[armor:none]" />
+        <grant type="Proficiency" id="ID_P" equipped="!([armor:heavy]||[shield:any])" />
+      </rules>
+    </element>`);
+  const rules = file.elements[0]!.rules;
+  const statRule = rules.find((r) => r.kind === 'stat')!;
+  const grantRule = rules.find((r) => r.kind === 'grant')!;
+  // Read as a boolean this was `false`, 79 times out of 79, and nothing read it either — so
+  // every one of those rules applied unconditionally (ADR 0021).
+  assert.deepEqual(statRule.equipped, { kind: 'equals', stat: 'armor', value: 'none' });
+  assert.deepEqual(grantRule.equipped, {
+    kind: 'not',
+    child: {
+      kind: 'or',
+      children: [
+        { kind: 'equals', stat: 'armor', value: 'heavy' },
+        { kind: 'equals', stat: 'shield', value: 'any' },
+      ],
+    },
+  });
+});
+
+test('a rule with no `equipped=` has none, rather than a false that reads like a decision', () => {
+  const file = parse(`
+    <element name="Thing" type="Thing" id="ID_THING">
+      <rules><stat name="ac" value="1" /></rules>
+    </element>`);
+  const rule = file.elements[0]!.rules.find((r) => r.kind === 'stat')!;
+  assert.equal(rule.equipped, undefined);
 });

@@ -85,21 +85,40 @@ applied at parse time: `parseAuroraElements` returns them unapplied and `Content
 folds them in once every file is in. An append whose target never loads is a warning, because
 "that supplement is enabled and the book it extends is not" is a normal thing for a user to do.
 
-**`equipped="…"` is a requirement expression, not a boolean.** The importer reads it as
-`attrs['equipped'] === 'true'`, and the corpus contains **79 of them, not one of which is
-`"true"`**:
+**`equipped="…"` is a requirement expression, not a boolean.** The corpus contains **79 of
+them, not one of which is `"true"`**:
 
 ```
 22  equipped="[armor:none]"                 16  equipped="[armor:none],[shield:none]"
 15  equipped="![armor:heavy]"                9  equipped="![armor:medium],![armor:heavy]"
  6  equipped="[armor:heavy]"                 3  equipped="!([armor:heavy]||[shield:any])"
+ 2  equipped="[armor:any]"                   1  equipped="![armor:any]"
+ 1  equipped="[shield:none]"                 1  equipped="[primary:none],[secondary:none]"
+ 1  equipped="[primary:double-bladed scimitar]"
+ 1  equipped="[primary:any],[secondary:any],![primary:versatile]"
+ 1  equipped="[primary:any],([secondary:none]||[shield:any])"
 ```
 
-So every one of them currently parses to `false`, and `Rule.equipped` is a boolean that is
-always false. It is dead twice over: nothing in the engine, the verifier or the CLI reads it
-either, so all 79 rules apply unconditionally. That is the fourth construct in this family,
-after `<supports>`, element-level `<requirements>` and `<append>` — and it is the one holding
-up armour class, because `equipped` is how the corpus says *which* AC calculation applies:
+The importer used to read it as `attrs['equipped'] === 'true'`, so all 79 parsed to `false`,
+and `Rule.equipped` was a boolean that was always false — dead twice over, since nothing read
+it either and all 79 rules applied unconditionally. That was the fourth construct in this
+family, after `<supports>`, element-level `<requirements>` and `<append>`, and it was found
+the same way: by counting what the corpus contains rather than by reading the format.
+
+Since [ADR 0021](./adr/0021-equipped-is-a-condition.md) it is a `RequirementExpr`, parsed by
+the same `parseRequirements` that reads `requirements=`. 76 of the 79 sit on `<stat>` and 3 on
+`<grant>`; none names an element id.
+
+**Nothing evaluates it yet, and that is deliberate.** With no inventory there is no `armor`
+stat, so `[armor:none]` reads *false* against a character wearing nothing and `[armor:any]`
+reads false against one in plate, while `![armor:heavy]` reads true — all 41 positive checks
+drop and all 38 negations stay, which is a state no character is ever in. Measured on the nine
+sample saves, evaluating today moves no `aurora verify` count and makes four stats wrong: a
+monk loses their Unarmoured Defence and Unarmoured Movement, and two armoured characters lose
+the Defense fighting style's +1. It waits for the `equipment` build step.
+
+`equipped` is still the thing holding up armour class, because it is how the corpus says
+*which* AC calculation applies:
 
 ```xml
 <stat name="ac:calculation" value="ac:unarmored defense barbarian"
@@ -109,8 +128,8 @@ up armour class, because `equipped` is how the corpus says *which* AC calculatio
 Note `bonus="calculation"`. Every alternative AC — a barbarian's, a monk's, a tortle's shell,
 a robe of the archmagi — contributes to one stat in one bonus bucket, and Incudo's engine
 already resolves a bucket by taking the largest. **Unarmoured defence needs no special
-treatment**; it needs `equipped` to parse, an inventory to evaluate it against, and a system
-definition that derives `ac` from `ac:calculation`.
+treatment**; it needed `equipped` to parse, which it now does, and it still needs an inventory
+to evaluate it against and a system definition that derives `ac` from `ac:calculation`.
 
 ## Element types seen in the wild
 

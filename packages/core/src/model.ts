@@ -43,7 +43,8 @@ export interface GrantRule extends RuleBase {
   /** Attach to a named spellcasting block (system-defined meaning). */
   spellcasting?: string;
   prepared?: boolean;
-  equipped?: boolean;
+  /** A condition on the character's equipment — see {@link StatRule.equipped}. */
+  equipped?: RequirementExpr;
   allowReplace?: boolean;
   /** Aurora allows overriding the displayed name of a granted element. */
   name?: string;
@@ -76,8 +77,20 @@ export interface StatRule extends RuleBase {
   bonus?: string;
   /** Upper clamp applied after summing. */
   max?: number;
-  /** Only counts while the granting element is equipped (system-defined meaning). */
-  equipped?: boolean;
+  /**
+   * A condition on what the character has equipped, in the same expression language as
+   * `requirements`.
+   *
+   * Not a boolean, though it was read as `attrs['equipped'] === 'true'` until ADR 0021 and
+   * so was always false: the corpus contains 79 of these and not one of them is `"true"`.
+   * Every one is a test over equipment state — `[armor:none]`, `![armor:heavy]`,
+   * `!([armor:heavy]||[shield:any])` — which is how content says *which* armour class
+   * calculation applies.
+   *
+   * Nothing evaluates it yet. Doing so needs an inventory for `[armor:none]` to be a
+   * question about, which is ROADMAP Phase 2's `equipment` step; see docs/AURORA-FORMAT.md.
+   */
+  equipped?: RequirementExpr;
   /** Alternative display value, shown instead of the computed number. */
   alt?: string;
   /** Rendered inline in descriptions rather than on the sheet. */

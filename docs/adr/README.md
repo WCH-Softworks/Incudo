@@ -34,3 +34,4 @@ new one that supersedes it.
 | [0018](./0018-tables-and-track-stats.md) | A stat may be read from a table, and a track may contribute one | Accepted |
 | [0019](./0019-recorded-rolls-are-readable.md) | A recorded roll is readable by a derivation | Accepted |
 | [0020](./0020-stats-keyed-on-declared-blocks.md) | An element's declared blocks may publish stats | Accepted |
+| [0021](./0021-equipped-is-a-condition.md) | `equipped` is a condition, and it is not evaluated yet | Accepted |
