@@ -36,7 +36,7 @@ discontinued. Incudo aims to be:
 
 ---
 
-## Phase 0 — Foundation 🟡
+## Phase 0 — Foundation ✅
 
 *Goal: a monorepo that builds, and a data model that can express D&D 5e without mentioning it.*
 
@@ -58,7 +58,10 @@ discontinued. Incudo aims to be:
       once against the full corpus and once against the save alone, and diffs. A level 3 rogue
       built from the 12,058-element corpus embeds 47 elements in 23 KB and opens identically with
       zero sources. Same test on a committed fixture corpus, so CI runs it too.
-- [ ] CI: typecheck, test, and the corpus baseline
+- [x] CI: typecheck, test, and the corpus baseline — two jobs, `build` and `aurora-corpus`,
+      the second resolving the AuroraLegacy checkout by repository path against the budgets in
+      `.github/workflows/ci.yml`. Ticked on a confirmed green run of the tree it describes,
+      not on local evidence.
 
 **Exit criteria:** `incudo validate` resolves the whole AuroraLegacy index with no new unresolved
 references, and a character round-trips through `.incu` JSON unchanged. **Both met**, and the
