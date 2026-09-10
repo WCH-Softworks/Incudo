@@ -15,7 +15,12 @@
  */
 
 import { validateJson, type JsonSchema, type SchemaError } from './json-schema.ts';
-import { progressionStat, resolveCharacterKind, type GameSystem } from './system.ts';
+import {
+  buildStepCycles,
+  progressionStat,
+  resolveCharacterKind,
+  type GameSystem,
+} from './system.ts';
 import type { Character } from './character.ts';
 import type { ContainerManifest } from './container.ts';
 
@@ -104,6 +109,7 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
   }
 
   const typeNames = new Set((system.elementTypes ?? []).map((t) => t.name));
+  const methodIds = new Set((system.generationMethods ?? []).map((m) => m.id));
 
   for (let i = 0; i < kinds.length; i++) {
     const kind = kinds[i]!;
@@ -157,6 +163,44 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           });
         }
       }
+    }
+
+    // `requires` and `budget` — ADR 0017. Reported, never repaired: a builder that quietly
+    // dropped a step from a cycle would hide a screen the author meant to have.
+    const selfRequiring = new Set<string>();
+    for (const step of resolved.buildSteps) {
+      for (const id of step.requires ?? []) {
+        if (id === step.id) {
+          selfRequiring.add(step.id);
+          errors.push({
+            path: `${where}.buildSteps`,
+            message: `step "${step.id}" requires itself`,
+          });
+        } else if (!stepIds.has(id)) {
+          errors.push({
+            path: `${where}.buildSteps`,
+            message: `step "${step.id}" requires "${id}", which this kind has no step for`,
+          });
+        }
+      }
+      for (const method of step.budget?.methods ?? []) {
+        if (!methodIds.has(method)) {
+          errors.push({
+            path: `${where}.buildSteps`,
+            message: `step "${step.id}" offers the generation method "${method}", which the system's generationMethods does not declare`,
+          });
+        }
+      }
+    }
+
+    // A step that requires itself is a cycle too, and "requires itself" is the more useful
+    // of the two sentences. Report the general cycle only for the steps that need it.
+    const cycle = buildStepCycles(resolved.buildSteps).filter((id) => !selfRequiring.has(id));
+    if (cycle.length) {
+      errors.push({
+        path: `${where}.buildSteps`,
+        message: `has a "requires" cycle: ${cycle.join(', ')} can never become available`,
+      });
     }
 
     // The progression stat is declared by declaring the progression: the engine publishes

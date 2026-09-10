@@ -44,6 +44,11 @@
       "items": { "$ref": "#/$defs/stat" },
       "description": "Stats shared by every character kind. A kind may add its own, or replace one by name."
     },
+    "generationMethods": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/generationMethod" },
+      "description": "How a build step's budget can produce its starting values (ADR 0017). Declared once for the system and referenced by id from a step's budget, because a PC and an NPC generate ability scores the same way and the cost table should not be written twice."
+    },
     "characterKinds": {
       "type": "array",
       "minItems": 1,
@@ -326,7 +331,47 @@
         },
         "required": { "type": "boolean" },
         "perLevel": { "type": "boolean" },
-        "description": { "type": "string" }
+        "description": { "type": "string" },
+        "requires": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Ids of steps that must be usable before this one is (ADR 0017). A genuine dependency and nothing else — you cannot pick spells before something makes you a spellcaster. The suggested order is a topological sort of these with the declared array order breaking ties, so a step that requires nothing sorts first; a step whose dependencies are unmet is not yet available rather than skippable."
+        },
+        "budget": { "$ref": "#/$defs/budget" }
+      }
+    },
+
+    "budget": {
+      "description": "A pool of points a build step distributes (ADR 0017). `stat` is an ordinary stat, so content adds to it with the `stat` rule that already exists — a feat, a race variant, an improvement at level 4 — and the step reopens on its own when it does. That is the answer to \"a class gave you one more attribute point and you should not have to walk back to an earlier screen\".",
+      "type": "object",
+      "required": ["stat", "targets"],
+      "additionalProperties": false,
+      "properties": {
+        "stat": { "type": "string", "minLength": 1 },
+        "targets": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "methods": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Ids of the system's generationMethods this step offers."
+        }
+      }
+    },
+
+    "generationMethod": {
+      "description": "How a budget's starting values are produced (ADR 0017). Data rather than code, because docs/CODE-REUSE-POLICY.md rule 1 says a rule about the game may not live in a component, and a point-buy cost table is exactly that. Three shapes: `pool` plus `costs` is a points method; `values`, or `dice` with `count`, hands out a set to assign; neither means the user types numbers.",
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "pool": { "type": "number" },
+        "costs": { "type": "object", "additionalProperties": { "type": "number" } },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "values": { "type": "array", "items": { "type": "number" } },
+        "dice": { "type": "string", "description": "Dice notation the shell rolls, e.g. \"4d6dl1\". Core never rolls anything." },
+        "count": { "type": "number" }
       }
     },
 

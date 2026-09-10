@@ -128,9 +128,10 @@ The short version, in priority order:
 2. **Platform I/O is injected, never imported** (above).
 3. **`@incudo/ui` holds components with no platform imports.** React Native Web is *not*
    used to force sharing.
-4. **View-models are shared, views are not.** A `useCharacterBuilder()` hook is shared; the
-   screen that renders it is per-app. This is where the real leverage is — the hard logic is
-   shared, and the layout is free to be dense on desktop and a wizard on mobile.
+4. **View-models are shared, views are not.** `CharacterBuilder` is shared; the screen that
+   renders it is per-app. This is where the real leverage is — the hard logic is shared, and
+   the layout is free to be a dense pane on desktop and a card stack on mobile. What is *not*
+   free to differ is which decisions are outstanding ([ADR 0017](./adr/0017-open-decisions-not-steps.md)).
 
 Expected shape: ~80% of the code (core + content + import + view-models) shared, ~20% per-shell.
 See [`CODE-REUSE-POLICY.md`](./CODE-REUSE-POLICY.md) for the enforceable version.

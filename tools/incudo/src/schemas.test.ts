@@ -248,3 +248,43 @@ test('a character and a manifest validate against their own schemas', async () =
     [{ path: 'systemId', message: 'is required for a character container' }],
   );
 });
+
+test('a requires or budget that points nowhere is caught before the app loads it', async () => {
+  assert.deepEqual(
+    await errorsFor(broken((s) => (s.characterKinds[0]!.buildSteps![0]!.requires = ['ghost']))),
+    ['characterKinds[0].buildSteps: step "one" requires "ghost", which this kind has no step for'],
+  );
+
+  assert.deepEqual(
+    await errorsFor(broken((s) => (s.characterKinds[0]!.buildSteps![0]!.requires = ['one']))),
+    ['characterKinds[0].buildSteps: step "one" requires itself'],
+  );
+
+  // A cycle is reported, never repaired — ADR 0011's stance on system definitions.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.buildSteps = [
+          { id: 'a', label: 'A', types: [], requires: ['b'] },
+          { id: 'b', label: 'B', types: [], requires: ['a'] },
+        ];
+      }),
+    ),
+    ['characterKinds[0].buildSteps: has a "requires" cycle: a, b can never become available'],
+  );
+
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.buildSteps![0]!.budget = {
+          stat: 'points',
+          targets: ['vigour'],
+          methods: ['no-such-method'],
+        };
+      }),
+    ),
+    [
+      'characterKinds[0].buildSteps: step "one" offers the generation method "no-such-method", which the system\'s generationMethods does not declare',
+    ],
+  );
+});

@@ -146,11 +146,11 @@ Working: core engine, Aurora content **and save** importer, content sources, CLI
 definitions, the `.incu` container, the JSON Schemas and the validator behind them.
 Not started: both app shells (only their `platform.ts` contracts exist).
 
-ADRs 0007, 0009, 0012 and 0014 are implemented, and **Phase 1 is done — `packages/aurora-import`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017 and 0018 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
-(level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats` and
-`assets`. A `.incu` is a zip of `manifest.json` + `character.json` + `content.json` + `assets/`,
+(level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
+`advancement`, `generation` and `assets`. A `.incu` is a zip of `manifest.json` + `character.json` + `content.json` + `assets/`,
 readable and writable as an unpacked folder too, and `incudo character verify` proves a save
 re-derives identically with zero sources configured.
 
@@ -166,6 +166,12 @@ Three things Phase 1 changed that are easy to trip over:
 - **Three Aurora constructs were being silently dropped** until Phase 1: element-level
   `<supports>` (3,611 blocks — *every* support tag in the corpus), element-level
   `<requirements>` (1,845), and `<append>` (171). See docs/AURORA-FORMAT.md.
+
+**The builder has no current step** (ADR 0017). `CharacterBuilder` publishes `decisions` — one
+flat, always-current list — and `steps` is a grouping with `available`/`blockedBy`, not a
+sequence to walk. There is no `goToStep` and no Back button; `focus()` is presentation and
+nothing depends on it. A decision opened at level 4 arrives in the same list as every other.
+`Character` gained a sixth input, `generation`, recording which method a budgeted step used.
 
 Two things ADR 0018 added that are easy to reach for wrongly:
 

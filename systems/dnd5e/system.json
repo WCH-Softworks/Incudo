@@ -87,6 +87,8 @@
     { "name": "hp", "label": "Hit Points", "default": 0 },
     { "name": "ac", "label": "Armor Class", "default": 10 },
 
+    { "name": "ability points", "label": "Ability Points", "default": 0 },
+
     { "name": "multiclass:spellcasting:level", "label": "Caster Level", "default": 0 },
     { "name": "spellcasting:slots:1", "label": "1st-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4] } },
     { "name": "spellcasting:slots:2", "label": "2nd-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] } },
@@ -97,6 +99,14 @@
     { "name": "spellcasting:slots:7", "label": "7th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2] } },
     { "name": "spellcasting:slots:8", "label": "8th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1] } },
     { "name": "spellcasting:slots:9", "label": "9th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1] } }
+  ],
+
+  "generationMethods": [
+    { "id": "point-buy", "label": "Point buy", "pool": 27, "min": 8, "max": 15,
+      "costs": { "8": 0, "9": 1, "10": 2, "11": 3, "12": 4, "13": 5, "14": 7, "15": 9 } },
+    { "id": "standard-array", "label": "Standard array", "values": [15, 14, 13, 12, 10, 8] },
+    { "id": "roll", "label": "Roll", "dice": "4d6dl1", "count": 6 },
+    { "id": "manual", "label": "Enter manually", "min": 1, "max": 30 }
   ],
 
   "characterKinds": [
@@ -139,13 +149,14 @@
       ],
 
       "buildSteps": [
+        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "Roll, buy, or take the standard array. First because what you rolled is a real input into which class is worth playing.",
+          "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["point-buy", "standard-array", "roll", "manual"] } },
         { "id": "race", "label": "Race", "types": ["Race"], "required": true },
         { "id": "class", "label": "Class", "types": ["Class"], "required": true },
         { "id": "background", "label": "Background", "types": ["Background"], "required": true },
-        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "Point buy, standard array, or manual entry." },
-        { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true },
+        { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true, "requires": ["class"] },
         { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
-        { "id": "spells", "label": "Spells", "types": ["Spell"] },
+        { "id": "spells", "label": "Spells", "types": ["Spell"], "requires": ["class"] },
         { "id": "details", "label": "Details", "types": ["Alignment", "Deity", "Language"] }
       ],
 

@@ -101,6 +101,61 @@ export function trackStatName(def: TrackStatDef, elementName: string): StatKey {
   return def.stat.replace(TRACK_NAME_PLACEHOLDER, elementName.trim().toLowerCase());
 }
 
+/**
+ * A pool of points a build step distributes — ADR 0017.
+ *
+ * The mechanism behind "a class gave you one more attribute point, and you should not have
+ * to walk back to an earlier screen to spend it". `stat` is an ordinary stat, so **content
+ * adds to it with the `stat` rule that already exists** — a feat, a race variant, an
+ * improvement at level 4. No new rule kind, and the sum is always current because the engine
+ * recomputes it like any other stat.
+ *
+ * Nothing here is an ability score. It is "this step distributes points across these stats,
+ * by one of these methods".
+ */
+export interface BudgetDef {
+  /** The stat holding points granted beyond whatever the method itself supplies. */
+  stat: StatKey;
+  /** The stats the points are spent on. */
+  targets: StatKey[];
+  /** Ids of the system's `generationMethods` this step offers. */
+  methods?: string[];
+}
+
+/**
+ * How a budget's starting values are produced — ADR 0017.
+ *
+ * Data, not code, and for a stated reason: docs/CODE-REUSE-POLICY.md rule 1 says a rule
+ * about the game may not live in a component, and a point-buy cost table is exactly that.
+ * A shell that hardcoded 27 points would be a bug in the same category as one that computed
+ * armour class.
+ *
+ * Three shapes, distinguished by which fields are present:
+ *
+ *  - **points** — `pool` plus `costs`: values are bought out of a pool.
+ *  - **assignment** — `values`, or `dice` and `count`: a fixed set is handed out and
+ *    assigned to targets. Not a points budget, and reporting one would be a fiction.
+ *  - **free** — neither: the user types numbers.
+ */
+export interface GenerationMethodDef {
+  id: string;
+  label?: string;
+  /** Points available before anything content grants. Makes this a points method. */
+  pool?: number;
+  /** Cost of each attainable value, keyed by the value. Makes this a points method. */
+  costs?: Record<string, number>;
+  /** Lowest value this method may produce. */
+  min?: number;
+  /** Highest value this method may produce. */
+  max?: number;
+  /** A fixed set of values to assign, e.g. the standard array. */
+  values?: number[];
+  /** Dice notation the shell rolls, e.g. "4d6dl1". Core never rolls anything. */
+  dice?: string;
+  /** How many times to roll. */
+  count?: number;
+}
+
 export interface BuildStepDef {
   id: string;
   label: string;
@@ -110,6 +165,67 @@ export interface BuildStepDef {
   /** Repeats per point of progression (e.g. a level-up step). */
   perLevel?: boolean;
   description?: string;
+  /**
+   * Ids of steps that must be usable before this one is — ADR 0017.
+   *
+   * A genuine dependency and nothing else: you cannot pick spells before something makes
+   * you a spellcaster. The suggested order is a topological sort of these, with the declared
+   * array order breaking ties. That is what makes abilities-first fall out of the data
+   * rather than out of a rule in the app — the abilities step requires nothing, so it sorts
+   * first — and, more importantly, it is what lets a step become available *later*.
+   */
+  requires?: string[];
+  /** Points this step distributes, when it is about numbers rather than elements. */
+  budget?: BudgetDef;
+}
+
+/**
+ * The suggested order for a kind's build steps: a topological sort of `requires`, with the
+ * declared array order breaking ties — ADR 0017.
+ *
+ * A step in a dependency cycle is emitted last rather than dropped. Validation reports
+ * cycles (ADR 0011's stance: report, do not repair), and a builder that silently lost a
+ * screen would be a worse failure than one that shows it in an odd place.
+ */
+export function orderBuildSteps(steps: BuildStepDef[]): BuildStepDef[] {
+  const known = new Set(steps.map((s) => s.id));
+  const placed = new Set<string>();
+  const ordered: BuildStepDef[] = [];
+  let remaining = [...steps];
+
+  while (remaining.length) {
+    // One at a time, taking the earliest *declared* step whose dependencies are met. Placing
+    // a whole wave at once would also be a valid topological order and a worse one: it drags
+    // every dependent step to the end, so "levels" would follow "details" purely for having
+    // named a prerequisite. This puts each step as early as its dependencies allow.
+    const at = remaining.findIndex((step) =>
+      (step.requires ?? []).every((id) => !known.has(id) || placed.has(id)),
+    );
+    if (at < 0) {
+      // Everything left is in a cycle, or depends on one. Keep declared order.
+      ordered.push(...remaining);
+      break;
+    }
+    const [step] = remaining.splice(at, 1);
+    ordered.push(step!);
+    placed.add(step!.id);
+  }
+  return ordered;
+}
+
+/** Step ids that sit in, or behind, a `requires` cycle. Empty for a well-formed system. */
+export function buildStepCycles(steps: BuildStepDef[]): string[] {
+  const known = new Set(steps.map((s) => s.id));
+  const placed = new Set<string>();
+  let remaining = [...steps];
+  for (;;) {
+    const ready = remaining.filter((step) =>
+      (step.requires ?? []).every((id) => !known.has(id) || placed.has(id)),
+    );
+    if (!ready.length) return remaining.map((step) => step.id);
+    for (const step of ready) placed.add(step.id);
+    remaining = remaining.filter((step) => !placed.has(step.id));
+  }
 }
 
 export interface SheetSectionDef {
@@ -267,6 +383,12 @@ export interface GameSystem {
   elementTypes: ElementTypeDef[];
   /** Stats shared by every kind. A kind may add its own. */
   stats: StatDef[];
+  /**
+   * How a build step's budget can produce its starting values — ADR 0017. Declared once for
+   * the system and referenced by id, because a PC and an NPC generate ability scores the
+   * same way and the cost table should not be written twice.
+   */
+  generationMethods?: GenerationMethodDef[];
   characterKinds: CharacterKindDef[];
   /**
    * Aurora element types that map onto this system's types. Only needed for systems that

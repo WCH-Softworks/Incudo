@@ -42,12 +42,16 @@ The temptation with two shells is to force one UI (React Native Web, or a webvie
 Resist it. Instead, the *state machine* of every screen is a shared hook:
 
 ```ts
-const { steps, current, options, pick, problems } = useCharacterBuilder(character, system);
+const { decisions, steps, derived } = builder.getState();
 ```
 
-Desktop renders that as a three-pane layout with everything visible. Mobile renders it as a
-step-by-step wizard. Neither shell contains a rule about the game, and neither is compromised by
-the other's ergonomics.
+Desktop renders that as a dense pane with everything visible. Mobile renders it as a card stack.
+Neither shell contains a rule about the game, and neither is compromised by the other's
+ergonomics.
+
+What neither shell may own is **which decisions are outstanding** — that is the model's, and
+[ADR 0017](./adr/0017-open-decisions-not-steps.md) is why there is no cursor in it to fight over.
+A shell may focus one decision; it may not decide what is left to do.
 
 **Test:** if a bug is "the app computed the wrong AC", it must be fixable in a package. If it is
 "the button is off-screen", it must be fixable in a shell. A bug that requires touching both is a

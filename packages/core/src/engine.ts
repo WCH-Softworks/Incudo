@@ -59,6 +59,12 @@ export interface PendingChoice {
   optional: boolean;
   candidates: ElementId[];
   from: ElementId;
+  /**
+   * The progression point this became available at — the `level` on the rule that opened
+   * it, where it has one. What lets a builder say "Rogue 4: Ability Score Improvement"
+   * instead of listing an unexplained choice (ADR 0017).
+   */
+  level?: number;
 }
 
 export type ProblemLevel = 'error' | 'warning';
@@ -637,6 +643,7 @@ function collectPendingChoices(
         optional: rule.optional ?? false,
         candidates: candidatesFor(rule, index, chosen, ctx).map((e) => e.id),
         from: element.id,
+        level: rule.level,
       });
     }
   }

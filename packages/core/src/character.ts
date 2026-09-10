@@ -88,6 +88,15 @@ export interface Character {
    * track — which is why every single-classed save stayed correct before this existed.
    */
   advancement?: AdvancementEntry[];
+  /**
+   * Which generation method each budgeted build step used, keyed by step id:
+   * `{ abilities: "point-buy" }` — ADR 0017.
+   *
+   * An input like the four above, and the one whose only purpose is to make a *later* edit
+   * behave sensibly. Without it, reopening the abilities decision at level 4 cannot tell a
+   * rolled 15 from a bought one and would have to offer both readings.
+   */
+  generation?: Record<string, string>;
   /** Free text the rules never touch: notes, appearance, backstory. */
   freeform: Record<string, string>;
   /**
@@ -160,6 +169,46 @@ export function setRoll(character: Character, key: string, value: number | undef
 }
 
 /** Every element id the character explicitly chose, in build order. */
+/**
+ * Set a starting value the user chose — an ability score, most often (ADR 0014).
+ *
+ * A *base*, not an override: contributions still land on top, so a racial +2 is not
+ * discarded. Passing `undefined` removes it, which is what "clear this and let the kind's
+ * default stand" means.
+ */
+export function setBaseStat(
+  character: Character,
+  stat: StatKey,
+  value: number | undefined,
+): Character {
+  const baseStats = { ...character.baseStats };
+  if (value === undefined) delete baseStats[stat];
+  else baseStats[stat] = value;
+  const empty = Object.keys(baseStats).length === 0;
+  return {
+    ...character,
+    baseStats: empty ? undefined : baseStats,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Record which generation method a budgeted build step used — ADR 0017. */
+export function setGenerationMethod(
+  character: Character,
+  stepId: string,
+  methodId: string | undefined,
+): Character {
+  const generation = { ...character.generation };
+  if (methodId === undefined) delete generation[stepId];
+  else generation[stepId] = methodId;
+  const empty = Object.keys(generation).length === 0;
+  return {
+    ...character,
+    generation: empty ? undefined : generation,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function chosenElementIds(character: Character): ElementId[] {
   const ids: ElementId[] = [];
   for (const choice of character.choices) {

@@ -91,6 +91,12 @@
       }
     },
 
+    "generation": {
+      "type": "object",
+      "description": "Which generation method each budgeted build step used, keyed by step id: { \"abilities\": \"point-buy\" } (ADR 0017). An INPUT like rolls, baseStats and advancement, and the one whose only purpose is to make a LATER edit behave sensibly: without it, reopening the abilities decision at level 4 cannot tell a rolled 15 from a bought one and would have to offer both readings.",
+      "additionalProperties": { "type": "string" }
+    },
+
     "freeform": {
       "type": "object",
       "description": "Text the rules never touch: notes, appearance, backstory.",

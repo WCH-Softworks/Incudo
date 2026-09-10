@@ -147,9 +147,19 @@ before any code, both touching a public API:
 
 - [ ] Tauri desktop shell, React UI, routing, persistence
 - [ ] Content manager: add an index by URL, enable/disable sources, **stream or download**
-- [ ] Build flow driven by the system's `buildSteps`: race → class → background → abilities →
-      equipment → spells
-- [ ] Level-up with `level="N"` grants and pending `<select>` choices
+- [x] **Build flow as open decisions rather than a wizard**
+      ([ADR 0017](./docs/adr/0017-open-decisions-not-steps.md)). `CharacterBuilder` publishes one
+      flat, always-current `decisions` list and has no cursor, so there is nothing to navigate
+      back from; `buildStep` gained `requires` (order is a topological sort of it) and `budget`
+      (points content adds to with the `stat` rule that already exists). The 5e order is now
+      abilities → race → class → background → levels → equipment → spells → details, and that
+      falls out of the data rather than out of a rule in the app. Ability scores stopped being
+      a placeholder: the step used to declare `"types": []`, match no pending choice, and report
+      itself complete from the first render, and the view-model had no way to set a score at all.
+      What remains for the shells is the rendering — this is the view-model, not a screen.
+- [ ] Level-up with `level="N"` grants and pending `<select>` choices — no longer a separate
+      screen (ADR 0017): `setProgress` changes a number and the decisions it opens arrive in the
+      same list as every other, tagged with the level that raised them.
 - [ ] Character sheet
 - [ ] Save/load `.incu` files; import `.dnd5e` (the importer is done — this is the UI for it)
 - [ ] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
