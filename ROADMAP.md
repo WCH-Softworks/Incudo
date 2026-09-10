@@ -123,9 +123,23 @@ Each of these is reported by `aurora verify` as `not-modelled` rather than quiet
 
 ---
 
-## Phase 2 — Desktop character builder MVP ⬜
+## Phase 2 — Desktop character builder MVP 🟡
 
 *Goal: build a legal level-1-to-20 5e PC on the desktop, offline.*
+
+Started with the engine rather than the shell, because the differential verification of Phase 1
+can check these numbers today and cannot check them through a view layer. Two ADRs landed
+before any code, both touching a public API:
+
+- **[ADR 0015](./docs/adr/0015-class-levels.md) — class levels.** The exit criterion is a
+  multiclassed character and the model could not express one: level gates read the character's
+  *total*, and `level:<class>` — read 150-odd times by content, written nowhere in it — was
+  always zero. `Character.advancement` and engine-level tracks fix both. A ninth sample save
+  (level 20 Paladin 2 / Warlock 18) was built to be the oracle the other eight could not be,
+  and took `element-missing` across all nine from 9 to 1.
+- **[ADR 0016](./docs/adr/0016-stat-bounds-are-expressions.md) — stat bounds.** The ability
+  score maximum, and the discovery that `min`/`max` never ran for a stat without a `derive`,
+  so `"max": 20` would have been a no-op.
 
 - [ ] Tauri desktop shell, React UI, routing, persistence
 - [ ] Content manager: add an index by URL, enable/disable sources, **stream or download**
@@ -137,12 +151,24 @@ Each of these is reported by `aurora verify` as `not-modelled` rather than quiet
 - [ ] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
       attunement, and magic items attached to other items. Aurora's `<equipment>` block is
       already parsed and waiting.
-- [ ] **Fill in the 5e system definition's remaining numbers**, all three of which Phase 1's
-      differential verification can already check the moment they exist: the spell slot table,
-      spell save DC and attack bonus as stats, and the ability score maximum of 20.
+- [ ] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
+      the differential verification could check the moment they existed. Reading the engine
+      corrected that on two counts:
+  - [x] **The ability score maximum**, which needed [ADR 0016](./docs/adr/0016-stat-bounds-are-expressions.md):
+        an expression, because the corpus only ever contributes the *delta* above 20 and
+        Aurora hardcodes the 20 — and a clamp that runs at all for a stat with no `derive`.
+  - [ ] **The spell slot table.** The oracle for it arrived with the ninth save: Paladin
+        `2/0/0/…` and Warlock `0/0/0/0/4/0/…` together pin the two rules easiest to get
+        wrong — a half-caster rounds its contribution down, and pact magic is not in the
+        multiclass table at all.
+  - [ ] **Spell save DC and attack bonus as declared stats.** Less missing than it looked:
+        `aurora verify` already rebuilds both and compares them, and reports 0 mismatches
+        across all nine saves. What is missing is *publishing* them, so a sheet can show
+        them; the formula currently lives in the verifier's defaults.
 - [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope.
-- [ ] Multiclassing
+- [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md));
+      what remains is the slot table above and the UI for choosing a class at each level.
 
 **Exit criteria:** a level 8 multiclassed Rogue/Wizard with a subclass, feats and prepared
 spells is buildable end to end and matches Aurora's output for the same choices.

@@ -119,6 +119,7 @@ than a per-element mismatch.
 | inline base64 portrait | `assets/portrait.png` | bytes, never base64 (ADR 0007) |
 | `<sources><restricted>` | inverted, then discarded | a blocklist is the wrong thing to keep |
 | nested `id=` nodes, `<sum>`, `<magic>`, `<display-properties>` | **nothing** | derived; re-derived instead |
+| `class=` on a `Level` node | `advancement` | the only record of a multiclass split ([ADR 0015](./adr/0015-class-levels.md)) |
 | `<equipment>` | **nothing yet** | no inventory in the model — Phase 2 |
 
 Three details that are not obvious from the format:

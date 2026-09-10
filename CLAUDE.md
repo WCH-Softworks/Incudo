@@ -122,10 +122,20 @@ CI enforces this as a **budget, not a target**: `validate` takes `--max-unresolv
 pair is not redundant — a corpus that failed to check out loads nothing, and nothing has no
 unresolved references.
 
-Aurora saves: **all 8 import; 0 element-missing, 0 spell-missing, 0 stat-mismatch.** The 52
-remaining differences are all one species — content AuroraLegacy added *after* those saves
-were written, confirmed against upstream commit dates. `incudo aurora verify` classifies
-them; see docs/AURORA-SAVE-FORMAT.md. Those files are personal data and never enter the repo.
+Aurora saves: **all 9 import; 1 element-missing, 0 spell-missing, 0 stat-mismatch**, and
+**53 element-extra**. The eight original saves are single-classed and contribute 52 of those
+extras, all one species — content AuroraLegacy added *after* those saves were written,
+confirmed against upstream commit dates.
+
+The ninth was built to be the multiclass oracle the other eight could not be (level 20
+Paladin 2 / Warlock 18, two `<magic>` blocks). It accounts for the rest: one extra, a
+darkvision grant that post-dates it, and the single **element-missing** —
+`ID_INTERNAL_MULTICLASS_LEVEL_3`, an Aurora-app marker referenced by nothing in the 740
+files and carrying no rules. That one is honestly unmodelled rather than budgeted; inventing
+a rule for it would be the guess ADR 0005 rules out.
+
+`incudo aurora verify` classifies all of them; see docs/AURORA-SAVE-FORMAT.md. Those files
+are personal data and never enter the repo — and neither do screenshots of them.
 
 ## State of play
 
