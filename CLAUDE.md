@@ -29,7 +29,7 @@ already exists on this machine and works **entirely offline**:
 ```bash
 npm run incudo -- validate \
   "C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index" --aurora-folder
-# 740 files, 12,058 elements, 0 errors, 57 unresolved, ~10s
+# 740 files, 12,058 elements (+80 generated), 0 errors, 1 unresolved, ~1.5s
 ```
 
 `--aurora-folder` resolves files the way Aurora's downloader stores them (a folder per index,

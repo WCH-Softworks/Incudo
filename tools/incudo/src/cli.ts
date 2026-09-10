@@ -68,9 +68,14 @@ Options:
                with --local or --aurora-folder; on its own it allows only local paths.
 
 Baseline budgets for \`validate\`. Real content is permanently imperfect — the
-AuroraLegacy corpus has 57 references that will never resolve — so the question
-worth asking is "did it get worse", not "is it zero":
-  --max-unresolved N   allow up to N unresolved references (default 0)
+AuroraLegacy corpus still has one reference that will never resolve, and 23
+requirements that can never be met — so the question worth asking is "did it get
+worse", not "is it zero":
+  --max-unresolved N   allow up to N unresolved references (default 0). Counts only
+                       grants: a <grant> to an id nothing declares loses the character
+                       something. Requirements naming a missing id are reported
+                       separately and never budgeted, because \`!ID_X\` against an id
+                       that will never exist is ordinary content.
   --max-warnings N     allow up to N warnings (default unlimited; --strict means 0)
   --expect-files N     fail if fewer than N files loaded
   --expect-elements N  fail if fewer than N elements loaded
@@ -289,10 +294,19 @@ async function contentShow(ctx: CommandContext, path: string | undefined): Promi
  * `incudo validate` — load a content index and report what does not resolve.
  *
  * The exit code is a **budget check**, not a demand for zero. Real content has permanent
- * imperfections: the AuroraLegacy corpus has 57 references that will never resolve (45 are
- * `ID_INTERNAL_*`, which Aurora generates at runtime; 12 are upstream typos) and 57 warnings
- * that are a *different* 57 — 56 `<grant>` elements with no id, and one id defined twice.
- * The numbers matching is a coincidence, and a confusing one.
+ * imperfections: the AuroraLegacy corpus has **1** reference that will never resolve — a
+ * single upstream misspelling — plus 57 warnings (56 `<grant>` elements with no id, and one
+ * id defined twice) and 23 requirements that can never be met.
+ *
+ * That unresolved count used to be 57, and two things brought it down. The overlay in
+ * `@incudo/aurora-import` declares the 80 elements Aurora's app materializes, which
+ * accounted for 51. The rest was a measurement error: grant references and requirement
+ * references were being counted together, and they fail completely differently. A `<grant>`
+ * to an id nothing declares means a character silently loses something. A requirement naming
+ * one is a membership test that reads false, and `!ID_X` against an id that will never exist
+ * is how the corpus says "unless the 2024 replacement is in play" — eighteen times. Only the
+ * first kind is budgeted; the second is reported so a typo *in* a requirement is still
+ * visible next to the ones that are deliberate.
  *
  * So the useful question is not "is it zero" but "did it get worse", which is what CLAUDE.md
  * has always claimed CI enforces. `--max-unresolved` and `--max-warnings` say what today's
