@@ -37,10 +37,19 @@ jobs:
           repository: AuroraLegacy/elements
           path: .corpus
       # The numbers are the baseline in CLAUDE.md, spelled out so a change to any of them is a
-      # deliberate edit to this file rather than a silent drift. The two 57s are different
-      # things and are equal by coincidence: 57 references that never resolve (45 ID_INTERNAL_*
-      # that Aurora generates at runtime, 12 upstream typos), and 57 warnings (56 <grant>
-      # elements with no id, 1 id defined twice).
+      # deliberate edit to this file rather than a silent drift.
+      #
+      #   1 unresolved reference — one upstream typo, "VULNERAILITY". A *grant* to an id
+      #     nothing declares, which means a character silently loses something. It used to be
+      #     57; the Aurora overlay in @incudo/aurora-import supplies the 80 elements Aurora's
+      #     app materializes, and separating requirement targets out (below) accounts for the
+      #     rest. This number should be 0 the day AuroraLegacy fixes the spelling.
+      #
+      #   57 warnings — 56 <grant> elements with no id, and 1 id defined in two files.
+      #
+      # `requirements that can never be met` is reported and deliberately not budgeted: a
+      # requirement naming an id nothing declares is a test that reads false, and `!ID_X`
+      # against an id that will never exist is ordinary content. There are 23.
       #
       # --expect-* is not redundant with the budgets above it: a corpus that failed to check
       # out loads nothing, and nothing has no unresolved references.
@@ -56,4 +65,4 @@ jobs:
         run: |
           npm run incudo -- validate .corpus/AuroraLegacy.index --local --root .corpus --offline \
             --expect-files 740 --expect-elements 12058 \
-            --max-unresolved 57 --max-warnings 57
+            --max-unresolved 1 --max-warnings 57

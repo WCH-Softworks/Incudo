@@ -1,6 +1,6 @@
 # 0008 — Aurora compatibility is import-only, and it gets to be finished
 
-**Status:** Accepted · 2026-09-09
+**Status:** Accepted · 2026-09-09 · **criteria met 2026-09-09 — `packages/aurora-import` is frozen**
 
 ## Context
 
@@ -32,6 +32,30 @@ The DONE criteria, so it is falsifiable:
 4. The importer's diagnostics name what they cannot handle instead of failing silently.
 
 After that, `packages/aurora-import` is frozen. It carries a note at the top saying so.
+
+## Outcome
+
+All four criteria are met, and the package is frozen. Measured numbers live in
+`docs/AURORA-FORMAT.md` and `docs/AURORA-SAVE-FORMAT.md`; the three that matter here:
+
+1. The corpus imports with 0 errors and **1** unresolved grant reference, down from 57 — one
+   upstream misspelling. 80 elements Aurora materializes at runtime are supplied as an overlay.
+2. All 8 sample saves import and re-derive with **0 missing elements, 0 missing spells and 0
+   mismatched numbers**. The 52 remaining differences are content added upstream after those
+   saves were written, traced to four dated commits.
+3. Both format documents now describe every construct the corpus uses — which took finding
+   three it *does* use and the importer did not: element-level `<supports>` (3,611 blocks, and
+   every support tag in the corpus), element-level `<requirements>` (1,845), and `<append>`
+   (171).
+
+One thing this ADR got wrong, worth recording because it cost nothing to fix and would have
+cost a lot to discover later. "Criterion 2 is a claim about a corpus, not about all Aurora
+content" is in the Consequences below, and that is right. But criteria 1 and 3 were also
+treated as separable, and they are not: the reason the dropped `<supports>` handling survived a
+clean 12,058-element import is that *no reading of the format catches it* — 890 tags parsed into
+zero elements produces no error, no warning and no dangling reference. Only diffing against a
+derivation somebody else performed caught it. A compatibility claim needs an oracle, not a
+parser that does not complain.
 
 ## Consequences
 

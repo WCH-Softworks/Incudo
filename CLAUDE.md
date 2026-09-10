@@ -17,6 +17,9 @@ npm run incudo -- --help   # the CLI: validate | types | inspect | system | cont
 npm run incudo -- validate <index-url-or-local-path> [--strict] [--json]
 npm run incudo -- system validate systems/dnd5e/system.json
 npm run incudo -- character show <file.incu>   # derives from the save alone — ADR 0012
+npm run incudo -- aurora inspect <file.dnd5e>  # what a save contains, without importing
+npm run incudo -- aurora import <file.dnd5e> <out.incu> --index <index>
+npm run incudo -- aurora verify <file.dnd5e> --index <index>   # diff against Aurora's own maths
 npm run fixtures:rebuild   # regenerate tools/incudo/fixtures/aelin/ after a format change
 ```
 
@@ -64,8 +67,10 @@ away. Relative imports use the `.ts` extension; `tsc` rewrites them on emit.
 `armor class` outside a test fixture, you are in the wrong package. Element types and stats are
 opaque strings declared by `systems/<id>/system.json` (ADR 0003).
 
-**Characters store choices, never derived numbers** (ADR 0006) — with one exception: recorded
-random results (`rolls`) are *inputs*, because a die roll has no formula (ADR 0007).
+**Characters store choices, never derived numbers** (ADR 0006) — with two exceptions, both
+inputs with no formula: recorded random results (`rolls`, ADR 0007) and starting values the
+user set (`baseStats`, ADR 0014). `baseStats` is a *base* that contributions add to;
+`overrides` wins over everything and is a repair tool, not a place to put ability scores.
 
 **A save must open with zero content sources** (ADR 0012). `.incu` is a zip embedding the
 element subset the character uses, plus assets as real bytes. This is the product requirement,
@@ -91,14 +96,25 @@ Diagrams drawn in code (SVG, Mermaid) and UI built from CSS are not artwork and 
 
 ## Baselines that must not regress
 
-Content corpus: **740 files · 12,058 elements · 0 errors · 57 unresolved references · 57 warnings.**
+Content corpus: **740 files · 12,058 elements (+80 generated) · 0 errors · 1 unresolved
+reference · 23 unmeetable requirements · 57 warnings.**
 
-The two 57s are different things and equal by coincidence, which has already confused one
-reading of the CI output:
-
-- **57 unresolved references** — 45 `ID_INTERNAL_*` (Aurora generates them at runtime), 12
-  upstream typos.
+- **1 unresolved reference** — one upstream typo, `…VULNERAILITY…`. This is a *grant* to an
+  id nothing declares, which means a character silently loses something. It is the only one
+  left in 12,058 elements, and it should be 0 the day AuroraLegacy fixes the spelling.
+- **23 requirements that can never be met** — reported, deliberately **not** budgeted. A
+  requirement naming an id nothing declares is a membership test that reads false, and
+  `!ID_X` against an id that will never exist is how the corpus says "unless the 2024
+  replacement is in play". Five of the six `KNOWN_UPSTREAM_TYPOS` live here.
+- **80 generated elements** — what Aurora's app materializes at runtime, supplied by
+  `packages/aurora-import/src/generated-elements.ts`. Not counted in the 12,058, because
+  they do not come from a file.
 - **57 warnings** — 56 `<grant>` elements with no id, and one id defined in two files.
+
+This used to read "57 unresolved references, 57 warnings, equal by coincidence". Both halves
+of that changed: the overlay resolved 51 of them, and splitting grant references from
+requirement references separated one real breakage from twenty-three deliberate ones. The
+coincidence is gone; do not go looking for it.
 
 CI enforces this as a **budget, not a target**: `validate` takes `--max-unresolved`,
 `--max-warnings`, `--expect-files` and `--expect-elements`, and the numbers live in
@@ -106,20 +122,39 @@ CI enforces this as a **budget, not a target**: `validate` takes `--max-unresolv
 pair is not redundant — a corpus that failed to check out loads nothing, and nothing has no
 unresolved references.
 
+Aurora saves: **all 8 import; 0 element-missing, 0 spell-missing, 0 stat-mismatch.** The 52
+remaining differences are all one species — content AuroraLegacy added *after* those saves
+were written, confirmed against upstream commit dates. `incudo aurora verify` classifies
+them; see docs/AURORA-SAVE-FORMAT.md. Those files are personal data and never enter the repo.
+
 ## State of play
 
-Working: core engine, Aurora content importer, content sources, CLI, two system definitions,
-the `.incu` container, the JSON Schemas and the validator behind them.
+Working: core engine, Aurora content **and save** importer, content sources, CLI, two system
+definitions, the `.incu` container, the JSON Schemas and the validator behind them.
 Not started: both app shells (only their `platform.ts` contracts exist).
 
-ADRs 0007, 0009 and 0012 are now implemented. `GameSystem` declares `characterKinds[]`, each
-owning its `buildSteps`, `sheet`, element types and `progression` (level | rating | xp | none);
-`Character` has `kind`, `progress`, `rolls` and `assets`. A `.incu` is a zip of
-`manifest.json` + `character.json` + `content.json` + `assets/`, readable and writable as an
-unpacked folder too, and `incudo character verify` proves a save re-derives identically with
-zero sources configured.
+ADRs 0007, 0009, 0012 and 0014 are implemented, and **Phase 1 is done — `packages/aurora-import`
+is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
+`buildSteps`, `sheet`, element types, baseline `grants` and `progression`
+(level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats` and
+`assets`. A `.incu` is a zip of `manifest.json` + `character.json` + `content.json` + `assets/`,
+readable and writable as an unpacked folder too, and `incudo character verify` proves a save
+re-derives identically with zero sources configured.
 
-Two things that follow from that, for anyone changing this code:
+Three things Phase 1 changed that are easy to trip over:
+
+- **A character kind carries a baseline.** `kind.grants` plus `progression.elementIdPattern`
+  give every character elements nobody chose — the 5e base armour class, one `ID_LEVEL_N` per
+  level. They are *not* stored on the character, so `collectCharacterContent` needs the kind
+  passed in or the save will not embed them and ADR 0012 quietly breaks.
+- **`packages/aurora-import` supplies 80 elements no content file declares.** The 5e system
+  definition names seven of them in `kind.grants`. That coupling is deliberate — 5e content in
+  this project *is* Aurora content — but it is why a missing kind grant warns rather than errors.
+- **Three Aurora constructs were being silently dropped** until Phase 1: element-level
+  `<supports>` (3,611 blocks — *every* support tag in the corpus), element-level
+  `<requirements>` (1,845), and `<append>` (171). See docs/AURORA-FORMAT.md.
+
+Two things that follow from the format work, for anyone changing this code:
 
 - **The system format is now a public API in practice.** Breaking it again is expensive.
   `schemas/system.schema.json` is the contract; `packages/core/src/json-schema.ts` is the *one*

@@ -67,23 +67,59 @@ identically with no sources, which is what ADR 0012 actually asks for.
 
 ---
 
-## Phase 1 — Aurora compatibility, finished 🟡
+## Phase 1 — Aurora compatibility, finished 🔒
 
 *Goal: read everything Aurora ever produced, then close the book on it.*
-See [ADR 0008](./docs/adr/0008-aurora-compatibility-frozen.md) — this phase has an end.
+See [ADR 0008](./docs/adr/0008-aurora-compatibility-frozen.md) — this phase has an end, and
+this is it.
 
 - [x] Elements XML importer, validated against 12,058 elements with 0 errors
-- [ ] `.dnd5e` **character save importer**: decisions, abilities, `rndhp`, freeform, appearance
-- [ ] Portrait extraction — decode inline base64 out to a real image file
-- [ ] Invert `<sources><restricted>` into a source allowlist
-- [ ] `ID_INTERNAL_*` overlay so those 45 dangling references resolve
-- [ ] **Differential verification**: re-derive each imported character and diff against the
-      `<sum>` / `<magic>` Aurora itself wrote. Aurora already did the maths; disagreements point
-      straight at an engine bug. This is the best oracle the project will ever get for free.
-- [ ] Mark `packages/aurora-import` 🔒 **DONE** — bugfix-only from then on
+- [x] `.dnd5e` **character save importer**: decisions, abilities, `rndhp`, freeform, appearance
+- [x] Portrait extraction — decode inline base64 out to a real image file
+- [x] Invert `<sources><restricted>` into a source allowlist — and then discard all but the
+      handful the character actually draws on. 37,235 disabled ids become 1–4 source refs.
+- [x] `ID_INTERNAL_*` overlay so those dangling references resolve. It ended up covering **80**
+      elements, not 45: real saves revealed a second family no content file mentions (twenty
+      levels, two campaign options, seven baseline grants). The `ID_SIZE_*` family turned out
+      to be generated too, not the upstream typos this file used to call them — they are in
+      all 8 saves' `<sum>`.
+- [x] **Differential verification**: `incudo aurora verify` re-derives each imported character
+      and diffs against the `<sum>` / `<magic>` Aurora itself wrote.
+- [x] Mark `packages/aurora-import` 🔒 **DONE** — bugfix-only from here
 
-**Exit criteria:** all 8 sample characters import and re-derive to match Aurora's own output, or
-every difference is explained and recorded.
+**Exit criteria met.** All 8 import and re-derive with **0 `element-missing`, 0 `spell-missing`,
+0 `stat-mismatch`** across 951 compared element ids. The 52 remaining differences are one
+species — content AuroraLegacy added *after* those saves were written — traced to four upstream
+commits dated Feb–Aug 2026 and recorded in
+[docs/AURORA-SAVE-FORMAT.md](./docs/AURORA-SAVE-FORMAT.md).
+
+### What the oracle was worth
+
+It earned its keep before it verified anything, which is the argument for building this kind of
+check early rather than last. Three Aurora constructs turned out to be silently dropped by the
+*content* importer:
+
+- **element-level `<supports>`** — 3,611 blocks, 890 distinct tags, and **not one** of them was
+  being read. Every `<select supports="…">` in the game matched nothing, with no error anywhere.
+- **element-level `<requirements>`** — 1,845 blocks. This is how content says "the Human Variant
+  exists only in a campaign using feats".
+- **`<append id="…">`** — 171 blocks, the mechanism a supplement uses to extend a core element
+  without editing it.
+
+It also forced two model additions, both of them things Aurora answers in application code and
+Incudo had nowhere to put: `Character.baseStats`
+([ADR 0014](./docs/adr/0014-base-stats-are-inputs.md)) and a character kind's baseline `grants`
+plus `progression.elementIdPattern`.
+
+### Left for Phase 2, with the gap named
+
+Each of these is reported by `aurora verify` as `not-modelled` rather than quietly skipped:
+
+- **Inventory.** `<equipment>` is read and deliberately not imported — `Character` has no home
+  for items, their equipped slot, or attunement. This is the `equipment` build step below.
+- **Spell slots and spell save DC as stats.** Aurora computes the multiclass slot table in its
+  own code; the 5e system definition declares no slot table, no `spellcasting:dc`, and no
+  ability-score maximum.
 
 ---
 
@@ -97,7 +133,13 @@ every difference is explained and recorded.
       equipment → spells
 - [ ] Level-up with `level="N"` grants and pending `<select>` choices
 - [ ] Character sheet
-- [ ] Save/load `.incu` files; import `.dnd5e`
+- [ ] Save/load `.incu` files; import `.dnd5e` (the importer is done — this is the UI for it)
+- [ ] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
+      attunement, and magic items attached to other items. Aurora's `<equipment>` block is
+      already parsed and waiting.
+- [ ] **Fill in the 5e system definition's remaining numbers**, all three of which Phase 1's
+      differential verification can already check the moment they exist: the spell slot table,
+      spell save DC and attack bonus as stats, and the ability score maximum of 20.
 - [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope.
 - [ ] Multiclassing

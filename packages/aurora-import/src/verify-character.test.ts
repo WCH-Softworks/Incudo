@@ -1,0 +1,244 @@
+/**
+ * The differential verification, checked on its judgement rather than on its arithmetic.
+ *
+ * What matters here is the classification. A check that calls a missing book an engine bug
+ * cries wolf; one that calls an engine bug a missing book is worse. Each test below pins one
+ * of those calls.
+ */
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  deriveCharacter,
+  createCharacter,
+  MapElementIndex,
+  setChoice,
+  type Character,
+  type Element,
+  type GameSystem,
+} from '@incudo/core';
+import { parseAuroraSave } from './parse-save.ts';
+import { compareWithAurora, summarizeDifferences } from './verify-character.ts';
+
+function element(id: string, type: string, rules: Element['rules'] = []): Element {
+  return {
+    id,
+    type,
+    name: id,
+    source: 'Test',
+    setters: {},
+    rules,
+    supports: [],
+    origin: { sourceId: 'test', format: 'aurora' },
+  };
+}
+
+function grant(id: string, key = 'grant-0'): Element['rules'][number] {
+  return { kind: 'grant', key, type: '', id };
+}
+
+const SYSTEM: GameSystem = {
+  formatVersion: 1,
+  id: 'test',
+  name: 'Test',
+  version: '1.0.0',
+  elementTypes: [{ name: 'Thing' }, { name: 'Item' }, { name: 'Feature' }],
+  stats: [
+    { name: 'wisdom', default: 10 },
+    { name: 'wisdom:modifier', derive: { kind: 'number', value: 2 } },
+    { name: 'proficiency', default: 3 },
+  ],
+  characterKinds: [
+    {
+      id: 'pc',
+      name: 'PC',
+      default: true,
+      progression: { kind: 'none' },
+      elementTypes: ['Thing', 'Item', 'Feature'],
+      buildSteps: [{ id: 'b', label: 'B', types: ['Thing'] }],
+      sheet: { sections: [{ id: 's', label: 'S', types: ['Thing'] }] },
+    },
+  ],
+};
+
+function saveXml(body: { sum: string[]; equipment?: string[]; magic?: string }): string {
+  const items = (body.equipment ?? [])
+    .map((id) => `<item identifier="u" name="i" id="${id}" />`)
+    .join('');
+  return `<character version="1.0.3"><build>
+    <elements level-count="1">
+      <element type="Thing" name="Pick" requiredLevel="1" checksum="x" registered="ID_PICKED" />
+      ${body.sum.map((id) => `<element type="Thing" name="${id}" id="${id}" />`).join('')}
+    </elements>
+    <equipment>${items}</equipment>
+    <sum element-count="${body.sum.length}">
+      ${body.sum.map((id) => `<element type="Thing" id="${id}" />`).join('')}
+    </sum>
+    <magic>${body.magic ?? ''}</magic>
+  </build></character>`;
+}
+
+function derive(character: Character, index: MapElementIndex) {
+  return deriveCharacter(character, SYSTEM, index);
+}
+
+function picked(): Character {
+  return setChoice(createCharacter('test', 'pc'), 'build/thing', ['ID_PICKED']);
+}
+
+test('agreement is agreement', () => {
+  const index = new MapElementIndex();
+  index.addAll([element('ID_PICKED', 'Thing')]);
+  const save = parseAuroraSave(saveXml({ sum: ['ID_PICKED'] }));
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  assert.deepEqual(result.differences, []);
+  assert.equal(result.mismatches, 0);
+  assert.equal(result.agrees, true);
+});
+
+test('a grant that did not fire is a real difference — the case worth catching', () => {
+  const index = new MapElementIndex();
+  // The corpus has both, but nothing grants the second, so Incudo never reaches it.
+  index.addAll([element('ID_PICKED', 'Thing'), element('ID_EXPECTED', 'Thing')]);
+  const save = parseAuroraSave(saveXml({ sum: ['ID_PICKED', 'ID_EXPECTED'] }));
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  assert.equal(result.mismatches, 1);
+  assert.equal(result.differences[0]!.kind, 'element-missing');
+  assert.equal(result.differences[0]!.elementId, 'ID_EXPECTED');
+});
+
+test('a gate that should have held and did not is caught too, and names the granter', () => {
+  const index = new MapElementIndex();
+  index.addAll([element('ID_PICKED', 'Thing', [grant('ID_UNEXPECTED')]), element('ID_UNEXPECTED', 'Thing')]);
+  const save = parseAuroraSave(saveXml({ sum: ['ID_PICKED'] }));
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  assert.equal(result.mismatches, 1);
+  const [difference] = result.differences;
+  assert.equal(difference!.kind, 'element-extra');
+  // The granter is what makes the line actionable: every extra across the eight sample
+  // saves turned out to be a grant added upstream after the save was written.
+  assert.ok(difference!.message.includes('ID_PICKED'), difference!.message);
+});
+
+test('a book that is not loaded is a fact about sources, not an engine failure', () => {
+  const index = new MapElementIndex();
+  index.addAll([element('ID_PICKED', 'Thing')]);
+  const save = parseAuroraSave(saveXml({ sum: ['ID_PICKED', 'ID_FROM_A_BOOK_NOT_LOADED'] }));
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  assert.equal(result.mismatches, 0, 'reported, not counted');
+  assert.equal(result.agrees, true);
+  assert.equal(result.differences[0]!.kind, 'content-missing');
+});
+
+test('an absence is explained by its ancestor, so one missing book is one report', () => {
+  const index = new MapElementIndex();
+  // ID_CHILD and ID_GRANDCHILD are in the corpus; the thing that would grant them is not.
+  index.addAll([
+    element('ID_PICKED', 'Thing'),
+    element('ID_CHILD', 'Thing'),
+    element('ID_GRANDCHILD', 'Thing'),
+  ]);
+  const save = parseAuroraSave(`<character version="1.0.3"><build>
+    <elements level-count="1">
+      <element type="Thing" name="Pick" requiredLevel="1" checksum="x" registered="ID_PICKED" />
+      <element type="Thing" name="Missing" id="ID_NOT_LOADED">
+        <element type="Thing" name="Child" id="ID_CHILD">
+          <element type="Thing" name="Grandchild" id="ID_GRANDCHILD" />
+        </element>
+      </element>
+    </elements>
+    <sum element-count="4">
+      <element type="Thing" id="ID_PICKED" /><element type="Thing" id="ID_NOT_LOADED" />
+      <element type="Thing" id="ID_CHILD" /><element type="Thing" id="ID_GRANDCHILD" />
+    </sum>
+  </build></character>`);
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  assert.equal(result.mismatches, 0, 'all three trace back to one absent element');
+  assert.equal(summarizeDifferences(result).get('content-missing'), 3);
+  assert.ok(
+    result.differences.find((d) => d.elementId === 'ID_GRANDCHILD')!.message.includes('ID_NOT_LOADED'),
+    'and the report says which ancestor',
+  );
+});
+
+test('what an item brought is not compared, because there is no inventory yet', () => {
+  const index = new MapElementIndex();
+  index.addAll([
+    element('ID_PICKED', 'Thing'),
+    element('ID_ITEM', 'Item', [grant('ID_ITEM_EFFECT')]),
+    element('ID_ITEM_EFFECT', 'Thing'),
+  ]);
+  const save = parseAuroraSave(
+    saveXml({ sum: ['ID_PICKED', 'ID_ITEM', 'ID_ITEM_EFFECT'], equipment: ['ID_ITEM'] }),
+  );
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  assert.equal(result.mismatches, 0);
+  // Both the item and what it granted — the closure, not just the id in the bag.
+  assert.equal(summarizeDifferences(result).get('not-modelled'), 2);
+});
+
+test('the save DC is rebuilt from the derivation, and a disagreement is reported', () => {
+  const index = new MapElementIndex();
+  index.addAll([element('ID_PICKED', 'Thing'), element('ID_CASTER', 'Feature')]);
+  // 8 + proficiency 3 + wisdom modifier 2 = 13. Aurora says 15.
+  const save = parseAuroraSave(
+    saveXml({
+      sum: ['ID_PICKED'],
+      magic: '<spellcasting name="C" ability="Wisdom" dc="15" attack="7" source="ID_CASTER" />',
+    }),
+  );
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  const stat = result.differences.filter((d) => d.kind === 'stat-mismatch');
+  assert.equal(stat.length, 2, 'the DC and the attack bonus');
+  assert.equal(stat[0]!.expected, 15);
+  assert.equal(stat[0]!.actual, 13);
+});
+
+test('a DC the bag contributes to is not compared, because the two numbers differ honestly', () => {
+  const index = new MapElementIndex();
+  index.addAll([
+    element('ID_PICKED', 'Thing'),
+    element('ID_CASTER', 'Feature'),
+    element('ID_TOME', 'Item', [
+      { kind: 'stat', key: 'stat-0', name: 'wisdom', value: { kind: 'number', value: 2 } },
+    ]),
+  ]);
+  const save = parseAuroraSave(
+    saveXml({
+      sum: ['ID_PICKED'],
+      equipment: ['ID_TOME'],
+      magic: '<spellcasting name="C" ability="Wisdom" dc="15" attack="7" source="ID_CASTER" />',
+    }),
+  );
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  assert.equal(result.mismatches, 0);
+  assert.ok(
+    result.differences.some((d) => d.kind === 'not-modelled' && d.elementId === 'ID_TOME'),
+    'and it names the item responsible',
+  );
+});
+
+test('spell slots are reported once, not compared, because no system declares a table', () => {
+  const index = new MapElementIndex();
+  index.addAll([element('ID_PICKED', 'Thing'), element('ID_CASTER', 'Feature')]);
+  const save = parseAuroraSave(
+    saveXml({
+      sum: ['ID_PICKED'],
+      magic:
+        '<spellcasting name="C" ability="Wisdom" source="ID_CASTER"><slots s1="4" s2="2" /></spellcasting>',
+    }),
+  );
+
+  const result = compareWithAurora(save, derive(picked(), index), { index });
+  assert.equal(result.mismatches, 0);
+  assert.equal(summarizeDifferences(result).get('not-modelled'), 1);
+});

@@ -11,6 +11,7 @@
  *   incudo types     <index-url-or-path>
  *   incudo system    validate <system.json>
  *   incudo character new|choose|set|show|pack|unpack|verify …
+ *   incudo aurora    inspect|import|verify …
  */
 
 import { basename, dirname, join } from 'node:path';
@@ -22,6 +23,7 @@ import {
   type ElementIndex,
 } from '@incudo/core';
 import { ContentLibrary, HttpContentSource } from '@incudo/content';
+import { KNOWN_UPSTREAM_TYPOS } from '@incudo/aurora-import';
 import {
   LocalMirrorFetcher,
   NodeFetcher,
@@ -30,6 +32,7 @@ import {
 } from './node-platform.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { characterCommand, CHARACTER_USAGE, type CommandContext } from './character-commands.ts';
+import { auroraCommand, AURORA_USAGE } from './aurora-commands.ts';
 import { loadSystem } from './node-system.ts';
 
 const USAGE = `incudo — Incudo content tool
@@ -42,6 +45,7 @@ Usage:
   incudo content  bundle <index> <out.incuset>      Compile an index into a content bundle
   incudo content  show <file.incuset>               What a bundle contains
   incudo character <command> …                    Build and inspect characters (see below)
+  incudo aurora    <command> …                    Read Aurora .dnd5e character saves (see below)
 
 <index> is a URL or a local path, e.g.
   https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index
@@ -71,7 +75,8 @@ worth asking is "did it get worse", not "is it zero":
   --expect-files N     fail if fewer than N files loaded
   --expect-elements N  fail if fewer than N elements loaded
 
-${CHARACTER_USAGE}`;
+${CHARACTER_USAGE}
+${AURORA_USAGE}`;
 
 async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv;
@@ -89,6 +94,7 @@ async function main(argv: string[]): Promise<number> {
   if (command === 'character') return characterCommand(ctx);
   if (command === 'system') return systemCommand(ctx);
   if (command === 'content') return contentCommand(ctx, rest, flags);
+  if (command === 'aurora') return auroraCommand(ctx);
 
   const indexUrl = positional[0];
   if (!indexUrl) {
@@ -131,6 +137,8 @@ const VALUE_FLAGS = new Set([
   '--max-warnings',
   '--expect-files',
   '--expect-elements',
+  '--max-differences',
+  '--system-id',
 ]);
 
 function takesValue(args: string[], position: number): boolean {
@@ -299,8 +307,18 @@ function validate(
   elapsedMs: number,
   budget: Budget,
 ): number {
-  const referenced = referencedElementIds(library.elements.all());
-  const missing = [...referenced].filter((id) => !library.elements.get(id)).sort();
+  // Two different questions, so two different numbers. A grant to an id nothing declares
+  // means a character silently loses something, and that is the budgeted figure. A
+  // requirement naming an id nothing declares is a membership test that reads false —
+  // `!ID_X` against an id that will never exist is how the corpus says "unless the 2024
+  // replacement is in play", eighteen times. Counting them together would bury the first
+  // kind under the second.
+  const missing = [...referencedElementIds(library.elements.all(), { requirements: false })]
+    .filter((id) => !library.elements.get(id))
+    .sort();
+  const unmetRequirements = [...referencedElementIds(library.elements.all())]
+    .filter((id) => !library.elements.get(id) && !missing.includes(id))
+    .sort();
 
   const errors = library.diagnostics.filter((d) => d.level === 'error');
   const warnings = library.diagnostics.filter((d) => d.level === 'warning');
@@ -311,7 +329,9 @@ function validate(
         {
           files: report.filesLoaded,
           elements: report.elementsLoaded,
+          generatedElements: library.generatedElements,
           unresolvedReferences: missing,
+          requirementsNeverSatisfiable: unmetRequirements,
           errors,
           warnings,
           elapsedMs,
@@ -322,13 +342,33 @@ function validate(
     );
   } else {
     process.stdout.write(`Loaded ${report.elementsLoaded} elements from ${report.filesLoaded} files in ${(elapsedMs / 1000).toFixed(1)}s\n`);
+    if (library.generatedElements) {
+      process.stdout.write(`  plus ${library.generatedElements} Aurora generates at runtime (not counted above)\n`);
+    }
     process.stdout.write(`  errors:                 ${errors.length}\n`);
     process.stdout.write(`  warnings:               ${warnings.length}\n`);
     process.stdout.write(`  unresolved references:  ${missing.length}\n`);
+    // Informational, never budgeted: these are tests that read false, not broken content.
+    process.stdout.write(`  requirements that can never be met:  ${unmetRequirements.length}\n`);
     for (const d of errors.slice(0, 20)) process.stdout.write(`  ERROR  ${d.message}\n`);
     if (errors.length > 20) process.stdout.write(`  ... and ${errors.length - 20} more errors\n`);
-    for (const id of missing.slice(0, 20)) process.stdout.write(`  MISSING  ${id}\n`);
+    // A reference that is a known upstream mistake reads very differently from a new one,
+    // and the note is the difference between "someone should look at this" and "this is the
+    // six we already know about".
+    for (const id of missing.slice(0, 20)) {
+      process.stdout.write(`  MISSING  ${id}${noteFor(id)}\n`);
+    }
     if (missing.length > 20) process.stdout.write(`  ... and ${missing.length - 20} more\n`);
+
+    // Listed, not budgeted. Most are deliberate — `!ID_X` against an id that will never
+    // exist — but a handful are typos in the requirement itself, and the only way anyone
+    // spots those is by seeing them next to the ones that are fine.
+    for (const id of unmetRequirements.slice(0, 20)) {
+      process.stdout.write(`  UNMET-REQ  ${id}${noteFor(id)}\n`);
+    }
+    if (unmetRequirements.length > 20) {
+      process.stdout.write(`  ... and ${unmetRequirements.length - 20} more\n`);
+    }
   }
 
   const failures: string[] = [];
@@ -361,6 +401,18 @@ function validate(
     for (const failure of failures) process.stderr.write(`  ${failure}\n`);
   }
   return 1;
+}
+
+/**
+ * The note beside a reference that is a known upstream mistake.
+ *
+ * The difference between "someone should look at this" and "this is one of the six we
+ * already know about", which is the difference between a report people read and one they
+ * learn to skip.
+ */
+function noteFor(id: string): string {
+  const known = KNOWN_UPSTREAM_TYPOS.find((t) => t.id === id);
+  return known ? `\n             known upstream: ${known.note}` : '';
 }
 
 interface Budget {

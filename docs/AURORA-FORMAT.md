@@ -38,6 +38,8 @@ anyway.
     <update version="0.2.4"><file name="race-elf.xml" url="…" /></update>
   </info>
   <element name="Elf" type="Race" source="Player's Handbook" id="ID_RACE_ELF">
+    <supports>Human</supports>                    <!-- OUTSIDE <rules>. See below. -->
+    <requirements>ID_INTERNAL_OPTION_ALLOW_FEATS</requirements>   <!-- gates the element -->
     <description> …HTML… </description>
     <sheet display="false" alt="…" usage="…" action="…"> … </sheet>
     <setters>
@@ -47,13 +49,41 @@ anyway.
       <grant  type="Racial Trait" id="ID_…" level="1" requirements="…" />
       <select type="Proficiency" name="Skill Proficiency (Rogue)" supports="Skill,Rogue" number="4" />
       <stat   name="darkvision:range" value="60" />
-      <supports>Skill</supports>
     </rules>
     <multiclass id="ID_…"> … </multiclass>
     <spellcasting name="…" ability="…"> … </spellcasting>
   </element>
+
+  <append id="ID_DECLARED_IN_ANOTHER_FILE">      <!-- adds to an element declared elsewhere -->
+    <supports>Extra Tag</supports>
+    <rules><grant type="Proficiency" id="ID_…" /></rules>
+  </append>
 </elements>
 ```
+
+### Three constructs that are easy to miss, and were
+
+All three were being read past in silence until Phase 1, and the first is the expensive one.
+
+**`<supports>` is a child of `<element>`, not of `<rules>`.** The corpus contains 3,611 of
+them and **not one** inside `<rules>` — so an importer that only looks inside `<rules>` ends
+up with 890 distinct support tags on zero elements, and every `<select supports="…">` in the
+game matches nothing. Nothing errors; the candidate lists are just always empty. Incudo reads
+both positions.
+
+**`<requirements>` is also a direct child**, 1,845 times, and it gates the *element* rather
+than one of its rules: the Human Variant exists only in a campaign using feats. Incudo puts
+this on `Element.requirements` and uses it to filter candidate lists. It deliberately does
+**not** remove an element the character already has — content that vanishes is worse for the
+user than content that explains itself.
+
+**`<append id="…">` adds rules and support tags to an element declared somewhere else**, 171
+times — usually a supplement extending a core element without editing the core file (the 2024
+DMG adds ten firearm proficiencies to `ID_PROFICIENCY_WEAPON_PROFICIENCY_MARTIAL_RANGED_WEAPONS`
+this way). The target is routinely in a file that has not loaded yet, so appends cannot be
+applied at parse time: `parseAuroraElements` returns them unapplied and `ContentLibrary`
+folds them in once every file is in. An append whose target never loads is a warning, because
+"that supplement is enabled and the book it extends is not" is a normal thing for a user to do.
 
 ## Element types seen in the wild
 
@@ -82,7 +112,8 @@ engine system-agnostic: Aurora hardcodes them, Incudo reads them.
 | `grant` | `type`, `id`, `level`, `requirements`, `spellcasting`, `prepared`, `name`, `equipped`, `allowReplace` |
 | `select` | `type`, `name`, `supports`, `requirements`, `number`, `level`, `spellcasting`, `default`, `optional`, `allowReplace`, `prepared`, `default-behaviour` |
 | `stat` | `name`, `value`, `bonus`, `level`, `requirements`, `equipped`, `alt`, `inline`, `max`/`maximum`, `base`, `condition` |
-| `supports` | (text content) |
+| `supports` | (text content) — but see above: in practice it lives outside `<rules>` |
+| `append` | `id` + nested `supports`, `rules`; a child of `<elements>`, not of `<element>` |
 | `spellcasting` | `name`, `ability`, `prepare`, `extend`, `allowReplace`, `all` |
 | `multiclass` | `id` + nested `prerequisite`, `requirements`, `setters`, `rules` |
 | `setter` / `set` | `name` + text; extra attrs `currency`, `lb`, `addition`, `type`, `modifier`, `override`, … |
@@ -140,13 +171,17 @@ namespaced string keys verbatim — inventing a typed schema for 5e stats would 
   the app itself generates). `core/internal.xml` in AuroraLegacy exists precisely to patch around
   this. Incudo treats them as ordinary elements — the importer flags any it cannot resolve.
 
-## Aurora **character** files — resolved
+## Aurora **character** files — resolved, and now imported
 
 Documented separately in **[AURORA-SAVE-FORMAT.md](./AURORA-SAVE-FORMAT.md)**, from 8 real
 `.dnd5e` files. Short version: XML, save `version="1.0.3"`, a nested tree of chosen element IDs
 that maps almost directly onto the Incudo character model — plus inline base64 portraits, a
 full derived snapshot, and a 37,000-entry exclusion list that together account for well over 99%
 of the bytes.
+
+Worth reading even if you only care about *content*, for one reason: the derived snapshot in
+every save is a record of a derivation Aurora actually performed, and diffing against it is
+what found the three dropped constructs above. `incudo aurora verify` is that diff.
 
 ---
 
@@ -189,24 +224,42 @@ Two resolution modes therefore exist, and they are not interchangeable:
 
 ```
 files:    740
-elements: 12,058
+elements: 12,058  (+80 Aurora generates at runtime)
 errors:   0
-unresolved references: 57
+unresolved references:              1
+requirements that can never be met: 23
+warnings:                           57
 ```
 
-Of those 57 dangling references:
+It was 57 unresolved references when this document was first written. Two things changed.
 
-- **45 are `ID_INTERNAL_*`** — elements Aurora's app materializes itself, which no XML file
-  declares. Exactly the class of thing `core/internal.xml` exists to patch around. Incudo
-  will need its own equivalent overlay; until then they are expected, not bugs.
-- **12 are genuine upstream content typos**, e.g.
-  `ID_PHB_SPELL_ARCANA_EYE` (should be `ARCANE_EYE`),
-  `ID_WOCT_PSA_BACKGROUND_FEATURE_...` (`WOCT` for `WOTC`),
-  and the `ID_SIZE_*` family, referenced but never defined.
-  These are worth reporting upstream to AuroraLegacy.
+**The generated-element overlay landed.** `packages/aurora-import/src/generated-elements.ts`
+declares the 80 elements Aurora's app materializes — damage resistances, sizes, the six
+ability bumps, twenty levels, the 5e baseline grants. That resolved 51 of the 57. The
+`ID_SIZE_*` family was listed above as "genuine upstream typos" and that was **wrong**: every
+one of the eight sample saves has `ID_SIZE_MEDIUM` in its `<sum>` block, which is Aurora's own
+record of a derivation it performed. They are generated, not missing.
 
-**This number is the regression baseline.** CI fails if it grows. When the internal-elements
-overlay lands, 45 of these disappear and the baseline drops accordingly.
+**Grant references and requirement references are now counted separately**, because they fail
+differently. A `<grant>` to an id nothing declares is broken content: a character silently
+loses something. A `requirements="…"` naming an id nothing declares is a membership test that
+reads false, and `!ID_X` against an id that will never exist is ordinary content — eighteen of
+the twenty-three are the 2024 rules saying "unless the replacement feature is in play". Only
+the first kind is budgeted in CI.
+
+What is left:
+
+- **1 unresolved grant** — `ID_INTERNAL_CONDITION_DAMAGE_VULNERAILITY_BLUDGEONING`, a
+  misspelling of an id that does exist. One character, upstream, fixable.
+- **23 unmeetable requirements**, of which five are genuine typos worth reporting upstream:
+  `ID_PHB_SPELL_ARCANA_EYE` and `ID_WOTC_PHB24_SPELL_ARCANA_EYE` (`ARCANA` for `ARCANE`),
+  `ID_WOCT_PSA_BACKGROUND_FEATURE_…` (`WOCT` for `WOTC`),
+  `ID_ARCHETYPE_FEATURE_BATTLE_MASTER_COMBAT_SUPERIORITY` (missing its `WOTC_PHB_` prefix),
+  and `ID_WOTC_WGTE_GRANTS_DARKMARKED`. All six known mistakes are listed as data in
+  `KNOWN_UPSTREAM_TYPOS`, so `validate` can tell them from a new one and the list visibly
+  shrinks when AuroraLegacy fixes one.
+
+**These numbers are the regression baseline.** CI fails if the budgeted one grows.
 
 ### One thing the format does not tell you
 
