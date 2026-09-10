@@ -89,6 +89,9 @@ test('the 5e kinds are the ones ADR 0009 describes', async () => {
     // One ID_LEVEL_N element per level, which is what Aurora writes into every save and
     // what its content references. See baselineElementIds.
     elementIdPattern: 'ID_LEVEL_{n}',
+    // `level:rogue`, `level:warlock` — read by 150-odd references in the corpus and written
+    // by none of them, because Aurora computes class levels in application code. ADR 0015.
+    trackStatPattern: 'level:{name}',
   });
   assert.equal(pc.default, true);
 

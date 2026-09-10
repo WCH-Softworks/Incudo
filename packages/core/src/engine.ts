@@ -15,8 +15,9 @@
 
 import type { Element, ElementId, ElementIndex, Rule, StatKey, SelectRule, StatRule } from './model.ts';
 import type { Character } from './character.ts';
+import { advancementCounts, advancementElementIds } from './character.ts';
 import type { GameSystem, ResolvedCharacterKind, StatDef } from './system.ts';
-import { baselineElementIds, progressionStat, resolveCharacterKind } from './system.ts';
+import { baselineElementIds, progressionStat, resolveCharacterKind, trackStatKey } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import {
   evaluateExpr,
@@ -63,6 +64,7 @@ export interface Problem {
     | 'requirement-unmet'
     | 'over-selected'
     | 'cycle-limit'
+    | 'ambiguous-track'
     | 'unresolved-interpolation';
   message: string;
   elementId?: ElementId;
@@ -113,21 +115,33 @@ export function deriveCharacter(
   const baselineIds = new Set<ElementId>(baselineElementIds(kind, character.progress));
   const chosenIds = new Set<ElementId>(baselineIds);
   for (const choice of character.choices) for (const id of choice.elementIds) chosenIds.add(id);
+  // A second class is chosen by no select — it is what levels 3 onwards went to (ADR 0015),
+  // so an advancement entry seeds the derivation exactly as a choice does.
+  const trackLevels = advancementCounts(character);
+  for (const id of advancementElementIds(character)) chosenIds.add(id);
 
   let active = new Map<ElementId, Element>();
   let stats = new Map<StatKey, ResolvedStat>();
+  // Element -> the track root it belongs to. Rebuilt each pass alongside `active`, and kept
+  // afterwards because the pending-choice walk needs the same gates the expansion used.
+  let tracks = new Map<ElementId, ElementId>();
   let passes = 0;
   let changed = true;
 
   while (changed && passes < maxPasses) {
     passes++;
     const next = new Map<ElementId, Element>();
+    const nextTracks = new Map<ElementId, ElementId>();
+    const levelFor = trackLevelReader(nextTracks, trackLevels, character.progress);
     const ctx = makeContext(active, stats, character, kind);
 
     // Seed: everything the user explicitly chose, and the kind's own baseline.
     for (const id of chosenIds) {
       addElement(next, index, id, problems, undefined, baselineIds.has(id));
     }
+    // Each element progression was spent on roots its own track. Done before the expansion
+    // so a grant made by a track root inherits it on the first step.
+    for (const id of trackLevels.keys()) if (next.has(id)) nextTracks.set(id, id);
 
     // Fixed-point expansion of grants.
     let frontier = [...next.values()];
@@ -135,8 +149,9 @@ export function deriveCharacter(
     while (frontier.length) {
       const nextFrontier: Element[] = [];
       for (const element of frontier) {
-        for (const rule of activeRules(element, character, kind, ctx)) {
+        for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
           if (rule.kind !== 'grant') continue;
+          inheritTrack(nextTracks, element.id, rule.id, index.get(rule.id), problems);
           if (seen.has(rule.id)) continue;
           const granted = addElement(next, index, rule.id, problems, element.id);
           seen.add(rule.id);
@@ -146,11 +161,19 @@ export function deriveCharacter(
       frontier = nextFrontier;
     }
 
-    const nextStats = computeStats(next, character, kind, makeContext(next, stats, character, kind));
+    const nextStats = computeStats(
+      next,
+      character,
+      kind,
+      makeContext(next, stats, character, kind),
+      levelFor,
+      trackLevels,
+    );
 
     changed = !sameKeys(active, next) || !sameStats(stats, nextStats);
     active = next;
     stats = nextStats;
+    tracks = nextTracks;
   }
 
   if (passes >= maxPasses) {
@@ -162,7 +185,15 @@ export function deriveCharacter(
   }
 
   const ctx = makeContext(active, stats, character, kind);
-  const pendingChoices = collectPendingChoices(active, character, kind, index, ctx, problems);
+  const pendingChoices = collectPendingChoices(
+    active,
+    character,
+    kind,
+    index,
+    ctx,
+    problems,
+    trackLevelReader(tracks, trackLevels, character.progress),
+  );
 
   return {
     character,
@@ -237,11 +268,72 @@ function addElement(
   return element;
 }
 
+/** How many points of progression apply to an element's rules — its track's, or the total. */
+type TrackLevelReader = (elementId: ElementId) => number;
+
+/**
+ * An element in no track gates on the character's whole progression, which is what a race's
+ * `level="5"` grant means and what every single-track character has always done.
+ */
+function trackLevelReader(
+  tracks: Map<ElementId, ElementId>,
+  levels: Map<ElementId, number>,
+  progress: number,
+): TrackLevelReader {
+  if (!levels.size) return () => progress;
+  return (elementId) => {
+    const root = tracks.get(elementId);
+    return root === undefined ? progress : (levels.get(root) ?? 0);
+  };
+}
+
+/**
+ * Grants inherit their granter's track — ADR 0015. That is what makes a rogue's level 6
+ * feature gate on rogue levels without core knowing what a rogue is.
+ *
+ * An element reached from two tracks keeps the first one. Silently picking would make a level
+ * gate depend on grant-visit order, which is the sort of thing discovered years later by
+ * someone whose character is two features short — so it is reported.
+ *
+ * But only when it can change an answer. A track exists to give `rule.level` a number to
+ * compare against, so an element with no level-gated rule reads identically from either
+ * track. Every multiclassed character shares proficiencies between its classes — light
+ * armour, simple weapons, a saving throw — and warning about each of those would bury the
+ * one case that matters under four that never could.
+ */
+function inheritTrack(
+  tracks: Map<ElementId, ElementId>,
+  from: ElementId,
+  to: ElementId,
+  granted: Element | undefined,
+  problems: Problem[],
+): void {
+  const track = tracks.get(from);
+  if (track === undefined || to === track) return;
+  const existing = tracks.get(to);
+  if (existing === undefined) {
+    tracks.set(to, track);
+    return;
+  }
+  if (existing === track) return;
+  if (!granted?.rules.some((rule) => rule.level !== undefined)) return;
+  problems.push({
+    level: 'warning',
+    code: 'ambiguous-track',
+    message: `"${to}" is granted by both "${existing}" and "${track}", and has rules gated by level. They follow "${existing}"; content that means the other should say so.`,
+    elementId: to,
+  });
+}
+
 /**
  * Rules of an element that currently apply: progression gate met, requirements satisfied.
  *
  * `rule.level` is Aurora's `level="N"` attribute and keeps that name because that is what
- * the content says. It gates on the kind's progression number, whatever that number counts.
+ * the content says. It gates on the progression number *of this element's track* — a 5e
+ * class's own level — falling back to the character's total where an element is in no track
+ * (ADR 0015). Before tracks existed this was always the total, which is right for a race and
+ * wrong for the second half of a multiclassed character.
+ *
  * A kind with `progression.kind: "none"` has nothing to compare against, so gates are
  * ignored rather than read as unmet: a level-less system cannot express "at level N", and
  * dropping every gated rule would be the wrong reading of content imported from one that can.
@@ -251,10 +343,12 @@ function activeRules(
   character: Character,
   kind: ResolvedCharacterKind,
   ctx: EngineContext,
+  levelFor: TrackLevelReader,
 ): Rule[] {
   const gated = kind.progression.kind !== 'none';
+  const level = gated ? levelFor(element.id) : 0;
   return element.rules.filter((rule) => {
-    if (gated && rule.level !== undefined && character.progress < rule.level) return false;
+    if (gated && rule.level !== undefined && level < rule.level) return false;
     return evaluateRequirements(rule.requirements, ctx);
   });
 }
@@ -264,12 +358,14 @@ function computeStats(
   character: Character,
   kind: ResolvedCharacterKind,
   ctx: EngineContext,
+  levelFor: TrackLevelReader,
+  trackLevels: Map<ElementId, number>,
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
 
   for (const element of active.values()) {
-    for (const rule of activeRules(element, character, kind, ctx)) {
+    for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
       if (rule.kind !== 'stat') continue;
       const key = rule.name.toLowerCase();
       const list = buckets.get(key);
@@ -373,6 +469,22 @@ function computeStats(
     });
   }
 
+  // Each track publishes its own count, so `level:rogue` exists (ADR 0015). Like the
+  // progression stat above this is an input rather than a derivation — it is published here
+  // because that is what puts it in front of content, not because anything computes it.
+  for (const [rootId, count] of trackLevels) {
+    const root = active.get(rootId);
+    if (!root) continue;
+    const key = trackStatKey(kind.progression, root.name);
+    if (key === undefined) continue;
+    const lower = key.toLowerCase();
+    result.set(lower, {
+      name: key,
+      value: count,
+      contributions: [{ value: count, from: rootId }],
+    });
+  }
+
   // Bounds, over every declared stat rather than only the derived ones (ADR 0016). This used
   // to live inside the loop above, which meant a `max` on a contributed stat — an ability
   // score, say — was accepted by the schema and silently did nothing.
@@ -433,11 +545,12 @@ function collectPendingChoices(
   index: ElementIndex,
   ctx: EngineContext,
   problems: Problem[],
+  levelFor: TrackLevelReader,
 ): PendingChoice[] {
   const pending: PendingChoice[] = [];
 
   for (const element of active.values()) {
-    for (const rule of activeRules(element, character, kind, ctx)) {
+    for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
       if (rule.kind !== 'select') continue;
       const ruleKey = `${element.id}/${rule.key}`;
       const chosen = character.choices.find((c) => c.ruleKey === ruleKey)?.elementIds ?? [];

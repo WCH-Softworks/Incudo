@@ -22,6 +22,19 @@ export interface SourceRef {
   mode?: 'stream' | 'download';
 }
 
+/**
+ * One point of progression, and what it was spent on — ADR 0015.
+ *
+ * A 5e character's levels: `{ at: 1, elementId: "…CLASS_PALADIN" }`, `{ at: 3, elementId:
+ * "…CLASS_WARLOCK" }`. Core never says "class"; it says the element that owns that point.
+ */
+export interface AdvancementEntry {
+  /** A progression number, meaning whatever the kind's `progression` says it means. */
+  at: number;
+  /** The element that point of progression went to. */
+  elementId: ElementId;
+}
+
 export interface Choice {
   /**
    * Identifies which `select` rule this answers, stable across rebuilds:
@@ -65,6 +78,16 @@ export interface Character {
    * `overrides`, which wins over every contribution and would silently discard that +2.
    */
   baseStats?: Record<StatKey, number>;
+  /**
+   * Which element each point of progression was spent on, in order (ADR 0015). A 5e
+   * character's twenty levels; a Rogue 5 / Wizard 3 has five entries naming the rogue and
+   * three naming the wizard.
+   *
+   * An input in the same sense as `rolls` and `baseStats`: nothing derives which class you
+   * took at level 7. Optional, and a character without it behaves as one with a single
+   * track — which is why every single-classed save stayed correct before this existed.
+   */
+  advancement?: AdvancementEntry[];
   /** Free text the rules never touch: notes, appearance, backstory. */
   freeform: Record<string, string>;
   /**
@@ -143,6 +166,43 @@ export function chosenElementIds(character: Character): ElementId[] {
     for (const id of choice.elementIds) if (!ids.includes(id)) ids.push(id);
   }
   return ids;
+}
+
+/**
+ * The distinct elements the character has spent progression on — ADR 0015.
+ *
+ * These are seeds in the same way choices are: a second class is not chosen by any select,
+ * it is what levels 3 onwards went to. `collectCharacterContent` needs them for the same
+ * reason the engine does, or a multiclass save embeds only half of itself and ADR 0012
+ * quietly breaks.
+ */
+export function advancementElementIds(character: Character): ElementId[] {
+  const ids: ElementId[] = [];
+  for (const entry of character.advancement ?? []) {
+    if (!ids.includes(entry.elementId)) ids.push(entry.elementId);
+  }
+  return ids;
+}
+
+/**
+ * How many points of progression each track holds: the 5e class levels.
+ *
+ * Entries past the character's own `progress` are ignored, so a character levelled back down
+ * does not keep the levels it no longer has — the same reason `rolls` keeps entries it is not
+ * using but the engine does not read them.
+ */
+export function advancementCounts(character: Character): Map<ElementId, number> {
+  const counts = new Map<ElementId, number>();
+  const seen = new Set<number>();
+  for (const entry of character.advancement ?? []) {
+    if (entry.at > character.progress) continue;
+    // One element per point. A duplicated `at` is a broken save, and counting it twice
+    // would inflate a class level; the first entry for a point wins.
+    if (seen.has(entry.at)) continue;
+    seen.add(entry.at);
+    counts.set(entry.elementId, (counts.get(entry.elementId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /**

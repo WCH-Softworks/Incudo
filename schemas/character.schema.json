@@ -74,6 +74,23 @@
       "additionalProperties": { "type": "number" }
     },
 
+    "advancement": {
+      "type": "array",
+      "description": "Which element each point of progression was spent on: a 5e character's levels, one entry each. A Rogue 5 / Wizard 3 has five entries naming the rogue and three naming the wizard. An INPUT in the same sense as rolls and baseStats (ADR 0015) — nothing derives which class you took at level 7, and without it a level gate can only read the character's total level, which is right for a race and wrong for the second half of a multiclassed character. Optional: a character without it behaves as one with a single track.",
+      "items": {
+        "type": "object",
+        "required": ["at", "elementId"],
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "type": "number",
+            "description": "A progression number, meaning whatever the kind's progression says it means."
+          },
+          "elementId": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+
     "freeform": {
       "type": "object",
       "description": "Text the rules never touch: notes, appearance, backstory.",

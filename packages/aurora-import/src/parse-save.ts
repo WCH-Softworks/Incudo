@@ -52,6 +52,28 @@ export interface AuroraDecision {
   order: number;
 }
 
+/**
+ * One `<element type="Level">` node: a point of progression, and what it bought.
+ *
+ * ```xml
+ * <element type="Level" name="3" id="ID_LEVEL_3" multiclass="true" starting="true"
+ *          class="ID_WOTC_PHB_MULTICLASS_WARLOCK">
+ * ```
+ */
+export interface AuroraLevel {
+  /** The level number, from `name=`. */
+  at: number;
+  /**
+   * `class=` — and note it names the **multiclass** element, not the class. Absent on levels
+   * taken in the character's first class, which Aurora records only at level 1.
+   */
+  classRef?: string;
+  /** `multiclass="true"`: this level went to something other than the first class. */
+  multiclass?: boolean;
+  /** `starting="true"`: the level at which that class was first taken. */
+  starting?: boolean;
+}
+
 /** One `id=` node: something Aurora granted. Derivable, and re-derived rather than trusted. */
 export interface AuroraGrant {
   id: string;
@@ -139,6 +161,16 @@ export interface AuroraSave {
    * The one thing in the save that genuinely cannot be recomputed (ADR 0007).
    */
   rndhp: number[];
+  /**
+   * One entry per `<element type="Level">`, in level order — and specifically which class
+   * each level was taken in.
+   *
+   * This is the only record of a multiclass split anywhere in the save, and the importer
+   * walked past it until ADR 0015: a `Level` node carries `class=`, `multiclass=` and
+   * `starting=` beside the `name=` and `rndhp=` that were being read. A level with no
+   * `classRef` belongs to the class chosen at level 1.
+   */
+  levels: AuroraLevel[];
   decisions: AuroraDecision[];
   grants: AuroraGrant[];
   portrait?: AuroraPortrait;
@@ -215,6 +247,8 @@ export function parseAuroraSave(xml: string): AuroraSave {
     availablePoints: numberOrUndefined(firstChild(build, 'abilities')?.attrs['available-points']),
     levelCount: numberOrUndefined(elementsNode?.attrs['level-count']) ?? tree.levelCount,
     rndhp: tree.rndhp,
+
+    levels: tree.levels,
     decisions: tree.decisions,
     grants: tree.grants,
     portrait: readPortrait(firstChild(root, 'display-properties')),
@@ -233,11 +267,12 @@ interface ElementsTree {
   decisions: AuroraDecision[];
   grants: AuroraGrant[];
   rndhp: number[];
+  levels: AuroraLevel[];
   levelCount: number;
 }
 
 function emptyTree(): ElementsTree {
-  return { decisions: [], grants: [], rndhp: [], levelCount: 0 };
+  return { decisions: [], grants: [], rndhp: [], levels: [], levelCount: 0 };
 }
 
 /**
@@ -290,10 +325,21 @@ function readElementsTree(node: XmlNode, diagnostics: SaveDiagnostic[]): Element
       if (id) {
         tree.grants.push({ id, type, name, depth, parentId: ownerId });
         if (type === 'Level') {
-          tree.levelCount = Math.max(tree.levelCount, numberOrUndefined(name) ?? 0);
+          const at = numberOrUndefined(name) ?? 0;
+          tree.levelCount = Math.max(tree.levelCount, at);
           const rndhp = child.attrs['rndhp'];
           // Aurora writes the whole 20-entry roll list once, on the level it was rolled at.
           if (rndhp && !tree.rndhp.length) tree.rndhp = parseRndhp(rndhp, diagnostics);
+          // Which class this level was taken in — the only record of a multiclass split in
+          // the whole save, and read by nothing until ADR 0015.
+          if (at > 0) {
+            tree.levels.push({
+              at,
+              classRef: child.attrs['class'] || undefined,
+              multiclass: child.attrs['multiclass'] === 'true' ? true : undefined,
+              starting: child.attrs['starting'] === 'true' ? true : undefined,
+            });
+          }
         }
         walk(child, id, depth + 1);
         continue;
@@ -491,6 +537,8 @@ function empty(diagnostics: SaveDiagnostic[], version?: string): AuroraSave {
     abilities: {},
     levelCount: 0,
     rndhp: [],
+
+    levels: [],
     decisions: [],
     grants: [],
     equipment: [],

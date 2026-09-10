@@ -182,6 +182,11 @@
               "type": "string",
               "minLength": 1,
               "description": "An element id granted once per step of progression, with \"{n}\" replaced by the step number: \"ID_LEVEL_{n}\" gives a level 8 character ID_LEVEL_1 through ID_LEVEL_8. Aurora writes exactly those into every save and its content references them; without this, a character built in Incudo cannot match one built in Aurora. Only whole-numbered steps are granted."
+            },
+            "trackStatPattern": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The stat each track publishes its own count as, with \"{name}\" replaced by the track element name, lowercased: \"level:{name}\" on a character whose levels went to the Warlock element gives level:warlock = 18. A track is an element the character spent progression on (ADR 0015); grants inherit their granter’s track, so a class feature's level gate reads its own class's level rather than the character's total. 150-odd references in the Aurora corpus read these stats and nothing in the corpus writes them — Aurora computes them in application code. Omit it and no track stats are published."
             }
           }
         },
@@ -198,6 +203,11 @@
               "type": "string",
               "minLength": 1,
               "description": "An element id granted once per step of progression, with \"{n}\" replaced by the step number: \"ID_LEVEL_{n}\" gives a level 8 character ID_LEVEL_1 through ID_LEVEL_8. Aurora writes exactly those into every save and its content references them; without this, a character built in Incudo cannot match one built in Aurora. Only whole-numbered steps are granted."
+            },
+            "trackStatPattern": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The stat each track publishes its own count as, with \"{name}\" replaced by the track element name, lowercased: \"level:{name}\" on a character whose levels went to the Warlock element gives level:warlock = 18. A track is an element the character spent progression on (ADR 0015); grants inherit their granter’s track, so a class feature's level gate reads its own class's level rather than the character's total. 150-odd references in the Aurora corpus read these stats and nothing in the corpus writes them — Aurora computes them in application code. Omit it and no track stats are published."
             }
           }
         },
@@ -214,6 +224,11 @@
               "type": "string",
               "minLength": 1,
               "description": "An element id granted once per step of progression, with \"{n}\" replaced by the step number: \"ID_LEVEL_{n}\" gives a level 8 character ID_LEVEL_1 through ID_LEVEL_8. Aurora writes exactly those into every save and its content references them; without this, a character built in Incudo cannot match one built in Aurora. Only whole-numbered steps are granted."
+            },
+            "trackStatPattern": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The stat each track publishes its own count as, with \"{name}\" replaced by the track element name, lowercased: \"level:{name}\" on a character whose levels went to the Warlock element gives level:warlock = 18. A track is an element the character spent progression on (ADR 0015); grants inherit their granter’s track, so a class feature's level gate reads its own class's level rather than the character's total. 150-odd references in the Aurora corpus read these stats and nothing in the corpus writes them — Aurora computes them in application code. Omit it and no track stats are published."
             }
           }
         },

@@ -259,3 +259,153 @@ test('baseStats are bounded too — a starting value above the cap is still capp
 
   assert.equal(deriveCharacter(character, boundedSystem(20), indexWith()).stats.get('vigour')?.value, 20);
 });
+
+// --- advancement and tracks (ADR 0015) --------------------------------------
+
+/**
+ * Two tracks, each granting a feature gated on its own level. Nothing here is a class; the
+ * engine cannot tell, which is the point.
+ */
+function trackedSystem(): GameSystem {
+  const base = system();
+  const pc = base.characterKinds[0]!;
+  pc.progression = {
+    kind: 'level',
+    min: 1,
+    max: 20,
+    trackStatPattern: 'level:{name}',
+  };
+  return base;
+}
+
+function trackedIndex(): MapElementIndex {
+  return indexWith(
+    element('Alpha', 'Widget', [
+      { kind: 'grant', key: 'g1', type: 'Gadget', id: 'ALPHA_EARLY', level: 2 },
+      { kind: 'grant', key: 'g2', type: 'Gadget', id: 'ALPHA_LATE', level: 6 },
+    ]),
+    element('Beta', 'Widget', [
+      { kind: 'grant', key: 'g1', type: 'Gadget', id: 'BETA_EARLY', level: 2 },
+      { kind: 'grant', key: 'g2', type: 'Gadget', id: 'BETA_LATE', level: 6 },
+    ]),
+    element('ALPHA_EARLY', 'Gadget'),
+    element('ALPHA_LATE', 'Gadget'),
+    element('BETA_EARLY', 'Gadget'),
+    element('BETA_LATE', 'Gadget'),
+  );
+}
+
+test('a level gate reads its own track, not the character total', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 8;
+  // Six points to Alpha, two to Beta. Alpha reaches its level 6 grant; Beta does not, even
+  // though the character is level 8 — which is the whole bug ADR 0015 is about. Before
+  // tracks, both fired.
+  character.advancement = [
+    { at: 1, elementId: 'Alpha' },
+    { at: 2, elementId: 'Alpha' },
+    { at: 3, elementId: 'Alpha' },
+    { at: 4, elementId: 'Alpha' },
+    { at: 5, elementId: 'Alpha' },
+    { at: 6, elementId: 'Alpha' },
+    { at: 7, elementId: 'Beta' },
+    { at: 8, elementId: 'Beta' },
+  ];
+
+  const derived = deriveCharacter(character, trackedSystem(), trackedIndex());
+  assert.equal(derived.elementIds.has('ALPHA_EARLY'), true);
+  assert.equal(derived.elementIds.has('ALPHA_LATE'), true);
+  assert.equal(derived.elementIds.has('BETA_EARLY'), true);
+  assert.equal(derived.elementIds.has('BETA_LATE'), false);
+});
+
+test('each track publishes its own count as a stat', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 8;
+  character.advancement = [
+    ...Array.from({ length: 5 }, (_, i) => ({ at: i + 1, elementId: 'Alpha' })),
+    ...Array.from({ length: 3 }, (_, i) => ({ at: i + 6, elementId: 'Beta' })),
+  ];
+
+  const derived = deriveCharacter(character, trackedSystem(), trackedIndex());
+  assert.equal(derived.stats.get('level:alpha')?.value, 5);
+  assert.equal(derived.stats.get('level:beta')?.value, 3);
+  // The character's own progression number is still there and still the total.
+  assert.equal(derived.stats.get('level')?.value, 8);
+});
+
+test('an advancement entry seeds the derivation, because no select chose it', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 2;
+  character.advancement = [{ at: 1, elementId: 'Beta' }, { at: 2, elementId: 'Beta' }];
+
+  // No choices at all — Beta is present only because progression was spent on it.
+  const derived = deriveCharacter(character, trackedSystem(), trackedIndex());
+  assert.equal(derived.elementIds.has('Beta'), true);
+  assert.equal(derived.elementIds.has('BETA_EARLY'), true);
+});
+
+test('a character with no advancement gates on the total, exactly as before', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 8;
+  character.choices = [{ ruleKey: 'seed', elementIds: ['Alpha'] }];
+
+  const derived = deriveCharacter(character, trackedSystem(), trackedIndex());
+  assert.equal(derived.elementIds.has('ALPHA_LATE'), true);
+  assert.equal(derived.stats.get('level:alpha'), undefined);
+});
+
+test('a system that declares no trackStatPattern publishes no track stats', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 2;
+  character.advancement = [{ at: 1, elementId: 'Alpha' }, { at: 2, elementId: 'Alpha' }];
+
+  const derived = deriveCharacter(character, system(), trackedIndex());
+  assert.equal(derived.stats.get('level:alpha'), undefined);
+  assert.equal(derived.elementIds.has('ALPHA_EARLY'), true);
+});
+
+test('entries past the character progress do not count towards a track', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 2;
+  // A character levelled back down keeps the record but not the levels.
+  character.advancement = [
+    { at: 1, elementId: 'Alpha' },
+    { at: 2, elementId: 'Alpha' },
+    { at: 3, elementId: 'Alpha' },
+  ];
+
+  assert.equal(
+    deriveCharacter(character, trackedSystem(), trackedIndex()).stats.get('level:alpha')?.value,
+    2,
+  );
+});
+
+test('an element granted by two tracks reports the ambiguity, but only when a gate rides on it', () => {
+  const index = indexWith(
+    element('Alpha', 'Widget', [
+      { kind: 'grant', key: 'g1', type: 'Gadget', id: 'SHARED_GATED' },
+      { kind: 'grant', key: 'g2', type: 'Gadget', id: 'SHARED_PLAIN' },
+    ]),
+    element('Beta', 'Widget', [
+      { kind: 'grant', key: 'g1', type: 'Gadget', id: 'SHARED_GATED' },
+      { kind: 'grant', key: 'g2', type: 'Gadget', id: 'SHARED_PLAIN' },
+    ]),
+    element('SHARED_GATED', 'Gadget', [
+      { kind: 'stat', key: 's', name: 'vigour', value: { kind: 'number', value: 1 }, level: 4 },
+    ]),
+    // A shared proficiency: no level gate, so it reads the same from either track and is
+    // not worth a warning. Every multiclassed character has several.
+    element('SHARED_PLAIN', 'Gadget', [
+      { kind: 'stat', key: 's', name: 'vigour', value: { kind: 'number', value: 1 } },
+    ]),
+  );
+  const character = createCharacter('test', 'levelled');
+  character.progress = 2;
+  character.advancement = [{ at: 1, elementId: 'Alpha' }, { at: 2, elementId: 'Beta' }];
+
+  const ambiguous = deriveCharacter(character, trackedSystem(), index).problems.filter(
+    (p) => p.code === 'ambiguous-track',
+  );
+  assert.deepEqual(ambiguous.map((p) => p.elementId), ['SHARED_GATED']);
+});

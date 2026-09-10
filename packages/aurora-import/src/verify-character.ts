@@ -257,8 +257,26 @@ function compareElements(
   }
   for (const id of [...incudo].sort()) {
     if (aurora.has(id)) continue;
-    const type = byId.get(id)?.type;
+    const element = byId.get(id);
+    const type = element?.type;
     if (type && ignore.has(type)) continue;
+
+    // The two engines spell a multiclassed class differently, and neither is wrong. Aurora
+    // keeps class levels in application state and puts only the *multiclass* element in
+    // `<sum>`; Incudo makes the class element itself the track the levels belong to
+    // (ADR 0015), which is what lets its features derive at all. So an extra whose own
+    // `<multiclass>` block is in Aurora's set is the same fact written twice, not a gate
+    // that failed to hold.
+    const multiclassId = element?.multiclass?.id;
+    if (multiclassId && aurora.has(multiclassId)) {
+      differences.push({
+        kind: 'not-modelled',
+        elementId: id,
+        message: `Incudo derived "${id}"; Aurora recorded the same class as "${multiclassId}". Aurora keeps class levels in application state and Incudo makes the class a track (ADR 0015), so this is one fact in two shapes.`,
+      });
+      continue;
+    }
+
     // Naming the granter is what makes this line actionable. Every extra on the eight
     // sample saves turned out to be a grant added to the corpus after the save was written,
     // and the way to tell is to look at the granting element's history. "Incudo derived X"

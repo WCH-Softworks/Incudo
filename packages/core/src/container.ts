@@ -23,7 +23,7 @@
  */
 
 import type { Character, SourceRef } from './character.ts';
-import { chosenElementIds } from './character.ts';
+import { advancementElementIds, chosenElementIds } from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { referencedElementIds } from './engine.ts';
 import { baselineElementIds, type ResolvedCharacterKind } from './system.ts';
@@ -143,6 +143,9 @@ export function collectCharacterContent(
 
   let frontier: ElementId[] = [
     ...chosenElementIds(character),
+    // A second class is named only by `advancement` (ADR 0015) — no select chose it. Leaving
+    // these out embeds half a multiclassed character, which is the ADR 0012 failure exactly.
+    ...advancementElementIds(character),
     ...(options.kind ? baselineElementIds(options.kind, character.progress) : []),
     ...(options.extraIds ?? []),
   ];

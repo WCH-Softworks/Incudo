@@ -94,7 +94,7 @@
       "name": "Player Character",
       "description": "Levels 1–20, a class, a background, and the two-page sheet everyone means when they say \"character\".",
       "default": true,
-      "progression": { "kind": "level", "min": 1, "max": 20, "stat": "level", "elementIdPattern": "ID_LEVEL_{n}" },
+      "progression": { "kind": "level", "min": 1, "max": 20, "stat": "level", "elementIdPattern": "ID_LEVEL_{n}", "trackStatPattern": "level:{name}" },
 
       "stats": [{ "name": "level", "label": "Level", "default": 1 }],
 

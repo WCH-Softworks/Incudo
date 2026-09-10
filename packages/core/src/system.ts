@@ -91,10 +91,44 @@ export interface SheetLayoutDef {
  * a system-declared string; core never spells it.
  */
 export type Progression =
-  | { kind: 'level'; min: number; max: number; stat?: StatKey; elementIdPattern?: string }
-  | { kind: 'rating'; stat: StatKey; min?: number; max?: number; elementIdPattern?: string }
-  | { kind: 'xp'; stat: StatKey; min?: number; max?: number; elementIdPattern?: string }
+  | {
+      kind: 'level';
+      min: number;
+      max: number;
+      stat?: StatKey;
+      elementIdPattern?: string;
+      trackStatPattern?: string;
+    }
+  | {
+      kind: 'rating';
+      stat: StatKey;
+      min?: number;
+      max?: number;
+      elementIdPattern?: string;
+      trackStatPattern?: string;
+    }
+  | {
+      kind: 'xp';
+      stat: StatKey;
+      min?: number;
+      max?: number;
+      elementIdPattern?: string;
+      trackStatPattern?: string;
+    }
   | { kind: 'none' };
+
+/**
+ * The stat a track publishes its own count as — ADR 0015.
+ *
+ * `"level:{name}"` with a track rooted on the Warlock element gives `level:warlock`, which is
+ * what 150-odd content references in the Aurora corpus read and what nothing in it writes.
+ * `{name}` is the element's name, lowercased; that is Aurora's own convention, and the corpus
+ * depends on it.
+ */
+export function trackStatKey(progression: Progression, elementName: string): string | undefined {
+  if (progression.kind === 'none' || !progression.trackStatPattern) return undefined;
+  return progression.trackStatPattern.replace('{name}', elementName.trim().toLowerCase());
+}
 
 /** ADR 0010 — official systems record the licence of the material they describe. */
 export interface LicenceRef {

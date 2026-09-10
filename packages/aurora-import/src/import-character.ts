@@ -26,6 +26,7 @@
 
 import {
   createCharacter,
+  type AdvancementEntry,
   type Character,
   type Choice,
   type Element,
@@ -118,6 +119,8 @@ export function importAuroraCharacter(
   character.choices = toChoices(save, options.index, known, diagnostics);
   character.baseStats = { ...save.abilities };
   character.rolls = toRolls(save);
+  const advancement = toAdvancement(save, options.index, diagnostics);
+  if (advancement) character.advancement = advancement;
   character.freeform = toFreeform(save);
 
   const { assets, assetRefs } = extractPortrait(save, options.portraitName ?? 'portrait', diagnostics);
@@ -327,6 +330,92 @@ function reportMissingChoices(
       where: 'build/elements',
     });
   }
+}
+
+// --- advancement -----------------------------------------------------------
+
+/**
+ * `<element type="Level" class="…">` -> `Character.advancement` (ADR 0015).
+ *
+ * Aurora records the split as an attribute per level: no `class=` means the class chosen at
+ * level 1, and `class="ID_WOTC_PHB_MULTICLASS_WARLOCK"` means that level went to the warlock.
+ * Nothing read it until now, so a multiclass save imported as if every level belonged to the
+ * first class — Paladin 20 instead of Paladin 2 / Warlock 18.
+ *
+ * Two resolutions happen here, and both need the index:
+ *
+ * - **The multiclass element is not the class.** `class=` names the synthetic element behind
+ *   a `<multiclass>` block; the levels belong to the Class element that *declares* that block.
+ *   The index answers that directly, since a Class element carries its own `multiclass.id`.
+ *   The multiclass element stays a separate choice, because it is one: it grants the reduced
+ *   proficiency set, and the class element does not.
+ * - **The first class is implicit.** Aurora writes it once, as the `Class` decision at level
+ *   1, and every unmarked level belongs to it.
+ *
+ * With no index there is nothing to resolve against, so this returns nothing rather than
+ * guessing — an advancement list naming multiclass elements would derive a character whose
+ * class features are all missing, which is worse than one that behaves as single-classed.
+ */
+function toAdvancement(
+  save: AuroraSave,
+  index: ElementIndex | undefined,
+  diagnostics: SaveDiagnostic[],
+): AdvancementEntry[] | undefined {
+  if (!save.levels.length) return undefined;
+
+  const primary = save.decisions.find((d) => d.type === 'Class')?.registered;
+  const multiclassed = save.levels.some((l) => l.classRef);
+  // A single-classed character's advancement says only what `progress` and the class choice
+  // already say. Recording it anyway would put a redundant twenty-entry array in every save
+  // for no gain; the engine treats a character without one as single-tracked.
+  if (!multiclassed) return undefined;
+
+  if (!primary) {
+    diagnostics.push({
+      level: 'warning',
+      message:
+        'This character multiclasses, but the save records no first class, so its levels cannot be attributed. Level gates will follow the character total.',
+      where: 'build/elements',
+    });
+    return undefined;
+  }
+
+  const byMulticlass = index ? multiclassOwners(index) : undefined;
+  const entries: AdvancementEntry[] = [];
+  const unresolved = new Set<string>();
+
+  for (const level of [...save.levels].sort((a, b) => a.at - b.at)) {
+    if (!level.classRef) {
+      entries.push({ at: level.at, elementId: primary });
+      continue;
+    }
+    const owner = byMulticlass?.get(level.classRef);
+    if (!owner) {
+      unresolved.add(level.classRef);
+      continue;
+    }
+    entries.push({ at: level.at, elementId: owner });
+  }
+
+  for (const ref of unresolved) {
+    diagnostics.push({
+      level: 'warning',
+      message: `No loaded class declares the multiclass "${ref}", so the levels taken in it are not attributed. Enable the source it came from and re-import.`,
+      where: 'build/elements',
+    });
+  }
+
+  return entries.length ? entries : undefined;
+}
+
+/** `<multiclass id="X">` on a Class element -> `X` maps to that class. */
+function multiclassOwners(index: ElementIndex): Map<string, ElementId> {
+  const owners = new Map<string, ElementId>();
+  for (const element of index.all()) {
+    const id = element.multiclass?.id;
+    if (id && !owners.has(id)) owners.set(id, element.id);
+  }
+  return owners;
 }
 
 // --- rolls -----------------------------------------------------------------
