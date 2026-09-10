@@ -302,3 +302,34 @@ test('a rolled set is open on assignment alone, with no points to report', () =>
   b.setBaseStat('grit', 9);
   assert.equal(b.getState().decisions.some((d) => d.kind === 'budget'), false);
 });
+
+test('a growing allowance is one decision the shell can answer, not three', () => {
+  // Aurora's shape for "you know two cantrips, and one more at 4th and 10th level": three
+  // same-named selects on one element. A decision is addressed by its id, and `choose`
+  // replaces the whole recorded list — so three decisions sharing an id would be
+  // unanswerable, quite apart from the errors it used to report.
+  const index = indexWith(
+    element('CASTER', 'Widget', [
+      { kind: 'select', key: 'select:Cantrip', type: 'Gadget', name: 'Cantrip', number: 2, level: 1 },
+      { kind: 'select', key: 'select:Cantrip', type: 'Gadget', name: 'Cantrip', number: 1, level: 4 },
+    ]),
+    element('A', 'Gadget'),
+    element('B', 'Gadget'),
+    element('C', 'Gadget'),
+  );
+  const build = new CharacterBuilder(
+    createCharacter('test', 'pc', { progress: 4 }),
+    system(),
+    index,
+  );
+  build.choose('seed', ['CASTER']);
+
+  const open = build.getState().decisions.filter((d) => d.id === 'CASTER/select:Cantrip');
+  assert.equal(open.length, 1);
+  assert.equal(open[0]!.remaining, 3);
+
+  build.choose('CASTER/select:Cantrip', ['A', 'B', 'C']);
+  const after = build.getState();
+  assert.deepEqual(after.decisions.filter((d) => d.id === 'CASTER/select:Cantrip'), []);
+  assert.deepEqual(after.derived.problems, []);
+});

@@ -605,3 +605,113 @@ test('a kind with no progression sums nothing, because there are no steps to sum
     0,
   );
 });
+
+// --- select pools ----------------------------------------------------------
+
+/**
+ * Aurora writes a growing allowance as several same-named `<select>` rules, one per level
+ * that widens it. They are one pool, and the engine used to read them as separate quotas —
+ * which made every imported spellcaster report errors it had not earned.
+ */
+function pooledCaster(): Element {
+  return element('CASTER', 'Widget', [
+    { kind: 'select', key: 'select:Cantrip', type: 'Gadget', name: 'Cantrip', number: 2, level: 1 },
+    { kind: 'select', key: 'select:Cantrip', type: 'Gadget', name: 'Cantrip', number: 1, level: 4 },
+    { kind: 'select', key: 'select:Cantrip', type: 'Gadget', name: 'Cantrip', number: 1, level: 10 },
+  ]);
+}
+
+function withCantrips(progress: number, ...chosen: string[]): Character {
+  const character = { ...createCharacter('test', 'levelled'), progress };
+  character.choices = [
+    { ruleKey: 'seed', elementIds: ['CASTER'] },
+    { ruleKey: 'CASTER/select:Cantrip', elementIds: chosen },
+  ];
+  return character;
+}
+
+const CANTRIPS = () =>
+  indexWith(
+    pooledCaster(),
+    element('A', 'Gadget'),
+    element('B', 'Gadget'),
+    element('C', 'Gadget'),
+    element('D', 'Gadget'),
+    element('E', 'Gadget'),
+  );
+
+test('same-named selects on one element are one pool, and its allowance is their sum', () => {
+  // 2 at level 1, 1 more at 4, 1 more at 10. A level 10 character owes four picks.
+  const derived = deriveCharacter(withCantrips(10), system(), CANTRIPS());
+  assert.equal(derived.pendingChoices.length, 1, 'one decision, not three');
+  const [choice] = derived.pendingChoices;
+  assert.equal(choice!.ruleKey, 'CASTER/select:Cantrip');
+  assert.equal(choice!.number, 4);
+  assert.equal(choice!.remaining, 4);
+});
+
+test('a pool that is full reports nothing — the bug every imported caster hit', () => {
+  const derived = deriveCharacter(withCantrips(10, 'A', 'B', 'C', 'D'), system(), CANTRIPS());
+  assert.deepEqual(derived.problems, []);
+  assert.deepEqual(derived.pendingChoices, []);
+});
+
+test('over-selected fires on the pool, not on one rule of it', () => {
+  const derived = deriveCharacter(withCantrips(10, 'A', 'B', 'C', 'D', 'E'), system(), CANTRIPS());
+  const over = derived.problems.filter((p) => p.code === 'over-selected');
+  assert.equal(over.length, 1);
+  assert.match(over[0]!.message, /allows 4 choice\(s\) but 5 are recorded/);
+});
+
+test('only the rules a character has reached count toward the allowance', () => {
+  // Level 4: the level 10 rule is gated off, so the pool is 3 and not 4.
+  const derived = deriveCharacter(withCantrips(4), system(), CANTRIPS());
+  assert.equal(derived.pendingChoices[0]!.number, 3);
+});
+
+test('a partly-filled pool reports the level of the rule the next pick lands in', () => {
+  // Three picked fills the level 1 rule (2) and the level 4 rule (1); the next is level 10.
+  const derived = deriveCharacter(withCantrips(10, 'A', 'B', 'C'), system(), CANTRIPS());
+  const [choice] = derived.pendingChoices;
+  assert.equal(choice!.remaining, 1);
+  assert.equal(choice!.level, 10, 'ADR 0017: which level opened what is still outstanding');
+});
+
+test('a pool is optional only when every rule in it is', () => {
+  const index = indexWith(
+    element('CASTER', 'Widget', [
+      { kind: 'select', key: 'select:P', type: 'Gadget', name: 'P', number: 1, level: 1 },
+      { kind: 'select', key: 'select:P', type: 'Gadget', name: 'P', number: 1, level: 2, optional: true },
+    ]),
+    element('A', 'Gadget'),
+  );
+  const character = { ...createCharacter('test', 'levelled'), progress: 2 };
+  character.choices = [{ ruleKey: 'seed', elementIds: ['CASTER'] }];
+  assert.equal(deriveCharacter(character, system(), index).pendingChoices[0]!.optional, false);
+});
+
+test('a pool offers the candidates of every rule that still has room', () => {
+  // The wizard's spellbook shape: the first rule accepts one kind of thing and the ones
+  // that widen it later accept another, so no single rule's list covers what is left.
+  const index = indexWith(
+    element('CASTER', 'Widget', [
+      { kind: 'select', key: 'select:P', type: 'Widget', name: 'P', number: 1, level: 1 },
+      { kind: 'select', key: 'select:P', type: 'Gadget', name: 'P', number: 1, level: 2 },
+    ]),
+    element('W', 'Widget'),
+    element('G', 'Gadget'),
+  );
+  const character = { ...createCharacter('test', 'levelled'), progress: 2 };
+  character.choices = [{ ruleKey: 'seed', elementIds: ['CASTER'] }];
+
+  const empty = deriveCharacter(character, system(), index).pendingChoices[0]!;
+  assert.deepEqual([...empty.candidates].sort(), ['CASTER', 'G', 'W']);
+
+  // One picked closes the first rule, so only the second's candidates remain.
+  character.choices = [
+    { ruleKey: 'seed', elementIds: ['CASTER'] },
+    { ruleKey: 'CASTER/select:P', elementIds: ['W'] },
+  ];
+  const partial = deriveCharacter(character, system(), index).pendingChoices[0]!;
+  assert.deepEqual([...partial.candidates].sort(), ['G']);
+});

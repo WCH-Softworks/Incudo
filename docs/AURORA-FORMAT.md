@@ -164,6 +164,45 @@ engine system-agnostic: Aurora hardcodes them, Incudo reads them.
 | `multiclass` | `id` + nested `prerequisite`, `requirements`, `setters`, `rules` |
 | `setter` / `set` | `name` + text; extra attrs `currency`, `lb`, `addition`, `type`, `modifier`, `override`, … |
 
+### Same-named `<select>`s on one element are **one pool**
+
+A growing allowance is written as several `<select>` rules sharing a name, one per level
+that widens it — not as one rule whose `number` goes up:
+
+```xml
+<select type="Spell" name="Cantrip (Warlock)" supports="…" level="1"  number="2" />
+<select type="Spell" name="Cantrip (Warlock)" supports="…" level="4"  />
+<select type="Spell" name="Cantrip (Warlock)" supports="…" level="10" />
+```
+
+`number` defaults to 1, so a warlock 10 knows **four** cantrips: one pool, allowance
+`2 + 1 + 1`. The save format agrees — a decision records the `name` it belongs to plus the
+`requiredLevel` and `number` of the slot it fills:
+
+```xml
+<element type="Spell" name="Cantrip (Warlock)" requiredLevel="1"  number="1" registered="…" />
+<element type="Spell" name="Cantrip (Warlock)" requiredLevel="1"  number="2" registered="…" />
+<element type="Spell" name="Cantrip (Warlock)" requiredLevel="4"            registered="…" />
+<element type="Spell" name="Cantrip (Warlock)" requiredLevel="10"           registered="…" />
+```
+
+So the pool's identity is **(owning element, select name)**, which is exactly the key Incudo
+uses for a `Choice`: `<owner>/select:<name>`. The engine used to check each rule's own
+`number` against the whole recorded list, which made a correctly-built warlock report
+`"Cantrip (Warlock)" allows 2 choice(s) but 4 are recorded` — 26 such errors across the nine
+sample saves, on 8 of the 9, and on non-casters too (a rogue's Expertise is the same shape).
+It now sums the allowance over the rules the character has actually reached.
+
+2,553 select groups in the corpus, of which **89 have more than one rule** — up to 20, for a
+wizard's spellbook. Their rules are not interchangeable: 32 groups differ in `requirements`,
+18 in `supports`, 7 in `type`. A wizard's first six spellbook entries are 1st-level spells
+(`supports="$(spellcasting:list), 1"`) and the two it adds every level afterwards go up to
+its highest slot. So a pending pool offers the union of the candidates of the rules that
+still have room — over-inclusive rather than short, and Incudo does not enforce which slot a
+recorded pick was legal for. Aurora records that partition and Incudo keeps only the order,
+which is enough to say *which level* the next pick belongs to and not enough to re-derive
+the filter it was made under.
+
 ### `requirements` — a small boolean expression language
 
 Operators: `!` (not), `,` (and), `||` and `|` (or), `( )` grouping.

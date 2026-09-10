@@ -686,39 +686,111 @@ function collectPendingChoices(
   const pending: PendingChoice[] = [];
 
   for (const element of active.values()) {
-    for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
-      if (rule.kind !== 'select') continue;
-      const ruleKey = `${element.id}/${rule.key}`;
+    for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor)) {
       const chosen = character.choices.find((c) => c.ruleKey === ruleKey)?.elementIds ?? [];
+      const allowed = rules.reduce((sum, rule) => sum + rule.number, 0);
+      const label = rules[0]!.name;
 
-      if (chosen.length > rule.number) {
+      if (chosen.length > allowed) {
         problems.push({
           level: 'error',
           code: 'over-selected',
-          message: `"${rule.name}" allows ${rule.number} choice(s) but ${chosen.length} are recorded.`,
+          message: `"${label}" allows ${allowed} choice(s) but ${chosen.length} are recorded.`,
           elementId: element.id,
           ruleKey,
         });
       }
 
-      const remaining = rule.number - chosen.length;
+      const remaining = allowed - chosen.length;
       if (remaining <= 0) continue;
+
+      // Which rules still have room. Picks fill the pool in level order — the order the
+      // importer writes them in and the order a character is actually built in — so the
+      // first rule whose capacity is not used up is where the next pick lands.
+      let filled = chosen.length;
+      let at = 0;
+      while (at < rules.length && filled >= rules[at]!.number) {
+        filled -= rules[at]!.number;
+        at++;
+      }
+      const open = rules.slice(at);
+      const next = open[0]!;
+
+      // The union across the rules with room left, deduplicated. The rules of one pool can
+      // genuinely differ — a wizard's first six spellbook entries are 1st level and the two
+      // it adds every level afterwards go up to its highest slot — so no single rule's list
+      // covers the remaining picks. Over-inclusive rather than short, which is the same call
+      // `candidatesFor` already makes about an element's own requirements.
+      const candidates = new Set<ElementId>();
+      for (const rule of open) {
+        for (const candidate of candidatesFor(rule, index, chosen, ctx)) candidates.add(candidate.id);
+      }
 
       pending.push({
         ruleKey,
-        label: rule.name,
-        type: rule.type,
+        label,
+        // The type and the optionality of the rule the next pick lands in, except that a
+        // pool is only optional when every rule in it is: one required entry makes the
+        // whole pool something the character owes an answer to.
+        type: next.type,
         remaining,
-        number: rule.number,
-        optional: rule.optional ?? false,
-        candidates: candidatesFor(rule, index, chosen, ctx).map((e) => e.id),
+        number: allowed,
+        optional: rules.every((rule) => rule.optional ?? false),
+        candidates: [...candidates],
         from: element.id,
-        level: rule.level,
+        level: next.level,
       });
     }
   }
 
   return pending;
+}
+
+/**
+ * An element's active `select` rules, grouped into the pools they actually form.
+ *
+ * Aurora writes a growing allowance as several `<select>` rules sharing one name, one per
+ * level that widens it:
+ *
+ * ```xml
+ * <select name="Cantrip (Warlock)" level="1" number="2" />
+ * <select name="Cantrip (Warlock)" level="4" />
+ * <select name="Cantrip (Warlock)" level="10" />
+ * ```
+ *
+ * That is one pool of four cantrips, not three separate questions, and the save format says
+ * so: a decision records the `name` it belongs to plus the `requiredLevel` and `number` of
+ * the slot it fills. The importer reads it that way too — one `Choice` keyed
+ * `<owner>/select:<name>`, which is the only key `setChoice` and a builder's `OpenDecision`
+ * can address.
+ *
+ * The engine used to check each rule's own `number` against the whole recorded list, so a
+ * warlock with the four cantrips it is owed reported two errors and a wizard with a full
+ * spellbook reported two more. Grouping is what makes the engine agree with the format it
+ * reads and with the file it wrote.
+ *
+ * Sorted by level, ties in declaration order — the importer sorts recorded picks the same
+ * way, so slot *n* of the pool means the same thing on both sides.
+ */
+function selectPools(
+  element: Element,
+  character: Character,
+  kind: ResolvedCharacterKind,
+  ctx: EngineContext,
+  levelFor: TrackLevelReader,
+): Map<string, SelectRule[]> {
+  const pools = new Map<string, SelectRule[]>();
+  for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
+    if (rule.kind !== 'select') continue;
+    const ruleKey = `${element.id}/${rule.key}`;
+    const pool = pools.get(ruleKey);
+    if (pool) pool.push(rule);
+    else pools.set(ruleKey, [rule]);
+  }
+  for (const pool of pools.values()) {
+    pool.sort((a, b) => (a.level ?? 0) - (b.level ?? 0));
+  }
+  return pools;
 }
 
 /**

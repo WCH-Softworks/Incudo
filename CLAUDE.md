@@ -195,6 +195,17 @@ Two things ADR 0018 added that are easy to reach for wrongly:
   grant. Before modelling a number Aurora computes, grep the 740 files: twice now the answer
   has been "content says it and Incudo was not reading it".
 
+**A `select` pool is keyed on (element, name), not on the rule.** Aurora writes a growing
+allowance as several same-named `<select>`s, one per level that widens it — a warlock's
+cantrips are `number="2"` at level 1 plus one each at 4 and 10 — and the allowance is their
+sum. The importer has always keyed a `Choice` that way (`<owner>/select:<name>`, the only key
+`setChoice` and a builder's `OpenDecision` can address); the engine used to check each rule's
+own `number` against the whole list, so every imported caster reported errors it had not
+earned. Do not reintroduce per-rule quotas. What is genuinely lost is which slot a pick was
+made under: 89 groups in the corpus have rules that differ in `supports`, `requirements` or
+`type`, so a pending pool offers the union of the candidates of the rules with room left, and
+nothing checks that a recorded pick was legal for its slot. See docs/AURORA-FORMAT.md.
+
 **`Rule.equipped` is parsed and read by nothing** (ADR 0021). It is a `RequirementExpr`, all
 79 in the corpus are conditions like `[armor:none]`, and the engine does not evaluate them —
 so all 79 rules still apply unconditionally. Deliberate, and measured: with no inventory
