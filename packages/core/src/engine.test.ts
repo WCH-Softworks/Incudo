@@ -181,3 +181,81 @@ test('the resolved kind travels with the derivation', () => {
   assert.equal(derived.kind.id, 'rated');
   assert.deepEqual(derived.kind.elementTypes, ['Widget']);
 });
+
+// --- stat bounds (ADR 0016) ------------------------------------------------
+
+/** A system whose one stat is bounded, so the bound itself is what a test varies. */
+function boundedSystem(max: GameSystem['stats'][number]['max']): GameSystem {
+  const base = system();
+  base.stats = [{ name: 'vigour', default: 10, max }];
+  return base;
+}
+
+test('a bound applies to a contributed stat, which it never used to', () => {
+  const index = indexWith(
+    element('A', 'Widget', [
+      { kind: 'stat', key: 'a', name: 'vigour', value: { kind: 'number', value: 40 } },
+    ]),
+  );
+  const character = createCharacter('test', 'levelled');
+  character.progress = 1;
+  character.choices = [{ ruleKey: 'seed', elementIds: ['A'] }];
+
+  // 10 + 40, capped at 20. Before ADR 0016 the clamp only ran for stats with a `derive`,
+  // so this answered 50 and the declared maximum did nothing at all.
+  assert.equal(deriveCharacter(character, boundedSystem(20), index).stats.get('vigour')?.value, 20);
+});
+
+test('a bound may be an expression, so content can raise it', () => {
+  // The 5e shape: the system owns the 20, content contributes only the delta above it.
+  const max: GameSystem['stats'][number]['max'] = {
+    kind: 'binary',
+    op: '+',
+    left: { kind: 'number', value: 20 },
+    right: { kind: 'ref', stat: 'vigour:max' },
+  };
+  const index = indexWith(
+    element('A', 'Widget', [
+      { kind: 'stat', key: 'a', name: 'vigour', value: { kind: 'number', value: 40 } },
+    ]),
+    element('TOME', 'Widget', [
+      { kind: 'stat', key: 'b', name: 'vigour:max', value: { kind: 'number', value: 2 } },
+    ]),
+  );
+  const character = createCharacter('test', 'levelled');
+  character.progress = 1;
+
+  character.choices = [{ ruleKey: 'seed', elementIds: ['A'] }];
+  assert.equal(deriveCharacter(character, boundedSystem(max), index).stats.get('vigour')?.value, 20);
+
+  character.choices = [{ ruleKey: 'seed', elementIds: ['A', 'TOME'] }];
+  assert.equal(deriveCharacter(character, boundedSystem(max), index).stats.get('vigour')?.value, 22);
+});
+
+test('a bound still clamps a derived stat, and a plain number still means a number', () => {
+  const base = system();
+  base.stats = [
+    { name: 'vigour', default: 10 },
+    { name: 'vigour:doubled', min: 5, max: 15, derive: { kind: 'binary', op: '*', left: { kind: 'ref', stat: 'vigour' }, right: { kind: 'number', value: 2 } } },
+  ];
+  const character = createCharacter('test', 'levelled');
+  character.progress = 1;
+
+  assert.equal(deriveCharacter(character, base, indexWith()).stats.get('vigour:doubled')?.value, 15);
+});
+
+test('an override beats a bound, because a repair the engine clamps is not a repair', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 1;
+  character.overrides = { vigour: 99 };
+
+  assert.equal(deriveCharacter(character, boundedSystem(20), indexWith()).stats.get('vigour')?.value, 99);
+});
+
+test('baseStats are bounded too — a starting value above the cap is still capped', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 1;
+  character.baseStats = { vigour: 30 };
+
+  assert.equal(deriveCharacter(character, boundedSystem(20), indexWith()).stats.get('vigour')?.value, 20);
+});

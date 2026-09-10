@@ -40,9 +40,19 @@ export interface StatDef {
    * Systems declare arithmetic here rather than shipping JavaScript.
    */
   derive?: StatExpr;
-  /** Clamp after derivation. */
-  min?: number;
-  max?: number;
+  /**
+   * Bounds, applied to every stat — contributed, derived or both — after the contributions
+   * and derivations have settled and before `overrides`, which still win over everything
+   * (ADR 0016). A bound may be a plain number or an expression, because the interesting ones
+   * are not constants: 5e's ability score maximum is `20 + strength:max`, where the 20 is the
+   * system's and the delta is content's.
+   *
+   * Expressions here read the *unclamped* values of other stats, in one pass. A bound that
+   * depends on a bounded stat therefore sees the number before its cap — stated rather than
+   * fixed, because the alternative is a second fixed point in the resolver.
+   */
+  min?: number | StatExpr;
+  max?: number | StatExpr;
 }
 
 export interface BuildStepDef {

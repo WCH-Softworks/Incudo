@@ -64,12 +64,12 @@
   ],
 
   "stats": [
-    { "name": "strength", "label": "Strength", "default": 10 },
-    { "name": "dexterity", "label": "Dexterity", "default": 10 },
-    { "name": "constitution", "label": "Constitution", "default": 10 },
-    { "name": "intelligence", "label": "Intelligence", "default": 10 },
-    { "name": "wisdom", "label": "Wisdom", "default": 10 },
-    { "name": "charisma", "label": "Charisma", "default": 10 },
+    { "name": "strength", "label": "Strength", "default": 10, "max": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 20 }, "right": { "kind": "ref", "stat": "strength:max" } } },
+    { "name": "dexterity", "label": "Dexterity", "default": 10, "max": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 20 }, "right": { "kind": "ref", "stat": "dexterity:max" } } },
+    { "name": "constitution", "label": "Constitution", "default": 10, "max": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 20 }, "right": { "kind": "ref", "stat": "constitution:max" } } },
+    { "name": "intelligence", "label": "Intelligence", "default": 10, "max": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 20 }, "right": { "kind": "ref", "stat": "intelligence:max" } } },
+    { "name": "wisdom", "label": "Wisdom", "default": 10, "max": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 20 }, "right": { "kind": "ref", "stat": "wisdom:max" } } },
+    { "name": "charisma", "label": "Charisma", "default": 10, "max": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 20 }, "right": { "kind": "ref", "stat": "charisma:max" } } },
 
     { "name": "strength:modifier", "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "strength" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },
     { "name": "dexterity:modifier", "derive": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "dexterity" }, "right": { "kind": "number", "value": 10 } }, "right": { "kind": "number", "value": 2 } }] } },

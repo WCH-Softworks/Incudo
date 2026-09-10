@@ -101,9 +101,14 @@
         "kind": { "enum": ["number", "string"] },
         "default": { "type": ["number", "string"] },
         "derive": { "$ref": "#/$defs/expr" },
-        "min": { "type": "number" },
-        "max": { "type": "number" }
+        "min": { "$ref": "#/$defs/bound" },
+        "max": { "$ref": "#/$defs/bound" }
       }
+    },
+
+    "bound": {
+      "description": "A stat bound: a plain number, or an expression over stats. Applied to every stat — contributed, derived or both — after contributions and derivations settle and before overrides, which still win (ADR 0016). An expression is what the interesting bounds need: 5e's ability score maximum is `20 + strength:max`, because the corpus keeps only the delta and Aurora hardcodes the 20. Bounds read the unclamped values of other stats, in one pass.",
+      "oneOf": [{ "type": "number" }, { "$ref": "#/$defs/expr" }]
     },
 
     "expr": {

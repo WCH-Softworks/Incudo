@@ -18,7 +18,12 @@ import type { Character } from './character.ts';
 import type { GameSystem, ResolvedCharacterKind, StatDef } from './system.ts';
 import { baselineElementIds, progressionStat, resolveCharacterKind } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
-import { evaluateExpr, evaluateExprAsString, type ExpressionContext } from './expression.ts';
+import {
+  evaluateExpr,
+  evaluateExprAsString,
+  type ExpressionContext,
+  type StatExpr,
+} from './expression.ts';
 import { matchesSupports, type SupportsContext } from './supports.ts';
 
 const MAX_PASSES = 24;
@@ -346,8 +351,7 @@ function computeStats(
       statNumber: (s) => (s.toLowerCase() === key ? 0 : ctx.statNumber(s)),
       statString: ctx.statString,
     };
-    let value = evaluateExpr(def.derive, derivedCtx) + (result.get(key)?.value ?? 0);
-    value = clamp(value, def);
+    const value = evaluateExpr(def.derive, derivedCtx) + (result.get(key)?.value ?? 0);
     result.set(key, {
       name: def.name,
       value,
@@ -369,7 +373,28 @@ function computeStats(
     });
   }
 
-  // Manual overrides win over everything. See docs/adr/0006.
+  // Bounds, over every declared stat rather than only the derived ones (ADR 0016). This used
+  // to live inside the loop above, which meant a `max` on a contributed stat — an ability
+  // score, say — was accepted by the schema and silently did nothing.
+  //
+  // Bounds read the values computed above, before any of them are clamped: one pass, no fixed
+  // point. Reading `result` first and falling back to `ctx` is what makes them this pass's
+  // numbers rather than the previous pass's.
+  const boundsCtx: ExpressionContext = {
+    statNumber: (s) => result.get(s.toLowerCase())?.value ?? ctx.statNumber(s),
+    statString: ctx.statString,
+  };
+  for (const def of kind.stats) {
+    if (def.min === undefined && def.max === undefined) continue;
+    const key = def.name.toLowerCase();
+    const current = result.get(key);
+    if (!current) continue;
+    const value = clamp(current.value, def, boundsCtx);
+    if (value !== current.value) result.set(key, { ...current, value });
+  }
+
+  // Manual overrides win over everything, bounds included. An override is a repair tool
+  // (ADR 0006), and a repair the engine then clamps is not a repair.
   for (const [key, value] of Object.entries(character.overrides ?? {})) {
     const lower = key.toLowerCase();
     result.set(lower, {
@@ -383,11 +408,22 @@ function computeStats(
   return result;
 }
 
-function clamp(value: number, def: StatDef): number {
+function clamp(value: number, def: StatDef, ctx: ExpressionContext): number {
   let v = value;
-  if (def.min !== undefined) v = Math.max(v, def.min);
-  if (def.max !== undefined) v = Math.min(v, def.max);
+  const min = boundValue(def.min, ctx);
+  const max = boundValue(def.max, ctx);
+  if (min !== undefined) v = Math.max(v, min);
+  if (max !== undefined) v = Math.min(v, max);
   return v;
+}
+
+/** A bound is a number or an expression over stats — ADR 0016. */
+function boundValue(
+  bound: number | StatExpr | undefined,
+  ctx: ExpressionContext,
+): number | undefined {
+  if (bound === undefined) return undefined;
+  return typeof bound === 'number' ? bound : evaluateExpr(bound, ctx);
 }
 
 function collectPendingChoices(
