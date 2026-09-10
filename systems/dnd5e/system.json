@@ -85,7 +85,18 @@
     { "name": "speed", "label": "Speed", "default": 30 },
     { "name": "initiative", "label": "Initiative", "derive": { "kind": "ref", "stat": "dexterity:modifier" } },
     { "name": "hp", "label": "Hit Points", "default": 0 },
-    { "name": "ac", "label": "Armor Class", "default": 10 }
+    { "name": "ac", "label": "Armor Class", "default": 10 },
+
+    { "name": "multiclass:spellcasting:level", "label": "Caster Level", "default": 0 },
+    { "name": "spellcasting:slots:1", "label": "1st-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4] } },
+    { "name": "spellcasting:slots:2", "label": "2nd-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] } },
+    { "name": "spellcasting:slots:3", "label": "3rd-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] } },
+    { "name": "spellcasting:slots:4", "label": "4th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] } },
+    { "name": "spellcasting:slots:5", "label": "5th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3] } },
+    { "name": "spellcasting:slots:6", "label": "6th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2] } },
+    { "name": "spellcasting:slots:7", "label": "7th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2] } },
+    { "name": "spellcasting:slots:8", "label": "8th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1] } },
+    { "name": "spellcasting:slots:9", "label": "9th-level Spell Slots", "derive": { "kind": "table", "index": { "kind": "ref", "stat": "multiclass:spellcasting:level" }, "values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1] } }
   ],
 
   "characterKinds": [
@@ -106,6 +117,13 @@
         "ID_INTERNAL_GRANTS_SPELLCASTING_BASE",
         "ID_INTERNAL_GRANTS_MULTICLASS_SPELLCASTING",
         "ID_INTERNAL_GRANTS_MULTICLASSING_PREREQUISITE"
+      ],
+
+      "trackStats": [
+        { "stat": "multiclass:spellcasting:level", "when": "ID_INTERNAL_GRANT_MULTICLASS_SPELLCASTING_SLOTS_FULL", "value": { "kind": "ref", "stat": "track:progress" } },
+        { "stat": "multiclass:spellcasting:level", "when": "ID_INTERNAL_GRANT_MULTICLASS_SPELLCASTING_SLOTS_HALF", "value": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "ref", "stat": "track:progress" }, "right": { "kind": "number", "value": 2 } }] } },
+        { "stat": "multiclass:spellcasting:level", "when": "ID_INTERNAL_GRANT_MULTICLASS_SPELLCASTING_SLOTS_THIRD", "value": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "ref", "stat": "track:progress" }, "right": { "kind": "number", "value": 3 } }] } },
+        { "stat": "{name}:spellcasting:solo", "when": "ID_INTERNAL_GRANT_MULTICLASS_SPELLCASTING_SLOTS_SOLO", "value": { "kind": "number", "value": 1 } }
       ],
 
       "elementTypes": [

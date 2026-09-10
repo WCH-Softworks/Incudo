@@ -55,6 +55,52 @@ export interface StatDef {
   max?: number | StatExpr;
 }
 
+/**
+ * The reserved stat reference that reads the progression of the track being evaluated.
+ *
+ * Only meaningful inside a {@link TrackStatDef}'s `value`; anywhere else it is an ordinary
+ * stat name nothing declares, and so reads 0.
+ */
+export const TRACK_PROGRESS_STAT = 'track:progress';
+
+/** The placeholder `trackStatPattern` and {@link TrackStatDef.stat} substitute. */
+const TRACK_NAME_PLACEHOLDER = '{name}';
+
+/**
+ * A stat contributed once per track — ADR 0018.
+ *
+ * ADR 0015 gave every track a published count, which content reads by name (`level:warlock`).
+ * What it could not do is *iterate*: "for each track, add half its count". A system definition
+ * cannot enumerate the tracks, because content ships its own and there are 25 spellcasting
+ * classes in the Aurora corpus alone.
+ *
+ * So: for every track the character has, if `when`'s element is in that track, evaluate
+ * `value` — with {@link TRACK_PROGRESS_STAT} reading that track's own count — and contribute
+ * it to `stat`. Nothing here is a class or a spell; it is "a track may contribute a number".
+ */
+export interface TrackStatDef {
+  /**
+   * The stat contributed to. `{name}` is replaced with the track element's lowercased name,
+   * which turns an aggregate into a per-track stat: `"{name}:spellcasting:solo"` publishes
+   * `warlock:spellcasting:solo`. Without it, every track's contribution sums into one stat.
+   */
+  stat: StatKey;
+  /**
+   * Only contribute for tracks containing this element. Omit to contribute for every track.
+   *
+   * This is the hook content already provides: a 5e casting class grants a marker saying which
+   * weighting it uses, and the marker lands in that class's track.
+   */
+  when?: ElementId;
+  /** Evaluated per track. Reads {@link TRACK_PROGRESS_STAT} for that track's own count. */
+  value: StatExpr;
+}
+
+/** `"{name}:spellcasting:solo"` on a track rooted at Warlock -> `warlock:spellcasting:solo`. */
+export function trackStatName(def: TrackStatDef, elementName: string): StatKey {
+  return def.stat.replace(TRACK_NAME_PLACEHOLDER, elementName.trim().toLowerCase());
+}
+
 export interface BuildStepDef {
   id: string;
   label: string;
@@ -127,7 +173,7 @@ export type Progression =
  */
 export function trackStatKey(progression: Progression, elementName: string): string | undefined {
   if (progression.kind === 'none' || !progression.trackStatPattern) return undefined;
-  return progression.trackStatPattern.replace('{name}', elementName.trim().toLowerCase());
+  return progression.trackStatPattern.replace(TRACK_NAME_PLACEHOLDER, elementName.trim().toLowerCase());
 }
 
 /** ADR 0010 — official systems record the licence of the material they describe. */
@@ -180,6 +226,11 @@ export interface CharacterKindDef {
    * `extends` chain, like `buildSteps`.
    */
   grants?: ElementId[];
+  /**
+   * Stats contributed once per track — ADR 0018. Replaced rather than merged along an
+   * `extends` chain, like `buildSteps` and `grants`.
+   */
+  trackStats?: TrackStatDef[];
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -196,6 +247,8 @@ export interface ResolvedCharacterKind {
   stats: StatDef[];
   /** Elements every character of this kind has without choosing them. */
   grants: ElementId[];
+  /** Stats each of the character's tracks contributes — ADR 0018. */
+  trackStats: TrackStatDef[];
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -311,6 +364,7 @@ export function resolveCharacterKind(
   const stats = new Map<string, StatDef>();
   for (const stat of system.stats) stats.set(stat.name.toLowerCase(), stat);
   let grants: ElementId[] = [];
+  let trackStats: TrackStatDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -323,6 +377,7 @@ export function resolveCharacterKind(
     }
     for (const stat of layer.stats ?? []) stats.set(stat.name.toLowerCase(), stat);
     if (layer.grants !== undefined) grants = layer.grants;
+    if (layer.trackStats !== undefined) trackStats = layer.trackStats;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -336,6 +391,7 @@ export function resolveCharacterKind(
     elementTypes,
     stats: [...stats.values()],
     grants,
+    trackStats,
     buildSteps,
     sheet,
   };

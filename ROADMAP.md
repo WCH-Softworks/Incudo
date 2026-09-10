@@ -122,7 +122,8 @@ Each of these is reported by `aurora verify` as `not-modelled` rather than quiet
   for items, their equipped slot, or attunement. This is the `equipment` build step below.
 - **Spell slots and spell save DC as stats.** Aurora computes the multiclass slot table in its
   own code; the 5e system definition declares no slot table, no `spellcasting:dc`, and no
-  ability-score maximum.
+  ability-score maximum. *(The maximum landed with ADR 0016 and the slot table with ADR 0018;
+  the DC is the one still outstanding.)*
 
 ---
 
@@ -160,18 +161,28 @@ before any code, both touching a public API:
   - [x] **The ability score maximum**, which needed [ADR 0016](./docs/adr/0016-stat-bounds-are-expressions.md):
         an expression, because the corpus only ever contributes the *delta* above 20 and
         Aurora hardcodes the 20 — and a clamp that runs at all for a stat with no `derive`.
-  - [ ] **The spell slot table.** The oracle for it arrived with the ninth save: Paladin
-        `2/0/0/…` and Warlock `0/0/0/0/4/0/…` together pin the two rules easiest to get
-        wrong — a half-caster rounds its contribution down, and pact magic is not in the
-        multiclass table at all.
+  - [x] **The spell slot table**, which needed [ADR 0018](./docs/adr/0018-tables-and-track-stats.md):
+        a `table` expression, and a way for each *track* to contribute a number computed from
+        its own progression, because a system definition cannot enumerate the 25 casting
+        classes in the corpus. Reading the 740 files first shrank this a long way — content
+        already declares every class's own table as level-gated stats, and ADR 0015's tracks
+        already made those come out right. What was missing was the multiclass caster level,
+        the table it indexes, and any aggregate at all. All 8 recorded slot rows across the
+        nine saves are now compared and agree, and the first thing the comparison caught was
+        a real bug: a negated stat reference read as a stat *named* with a leading minus,
+        which gave every warlock four pact slots at every tier instead of one.
+        What the oracle proves and what it does not is set out in the ADR — pact magic being
+        outside the table is pinned; rounding down rather than up is not, because
+        `floor(2/2)` and `ceil(2/2)` agree and no sample save has two Spellcasting classes.
   - [ ] **Spell save DC and attack bonus as declared stats.** Less missing than it looked:
         `aurora verify` already rebuilds both and compares them, and reports 0 mismatches
         across all nine saves. What is missing is *publishing* them, so a sheet can show
         them; the formula currently lives in the verifier's defaults.
 - [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope.
-- [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md));
-      what remains is the slot table above and the UI for choosing a class at each level.
+- [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md)) and
+      so is the slot table ([ADR 0018](./docs/adr/0018-tables-and-track-stats.md)); what remains
+      is the UI for choosing a class at each level.
 
 **Exit criteria:** a level 8 multiclassed Rogue/Wizard with a subclass, feats and prepared
 spells is buildable end to end and matches Aurora's output for the same choices.

@@ -123,7 +123,10 @@ pair is not redundant — a corpus that failed to check out loads nothing, and n
 unresolved references.
 
 Aurora saves: **all 9 import; 1 element-missing, 0 spell-missing, 0 stat-mismatch**, and
-**53 element-extra**. The eight original saves are single-classed and contribute 52 of those
+**53 element-extra**, with **51 not-modelled** and **13 content-missing** reported and not
+counted. All **8 recorded spell slot rows are compared and agree** since ADR 0018 — they used
+to be 8 of the not-modelled notes, which is where 59 became 51.
+The eight original saves are single-classed and contribute 52 of those
 extras, all one species — content AuroraLegacy added *after* those saves were written,
 confirmed against upstream commit dates.
 
@@ -163,6 +166,19 @@ Three things Phase 1 changed that are easy to trip over:
 - **Three Aurora constructs were being silently dropped** until Phase 1: element-level
   `<supports>` (3,611 blocks — *every* support tag in the corpus), element-level
   `<requirements>` (1,845), and `<append>` (171). See docs/AURORA-FORMAT.md.
+
+Two things ADR 0018 added that are easy to reach for wrongly:
+
+- **A `table` expression, and `trackStats` on a character kind.** `trackStats` is the piece
+  ADR 0015 stopped one step short of: for every track the character has, if `when`'s element
+  is in that track, contribute `value` to `stat`, with `track:progress` reading that track's
+  own count and `{name}` in `stat` making it per-track instead of an aggregate. Reach for it
+  whenever the answer is "once per class" and the system cannot name the classes — hit points
+  are the next one.
+- **Content already declares a great deal of what looks missing.** Every casting class in the
+  corpus ships its own slot table as level-gated `<stat>` rules, and its weighting as a marker
+  grant. Before modelling a number Aurora computes, grep the 740 files: twice now the answer
+  has been "content says it and Incudo was not reading it".
 
 Two things that follow from the format work, for anyone changing this code:
 

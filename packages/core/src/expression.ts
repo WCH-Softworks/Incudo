@@ -17,7 +17,16 @@ export type StatExpr =
   | { kind: 'literal'; value: string }
   | { kind: 'ref'; stat: string }
   | { kind: 'binary'; op: '+' | '-' | '*' | '/' | '%'; left: StatExpr; right: StatExpr }
-  | { kind: 'call'; fn: 'floor' | 'ceil' | 'round' | 'min' | 'max' | 'abs'; args: StatExpr[] };
+  | { kind: 'call'; fn: 'floor' | 'ceil' | 'round' | 'min' | 'max' | 'abs'; args: StatExpr[] }
+  /**
+   * A number read out of a declared row, indexed by another expression — ADR 0018.
+   *
+   * Some published numbers are a table and have no closed form: 5e's multiclass spell slots
+   * are twenty rows of nine, and every attempt to write them as arithmetic is a worse
+   * description than the table itself. The index is floored and clamped to the array, so a
+   * value below the row reads its first entry and one above reads its last.
+   */
+  | { kind: 'table'; index: StatExpr; values: number[] };
 
 export interface ExpressionContext {
   statNumber(stat: string): number;
@@ -84,6 +93,12 @@ export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {
       }
     }
     // eslint-disable-next-line no-fallthrough
+    case 'table': {
+      if (!expr.values.length) return 0;
+      const raw = Math.floor(evaluateExpr(expr.index, ctx));
+      const at = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), expr.values.length - 1);
+      return expr.values[at] ?? 0;
+    }
     case 'call': {
       const args = expr.args.map((a) => evaluateExpr(a, ctx));
       switch (expr.fn) {

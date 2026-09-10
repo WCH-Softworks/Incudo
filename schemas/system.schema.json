@@ -155,6 +155,17 @@
             "fn": { "enum": ["floor", "ceil", "round", "min", "max", "abs"] },
             "args": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/expr" } }
           }
+        },
+        {
+          "type": "object",
+          "description": "A number read out of a declared row, indexed by another expression (ADR 0018). For the published numbers that are a table and have no closed form: 5e's multiclass spell slots are twenty rows of nine. The index is floored and clamped to the array, so a value below the row reads its first entry and one above reads its last.",
+          "required": ["kind", "index", "values"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "table" },
+            "index": { "$ref": "#/$defs/expr" },
+            "values": { "type": "array", "items": { "type": "number" } }
+          }
         }
       ]
     },
@@ -272,8 +283,32 @@
           "items": { "type": "string", "minLength": 1 },
           "description": "Element ids every character of this kind has without choosing them. The system-definition home for what Aurora answers in application code: a 5e character has a base armour class and adds its Constitution modifier to hit points, and no content file says so. Not stored on the character, so fixing the baseline fixes every character rather than only the ones saved afterwards."
         },
+        "trackStats": { "type": "array", "items": { "$ref": "#/$defs/trackStat" } },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
+      }
+    },
+
+    "trackStat": {
+      "description": "A stat contributed once per track (ADR 0018). ADR 0015 gave every track a published count that content reads by name; this is the part that iterates — \"for each track, add half its count\" — which a system definition cannot write out, because content ships its own tracks. For every track the character has, if `when`'s element is in that track, `value` is evaluated and added to `stat`. Track contributions land with content's, before derivations read them.",
+      "type": "object",
+      "required": ["stat", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "stat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The stat contributed to. `{name}` is replaced with the track element's lowercased name, which turns an aggregate into a per-track stat: \"{name}:spellcasting:solo\" publishes warlock:spellcasting:solo. Without it, every track's contribution sums into one stat."
+        },
+        "when": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only contribute for tracks containing this element. Omit to contribute for every track. This is the hook content already provides: a 5e casting class grants a marker saying which weighting it uses, and the marker lands in that class's track."
+        },
+        "value": {
+          "$ref": "#/$defs/expr",
+          "description": "Evaluated once per matching track. The reserved reference \"track:progress\" reads that track's own count."
+        }
       }
     },
 

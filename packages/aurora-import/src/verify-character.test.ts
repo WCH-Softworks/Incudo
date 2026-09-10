@@ -227,7 +227,7 @@ test('a DC the bag contributes to is not compared, because the two numbers diffe
   );
 });
 
-test('spell slots are reported once, not compared, because no system declares a table', () => {
+test('spell slots stay a note when no loaded system declares a table', () => {
   const index = new MapElementIndex();
   index.addAll([element('ID_PICKED', 'Thing'), element('ID_CASTER', 'Feature')]);
   const save = parseAuroraSave(
@@ -241,4 +241,110 @@ test('spell slots are reported once, not compared, because no system declares a 
   const result = compareWithAurora(save, derive(picked(), index), { index });
   assert.equal(result.mismatches, 0);
   assert.equal(summarizeDifferences(result).get('not-modelled'), 1);
+});
+
+// --- spell slots (ADR 0018) -------------------------------------------------
+
+/**
+ * A system that publishes slots, with the three stats the comparison asks about supplied as
+ * plain defaults. What produces them in `systems/dnd5e` is a table indexed by a caster level
+ * that `trackStats` assembles; what is under test here is the *choice between pools*, so the
+ * numbers are handed over directly.
+ */
+function slotSystem(stats: Record<string, number>): GameSystem {
+  return {
+    ...SYSTEM,
+    stats: [
+      ...SYSTEM.stats,
+      ...Object.entries(stats).map(([name, value]) => ({ name, default: value })),
+    ],
+  };
+}
+
+function deriveWith(system: GameSystem, index: MapElementIndex) {
+  return deriveCharacter(picked(), system, index);
+}
+
+function casterSave(slots: string): ReturnType<typeof parseAuroraSave> {
+  return parseAuroraSave(
+    saveXml({
+      sum: ['ID_PICKED'],
+      magic: `<spellcasting name="Warlock" ability="Wisdom" source="ID_CASTER">${slots}</spellcasting>`,
+    }),
+  );
+}
+
+function casterIndex(): MapElementIndex {
+  const index = new MapElementIndex();
+  index.addAll([element('ID_PICKED', 'Thing'), element('ID_CASTER', 'Feature')]);
+  return index;
+}
+
+test('a class table the system publishes is compared, and agreeing is silent', () => {
+  const system = slotSystem({ 'warlock:spellcasting:slots:1': 4, 'warlock:spellcasting:slots:2': 2 });
+  const result = compareWithAurora(
+    casterSave('<slots s1="4" s2="2" />'),
+    deriveWith(system, casterIndex()),
+    { index: casterIndex() },
+  );
+  assert.deepEqual(result.differences, []);
+});
+
+test('a class table that disagrees is a real mismatch, and says which pool it read', () => {
+  const system = slotSystem({ 'warlock:spellcasting:slots:1': 4, 'warlock:spellcasting:slots:2': 4 });
+  const result = compareWithAurora(
+    casterSave('<slots s1="4" s2="2" />'),
+    deriveWith(system, casterIndex()),
+    { index: casterIndex() },
+  );
+  assert.equal(result.mismatches, 1);
+  const [difference] = result.differences;
+  assert.equal(difference!.kind, 'stat-mismatch');
+  assert.equal(difference!.expected, '4/2/0/0/0/0/0/0/0');
+  assert.equal(difference!.actual, '4/4/0/0/0/0/0/0/0');
+  assert.ok(difference!.message.includes('its own class table'), difference!.message);
+});
+
+test('a caster level moves the comparison to the shared pool', () => {
+  const system = slotSystem({
+    'warlock:spellcasting:slots:1': 2,
+    'spellcasting:slots:1': 4,
+    'spellcasting:slots:2': 3,
+  });
+  const result = compareWithAurora(
+    casterSave('<slots s1="4" s2="3" />'),
+    deriveWith(system, casterIndex()),
+    { index: casterIndex() },
+  );
+  assert.deepEqual(result.differences, [], 'the shared pool is what Aurora recorded');
+});
+
+test('a solo caster keeps its own table however large the shared pool is', () => {
+  // Pact magic. Without the flag the two pools are indistinguishable and this would be
+  // compared against 4/3, which is a different character's spell slots.
+  const system = slotSystem({
+    'warlock:spellcasting:slots:5': 4,
+    'warlock:spellcasting:solo': 1,
+    'spellcasting:slots:1': 4,
+    'spellcasting:slots:2': 3,
+  });
+  const result = compareWithAurora(
+    casterSave('<slots s5="4" />'),
+    deriveWith(system, casterIndex()),
+    { index: casterIndex() },
+  );
+  assert.deepEqual(result.differences, []);
+});
+
+test('the stat names are configuration, not knowledge of the game', () => {
+  const system = slotSystem({ 'pool/warlock/1': 3 });
+  const result = compareWithAurora(
+    casterSave('<slots s1="3" />'),
+    deriveWith(system, casterIndex()),
+    {
+      index: casterIndex(),
+      stats: { slots: { own: (name, level) => `pool/${name.toLowerCase()}/${level}` } },
+    },
+  );
+  assert.deepEqual(result.differences, [], 'and the other two keys keep their defaults');
 });

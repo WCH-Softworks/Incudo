@@ -86,6 +86,21 @@ export interface CompareOptions {
     abilityModifier?: (ability: string) => string;
     /** Spell save DC = this + proficiency + ability modifier. */
     saveDcBase?: number;
+    /**
+     * How the loaded system names spell slots — ADR 0018. Three questions, because 5e has
+     * two pools and a way to tell them apart, and none of that knowledge belongs in code:
+     *
+     *  - `shared`  the pool a multiclassed caster draws from, level 1-9;
+     *  - `own`     a single casting source's own table, which content declares per class;
+     *  - `solo`    non-zero when this source keeps its own slots instead of joining the
+     *              shared pool. Pact magic is the case; `systems/dnd5e` publishes it from
+     *              a `trackStats` entry, and without it the two pools are indistinguishable.
+     */
+    slots?: {
+      shared?: (level: number) => string;
+      own?: (blockName: string, level: number) => string;
+      solo?: (blockName: string) => string;
+    };
   };
   /**
    * Element types to ignore when diffing the element set. Aurora's `<sum>` records a few
@@ -98,6 +113,12 @@ const DEFAULT_STATS = {
   proficiency: 'proficiency',
   abilityModifier: (ability: string) => `${ability.toLowerCase()}:modifier`,
   saveDcBase: 8,
+  slots: {
+    shared: (level: number) => `spellcasting:slots:${level}`,
+    own: (blockName: string, level: number) =>
+      `${blockName.trim().toLowerCase()}:spellcasting:slots:${level}`,
+    solo: (blockName: string) => `${blockName.trim().toLowerCase()}:spellcasting:solo`,
+  },
 };
 
 export function compareWithAurora(
@@ -105,7 +126,13 @@ export function compareWithAurora(
   derived: DerivedCharacter,
   options: CompareOptions = {},
 ): AuroraComparison {
-  const stats = { ...DEFAULT_STATS, ...options.stats };
+  // `slots` merges a level deeper than the rest, so a caller renaming one of the three
+  // keeps the defaults for the other two.
+  const stats = {
+    ...DEFAULT_STATS,
+    ...options.stats,
+    slots: { ...DEFAULT_STATS.slots, ...options.stats?.slots },
+  };
   const ignore = new Set(options.ignoreTypes ?? []);
   const differences: AuroraDifference[] = [];
 
@@ -331,6 +358,63 @@ function statsFromInventory(
   return touched;
 }
 
+/**
+ * Aurora's nine-number slot row, against the stats the system publishes — ADR 0018.
+ *
+ * Two pools and one flag to choose between them. A source that keeps its own slots — pact
+ * magic — is compared against its own table however multiclassed the character is; anything
+ * else joins the shared pool the moment that pool exists, because that is what having a
+ * caster level *means*. When neither pool is declared the row goes back to being a note,
+ * which is what every system that is not 5e will see.
+ *
+ * The two pools cannot simply be added or maxed: a Paladin 17 / Sorcerer 1 has a caster level
+ * of 9 and *fewer* 4th-level slots than the paladin alone would, which is a real quirk of the
+ * published rule and the reason this picks rather than combines.
+ */
+function compareSlots(
+  block: AuroraSpellcasting,
+  derived: DerivedCharacter,
+  stats: typeof DEFAULT_STATS,
+  where: string,
+  differences: AuroraDifference[],
+): void {
+  const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const read = (key: string): number | undefined => derived.stats.get(key.toLowerCase())?.value;
+
+  const own = levels.map((level) => read(stats.slots.own(block.name, level)));
+  const shared = levels.map((level) => read(stats.slots.shared(level)));
+  const solo = (read(stats.slots.solo(block.name)) ?? 0) > 0;
+
+  const ownDeclared = own.some((value) => value !== undefined);
+  const sharedDeclared = shared.some((value) => value !== undefined);
+  if (!ownDeclared && !sharedDeclared) {
+    if (!block.slots.some((n) => n > 0)) return;
+    differences.push({
+      kind: 'not-modelled',
+      message: `${where}: Aurora recorded spell slots ${block.slots.join('/')}. No loaded system declares a slot table, so this is not compared.`,
+      expected: block.slots.join('/'),
+    });
+    return;
+  }
+
+  const usesShared = !solo && sharedDeclared && shared.some((value) => (value ?? 0) > 0);
+  const source = usesShared
+    ? 'the multiclass table'
+    : solo
+      ? 'its own track, outside the multiclass table'
+      : 'its own class table';
+  const actual = (usesShared ? shared : own).map((value) => value ?? 0);
+
+  if (actual.join('/') === block.slots.join('/')) return;
+  differences.push({
+    kind: 'stat-mismatch',
+    elementId: block.source,
+    message: `${where}: Aurora recorded spell slots ${block.slots.join('/')}; Incudo derives ${actual.join('/')} from ${source}.`,
+    expected: block.slots.join('/'),
+    actual: actual.join('/'),
+  });
+}
+
 function compareSpellcasting(
   block: AuroraSpellcasting,
   derived: DerivedCharacter,
@@ -366,16 +450,7 @@ function compareSpellcasting(
     }
   }
 
-  if (block.slots.some((n) => n > 0)) {
-    // Aurora's slot table lives in its app, not in any content file. Until a system
-    // definition declares one there is nothing to disagree with, and pretending otherwise
-    // would put a permanent failure in the report.
-    differences.push({
-      kind: 'not-modelled',
-      message: `${where}: Aurora recorded spell slots ${block.slots.join('/')}. No loaded system declares a slot table, so this is not compared.`,
-      expected: block.slots.join('/'),
-    });
-  }
+  compareSlots(block, derived, stats, where, differences);
 
   if (block.dc === undefined || !block.ability) return;
 

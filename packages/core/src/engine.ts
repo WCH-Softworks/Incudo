@@ -17,7 +17,14 @@ import type { Element, ElementId, ElementIndex, Rule, StatKey, SelectRule, StatR
 import type { Character } from './character.ts';
 import { advancementCounts, advancementElementIds } from './character.ts';
 import type { GameSystem, ResolvedCharacterKind, StatDef } from './system.ts';
-import { baselineElementIds, progressionStat, resolveCharacterKind, trackStatKey } from './system.ts';
+import {
+  baselineElementIds,
+  progressionStat,
+  resolveCharacterKind,
+  trackStatKey,
+  trackStatName,
+  TRACK_PROGRESS_STAT,
+} from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import {
   evaluateExpr,
@@ -132,6 +139,12 @@ export function deriveCharacter(
     passes++;
     const next = new Map<ElementId, Element>();
     const nextTracks = new Map<ElementId, ElementId>();
+    // Element -> *every* track root that reaches it. `nextTracks` answers "which level gates
+    // this rule" and takes the first, which is ADR 0015's deliberate choice; this answers
+    // "which tracks contain this", where taking the first is simply wrong (ADR 0018). A Bard 5
+    // / Wizard 5 grants one shared marker element from two tracks, and counting it once halves
+    // the character's caster level.
+    const nextMembers = new Map<ElementId, Set<ElementId>>();
     const levelFor = trackLevelReader(nextTracks, trackLevels, character.progress);
     const ctx = makeContext(active, stats, character, kind);
 
@@ -141,7 +154,11 @@ export function deriveCharacter(
     }
     // Each element progression was spent on roots its own track. Done before the expansion
     // so a grant made by a track root inherits it on the first step.
-    for (const id of trackLevels.keys()) if (next.has(id)) nextTracks.set(id, id);
+    for (const id of trackLevels.keys()) {
+      if (!next.has(id)) continue;
+      nextTracks.set(id, id);
+      nextMembers.set(id, new Set([id]));
+    }
 
     // Fixed-point expansion of grants.
     let frontier = [...next.values()];
@@ -151,7 +168,7 @@ export function deriveCharacter(
       for (const element of frontier) {
         for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
           if (rule.kind !== 'grant') continue;
-          inheritTrack(nextTracks, element.id, rule.id, index.get(rule.id), problems);
+          inheritTrack(nextTracks, nextMembers, element.id, rule.id, index.get(rule.id), problems);
           if (seen.has(rule.id)) continue;
           const granted = addElement(next, index, rule.id, problems, element.id);
           seen.add(rule.id);
@@ -168,6 +185,7 @@ export function deriveCharacter(
       makeContext(next, stats, character, kind),
       levelFor,
       trackLevels,
+      nextMembers,
     );
 
     changed = !sameKeys(active, next) || !sameStats(stats, nextStats);
@@ -303,11 +321,26 @@ function trackLevelReader(
  */
 function inheritTrack(
   tracks: Map<ElementId, ElementId>,
+  members: Map<ElementId, Set<ElementId>>,
   from: ElementId,
   to: ElementId,
   granted: Element | undefined,
   problems: Problem[],
 ): void {
+  // Membership first, and unconditionally: every grant edge records every track behind it,
+  // including edges to an element another track already reached. That is the case the
+  // first-wins map below deliberately loses (ADR 0018).
+  //
+  // The one thing this does not chase is a *descendant* of an element whose second track
+  // arrived after the descendant was expanded. Every use so far is a leaf marker, and
+  // widening it would mean a second fixed point inside the expansion.
+  const inherited = members.get(from);
+  if (inherited?.size) {
+    const existingMembers = members.get(to);
+    if (existingMembers) for (const root of inherited) existingMembers.add(root);
+    else members.set(to, new Set(inherited));
+  }
+
   const track = tracks.get(from);
   if (track === undefined || to === track) return;
   const existing = tracks.get(to);
@@ -360,6 +393,7 @@ function computeStats(
   ctx: EngineContext,
   levelFor: TrackLevelReader,
   trackLevels: Map<ElementId, number>,
+  trackMembers: Map<ElementId, Set<ElementId>>,
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
@@ -437,6 +471,32 @@ function computeStats(
       text: text ?? result.get(key)?.text,
       contributions: [...(result.get(key)?.contributions ?? []), ...contributions],
     });
+  }
+
+  // What each track contributes — ADR 0018. These are contributions like any other, so they
+  // land here, after content's and before the derivations that read them. The kind cannot
+  // name the tracks (content ships its own), so it says "for every track that contains this
+  // element, add this much", and `track:progress` inside the expression is that track's count.
+  for (const [rootId, count] of trackLevels) {
+    const root = active.get(rootId);
+    if (!root) continue;
+    const trackCtx: ExpressionContext = {
+      statNumber: (s) => (s.toLowerCase() === TRACK_PROGRESS_STAT ? count : ctx.statNumber(s)),
+      statString: ctx.statString,
+    };
+    for (const def of kind.trackStats) {
+      if (def.when !== undefined && !trackMembers.get(def.when)?.has(rootId)) continue;
+      const key = trackStatName(def, root.name);
+      const lower = key.toLowerCase();
+      const value = evaluateExpr(def.value, trackCtx);
+      const existing = result.get(lower);
+      result.set(lower, {
+        name: existing?.name ?? key,
+        value: (existing?.value ?? 0) + value,
+        text: existing?.text,
+        contributions: [...(existing?.contributions ?? []), { value, from: rootId }],
+      });
+    }
   }
 
   // Derived stats last — they read the contributed values above.

@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { deriveCharacter } from './engine.ts';
-import { createCharacter } from './character.ts';
+import { createCharacter, type Character } from './character.ts';
 import { MapElementIndex, type Element, type Rule } from './model.ts';
-import type { GameSystem } from './system.ts';
+import type { GameSystem, TrackStatDef } from './system.ts';
+import { evaluateExpr, type StatExpr } from './expression.ts';
 
 // A fixture with no game in it — see the note in system.test.ts.
 
@@ -408,4 +409,129 @@ test('an element granted by two tracks reports the ambiguity, but only when a ga
     (p) => p.code === 'ambiguous-track',
   );
   assert.deepEqual(ambiguous.map((p) => p.elementId), ['SHARED_GATED']);
+});
+
+// --- tables and track stats (ADR 0018) --------------------------------------
+
+/** Two tracks, one of which grants a marker the kind keys a contribution off. */
+function markedIndex(): MapElementIndex {
+  return indexWith(
+    element('Alpha', 'Widget', [{ kind: 'grant', key: 'g1', type: 'Gadget', id: 'MARK_WHOLE' }]),
+    element('Beta', 'Widget', [{ kind: 'grant', key: 'g1', type: 'Gadget', id: 'MARK_HALF' }]),
+    element('Gamma', 'Widget', []),
+    element('MARK_WHOLE', 'Gadget'),
+    element('MARK_HALF', 'Gadget'),
+  );
+}
+
+const HALF_OF_TRACK: StatExpr = {
+  kind: 'call',
+  fn: 'floor',
+  args: [
+    {
+      kind: 'binary',
+      op: '/',
+      left: { kind: 'ref', stat: 'track:progress' },
+      right: { kind: 'number', value: 2 },
+    },
+  ],
+};
+
+function markedSystem(trackStats: TrackStatDef[]): GameSystem {
+  const base = trackedSystem();
+  base.characterKinds[0]!.trackStats = trackStats;
+  return base;
+}
+
+function twoTracks(alpha: number, beta: number): Character {
+  const character = createCharacter('test', 'levelled');
+  character.progress = alpha + beta;
+  character.advancement = [
+    ...Array.from({ length: alpha }, (_, i) => ({ at: i + 1, elementId: 'Alpha' })),
+    ...Array.from({ length: beta }, (_, i) => ({ at: alpha + i + 1, elementId: 'Beta' })),
+  ];
+  return character;
+}
+
+test('a table reads a declared row, and clamps rather than falling off either end', () => {
+  const table: StatExpr = {
+    kind: 'table',
+    index: { kind: 'ref', stat: 'vigour' },
+    values: [10, 20, 30],
+  };
+  const at = (vigour: number): number =>
+    evaluateExpr(table, { statNumber: () => vigour, statString: () => undefined });
+
+  assert.equal(at(0), 10);
+  assert.equal(at(2), 30);
+  assert.equal(at(1.9), 20, 'the index is floored');
+  assert.equal(at(-4), 10, 'below the row reads its first entry');
+  assert.equal(at(99), 30, 'above it reads its last');
+});
+
+test('a track contributes a stat computed from its own progression', () => {
+  const system = markedSystem([
+    { stat: 'reach', when: 'MARK_WHOLE', value: { kind: 'ref', stat: 'track:progress' } },
+    { stat: 'reach', when: 'MARK_HALF', value: HALF_OF_TRACK },
+  ]);
+  // Alpha 5 whole plus Beta 7 halved and rounded down: 5 + 3.
+  const derived = deriveCharacter(twoTracks(5, 7), system, markedIndex());
+  assert.equal(derived.stats.get('reach')?.value, 8);
+});
+
+test('a track with no matching entry contributes nothing, which is how an exclusion is written', () => {
+  const system = markedSystem([
+    { stat: 'reach', when: 'MARK_WHOLE', value: { kind: 'ref', stat: 'track:progress' } },
+  ]);
+  const derived = deriveCharacter(twoTracks(5, 7), system, markedIndex());
+  assert.equal(derived.stats.get('reach')?.value, 5, 'Beta is not mentioned, so Beta adds none');
+});
+
+test('one element reached from two tracks counts for both', () => {
+  // The case that made the first-wins track map wrong for counting: both tracks grant the
+  // same marker, and taking one of them halves the answer.
+  const index = indexWith(
+    element('Alpha', 'Widget', [{ kind: 'grant', key: 'g1', type: 'Gadget', id: 'MARK_WHOLE' }]),
+    element('Beta', 'Widget', [{ kind: 'grant', key: 'g1', type: 'Gadget', id: 'MARK_WHOLE' }]),
+    element('MARK_WHOLE', 'Gadget'),
+  );
+  const system = markedSystem([
+    { stat: 'reach', when: 'MARK_WHOLE', value: { kind: 'ref', stat: 'track:progress' } },
+  ]);
+  assert.equal(deriveCharacter(twoTracks(5, 5), system, index).stats.get('reach')?.value, 10);
+});
+
+test('{name} in the stat makes it per-track rather than an aggregate', () => {
+  const system = markedSystem([
+    { stat: '{name}:marked', when: 'MARK_HALF', value: { kind: 'number', value: 1 } },
+  ]);
+  const derived = deriveCharacter(twoTracks(3, 4), system, markedIndex());
+  assert.equal(derived.stats.get('beta:marked')?.value, 1);
+  assert.equal(derived.stats.get('alpha:marked'), undefined, 'Alpha has no such marker');
+});
+
+test('an entry with no `when` contributes for every track', () => {
+  const system = markedSystem([{ stat: 'tracks', value: { kind: 'number', value: 1 } }]);
+  assert.equal(deriveCharacter(twoTracks(3, 4), system, markedIndex()).stats.get('tracks')?.value, 2);
+});
+
+test('track contributions land before derivations, so a table can index one', () => {
+  const system = markedSystem([
+    { stat: 'reach', when: 'MARK_HALF', value: HALF_OF_TRACK },
+  ]);
+  system.characterKinds[0]!.stats = [
+    ...(system.characterKinds[0]!.stats ?? []),
+    {
+      name: 'span',
+      derive: { kind: 'table', index: { kind: 'ref', stat: 'reach' }, values: [0, 7, 14, 21] },
+    },
+  ];
+  // Beta 7 halved is 3, and row 3 of the table is 21.
+  assert.equal(deriveCharacter(twoTracks(1, 7), system, markedIndex()).stats.get('span')?.value, 21);
+});
+
+test('a kind that declares no trackStats behaves exactly as it did', () => {
+  const derived = deriveCharacter(twoTracks(3, 4), trackedSystem(), markedIndex());
+  assert.equal(derived.stats.get('reach'), undefined);
+  assert.equal(derived.stats.get('level:alpha')?.value, 3, 'ADR 0015 track stats still publish');
 });

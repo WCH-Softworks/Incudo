@@ -149,18 +149,29 @@ importer at all ([ADR 0008](./adr/0008-aurora-compatibility-frozen.md)): Aurora 
 maths for every character anyone ever built, and those answers were checked for ten years by
 people whose characters would have been wrong otherwise.
 
-Against all 8 sample saves, 2026-09-09 — 951 element ids compared:
+Against all 9 sample saves, 2026-09-10 — 1,158 element ids and 8 spell slot rows compared:
 
 | | count |
 |---|---:|
-| `element-missing` — Aurora derived it, Incudo did not | **0** |
+| `element-missing` — Aurora derived it, Incudo did not | **1** |
 | `spell-missing` — a spell Aurora listed that Incudo did not derive | **0** |
 | `stat-mismatch` — both computed a number, differently | **0** |
-| `element-extra` — Incudo derived it, Aurora did not | 52 |
-| `content-missing` / `not-modelled` — reported, not counted | 63 |
+| `element-extra` — Incudo derived it, Aurora did not | 53 |
+| `content-missing` / `not-modelled` — reported, not counted | 64 |
 
-**All 52 remaining differences are one species: content AuroraLegacy added after these saves
-were written.** That is not a guess — each family was traced to its upstream commit:
+The single `element-missing` is `ID_INTERNAL_MULTICLASS_LEVEL_3` on the ninth save: an
+Aurora-app marker that nothing in the 740 files references and that carries no rules.
+Deliberately unmodelled rather than budgeted — inventing a rule for it would be the guess
+[ADR 0005](./adr/0005-aurora-import.md) rules out.
+
+Spell slots joined the compared numbers with
+[ADR 0018](./adr/0018-tables-and-track-stats.md), and what they proved is set out there:
+pact magic being outside the multiclass table, and a half-caster's contribution being halved,
+are both pinned by the ninth save. Rounding *down* rather than up is not — `floor(2/2)` and
+`ceil(2/2)` are both 1, and no sample save has two classes with the Spellcasting feature.
+
+**All 53 `element-extra` differences are one species: content AuroraLegacy added after these
+saves were written.** That is not a guess — each family was traced to its upstream commit:
 
 | family | added upstream |
 |---|---|
@@ -179,8 +190,6 @@ a mismatch and the report names the granting element, which is where the history
 Counting these would make the exit code permanently non-zero, and a check that can never pass
 is a check nobody runs.
 
-- **Spell slots.** Aurora computes the multiclass slot table in application code; no content
-  file describes it, so no system definition can disagree with it yet.
 - **A whole-class spell list.** A cleric prepares from every spell of its class and Aurora
   expands that in code. One note, not sixty failures.
 - **Anything from the character's inventory**, transitively. A suit of plate brings a stealth
