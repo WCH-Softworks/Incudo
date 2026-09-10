@@ -28,3 +28,4 @@ new one that supersedes it.
 | [0012](./0012-self-contained-saves.md) | A save is self-contained: it opens with zero content sources | Accepted (amends 0006, 0007) |
 | [0013](./0013-project-name.md) | The project is called Incudo | Accepted |
 | [0014](./0014-base-stats-are-inputs.md) | Ability scores are inputs, in their own field | Accepted (amends 0006) |
+| [0015](./0015-class-levels.md) | A character records which track each point of progression was spent on | Accepted (amends 0006, 0009) |

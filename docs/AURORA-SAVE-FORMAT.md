@@ -56,6 +56,12 @@ The only part that is genuinely input. Two kinds of node:
   Fighter skills). Incudo needs the same thing; its `select` rules are keyed by name for
   exactly this reason.
 - `rndhp="10,10,1,3,…"` — **rolled hit points per level.** See "What this taught us", below.
+- `class="ID_…"` on a `type="Level"` node — **which class that level was taken in**, alongside
+  `multiclass="true"` and, on the first such level, `starting="true"`. A level with no `class=`
+  belongs to the class chosen at level 1. This is the only record of a multiclass split, and it
+  names the **multiclass** element (`ID_WOTC_PHB_MULTICLASS_WARLOCK`) rather than the class
+  (`ID_WOTC_PHB_CLASS_WARLOCK`); the two are separate elements and both matter. See
+  [ADR 0015](./adr/0015-class-levels.md).
 
 ## What the files actually contain
 
