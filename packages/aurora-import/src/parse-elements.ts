@@ -25,11 +25,29 @@ export interface ImportDiagnostic {
   fileUrl?: string;
 }
 
+/**
+ * An `<append id="X">` block: extra rules and support tags for an element declared
+ * somewhere else, often in another file entirely.
+ *
+ * Aurora's way of saying "Tasha's adds a grant to this Player's Handbook element" without
+ * editing the Player's Handbook file. Because the target may not have been read yet — or
+ * may live in a file this index never loads — appends cannot be applied here. They come out
+ * with the file and get applied once everything is loaded; `ContentLibrary` does that.
+ */
+export interface ElementAppend {
+  id: string;
+  rules: Rule[];
+  supports: string[];
+  fileUrl: string;
+}
+
 export interface ImportedFile {
   url: string;
   name?: string;
   version?: string;
   elements: Element[];
+  /** `<append>` blocks, unapplied. See {@link ElementAppend}. */
+  appends: ElementAppend[];
   diagnostics: ImportDiagnostic[];
 }
 
@@ -59,11 +77,32 @@ export function parseAuroraElements(xml: string, options: ParseElementsOptions):
     if (virtual) elements.push(virtual);
   }
 
+  const appends: ElementAppend[] = [];
+  for (const node of childrenNamed(root, 'append')) {
+    const id = node.attrs['id'];
+    if (!id) {
+      diagnostics.push({
+        level: 'warning',
+        message: 'An <append> has no id, so there is nothing to append it to. Skipped.',
+        fileUrl: options.fileUrl,
+      });
+      continue;
+    }
+    const parsed = parseRules(firstChild(node, 'rules'), id, diagnostics, options.fileUrl);
+    appends.push({
+      id,
+      rules: parsed.rules,
+      supports: [...parsed.supports, ...directSupports(node)],
+      fileUrl: options.fileUrl,
+    });
+  }
+
   return {
     url: options.fileUrl,
     name: firstChild(info ?? root, 'name')?.text.trim(),
     version: update?.attrs['version'],
     elements,
+    appends,
     diagnostics,
   };
 }
@@ -97,7 +136,19 @@ function toElement(
     source: node.attrs['source'] ?? 'Unknown',
     setters: parseSetters(firstChild(node, 'setters')),
     rules,
-    supports,
+    // Aurora puts `<supports>` beside `<rules>`, not inside it — 3,611 blocks in the corpus
+    // and not one within `<rules>`. Both are read: the rules-level form is what the format
+    // description implies and costs one line to keep working.
+    supports: [...supports, ...directSupports(node)],
+    // Likewise `<requirements>` as a direct child, which gates the element rather than one
+    // of its rules: 1,845 in the corpus, and the reason a Human Variant is only offered
+    // when the campaign turned feats on.
+    requirements: safeRequirements(
+      firstChild(node, 'requirements')?.text,
+      id,
+      diagnostics,
+      options.fileUrl,
+    ),
     description: firstChild(node, 'description')?.innerXml.trim() || undefined,
     sheet: parseSheet(firstChild(node, 'sheet')),
     multiclass: parseMulticlass(firstChild(node, 'multiclass'), id, diagnostics, options.fileUrl),
@@ -134,6 +185,22 @@ function multiclassAsElement(owner: Element, options: ParseElementsOptions): Ele
  * because the concept lives in its app code; a system definition maps it like any other type.
  */
 export const MULTICLASS_TYPE = 'Multiclass';
+
+/**
+ * `<supports>` children of a node, as tags.
+ *
+ * One tag per block, and an element may carry several. These are what every
+ * `<select supports="…">` filters on, so dropping them — which this importer did until the
+ * differential verification made it obvious — means no select ever offers anything.
+ */
+function directSupports(node: XmlNode): string[] {
+  const tags: string[] = [];
+  for (const child of childrenNamed(node, 'supports')) {
+    const tag = (child.text || child.innerXml).trim();
+    if (tag) tags.push(tag);
+  }
+  return tags;
+}
 
 function parseSetters(node: XmlNode | undefined): Record<string, Setter> {
   const out: Record<string, Setter> = {};

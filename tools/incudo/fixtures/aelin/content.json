@@ -247,7 +247,9 @@
           "inline": false
         }
       ],
-      "supports": [],
+      "supports": [
+        "Riverfolk"
+      ],
       "origin": {
         "sourceId": "fixture",
         "fileUrl": "fixture/content.xml",
@@ -273,7 +275,9 @@
           "inline": false
         }
       ],
-      "supports": [],
+      "supports": [
+        "Riverfolk"
+      ],
       "origin": {
         "sourceId": "fixture",
         "fileUrl": "fixture/content.xml",

@@ -131,6 +131,13 @@ export interface Element {
   setters: Record<string, Setter>;
   rules: Rule[];
   supports: string[];
+  /**
+   * A prerequisite on the element itself, not on one of its rules: the Human Variant is
+   * only available when the campaign uses feats. Filters candidate lists; it does not make
+   * an element the character already has disappear, because vanishing content is worse for
+   * the user than content that reports why it should not be there.
+   */
+  requirements?: RequirementExpr;
   /** Rich text, stored as HTML. Not normalized — see docs/AURORA-FORMAT.md. */
   description?: string;
   sheet?: SheetHints;
@@ -153,7 +160,20 @@ export class MapElementIndex implements ElementIndex {
   private readonly typeIdx = new Map<ElementType, Element[]>();
   private readonly supportIdx = new Map<string, Element[]>();
 
+  /**
+   * Add an element, replacing any earlier one with the same id.
+   *
+   * Replacing matters, and used not to happen: two sources defining one id, or an
+   * `<append>` folding rules into an element already loaded, would leave the stale copy in
+   * the type and support lists. `byType` would then hand a builder the same element twice,
+   * once with the rules and once without.
+   */
   add(element: Element): void {
+    const previous = this.byId.get(element.id);
+    if (previous) {
+      remove(this.typeIdx, previous.type, previous);
+      for (const tag of previous.supports) remove(this.supportIdx, tag.toLowerCase(), previous);
+    }
     this.byId.set(element.id, element);
     push(this.typeIdx, element.type, element);
     for (const tag of element.supports) push(this.supportIdx, tag.toLowerCase(), element);
@@ -184,4 +204,11 @@ function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
   const existing = map.get(key);
   if (existing) existing.push(value);
   else map.set(key, [value]);
+}
+
+function remove<K, V>(map: Map<K, V[]>, key: K, value: V): void {
+  const existing = map.get(key);
+  if (!existing) return;
+  const at = existing.indexOf(value);
+  if (at >= 0) existing.splice(at, 1);
 }

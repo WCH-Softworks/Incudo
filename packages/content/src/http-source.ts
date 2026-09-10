@@ -70,6 +70,7 @@ export class HttpContentSource implements ContentSource {
       name: parsed.name,
       version: parsed.version,
       elements: parsed.elements,
+      appends: parsed.appends,
       diagnostics: parsed.diagnostics,
     };
   }

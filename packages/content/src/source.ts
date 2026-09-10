@@ -7,6 +7,7 @@
  * rather than failing. See docs/adr/0004.
  */
 
+import type { ElementAppend } from '@incudo/aurora-import';
 import type { Element } from '@incudo/core';
 
 export type SourceMode = 'stream' | 'download';
@@ -33,6 +34,13 @@ export interface ElementFile {
   name?: string;
   version?: string;
   elements: Element[];
+  /**
+   * `<append id="X">` blocks: rules and support tags for an element declared elsewhere,
+   * often in a different file. They cannot be applied at parse time because the target may
+   * not be loaded yet, so they travel with the file and `ContentLibrary` applies them once
+   * everything is in.
+   */
+  appends?: ElementAppend[];
   diagnostics: SourceDiagnostic[];
 }
 
