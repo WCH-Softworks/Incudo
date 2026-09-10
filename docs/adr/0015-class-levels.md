@@ -153,8 +153,11 @@ degraded one. This is the last comfortable moment for that argument to hold.
   ambiguous. The engine takes the first track that reaches it and records a problem; content that
   does this is rare and worth reporting rather than silently resolving.
 - `trackStatPattern` derives a stat key from an element's *name*, so renaming a class upstream
-  renames its stat. That is Aurora's own convention and the corpus depends on it; inventing a
-  different one would mean the 150 existing references stop resolving.
+  renames its stat. To be clear about where that lives: the *mechanism* is Incudo's and the
+  engine is not bound to any naming — what matches Aurora is the configured value, one line in
+  `systems/dnd5e/system.json`, chosen because this project's 5e content *is* Aurora content and
+  150 references in it read `level:warlock`. A system that names tracks differently sets a
+  different pattern and the engine neither knows nor cares.
 - Nothing validates that `advancement` covers every point from 1 to `progress`, or that its
   entries are elements a character could legally take. A gap is reported, not corrected — the
   same stance ADR 0011 takes on system definitions.
