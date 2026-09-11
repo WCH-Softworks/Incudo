@@ -161,7 +161,7 @@ Working: core engine, Aurora content **and save** importer, content sources, CLI
 definitions, the `.incu` container, the JSON Schemas and the validator behind them.
 Not started: both app shells (only their `platform.ts` contracts exist).
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018 and 0024 are implemented, and **Phase 1 is done — `packages/aurora-import`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0024 and 0025 are implemented (0023 apart from its limit), and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
@@ -220,13 +220,36 @@ made under: 89 groups in the corpus have rules that differ in `supports`, `requi
 `type`, so a pending pool offers the union of the candidates of the rules with room left, and
 nothing checks that a recorded pick was legal for its slot. See docs/AURORA-FORMAT.md.
 
-**`Rule.equipped` is parsed and read by nothing** (ADR 0021). It is a `RequirementExpr`, all
-79 in the corpus are conditions like `[armor:none]`, and the engine does not evaluate them —
-so all 79 rules still apply unconditionally. Deliberate, and measured: a character has a bag
-now, but no slot publishes a tag, so there is still no `armor` stat — `[armor:none]` reads
-*false* for a character wearing nothing and `[armor:any]` reads false for one in plate, while
-every negation reads true. Evaluating today costs a monk their Unarmoured Defence and an
-armoured fighter the Defense fighting style. It waits for step 4; do not wire it up early.
+**A slot publishes a set of tags, and `equipped=` is evaluated** (ADR 0025, step 4). A character
+kind declares its `inventory`: which slots exist, what stat each publishes into, which setters
+become tags, and which setter marks attunement. Core says none of `body`, `armor`, `primary`,
+`versatile`, `any` or `none`. Four things to know before touching it:
+
+- **Three kinds of question, one syntax.** `[armor:heavy]` reads a setter's *value*,
+  `[primary:versatile]` reads a setter's *presence* (its value is a die), and
+  `[primary:double-bladed scimitar]` reads the element's *name*. That is why a slot publishes a
+  set and `equals` became a membership test — string equality stays for the corpus's other 8
+  `equals` checks, all `type =`, and there are **no `flag` checks anywhere**.
+- **A slot's `stats` list is its capacity.** One stat holds one item, so `["primary",
+  "secondary"]` is two hands and a slot with no stats holds any number of cloaks. Nothing had to
+  guess a capacity, which is the whole reason that field does not exist.
+- **The equipment state is resolved once, before the fixed point.** Occupancy depends on the bag
+  and the index and never on the derivation; a tag set hung on a `ResolvedStat` would be a pass
+  behind. Do not move it into the loop.
+- **A kind with no `inventory` ignores `equipped=`**, exactly as a kind with no progression
+  ignores `level=`. Evaluating with no slots is the state ADR 0021 measured and refused: every
+  positive check false, every negation true.
+
+The corpus carries 79 `equipped=` attributes and **78 reach the engine** — the 79th is Dueling's
+`melee:damage`, commented out upstream.
+
+**Nothing moved when this landed, and that is worth almost nothing.** Before it, all 78 rules
+applied unconditionally, so evaluating can only ever *remove* a contribution. Only eight
+conditions exist across the nine saves (a monk's Unarmored Defence and its five movement modes,
+the Defense fighting style twice) and all eight are true; nobody in the corpus of saves carries a
+shield, so `[shield:any]` has never been true. **Perturbation is the evidence**, and it lives in
+`packages/core/src/equipment.test.ts` and the engine tests. Do not cite the green `aurora verify`
+run as proof the gating is right.
 
 **A bag is a list of instances, and the container embeds all of it** (ADR 0024). `Character`
 gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
@@ -260,26 +283,23 @@ ADR 0024 decision 7 and is the half Aurora refereed, 26 of 26 equipped items in 
   carve-out is gone, and with it the last two readers of `proficiency` and `abilityModifier` in
   the verifier's options — the file holds no arithmetic of its own at all now. The bag survives
   there only as a *hint* on an `element-missing` message, naming which pile the id came from.
-- **Some stats are now wrong in ways nothing renders**, and that is step 4's job. An equipped
-  plate contributes `ac:armored:armor 18` while a barbarian's `ac:calculation` gated on
-  `[armor:none]` still fires, because ADR 0021 leaves all 79 `equipped=` rules unconditional.
-  Do not chase it and do not wire `equipped=` up early.
-- **Attunement is not gated yet** (ADR 0023, mechanism at step 4). All 12 attunement-requiring
-  equipped items in the nine saves are attuned, so adding the gate today would move no count —
-  if it moves one, something else is being read wrong.
+- **Some stats are still wrong in ways nothing renders**, and that is step 5's job. An equipped
+  plate contributes `ac:armored:armor 18` and nothing sums it, because `ac` is `default: 10`
+  with no derivation. A barbarian in plate no longer *also* shows Unarmoured Defence, which is
+  what step 4 fixed.
 
-**Inventory steps 4–5 are planned, not started** — `docs/INVENTORY-AND-AC-PLAN.md`, five steps
-with the evidence behind each, of which 1–3 are done. Read it before touching either, and in
-particular before adding an `ac` derivation on its own: `ac` is `default: 10` with nothing
-derived, and it stays that way until a character can wear armour, because 64 of the corpus's AC
-rules are gated on what is equipped. And **no save records an armour class**, so `ac` will be
-the second number after `hp` that the differential check cannot see; do not describe it as
-verified.
+**Inventory step 5 is the only one left** — `docs/INVENTORY-AND-AC-PLAN.md`, five steps with the
+evidence behind each, of which 1–4 are done. Read it before adding an `ac` derivation: `ac` is
+`default: 10` with nothing derived, and it needs a kind's `contributions` (ADR 0022, unbuilt) to
+hang its four conditional rules on. And **no save records an armour class**, so `ac` will be the
+second number after `hp` that the differential check cannot see; do not describe it as verified.
 
-**An unattuned item contributes nothing, and says so** (ADR 0023). Decided, not yet built —
-the mechanism lands with the inventory work. All 12 attunement-requiring equipped items across
-the nine saves are attuned, so there is no oracle and there cannot be one; do not describe it
-as verified. Two things the corpus settled that are easy to miss: adorners are separate
+**An unattuned item contributes nothing, and says so** (ADR 0023). Built at step 4, apart from
+the limit. All 12 attunement-requiring equipped items across the nine saves are attuned, so the
+gate fires zero times there — there is no oracle and there cannot be one; do not describe it as
+verified. The **limit** deliberately did not land with the gate: ADR 0023 puts the base of 3 in a
+kind's `contributions`, which is step 5, and without it `attunement:max` reads 0 and all nine
+saves report over. Two things the corpus settled that are easy to miss: adorners are separate
 elements, so gating one gates the magical half and leaves the greatsword a greatsword; and
 `attunement:max` is already declared by content 11 times, in both `bonus="base"` override and
 unbucketed `+1` shapes, which both come out right against a base of 3 contributed in the same

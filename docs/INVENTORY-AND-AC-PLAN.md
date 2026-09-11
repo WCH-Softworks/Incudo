@@ -3,10 +3,12 @@
 **Status:** proposed · 2026-09-10 · **every decision settled 2026-09-11** — D1 by
 [ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md), D2 by
 [ADR 0023](./adr/0023-attunement-gates-and-reports.md), D3 below ·
-**steps 1–3 are done** — [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md) settled the
-three questions step 1 left open, step 2 filled the bag from Aurora, and step 3 seeded the
-derivation from it. Steps 1 and 2 moved no baseline; step 3 moved one, deliberately, and that
-was the point of it. **Steps 4 and 5 are not started, and are a separate run** (D3).
+**steps 1–4 are done** — [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md) settled the
+three questions step 1 left open, step 2 filled the bag from Aurora, step 3 seeded the
+derivation from it, and [ADR 0025](./adr/0025-slots-publish-tags.md) made the slots publish what
+is in them. Steps 1, 2 and 4 moved no baseline; step 3 moved one, deliberately, and that was the
+point of it. **Only step 5 — the `ac` derivation — is left**, and it is the one with no oracle
+at all.
 
 ROADMAP Phase 2 lists **Inventory** and the `ac` derivation as two items. They are one piece
 of work in a fixed order, and this file is the plan asked for before any of it is written.
@@ -291,21 +293,54 @@ reworded, because the sentence is no longer true in substance.
 
 This was the last step that can be checked against Aurora.
 
-### Step 4 — slots publish tags · `equals` becomes membership · ADR
+### Step 4 — slots publish tags · `equals` becomes membership · **done**, [ADR 0025](./adr/0025-slots-publish-tags.md)
 
-Three pieces:
+Three pieces and one declaration, on the character kind:
 
-- **The system declares its slots.** Which slots exist, what each publishes into, and where a
-  slot's tags come from — the item's name, plus named setters. 5e maps `body → armor`,
-  `shield → shield`, `onehand → primary`/`secondary`, `twohand → primary`. An empty slot
-  publishes `none`; an occupied one always publishes `any`. Core must not know any of those
-  words (ADR 0003).
-- **`equals` reads a tag set.** `[armor:medium]` is true when the `armor` slot's tags contain
-  `medium`. String equality stays, for the 8 `type =` uses.
-- **`equipped=` starts being evaluated**, finishing the half ADR 0021 deliberately deferred.
-  The four stats that measurement showed going wrong — a monk's Unarmoured Defence and
-  Unarmoured Movement, two fighters' Defense fighting style — come back, and this time with an
-  `armor` stat that has a real answer behind it.
+- **The kind declares its slots** — which exist, what stat each publishes into, and which
+  setters become tags. 5e maps `body → armor`, `onehand,secondary → shield`,
+  `onehand → primary`/`secondary`, `twohand → primary`; core says none of those words.
+- **`equals` reads a tag set** when the stat publishes one, and stays string equality
+  otherwise, which left the 8 `type =` uses alone.
+- **`equipped=` is evaluated**, finishing the half ADR 0021 deferred.
+
+**What the diff said: nothing, exactly as predicted.** `aurora verify` output is byte-identical
+across all nine saves, no pre-existing derived stat moved, the corpus baseline is untouched
+(nothing here is content-side) and all nine still open with zero sources.
+
+That is a weak result and the ADR says so at length. Before this, all 78 `equipped=` rules
+applied unconditionally, so evaluating can only ever *remove* a contribution — there is no path
+by which a number goes up. Only eight rules across the nine characters carry a condition at all
+(a monk's Unarmored Defence and five movement modes, the Defense fighting style twice), and all
+eight came out true. **Not one negative case exists in the corpus of saves**, and nobody carries
+a shield.
+
+Four things were proved by perturbation instead, run against the real saves before being written
+down as tests:
+
+| perturbation | result |
+|---|---|
+| the monk, put into plate | loses exactly `ac:calculation` 18 and `innate speed:misc` 10 |
+| the fighter, breastplate removed | loses exactly the Defense fighting style's `ac:misc` 1 |
+| the monk, handed a shield | `shield` reads `Shield`, `[shield:none]` is false for the first time, Unarmoured Defence drops |
+| arturo, nothing attuned | loses the Ring of Protection's +1 AC and +1 to all six saves, with three warnings naming the items |
+
+Four smaller findings worth keeping:
+
+- **A two-handed weapon fills `primary` and not `secondary`**, which the plan listed as having
+  no oracle. It has one and a half: the Double-Bladed Scimitar is `slot="twohand"` and Revenant
+  Blade asks `[primary:double-bladed scimitar]`, and Dual Wielder's `[secondary:any]` would
+  otherwise pay a greatsword user.
+- **Slot capacity needed no decision.** A slot's `stats` list *is* its capacity, so a slot that
+  publishes nothing holds any number of things — which is what 5e says about cloaks, and Merilio
+  wears two.
+- **`slot="armor"` is an upstream typo**, on Spiked Armor alone among 1,070 slot setters. It is
+  now a `slot-unknown` warning rather than a character silently unarmoured.
+- **78 rules, not 79.** The 79th is the Dueling fighting style's `melee:damage`, commented out
+  upstream.
+
+Attunement's gate landed here and its **limit did not** — ADR 0023's base of 3 needs ADR 0022's
+`contributions`, and without it every one of the nine saves would report over the limit.
 
 ### Step 5 — the `ac` derivation · `systems/dnd5e/system.json`
 
@@ -340,6 +375,12 @@ which is what the Player's Handbook says.
 
 So step 5 reduces to: **somewhere to put four stat rules that carry a `requirements`.** That
 was decision D1, and it is now a kind's `contributions` (ADR 0022).
+
+Two things step 4 changed about the shape of that. The `requirements` on those four rules will
+be ordinary `[armor:heavy]`-style checks, and they now have a real answer — the same one
+`equipped=` reads, off the same declaration. And **ADR 0023's attunement limit rides with
+`contributions` too**: the base of 3 has nowhere else to live, and until it does
+`attunement:max` reads 0 and every character with a single attuned item is over it.
 
 ---
 
@@ -387,6 +428,11 @@ artificer — which both come out right against a base of 3 contributed in the s
 limit nothing can exceed would be decoration, so content bothering to declare one is the
 nearest thing to evidence that attunement is a constraint rather than a label.
 
+**The gate landed at step 4 and the limit did not** (ADR 0025 decision 8). They came apart for
+the reason the paragraph above implies: the limit needs the base of 3, the base needs ADR 0022's
+`contributions`, and `contributions` is step 5. Shipping the limit early would report all nine
+sample saves as over it.
+
 The risk was never the rulebook; it was a user losing a bonus with no explanation. That is
 answered by reporting: an equipped, unattuned, attunement-requiring item produces a warning
 naming the item, and being over the limit is a problem in the family of `over-selected`.
@@ -420,10 +466,18 @@ Two smaller notes that follow:
 
 - **The armour class number.** No save records one. Like hit points, it will be derived from
   the published rule and checked by nothing, and it should never be described as verified.
-- **Attunement gating**, per D2.
+- **Attunement gating**, per D2 — and step 4 confirmed it: the gate fired zero times on the
+  nine saves, because all 12 attunement-requiring equipped items are attuned.
 - **Slot capacity rules** — that a two-handed weapon occupies both hands, that only one body
   slot exists. The nine saves show `Primary Hand`, `Armor` and `Two-Handed` and never a second
   hand, a shield or a ring slot, so the interesting conflicts have no oracle either.
+  *(Step 4 took two of these off the list by a different route: the corpus's own rules settle
+  what a two-handed weapon occupies, and capacity turned out to be "how many stats does this
+  slot publish" rather than a number anyone had to guess.)*
+- **Every negative `equipped=` case.** Step 4 evaluates 78 conditions and the nine saves
+  exercise eight of them, all of which come out true. `[shield:any]` has never been true on a
+  real save, because nobody carries a shield. Perturbation is what covers this, and it is not
+  the same kind of evidence as a differential run.
 
 What *is* verified, and strongly, is the closure: which elements a bag brings into a
 derivation, for 45 item instances and 15 adorners across nine characters.

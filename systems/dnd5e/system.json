@@ -220,6 +220,7 @@
         "sections": [
           { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] },
           { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency", "level"] },
+          { "id": "worn", "label": "Worn & Wielded", "stats": ["armor", "shield", "primary", "secondary"] },
           { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"] },
           { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language", "Condition"] },
           { "id": "spellcasting", "label": "Spellcasting", "perBlock": true, "stats": ["{name}:spellcasting:dc", "{name}:spellcasting:attack"] },

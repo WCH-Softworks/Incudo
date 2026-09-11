@@ -213,6 +213,18 @@ appeared, no spell went missing, and no new pending decision opened on any of th
 which is the prediction the plan made in advance, on the grounds that no bag element in any of
 them opens a `<select>`. Nothing new is reported as an engine problem either.
 
+**Step 4 moved nothing at all**, and the table above is unchanged by it. Slots publish tags and
+`equipped=` is evaluated since [ADR 0025](./adr/0025-slots-publish-tags.md), and the output of
+`aurora verify` is byte-identical across all nine saves. Read that as weakly as it deserves:
+before step 4 all 78 `equipped=` rules applied unconditionally, so evaluating one can only ever
+*remove* a contribution, and the nine characters carry only eight conditioned rules between them
+— a monk's Unarmored Defence and its five movement modes, and the Defense fighting style twice
+— every one of which comes out true. No save in this corpus has a character wearing armour while
+carrying a rule that wants none of it, and **none of the nine carries a shield**, so `[shield:*]`
+has never been exercised here at all. The attunement gate fires zero times, because all 12
+attunement-requiring equipped items are attuned. This is a file about what Aurora can referee,
+and step 4 is a thing it cannot.
+
 The single `element-missing` is `ID_INTERNAL_MULTICLASS_LEVEL_3` on the ninth save: an
 Aurora-app marker that nothing in the 740 files references and that carries no rules.
 Deliberately unmodelled rather than budgeted — inventing a rule for it would be the guess

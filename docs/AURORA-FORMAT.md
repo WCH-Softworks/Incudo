@@ -109,15 +109,30 @@ Since [ADR 0021](./adr/0021-equipped-is-a-condition.md) it is a `RequirementExpr
 the same `parseRequirements` that reads `requirements=`. 76 of the 79 sit on `<stat>` and 3 on
 `<grant>`; none names an element id.
 
-**Nothing evaluates it yet, and that is deliberate.** A character has a bag since step 3 of
-[the inventory plan](./INVENTORY-AND-AC-PLAN.md), but no slot publishes a tag, so there is still
-no `armor` stat: `[armor:none]` reads *false* against a character wearing nothing and
-`[armor:any]` reads false against one in plate, while `![armor:heavy]` reads true — all 41
-positive checks drop and all 38 negations stay, which is a state no character is ever in.
-Measured on the nine sample saves, evaluating today moves no `aurora verify` count and makes
-four stats wrong: a monk loses their Unarmoured Defence and Unarmoured Movement, and two
-armoured characters lose the Defense fighting style's +1. It waits for step 4, where slots
-publish tags and `equals` becomes a membership test.
+**It is evaluated since [ADR 0025](./adr/0025-slots-publish-tags.md)**, against slots a
+character kind declares. 78 of the 79 attributes reach the engine: the 79th is the Dueling
+fighting style's `melee:damage`, which upstream has commented out, so nothing parses it.
+
+The reason it took two changes to get here is worth keeping. A slot publishes a **set of tags**
+rather than a string, because the twelve operands above are three different kinds of thing in
+one syntax — `heavy` is the value of the `armor` setter, `versatile` is the *presence* of a
+setter whose value is a die (`1d10` ×9, `1d8` ×5, `1d12` ×1), and `double-bladed scimitar` is
+`ID_WOTC_ERLW_WEAPON_DOUBLE_BLADED_SCIMITAR`'s name. `equals` answers by membership when the
+stat publishes tags and by string comparison otherwise, which leaves the corpus's other eight
+`equals` checks — `type = spell` ×7, `type = class` ×1 — exactly as they were. There are **no
+`flag` checks anywhere in the corpus**.
+
+That last weapon settles something else the corpus cannot otherwise say: it is `slot="twohand"`
+and the check asks `[primary:…]`, so **a two-handed weapon fills the primary hand**. It does not
+fill the off hand, because Dual Wielder's `[primary:any],[secondary:any],![primary:versatile]`
+would then pay a greatsword user, and the one rule wanting the opposite reading is the
+commented-out one.
+
+The vocabulary content uses for `slot` is 18 values — `onehand` 277, `misc` 195, `gift` 154,
+`body` 127, down to `legs` 1 — of which `onehand,secondary` (2, both shields) is the only
+compound and `armor` (1, Spiked Armor) is an upstream typo for `body`. 5e declares 17 of them
+and not that one, so equipping spiked armour reports `slot-unknown` rather than quietly leaving
+the character unarmoured.
 
 `equipped` is still the thing holding up armour class, because it is how the corpus says
 *which* AC calculation applies:
@@ -130,8 +145,9 @@ publish tags and `equals` becomes a membership test.
 Note `bonus="calculation"`. Every alternative AC — a barbarian's, a monk's, a tortle's shell,
 a robe of the archmagi — contributes to one stat in one bonus bucket, and Incudo's engine
 already resolves a bucket by taking the largest. **Unarmoured defence needs no special
-treatment**; it needed `equipped` to parse, which it now does, and it still needs an inventory
-to evaluate it against and a system definition that derives `ac` from `ac:calculation`.
+treatment**; it needed `equipped` to parse and then to be evaluated, both of which now happen,
+and what is left is a system definition that derives `ac` from `ac:calculation` — step 5, and
+the only piece of 5e's armour class still missing.
 
 ## Element types seen in the wild
 

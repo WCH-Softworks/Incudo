@@ -171,7 +171,7 @@ before any code, both touching a public API:
       already parsed and waiting. Planned in
       [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which
       the first three can be checked against Aurora and the last two cannot. It is the same
-      piece of work as the armour class below, and it comes first. **Steps 1–3 are done**, and
+      piece of work as the armour class below, and it comes first. **Steps 1–4 are done**, and
       step 3 was the last point at which Aurora could referee.
   - [x] **Step 1 — the model** ([ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md)).
         `Character.inventory` is a list of *instances*, `character.json`'s `formatVersion` is 2,
@@ -192,8 +192,21 @@ before any code, both touching a public API:
         arithmetic behind it, with the two steps the save cannot see, is written out in
         [AURORA-SAVE-FORMAT.md](./docs/AURORA-SAVE-FORMAT.md).
         No new pending decision, no new derivation problem, and the corpus baseline untouched.
-  - [ ] Steps 4 and 5 — slots publish tags, `equipped=` starts being evaluated, and `ac` gets
-        its derivation. A separate run: step 3 is the last point at which Aurora can referee.
+  - [x] **Step 4 — slots publish tags, and `equipped=` is evaluated**
+        ([ADR 0025](./docs/adr/0025-slots-publish-tags.md)). A character kind declares which
+        slots exist, what stat each publishes into and which setters become tags; `equals`
+        becomes a membership test where a stat publishes tags and stays string equality
+        everywhere else. ADR 0023's attunement **gate** landed with it; its limit did not,
+        because the base of 3 needs ADR 0022's `contributions` and step 5 is where that is.
+        **No count moved and no derived stat moved** — which is the weak result it looks like:
+        all 78 rules used to apply unconditionally, so evaluating can only ever remove one, and
+        only eight conditions exist across the nine characters, all of them true. Perturbation
+        is what proves it, and it is in the tests: the monk put into plate loses exactly
+        Unarmoured Defence and Unarmoured Movement, the monk handed a shield makes
+        `[shield:none]` false for the first time in this project, and an unattuned Ring of
+        Protection takes its +1 AC and +1 to all six saves with it.
+  - [ ] Step 5 — the `ac` derivation, and a kind's `contributions` (ADR 0022) to hang its four
+        conditional rules and the attunement limit on. No oracle: no save records an AC.
 - [ ] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
       the differential verification could check the moment they existed. Reading the engine
       corrected that on two counts:
@@ -248,6 +261,10 @@ before any code, both touching a public API:
         so this is the last step of the inventory work rather than a parallel one, and it has
         no oracle at all: no save records an armour class.
         Planned in [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md).
+        **Those gates have answers since step 4** ([ADR 0025](./docs/adr/0025-slots-publish-tags.md));
+        what is left is a kind's `contributions` and one expression over the buckets. Expect
+        the intermediate state to look worse rather than better: a plate contributes
+        `ac:armored:armor 18` that nothing sums, and `ac` still reads 10.
 - [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope.
 - [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md)) and
