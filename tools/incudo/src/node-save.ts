@@ -15,7 +15,7 @@
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import type { ContainerFiles } from '@incudo/core';
-import { zipSync, unzipSync } from './node-zip.ts';
+import { nodeZipCodec } from './node-zip.ts';
 
 export type ContainerForm = 'zip' | 'folder';
 
@@ -27,7 +27,7 @@ export function formOf(path: string): ContainerForm {
 export async function readContainer(path: string): Promise<ContainerFiles> {
   const info = await stat(path);
   if (info.isDirectory()) return readFolder(path);
-  return unzipSync(new Uint8Array(await readFile(path)));
+  return nodeZipCodec.unzip(new Uint8Array(await readFile(path)));
 }
 
 export async function writeContainer(
@@ -37,7 +37,7 @@ export async function writeContainer(
 ): Promise<void> {
   if (form === 'zip') {
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, zipSync(files));
+    await writeFile(path, await nodeZipCodec.zip(files));
     return;
   }
   await writeFolder(path, files);

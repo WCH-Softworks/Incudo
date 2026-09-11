@@ -5,7 +5,9 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { zipSync, unzipSync } from './node-zip.ts';
+import { nodeZipCodec } from './node-zip.ts';
+
+const { zip, unzip } = nodeZipCodec;
 
 function sample(): Map<string, Uint8Array> {
   return new Map([
@@ -16,9 +18,9 @@ function sample(): Map<string, Uint8Array> {
   ]);
 }
 
-test('a container round-trips', () => {
+test('a container round-trips', async () => {
   const files = sample();
-  const back = unzipSync(zipSync(files));
+  const back = await unzip(await zip(files));
 
   assert.deepEqual([...back.keys()], [...files.keys()]);
   for (const [path, bytes] of files) {
@@ -26,42 +28,42 @@ test('a container round-trips', () => {
   }
 });
 
-test('the JSON actually compresses', () => {
+test('the JSON actually compresses', async () => {
   const files = sample();
   const raw = [...files.values()].reduce((n, b) => n + b.length, 0);
-  const zipped = zipSync(files).length;
+  const zipped = (await zip(files)).length;
   assert.ok(zipped * 5 < raw, `expected real compression, got ${raw} → ${zipped}`);
 });
 
-test('writing the same tree twice produces the same bytes', () => {
+test('writing the same tree twice produces the same bytes', async () => {
   // A save in git should not churn just because it was opened and saved again.
-  assert.deepEqual([...zipSync(sample())], [...zipSync(sample())]);
+  assert.deepEqual([...(await zip(sample()))], [...(await zip(sample()))]);
 });
 
-test('an empty container is still a valid zip', () => {
-  assert.deepEqual([...unzipSync(zipSync(new Map())).keys()], []);
+test('an empty container is still a valid zip', async () => {
+  assert.deepEqual([...(await unzip(await zip(new Map()))).keys()], []);
 });
 
-test('an entry that does not compress is stored rather than inflated', () => {
+test('an entry that does not compress is stored rather than inflated', async () => {
   // Random bytes stand in for a PNG: DEFLATE makes them bigger, so the writer stores them.
   const random = new Uint8Array(4096).map(() => Math.floor(Math.random() * 256));
   const files = new Map([['assets/noise.bin', random]]);
-  const zipped = zipSync(files);
+  const zipped = await zip(files);
   assert.ok(zipped.length < random.length + 200, `stored entry grew to ${zipped.length}`);
-  assert.deepEqual([...unzipSync(zipped).get('assets/noise.bin')!], [...random]);
+  assert.deepEqual([...(await unzip(zipped)).get('assets/noise.bin')!], [...random]);
 });
 
-test('corruption is caught, not passed on', () => {
-  const zipped = zipSync(sample());
+test('corruption is caught, not passed on', async () => {
+  const zipped = await zip(sample());
   // Flip a byte inside the first entry's payload, past the 30-byte header and its name.
   const damaged = new Uint8Array(zipped);
   damaged[60] = damaged[60]! ^ 0xff;
-  assert.throws(() => unzipSync(damaged), /corrupt|damaged|unsupported/i);
+  await assert.rejects(unzip(damaged), /corrupt|damaged|unsupported|incorrect/i);
 });
 
-test('something that is not a zip says so', () => {
-  assert.throws(
-    () => unzipSync(new TextEncoder().encode('this is a character sheet, honest')),
+test('something that is not a zip says so', async () => {
+  await assert.rejects(
+    unzip(new TextEncoder().encode('this is a character sheet, honest')),
     /does not look like a zip/,
   );
 });
@@ -71,16 +73,16 @@ test('something that is not a zip says so', () => {
  * name is the oldest archive trick there is, and the right place to stop it is on read,
  * before any caller is tempted to write the path out.
  */
-test('a path that escapes the container is refused', () => {
-  const hostile = zipSync(new Map([['../../.ssh/authorized_keys', new Uint8Array([1])]]));
-  assert.throws(() => unzipSync(hostile), /unsafe path/);
+test('a path that escapes the container is refused', async () => {
+  const hostile = await zip(new Map([['../../.ssh/authorized_keys', new Uint8Array([1])]]));
+  await assert.rejects(unzip(hostile), /unsafe path/);
 
-  const absolute = zipSync(new Map([['C:/Windows/System32/evil.dll', new Uint8Array([1])]]));
-  assert.throws(() => unzipSync(absolute), /unsafe path/);
+  const absolute = await zip(new Map([['C:/Windows/System32/evil.dll', new Uint8Array([1])]]));
+  await assert.rejects(unzip(absolute), /unsafe path/);
 });
 
-test('backslashes are normalized, so a Windows-written container reads anywhere', () => {
-  const back = unzipSync(zipSync(new Map([['assets\\portrait.png', new Uint8Array([1])]])));
+test('backslashes are normalized, so a Windows-written container reads anywhere', async () => {
+  const back = await unzip(await zip(new Map([['assets\\portrait.png', new Uint8Array([1])]])));
   assert.deepEqual([...back.keys()], ['assets/portrait.png']);
 });
 
@@ -93,7 +95,7 @@ test('the system unzip agrees it is a zip', { skip: !hasUnzip() }, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'incudo-zip-'));
   try {
     const path = join(dir, 'character.incu');
-    await writeFile(path, zipSync(sample()));
+    await writeFile(path, await zip(sample()));
     const listing = execFileSync('unzip', ['-l', path], { encoding: 'utf8' });
     assert.match(listing, /manifest\.json/);
     assert.match(listing, /assets\/portrait\.png/);

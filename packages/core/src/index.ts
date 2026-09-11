@@ -18,3 +18,4 @@ export * from './json-schema.ts';
 export * from './schema.ts';
 export * from './sha256.ts';
 export * from './platform.ts';
+export * from './zip.ts';
