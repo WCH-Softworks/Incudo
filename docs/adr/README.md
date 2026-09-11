@@ -35,3 +35,4 @@ new one that supersedes it.
 | [0019](./0019-recorded-rolls-are-readable.md) | A recorded roll is readable by a derivation | Accepted |
 | [0020](./0020-stats-keyed-on-declared-blocks.md) | An element's declared blocks may publish stats | Accepted |
 | [0021](./0021-equipped-is-a-condition.md) | `equipped` is a condition, and it is not evaluated yet | Accepted |
+| [0022](./0022-kinds-contribute-systems-do-not-ship-content.md) | A character kind may contribute a stat conditionally, and a system ships no content | Accepted |

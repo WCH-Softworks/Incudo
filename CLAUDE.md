@@ -224,6 +224,16 @@ and carried means nothing** — 26 of 26 equipped items across the nine saves ar
 id that was equipped elsewhere. And **no save records an armour class**, so `ac` will be the
 second number after `hp` that the differential check cannot see; do not describe it as verified.
 
+**Identity is embedded in a save; mechanics are not** (ADR 0022). `collectCharacterContent`
+seeds from `baselineElementIds(kind, progress)`, so every element a kind grants is copied into
+`content.json` and frozen there, while `system.json` is the one thing a save deliberately does
+*not* embed. That is why all seven of the 5e kind's `grants` carry zero rules, and why only six
+of the overlay's 80 elements carry any — all six ability score improvements, where the rule
+*is* the identity. Put a game rule on an element and you have put it in every save written
+before you fixed it. A kind's `contributions` is where a conditional baseline rule goes
+instead, and **a system definition ships no content** — decided and closed, so do not reach
+for `.incuset` when a system needs a rule.
+
 **There are three keyings of a stat, not two** (ADR 0020). A stat is contributed to a
 character, or once per *track* (`trackStats`, ADR 0018), or once per *declared block*
 (`blockStats`). The third exists because the second cannot reach it: the namespace content

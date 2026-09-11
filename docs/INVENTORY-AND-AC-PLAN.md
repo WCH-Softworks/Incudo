@@ -1,6 +1,7 @@
 # Inventory and armour class — the plan
 
-**Status:** proposed · 2026-09-10 · nothing here is implemented
+**Status:** proposed · 2026-09-10 · nothing here is implemented · **D1 settled 2026-09-11 by
+[ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md)**
 
 ROADMAP Phase 2 lists **Inventory** and the `ac` derivation as two items. They are one piece
 of work in a fixed order, and this file is the plan asked for before any of it is written.
@@ -263,32 +264,36 @@ Four conditional stat contributions, and the formula above becomes uniform with 
 all. A barbarian's `10 + dex + con` still wins through `max`, and a shield still adds to it,
 which is what the Player's Handbook says.
 
-So step 5 reduces to: **somewhere to put four stat rules that carry a `requirements`.** That is
-decision D1.
+So step 5 reduces to: **somewhere to put four stat rules that carry a `requirements`.** That
+was decision D1, and it is now a kind's `contributions` (ADR 0022).
 
 ---
 
-## Decisions needed before step 1
+## Decisions
 
-### D1 — where does the 5e baseline live?
+D1 is settled. D2 and D3 remain open, and neither blocks step 1.
 
-Those four conditional rules, and whatever else the baseline needs, have to be authored
-somewhere. Three candidates:
+### D1 — where does the 5e baseline live? · **settled, [ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md)**
 
-- **(a) New system-format surface** — a kind gains conditional stat contributions, something
-  like `stats[].when`. Smallest schema delta; a fifth thing on a kind that produces stats,
-  after `stats`, content, `trackStats` and `blockStats`.
-- **(b) A system ships its own content bundle** — `systems/dnd5e/baseline.incuset`, ordinary
-  elements with ordinary rules. Reuses the entire existing vocabulary: `<stat requirements=…>`
-  already does conditionals, and `.incuset` already exists (ADR 0007). It also gives the 5e
-  baseline a real home instead of seven marker ids in `kind.grants` pointing at a frozen
-  package's overlay. Bigger idea, and it may pay for itself twice.
-- **(c) `packages/aurora-import`'s overlay.** Rejected already, twice, for the caster level
-  (ADR 0018) and the save DC (ADR 0020): markers carry identity and no rules, and game
-  arithmetic does not belong in the frozen package.
+**A character kind declares `contributions`, and a system ships no content.** Not what this
+file recommended when it was written, and the reversal is the useful part.
 
-I would take **(b)**, and it is the one worth thinking about before step 1 rather than after,
-because it changes what `kind.grants` is for.
+The recommendation was (b), a system-shipped `.incuset` of ordinary elements with ordinary
+rules, on the grounds that `<stat requirements=…>` already does conditionals and the format
+already exists. What that missed is where the elements end up. `collectCharacterContent` seeds
+from `baselineElementIds(kind, progress)`, so **anything a kind grants is embedded in the
+save** — and a rule embedded in a save is frozen at the moment the file was written. Fixing
+5e's armour class would have fixed nothing already built, which is the failure ADR 0006 exists
+to prevent. `system.json`, by contrast, is the one thing a save deliberately does *not* embed.
+
+So the project has been following a rule without stating it: **identity is embedded, mechanics
+are not.** That is why all seven ids in the 5e kind's `grants` carry zero rules, and why only
+six of the overlay's 80 elements carry any — all six ability score improvements, where the
+rule *is* the identity.
+
+What this means for the steps below: the inventory work needs **no loader change, no second
+file per system, and no origin filter** in the container or in `aurora verify`. Step 5 gets
+four lines of data in `system.json`.
 
 ### D2 — does attunement gate an item's contribution?
 
