@@ -5,7 +5,7 @@
   "description": "Incudo desktop shell (Tauri + React). Layout and platform I/O only.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/check-port.mjs && vite",
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",

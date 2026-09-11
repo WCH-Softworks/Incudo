@@ -17,6 +17,13 @@ npm run desktop:build    # production web bundle into apps/desktop/dist
 validates the shipped 5e system definition, loads an Aurora content index over the network,
 and builds a character. Every piece of UI work can happen there.
 
+If the port is busy, `npm run desktop` names the process holding it and prints the command to
+kill it. The port is fixed rather than auto-selected because Tauri points its window at
+`http://localhost:5173` exactly; a server that quietly moved to 5174 would leave that window
+blank. A leftover *detached* dev server has no console, so it appears under Task Manager’s
+Background processes rather than under Apps — which is why it can look like there is nothing to
+kill.
+
 `npm run desktop:app` additionally needs a Rust toolchain (`rustup`) and the platform
 prerequisites at https://v2.tauri.app/start/prerequisites/, plus an icon this repo does not
 ship — see below. No Rust is needed for application code.
