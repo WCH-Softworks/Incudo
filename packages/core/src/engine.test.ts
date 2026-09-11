@@ -6,6 +6,7 @@ import { createCharacter, type Character } from './character.ts';
 import { MapElementIndex, type Element, type Rule } from './model.ts';
 import type { GameSystem, TrackStatDef } from './system.ts';
 import { evaluateExpr, type StatExpr } from './expression.ts';
+import { parseRequirements, type RequirementExpr } from './requirements.ts';
 
 // A fixture with no game in it — see the note in system.test.ts.
 
@@ -714,4 +715,142 @@ test('a pool offers the candidates of every rule that still has room', () => {
   ];
   const partial = deriveCharacter(character, system(), index).pendingChoices[0]!;
   assert.deepEqual([...partial.candidates].sort(), ['G']);
+});
+
+// --- equipment: what a slot holds, and the rules that ask about it (ADR 0025) ------------
+
+function equipped(expr: string): RequirementExpr {
+  return parseRequirements(expr)!;
+}
+
+/** The same fixture, plus somewhere to put things. Still no game in it. */
+function systemWithSlots(): GameSystem {
+  const base = system();
+  const pc = base.characterKinds[0]!;
+  return {
+    ...base,
+    stats: [...base.stats, { name: 'plating', kind: 'string' }, { name: 'held', kind: 'string' }],
+    characterKinds: [
+      {
+        ...pc,
+        inventory: {
+          slotSetter: 'worn',
+          occupiedTag: 'any',
+          emptyTag: 'none',
+          tagSetters: ['weight class'],
+          slots: [
+            { id: 'torso', stats: ['plating'] },
+            { id: 'grip', stats: ['held'] },
+          ],
+          attunement: { setter: 'bonded', requires: 'yes' },
+        },
+      },
+      ...base.characterKinds.slice(1),
+    ],
+  };
+}
+
+function wearable(id: string, setters: Record<string, string>, rules: Rule[] = []): Element {
+  return {
+    ...element(id, 'Widget', rules),
+    setters: Object.fromEntries(Object.entries(setters).map(([k, v]) => [k, { value: v }])),
+  };
+}
+
+test('a slot publishes what is in it, and an empty one says so', () => {
+  const index = indexWith(wearable('PLATE', { worn: 'torso', 'weight class': 'Heavy' }));
+  const character = { ...createCharacter('test', 'levelled') };
+  character.inventory = [{ instanceId: 'a', elementId: 'PLATE', equipped: true }];
+
+  const derived = deriveCharacter(character, systemWithSlots(), index);
+  assert.equal(derived.stats.get('plating')?.text, 'PLATE');
+  assert.equal(derived.stats.get('held')?.text, 'none');
+});
+
+test('an `equipped` condition is evaluated, and the answer comes from the slot', () => {
+  const unarmoured: Rule = {
+    kind: 'stat',
+    key: 'stat:0',
+    name: 'vigour',
+    value: { kind: 'number', value: 5 },
+    equipped: equipped('[plating:none]'),
+  };
+  const heavy: Rule = {
+    kind: 'stat',
+    key: 'stat:1',
+    name: 'vigour',
+    value: { kind: 'number', value: 3 },
+    equipped: equipped('[plating:heavy]'),
+  };
+  const index = indexWith(
+    wearable('FEATURE', {}, [unarmoured, heavy]),
+    wearable('PLATE', { worn: 'torso', 'weight class': 'Heavy' }),
+  );
+
+  const bare = { ...createCharacter('test', 'levelled') };
+  bare.choices = [{ ruleKey: 'seed', elementIds: ['FEATURE'] }];
+  assert.equal(deriveCharacter(bare, systemWithSlots(), index).stats.get('vigour')?.value, 15);
+
+  const armoured = { ...bare, inventory: [{ instanceId: 'a', elementId: 'PLATE', equipped: true }] };
+  assert.equal(deriveCharacter(armoured, systemWithSlots(), index).stats.get('vigour')?.value, 13);
+});
+
+test('a kind with no inventory ignores `equipped` rather than reading every gate as unmet', () => {
+  // ADR 0021 measured what the other reading does: it drops every positive check and keeps
+  // every negation, which is a state no real character is in.
+  const index = indexWith(
+    wearable('FEATURE', {}, [
+      {
+        kind: 'stat',
+        key: 'stat:0',
+        name: 'vigour',
+        value: { kind: 'number', value: 5 },
+        equipped: equipped('[plating:none]'),
+      },
+    ]),
+  );
+  const character = { ...createCharacter('test', 'levelled') };
+  character.choices = [{ ruleKey: 'seed', elementIds: ['FEATURE'] }];
+  assert.equal(deriveCharacter(character, system(), index).stats.get('vigour')?.value, 15);
+});
+
+test('`equals` is still string equality for a stat no slot publishes', () => {
+  const index = indexWith(
+    wearable('FEATURE', {}, [
+      {
+        kind: 'stat',
+        key: 'stat:0',
+        name: 'vigour',
+        value: { kind: 'number', value: 5 },
+        requirements: equipped('[vigour:10]'),
+      },
+    ]),
+  );
+  const character = { ...createCharacter('test', 'levelled') };
+  character.choices = [{ ruleKey: 'seed', elementIds: ['FEATURE'] }];
+  assert.equal(deriveCharacter(character, systemWithSlots(), index).stats.get('vigour')?.value, 15);
+});
+
+test('an unattuned item contributes none of its rules, and the derivation says which', () => {
+  const index = indexWith(
+    wearable('RING', { worn: 'grip', bonded: 'yes' }, [
+      { kind: 'stat', key: 'stat:0', name: 'vigour', value: { kind: 'number', value: 4 } },
+      { kind: 'grant', key: 'grant:0', type: 'Gadget', id: 'BOON' },
+    ]),
+    element('BOON', 'Gadget'),
+  );
+  const character = { ...createCharacter('test', 'levelled') };
+  character.inventory = [{ instanceId: 'a', elementId: 'RING', equipped: true }];
+
+  const withheld = deriveCharacter(character, systemWithSlots(), index);
+  assert.equal(withheld.stats.get('vigour')?.value, 10);
+  assert.equal(withheld.elementIds.has('BOON'), false, 'a suppressed grant grants nothing');
+  assert.equal(withheld.elementIds.has('RING'), true, 'but the ring is still in the bag');
+  assert.equal(withheld.problems.filter((p) => p.code === 'unattuned').length, 1);
+
+  const attuned = { ...character, inventory: [{ ...character.inventory[0]!, attuned: true }] };
+  const given = deriveCharacter(attuned, systemWithSlots(), index);
+  assert.equal(given.stats.get('vigour')?.value, 14);
+  assert.equal(given.elementIds.has('BOON'), true);
+  assert.equal(given.problems.length, 0);
 });

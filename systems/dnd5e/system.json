@@ -87,6 +87,11 @@
     { "name": "hp", "label": "Hit Points", "default": 0 },
     { "name": "ac", "label": "Armor Class", "default": 10 },
 
+    { "name": "armor", "label": "Armor", "kind": "string" },
+    { "name": "shield", "label": "Shield", "kind": "string" },
+    { "name": "primary", "label": "Primary Hand", "kind": "string" },
+    { "name": "secondary", "label": "Off Hand", "kind": "string" },
+
     { "name": "ability points", "label": "Ability Points", "default": 0 },
 
     { "name": "multiclass:spellcasting:level", "label": "Caster Level", "default": 0 },
@@ -158,6 +163,34 @@
               "left": { "kind": "ref", "stat": "{ability}:modifier" },
               "right": { "kind": "ref", "stat": "spellcasting:attack" } } } }
       ],
+
+      "inventory": {
+        "slotSetter": "slot",
+        "occupiedTag": "any",
+        "emptyTag": "none",
+        "tagSetters": ["armor"],
+        "flagSetters": ["versatile"],
+        "slots": [
+          { "id": "body", "label": "Armor", "stats": ["armor"] },
+          { "id": "onehand,secondary", "label": "Shield", "stats": ["shield"] },
+          { "id": "onehand", "label": "Hands", "stats": ["primary", "secondary"] },
+          { "id": "twohand", "label": "Two-Handed", "stats": ["primary"] },
+          { "id": "head", "label": "Head" },
+          { "id": "neck", "label": "Neck" },
+          { "id": "shoulders", "label": "Shoulders" },
+          { "id": "arms", "label": "Arms" },
+          { "id": "hands", "label": "Gloves" },
+          { "id": "waist", "label": "Waist" },
+          { "id": "belt", "label": "Belt" },
+          { "id": "legs", "label": "Legs" },
+          { "id": "feet", "label": "Feet" },
+          { "id": "ring", "label": "Rings" },
+          { "id": "misc", "label": "Carried" },
+          { "id": "gift", "label": "Supernatural Gift" },
+          { "id": "companion", "label": "Companion" }
+        ],
+        "attunement": { "setter": "attunement", "requires": "true" }
+      },
 
       "elementTypes": [
         "Race", "Sub Race", "Race Variant", "Racial Trait",

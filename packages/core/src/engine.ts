@@ -37,6 +37,7 @@ import {
   TRACK_PROGRESS_STAT,
 } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
+import { EMPTY_EQUIPMENT, resolveEquipment, type EquipmentState } from './equipment.ts';
 import {
   evaluateExpr,
   evaluateExprAsString,
@@ -93,7 +94,11 @@ export interface Problem {
     | 'over-selected'
     | 'cycle-limit'
     | 'ambiguous-track'
-    | 'unresolved-interpolation';
+    | 'unresolved-interpolation'
+    // The bag, read through the kind's inventory declaration — ADR 0025, ADR 0023.
+    | 'slot-unknown'
+    | 'slot-full'
+    | 'unattuned';
   message: string;
   elementId?: ElementId;
   ruleKey?: string;
@@ -155,6 +160,23 @@ export function deriveCharacter(
   // which embeds the whole bag, is deliberate (ADR 0024 decision 7). It is also the one
   // half of this Aurora can referee: 26 of 26 equipped items across the nine sample saves
   // are in its own `<sum>` and 18 of 19 carried ones are not.
+  //
+  // What each slot holds is resolved here, once, and not inside the loop below: occupancy is a
+  // function of the bag and the index and never of the derivation, so there is nothing for a
+  // fixed point to settle. `chosenIds` is passed as the exemption set *before* the bag is added
+  // to it — an element the character has for another reason is never suppressed by an unattuned
+  // instance of itself (ADR 0025 decision 7).
+  const equipment = kind.inventory
+    ? resolveEquipment(character, index, kind.inventory, { exempt: new Set(chosenIds) })
+    : EMPTY_EQUIPMENT;
+  for (const issue of equipment.issues) {
+    problems.push({
+      level: 'warning',
+      code: issue.code,
+      message: issue.message,
+      elementId: issue.elementId,
+    });
+  }
   for (const id of equippedElementIds(character)) chosenIds.add(id);
 
   let active = new Map<ElementId, Element>();
@@ -176,7 +198,7 @@ export function deriveCharacter(
     // the character's caster level.
     const nextMembers = new Map<ElementId, Set<ElementId>>();
     const levelFor = trackLevelReader(nextTracks, trackLevels, character.progress);
-    const ctx = makeContext(active, stats, character, kind);
+    const ctx = makeContext(active, stats, character, kind, equipment);
 
     // Seed: everything the user explicitly chose, and the kind's own baseline.
     for (const id of chosenIds) {
@@ -196,7 +218,7 @@ export function deriveCharacter(
     while (frontier.length) {
       const nextFrontier: Element[] = [];
       for (const element of frontier) {
-        for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
+        for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
           if (rule.kind !== 'grant') continue;
           inheritTrack(nextTracks, nextMembers, element.id, rule.id, index.get(rule.id), problems);
           if (seen.has(rule.id)) continue;
@@ -212,11 +234,12 @@ export function deriveCharacter(
       next,
       character,
       kind,
-      makeContext(next, stats, character, kind),
+      makeContext(next, stats, character, kind, equipment),
       levelFor,
       trackLevels,
       nextMembers,
       problems,
+      equipment,
     );
 
     changed = !sameKeys(active, next) || !sameStats(stats, nextStats);
@@ -233,7 +256,7 @@ export function deriveCharacter(
     });
   }
 
-  const ctx = makeContext(active, stats, character, kind);
+  const ctx = makeContext(active, stats, character, kind, equipment);
   const pendingChoices = collectPendingChoices(
     active,
     character,
@@ -242,6 +265,7 @@ export function deriveCharacter(
     ctx,
     problems,
     trackLevelReader(tracks, trackLevels, character.progress),
+    equipment,
   );
 
   return {
@@ -267,6 +291,7 @@ function makeContext(
   stats: Map<StatKey, ResolvedStat>,
   character: Character,
   kind: ResolvedCharacterKind,
+  equipment: EquipmentState,
 ): EngineContext {
   // The kind names the stat its progress number is published as: "level" for a 5e PC,
   // "challenge" for a monster, nothing at all for Cairn. Core never spells it — ADR 0009.
@@ -290,6 +315,9 @@ function makeContext(
     // written by the importer, round-tripped through the container, and consumed by nothing.
     rollSum: (pattern) =>
       sumRecordedRolls(character.rolls, kind.progression, character.progress, pattern),
+    // What the character's slots hold — ADR 0025. `undefined` for every stat that is not a
+    // slot, which is what leaves the corpus's eight `[type:spell]` checks comparing a string.
+    statTags: (stat) => equipment.tags.get(stat.toLowerCase()),
     hasFlag: (name) => stats.has(name.toLowerCase()),
   };
 }
@@ -405,6 +433,16 @@ function inheritTrack(
  * A kind with `progression.kind: "none"` has nothing to compare against, so gates are
  * ignored rather than read as unmet: a level-less system cannot express "at level N", and
  * dropping every gated rule would be the wrong reading of content imported from one that can.
+ *
+ * `rule.equipped` is read exactly the same way, and for the same reason (ADR 0025). A kind
+ * that declares no inventory has no slot for `[armor:none]` to be about, and ADR 0021
+ * measured what evaluating in that state does: it drops all 41 positive checks and keeps all
+ * 38 negations, leaving a monk simultaneously not-unarmoured and not-in-heavy-armour. So a
+ * kind without an inventory ignores the condition, exactly as it ignores a level gate it
+ * cannot answer.
+ *
+ * An element the bag brought in that wants attunement it has not got contributes nothing at
+ * all — ADR 0023, and the one place in the engine that is enforced.
  */
 function activeRules(
   element: Element,
@@ -412,12 +450,16 @@ function activeRules(
   kind: ResolvedCharacterKind,
   ctx: EngineContext,
   levelFor: TrackLevelReader,
+  equipment: EquipmentState,
 ): Rule[] {
+  if (equipment.suppressed.has(element.id)) return [];
   const gated = kind.progression.kind !== 'none';
   const level = gated ? levelFor(element.id) : 0;
   return element.rules.filter((rule) => {
     if (gated && rule.level !== undefined && level < rule.level) return false;
-    return evaluateRequirements(rule.requirements, ctx);
+    if (!evaluateRequirements(rule.requirements, ctx)) return false;
+    if (!equipment.declared) return true;
+    return evaluateRequirements('equipped' in rule ? rule.equipped : undefined, ctx);
   });
 }
 
@@ -430,12 +472,13 @@ function computeStats(
   trackLevels: Map<ElementId, number>,
   trackMembers: Map<ElementId, Set<ElementId>>,
   problems: Problem[],
+  equipment: EquipmentState,
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
 
   for (const element of active.values()) {
-    for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
+    for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
       if (rule.kind !== 'stat') continue;
       const key = rule.name.toLowerCase();
       const list = buckets.get(key);
@@ -613,6 +656,24 @@ function computeStats(
     });
   }
 
+  // Each slot publishes what is in it — ADR 0025. An input in the same sense as the two
+  // blocks around it: nothing contributes to `armor` and nothing derives it, and this is what
+  // puts it on the sheet rather than what makes the conditions work. The conditions read the
+  // resolved equipment state, which was settled before the first pass.
+  //
+  // `text` is the occupant's name, or the empty tag for a slot with nothing in it, so a sheet
+  // can say "Plate" and a reader can tell "unarmoured" from "unmodelled". Safe because the 740
+  // corpus files write no `<stat name="armor">`, `"shield"`, `"primary"` or `"secondary"`.
+  for (const [key, tags] of equipment.tags) {
+    const occupant = equipment.occupants.get(key);
+    result.set(key, {
+      name: result.get(key)?.name ?? key,
+      value: 0,
+      text: occupant?.name ?? [...tags][0],
+      contributions: occupant ? [{ value: 0, from: occupant.elementId }] : [],
+    });
+  }
+
   // Each track publishes its own count, so `level:rogue` exists (ADR 0015). Like the
   // progression stat above this is an input rather than a derivation — it is published here
   // because that is what puts it in front of content, not because anything computes it.
@@ -691,11 +752,12 @@ function collectPendingChoices(
   ctx: EngineContext,
   problems: Problem[],
   levelFor: TrackLevelReader,
+  equipment: EquipmentState,
 ): PendingChoice[] {
   const pending: PendingChoice[] = [];
 
   for (const element of active.values()) {
-    for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor)) {
+    for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor, equipment)) {
       const chosen = character.choices.find((c) => c.ruleKey === ruleKey)?.elementIds ?? [];
       const allowed = rules.reduce((sum, rule) => sum + rule.number, 0);
       const label = rules[0]!.name;
@@ -787,9 +849,10 @@ function selectPools(
   kind: ResolvedCharacterKind,
   ctx: EngineContext,
   levelFor: TrackLevelReader,
+  equipment: EquipmentState,
 ): Map<string, SelectRule[]> {
   const pools = new Map<string, SelectRule[]>();
-  for (const rule of activeRules(element, character, kind, ctx, levelFor)) {
+  for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
     if (rule.kind !== 'select') continue;
     const ruleKey = `${element.id}/${rule.key}`;
     const pool = pools.get(ruleKey);

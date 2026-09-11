@@ -133,6 +133,80 @@ export interface BlockStatDef {
 }
 
 /**
+ * One place a character may put an item — ADR 0025.
+ *
+ * `id` is the value content's slot setter carries: 5e's content says `body` for armour and
+ * `onehand` for a sword, and the two shields in the corpus say `onehand,secondary`. Core
+ * compares the string and knows nothing about what any of them mean.
+ *
+ * **`stats` is the capacity.** They are the stats this slot publishes into, in fill order,
+ * and an item takes the first one that is free — so `["armor"]` is one suit of armour and
+ * `["primary", "secondary"]` is two hands. A slot with no `stats` publishes nothing and
+ * holds any number of things, which is the honest answer for a slot whose system declares no
+ * limit: 5e has no rule about how many cloaks you may wear, and one of the nine sample saves
+ * wears two.
+ */
+export interface SlotDef {
+  /** The slot setter value that lands here, compared verbatim. */
+  id: string;
+  label?: string;
+  /** Stats this slot publishes into, in fill order. One item per stat. */
+  stats?: StatKey[];
+}
+
+/**
+ * How this system marks an item as requiring attunement — ADR 0023 decision 4.
+ *
+ * Two strings, because core cannot know the word: which setter says it, and the value that
+ * means yes. 5e's corpus writes `<set name="attunement">true</set>` on 968 elements and
+ * `false` on 8, so the value is not decoration.
+ */
+export interface AttunementDef {
+  setter: string;
+  /** The setter value meaning "this requires attunement". */
+  requires: string;
+}
+
+/**
+ * How a character kind reads the setters content puts on an item — ADR 0025.
+ *
+ * The mechanism behind `equipped="[armor:none]"`, which the corpus carries 78 times and
+ * which [ADR 0021] deliberately parsed and left inert for want of this. A slot publishes a
+ * **set of tags** rather than a string, because the twelve operands the corpus uses are
+ * three different kinds of thing: `heavy` is slot state, `versatile` is a weapon property
+ * whose setter value is a die, and `double-bladed scimitar` is an element's name.
+ *
+ * Nothing here is a suit of armour. It is "an item declares where it goes, and what is there
+ * can be asked about".
+ */
+export interface InventoryDef {
+  /** The setter naming where an item goes. `Character.inventory`'s `slot` overrides it. */
+  slotSetter: string;
+  /** What an occupied slot publishes, whatever is in it. 5e's content asks for `any`. */
+  occupiedTag: string;
+  /** What a declared slot with nothing in it publishes. 5e's content asks for `none`. */
+  emptyTag: string;
+  /**
+   * Setters whose **value** becomes a tag: 5e's `armor` setter turns a Plate into `heavy`.
+   *
+   * The value is taken verbatim, lowercased. On 102 of the corpus's elements the `armor`
+   * setter means something else entirely — an attach constraint on an adorner — and that is
+   * harmless here only because adorners occupy no slot.
+   */
+  tagSetters?: string[];
+  /**
+   * Setters whose **presence** becomes a tag, named after the setter rather than its value.
+   *
+   * `<set name="versatile">1d8</set>` is how a quarterstaff says it is versatile, and
+   * `[primary:versatile]` is the corpus asking. The die is not what the question is about.
+   */
+  flagSetters?: string[];
+  slots: SlotDef[];
+  /** Omit for a system with no such concept, and nothing is ever gated. */
+  attunement?: AttunementDef;
+}
+
+/**
  * Substitute a block's name and attributes into a stat key.
  *
  * Returns `undefined` when a placeholder names something the block does not declare —
@@ -507,6 +581,12 @@ export interface CharacterKindDef {
    * an `extends` chain, like `trackStats`.
    */
   blockStats?: BlockStatDef[];
+  /**
+   * How this kind reads an item's setters — ADR 0025. Replaced rather than merged along an
+   * `extends` chain, like `trackStats` and `blockStats`. A kind without one evaluates no
+   * `equipped=` condition and gates nothing on attunement.
+   */
+  inventory?: InventoryDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -527,6 +607,8 @@ export interface ResolvedCharacterKind {
   trackStats: TrackStatDef[];
   /** Stats each block the character's elements declare contributes — ADR 0020. */
   blockStats: BlockStatDef[];
+  /** How an item's setters are read, or nothing at all — ADR 0025. */
+  inventory?: InventoryDef;
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -650,6 +732,7 @@ export function resolveCharacterKind(
   let grants: ElementId[] = [];
   let trackStats: TrackStatDef[] = [];
   let blockStats: BlockStatDef[] = [];
+  let inventory: InventoryDef | undefined;
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -664,6 +747,7 @@ export function resolveCharacterKind(
     if (layer.grants !== undefined) grants = layer.grants;
     if (layer.trackStats !== undefined) trackStats = layer.trackStats;
     if (layer.blockStats !== undefined) blockStats = layer.blockStats;
+    if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -679,6 +763,7 @@ export function resolveCharacterKind(
     grants,
     trackStats,
     blockStats,
+    inventory,
     buildSteps,
     sheet,
   };

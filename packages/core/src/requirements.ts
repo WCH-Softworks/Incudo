@@ -13,7 +13,8 @@
  *   [dex:13]              -> stat "dex" >= 13
  *   [level:warlock:2]     -> stat "level:warlock" >= 2
  *   [innate speed:swim:1] -> stat "innate speed:swim" >= 1
- *   [armor:heavy]         -> stat "armor" equals "heavy"   (non-numeric tail)
+ *   [armor:heavy]         -> stat "armor" equals "heavy"   (non-numeric tail; a stat that
+ *                            publishes tags answers this by membership instead — ADR 0025)
  *   [d10s]                -> flag "d10s" is set            (single segment)
  *
  * Parsing happens once, at import. The engine evaluates the tree, never the string.
@@ -154,6 +155,17 @@ export interface RequirementContext {
   hasElement(id: string): boolean;
   statNumber(stat: string): number;
   statString(stat: string): string | undefined;
+  /**
+   * The tags a stat publishes, when it is one that publishes tags rather than a value — a
+   * character kind's equipment slots are the only source today (ADR 0025).
+   *
+   * Optional, and the branch `equals` takes: a slot answers `[armor:medium]` by membership,
+   * and everything else answers it by string equality. That split is what lets one syntax
+   * carry three kinds of question — `[armor:heavy]` is a setter's value, `[primary:versatile]`
+   * is a setter's *presence*, `[primary:double-bladed scimitar]` is an element's name — while
+   * the corpus's eight `[type:spell]` checks keep comparing a string.
+   */
+  statTags?(stat: string): ReadonlySet<string> | undefined;
   hasFlag(name: string): boolean;
 }
 
@@ -175,8 +187,11 @@ export function evaluateRequirements(
       return ctx.hasElement(expr.id);
     case 'atLeast':
       return ctx.statNumber(expr.stat) >= expr.value;
-    case 'equals':
+    case 'equals': {
+      const tags = ctx.statTags?.(expr.stat);
+      if (tags) return tags.has(expr.value);
       return (ctx.statString(expr.stat) ?? '').toLowerCase() === expr.value;
+    }
     case 'flag':
       return ctx.hasFlag(expr.name);
   }

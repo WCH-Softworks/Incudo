@@ -236,6 +236,29 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     const progress = progressionStat(resolved.progression);
     if (progress) statNames.add(progress.toLowerCase());
 
+    // A slot publishes into a stat, and a stat nothing declares is a stat no sheet can show
+    // and no author meant to write (ADR 0025). Duplicate slot ids are the other mistake that
+    // reads as working: the second declaration would be unreachable, because a slot is found
+    // by matching content's string exactly once.
+    const slotIds = new Set<string>();
+    for (const slot of resolved.inventory?.slots ?? []) {
+      if (slotIds.has(slot.id)) {
+        errors.push({
+          path: `${where}.inventory`,
+          message: `declares the slot "${slot.id}" twice; only the first would ever be reached`,
+        });
+      }
+      slotIds.add(slot.id);
+      for (const stat of slot.stats ?? []) {
+        if (!statNames.has(stat.toLowerCase())) {
+          errors.push({
+            path: `${where}.inventory`,
+            message: `slot "${slot.id}" publishes into "${stat}", which is not declared by the system or by this kind`,
+          });
+        }
+      }
+    }
+
     // A `perBlock` section names stats no system definition can declare — the key comes
     // from content, so `bard:spellcasting:dc` is unknowable here (ADR 0020). What *is*
     // checkable, and worth checking, is that its patterns are ones this kind publishes:

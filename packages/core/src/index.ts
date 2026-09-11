@@ -11,6 +11,7 @@ export * from './expression.ts';
 export * from './supports.ts';
 export * from './system.ts';
 export * from './character.ts';
+export * from './equipment.ts';
 export * from './engine.ts';
 export * from './container.ts';
 export * from './json-schema.ts';

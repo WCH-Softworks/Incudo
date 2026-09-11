@@ -300,6 +300,7 @@
         },
         "trackStats": { "type": "array", "items": { "$ref": "#/$defs/trackStat" } },
         "blockStats": { "type": "array", "items": { "$ref": "#/$defs/blockStat" } },
+        "inventory": { "$ref": "#/$defs/inventory" },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
       }
@@ -342,6 +343,73 @@
         "value": {
           "$ref": "#/$defs/expr",
           "description": "Evaluated once per block. Placeholders resolve inside a `ref`'s stat name too, so \"{ability}:modifier\" reads charisma:modifier for the Bard and intelligence:modifier for the Wizard. An entry with a placeholder the block does not declare contributes nothing and is reported."
+        }
+      }
+    },
+
+    "inventory": {
+      "description": "How this kind reads the setters content puts on an item (ADR 0025). The mechanism behind `equipped=\"[armor:none]\"`, which the Aurora corpus carries on 78 rules. A slot publishes a *set of tags* rather than one string, because the twelve operands the corpus uses are three different kinds of thing: `heavy` is the value of a setter, `versatile` is the *presence* of one (the setter's value is a die), and `double-bladed scimitar` is the element's own name. A kind with no inventory evaluates no `equipped=` condition and gates nothing on attunement — the same way a kind with no progression ignores `level=` instead of reading every gate as unmet.",
+      "type": "object",
+      "required": ["slotSetter", "occupiedTag", "emptyTag", "slots"],
+      "additionalProperties": false,
+      "properties": {
+        "slotSetter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The setter naming where an item goes. 5e's content writes `slot`, on 1,070 elements. A bag entry's own `slot` overrides it, and means the user put the item somewhere the element did not say."
+        },
+        "occupiedTag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What an occupied slot publishes whatever is in it. The corpus asks for this as `any`."
+        },
+        "emptyTag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What a declared slot with nothing in it publishes, and nothing else. The corpus asks for this as `none`, 56 times."
+        },
+        "tagSetters": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Setters whose *value* becomes a tag, lowercased: 5e's `armor` setter turns a Plate into `heavy`. Taken verbatim — on 102 corpus elements that setter means something else entirely, and that is harmless only because adorners occupy no slot."
+        },
+        "flagSetters": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Setters whose *presence* becomes a tag, named after the setter rather than its value. `<set name=\"versatile\">1d8</set>` is how a quarterstaff says it is versatile, and `[primary:versatile]` is the corpus asking; the die is not what the question is about."
+        },
+        "slots": { "type": "array", "items": { "$ref": "#/$defs/slot" } },
+        "attunement": { "$ref": "#/$defs/attunement" }
+      }
+    },
+
+    "slot": {
+      "description": "One place a character may put an item. `id` is compared verbatim against the slot setter's value, so it is content's word and not the system's: 5e's two shields say `onehand,secondary` and that whole string is the shield slot's id.",
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "stats": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "The stats this slot publishes into, in fill order — and therefore its capacity, since one stat holds one item. `[\"armor\"]` is one suit of armour; `[\"primary\", \"secondary\"]` is two hands and an item takes the first that is free. Omit for a slot that publishes nothing, which then holds any number of things: 5e has no rule about how many cloaks you may wear, and declaring one here would be inventing it."
+        }
+      }
+    },
+
+    "attunement": {
+      "description": "How this system marks an item as requiring attunement (ADR 0023). An equipped item that requires it and is not attuned contributes none of its rules, and a warning names it. Its setters are untouched, so it still weighs what it weighs; and because a magic adorner is a separate element from its mundane host, gating one leaves an unattuned Flame Tongue greatsword a working greatsword.",
+      "type": "object",
+      "required": ["setter", "requires"],
+      "additionalProperties": false,
+      "properties": {
+        "setter": { "type": "string", "minLength": 1 },
+        "requires": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The setter value meaning \"this requires attunement\". Not decoration: 5e's corpus writes `true` on 968 elements and `false` on 8."
         }
       }
     },

@@ -341,3 +341,48 @@ test('a requires or budget that points nowhere is caught before the app loads it
     ],
   );
 });
+
+test('a slot that publishes into nothing, or twice, is caught before the app loads it', async () => {
+  const inventory = {
+    slotSetter: 'worn',
+    occupiedTag: 'any',
+    emptyTag: 'none',
+    slots: [{ id: 'torso', stats: ['plating'] }],
+  };
+
+  // A slot publishing into a stat nothing declares renders a blank forever, which is the
+  // mistake an author actually makes — the same check `perBlock` sections get (ADR 0020).
+  assert.deepEqual(
+    await errorsFor(broken((s) => (s.characterKinds[0]!.inventory = inventory))),
+    [
+      'characterKinds[0].inventory: slot "torso" publishes into "plating", which is not declared by the system or by this kind',
+    ],
+  );
+
+  // A slot is found by matching content's string exactly once, so the second is unreachable.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.inventory = {
+          ...inventory,
+          slots: [{ id: 'torso', stats: ['vigour'] }, { id: 'torso' }],
+        };
+      }),
+    ),
+    ['characterKinds[0].inventory: declares the slot "torso" twice; only the first would ever be reached'],
+  );
+
+  // And the structural half: a declaration has to say what an occupied and an empty slot
+  // publish, because core owns neither word.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.inventory = { slotSetter: 'worn', slots: [] } as never;
+      }),
+    ),
+    [
+      'characterKinds[0].inventory.occupiedTag: is required',
+      'characterKinds[0].inventory.emptyTag: is required',
+    ],
+  );
+});
