@@ -33,6 +33,7 @@ import {
   substituteBlockPlaceholders,
   trackStatKey,
   trackStatName,
+  contributionCondition,
   sumRecordedRolls,
   TRACK_PROGRESS_STAT,
 } from './system.ts';
@@ -92,6 +93,9 @@ export interface Problem {
     | 'unknown-type'
     | 'requirement-unmet'
     | 'over-selected'
+    // Attuned to more items than the limit allows — ADR 0023 decision 3, ADR 0026. In
+    // `over-selected`'s family: reported, and never a refusal to derive.
+    | 'over-attuned'
     | 'cycle-limit'
     | 'ambiguous-track'
     | 'unresolved-interpolation'
@@ -256,6 +260,11 @@ export function deriveCharacter(
     });
   }
 
+  // Attuned to more than the limit allows — ADR 0023 decision 3. Once, after the fixed point,
+  // because the limit is a derived number: the kind contributes a base and content raises it,
+  // and asking mid-loop would report a character over a limit that had not finished arriving.
+  reportAttunementLimit(kind, stats, equipment, problems);
+
   const ctx = makeContext(active, stats, character, kind, equipment);
   const pendingChoices = collectPendingChoices(
     active,
@@ -347,6 +356,33 @@ function addElement(
   }
   into.set(id, element);
   return element;
+}
+
+/**
+ * Being attuned to more items than the rules allow — ADR 0023 decision 3.
+ *
+ * A problem in `over-selected`'s family and not a refusal, for the same reason: a system
+ * definition is authored once and a character is edited constantly, so a character mid-edit is
+ * routinely in a state the rules do not permit. The engine reports and keeps deriving.
+ *
+ * Both stats come from the kind's inventory declaration, because core cannot say "attunement".
+ * A kind that names neither gets no check, which is what a system with no such concept wants.
+ */
+function reportAttunementLimit(
+  kind: ResolvedCharacterKind,
+  stats: Map<StatKey, ResolvedStat>,
+  equipment: EquipmentState,
+  problems: Problem[],
+): void {
+  const attunement = kind.inventory?.attunement;
+  if (!equipment.declared || !attunement?.maxStat) return;
+  const limit = stats.get(attunement.maxStat.toLowerCase())?.value ?? 0;
+  if (equipment.attunedCount <= limit) return;
+  problems.push({
+    level: 'error',
+    code: 'over-attuned',
+    message: `Attuned to ${equipment.attunedCount} items, and "${attunement.maxStat}" allows ${limit}. Unattune from ${equipment.attunedCount - limit} of them, or expect a sheet the rules do not permit.`,
+  });
 }
 
 /** How many points of progression apply to an element's rules — its track's, or the total. */
@@ -476,16 +512,52 @@ function computeStats(
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
+  const contribute = (rule: StatRule, from: ElementId): void => {
+    const key = rule.name.toLowerCase();
+    const list = buckets.get(key);
+    if (list) list.push(rule);
+    else buckets.set(key, [rule]);
+    owners.set(rule, from);
+  };
 
   for (const element of active.values()) {
     for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
       if (rule.kind !== 'stat') continue;
-      const key = rule.name.toLowerCase();
-      const list = buckets.get(key);
-      if (list) list.push(rule);
-      else buckets.set(key, [rule]);
-      owners.set(rule, element.id);
+      contribute(rule, element.id);
     }
+  }
+
+  // What the kind itself contributes — ADR 0022. These join content's rules *in the same
+  // buckets* rather than landing after them, and that is the whole point of putting them here:
+  // 5e contributes `ac:armored:dexterity:cap` 2 in the `base` bucket, and Medium Armor Master's
+  // 3 has to beat it rather than stack with it. Summed afterwards, a character with that feat
+  // in half plate would read a cap of 5.
+  //
+  // The condition is evaluated against this pass's context, exactly as a content rule's
+  // `requirements` is — including `[armor:medium]`, which reads the equipment state settled
+  // before the loop began.
+  for (const def of kind.contributions) {
+    if (!evaluateRequirements(contributionCondition(def), ctx)) continue;
+    contribute(
+      { kind: 'stat', key: `kind:${def.stat}`, name: def.stat, value: def.value, bonus: def.bonus },
+      'kind',
+    );
+  }
+
+  // How many items the character is attuned to — ADR 0023 decision 3. A contribution and not a
+  // published input, because content writes this key too: 5e's Soul of Artifice contributes
+  // `attunement:current` 0, and an input stat would have discarded it.
+  const countStat = kind.inventory?.attunement?.countStat;
+  if (equipment.declared && countStat) {
+    contribute(
+      {
+        kind: 'stat',
+        key: 'inventory:attuned',
+        name: countStat,
+        value: { kind: 'number', value: equipment.attunedCount },
+      },
+      'inventory',
+    );
   }
 
   const result = new Map<StatKey, ResolvedStat>();

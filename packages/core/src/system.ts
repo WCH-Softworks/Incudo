@@ -15,6 +15,7 @@
 import type { DeclaredBlock, Element, ElementId, ElementType, StatKey } from './model.ts';
 import { declaredBlocks } from './model.ts';
 import type { StatExpr } from './expression.ts';
+import { parseRequirements, type RequirementExpr } from './requirements.ts';
 
 export interface ElementTypeDef {
   /** The type name as it appears on elements, e.g. "Class Feature". */
@@ -133,6 +134,67 @@ export interface BlockStatDef {
 }
 
 /**
+ * A stat the *kind* contributes, optionally only when a condition holds — ADR 0022.
+ *
+ * The base case the other two are iterating specialisations of: `trackStats` contributes once
+ * per track and `blockStats` once per declared block, and this contributes once, for a character
+ * of this kind. What it adds over them is a `requirements`, which is what 5e's armour class
+ * needed and neither of them could give it — "a character wearing no armour has an armour class
+ * of 10" is a rule about the character, not about any element it holds.
+ *
+ * It lives in `system.json` and nowhere else, and that placement is the whole argument of
+ * ADR 0022. A rule on an element the kind grants is **copied into every save** by
+ * `collectCharacterContent`; `system.json` is the one thing a save deliberately does not embed.
+ * Identity is embedded, mechanics are not.
+ *
+ * Nothing here is armour. It is "a kind may contribute a number, and may say when".
+ */
+export interface ContributionDef {
+  stat: StatKey;
+  value: StatExpr;
+  /**
+   * Named bonus bucket, exactly as on a content {@link StatRule}. Carried because without it
+   * the `base` bucket cannot be joined, and Medium Armor Master could not raise a Dexterity cap
+   * the system wrote and it did not.
+   */
+  bonus?: string;
+  /**
+   * A condition in content's own requirement language, as a string — `"[armor:medium]"`.
+   *
+   * Not a JSON tree: a system definition is authored by hand, and its author has already read
+   * this spelling a thousand times in content. It is named `requirements` and not `when` so that
+   * a reader who knows content knows it instantly; `trackStats.when` is an element id and means
+   * something else. An expression that will not parse makes the system invalid — see
+   * `checkSystemReferences` — which is ADR 0011's standing rule.
+   */
+  requirements?: string;
+}
+
+/**
+ * The parsed form of a contribution's condition, cached on the definition object itself.
+ *
+ * Parsing is cheap and a derivation is not rare, so it happens once per definition rather than
+ * once per pass of the fixed point. A definition that will not parse yields a condition that is
+ * never true: the system is already invalid by the time this is reached, and reading a broken
+ * condition as *satisfied* would contribute a number nobody asked for.
+ */
+const contributionConditions = new WeakMap<ContributionDef, { expr: RequirementExpr | undefined }>();
+const NEVER: RequirementExpr = { kind: 'not', child: { kind: 'always' } };
+
+export function contributionCondition(def: ContributionDef): RequirementExpr | undefined {
+  const cached = contributionConditions.get(def);
+  if (cached) return cached.expr;
+  let expr: RequirementExpr | undefined;
+  try {
+    expr = parseRequirements(def.requirements);
+  } catch {
+    expr = NEVER;
+  }
+  contributionConditions.set(def, { expr });
+  return expr;
+}
+
+/**
  * One place a character may put an item — ADR 0025.
  *
  * `id` is the value content's slot setter carries: 5e's content says `body` for armour and
@@ -165,6 +227,22 @@ export interface AttunementDef {
   setter: string;
   /** The setter value meaning "this requires attunement". */
   requires: string;
+  /**
+   * The stat the count of attuned items is contributed to — ADR 0023 decision 3, ADR 0026.
+   *
+   * A contribution rather than a published input, because content writes this key too: 5e's
+   * Soul of Artifice contributes `attunement:current` 0 twice, and an input stat would have
+   * overwritten it.
+   */
+  countStat?: StatKey;
+  /**
+   * The stat holding the limit. A character whose count exceeds it is reported, never refused.
+   *
+   * The base belongs in {@link CharacterKindDef.contributions} and not in a `StatDef`
+   * `default` — a default is a base that contributions *add* to, so `default: 3` plus the
+   * Artificer's `bonus="base"` 4 would read 7 instead of 4.
+   */
+  maxStat?: StatKey;
 }
 
 /**
@@ -582,6 +660,11 @@ export interface CharacterKindDef {
    */
   blockStats?: BlockStatDef[];
   /**
+   * Stats this kind contributes itself, conditionally or not — ADR 0022. Replaced rather than
+   * merged along an `extends` chain, like `trackStats` and `blockStats`.
+   */
+  contributions?: ContributionDef[];
+  /**
    * How this kind reads an item's setters — ADR 0025. Replaced rather than merged along an
    * `extends` chain, like `trackStats` and `blockStats`. A kind without one evaluates no
    * `equipped=` condition and gates nothing on attunement.
@@ -607,6 +690,8 @@ export interface ResolvedCharacterKind {
   trackStats: TrackStatDef[];
   /** Stats each block the character's elements declare contributes — ADR 0020. */
   blockStats: BlockStatDef[];
+  /** Stats the kind itself contributes, conditionally or not — ADR 0022. */
+  contributions: ContributionDef[];
   /** How an item's setters are read, or nothing at all — ADR 0025. */
   inventory?: InventoryDef;
   buildSteps: BuildStepDef[];
@@ -732,6 +817,7 @@ export function resolveCharacterKind(
   let grants: ElementId[] = [];
   let trackStats: TrackStatDef[] = [];
   let blockStats: BlockStatDef[] = [];
+  let contributions: ContributionDef[] = [];
   let inventory: InventoryDef | undefined;
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
@@ -747,6 +833,7 @@ export function resolveCharacterKind(
     if (layer.grants !== undefined) grants = layer.grants;
     if (layer.trackStats !== undefined) trackStats = layer.trackStats;
     if (layer.blockStats !== undefined) blockStats = layer.blockStats;
+    if (layer.contributions !== undefined) contributions = layer.contributions;
     if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
@@ -763,6 +850,7 @@ export function resolveCharacterKind(
     grants,
     trackStats,
     blockStats,
+    contributions,
     inventory,
     buildSteps,
     sheet,

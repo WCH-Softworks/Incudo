@@ -61,6 +61,14 @@ export interface EquipmentState {
   occupants: Map<StatKey, SlotOccupant>;
   /** Elements whose rules do not apply for want of attunement — ADR 0023. */
   suppressed: Set<ElementId>;
+  /**
+   * How many attuned items the character is carrying — ADR 0023 decision 3.
+   *
+   * Counted per **entry**, not per element: Aurora carries one attunement flag per instance and
+   * none per adorner (ADR 0024 decision 5), and that is also the rule. A Flame Tongue greatsword
+   * is one attuned item, modelled here as a mundane host plus a magical adorner.
+   */
+  attunedCount: number;
   issues: EquipmentIssue[];
 }
 
@@ -69,6 +77,7 @@ export const EMPTY_EQUIPMENT: EquipmentState = {
   tags: new Map(),
   occupants: new Map(),
   suppressed: new Set(),
+  attunedCount: 0,
   issues: [],
 };
 
@@ -164,8 +173,37 @@ export function resolveEquipment(
     tags,
     occupants,
     suppressed: suppressedByAttunement(character, index, declaration, issues, options.exempt),
+    attunedCount: countAttuned(character, index, declaration),
     issues,
   };
+}
+
+/**
+ * Equipped entries that are attuned and have something to be attuned *to*.
+ *
+ * The last clause is the one worth stating: a flag ticked on an item that needs no attunement is
+ * not an attunement. It costs the character nothing under the limit, and counting it would make
+ * a mundane rope eat one of three slots.
+ */
+function countAttuned(
+  character: Character,
+  index: ElementIndex,
+  declaration: InventoryDef,
+): number {
+  const attunement = declaration.attunement;
+  if (!attunement) return 0;
+  const requires = attunement.requires.trim().toLowerCase();
+
+  let count = 0;
+  for (const entry of character.inventory ?? []) {
+    if (!entry.equipped || !entry.attuned) continue;
+    const ids = [entry.elementId, ...(entry.adorners ?? []).map((a) => a.elementId)];
+    const needs = ids.some(
+      (id) => index.get(id)?.setters[attunement.setter]?.value.trim().toLowerCase() === requires,
+    );
+    if (needs) count++;
+  }
+  return count;
 }
 
 /**

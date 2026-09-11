@@ -386,3 +386,35 @@ test('a slot that publishes into nothing, or twice, is caught before the app loa
     ],
   );
 });
+
+test("a contribution's requirements is content's language, and it has to parse", async () => {
+  // The one place the system format embeds a *different* language inside JSON (ADR 0022). The
+  // schema can only check that it is a string, so the parse happens in checkSystemReferences
+  // and a system carrying a broken one is refused rather than loaded with a condition that
+  // silently never fires.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.contributions = [
+          { stat: 'vigour', value: { kind: 'number', value: 3 }, requirements: '[plating:none' },
+        ];
+      }),
+    ),
+    [
+      'characterKinds[0].contributions: contributes "vigour" with a requirements expression that does not parse: unterminated "[" (at 13 in "[plating:none")',
+    ],
+  );
+
+  // And the ordinary case validates: a bucket, a condition, and a stat nothing else declares.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.contributions = [
+          { stat: 'vigour:cap', value: { kind: 'number', value: 2 }, bonus: 'base', requirements: '![plating:heavy]' },
+          { stat: 'vigour', value: { kind: 'number', value: 3 } },
+        ];
+      }),
+    ),
+    [],
+  );
+});

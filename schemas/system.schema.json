@@ -300,6 +300,7 @@
         },
         "trackStats": { "type": "array", "items": { "$ref": "#/$defs/trackStat" } },
         "blockStats": { "type": "array", "items": { "$ref": "#/$defs/blockStat" } },
+        "contributions": { "type": "array", "items": { "$ref": "#/$defs/contribution" } },
         "inventory": { "$ref": "#/$defs/inventory" },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
@@ -343,6 +344,27 @@
         "value": {
           "$ref": "#/$defs/expr",
           "description": "Evaluated once per block. Placeholders resolve inside a `ref`'s stat name too, so \"{ability}:modifier\" reads charisma:modifier for the Bard and intelligence:modifier for the Wizard. An entry with a placeholder the block does not declare contributes nothing and is reported."
+        }
+      }
+    },
+
+    "contribution": {
+      "description": "A stat this kind contributes itself, optionally only when a condition holds (ADR 0022). The base case trackStats and blockStats are iterating specialisations of: those contribute once per track and once per declared block, and this contributes once, for a character of this kind. What it adds is a `requirements`, which is what a conditional baseline rule needs and neither of the others can give it — \"a character wearing no armour has an armour class of 10\" is a statement about the character, not about any element it holds. Contributions land with content's own stat rules and in the same bonus buckets, before derivations read them. They belong here and not on an element the kind grants: a kind's grants are copied into every save, and a rule copied into a save is frozen at the moment the file was written, while system.json is the one thing a save deliberately does not embed.",
+      "type": "object",
+      "required": ["stat", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "stat": { "type": "string", "minLength": 1 },
+        "value": { "$ref": "#/$defs/expr" },
+        "bonus": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Named bonus bucket, exactly as on a content <stat>. Two contributions sharing a bucket do not stack — the largest wins — which is how a feat's larger number replaces a system's without knowing what the system wrote."
+        },
+        "requirements": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A condition in content's own requirement language, as a string: \"[armor:medium]\", \"![armor:heavy]\". Not a JSON tree, because a system definition is authored by hand and its author has already read this spelling a thousand times in content. Named `requirements` and not `when` so a reader who knows content knows it instantly — trackStats' `when` is an element id and means something else. An expression that will not parse makes the system invalid."
         }
       }
     },
@@ -410,6 +432,16 @@
           "type": "string",
           "minLength": 1,
           "description": "The setter value meaning \"this requires attunement\". Not decoration: 5e's corpus writes `true` on 968 elements and `false` on 8."
+        },
+        "countStat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The stat the count of attuned items is contributed to (ADR 0023 decision 3). One attuned *entry* is one attunement, because a magic item is modelled as a mundane host plus a magical adorner and the flag sits on the instance. A contribution rather than a published input, so that content contributing to the same key is not discarded."
+        },
+        "maxStat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The stat holding the limit. A character over it is reported, never refused. The base belongs in the kind's `contributions` and not in a StatDef `default` — a default is a base that contributions add to, so a default of 3 plus a feature's bonus=\"base\" 4 would read 7 instead of 4."
         }
       }
     },

@@ -286,3 +286,40 @@ test('quantity is not a multiplier: ten of a thing fill one slot', () => {
   assert.equal(state.occupants.get('held')?.name, 'Dirk');
   assert.equal(state.occupants.get('offhand'), undefined);
 });
+
+test('attuned items are counted per entry, and only the ones with something to attune to', () => {
+  // One attuned *entry* is one attunement. Aurora carries one flag per instance and none per
+  // adorner (ADR 0024 decision 5), which is also the rule: a Flame Brand sword is one attuned
+  // item, modelled as a mundane host plus a magical adorner.
+  const index = indexWith(
+    item('RING', 'Ring of Warding', { worn: 'pocket', bonded: 'yes' }),
+    item('SWORD', 'Sword', { worn: 'grip' }),
+    item('FLAME', 'Flame Brand', { bonded: 'yes' }),
+    item('ROPE', 'Rope', { worn: 'pocket' }),
+  );
+
+  const state = resolveEquipment(
+    bag(
+      { instanceId: 'a', elementId: 'RING', equipped: true, attuned: true },
+      { instanceId: 'b', elementId: 'SWORD', equipped: true, attuned: true, adorners: [{ elementId: 'FLAME' }] },
+      // A flag ticked on something that needs no attunement is not an attunement.
+      { instanceId: 'c', elementId: 'ROPE', equipped: true, attuned: true },
+      // Not attuned, and not carried either: neither counts.
+      { instanceId: 'd', elementId: 'RING', equipped: true },
+      { instanceId: 'e', elementId: 'RING', attuned: true },
+    ),
+    index,
+    declaration(),
+  );
+
+  assert.equal(state.attunedCount, 2, 'the ring and the branded sword, and nothing else');
+  assert.equal(EMPTY_EQUIPMENT.attunedCount, 0);
+
+  // A system with no attunement concept counts nothing, the same way it gates nothing.
+  const none = resolveEquipment(
+    bag({ instanceId: 'a', elementId: 'RING', equipped: true, attuned: true }),
+    index,
+    { ...declaration(), attunement: undefined },
+  );
+  assert.equal(none.attunedCount, 0);
+});

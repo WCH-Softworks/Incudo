@@ -21,6 +21,7 @@ import {
   resolveCharacterKind,
   type GameSystem,
 } from './system.ts';
+import { parseRequirements } from './requirements.ts';
 import type { Character } from './character.ts';
 import type { ContainerManifest } from './container.ts';
 
@@ -235,6 +236,21 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     const statNames = new Set(resolved.stats.map((s) => s.name.toLowerCase()));
     const progress = progressionStat(resolved.progression);
     if (progress) statNames.add(progress.toLowerCase());
+
+    // A contribution's `requirements` is content's language inside JSON, so the schema can only
+    // check that it is a string (ADR 0022). The parse happens here, and a system carrying one
+    // that will not parse is refused rather than loaded with a condition that silently never
+    // fires — ADR 0011's standing rule.
+    for (const contribution of resolved.contributions) {
+      try {
+        parseRequirements(contribution.requirements);
+      } catch (error) {
+        errors.push({
+          path: `${where}.contributions`,
+          message: `contributes "${contribution.stat}" with a requirements expression that does not parse: ${(error as Error).message}`,
+        });
+      }
+    }
 
     // A slot publishes into a stat, and a stat nothing declares is a stat no sheet can show
     // and no author meant to write (ADR 0025). Duplicate slot ids are the other mistake that
