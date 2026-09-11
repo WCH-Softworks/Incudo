@@ -187,17 +187,40 @@ function multiclassAsElement(owner: Element, options: ParseElementsOptions): Ele
 export const MULTICLASS_TYPE = 'Multiclass';
 
 /**
+ * The tags one `<supports>` block declares.
+ *
+ * **A block is a comma-separated list, not one tag.** Acrobatics says
+ *
+ *     <supports>Skill,Dexterity,ID_PROFICIENCY_SKILL,ID_CLASS_ROGUE,Rogue, PHB24 Rogue</supports>
+ *
+ * and reading that as a single tag is how a Rogue ended up with no skills to choose from. 1,554
+ * of the corpus's 3,758 tags contain a comma, so this was two in five of them.
+ *
+ * Splitting is provably safe rather than merely likely: the *other* side of the comparison is
+ * `parseSupports`, which treats `,` as AND and therefore can never produce an operand containing
+ * a comma. A joined tag was unmatchable by construction — nothing could have depended on it.
+ *
+ * Only commas separate. Tags contain spaces (`PHB24 Fighter`, `spell saving throw`), so each
+ * part is trimmed and nothing else is touched.
+ */
+export function supportTags(text: string): string[] {
+  return text
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag) => tag !== '');
+}
+
+/**
  * `<supports>` children of a node, as tags.
  *
- * One tag per block, and an element may carry several. These are what every
- * `<select supports="…">` filters on, so dropping them — which this importer did until the
- * differential verification made it obvious — means no select ever offers anything.
+ * An element may carry several blocks, and each block may list several tags. These are what
+ * every `<select supports="…">` filters on, so dropping them — which this importer did until
+ * the differential verification made it obvious — means no select ever offers anything.
  */
 function directSupports(node: XmlNode): string[] {
   const tags: string[] = [];
   for (const child of childrenNamed(node, 'supports')) {
-    const tag = (child.text || child.innerXml).trim();
-    if (tag) tags.push(tag);
+    tags.push(...supportTags(child.text || child.innerXml));
   }
   return tags;
 }
@@ -347,8 +370,10 @@ function parseRules(
         break;
       }
       case 'supports': {
-        const tag = (child.text || child.innerXml).trim();
-        if (tag) {
+        // Same comma-separated list as `directSupports`, and one rule per tag — a `<supports>`
+        // inside `<rules>` is the same statement, written in the other of the two places
+        // Aurora allows it.
+        for (const tag of supportTags(child.text || child.innerXml)) {
           supports.push(tag);
           rules.push({ kind: 'supports', key: nextKey('supports'), tag });
         }

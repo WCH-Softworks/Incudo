@@ -129,3 +129,59 @@ test('a rule with no `equipped=` has none, rather than a false that reads like a
   const rule = file.elements[0]!.rules.find((r) => r.kind === 'stat')!;
   assert.equal(rule.equipped, undefined);
 });
+
+test('a `<supports>` block is a comma-separated list, not one tag', () => {
+  // The fifth construct, and the one that survived the other four being fixed: the blocks were
+  // read and then stored whole. This is Acrobatics as the corpus actually writes it.
+  const file = parse(`
+    <element name="Acrobatics" type="Proficiency" id="ID_PROFICIENCY_SKILL_ACROBATICS">
+      <supports>Skill,Dexterity,ID_PROFICIENCY_SKILL,ID_CLASS_ROGUE,Rogue, PHB24 Rogue</supports>
+    </element>`);
+
+  assert.deepEqual(file.elements[0]!.supports, [
+    'Skill',
+    'Dexterity',
+    'ID_PROFICIENCY_SKILL',
+    'ID_CLASS_ROGUE',
+    'Rogue',
+    // Trimmed, and the internal space kept: only commas separate.
+    'PHB24 Rogue',
+  ]);
+});
+
+test('the list form works inside `<rules>` too, and yields one rule per tag', () => {
+  const file = parse(`
+    <element name="Thing" type="Item" id="ID_THING">
+      <rules><supports>Alpha, Beta</supports></rules>
+    </element>`);
+
+  const element = file.elements[0]!;
+  assert.deepEqual(element.supports, ['Alpha', 'Beta']);
+  assert.deepEqual(
+    element.rules.filter((r) => r.kind === 'supports').map((r) => r.tag),
+    ['Alpha', 'Beta'],
+  );
+});
+
+test('splitting cannot lose a tag, because a joined one was never matchable', () => {
+  // The argument that made this safe to change in a frozen package. `parseSupports` treats a
+  // comma as AND, so a select's operand can never itself contain a comma — which means an
+  // element tag containing one could not be matched by anything, ever. Splitting only adds
+  // tags that were previously unreachable.
+  const file = parse(`
+    <element name="Skill" type="Proficiency" id="ID_S">
+      <supports>Skill,Rogue</supports>
+    </element>`);
+  const tags = new Set(file.elements[0]!.supports.map((t) => t.toLowerCase()));
+
+  assert.ok(tags.has('skill') && tags.has('rogue'));
+  assert.ok(!tags.has('skill,rogue'), 'the joined form is gone, and nothing could have used it');
+});
+
+test('empty and whitespace-only entries are dropped rather than becoming blank tags', () => {
+  const file = parse(`
+    <element name="Thing" type="Item" id="ID_THING">
+      <supports>Alpha,,  ,Beta,</supports>
+    </element>`);
+  assert.deepEqual(file.elements[0]!.supports, ['Alpha', 'Beta']);
+});
