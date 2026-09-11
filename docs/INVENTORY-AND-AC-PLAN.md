@@ -1,7 +1,8 @@
 # Inventory and armour class — the plan
 
-**Status:** proposed · 2026-09-10 · nothing here is implemented · **D1 settled 2026-09-11 by
-[ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md)**
+**Status:** proposed · 2026-09-10 · nothing here is implemented · **every decision settled
+2026-09-11** — D1 by [ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md),
+D2 by [ADR 0023](./adr/0023-attunement-gates-and-reports.md), D3 below
 
 ROADMAP Phase 2 lists **Inventory** and the `ac` derivation as two items. They are one piece
 of work in a fixed order, and this file is the plan asked for before any of it is written.
@@ -271,7 +272,7 @@ was decision D1, and it is now a kind's `contributions` (ADR 0022).
 
 ## Decisions
 
-D1 is settled. D2 and D3 remain open, and neither blocks step 1.
+All three are settled. D1 and D2 have ADRs; D3 is sequencing and lives here.
 
 ### D1 — where does the 5e baseline live? · **settled, [ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md)**
 
@@ -295,18 +296,49 @@ What this means for the steps below: the inventory work needs **no loader change
 file per system, and no origin filter** in the container or in `aurora verify`. Step 5 gets
 four lines of data in `system.json`.
 
-### D2 — does attunement gate an item's contribution?
+### D2 — does attunement gate an item's contribution? · **settled, [ADR 0023](./adr/0023-attunement-gates-and-reports.md)**
 
-5e says an unattuned magic item does nothing. The saves cannot confirm it: all 12
-attunement-requiring equipped items are attuned. Enforcing it is correct by the rulebook and
-unprovable here; not enforcing it is one more place the sheet is quietly generous. Either way
-it should be written down as unproved, the way ADR 0018 wrote down its rounding.
+**It gates, and every gate reports itself.** The saves still cannot confirm it — all 12
+attunement-requiring equipped items are attuned — but the corpus had more to say than this
+file assumed, and two findings settled it.
 
-### D3 — sequencing
+Because Aurora separates the mundane host from the magical adorner, **gating an adorner gates
+exactly the magical benefit**: an unattuned Flame Tongue greatsword is still a greatsword,
+with no special case. 336 of the 968 attunement-requiring elements are adorners, and 578 carry
+no rules at all, so this is a no-op for three in five of them.
 
-Steps 1–3 are checkable and steps 4–5 are not. My recommendation is to land 1–3 first, re-record
-the baseline, and treat steps 4–5 as a separate run — rather than carrying an unverifiable AC
-formula through the same commits that move 47 compared elements.
+And **content declares the limit**. `attunement:max` appears 11 times — `4|5|6` in the `base`
+bucket for the Artificer and the 2024 Thief, and unbucketed `+1`s for the 2017 playtest
+artificer — which both come out right against a base of 3 contributed in the same bucket. A
+limit nothing can exceed would be decoration, so content bothering to declare one is the
+nearest thing to evidence that attunement is a constraint rather than a label.
+
+The risk was never the rulebook; it was a user losing a bonus with no explanation. That is
+answered by reporting: an equipped, unattuned, attunement-requiring item produces a warning
+naming the item, and being over the limit is a problem in the family of `over-selected`.
+
+The prose requirement — `addition="by a wizard"` — is shown and never evaluated. The corpus
+writes the same condition four different ways, casing included.
+
+### D3 — sequencing · **settled**
+
+**Land steps 1–3, re-record the baseline, then treat 4–5 as a separate run.**
+
+The reason is sharper than "the first three are checkable". **Step 3 is the last point at which
+Aurora can referee.** Up to there, every movement in the counts has one possible cause: an
+equipped item's element arriving in the derivation, or failing to. After step 4 starts
+evaluating `equipped=`, a movement has two possible causes — the seeding or the gating — and
+disentangling them costs more than the pause does.
+
+Two smaller notes that follow:
+
+- **Steps 2 and 3 are separate commits.** Step 2 stores the bag and nothing derives from it, so
+  it moves no `aurora verify` count at all; step 3 moves 47. Keeping them apart is what makes
+  the second diff readable.
+- **The 3 proxy ids must land with step 2, not after it.** Once the importer writes inventory,
+  `collectCharacterContent` tries to embed every entry's element — and
+  `ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE` and the two language proxies are declared
+  nowhere.
 
 ---
 

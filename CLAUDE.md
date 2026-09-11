@@ -224,6 +224,15 @@ and carried means nothing** — 26 of 26 equipped items across the nine saves ar
 id that was equipped elsewhere. And **no save records an armour class**, so `ac` will be the
 second number after `hp` that the differential check cannot see; do not describe it as verified.
 
+**An unattuned item contributes nothing, and says so** (ADR 0023). Decided, not yet built —
+the mechanism lands with the inventory work. All 12 attunement-requiring equipped items across
+the nine saves are attuned, so there is no oracle and there cannot be one; do not describe it
+as verified. Two things the corpus settled that are easy to miss: adorners are separate
+elements, so gating one gates the magical half and leaves the greatsword a greatsword; and
+`attunement:max` is already declared by content 11 times, in both `bonus="base"` override and
+unbucketed `+1` shapes, which both come out right against a base of 3 contributed in the same
+bucket. The prose in `addition="by a wizard"` is display text and is never evaluated.
+
 **Identity is embedded in a save; mechanics are not** (ADR 0022). `collectCharacterContent`
 seeds from `baselineElementIds(kind, progress)`, so every element a kind grants is copied into
 `content.json` and frozen there, while `system.json` is the one thing a save deliberately does
