@@ -158,10 +158,12 @@ are personal data and never enter the repo — and neither do screenshots of the
 ## State of play
 
 Working: core engine, Aurora content **and save** importer, content sources, CLI, two system
-definitions, the `.incu` container, the JSON Schemas and the validator behind them.
-Not started: both app shells (only their `platform.ts` contracts exist).
+definitions, the `.incu` container, the JSON Schemas and the validator behind them, and the whole
+of the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class.
+Not started: both app shells (only their `platform.ts` contracts exist). Nothing puts a bag on a
+screen yet; every part of it above is model, engine and CLI.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0024 and 0025 are implemented (0023 apart from its limit), and **Phase 1 is done — `packages/aurora-import`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025 and 0026 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
@@ -283,27 +285,44 @@ ADR 0024 decision 7 and is the half Aurora refereed, 26 of 26 equipped items in 
   carve-out is gone, and with it the last two readers of `proficiency` and `abilityModifier` in
   the verifier's options — the file holds no arithmetic of its own at all now. The bag survives
   there only as a *hint* on an `element-missing` message, naming which pile the id came from.
-- **Some stats are still wrong in ways nothing renders**, and that is step 5's job. An equipped
-  plate contributes `ac:armored:armor 18` and nothing sums it, because `ac` is `default: 10`
-  with no derivation. A barbarian in plate no longer *also* shows Unarmoured Defence, which is
-  what step 4 fixed.
+- **An equipped plate's `ac:armored:armor 18` is summed since step 5**, and a barbarian in plate
+  no longer *also* shows Unarmoured Defence, which is what step 4 fixed.
 
-**Inventory step 5 is the only one left** — `docs/INVENTORY-AND-AC-PLAN.md`, five steps with the
-evidence behind each, of which 1–4 are done. Read it before adding an `ac` derivation: `ac` is
-`default: 10` with nothing derived, and it needs a kind's `contributions` (ADR 0022, unbuilt) to
-hang its four conditional rules on. And **no save records an armour class**, so `ac` will be the
-second number after `hp` that the differential check cannot see; do not describe it as verified.
+**The inventory work is finished — all five steps** (`docs/INVENTORY-AND-AC-PLAN.md`). Step 5
+built ADR 0022's `contributions` and spent it on `ac` and on ADR 0023's attunement limit
+(ADR 0026). Four things to know before touching the armour class:
 
-**An unattuned item contributes nothing, and says so** (ADR 0023). Built at step 4, apart from
-the limit. All 12 attunement-requiring equipped items across the nine saves are attuned, so the
-gate fires zero times there — there is no oracle and there cannot be one; do not describe it as
-verified. The **limit** deliberately did not land with the gate: ADR 0023 puts the base of 3 in a
-kind's `contributions`, which is step 5, and without it `attunement:max` reads 0 and all nine
-saves report over. Two things the corpus settled that are easy to miss: adorners are separate
-elements, so gating one gates the magical half and leaves the greatsword a greatsword; and
-`attunement:max` is already declared by content 11 times, in both `bonus="base"` override and
-unbucketed `+1` shapes, which both come out right against a base of 3 contributed in the same
-bucket. The prose in `addition="by a wizard"` is display text and is never evaluated.
+- **`ac` is derived and checked by nobody**, exactly like `hp` (ADR 0019). No `.dnd5e` save
+  records an armour class, so `aurora verify` gains no comparison and never will — a green run
+  after changing the formula means nothing about the formula. Never describe `ac` as verified.
+  The nine sample saves read 18, 18, 17, 18, 18, 13, 16, 20, 16; the evidence for those is the
+  Player's Handbook worked by hand plus perturbation in `tools/incudo/src/armour-class.test.ts`.
+- **It is six conditional rows, not the four the plan predicted.** A cap cannot express the
+  Player's Handbook sentence that heavy armour *also does not penalise* a negative Dexterity
+  modifier, so the term has a floor too. Both plate wearers in the nine have a Dexterity modifier
+  of exactly 0 and both medium-armour wearers exactly +2, so **the saves cannot tell the six-row
+  table from the four-row one, or the medium cap from no cap at all.** Do not read their
+  agreement as evidence.
+- **A contribution joins content's bonus buckets, it does not land after them.** That is the
+  whole reason the field exists: 5e writes `ac:armored:dexterity:cap` 2 in `base` and Medium
+  Armor Master writes 3, and the answer is 3. Summed afterwards it reads 5.
+- **`pc`'s `ac` deliberately has no `default`.** The engine adds a `derive` on top of whatever a
+  stat holds, so leaving the system-level `default: 10` in place would put a second 10 on every
+  character. `npc` and `legendary` keep it and derive nothing — a monster's armour class is
+  printed, not summed, and neither kind declares an inventory for `[armor:none]` to be about.
+
+**An unattuned item contributes nothing, and says so** (ADR 0023). The gate landed at step 4 and
+the **limit** at step 5, once `contributions` existed to hold the base of 3. All 12
+attunement-requiring equipped items across the nine saves are attuned and none of the nine is
+over the limit (1, 0, 1, 0, 3, 2, 1, 1, 3), so both halves fire zero times there — there is no
+oracle and there cannot be one; do not describe either as verified. Three things the corpus
+settled that are easy to miss: adorners are separate elements, so gating one gates the magical
+half and leaves the greatsword a greatsword; `attunement:max` is already declared by content 11
+times, in both `bonus="base"` override and unbucketed `+1` shapes, which both come out right
+against a base of 3 contributed in the same bucket; and `attunement:current` is counted per
+**entry** and only when the entry has something to be attuned to, because Aurora carries one flag
+per instance and none per adorner. The prose in `addition="by a wizard"` is display text and is
+never evaluated.
 
 **Identity is embedded in a save; mechanics are not** (ADR 0022). `collectCharacterContent`
 seeds from `baselineElementIds(kind, progress)`, so every element a kind grants is copied into
@@ -315,9 +334,12 @@ before you fixed it. A kind's `contributions` is where a conditional baseline ru
 instead, and **a system definition ships no content** — decided and closed, so do not reach
 for `.incuset` when a system needs a rule.
 
-**There are three keyings of a stat, not two** (ADR 0020). A stat is contributed to a
-character, or once per *track* (`trackStats`, ADR 0018), or once per *declared block*
-(`blockStats`). The third exists because the second cannot reach it: the namespace content
+**There are four keyings of a stat** (ADR 0020, then ADR 0022). A stat is contributed to a
+character by content, or once per *track* (`trackStats`, ADR 0018), or once per *declared block*
+(`blockStats`), or once by the *kind itself* (`contributions`). The fourth is the base case the
+middle two are iterating specialisations of, and what it adds is a `requirements` — which is why
+"a character wearing no armour has an armour class of 10" has a home and could not have had one
+on an element. The third exists because the second cannot reach it: the namespace content
 uses is the `<spellcasting>` block's name, and an Eldritch Knight's is `eldritch knight`
 while its ADR 0015 track is `fighter`. `blockStats` substitutes `{name}` from the block and
 `{anything else}` from the block's attributes — including inside a `ref`, which is how

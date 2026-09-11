@@ -225,6 +225,20 @@ has never been exercised here at all. The attunement gate fires zero times, beca
 attunement-requiring equipped items are attuned. This is a file about what Aurora can referee,
 and step 4 is a thing it cannot.
 
+**Step 5 moved nothing either, and it could not have.** `ac` is derived since
+[ADR 0026](./adr/0026-armour-class-is-derived-and-checked-by-nobody.md) — the nine saves now read
+18, 18, 17, 18, 18, 13, 16, 20, 16 — and **no `.dnd5e` save records an armour class**. The
+`<defenses>` block holds an empty `<conditional>` and the only `<attributes>` block in the format
+belongs to the companion, so there is nothing to diff and there never will be. A byte-identical
+`aurora verify` here means the derivation did not disturb anything else; it is not evidence about
+a single one of those nine numbers. `ac` sits beside `hp` ([ADR 0019](./adr/0019-recorded-rolls-are-readable.md))
+as a number this file cannot see, and neither should ever be described as verified.
+
+The attunement limit landed with it and is in the same position: `attunement:max` is 3 and
+`attunement:current` is 1, 0, 1, 0, 3, 2, 1, 1, 3 across the nine, so nobody is over and
+`over-attuned` fires zero times. Aurora records the attunement flag and never a derived
+consequence of it.
+
 The single `element-missing` is `ID_INTERNAL_MULTICLASS_LEVEL_3` on the ninth save: an
 Aurora-app marker that nothing in the 740 files references and that carries no rules.
 Deliberately unmodelled rather than budgeted — inventing a rule for it would be the guess

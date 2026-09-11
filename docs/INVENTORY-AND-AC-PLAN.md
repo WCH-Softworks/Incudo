@@ -1,14 +1,14 @@
 # Inventory and armour class — the plan
 
-**Status:** proposed · 2026-09-10 · **every decision settled 2026-09-11** — D1 by
+**Status:** **done** · 2026-09-10 → 2026-09-11 · every decision settled — D1 by
 [ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md), D2 by
 [ADR 0023](./adr/0023-attunement-gates-and-reports.md), D3 below ·
-**steps 1–4 are done** — [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md) settled the
-three questions step 1 left open, step 2 filled the bag from Aurora, step 3 seeded the
-derivation from it, and [ADR 0025](./adr/0025-slots-publish-tags.md) made the slots publish what
-is in them. Steps 1, 2 and 4 moved no baseline; step 3 moved one, deliberately, and that was the
-point of it. **Only step 5 — the `ac` derivation — is left**, and it is the one with no oracle
-at all.
+**all five steps are built.** [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md) settled
+the three questions step 1 left open, step 2 filled the bag from Aurora, step 3 seeded the
+derivation from it, [ADR 0025](./adr/0025-slots-publish-tags.md) made the slots publish what is
+in them, and [ADR 0026](./adr/0026-armour-class-is-derived-and-checked-by-nobody.md) derived the
+armour class. Steps 1, 2, 4 and 5 moved no baseline; step 3 moved one, deliberately, and that was
+the point of it.
 
 ROADMAP Phase 2 lists **Inventory** and the `ac` derivation as two items. They are one piece
 of work in a fixed order, and this file is the plan asked for before any of it is written.
@@ -342,7 +342,7 @@ Four smaller findings worth keeping:
 Attunement's gate landed here and its **limit did not** — ADR 0023's base of 3 needs ADR 0022's
 `contributions`, and without it every one of the nine saves would report over the limit.
 
-### Step 5 — the `ac` derivation · `systems/dnd5e/system.json`
+### Step 5 — the `ac` derivation · **done**, [ADR 0026](./adr/0026-armour-class-is-derived-and-checked-by-nobody.md)
 
 With slots publishing tags, the whole of 5e's armour class is one expression over stats content
 already writes:
@@ -381,6 +381,42 @@ be ordinary `[armor:heavy]`-style checks, and they now have a real answer — th
 `equipped=` reads, off the same declaration. And **ADR 0023's attunement limit rides with
 `contributions` too**: the base of 3 has nowhere else to live, and until it does
 `attunement:max` reads 0 and every character with a single attuned item is over it.
+
+**What actually landed: six rows, not four**, and the extra two are the paragraph above being
+wrong. `min(dexterity:modifier, cap)` with a cap of 0 says heavy armour ignores Dexterity, and
+the Player's Handbook says it also does not *penalise* a negative one — so a Strength paladin in
+plate with Dexterity 8 reads 17 where the book says 18. A cap cannot express a floor, so the
+term gets both, and `ac:armored:dexterity:floor` is 0 in heavy armour and −99 everywhere else.
+Two more things the corpus settled while the rows were being written, both in
+[ADR 0026](./adr/0026-armour-class-is-derived-and-checked-by-nobody.md): all 25
+`ac:armored:armor` rules are **unbucketed**, so the base of 10 has to ask `[armor:none]` exactly
+or it would land beside a suit of plate and read 28; and a cap of 0 is the damaging default, so
+the two bound rows ask their questions by negation and an unrecognised armour category comes out
+uncapped rather than Dexterity-less.
+
+The attunement limit landed with it, exactly as written: a seventh contribution, unconditional,
+`attunement:max` 3 in the `base` bucket, with `attunement:current` counted per attuned **entry**
+and `over-attuned` reported at error level. None of the nine sample saves is over — 1, 0, 1, 0,
+3, 2, 1, 1, 3 — which was checked rather than assumed.
+
+**The nine armour classes, and the fact that nothing checked them.** 18, 18, 17, 18, 18, 13, 16,
+20, 16, each agreeing with the Player's Handbook worked by hand and with nothing else. The
+corpus baseline is untouched (nothing here is content-side), `aurora verify` is byte-identical
+across all nine saves, and all nine still open with zero sources — and a byte-identical verify
+run would have been byte-identical if every one of those nine numbers were wrong. The evidence
+is perturbation, in `tools/incudo/src/armour-class.test.ts`; see ADR 0026 for which branches the
+nine saves cannot reach and why.
+
+Two things predicted here that did not happen, worth recording:
+
+- **`npm run fixtures:rebuild` produced no diff.** `ac` is in `summarize()`, but the golden save
+  is built in `tools/incudo/fixtures/system.json`, which declares no `ac` and no
+  `contributions`, so there was nothing new for it to print.
+- **`collectCharacterContent` needed no change.** The worry was that a contribution's
+  `requirements` naming an element id would break ADR 0012, since `system.json` is not embedded.
+  It does not: `requirements="ID_X"` is a membership test against what the character already
+  has, so it reads identically online and offline whether or not `ID_X` is in the save. Checked
+  rather than assumed, and all nine imports still pass `incudo character verify`.
 
 ---
 
@@ -464,8 +500,12 @@ Two smaller notes that follow:
 
 ## What will not be verified, stated in advance
 
+*(Written before step 1 and unchanged by any of the five. Everything on it is still true.)*
+
 - **The armour class number.** No save records one. Like hit points, it will be derived from
   the published rule and checked by nothing, and it should never be described as verified.
+  *(Step 5 confirmed it: `aurora verify` is byte-identical on all nine saves with the
+  derivation in place, which is exactly as much as it would be if the formula were wrong.)*
 - **Attunement gating**, per D2 — and step 4 confirmed it: the gate fired zero times on the
   nine saves, because all 12 attunement-requiring equipped items are attuned.
 - **Slot capacity rules** — that a two-handed weapon occupies both hands, that only one body

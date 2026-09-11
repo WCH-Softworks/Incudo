@@ -121,9 +121,10 @@ Each of these is reported by `aurora verify` as `not-modelled` rather than quiet
 
 - **Inventory.** `<equipment>` is read and deliberately not imported — `Character` has no home
   for items, their equipped slot, or attunement. This is the `equipment` build step below.
-  *(The home arrived with [ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md) and
-  the importer now fills it — step 2. Nothing is derived from it until step 3, so these are
-  still `not-modelled`.)*
+  *(Closed. The home arrived with [ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md),
+  the importer fills it, the derivation reads it, the slots publish what is in them and the
+  armour class is derived from them — steps 2 to 5. 48 of these notes became compared numbers
+  and all 48 agree, leaving 3 `not-modelled` in total.)*
 - **Spell slots and spell save DC as stats.** Aurora computes the multiclass slot table in its
   own code; the 5e system definition declares no slot table, no `spellcasting:dc`, and no
   ability-score maximum. *(All three landed: the maximum with ADR 0016, the slot table with
@@ -166,13 +167,13 @@ before any code, both touching a public API:
       same list as every other, tagged with the level that raised them.
 - [ ] Character sheet
 - [ ] Save/load `.incu` files; import `.dnd5e` (the importer is done — this is the UI for it)
-- [ ] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
-      attunement, and magic items attached to other items. Aurora's `<equipment>` block is
-      already parsed and waiting. Planned in
+- [x] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
+      attunement, and magic items attached to other items. Planned in
       [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which
       the first three can be checked against Aurora and the last two cannot. It is the same
-      piece of work as the armour class below, and it comes first. **Steps 1–4 are done**, and
-      step 3 was the last point at which Aurora could referee.
+      piece of work as the armour class below, and it came first. **All five are done**, and
+      step 3 was the last point at which Aurora could referee. The remaining inventory work is
+      UI: nothing here puts a bag on a screen.
   - [x] **Step 1 — the model** ([ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md)).
         `Character.inventory` is a list of *instances*, `character.json`'s `formatVersion` is 2,
         and the container embeds every entry's element with the carried ones included. Nothing
@@ -205,8 +206,21 @@ before any code, both touching a public API:
         Unarmoured Defence and Unarmoured Movement, the monk handed a shield makes
         `[shield:none]` false for the first time in this project, and an unattuned Ring of
         Protection takes its +1 AC and +1 to all six saves with it.
-  - [ ] Step 5 — the `ac` derivation, and a kind's `contributions` (ADR 0022) to hang its four
-        conditional rules and the attunement limit on. No oracle: no save records an AC.
+  - [x] **Step 5 — the `ac` derivation, on a kind's `contributions`**
+        ([ADR 0026](./docs/adr/0026-armour-class-is-derived-and-checked-by-nobody.md)). ADR 0022's
+        mechanism built and spent on two users, one conditional and one not: 5e's armour class
+        and ADR 0023's attunement limit, whose base of 3 had nowhere else to live.
+        **Six conditional rows, not four.** A cap cannot say that heavy armour also does not
+        *penalise* a negative Dexterity modifier, so the term got a floor as well — and the nine
+        saves cannot tell the two readings apart, because both plate wearers have a Dexterity
+        modifier of exactly 0. Same for the medium cap: both medium-armoured saves sit at exactly
+        +2, where `min(2, 2)` and no cap at all agree.
+        The nine now read 18, 18, 17, 18, 18, 13, 16, 20, 16 and **nothing checked them** — no
+        save records an armour class, `aurora verify` is byte-identical on all nine, and it would
+        be byte-identical if every number were wrong. `ac` is `hp`'s position (ADR 0019) and must
+        never be called verified. The evidence is perturbation, in
+        `tools/incudo/src/armour-class.test.ts`. `attunement:max` reads 3; none of the nine is
+        over it.
 - [ ] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
       the differential verification could check the moment they existed. Reading the engine
       corrected that on two counts:
@@ -251,20 +265,19 @@ before any code, both touching a public API:
         because it belongs to a wizard with a Tome of Clear Thought equipped; that carve-out
         was the last thing in `verify-character.ts` holding arithmetic of its own, and losing
         it took `proficiency` and `abilityModifier` out of the verifier's options with it.
-  - [ ] **Armour class**, which this list never counted and should have. `ac` is `default: 10`
-        with nothing derived, so every character — imported or built — shows 10. It is the
-        fifth instance of the same pattern: content declares each armour's base, each magic
-        bonus and each alternative calculation, and Aurora keeps the composition in its app.
-        Unlike the four above it is **not** a number that can be added on its own. 31 of the
-        alternative calculations are gated on `equipped="[armor:none]"` and 33 more on
-        `[armor:heavy]`, none of which can be answered until a character can wear armour —
-        so this is the last step of the inventory work rather than a parallel one, and it has
-        no oracle at all: no save records an armour class.
-        Planned in [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md).
-        **Those gates have answers since step 4** ([ADR 0025](./docs/adr/0025-slots-publish-tags.md));
-        what is left is a kind's `contributions` and one expression over the buckets. Expect
-        the intermediate state to look worse rather than better: a plate contributes
-        `ac:armored:armor 18` that nothing sums, and `ac` still reads 10.
+  - [x] **Armour class**, which this list never counted and should have
+        ([ADR 0026](./docs/adr/0026-armour-class-is-derived-and-checked-by-nobody.md)). The fifth
+        instance of the same pattern: content declares each armour's base, each magic bonus and
+        each alternative calculation, and Aurora kept the composition in its app. Unlike the four
+        above it was **not** a number that could be added on its own — 31 alternative
+        calculations are gated on `equipped="[armor:none]"` and 33 more on `[armor:heavy]`, so it
+        had to be the last step of the inventory work rather than a parallel one.
+        It is now six contributions and one expression in `systems/dnd5e/system.json`, the file a
+        save deliberately does **not** embed, so correcting it corrects every character ever
+        saved — which was ADR 0022's whole argument.
+        **And it is the one number on this list with no oracle at all.** The four above are
+        checked against Aurora on every run; this one is checked by reading the Player's Handbook
+        and by perturbing slots in a test. Do not let its position in this list imply otherwise.
 - [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope.
 - [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md)) and
