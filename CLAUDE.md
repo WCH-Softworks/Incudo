@@ -126,15 +126,24 @@ pair is not redundant — a corpus that failed to check out loads nothing, and n
 unresolved references.
 
 Aurora saves: **all 9 import; 1 element-missing, 0 spell-missing, 0 stat-mismatch**, and
-**53 element-extra**, with **51 not-modelled** and **13 content-missing** reported and not
+**55 element-extra**, with **3 not-modelled** and **13 content-missing** reported and not
 counted. All **8 recorded spell slot rows are compared and agree** since ADR 0018 — they used
-to be 8 of the not-modelled notes, which is where 59 became 51. Since ADR 0020 the **7 save
-DC rows and 7 attack rows** are compared against stats Incudo publishes rather than against a
-formula the verifier owned; the eighth pair is the Tome of Clear Thought wizard, and it was
-already one of the not-modelled notes, so no count moved.
-The eight original saves are single-classed and contribute 52 of those
-extras, all one species — content AuroraLegacy added *after* those saves were written,
-confirmed against upstream commit dates.
+to be 8 of the not-modelled notes, which is where 59 became 51. Since ADR 0020 the **8 save
+DC rows and 8 attack rows** are compared against stats Incudo publishes rather than against a
+formula the verifier owned.
+
+**51 not-modelled became 3, and 53 element-extra became 55, with inventory step 3.** 47 of the
+notes were "this element came from the bag" and one was "the bag moves this DC"; all 48 are
+comparisons now and all 48 agree — including the eighth DC pair, the Tome of Clear Thought
+wizard, whose Intelligence comes out 22 for a DC of 18 and an attack of 10. The two new extras
+are one finding: a **Mithral Armor** adornment suppresses its host armour's
+`ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE` grant inside Aurora's app and in no content file, with
+Vigaro's mithral-less plate as the control case that proves it is suppression rather than
+absence. Left visible rather than guessed at. Do not re-derive the old 51/53 from a stale doc.
+
+Of the other 53 extras, the eight original saves are single-classed and contribute 52, all one
+species — content AuroraLegacy added *after* those saves were written, confirmed against
+upstream commit dates.
 
 The ninth was built to be the multiclass oracle the other eight could not be (level 20
 Paladin 2 / Warlock 18, two `<magic>` blocks). It accounts for the rest: one extra, a
@@ -213,11 +222,11 @@ nothing checks that a recorded pick was legal for its slot. See docs/AURORA-FORM
 
 **`Rule.equipped` is parsed and read by nothing** (ADR 0021). It is a `RequirementExpr`, all
 79 in the corpus are conditions like `[armor:none]`, and the engine does not evaluate them —
-so all 79 rules still apply unconditionally. Deliberate, and measured: with no inventory
-there is no `armor` stat, so `[armor:none]` reads *false* for a character wearing nothing and
-`[armor:any]` reads false for one in plate, while every negation reads true. Evaluating today
-costs a monk their Unarmoured Defence and an armoured fighter the Defense fighting style. It
-waits for inventory; do not wire it up early.
+so all 79 rules still apply unconditionally. Deliberate, and measured: a character has a bag
+now, but no slot publishes a tag, so there is still no `armor` stat — `[armor:none]` reads
+*false* for a character wearing nothing and `[armor:any]` reads false for one in plate, while
+every negation reads true. Evaluating today costs a monk their Unarmoured Defence and an
+armoured fighter the Defense fighting style. It waits for step 4; do not wire it up early.
 
 **A bag is a list of instances, and the container embeds all of it** (ADR 0024). `Character`
 gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
@@ -240,15 +249,32 @@ one is numbered by its position rather than given a minted id, because minting w
 `aurora import` non-deterministic. An unrecognised `location` is reported and never written
 through: Aurora's three location strings and content's 18 slot values are two vocabularies.
 
-**Inventory steps 3–5 are planned, not started** — `docs/INVENTORY-AND-AC-PLAN.md`, five
-steps with the evidence behind each, of which steps 1 and 2 are done. Read it before touching either,
-and in particular before adding an `ac` derivation on its own: `ac` is `default: 10` with nothing derived, and it stays
-that way until a character can wear armour, because 64 of the corpus's AC rules are gated on
-what is equipped. Two things from it worth knowing without opening it. **Equipped means derived
-and carried means nothing** — 26 of 26 equipped items across the nine saves are in Aurora's
-`<sum>` and 18 of 19 carried ones are not, the exception being a second instance of an element
-id that was equipped elsewhere. And **no save records an armour class**, so `ac` will be the
-second number after `hp` that the differential check cannot see; do not describe it as verified.
+**Equipped derives, carried does not, and the bag is now a compared thing** (step 3).
+`deriveCharacter` seeds from `equippedElementIds` next to the choices and the advancement — an
+equipped entry's element and its adornments, once each however large `quantity` is. A carried
+entry seeds nothing, while `collectCharacterContent` still embeds all of it; that asymmetry is
+ADR 0024 decision 7 and is the half Aurora refereed, 26 of 26 equipped items in its `<sum>` and
+18 of 19 carried ones outside it. Three consequences worth knowing before touching this:
+
+- **`aurora verify` no longer excuses anything from the bag.** The `statsFromInventory`
+  carve-out is gone, and with it the last two readers of `proficiency` and `abilityModifier` in
+  the verifier's options — the file holds no arithmetic of its own at all now. The bag survives
+  there only as a *hint* on an `element-missing` message, naming which pile the id came from.
+- **Some stats are now wrong in ways nothing renders**, and that is step 4's job. An equipped
+  plate contributes `ac:armored:armor 18` while a barbarian's `ac:calculation` gated on
+  `[armor:none]` still fires, because ADR 0021 leaves all 79 `equipped=` rules unconditional.
+  Do not chase it and do not wire `equipped=` up early.
+- **Attunement is not gated yet** (ADR 0023, mechanism at step 4). All 12 attunement-requiring
+  equipped items in the nine saves are attuned, so adding the gate today would move no count —
+  if it moves one, something else is being read wrong.
+
+**Inventory steps 4–5 are planned, not started** — `docs/INVENTORY-AND-AC-PLAN.md`, five steps
+with the evidence behind each, of which 1–3 are done. Read it before touching either, and in
+particular before adding an `ac` derivation on its own: `ac` is `default: 10` with nothing
+derived, and it stays that way until a character can wear armour, because 64 of the corpus's AC
+rules are gated on what is equipped. And **no save records an armour class**, so `ac` will be
+the second number after `hp` that the differential check cannot see; do not describe it as
+verified.
 
 **An unattuned item contributes nothing, and says so** (ADR 0023). Decided, not yet built —
 the mechanism lands with the inventory work. All 12 attunement-requiring equipped items across

@@ -7,8 +7,10 @@
  * with different enchantments). And **the container embeds every entry, carried included**,
  * because a save whose bag cannot be read without sources is a broken save under ADR 0012.
  *
- * Nothing here derives anything. Seeding the derivation from equipped items is step 3 of
- * docs/INVENTORY-AND-AC-PLAN.md, and this step deliberately moves no derived number.
+ * Step 3 of docs/INVENTORY-AND-AC-PLAN.md added a third, and it is the same asymmetry seen
+ * from the engine rather than the container: **equipped derives, carried does not**. Measured
+ * too — 26 of 26 equipped items across the nine sample saves are in Aurora's own `<sum>` and
+ * 18 of 19 carried ones are not.
  */
 
 import { test } from 'node:test';
@@ -21,12 +23,15 @@ import {
   inventoryElementIds,
   newInstanceId,
   removeInventoryEntry,
+  equippedElementIds,
   setChoice,
   setInventoryEntry,
   type Character,
 } from './character.ts';
 import { collectCharacterContent } from './container.ts';
-import { MapElementIndex, type Element } from './model.ts';
+import { deriveCharacter } from './engine.ts';
+import { MapElementIndex, type Element, type Rule } from './model.ts';
+import type { GameSystem } from './system.ts';
 
 function element(id: string): Element {
   return {
@@ -151,4 +156,100 @@ test('an item the sources do not have is recorded unresolved, not dropped', () =
   index.addAll([element('GREATSWORD')]);
   const content = collectCharacterContent(withBag(), index);
   assert.deepEqual(content.unresolved, ['FROST_BRAND', 'VORPAL_SWORD']);
+});
+
+// --- the derivation (step 3) -----------------------------------------------
+
+/** A system with one stat, so an item has something to move. */
+const SYSTEM: GameSystem = {
+  formatVersion: 1,
+  id: 'test',
+  name: 'Test',
+  version: '1.0.0',
+  elementTypes: [{ name: 'Widget' }],
+  stats: [{ name: 'sharpness', default: 0 }],
+  characterKinds: [
+    {
+      id: 'pc',
+      name: 'PC',
+      default: true,
+      progression: { kind: 'none' },
+      elementTypes: ['Widget'],
+      buildSteps: [{ id: 'b', label: 'B', types: ['Widget'] }],
+      sheet: { sections: [{ id: 's', label: 'S', stats: ['sharpness'] }] },
+    },
+  ],
+};
+
+function sharp(id: string, value: number, rules: Rule[] = []): Element {
+  return {
+    ...element(id),
+    rules: [{ kind: 'stat', key: 'stat-0', name: 'sharpness', value: { kind: 'number', value } }, ...rules],
+  };
+}
+
+function armedIndex(): MapElementIndex {
+  const index = new MapElementIndex();
+  index.addAll([
+    sharp('GREATSWORD', 1, [{ kind: 'grant', key: 'grant-0', type: 'Widget', id: 'HEAVY' }]),
+    sharp('FROST_BRAND', 10),
+    sharp('VORPAL_SWORD', 100),
+    element('HEAVY'),
+  ]);
+  return index;
+}
+
+test('an equipped entry and its adornment join the derivation; a carried one does not', () => {
+  const derived = deriveCharacter(withBag(), SYSTEM, armedIndex());
+
+  // withBag() equips one greatsword with a Frost Brand and carries another with a Vorpal
+  // Sword. 1 + 10, and the 100 stays in the bag.
+  assert.equal(derived.stats.get('sharpness')!.value, 11);
+  assert.ok(derived.elementIds.has('FROST_BRAND'));
+  assert.ok(!derived.elementIds.has('VORPAL_SWORD'), 'the carried enchantment contributes nothing');
+  assert.deepEqual(derived.problems, []);
+});
+
+test('an equipped item expands like any other seed', () => {
+  const derived = deriveCharacter(withBag(), SYSTEM, armedIndex());
+  // The closure, not just the id in the bag: a suit of plate is one entry and a
+  // stealth-disadvantage marker behind it.
+  assert.ok(derived.elementIds.has('HEAVY'));
+});
+
+test('unequipping an item takes its contribution with it', () => {
+  const stowed = setInventoryEntry(withBag(), {
+    ...getInventoryEntry(withBag(), 'a')!,
+    equipped: false,
+  });
+  const derived = deriveCharacter(stowed, SYSTEM, armedIndex());
+  assert.equal(derived.stats.get('sharpness')!.value, 0);
+  assert.ok(!derived.elementIds.has('HEAVY'));
+});
+
+test('a quantity is not a multiplier — ten arrows are one seed', () => {
+  const character = setInventoryEntry(createCharacter('test', 'pc'), {
+    instanceId: 'q',
+    elementId: 'FROST_BRAND',
+    equipped: true,
+    quantity: 10,
+  });
+  const derived = deriveCharacter(character, SYSTEM, armedIndex());
+  assert.equal(derived.stats.get('sharpness')!.value, 10);
+});
+
+test('the element ids the derivation seeds from are the equipped ones', () => {
+  assert.deepEqual(equippedElementIds(withBag()), ['GREATSWORD', 'FROST_BRAND']);
+  assert.deepEqual(equippedElementIds(createCharacter('test', 'pc')), []);
+});
+
+test('an equipped item the sources do not have is an error, the way a lost choice is', () => {
+  const index = new MapElementIndex();
+  index.addAll([sharp('GREATSWORD', 1)]);
+  const derived = deriveCharacter(withBag(), SYSTEM, index);
+  assert.deepEqual(
+    derived.problems.map((p) => [p.level, p.code, p.elementId]),
+    [['error', 'unresolved-element', 'FROST_BRAND']],
+    'and the carried Vorpal Sword is silent, because it was never seeded',
+  );
 });

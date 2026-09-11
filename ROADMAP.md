@@ -171,7 +171,8 @@ before any code, both touching a public API:
       already parsed and waiting. Planned in
       [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which
       the first three can be checked against Aurora and the last two cannot. It is the same
-      piece of work as the armour class below, and it comes first.
+      piece of work as the armour class below, and it comes first. **Steps 1–3 are done**, and
+      step 3 was the last point at which Aurora could referee.
   - [x] **Step 1 — the model** ([ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md)).
         `Character.inventory` is a list of *instances*, `character.json`'s `formatVersion` is 2,
         and the container embeds every entry's element with the carried ones included. Nothing
@@ -181,8 +182,16 @@ before any code, both touching a public API:
         the nine saves come across, and every one of ADR 0024's measurements held on the real
         files — including its falsifiable one: `slot` was written **zero** times.
         No `aurora verify` count moved, which is what makes step 3's diff readable.
-  - [ ] Step 3 — the engine seeds equipped items. **The step the oracle checks**, and the one
-        that deliberately moves 47 `not-modelled` notes into compared elements.
+  - [x] **Step 3 — the engine seeds equipped items.** The step the oracle checked, and the
+        only baseline move in the five. 48 `not-modelled` notes became comparisons and all 48
+        agree, so `not-modelled` fell 51 → 3 with `stat-mismatch` still 0. `element-extra`
+        rose 53 → 55, and those two are a finding rather than overhead: a **Mithral Armor**
+        adornment suppresses its host armour's stealth-disadvantage grant in Aurora's app and
+        in no content file, with Vigaro's mithral-less plate as the control case.
+        The 48th note was the wizard's save DC below, which now agrees at 18 — and the
+        arithmetic behind it, with the two steps the save cannot see, is written out in
+        [AURORA-SAVE-FORMAT.md](./docs/AURORA-SAVE-FORMAT.md).
+        No new pending decision, no new derivation problem, and the corpus baseline untouched.
   - [ ] Steps 4 and 5 — slots publish tags, `equipped=` starts being evaluated, and `ac` gets
         its derivation. A separate run: step 3 is the last point at which Aurora can referee.
 - [ ] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
@@ -224,9 +233,11 @@ before any code, both touching a public API:
         Incudo could show a DC, because no stat held one. A third keying was needed: stats
         published per *declared block*, because the namespace is the block's name and an
         Eldritch Knight's is `eldritch knight` while its ADR 0015 track is `fighter`.
-        Seven DC rows and seven attack rows are now compared against Incudo's own published
-        number and agree; the eighth pair belongs to a wizard whose Tome of Clear Thought
-        Incudo has nowhere to put, and is reported as `not-modelled` until inventory lands.
+        Eight DC rows and eight attack rows are now compared against Incudo's own published
+        number and agree. The eighth pair was carved out until step 3 of the inventory work,
+        because it belongs to a wizard with a Tome of Clear Thought equipped; that carve-out
+        was the last thing in `verify-character.ts` holding arithmetic of its own, and losing
+        it took `proficiency` and `abilityModifier` out of the verifier's options with it.
   - [ ] **Armour class**, which this list never counted and should have. `ac` is `default: 10`
         with nothing derived, so every character — imported or built — shows 10. It is the
         fifth instance of the same pattern: content declares each armour's base, each magic

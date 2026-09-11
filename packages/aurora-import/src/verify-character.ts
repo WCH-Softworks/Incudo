@@ -12,8 +12,8 @@
  *
  *  - **an engine or content bug** — the useful case, and the reason to run this;
  *  - **an Aurora-app behaviour Incudo has not modelled** — Aurora computes multiclass spell
- *    slots in code, expands a cleric's whole spell list in code, and has an inventory that
- *    Incudo does not have yet;
+ *    slots in code, expands a cleric's whole spell list in code, and cancels an armour's
+ *    stealth-disadvantage grant when a mithral adornment is on it;
  *  - **a source that is not enabled** — the character used a book this run did not load;
  *  - **content drift** — the corpus moved since the save was written, which is exactly what
  *    Aurora's per-choice `checksum` was for.
@@ -68,8 +68,8 @@ export interface AuroraComparison {
 export interface CompareOptions {
   /**
    * The content the character was derived against. Optional, and worth passing: it is what
-   * separates "the engine disagrees" from "that book is not enabled" and from "that came
-   * from an item in the character's bag".
+   * separates "the engine disagrees" from "that book is not enabled", and what lets an
+   * absent element name the item in the bag that should have brought it.
    */
   index?: ElementIndex;
   /**
@@ -80,10 +80,6 @@ export interface CompareOptions {
    * spelled out, and it is spelled out as configuration.
    */
   stats?: {
-    /** Stat holding the proficiency bonus. */
-    proficiency?: string;
-    /** `"intelligence"` -> the stat holding its modifier. */
-    abilityModifier?: (ability: string) => string;
     /**
      * How the loaded system names the save DC and attack bonus of one casting source —
      * ADR 0020. `"Bard"` -> `bard:spellcasting:dc`.
@@ -123,8 +119,6 @@ export interface CompareOptions {
 }
 
 const DEFAULT_STATS = {
-  proficiency: 'proficiency',
-  abilityModifier: (ability: string) => `${ability.toLowerCase()}:modifier`,
   spellcasting: {
     dc: (blockName: string) => `${blockName.trim().toLowerCase()}:spellcasting:dc`,
     attack: (blockName: string) => `${blockName.trim().toLowerCase()}:spellcasting:attack`,
@@ -161,11 +155,10 @@ export function compareWithAurora(
   const parents = new Map<ElementId, ElementId | undefined>(
     save.grants.map((g) => [g.id, g.parentId]),
   );
-  const fromInventory = statsFromInventory(inventory, options.index);
 
   compareElements(auroraIds, incudoIds, byId, ignore, inventory, parents, options.index, differences);
   for (const block of save.magic) {
-    compareSpellcasting(block, derived, byId, stats, fromInventory, differences);
+    compareSpellcasting(block, derived, byId, stats, differences);
   }
 
   // Only genuine disagreements count. `not-modelled` and `content-missing` are facts about
@@ -186,37 +179,57 @@ export function compareWithAurora(
 // --- the element set -------------------------------------------------------
 
 /**
- * Everything the character's inventory brings with it: the items themselves, whatever is
- * attached to them, and the transitive closure of what those grant.
+ * What the bag brings with it, in two piles because the engine treats them differently.
+ *
+ * Since step 3 of docs/INVENTORY-AND-AC-PLAN.md an **equipped** entry and its adornments seed
+ * the derivation and a **carried** one seeds nothing, so the bag has stopped being an excuse
+ * for a difference and become the thing under test. These sets survive only to make an
+ * absence actionable: "Aurora derived X; Incudo did not" sends the reader hunting, and naming
+ * the plate armour that should have granted it does not.
  *
  * The closure matters more than the items. A suit of plate armour is one id in the bag and
  * pulls in a stealth-disadvantage marker; a Tome of Clear Thought pulls in an ability score
- * increase. Comparing only the item ids would leave those looking like grants Incudo failed
- * to fire, when the real answer is that Incudo has nowhere to put the armour yet.
+ * increase. Comparing only the item ids would miss both.
  */
-function inventoryClosure(save: AuroraSave, index: ElementIndex | undefined): Set<ElementId> {
-  const ids = new Set<ElementId>();
-  for (const item of save.equipment) {
-    ids.add(item.id);
-    for (const adorner of item.adorners) ids.add(adorner.id);
-  }
-  if (!index) return ids;
+interface InventoryClosure {
+  equipped: Set<ElementId>;
+  carried: Set<ElementId>;
+}
 
-  let frontier = [...ids];
-  while (frontier.length) {
-    const next: ElementId[] = [];
-    for (const id of frontier) {
-      const element = index.get(id);
-      if (!element) continue;
-      for (const rule of element.rules) {
-        if (rule.kind !== 'grant' || ids.has(rule.id)) continue;
-        ids.add(rule.id);
-        next.push(rule.id);
+function inventoryClosure(save: AuroraSave, index: ElementIndex | undefined): InventoryClosure {
+  const close = (seeds: ElementId[]): Set<ElementId> => {
+    const ids = new Set<ElementId>(seeds);
+    if (!index) return ids;
+    let frontier = [...ids];
+    while (frontier.length) {
+      const next: ElementId[] = [];
+      for (const id of frontier) {
+        const element = index.get(id);
+        if (!element) continue;
+        for (const rule of element.rules) {
+          if (rule.kind !== 'grant' || ids.has(rule.id)) continue;
+          ids.add(rule.id);
+          next.push(rule.id);
+        }
       }
+      frontier = next;
     }
-    frontier = next;
-  }
-  return ids;
+    return ids;
+  };
+
+  // `AuroraItem.equipped` is `true | undefined`, never `false` — the save writes no tag at
+  // all for a carried item — so this normalises rather than comparing straight.
+  const seeds = (equipped: boolean): ElementId[] => {
+    const ids: ElementId[] = [];
+    for (const item of save.equipment) {
+      if ((item.equipped ?? false) !== equipped) continue;
+      ids.push(item.id);
+      for (const adorner of item.adorners) ids.push(adorner.id);
+    }
+    return ids;
+  };
+
+  return { equipped: close(seeds(true)), carried: close(seeds(false)) };
 }
 
 /** Depth cap on the ancestor walk. A save's build tree is nine deep at most. */
@@ -225,15 +238,18 @@ const MAX_ANCESTRY = 32;
 /**
  * Why Incudo does not have an element Aurora derived, when the reason is not the element.
  *
- * Walks the save's own grant tree upwards looking for a cause that is not an engine
- * disagreement: an ancestor in the character's bag, or one that is not in the loaded content
- * at all. Returns nothing when no such ancestor exists — which is the interesting case, and
- * the one that gets reported as a real difference.
+ * Walks the save's own grant tree upwards looking for the one cause that is not an engine
+ * disagreement: an ancestor that is not in the loaded content at all. Returns nothing when
+ * no such ancestor exists — which is the interesting case, and the one that gets reported
+ * as a real difference.
+ *
+ * Until step 3 of the inventory plan this also excused anything the bag brought, which was
+ * 47 of the 51 notes across the nine saves. The bag derives now, so an element it should
+ * have brought and did not is exactly what this check exists to surface.
  */
 function explainAbsence(
   id: ElementId,
   parents: Map<ElementId, ElementId | undefined>,
-  inventory: Set<ElementId>,
   index: ElementIndex | undefined,
 ): { kind: DifferenceKind; message: string } | undefined {
   let current: ElementId | undefined = id;
@@ -244,12 +260,6 @@ function explainAbsence(
     seen.add(current);
     const via = current === id ? '' : ` (via "${current}")`;
 
-    if (inventory.has(current)) {
-      return {
-        kind: 'not-modelled',
-        message: `"${id}" comes from the character's inventory${via}. Incudo has no inventory yet (ROADMAP Phase 2), so it is not compared.`,
-      };
-    }
     if (index && !index.get(current)) {
       return {
         kind: 'content-missing',
@@ -275,7 +285,7 @@ function compareElements(
   incudo: Set<ElementId>,
   byId: Map<ElementId, Element>,
   ignore: Set<string>,
-  inventory: Set<ElementId>,
+  inventory: InventoryClosure,
   parents: Map<ElementId, ElementId | undefined>,
   index: ElementIndex | undefined,
   differences: AuroraDifference[],
@@ -287,16 +297,26 @@ function compareElements(
     // element. A Half-Elf variant that is not in the loaded content takes its Keen Senses
     // and its Perception proficiency with it, and all three would otherwise be reported as
     // three separate engine failures. The save records the tree; walking it is free.
-    const cause = explainAbsence(id, parents, inventory, index);
+    const cause = explainAbsence(id, parents, index);
     if (cause) {
       differences.push({ kind: cause.kind, elementId: id, message: cause.message });
       continue;
     }
 
+    // Naming the bag is a hint now, not an excuse. An equipped item's closure is seeded, so
+    // a gap in it is an engine failure with a known starting point. A carried one is seeded
+    // deliberately, and Aurora leaves 18 of 19 carried items out of its own `<sum>`, so
+    // Aurora recording one is the half that needs explaining.
+    const bag = inventory.equipped.has(id)
+      ? " It is in the character's equipped inventory, which seeds the derivation."
+      : inventory.carried.has(id)
+        ? ' It comes from a *carried* item, which seeds nothing by design (ADR 0024) — Aurora recording it is the part to explain.'
+        : '';
+
     differences.push({
       kind: 'element-missing',
       elementId: id,
-      message: `Aurora derived "${id}"; Incudo did not.`,
+      message: `Aurora derived "${id}"; Incudo did not.${bag}`,
     });
   }
   for (const id of [...incudo].sort()) {
@@ -339,41 +359,6 @@ function compareElements(
 }
 
 // --- <magic> ---------------------------------------------------------------
-
-/**
- * Aurora's spellcasting numbers, against ours.
- *
- * `dc` and `attack` differ by exactly the save-DC base in every sample, so they carry one
- * fact between them: the ability modifier plus the proficiency bonus. That single number is
- * still worth a great deal — it is the only place in the whole save format where Aurora
- * records a *derived* ability score, so it is the only way to check that racial bonuses,
- * ability score improvements and feats all landed. Nothing else in the file can catch a
- * character whose Intelligence came out one too low.
- */
-/**
- * Stats the character's inventory contributes to, and which item does it.
- *
- * Aurora's spell save DC folds in whatever the character is carrying. One sample wizard has
- * a Tome of Clear Thought, worth +2 Intelligence and therefore +1 to a DC — and Incudo,
- * with no inventory, computes a DC one lower and is not wrong to. Knowing *which* stats the
- * bag touches is the difference between reporting that honestly and reporting it as an
- * engine bug.
- */
-function statsFromInventory(
-  inventory: Set<ElementId>,
-  index: ElementIndex | undefined,
-): Map<string, ElementId> {
-  const touched = new Map<string, ElementId>();
-  if (!index) return touched;
-  for (const id of inventory) {
-    for (const rule of index.get(id)?.rules ?? []) {
-      if (rule.kind === 'stat' && !touched.has(rule.name.toLowerCase())) {
-        touched.set(rule.name.toLowerCase(), id);
-      }
-    }
-  }
-  return touched;
-}
 
 /**
  * Aurora's nine-number slot row, against the stats the system publishes — ADR 0018.
@@ -432,12 +417,27 @@ function compareSlots(
   });
 }
 
+/**
+ * Aurora's spellcasting numbers, against ours.
+ *
+ * `dc` and `attack` differ by exactly the save-DC base in every sample, so they carry one
+ * fact between them: the ability modifier plus the proficiency bonus. That single number is
+ * still worth a great deal — it is the only place in the whole save format where Aurora
+ * records a *derived* ability score, so it is the only way to check that racial bonuses,
+ * ability score improvements, feats and now **equipped items** all landed. Nothing else in
+ * the file can catch a character whose Intelligence came out one too low.
+ *
+ * Until step 3 of the inventory plan this compared nothing when the bag touched the ability
+ * the block is built from, because Incudo had nowhere to put the item and the two numbers
+ * were honestly answering different questions. One of the nine saves is that case — a Wizard
+ * 12 with a Tome of Clear Thought equipped — and it now agrees. See docs/AURORA-SAVE-FORMAT.md
+ * for what that does and does not prove.
+ */
 function compareSpellcasting(
   block: AuroraSpellcasting,
   derived: DerivedCharacter,
   byId: Map<ElementId, Element>,
   stats: typeof DEFAULT_STATS,
-  fromInventory: Map<string, ElementId>,
   differences: AuroraDifference[],
 ): void {
   const where = `spellcasting "${block.name}"`;
@@ -484,26 +484,6 @@ function compareSpellcasting(
     differences.push({
       kind: 'not-modelled',
       message: `${where}: Aurora recorded a save DC of ${block.dc ?? '—'} and an attack bonus of ${block.attack ?? '—'}, but no loaded system publishes "${dcKey}" or "${attackKey}".`,
-      expected: block.dc,
-    });
-    return;
-  }
-
-  // The bag is not on the sheet yet. If it contributes to the very ability this DC is built
-  // from, the two numbers are answering different questions and comparing them says nothing.
-  const modifierKey = stats.abilityModifier(block.ability).toLowerCase();
-  const ability = block.ability.toLowerCase();
-  const carried =
-    fromInventory.get(ability) ??
-    fromInventory.get(modifierKey) ??
-    fromInventory.get(stats.proficiency.toLowerCase()) ??
-    fromInventory.get(dcKey) ??
-    fromInventory.get(attackKey);
-  if (carried) {
-    differences.push({
-      kind: 'not-modelled',
-      elementId: carried,
-      message: `${where}: Aurora's save DC of ${block.dc} includes "${carried}" from the character's inventory, which Incudo has no home for yet (ROADMAP Phase 2). Not compared.`,
       expected: block.dc,
     });
     return;

@@ -160,7 +160,7 @@ than a per-element mismatch.
 | `<sources><restricted>` | inverted, then discarded | a blocklist is the wrong thing to keep |
 | nested `id=` nodes, `<sum>`, `<magic>`, `<display-properties>` | **nothing** | derived; re-derived instead |
 | `class=` on a `Level` node | `advancement` | the only record of a multiclass split ([ADR 0015](./adr/0015-class-levels.md)) |
-| `<equipment>` | `inventory`, one row per `<item>` | [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md). **Nothing derives from it yet** — that is step 3 |
+| `<equipment>` | `inventory`, one row per `<item>` | [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md). An **equipped** entry and its adornments seed the derivation; a carried one seeds nothing |
 
 Three details that are not obvious from the format:
 
@@ -189,15 +189,29 @@ importer at all ([ADR 0008](./adr/0008-aurora-compatibility-frozen.md)): Aurora 
 maths for every character anyone ever built, and those answers were checked for ten years by
 people whose characters would have been wrong otherwise.
 
-Against all 9 sample saves, 2026-09-10 — 1,158 element ids and 8 spell slot rows compared:
+Against all 9 sample saves, 2026-09-11 — 1,158 element ids, 8 spell slot rows, 8 save DCs and
+8 attack bonuses compared:
 
 | | count |
 |---|---:|
 | `element-missing` — Aurora derived it, Incudo did not | **1** |
 | `spell-missing` — a spell Aurora listed that Incudo did not derive | **0** |
 | `stat-mismatch` — both computed a number, differently | **0** |
-| `element-extra` — Incudo derived it, Aurora did not | 53 |
-| `content-missing` / `not-modelled` — reported, not counted | 64 |
+| `element-extra` — Incudo derived it, Aurora did not | 55 |
+| `content-missing` / `not-modelled` — reported, not counted | 16 |
+
+The last two rows moved with step 3 of
+[the inventory plan](./INVENTORY-AND-AC-PLAN.md), where an equipped item's element and its
+adornments started seeding the derivation. `not-modelled` fell from **51 to 3**: 47 of its notes
+were "this came from the bag" and one was "the bag moves this DC", and all 48 became comparisons
+instead. `element-extra` rose from **53 to 55**, and the two are one finding rather than
+overhead. `content-missing` is unchanged at 13. Incudo's own element total went from 1,151 to
+1,200; Aurora's stayed at 1,158, because it is the same nine files.
+
+The three counts that did **not** move are the ones worth reading first. No `stat-mismatch`
+appeared, no spell went missing, and no new pending decision opened on any of the nine saves —
+which is the prediction the plan made in advance, on the grounds that no bag element in any of
+them opens a `<select>`. Nothing new is reported as an engine problem either.
 
 The single `element-missing` is `ID_INTERNAL_MULTICLASS_LEVEL_3` on the ninth save: an
 Aurora-app marker that nothing in the 740 files references and that carries no rules.
@@ -216,12 +230,92 @@ means rather than adding to it. Before, this file's own `saveDcBase: 8` rebuilt 
 compared it against Aurora's identically-computed one — which confirmed the ability modifier
 and the proficiency bonus, and nothing about whether Incudo could show a DC, because no stat
 held one. Both numbers are now published per casting source by the system definition, and it
-is those that are compared: 7 DC rows and 7 attack rows across the nine saves. The eighth pair
-belongs to a wizard carrying a Tome of Clear Thought and stays `not-modelled` with the item
-named, for the same reason as everything else in the bag.
+is those that are compared: **8 DC rows and 8 attack rows** across the nine saves. The eighth
+pair used to be carved out — it belongs to a wizard with a Tome of Clear Thought equipped — and
+it is the subject of the next section, because it is the one number the bag was hiding.
 
-**All 53 `element-extra` differences are one species: content AuroraLegacy added after these
-saves were written.** That is not a guess — each family was traced to its upstream commit:
+### The Tome of Clear Thought, and what the eighth DC proves
+
+The one sample wizard is a Wizard 12 with six items equipped, two of which touch Intelligence:
+`ID_WOTC_DMG_MAGIC_ITEM_TOME_OF_CLEAR_THOUGHT` (its own `intelligence +2` and
+`intelligence:max +2`) and `ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE` (the overlay's +1).
+Aurora records attack **10** and DC **18**, which at proficiency +4 means an Intelligence
+modifier of **+6**.
+
+The arithmetic, and it is worth writing out because it is the only place a derived ability
+score is checkable at all:
+
+| | |
+|---|---:|
+| `<abilities>` → `baseStats` | 18 |
+| `ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI_INTELLIGENCE_INCREASE_2`, a chosen ASI | +2 |
+| the Tome, equipped | +2 |
+| the ASI proxy's `ID_INTERNAL_ASI_INTELLIGENCE`, equipped | +1 |
+| = | 23 |
+| capped at `20 + intelligence:max`, and the Tome raises that cap by 2 | **22** |
+| modifier, DC `8 + 4 + 6`, attack `4 + 6` | **+6, 18, 10** |
+
+Both numbers agree with Aurora exactly. Two things that settles, and two it does not — and the
+second pair is the more useful half, for the same reason [ADR 0018](./adr/0018-tables-and-track-stats.md)
+went to the trouble of saying that its rounding was unproved.
+
+- **`<abilities>` is a base, not a final score.** It records 18 and the sheet says 22. This was
+  genuinely open: a save that already folded everything in would have made `baseStats` wrong
+  ([ADR 0014](./adr/0014-base-stats-are-inputs.md)) and gone unnoticed for as long as nothing
+  else contributed, which on these nine files is exactly how long it did.
+- **Aurora applies the Tome's own rule, so it is not treated as a spent consumable.** Take the
+  Tome out of the bag and the score is 18 + 2 + 1 = 21 against an unraised cap of 20, so 20, for
+  a modifier of +5 and a DC of 17 — a number Aurora does not record. The content file says the
+  same thing in a comment above its `slot` setter: *"consumable items that apply rules not
+  implemented, equip this item as alternative to activate it"*. The hypothesis was worth testing
+  and it is falsified.
+
+What the save cannot see, stated because an agreeing number invites more confidence than it has
+earned:
+
+- **The proxy's +1 is invisible here.** Drop `ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE`
+  from the bag and the total is 18 + 2 + 2 = 22 — the same 22, because the cap was clipping the
+  23 anyway. The proxy is right by ADR 0024's step-2 argument and by Aurora writing the granted
+  element as the proxy's only child in the build tree, and not by this DC.
+- **The cap is invisible here too**, for the mirror-image reason: uncapped, the score is 23, and
+  `floor((23-10)/2)` and `floor((22-10)/2)` are both +6. That `intelligence:max` is read at all
+  rests on [ADR 0016](./adr/0016-stat-bounds-are-expressions.md), not on this.
+- **Nothing checks Intelligence 22 against a recorded 22.** The save holds no derived ability
+  scores. The DC and the attack bonus are the only window onto one, and what they see is the
+  modifier — so the arithmetic above is pinned at its *total* and unpinned at every step.
+
+Both directions were checked by perturbation rather than by the check passing, which is the
+lesson [ADR 0020](./adr/0020-stats-keyed-on-declared-blocks.md) left behind: removing the Tome
+from the bag moves the DC to 17 and removing the proxy moves nothing.
+
+### The two new `element-extra` differences: mithral armour
+
+Seeding the bag added two, and they are one behaviour on two characters: an equipped suit of
+plate or half plate grants `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE`, and Aurora's `<sum>` does
+not contain it when a **Mithral Armor** adornment is on the same item.
+
+The corpus does not express that anywhere — the mithral grants
+`ID_INTERNAL_GRANTS_IGNORE_STEALTH_DISADVANTAGE` and nothing cancels anything. It is Aurora
+application behaviour, the same family as the ability score maximum, the slot table, hit points,
+the save DC and armour class.
+
+The nine saves happen to contain the control case, which is what makes this a measurement rather
+than a story:
+
+| save | equipped | mithral | `…GRANTS_STEALTH_DISADVANTAGE` in `<sum>` |
+|---|---|---|---|
+| Bran | Plate | yes | no |
+| Merilio | Half Plate | yes | no |
+| Vigaro | Plate | **no** | **yes** |
+
+So it is not that Aurora never emits the marker; it is that the mithral suppresses it. Left
+unmodelled and visible rather than guessed at, per [ADR 0005](./adr/0005-aurora-import.md) —
+one grant cancelling another is a mechanism the engine does not have, and inventing it for two
+rows would be the wrong order of work. It is also the first `element-extra` on these saves that
+is *not* content drift.
+
+**The other 53 `element-extra` differences are one species: content AuroraLegacy added after
+these saves were written.** That is not a guess — each family was traced to its upstream commit:
 
 | family | added upstream |
 |---|---|
@@ -242,17 +336,18 @@ is a check nobody runs.
 
 - **A whole-class spell list.** A cleric prepares from every spell of its class and Aurora
   expands that in code. One note, not sixty failures.
-- **Anything from the character's inventory**, transitively. A suit of plate brings a stealth
-  marker; a Tome of Clear Thought brings +2 Intelligence and therefore +1 to a spell save DC.
-  Incudo now *stores* the bag but derives nothing from it, so its number is lower and is not
-  wrong to be. One sample wizard's DC differs by exactly this, and the report names the tome.
-  The message still says "Incudo has no inventory yet", which since step 2 is stale in wording
-  and true in substance; step 3 is where the sentence stops being true either way and the
-  47 notes become compared elements.
 - **Content from a source this run did not load.** A statement about which books are enabled.
   When an absence traces back to such an element, the whole subtree is attributed to it —
   a Half-Elf variant that is not loaded takes its Keen Senses and its Perception proficiency
   with it, and that is one report rather than three engine failures.
+
+The character's inventory used to be the third entry in this list and the largest — 47 of the
+51 notes. It is gone: an equipped entry's element and its adornments are seeded like any other
+choice, so the bag is compared rather than excused, in both directions. A *carried* entry is
+still not derived, and that is not an exemption either: Aurora leaves 18 of the 19 carried items
+across these saves out of its own `<sum>`, so the two engines agree by omitting the same thing.
+If one ever shows up in Aurora's set, it is reported as `element-missing` and the message says
+which pile of the bag it came from.
 
 ### What it found
 

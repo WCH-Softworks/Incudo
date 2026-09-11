@@ -87,8 +87,9 @@ export interface StatRule extends RuleBase {
    * `!([armor:heavy]||[shield:any])` — which is how content says *which* armour class
    * calculation applies.
    *
-   * Nothing evaluates it yet. Doing so needs an inventory for `[armor:none]` to be a
-   * question about, which is ROADMAP Phase 2's `equipment` step; see docs/AURORA-FORMAT.md.
+   * Nothing evaluates it yet. A character has a bag since step 3 of the inventory plan, but
+   * no slot publishes a tag, so `[armor:none]` still has nothing to be a question about —
+   * that is step 4. See docs/INVENTORY-AND-AC-PLAN.md and docs/AURORA-FORMAT.md.
    */
   equipped?: RequirementExpr;
   /** Alternative display value, shown instead of the computed number. */

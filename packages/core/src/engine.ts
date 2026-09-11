@@ -23,7 +23,7 @@ import type {
   StatRule,
 } from './model.ts';
 import type { Character } from './character.ts';
-import { advancementCounts, advancementElementIds } from './character.ts';
+import { advancementCounts, advancementElementIds, equippedElementIds } from './character.ts';
 import type { GameSystem, ResolvedCharacterKind, StatDef } from './system.ts';
 import {
   baselineElementIds,
@@ -147,6 +147,15 @@ export function deriveCharacter(
   // so an advancement entry seeds the derivation exactly as a choice does.
   const trackLevels = advancementCounts(character);
   for (const id of advancementElementIds(character)) chosenIds.add(id);
+  // What the character is wearing and wielding, and whatever is attached to it — step 3 of
+  // docs/INVENTORY-AND-AC-PLAN.md. An equipped item is a seed in exactly the sense a choice
+  // is: the user put it there, no formula produced it, and its rules are the element's own.
+  //
+  // A *carried* entry seeds nothing, and that asymmetry against `collectCharacterContent`,
+  // which embeds the whole bag, is deliberate (ADR 0024 decision 7). It is also the one
+  // half of this Aurora can referee: 26 of 26 equipped items across the nine sample saves
+  // are in its own `<sum>` and 18 of 19 carried ones are not.
+  for (const id of equippedElementIds(character)) chosenIds.add(id);
 
   let active = new Map<ElementId, Element>();
   let stats = new Map<StatKey, ResolvedStat>();

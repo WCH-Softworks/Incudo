@@ -41,7 +41,7 @@ jobs:
       #
       #   1 unresolved reference — one upstream typo, "VULNERAILITY". A *grant* to an id
       #     nothing declares, which means a character silently loses something. It used to be
-      #     57; the Aurora overlay in @incudo/aurora-import supplies the 80 elements Aurora's
+      #     57; the Aurora overlay in @incudo/aurora-import supplies the 83 elements Aurora's
       #     app materializes, and separating requirement targets out (below) accounts for the
       #     rest. This number should be 0 the day AuroraLegacy fixes the spelling.
       #

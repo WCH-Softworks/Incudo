@@ -14,6 +14,7 @@ import {
   createCharacter,
   MapElementIndex,
   setChoice,
+  setInventoryEntry,
   type Character,
   type Element,
   type GameSystem,
@@ -95,10 +96,22 @@ const SYSTEM: GameSystem = {
   ],
 };
 
-function saveXml(body: { sum: string[]; equipment?: string[]; magic?: string }): string {
-  const items = (body.equipment ?? [])
-    .map((id) => `<item identifier="u" name="i" id="${id}" />`)
-    .join('');
+function saveXml(body: {
+  sum: string[];
+  /** Carried: in the bag, contributing nothing. */
+  equipment?: string[];
+  /** Worn or wielded: in the bag and seeding the derivation (inventory plan, step 3). */
+  equipped?: string[];
+  magic?: string;
+}): string {
+  const items =
+    (body.equipment ?? []).map((id) => `<item identifier="c-${id}" name="i" id="${id}" />`).join('') +
+    (body.equipped ?? [])
+      .map(
+        (id) =>
+          `<item identifier="e-${id}" name="i" id="${id}"><equipped>true</equipped></item>`,
+      )
+      .join('');
   return `<character version="1.0.3"><build>
     <elements level-count="1">
       <element type="Thing" name="Pick" requiredLevel="1" checksum="x" registered="ID_PICKED" />
@@ -118,6 +131,28 @@ function derive(character: Character, index: MapElementIndex) {
 
 function picked(): Character {
   return setChoice(createCharacter('test', 'pc'), 'build/thing', ['ID_PICKED']);
+}
+
+/** The same character, wearing the given elements. Matches `saveXml({ equipped })`. */
+function wearing(...elementIds: string[]): Character {
+  let character = picked();
+  for (const elementId of elementIds) {
+    character = setInventoryEntry(character, {
+      instanceId: 'e-' + elementId,
+      elementId,
+      equipped: true,
+    });
+  }
+  return character;
+}
+
+/** The same character, with the given elements in the bag but not worn. */
+function carrying(...elementIds: string[]): Character {
+  let character = picked();
+  for (const elementId of elementIds) {
+    character = setInventoryEntry(character, { instanceId: 'c-' + elementId, elementId });
+  }
+  return character;
 }
 
 test('agreement is agreement', () => {
@@ -200,7 +235,7 @@ test('an absence is explained by its ancestor, so one missing book is one report
   );
 });
 
-test('what an item brought is not compared, because there is no inventory yet', () => {
+test('an equipped item and what it grants are compared like anything else', () => {
   const index = new MapElementIndex();
   index.addAll([
     element('ID_PICKED', 'Thing'),
@@ -208,13 +243,74 @@ test('what an item brought is not compared, because there is no inventory yet', 
     element('ID_ITEM_EFFECT', 'Thing'),
   ]);
   const save = parseAuroraSave(
-    saveXml({ sum: ['ID_PICKED', 'ID_ITEM', 'ID_ITEM_EFFECT'], equipment: ['ID_ITEM'] }),
+    saveXml({ sum: ['ID_PICKED', 'ID_ITEM', 'ID_ITEM_EFFECT'], equipped: ['ID_ITEM'] }),
   );
 
+  // Both the item and its closure, which is the half that matters: a suit of plate is one
+  // id in the bag and a stealth-disadvantage marker behind it.
+  const result = compareWithAurora(save, derive(wearing('ID_ITEM'), index), { index });
+  assert.deepEqual(result.differences, []);
+  assert.equal(result.agrees, true);
+});
+
+test('a carried item contributes nothing, and Aurora leaves it out too', () => {
+  const index = new MapElementIndex();
+  index.addAll([
+    element('ID_PICKED', 'Thing'),
+    element('ID_ITEM', 'Item', [grant('ID_ITEM_EFFECT')]),
+    element('ID_ITEM_EFFECT', 'Thing'),
+  ]);
+  // Aurora's own `<sum>` excludes 18 of the 19 carried items across the nine sample saves,
+  // so the two engines agree by leaving the same thing out rather than by excusing it.
+  const save = parseAuroraSave(saveXml({ sum: ['ID_PICKED'], equipment: ['ID_ITEM'] }));
+
+  const result = compareWithAurora(save, derive(carrying('ID_ITEM'), index), { index });
+  assert.deepEqual(result.differences, []);
+});
+
+test('an element an equipped item should have brought names the bag', () => {
+  const index = new MapElementIndex();
+  index.addAll([
+    element('ID_PICKED', 'Thing'),
+    element('ID_ITEM', 'Item', [grant('ID_ITEM_EFFECT')]),
+    element('ID_ITEM_EFFECT', 'Thing'),
+  ]);
+  const save = parseAuroraSave(
+    saveXml({ sum: ['ID_PICKED', 'ID_ITEM', 'ID_ITEM_EFFECT'], equipped: ['ID_ITEM'] }),
+  );
+
+  // A derivation that never saw the bag — which is what an engine failure here would look
+  // like. It is two real differences now, where it used to be two excused notes.
   const result = compareWithAurora(save, derive(picked(), index), { index });
-  assert.equal(result.mismatches, 0);
-  // Both the item and what it granted — the closure, not just the id in the bag.
-  assert.equal(summarizeDifferences(result).get('not-modelled'), 2);
+  assert.equal(result.mismatches, 2);
+  assert.equal(summarizeDifferences(result).get('element-missing'), 2);
+  assert.ok(
+    result.differences.every((d) => d.message.includes('equipped inventory')),
+    'and each one says where to start looking: ' + JSON.stringify(result.differences),
+  );
+});
+
+test('an element only a carried item could have brought says which pile it came from', () => {
+  const index = new MapElementIndex();
+  index.addAll([
+    element('ID_PICKED', 'Thing'),
+    element('ID_ITEM', 'Item', [grant('ID_ITEM_EFFECT')]),
+    element('ID_ITEM_EFFECT', 'Thing'),
+  ]);
+  // The anomaly, which no sample save contains: Aurora derived something from an item that
+  // is in the bag and not worn. Reported rather than excused, because it contradicts the
+  // measurement step 3 is built on.
+  const save = parseAuroraSave(
+    saveXml({ sum: ['ID_PICKED', 'ID_ITEM_EFFECT'], equipment: ['ID_ITEM'] }),
+  );
+
+  const result = compareWithAurora(save, derive(carrying('ID_ITEM'), index), { index });
+  assert.equal(result.mismatches, 1);
+  assert.equal(result.differences[0]!.kind, 'element-missing');
+  assert.ok(
+    result.differences[0]!.message.includes('carried'),
+    result.differences[0]!.message,
+  );
 });
 
 test('the save DC compared is the one the system published, not one the check invented', () => {
@@ -260,29 +356,33 @@ test('a block declaring no ability publishes nothing, and says so', () => {
   );
 });
 
-test('a DC the bag contributes to is not compared, because the two numbers differ honestly', () => {
+test('a DC an equipped item moves is compared, and the item is what moves it', () => {
   const index = new MapElementIndex();
   index.addAll([
     element('ID_PICKED', 'Thing', [grant('ID_CASTER')]),
     caster('ID_CASTER', 'C', 'Wisdom'),
     element('ID_TOME', 'Item', [
-      { kind: 'stat', key: 'stat-0', name: 'wisdom', value: { kind: 'number', value: 2 } },
+      { kind: 'stat', key: 'stat-0', name: 'proficiency', value: { kind: 'number', value: 2 } },
     ]),
   ]);
+  // Aurora's numbers are the ones a character *wearing* the tome has: 8 + (3 + 2) + 2 = 15.
   const save = parseAuroraSave(
     saveXml({
-      sum: ['ID_PICKED', 'ID_CASTER'],
-      equipment: ['ID_TOME'],
+      sum: ['ID_PICKED', 'ID_CASTER', 'ID_TOME'],
+      equipped: ['ID_TOME'],
       magic: '<spellcasting name="C" ability="Wisdom" dc="15" attack="7" source="ID_CASTER" />',
     }),
   );
 
-  const result = compareWithAurora(save, derive(picked(), index), { index });
-  assert.equal(result.mismatches, 0);
-  assert.ok(
-    result.differences.some((d) => d.kind === 'not-modelled' && d.elementId === 'ID_TOME'),
-    'and it names the item responsible',
-  );
+  // Both halves matter. Without the bag the DC is 13, so this is a live comparison and not a
+  // number that would have agreed anyway — which is exactly the check the old carve-out was
+  // suppressing on the one sample wizard with a Tome of Clear Thought equipped.
+  assert.equal(derive(picked(), index).stats.get('c:spellcasting:dc')?.value, 13);
+
+  const derived = derive(wearing('ID_TOME'), index);
+  assert.equal(derived.stats.get('c:spellcasting:dc')?.value, 15);
+  const result = compareWithAurora(save, derived, { index });
+  assert.deepEqual(result.differences, []);
 });
 
 test('spell slots stay a note when no loaded system declares a table', () => {

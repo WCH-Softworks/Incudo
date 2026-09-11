@@ -3,9 +3,10 @@
 **Status:** proposed · 2026-09-10 · **every decision settled 2026-09-11** — D1 by
 [ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md), D2 by
 [ADR 0023](./adr/0023-attunement-gates-and-reports.md), D3 below ·
-**steps 1 and 2 are done** — [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md) settled
-the three questions step 1 left open, and step 2 filled the bag from Aurora. Neither moved a
-baseline. Steps 3–5 are not started.
+**steps 1–3 are done** — [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md) settled the
+three questions step 1 left open, step 2 filled the bag from Aurora, and step 3 seeded the
+derivation from it. Steps 1 and 2 moved no baseline; step 3 moved one, deliberately, and that
+was the point of it. **Steps 4 and 5 are not started, and are a separate run** (D3).
 
 ROADMAP Phase 2 lists **Inventory** and the `ac` derivation as two items. They are one piece
 of work in a fixed order, and this file is the plan asked for before any of it is written.
@@ -245,18 +246,50 @@ that book in `Character.sources`. No sample save exercises it — every bag elem
 already in the allowlist — and a save embeds its bag's content regardless (ADR 0012), so this
 costs only the update path. It belongs with step 3, where the bag starts being read.
 
-### Step 3 — the engine seeds equipped items · **the step the oracle checks**
+### Step 3 — the engine seeds equipped items · **done**, and the step the oracle checked
 
-An equipped entry's element and its adorners join the derivation exactly as a choice does.
-Carried entries contribute nothing (26/26 and 18/18 above).
+An equipped entry's element and its adorners join the derivation exactly as a choice does — one
+line in `deriveCharacter` seeding from `equippedElementIds`, next to the choices and the
+advancement. Carried entries contribute nothing (26/26 and 18/18 above), while
+`collectCharacterContent` goes on embedding all of them (ADR 0024 decision 7).
 
-**Expect the baseline to move, and expect it to be the point.** 47 `not-modelled` notes become
-compared elements; some will land as `element-missing` or `element-extra` on the first run and
-each one is a real finding. `.github/workflows/ci.yml` and CLAUDE.md's numbers get re-recorded
-once, deliberately.
+**What the diff said.** The prediction was that 47 `not-modelled` notes would become compared
+elements and everything else would hold. It did, with two findings and one number recovered:
 
-This is the last step that can be checked against Aurora. It is worth landing it on its own and
-reading the diff carefully before going further.
+| | before | after |
+|---|---:|---:|
+| `element-missing` | 1 | 1 |
+| `spell-missing` | 0 | 0 |
+| `stat-mismatch` | 0 | **0** |
+| `element-extra` | 53 | **55** |
+| `not-modelled` | 51 | **3** |
+| `content-missing` | 13 | 13 |
+
+- **48 notes became comparisons**, and all 48 agree. 47 were "this element came from the bag";
+  the 48th was the one save DC the bag moved.
+- **The two new `element-extra` are one Aurora app behaviour**: a **Mithral Armor** adornment
+  suppresses its host armour's `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE` grant, which no content
+  file expresses. The nine saves contain the control case — Vigaro's plate has no mithral and
+  *does* carry the marker — so it is measured rather than assumed. Left unmodelled and visible,
+  per [ADR 0005](./adr/0005-aurora-import.md).
+- **The eighth spell save DC is now compared and agrees**, which is the number the old
+  `statsFromInventory` carve-out in `verify-character.ts` was hiding. Removing that carve-out
+  also removed the last two readers of `proficiency` and `abilityModifier` in the verifier's
+  options, so the file no longer holds any arithmetic of its own at all.
+- **Nothing else moved.** No new pending decision on any save (no bag element in the nine opens
+  a `<select>`), no new derivation problem, and the corpus baseline of 740 / 12,058 / 1 / 57 is
+  untouched because none of this is content-side.
+
+The full arithmetic, and what the save can and cannot prove about it, is in
+[AURORA-SAVE-FORMAT.md](./AURORA-SAVE-FORMAT.md) — including the two pieces of the Tome of
+Clear Thought sum that the agreeing DC does *not* pin.
+
+Two loose ends step 2 left here were closed with it: `toSourceAllowlist` now reads the bag, so a
+carried item from a book nothing else uses puts that book in `Character.sources`; and the
+verifier's "Incudo has no inventory yet (ROADMAP Phase 2)" messages are gone rather than
+reworded, because the sentence is no longer true in substance.
+
+This was the last step that can be checked against Aurora.
 
 ### Step 4 — slots publish tags · `equals` becomes membership · ADR
 

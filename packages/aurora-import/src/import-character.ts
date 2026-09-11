@@ -753,7 +753,15 @@ function toSourceAllowlist(
   for (const source of index.byType('Source')) byName.set(source.name, source);
 
   // Which books the character actually draws on: the source string of every element it
-  // chose, plus every element Aurora's own derivation ended up with.
+  // chose, plus every element Aurora's own derivation ended up with, plus everything in the
+  // bag.
+  //
+  // The bag is the late addition, and it is there for the *carried* half. An equipped item
+  // is in Aurora's `<sum>` and would be covered by the loop below it; a carried one is not,
+  // so a character whose only use of a book is a Frost Brand sitting in a backpack would
+  // otherwise have written a source list that does not mention it. A save embeds its bag's
+  // content either way (ADR 0012), so this costs nothing today and matters the first time a
+  // save is opened to be *edited* rather than read.
   const used = new Set<string>();
   for (const choice of save.decisions) {
     const element = index.get(choice.registered);
@@ -762,6 +770,12 @@ function toSourceAllowlist(
   for (const id of save.sum) {
     const element = index.get(id);
     if (element) used.add(element.source);
+  }
+  for (const item of save.equipment) {
+    for (const id of [item.id, ...item.adorners.map((a) => a.id)]) {
+      const element = index.get(id);
+      if (element) used.add(element.source);
+    }
   }
 
   const disabledButUsed: string[] = [];

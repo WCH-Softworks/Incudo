@@ -109,13 +109,15 @@ Since [ADR 0021](./adr/0021-equipped-is-a-condition.md) it is a `RequirementExpr
 the same `parseRequirements` that reads `requirements=`. 76 of the 79 sit on `<stat>` and 3 on
 `<grant>`; none names an element id.
 
-**Nothing evaluates it yet, and that is deliberate.** With no inventory there is no `armor`
-stat, so `[armor:none]` reads *false* against a character wearing nothing and `[armor:any]`
-reads false against one in plate, while `![armor:heavy]` reads true — all 41 positive checks
-drop and all 38 negations stay, which is a state no character is ever in. Measured on the nine
-sample saves, evaluating today moves no `aurora verify` count and makes four stats wrong: a
-monk loses their Unarmoured Defence and Unarmoured Movement, and two armoured characters lose
-the Defense fighting style's +1. It waits for the `equipment` build step.
+**Nothing evaluates it yet, and that is deliberate.** A character has a bag since step 3 of
+[the inventory plan](./INVENTORY-AND-AC-PLAN.md), but no slot publishes a tag, so there is still
+no `armor` stat: `[armor:none]` reads *false* against a character wearing nothing and
+`[armor:any]` reads false against one in plate, while `![armor:heavy]` reads true — all 41
+positive checks drop and all 38 negations stay, which is a state no character is ever in.
+Measured on the nine sample saves, evaluating today moves no `aurora verify` count and makes
+four stats wrong: a monk loses their Unarmoured Defence and Unarmoured Movement, and two
+armoured characters lose the Defense fighting style's +1. It waits for step 4, where slots
+publish tags and `equals` becomes a membership test.
 
 `equipped` is still the thing holding up armour class, because it is how the corpus says
 *which* AC calculation applies:

@@ -346,6 +346,33 @@ export function inventoryElementIds(character: Character): ElementId[] {
   return ids;
 }
 
+/**
+ * Every element the **equipped** entries name — those entries and their adornments.
+ *
+ * The derivation's half of the asymmetry `inventoryElementIds` documents: the container
+ * embeds the whole bag, and only what is worn or wielded joins the derivation. That is
+ * measured, not assumed — all 26 equipped items across the nine sample saves are in Aurora's
+ * own `<sum>` and 18 of 19 carried ones are not, the apparent exception being a second
+ * instance of an element id that is equipped elsewhere.
+ *
+ * An adornment follows its host in both directions: a Frost Brand on a *carried* greatsword
+ * contributes nothing, which is also what Aurora says — the 2 adorners outside its `<sum>`
+ * both hang off carried items.
+ *
+ * `quantity` is not read. Ten arrows are one seed, as ADR 0024 decision 2 settled in advance.
+ */
+export function equippedElementIds(character: Character): ElementId[] {
+  const ids: ElementId[] = [];
+  for (const entry of character.inventory ?? []) {
+    if (!entry.equipped) continue;
+    if (!ids.includes(entry.elementId)) ids.push(entry.elementId);
+    for (const adornment of entry.adorners ?? []) {
+      if (!ids.includes(adornment.elementId)) ids.push(adornment.elementId);
+    }
+  }
+  return ids;
+}
+
 export function chosenElementIds(character: Character): ElementId[] {
   const ids: ElementId[] = [];
   for (const choice of character.choices) {
