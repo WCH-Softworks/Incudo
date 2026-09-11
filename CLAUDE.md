@@ -10,7 +10,9 @@ when something here looks odd, the ADR usually says why.
 ## Commands
 
 ```bash
-npm install            # ~8s. If it starts pulling Expo, apps/* got added to workspaces — don't.
+npm install            # ~25s. If it starts pulling Expo, apps/mobile got added to workspaces — don't.
+npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, start here.
+npm run desktop:app    # the real Tauri window — needs Rust, and an icon nobody has drawn yet
 npm run typecheck      # tsc --build --force
 npm test               # node --test, no build step
 npm run incudo -- --help   # the CLI: validate | types | inspect | system | content | character
@@ -158,10 +160,29 @@ are personal data and never enter the repo — and neither do screenshots of the
 ## State of play
 
 Working: core engine, Aurora content **and save** importer, content sources, CLI, two system
-definitions, the `.incu` container, the JSON Schemas and the validator behind them, and the whole
-of the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class.
-Not started: both app shells (only their `platform.ts` contracts exist). Nothing puts a bag on a
-screen yet; every part of it above is model, engine and CLI.
+definitions, the `.incu` container, the JSON Schemas and the validator behind them, the whole of
+the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class — and
+**the desktop shell, which runs**: `npm run desktop` loads the system definition, loads a real
+content index, builds a character and renders the sheet.
+Not started: the mobile shell (only its `platform.ts` contract exists).
+
+**Run the app before trusting this file about what works.** Every phase up to the shell was
+verified against fixtures, a corpus and an oracle, and the first five minutes of actually using
+it still found a view-model bug that no test had: a required build step with nothing picked
+reported itself `complete`, so there was no way to choose a race or a class at all. Usability is
+only testable by using it — see `apps/desktop/README.md`. Two things the shell has surfaced and
+not yet fixed are listed under "Known from running it" below.
+
+### Known from running it
+
+- **`<select supports="$(...)">` offers nothing.** `candidatesFor` in the engine says in as many
+  words that resolving `$(...)` "needs build context the caller supplies in the UI layer", and no
+  caller supplies it — so an unresolved interpolation matches nothing. Live effect: picking Rogue
+  opens *Skill Proficiency (Rogue)* and *Expertise (Rogue)*, both of which say "no candidate
+  matches". This blocks Phase 2's exit criterion and is the next thing to fix.
+- **Loading a content index re-fetches every file.** 244 files, one at a time, about a minute,
+  and a reload does it again — `HttpContentSource`'s `writeThrough` writes the cache but nothing
+  reads it back. That is ADR 0004's live-vs-downloaded question arriving in practice.
 
 ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025 and 0026 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its

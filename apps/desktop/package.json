@@ -9,8 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:dev": "node scripts/check-icon.mjs && tauri dev",
+    "tauri:build": "node scripts/check-icon.mjs && tauri build"
   },
   "dependencies": {
     "@incudo/core": "*",

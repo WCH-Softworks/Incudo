@@ -1,20 +1,42 @@
 # Incudo desktop
 
-Tauri 2 + React + Vite. **Not scaffolded yet** — this is ROADMAP Phase 1.
+Tauri 2 + React + Vite ([ADR 0001](../../docs/adr/0001-tech-stack.md)).
 
-`src/platform.ts` is already here because it is the contract with the shared packages:
-it is the only file in this app allowed to know it is running in Tauri.
+`src/platform.ts` is the contract with the shared packages: it is the only file in this app
+allowed to know it is running in Tauri.
 
-## To scaffold (when Phase 1 starts)
+## Running it
 
 ```bash
-npm create tauri-app@latest -- --template react-ts   # into a scratch dir, then merge
-npm install -w @incudo/desktop
-npm run tauri:dev -w @incudo/desktop
+npm run desktop          # Vite dev server at http://localhost:5173 — no Rust, no icon needed
+npm run desktop:app      # the real Tauri window (see "Icons" below)
+npm run desktop:build    # production web bundle into apps/desktop/dist
 ```
 
-Requires a Rust toolchain (`rustup`) plus the platform prerequisites listed at
-https://v2.tauri.app/start/prerequisites/. No Rust is needed for application code.
+**Start with `npm run desktop`.** It is the whole application in a browser: it loads and
+validates the shipped 5e system definition, loads an Aurora content index over the network,
+and builds a character. Every piece of UI work can happen there.
+
+`npm run desktop:app` additionally needs a Rust toolchain (`rustup`) and the platform
+prerequisites at https://v2.tauri.app/start/prerequisites/, plus an icon this repo does not
+ship — see below. No Rust is needed for application code.
+
+## Icons — a deliberate gap
+
+`src-tauri/icons/` is empty and the Windows build fails because of it. That is not a broken
+checkout: Incudo never ships generated artwork, so the icon is left for a person to draw.
+`src-tauri/icons/README.md` says exactly what is needed. `npm run desktop` is unaffected.
+
+## Why Tauri rather than a web page
+
+A browser `fetch` for a content index is subject to CORS, and
+`raw.githubusercontent.com` happens to cooperate while plenty of hosts do not. The Tauri build
+registers `tauri-plugin-http`, which is not.
+
+Its capability allows `https://**` and denies `http://**`. That is wide, and it is wide on
+purpose: the product is "point it at any content index you like", so an allowlist of hosts would
+be a list of which third-party content packs are permitted to exist. Narrowing it to a few hosts
+would be a product decision, not a security tidy-up.
 
 ## What belongs here
 
@@ -24,4 +46,8 @@ layout, and the two platform implementations in `src/platform.ts`.
 ## What does not
 
 Any rule about the game. If a bug is "the app computed the wrong AC", it must be fixable
-in `packages/`, not here. See `docs/CODE-REUSE-POLICY.md`.
+in `packages/`, not here. See [docs/CODE-REUSE-POLICY.md](../../docs/CODE-REUSE-POLICY.md).
+
+Most of what this app appears to "do" is `packages/ui`'s `CharacterBuilder`, rendered. The one
+place that boundary was found to be wrong — a required build step with nothing picked reporting
+itself complete — was fixed in `packages/ui`, not worked around here.

@@ -150,7 +150,26 @@ before any code, both touching a public API:
   score maximum, and the discovery that `min`/`max` never ran for a stat without a `derive`,
   so `"max": 20` would have been a no-op.
 
-- [ ] Tauri desktop shell, React UI, routing, persistence
+- [x] **Desktop shell scaffolded and running.** Vite + React in `apps/desktop`, which boots, validates
+      the shipped 5e definition, loads a real Aurora index over the network, renders
+      `CharacterBuilder`'s decisions and the kind's own sheet, and persists the character through
+      the injected storage. `npm run desktop`. `apps/desktop` joined the workspaces;
+      `apps/mobile` deliberately did not, because the ~700 MB was always Expo.
+      Built late, and it should not have been: **the first five minutes of using it found a
+      view-model bug no test had** — a required build step with nothing picked reported itself
+      `complete`, so a character could not choose a race or a class at all. Fixed in
+      `packages/ui` as a third decision kind, `pick`, keyed `build/<stepId>`, which is the
+      convention the fixture save and `aurora-import` already used.
+  - [ ] **The Tauri window needs an icon nobody has drawn.** The Rust shell, its config and its
+        HTTP capability are written and the dependency tree compiles; `tauri-build` then stops
+        on a missing `icons/icon.ico`. Left as a marked gap rather than filled with generated
+        artwork, per the README's standing commitment —
+        `apps/desktop/src-tauri/icons/README.md` says what is needed, and `npm run desktop:app`
+        explains itself instead of failing inside a Rust build.
+  - [ ] Routing beyond a three-pane switch, menus, file dialogs, keyboard shortcuts.
+  - [ ] **`$(...)` in a `<select supports=…>` resolves to nothing**, so a Rogue's skill and
+        expertise picks offer no candidates. `candidatesFor` says the UI layer supplies that
+        build context and no caller does. This blocks the phase's exit criterion.
 - [ ] Content manager: add an index by URL, enable/disable sources, **stream or download**
 - [x] **Build flow as open decisions rather than a wizard**
       ([ADR 0017](./docs/adr/0017-open-decisions-not-steps.md)). `CharacterBuilder` publishes one
