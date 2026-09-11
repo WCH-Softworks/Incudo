@@ -20,7 +20,25 @@ export interface LoadOptions {
    * derivation wants the overlay, or 51 references dangle. See `generated-elements.ts`.
    */
   withoutGeneratedElements?: boolean;
+  /**
+   * How many element files to fetch at once. ADR 0029 measured this against the real
+   * AuroraLegacy index and settled on {@link DEFAULT_CONCURRENCY}.
+   *
+   * Raising it does **not** make the load non-deterministic: a batch is applied to the index
+   * in the order the refs appeared, not in the order the fetches finished, so which file wins
+   * a duplicate id and what order the diagnostics come out in are unchanged. Nested indexes
+   * are still resolved one at a time, because the next batch of files is not known until one
+   * is parsed.
+   */
+  concurrency?: number;
 }
+
+/**
+ * Six at a time. Measured, not guessed — see ADR 0029: sequentially, the 244-file
+ * AuroraLegacy index takes about a minute over the network, and almost all of that is
+ * round-trip latency rather than bandwidth.
+ */
+export const DEFAULT_CONCURRENCY = 6;
 
 export interface LoadReport {
   index: ContentIndex;
@@ -72,20 +90,20 @@ export class ContentLibrary {
     /** `<append>` blocks, held until every file is in — see `applyAppends`. */
     const pending: ElementAppend[] = [];
 
+    const concurrency = Math.max(1, options.concurrency ?? DEFAULT_CONCURRENCY);
+
     while (queue.length) {
       const item = queue.shift()!;
       const { ref, depth } = item;
       processed++;
       options.onProgress?.(processed, processed + queue.length, ref.name || ref.url);
 
-      if (this.loadedUrls.has(ref.url)) continue;
-      if (options.include && !options.include(ref)) continue;
-      if (!ref.isIndex && !isElementFile(ref)) continue;
+      if (!this.shouldLoad(ref, options)) continue;
 
-      this.loadedUrls.add(ref.url);
-
-      try {
-        if (ref.isIndex) {
+      if (ref.isIndex) {
+        // One at a time, and before any more files: the children it names are what the next
+        // batch is made of, so there is nothing to overlap it with.
+        try {
           if (depth >= maxDepth) {
             this.diagnostics.push({
               level: 'warning',
@@ -97,25 +115,70 @@ export class ContentLibrary {
           const nested = await source.loadIndex(ref.url);
           this.indexes.push(nested);
           for (const child of nested.files) queue.push({ ref: child, depth: depth + 1 });
-        } else {
-          const file = await source.loadFile(ref);
-          this.addElements(file.elements);
-          if (file.appends?.length) pending.push(...file.appends);
-          this.diagnostics.push(...file.diagnostics);
-          filesLoaded++;
-          elementsLoaded += file.elements.length;
+        } catch (error) {
+          this.diagnostics.push({
+            level: 'error',
+            message: `Could not load ${ref.url}: ${(error as Error).message}`,
+            fileUrl: ref.url,
+          });
         }
-      } catch (error) {
-        this.diagnostics.push({
-          level: 'error',
-          message: `Could not load ${ref.url}: ${(error as Error).message}`,
-          fileUrl: ref.url,
-        });
+        continue;
+      }
+
+      // Take the run of element files at the head of the queue and fetch them together.
+      // The skip checks happen here, synchronously, so two refs to the same URL inside one
+      // batch cannot both get past `loadedUrls`.
+      const batch: FileRef[] = [ref];
+      while (batch.length < concurrency && queue[0] && !queue[0].ref.isIndex) {
+        const candidate = queue.shift()!;
+        processed++;
+        options.onProgress?.(processed, processed + queue.length, candidate.ref.name || candidate.ref.url);
+        if (!this.shouldLoad(candidate.ref, options)) continue;
+        batch.push(candidate.ref);
+      }
+
+      const results = await Promise.all(
+        batch.map(async (fileRef) => {
+          try {
+            return { ref: fileRef, file: await source.loadFile(fileRef) };
+          } catch (error) {
+            return { ref: fileRef, error: error as Error };
+          }
+        }),
+      );
+
+      // Applied in the order the refs appeared, never in the order they finished. That is
+      // what keeps "last definition of an id wins" and the diagnostic order identical to a
+      // sequential load.
+      for (const result of results) {
+        if ('error' in result && result.error) {
+          this.diagnostics.push({
+            level: 'error',
+            message: `Could not load ${result.ref.url}: ${result.error.message}`,
+            fileUrl: result.ref.url,
+          });
+          continue;
+        }
+        const file = result.file!;
+        this.addElements(file.elements);
+        if (file.appends?.length) pending.push(...file.appends);
+        this.diagnostics.push(...file.diagnostics);
+        filesLoaded++;
+        elementsLoaded += file.elements.length;
       }
     }
 
     this.applyAppends(pending);
     return { index: root, filesLoaded, elementsLoaded, diagnostics: this.diagnostics };
+  }
+
+  /** Everything that used to sit between `queue.shift()` and the fetch, in one place. */
+  private shouldLoad(ref: FileRef, options: LoadOptions): boolean {
+    if (this.loadedUrls.has(ref.url)) return false;
+    if (options.include && !options.include(ref)) return false;
+    if (!ref.isIndex && !isElementFile(ref)) return false;
+    this.loadedUrls.add(ref.url);
+    return true;
   }
 
   /**
