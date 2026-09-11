@@ -214,6 +214,16 @@ there is no `armor` stat, so `[armor:none]` reads *false* for a character wearin
 costs a monk their Unarmoured Defence and an armoured fighter the Defense fighting style. It
 waits for inventory; do not wire it up early.
 
+**Inventory and armour class are planned, not started** — `docs/INVENTORY-AND-AC-PLAN.md`, five
+steps with the evidence behind each. Read it before touching either, and in particular before
+adding an `ac` derivation on its own: `ac` is `default: 10` with nothing derived, and it stays
+that way until a character can wear armour, because 64 of the corpus's AC rules are gated on
+what is equipped. Two things from it worth knowing without opening it. **Equipped means derived
+and carried means nothing** — 26 of 26 equipped items across the nine saves are in Aurora's
+`<sum>` and 18 of 19 carried ones are not, the exception being a second instance of an element
+id that was equipped elsewhere. And **no save records an armour class**, so `ac` will be the
+second number after `hp` that the differential check cannot see; do not describe it as verified.
+
 **There are three keyings of a stat, not two** (ADR 0020). A stat is contributed to a
 character, or once per *track* (`trackStats`, ADR 0018), or once per *declared block*
 (`blockStats`). The third exists because the second cannot reach it: the namespace content

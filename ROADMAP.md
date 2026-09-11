@@ -164,7 +164,10 @@ before any code, both touching a public API:
 - [ ] Save/load `.incu` files; import `.dnd5e` (the importer is done — this is the UI for it)
 - [ ] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
       attunement, and magic items attached to other items. Aurora's `<equipment>` block is
-      already parsed and waiting.
+      already parsed and waiting. Planned in
+      [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which
+      the first three can be checked against Aurora and the last two cannot. It is the same
+      piece of work as the armour class below, and it comes first.
 - [ ] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
       the differential verification could check the moment they existed. Reading the engine
       corrected that on two counts:
@@ -207,6 +210,16 @@ before any code, both touching a public API:
         Seven DC rows and seven attack rows are now compared against Incudo's own published
         number and agree; the eighth pair belongs to a wizard whose Tome of Clear Thought
         Incudo has nowhere to put, and is reported as `not-modelled` until inventory lands.
+  - [ ] **Armour class**, which this list never counted and should have. `ac` is `default: 10`
+        with nothing derived, so every character — imported or built — shows 10. It is the
+        fifth instance of the same pattern: content declares each armour's base, each magic
+        bonus and each alternative calculation, and Aurora keeps the composition in its app.
+        Unlike the four above it is **not** a number that can be added on its own. 31 of the
+        alternative calculations are gated on `equipped="[armor:none]"` and 33 more on
+        `[armor:heavy]`, none of which can be answered until a character can wear armour —
+        so this is the last step of the inventory work rather than a parallel one, and it has
+        no oracle at all: no save records an armour class.
+        Planned in [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md).
 - [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope.
 - [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md)) and
