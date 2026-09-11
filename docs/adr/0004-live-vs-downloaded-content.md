@@ -1,6 +1,16 @@
 # 0004 — Content sources are composable; live and offline are both first-class
 
-**Status:** Accepted · 2026-09-09
+**Status:** Accepted · 2026-09-09 · **open questions answered by
+[ADR 0028](./0028-sources-are-a-profile-characters-carry-an-allowlist.md) and
+[ADR 0029](./0029-a-cache-is-keyed-by-source-and-evicted-by-version.md)**
+
+> **Both open questions below are now closed, and one mitigation here was changed.** Pinning a
+> character to a source version is answered **no** (ADR 0028): a save already carries its content,
+> so a git ref would buy nothing and require every source to be a git host. The rate-limit
+> question is measured in ADR 0029 — 238 files, 44.8 s cold and sequential, 1.2 s at six at a
+> time, no failures and no throttling at six or twelve. And "versioned cache keys" below is
+> **not** what was built: the key is per source and per URL, the version is a stamp beside it,
+> and a refresh evicts that source's cache. ADR 0029 says why.
 
 ## Context
 

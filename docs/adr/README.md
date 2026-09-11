@@ -40,3 +40,6 @@ new one that supersedes it.
 | [0024](./0024-inventory-is-a-list-of-instances.md) | A character's inventory is a list of item instances, and the save format moves to 2 | Accepted (amends 0006) |
 | [0025](./0025-slots-publish-tags.md) | A slot publishes a set of tags, and `equipped` starts being evaluated | Accepted |
 | [0026](./0026-armour-class-is-derived-and-checked-by-nobody.md) | Armour class is derived from a published rule, and nothing checks it | Accepted |
+| [0027](./0027-a-library-is-a-folder.md) | A character library is a folder the user chooses, and the folder is the list | Accepted |
+| [0028](./0028-sources-are-a-profile-characters-carry-an-allowlist.md) | Configured sources are a profile; a character's sources are a record it carries | Accepted (answers 0004) |
+| [0029](./0029-a-cache-is-keyed-by-source-and-evicted-by-version.md) | A source's cache is keyed by source, evicted by version, and filled six files at a time | Accepted (answers 0004) |
