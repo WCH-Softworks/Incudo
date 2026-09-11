@@ -221,9 +221,11 @@ before any code, both touching a public API:
         never be called verified. The evidence is perturbation, in
         `tools/incudo/src/armour-class.test.ts`. `attunement:max` reads 3; none of the nine is
         over it.
-- [ ] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
+- [x] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
       the differential verification could check the moment they existed. Reading the engine
-      corrected that on two counts:
+      corrected that on two counts — and the list grew to five, because armour class was never
+      counted and should have been. All five are done; three were settled by Aurora and two by
+      reading the rulebook, and the difference is recorded on each.
   - [x] **The ability score maximum**, which needed [ADR 0016](./docs/adr/0016-stat-bounds-are-expressions.md):
         an expression, because the corpus only ever contributes the *delta* above 20 and
         Aurora hardcodes the 20 — and a clamp that runs at all for a stat with no `derive`.
@@ -278,11 +280,50 @@ before any code, both touching a public API:
         **And it is the one number on this list with no oracle at all.** The four above are
         checked against Aurora on every run; this one is checked by reading the Player's Handbook
         and by perturbing slots in a test. Do not let its position in this list imply otherwise.
-- [ ] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
-      profile with zero sources configured. This is a test, not a hope.
+- [x] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
+      profile with zero sources configured. This is a test, not a hope. Ticked late — it was
+      already met in Phase 0 and duplicated here, and `tools/incudo/src/self-contained.test.ts`
+      has been proving it against the real 12,058-element corpus since. A bag does not weaken
+      it: all nine imported saves still re-derive identically with no sources configured.
 - [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md)) and
       so is the slot table ([ADR 0018](./docs/adr/0018-tables-and-track-stats.md)); what remains
       is the UI for choosing a class at each level.
+
+### Where this phase actually stands
+
+**The engine half of Phase 2 is finished and everything left is a shell.** Every remaining box
+above is view-layer work — the desktop shell, the content manager, the sheet, save/load, the
+level-up and multiclass screens. Nothing in the rules engine is outstanding.
+
+That is a change of kind, not just of subject, and it is worth naming before the first screen
+is written. Every number settled in this phase was settled against Aurora's own arithmetic, or
+was explicitly marked as one Aurora could not check. **A view layer has no oracle at all.**
+There is no `<sum>` for a screen, and "it looked right" is the evidence a UI usually ships on.
+Decide how the shells are kept honest before building them, not after.
+
+### Known gaps, carried deliberately
+
+Things the engine work left visible rather than fixed. None has a symptom today; all are here
+so that finding one again is recognition rather than discovery.
+
+- **Nothing checks that a recorded choice was legal for the slot it fills.** A `select` pool is
+  keyed on (element, name) and its allowance is the sum of the active rules', but 89 groups in
+  the corpus have rules that differ in `supports`, `requirements` or `type` — a wizard's first
+  six spellbook entries are 1st level and the two it adds each level afterwards are not. The
+  pending pool offers the union of the candidates of the rules with room left, and a pick
+  recorded against the wrong rule is accepted in silence. Wants a builder before it matters.
+- **One grant cannot cancel another.** A Mithral Armor adornment suppresses its host armour's
+  `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE`, and no content file expresses that — it is Aurora
+  app behaviour. It is 2 of the 55 `element-extra`, and the nine saves carry the control case:
+  plate with no mithral does keep the marker. Not invented (ADR 0005).
+- **`ID_INTERNAL_MULTICLASS_LEVEL_3`** — the single `element-missing`, an Aurora-app marker
+  nothing in the 740 files references and that carries no rules. Honestly unmodelled.
+- **One unresolved reference upstream** — the `…VULNERAILITY…` typo. It is a *grant* to an id
+  nothing declares, so a character silently loses something. Zero the day AuroraLegacy fixes
+  the spelling; not Incudo's to fix.
+- **`hp` and `ac` are unverifiable against Aurora, permanently.** The save format records the
+  per-level rolls and never the total, and records no armour class at all. Both are derived
+  from published rules and checked by perturbation. Do not describe either as verified.
 
 **Exit criteria:** a level 8 multiclassed Rogue/Wizard with a subclass, feats and prepared
 spells is buildable end to end and matches Aurora's output for the same choices.
