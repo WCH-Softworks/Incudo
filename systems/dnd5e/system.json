@@ -127,7 +127,47 @@
         { "name": "hp", "label": "Hit Points", "default": 0,
           "derive": { "kind": "binary", "op": "+",
             "left": { "kind": "rolls", "pattern": "hp:level:{n}" },
-            "right": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "constitution:modifier" }, "right": { "kind": "ref", "stat": "level" } } } }
+            "right": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "constitution:modifier" }, "right": { "kind": "ref", "stat": "level" } } } },
+
+        {
+          "name": "ac", "label": "Armor Class",
+          "derive": {
+            "kind": "binary", "op": "+",
+            "left": {
+              "kind": "binary", "op": "+",
+              "left": {
+                "kind": "call", "fn": "max",
+                "args": [
+                  { "kind": "ref", "stat": "ac:calculation" },
+                  {
+                    "kind": "binary", "op": "+",
+                    "left": {
+                      "kind": "binary", "op": "+",
+                      "left": { "kind": "ref", "stat": "ac:armored:armor" },
+                      "right": {
+                        "kind": "call", "fn": "max",
+                        "args": [
+                          { "kind": "ref", "stat": "ac:armored:dexterity:floor" },
+                          { "kind": "call", "fn": "min",
+                            "args": [
+                              { "kind": "ref", "stat": "dexterity:modifier" },
+                              { "kind": "ref", "stat": "ac:armored:dexterity:cap" }
+                            ] }
+                        ]
+                      }
+                    },
+                    "right": { "kind": "ref", "stat": "ac:armored:enhancement" }
+                  }
+                ]
+              },
+              "right": { "kind": "ref", "stat": "ac:shield" }
+            },
+            "right": { "kind": "ref", "stat": "ac:misc" }
+          }
+        },
+
+        { "name": "attunement:current", "label": "Attuned Items", "default": 0 },
+        { "name": "attunement:max", "label": "Attunement Limit", "default": 0 }
       ],
 
       "grants": [
@@ -164,6 +204,19 @@
               "right": { "kind": "ref", "stat": "spellcasting:attack" } } } }
       ],
 
+      "contributions": [
+        { "stat": "ac:armored:armor", "value": { "kind": "number", "value": 10 }, "requirements": "[armor:none]" },
+
+        { "stat": "ac:armored:dexterity:cap", "value": { "kind": "number", "value": 99 }, "bonus": "base", "requirements": "![armor:medium],![armor:heavy]" },
+        { "stat": "ac:armored:dexterity:cap", "value": { "kind": "number", "value": 2 }, "bonus": "base", "requirements": "[armor:medium]" },
+        { "stat": "ac:armored:dexterity:cap", "value": { "kind": "number", "value": 0 }, "bonus": "base", "requirements": "[armor:heavy]" },
+
+        { "stat": "ac:armored:dexterity:floor", "value": { "kind": "number", "value": -99 }, "bonus": "base", "requirements": "![armor:heavy]" },
+        { "stat": "ac:armored:dexterity:floor", "value": { "kind": "number", "value": 0 }, "bonus": "base", "requirements": "[armor:heavy]" },
+
+        { "stat": "attunement:max", "value": { "kind": "number", "value": 3 }, "bonus": "base" }
+      ],
+
       "inventory": {
         "slotSetter": "slot",
         "occupiedTag": "any",
@@ -189,7 +242,7 @@
           { "id": "gift", "label": "Supernatural Gift" },
           { "id": "companion", "label": "Companion" }
         ],
-        "attunement": { "setter": "attunement", "requires": "true" }
+        "attunement": { "setter": "attunement", "requires": "true", "countStat": "attunement:current", "maxStat": "attunement:max" }
       },
 
       "elementTypes": [
@@ -220,7 +273,7 @@
         "sections": [
           { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] },
           { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency", "level"] },
-          { "id": "worn", "label": "Worn & Wielded", "stats": ["armor", "shield", "primary", "secondary"] },
+          { "id": "worn", "label": "Worn & Wielded", "stats": ["armor", "shield", "primary", "secondary", "attunement:current", "attunement:max"] },
           { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"] },
           { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language", "Condition"] },
           { "id": "spellcasting", "label": "Spellcasting", "perBlock": true, "stats": ["{name}:spellcasting:dc", "{name}:spellcasting:attack"] },

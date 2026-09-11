@@ -87,9 +87,9 @@ export interface StatRule extends RuleBase {
    * `!([armor:heavy]||[shield:any])` — which is how content says *which* armour class
    * calculation applies.
    *
-   * Nothing evaluates it yet. A character has a bag since step 3 of the inventory plan, but
-   * no slot publishes a tag, so `[armor:none]` still has nothing to be a question about —
-   * that is step 4. See docs/INVENTORY-AND-AC-PLAN.md and docs/AURORA-FORMAT.md.
+   * Evaluated since ADR 0025, against the slots a character kind declares — and ignored
+   * entirely by a kind that declares none, exactly as a level gate is ignored by a kind with
+   * no progression. See docs/INVENTORY-AND-AC-PLAN.md and docs/AURORA-FORMAT.md.
    */
   equipped?: RequirementExpr;
   /** Alternative display value, shown instead of the computed number. */
