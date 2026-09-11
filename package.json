@@ -7,7 +7,8 @@
   "_workspaces_note": "apps/* are deliberately NOT workspaces yet. Their package.json files declare Expo/Tauri deps for shells that do not exist, and including them makes a fresh `npm install` pull ~700MB before there is anything to run. Add \"apps/*\" here when Phase 1 scaffolds the desktop shell.",
   "workspaces": [
     "packages/*",
-    "tools/*"
+    "tools/*",
+    "apps/desktop"
   ],
   "engines": {
     "node": ">=20"
@@ -20,7 +21,9 @@
     "incudo": "node --experimental-strip-types tools/incudo/src/cli.ts",
     "fixtures:rebuild": "node --experimental-strip-types tools/incudo/src/rebuild-fixtures.ts",
     "lint": "eslint .",
-    "desktop": "echo \"Not scaffolded yet — see apps/desktop/README.md (ROADMAP Phase 1).\" && exit 1",
+    "desktop": "npm run dev -w @incudo/desktop",
+    "desktop:app": "npm run tauri:dev -w @incudo/desktop",
+    "desktop:build": "npm run build -w @incudo/desktop",
     "mobile": "echo \"Not scaffolded yet — see apps/mobile/README.md (ROADMAP Phase 4).\" && exit 1"
   },
   "devDependencies": {

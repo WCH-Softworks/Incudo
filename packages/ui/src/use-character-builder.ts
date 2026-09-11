@@ -20,7 +20,9 @@
 import {
   clampProgress,
   deriveCharacter,
+  evaluateRequirements,
   orderBuildSteps,
+  requirementContextFor,
   resolveCharacterKind,
   setBaseStat,
   setChoice,
@@ -31,6 +33,7 @@ import {
   type DerivedCharacter,
   type ElementId,
   type ElementIndex,
+  type RequirementContext,
   type GameSystem,
   type GenerationMethodDef,
   type ResolvedCharacterKind,
@@ -45,9 +48,22 @@ import {
  * happens to be looking, and is answerable in place.
  */
 export interface OpenDecision {
-  /** Stable: the rule key for a select, the budget's stat for a budget. */
+  /** Stable: the rule key for a select or a pick, the budget's stat for a budget. */
   id: string;
-  kind: 'select' | 'budget';
+  /**
+   * `select` is a `<select>` rule content opened. `budget` is a points pool. `pick` is a
+   * **top-level choice no rule asks for** — a 5e character's race, class and background, which
+   * nothing in 740 content files declares a select for because Aurora's app asks for them
+   * directly.
+   *
+   * Without `pick` a required build step reported itself `complete` from the first render with
+   * nothing chosen, and there was no way to choose a class at all — found by running the desktop
+   * shell against the real corpus. The recording convention is not new: a top-level pick has
+   * always been keyed `build/<stepId>` (`tools/incudo/fixtures/aelin` records `"build/kin"`, and
+   * `aurora-import` says so above `OPTIONS_RULE_KEY`). This publishes what the rest of the
+   * project was already writing by hand.
+   */
+  kind: 'select' | 'budget' | 'pick';
   label: string;
   /** Which grouping it belongs to, for presentation. */
   stepId: string;
@@ -62,6 +78,14 @@ export interface OpenDecision {
   openedAt?: number;
   /** A select's remaining picks, or a budget's unspent points. */
   remaining: number;
+  /**
+   * What may be chosen, for a `select` or a `pick`.
+   *
+   * Carried here so a shell never has to reach into `derived.pendingChoices` and re-implement
+   * the filtering — that is the view-model's job, not the view's (CODE-REUSE-POLICY rule 2).
+   * Empty for a `budget`, which assigns numbers rather than elements.
+   */
+  candidates: ElementId[];
 }
 
 /**
@@ -121,6 +145,18 @@ export interface BuilderState {
   steps: BuilderStep[];
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
+}
+
+/**
+ * The rule key a top-level pick is recorded under.
+ *
+ * Not an `<element>/select:<name>` key, because no element declares a select for a 5e character's
+ * race — Aurora's app asks for it directly. The convention predates this function: the committed
+ * fixture save records `"ruleKey": "build/kin"`, and `aurora-import` documents the same shape
+ * above `OPTIONS_RULE_KEY`.
+ */
+export function pickRuleKey(stepId: string): string {
+  return `build/${stepId}`;
 }
 
 export class CharacterBuilder {
@@ -224,6 +260,11 @@ export class CharacterBuilder {
       for (const type of step.types) if (!stepForType.has(type)) stepForType.set(type, step.id);
     }
 
+    // The engine's own view of what this character has and what its stats read. Built once per
+    // computation and borrowed from core rather than reimplemented, so a candidate this offers
+    // is one the derivation will accept.
+    const requirementContext: RequirementContext = requirementContextFor(derived);
+
     const decisions: OpenDecision[] = derived.pendingChoices.map((choice) => ({
       id: choice.ruleKey,
       kind: 'select',
@@ -233,7 +274,37 @@ export class CharacterBuilder {
       from: choice.from,
       openedAt: choice.level,
       remaining: choice.remaining,
+      candidates: choice.candidates,
     }));
+
+    // Top-level picks — the race, class and background nothing declares a select for.
+    //
+    // Only `required` steps, and never a `perLevel` one: what a level was spent on is
+    // `Character.advancement` and belongs to `setProgress` (ADR 0015), not to a choice. Steps
+    // that are neither — equipment, spells, details — are left alone rather than given an
+    // invented decision, because the bag (ADR 0024) and content's own selects already own them.
+    for (const step of this.steps) {
+      if (!step.required || step.perLevel || !step.types.length) continue;
+      const ruleKey = pickRuleKey(step.id);
+      if (this.character.choices.some((c) => c.ruleKey === ruleKey && c.elementIds.length)) continue;
+
+      decisions.push({
+        id: ruleKey,
+        kind: 'pick',
+        label: step.label,
+        stepId: step.id,
+        blocking: true,
+        remaining: 1,
+        candidates: step.types.flatMap((type) =>
+          this.elements
+            .byType(type)
+            // The element's own `requirements` — the Human Variant is only offered when the
+            // campaign uses feats. Same filter `candidatesFor` applies to a select's pool.
+            .filter((element) => evaluateRequirements(element.requirements, requirementContext))
+            .map((element) => element.id),
+        ),
+      });
+    }
 
     const budgets = new Map<string, BudgetState>();
     for (const step of this.steps) {
@@ -256,6 +327,8 @@ export class CharacterBuilder {
           // shell that wants to phrase it precisely reads that instead.
           remaining:
             state.pooled && state.remaining > 0 ? state.remaining : state.unassigned.length,
+          // A budget assigns numbers, not elements.
+          candidates: [],
         });
       }
     }

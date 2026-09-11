@@ -177,9 +177,67 @@ test('a step whose dependency is unmet is unavailable, and says which step would
 });
 
 test('an available step with nothing outstanding is complete', () => {
-  const kit = builder(indexWith()).getState().steps.find((s) => s.id === 'kit');
+  // "extras" is the only step here that is neither required nor budgeted, so it is the only
+  // one that can be complete with nothing done to it.
+  const extras = builder(indexWith()).getState().steps.find((s) => s.id === 'extras');
+  assert.equal(extras?.available, true);
+  assert.equal(extras?.complete, true);
+});
+
+// --- top-level picks --------------------------------------------------------
+
+test('a required step with nothing picked is not complete, and says what may be picked', () => {
+  // The bug the desktop shell found on its first run: "kit" is required and names a type, no
+  // content declares a `<select>` for it, so it produced no decision and reported itself
+  // complete from the first render. A character could not choose a class at all.
+  const b = builder(indexWith(element('W1', 'Widget'), element('W2', 'Widget')));
+  const kit = b.getState().steps.find((s) => s.id === 'kit');
   assert.equal(kit?.available, true);
-  assert.equal(kit?.complete, true);
+  assert.equal(kit?.complete, false, 'nothing has been picked');
+
+  const pick = b.getState().decisions.find((d) => d.kind === 'pick');
+  assert.equal(pick?.id, 'build/kit');
+  assert.equal(pick?.blocking, true);
+  assert.deepEqual(pick?.candidates.sort(), ['W1', 'W2']);
+});
+
+test('answering a pick closes it, under the key the rest of the project already writes', () => {
+  const b = builder(indexWith(element('W1', 'Widget')));
+  b.choose('build/kit', ['W1']);
+
+  const state = b.getState();
+  assert.deepEqual(state.decisions.filter((d) => d.kind === 'pick'), []);
+  assert.equal(state.steps.find((s) => s.id === 'kit')?.complete, true);
+  // Seeded like any other choice, so the picked element is really in the derivation.
+  assert.ok(state.derived.elementIds.has('W1'));
+  // `build/<stepId>` is the convention the committed fixture save and aurora-import use.
+  assert.ok(state.character.choices.some((c) => c.ruleKey === 'build/kit'));
+});
+
+test('a pick offers only elements whose own requirements are met', () => {
+  // The Human Variant case: an element gated on a campaign option is not offered until the
+  // option is on. Filtered through the engine's own context, not a second copy of it.
+  const gated = element('W2', 'Widget');
+  gated.requirements = { kind: 'has', id: 'OPTION' };
+
+  const b = builder(indexWith(element('W1', 'Widget'), gated, element('OPTION', 'Gadget')));
+  assert.deepEqual(b.getState().decisions.find((d) => d.kind === 'pick')?.candidates, ['W1']);
+
+  b.choose('build/options', ['OPTION']);
+  assert.deepEqual(
+    b.getState().decisions.find((d) => d.kind === 'pick')?.candidates.sort(),
+    ['W1', 'W2'],
+  );
+});
+
+test('an optional step is never a pick, because declining it is an answer', () => {
+  // "extras" names a type and is not required. Publishing a blocking decision for it would
+  // make a character who wants no gadgets permanently unfinished.
+  const b = builder(indexWith(element('G1', 'Gadget')));
+  assert.deepEqual(
+    b.getState().decisions.filter((d) => d.stepId === 'extras'),
+    [],
+  );
 });
 
 // --- the budget -------------------------------------------------------------

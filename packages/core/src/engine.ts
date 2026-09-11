@@ -119,6 +119,12 @@ export interface DerivedCharacter {
   stats: Map<StatKey, ResolvedStat>;
   pendingChoices: PendingChoice[];
   problems: Problem[];
+  /**
+   * What the character's slots hold — ADR 0025. Carried on the result because it is computed
+   * once, before the fixed point, and because a sheet and a candidate filter both want it
+   * without resolving the bag a second time.
+   */
+  equipment: EquipmentState;
 }
 
 export interface DeriveOptions {
@@ -285,6 +291,7 @@ export function deriveCharacter(
     elementIds: new Set(active.keys()),
     stats,
     pendingChoices,
+    equipment,
     // The derivation is a fixed point, so an unresolvable grant is discovered again on
     // every pass. The user has one broken reference, not four, and should be told once.
     problems: dedupeProblems(problems),
@@ -329,6 +336,22 @@ function makeContext(
     statTags: (stat) => equipment.tags.get(stat.toLowerCase()),
     hasFlag: (name) => stats.has(name.toLowerCase()),
   };
+}
+
+/**
+ * A requirement context over a **finished** derivation.
+ *
+ * `makeContext` above builds one per pass, out of the maps that pass is still filling. This one
+ * is for callers outside the fixed point — a builder asking "which races may this character
+ * take?" — and reads the settled result instead.
+ *
+ * Exported so the UI layer cannot grow a second, subtly different answer to the same four
+ * questions. A candidate list filtered by a context that disagreed with the engine's would offer
+ * the user an option the derivation then refuses, which is the worst kind of wrong.
+ */
+export function requirementContextFor(derived: DerivedCharacter): RequirementContext {
+  const active = new Map(derived.elements.map((element) => [element.id, element]));
+  return makeContext(active, derived.stats, derived.character, derived.kind, derived.equipment);
 }
 
 function addElement(

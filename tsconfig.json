@@ -1,10 +1,23 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/aurora-import" },
-    { "path": "./packages/content" },
-    { "path": "./packages/ui" },
-    { "path": "./tools/incudo" }
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/aurora-import"
+    },
+    {
+      "path": "./packages/content"
+    },
+    {
+      "path": "./packages/ui"
+    },
+    {
+      "path": "./tools/incudo"
+    },
+    {
+      "path": "./apps/desktop"
+    }
   ]
 }
