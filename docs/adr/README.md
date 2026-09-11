@@ -39,3 +39,4 @@ new one that supersedes it.
 | [0023](./0023-attunement-gates-and-reports.md) | Attunement gates an item's rules, and every gate explains itself | Accepted |
 | [0024](./0024-inventory-is-a-list-of-instances.md) | A character's inventory is a list of item instances, and the save format moves to 2 | Accepted (amends 0006) |
 | [0025](./0025-slots-publish-tags.md) | A slot publishes a set of tags, and `equipped` starts being evaluated | Accepted |
+| [0026](./0026-armour-class-is-derived-and-checked-by-nobody.md) | Armour class is derived from a published rule, and nothing checks it | Accepted |
