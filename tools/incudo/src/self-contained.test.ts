@@ -133,6 +133,14 @@ test('the embedded subset is a subset, and the parts that matter are in it', asy
     assert.ok(ids.includes(id), `${id} should be embedded`);
   }
 
+  // The bag, and the whole bag (ADR 0024). The coat is worn, the weave adorns it, and the net
+  // is only carried — nothing grants, selects or requires any of the three, so each is here
+  // solely because the collector seeds from the inventory. Leaving the carried one out would
+  // produce a save that opens with an empty pocket and says nothing about it.
+  for (const id of ['ID_GEAR_TIDEWALKERS_COAT', 'ID_GEAR_TIDESILK_WEAVE', 'ID_GEAR_NET']) {
+    assert.ok(ids.includes(id), `${id} should be embedded`);
+  }
+
   // Content the character never touches is not along for the ride.
   for (const id of ['ID_FILLER_A', 'ID_FILLER_E', 'ID_KNACK_DIVER'.replace('DIVER', 'NOPE')]) {
     assert.ok(!ids.includes(id), `${id} should not be embedded`);

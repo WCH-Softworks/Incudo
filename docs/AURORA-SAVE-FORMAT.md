@@ -120,7 +120,7 @@ than a per-element mismatch.
 | `<sources><restricted>` | inverted, then discarded | a blocklist is the wrong thing to keep |
 | nested `id=` nodes, `<sum>`, `<magic>`, `<display-properties>` | **nothing** | derived; re-derived instead |
 | `class=` on a `Level` node | `advancement` | the only record of a multiclass split ([ADR 0015](./adr/0015-class-levels.md)) |
-| `<equipment>` | **nothing yet** | no inventory in the model — Phase 2 |
+| `<equipment>` | **nothing yet**; `inventory` exists to receive it | the model landed with [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md); the importer filling it is step 2 |
 
 Three details that are not obvious from the format:
 

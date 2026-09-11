@@ -71,6 +71,8 @@ opaque strings declared by `systems/<id>/system.json` (ADR 0003).
 inputs with no formula: recorded random results (`rolls`, ADR 0007) and starting values the
 user set (`baseStats`, ADR 0014). `baseStats` is a *base* that contributions add to;
 `overrides` wins over everything and is a repair tool, not a place to put ability scores.
+`inventory` (ADR 0024) is an input of the same family — what the user is carrying, which no
+formula produces — and it is a list of instances rather than a set of element ids.
 
 **A save must open with zero content sources** (ADR 0012). `.incu` is a zip embedding the
 element subset the character uses, plus assets as real bytes. This is the product requirement,
@@ -149,11 +151,11 @@ Working: core engine, Aurora content **and save** importer, content sources, CLI
 definitions, the `.incu` container, the JSON Schemas and the validator behind them.
 Not started: both app shells (only their `platform.ts` contracts exist).
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017 and 0018 are implemented, and **Phase 1 is done — `packages/aurora-import`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018 and 0024 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
-`advancement`, `generation` and `assets`. A `.incu` is a zip of `manifest.json` + `character.json` + `content.json` + `assets/`,
+`advancement`, `generation`, `inventory` and `assets`. A `.incu` is a zip of `manifest.json` + `character.json` + `content.json` + `assets/`,
 readable and writable as an unpacked folder too, and `incudo character verify` proves a save
 re-derives identically with zero sources configured.
 
@@ -214,9 +216,21 @@ there is no `armor` stat, so `[armor:none]` reads *false* for a character wearin
 costs a monk their Unarmoured Defence and an armoured fighter the Defense fighting style. It
 waits for inventory; do not wire it up early.
 
-**Inventory and armour class are planned, not started** — `docs/INVENTORY-AND-AC-PLAN.md`, five
-steps with the evidence behind each. Read it before touching either, and in particular before
-adding an `ac` derivation on its own: `ac` is `default: 10` with nothing derived, and it stays
+**A bag is a list of instances, and the container embeds all of it** (ADR 0024). `Character`
+gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
+after `baseStats`, `advancement` and `generation` each stayed at 1. Readers accept both. Three
+things in the shape are measurements, not taste: an entry is an **instance** (one save carries two
+greatswords with different enchantments, so an element-keyed bag loses a real character's items);
+`slot` is an **override** and normally absent (the saves' `location` agrees with the element's own
+`slot` setter 15 times out of 15); and adorners **nest** with no id of their own (Aurora gives them
+none, and minting one would make an import non-deterministic). `collectCharacterContent` seeds
+from every entry **including the carried ones** — that asymmetry is deliberate, because only the
+*equipped* ones will seed the derivation at step 3. Nothing derives from the bag yet, and step 1
+moved no baseline.
+
+**Inventory steps 2–5 are planned, not started** — `docs/INVENTORY-AND-AC-PLAN.md`, five
+steps with the evidence behind each, of which step 1 is done. Read it before touching either,
+and in particular before adding an `ac` derivation on its own: `ac` is `default: 10` with nothing derived, and it stays
 that way until a character can wear armour, because 64 of the corpus's AC rules are gated on
 what is equipped. Two things from it worth knowing without opening it. **Equipped means derived
 and carried means nothing** — 26 of 26 equipped items across the nine saves are in Aurora's

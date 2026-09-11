@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "id": "fixed-id-for-a-stable-test",
   "systemId": "fixture",
   "kind": "hero",
@@ -38,5 +38,24 @@
   },
   "freeform": {},
   "createdAt": "2026-01-01T00:00:00.000Z",
-  "updatedAt": "2026-01-02T00:00:00.000Z"
+  "updatedAt": "2026-01-02T00:00:00.000Z",
+  "inventory": [
+    {
+      "instanceId": "fixed-instance-coat",
+      "elementId": "ID_GEAR_TIDEWALKERS_COAT",
+      "equipped": true,
+      "attuned": true,
+      "adorners": [
+        {
+          "elementId": "ID_GEAR_TIDESILK_WEAVE"
+        }
+      ],
+      "name": "Swiftpursuit"
+    },
+    {
+      "instanceId": "fixed-instance-net",
+      "elementId": "ID_GEAR_NET",
+      "quantity": 3
+    }
+  ]
 }

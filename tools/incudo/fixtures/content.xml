@@ -87,6 +87,28 @@
   <element name="Spear" type="Gear" source="Fixture" id="ID_GEAR_SPEAR" />
   <element name="Net" type="Gear" source="Fixture" id="ID_GEAR_NET" />
 
+  <!--
+    Reachable only through the bag (ADR 0024). Nothing grants, selects or requires either, so
+    if `collectCharacterContent` did not seed from the inventory they would be absent from
+    the save — which is the ADR 0012 failure, and invisible until someone opened the file
+    with no sources. The coat is worn and the weave adorns it; the Net is merely carried, and
+    is embedded all the same.
+  -->
+  <element name="Tidewalker's Coat" type="Gear" source="Fixture" id="ID_GEAR_TIDEWALKERS_COAT">
+    <setters>
+      <set name="slot">body</set>
+    </setters>
+    <rules>
+      <stat name="guard" value="2" bonus="armour" />
+    </rules>
+  </element>
+
+  <element name="Tidesilk Weave" type="Gear" source="Fixture" id="ID_GEAR_TIDESILK_WEAVE">
+    <rules>
+      <stat name="guard" value="1" bonus="armour" />
+    </rules>
+  </element>
+
   <element name="River Drake" type="Beast" source="Fixture" id="ID_BEAST_RIVER_DRAKE">
     <rules>
       <grant type="Beast Action" id="ID_ACTION_BITE" />

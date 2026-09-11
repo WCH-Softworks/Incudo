@@ -9,7 +9,13 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createCharacter, setChoice, setRoll, type Character } from '@incudo/core';
+import {
+  createCharacter,
+  setChoice,
+  setInventoryEntry,
+  setRoll,
+  type Character,
+} from '@incudo/core';
 
 export const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 export const GOLDEN_DIR = join(FIXTURES_DIR, 'aelin');
@@ -25,6 +31,23 @@ export function fixtureCharacter(): Character {
   character = setChoice(character, 'ID_CALLING_WARDEN/select:Starting Gear', ['ID_GEAR_SPEAR']);
   character = setRoll(character, 'wounds:level:2', 5);
   character = setRoll(character, 'wounds:level:3', 3);
+  // A bag with one of each shape ADR 0024 has to carry: an equipped item with an adornment
+  // and a name of its own, and a carried stack. Neither element is reachable any other way,
+  // so the golden container proves the collector seeds from the inventory — and proves it
+  // does not stop at the equipped ones.
+  character = setInventoryEntry(character, {
+    instanceId: 'fixed-instance-coat',
+    elementId: 'ID_GEAR_TIDEWALKERS_COAT',
+    equipped: true,
+    attuned: true,
+    adorners: [{ elementId: 'ID_GEAR_TIDESILK_WEAVE' }],
+    name: 'Swiftpursuit',
+  });
+  character = setInventoryEntry(character, {
+    instanceId: 'fixed-instance-net',
+    elementId: 'ID_GEAR_NET',
+    quantity: 3,
+  });
   character.updatedAt = '2026-01-02T00:00:00.000Z';
   return character;
 }

@@ -5,9 +5,12 @@
  * from them. No AC, no HP total, no spell slots. See docs/adr/0006 — including the
  * costs, which are real.
  *
- * One exception, and it is a principled one: **recorded random results are inputs**
- * (ADR 0007). A die roll has no formula, so re-deriving it would silently reroll it.
- * Those live in `rolls`.
+ * The exceptions are all one principled thing: **an input with no formula is stored**.
+ * A die roll would be silently rerolled if it were derived (`rolls`, ADR 0007); so would an
+ * ability score the user bought (`baseStats`, ADR 0014), the class each level went to
+ * (`advancement`, ADR 0015), the method a build step used (`generation`, ADR 0017), and what
+ * the character is carrying (`inventory`, ADR 0024). None of them is a *number the rules
+ * produce*, which is what ADR 0006 is actually about.
  */
 
 import type { ElementId, StatKey } from './model.ts';
@@ -44,8 +47,65 @@ export interface Choice {
   elementIds: ElementId[];
 }
 
+/**
+ * A magic item attached to another item: a Frost Brand on a greatsword — ADR 0024.
+ *
+ * It nests rather than being a flat entry with a parent reference, because that is what the
+ * saves are: 15 adornments across nine characters, at most one per host, never nested, and
+ * never carried on their own. Nesting makes an orphan unrepresentable instead of merely
+ * invalid, and an adornment follows its host without a second bookkeeping step.
+ *
+ * It has no `instanceId` of its own. Aurora gives adorners no identity, so minting one would
+ * mean the importer inventing ids — and inventing them makes an import non-deterministic. An
+ * adornment is addressed by its host and its element.
+ */
+export interface Adornment {
+  elementId: ElementId;
+}
+
+/**
+ * One thing in the bag — an **instance**, not a reference to an element (ADR 0024).
+ *
+ * That distinction is measured, not assumed: one of the nine sample saves carries two
+ * greatswords with different enchantments, so anything keyed by element id loses a real
+ * character's real items.
+ */
+export interface InventoryEntry {
+  /** Unique within this character. Aurora's `identifier` GUID, when the entry came from one. */
+  instanceId: string;
+  elementId: ElementId;
+  /**
+   * How many identical copies this row stands for. Omitted means 1, and the derivation reads
+   * the entry once however large it is — ten arrows are not ten contributions.
+   */
+  quantity?: number;
+  /** Worn or wielded. Omitted means carried, which is a different thing entirely. */
+  equipped?: boolean;
+  /**
+   * Where it went, **only when that is not what the element itself says**.
+   *
+   * Content declares a slot on 1,070 elements, and across all 26 equipped items in the nine
+   * saves the recorded location agrees with it every time. So this is an override — a shield
+   * in the off hand, a versatile weapon in both — and is normally absent.
+   */
+  slot?: string;
+  /**
+   * Attuned, covering this entry and its adornment together. Aurora has no per-adorner flag
+   * and neither does this: 5 of the adorners that require attunement are recorded by a flag
+   * on their host, which is also what the rulebook means (ADR 0023).
+   */
+  attuned?: boolean;
+  adorners?: Adornment[];
+  /** The user's own name for this one, not a copy of the element's. */
+  name?: string;
+  notes?: string;
+}
+
 export interface Character {
-  formatVersion: 1;
+  /**
+   * 1 before an inventory existed, 2 since (ADR 0024). Readers accept both; writers write 2.
+   */
+  formatVersion: 1 | 2;
   id: string;
   systemId: string;
   /** Which of the system's character kinds this is: "pc", "npc", … — ADR 0009. */
@@ -97,6 +157,14 @@ export interface Character {
    * rolled 15 from a bought one and would have to offer both readings.
    */
   generation?: Record<string, string>;
+  /**
+   * What the character is carrying and wearing — ADR 0024.
+   *
+   * The seventh input, and an input in exactly the sense ADR 0006 means: the user put it
+   * there and no formula produces it. Every entry's element is embedded in the save, carried
+   * ones included, or the bag cannot be read without sources and ADR 0012 quietly breaks.
+   */
+  inventory?: InventoryEntry[];
   /** Free text the rules never touch: notes, appearance, backstory. */
   freeform: Record<string, string>;
   /**
@@ -113,6 +181,12 @@ export interface Character {
   updatedAt?: string;
 }
 
+/**
+ * What a writer writes. 1 is still read, and is a character from before inventories
+ * existed — see ADR 0024 for why this moved when three additive fields before it did not.
+ */
+export const CHARACTER_FORMAT_VERSION = 2;
+
 export interface CreateCharacterOptions {
   name?: string;
   kind?: string;
@@ -125,7 +199,7 @@ export function createCharacter(
   options: CreateCharacterOptions = {},
 ): Character {
   return {
-    formatVersion: 1,
+    formatVersion: CHARACTER_FORMAT_VERSION,
     id: cryptoRandomId(),
     systemId,
     kind,
@@ -207,6 +281,69 @@ export function setGenerationMethod(
     generation: empty ? undefined : generation,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/** Mint an id for a new bag entry. The importer uses Aurora's `identifier` instead. */
+export function newInstanceId(): string {
+  return cryptoRandomId();
+}
+
+export function getInventoryEntry(
+  character: Character,
+  instanceId: string,
+): InventoryEntry | undefined {
+  return character.inventory?.find((entry) => entry.instanceId === instanceId);
+}
+
+/**
+ * Add an entry, or replace the one with the same `instanceId` **in place** — a re-equipped
+ * item should not jump to the bottom of the bag.
+ *
+ * This is the one mutator that moves `formatVersion`, because it is the one that makes the
+ * file need a reader that understands inventories (ADR 0024). Nothing downgrades it.
+ */
+export function setInventoryEntry(character: Character, entry: InventoryEntry): Character {
+  const existing = character.inventory ?? [];
+  const at = existing.findIndex((e) => e.instanceId === entry.instanceId);
+  const inventory =
+    at === -1 ? [...existing, entry] : existing.map((e, i) => (i === at ? entry : e));
+  return {
+    ...character,
+    formatVersion: CHARACTER_FORMAT_VERSION,
+    inventory,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Drop an entry and its adornments with it. An empty bag becomes absent rather than `[]`, so
+ * a character that never had one is byte-identical to one that had an item and lost it.
+ */
+export function removeInventoryEntry(character: Character, instanceId: string): Character {
+  const inventory = (character.inventory ?? []).filter((e) => e.instanceId !== instanceId);
+  return {
+    ...character,
+    inventory: inventory.length ? inventory : undefined,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Every element the bag names — entries and their adornments, **equipped or not**.
+ *
+ * The seed `collectCharacterContent` needs, and the reason it is not filtered to what is
+ * equipped: a save whose carried Frost Brand cannot be read is a broken save under ADR 0012.
+ * Only the derivation cares which items are in play; the container cares about all of them.
+ */
+export function inventoryElementIds(character: Character): ElementId[] {
+  const ids: ElementId[] = [];
+  for (const entry of character.inventory ?? []) {
+    if (!ids.includes(entry.elementId)) ids.push(entry.elementId);
+    for (const adornment of entry.adorners ?? []) {
+      if (!ids.includes(adornment.elementId)) ids.push(adornment.elementId);
+    }
+  }
+  return ids;
 }
 
 export function chosenElementIds(character: Character): ElementId[] {

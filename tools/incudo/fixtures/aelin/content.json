@@ -139,12 +139,82 @@
       }
     },
     {
+      "id": "ID_GEAR_NET",
+      "type": "Gear",
+      "name": "Net",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
       "id": "ID_GEAR_SPEAR",
       "type": "Gear",
       "name": "Spear",
       "source": "Fixture",
       "setters": {},
       "rules": [],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_GEAR_TIDESILK_WEAVE",
+      "type": "Gear",
+      "name": "Tidesilk Weave",
+      "source": "Fixture",
+      "setters": {},
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "guard",
+          "value": {
+            "kind": "number",
+            "value": 1
+          },
+          "bonus": "armour",
+          "inline": false
+        }
+      ],
+      "supports": [],
+      "origin": {
+        "sourceId": "fixture",
+        "fileUrl": "fixture/content.xml",
+        "format": "aurora"
+      }
+    },
+    {
+      "id": "ID_GEAR_TIDEWALKERS_COAT",
+      "type": "Gear",
+      "name": "Tidewalker's Coat",
+      "source": "Fixture",
+      "setters": {
+        "slot": {
+          "value": "body"
+        }
+      },
+      "rules": [
+        {
+          "kind": "stat",
+          "key": "stat-0",
+          "name": "guard",
+          "value": {
+            "kind": "number",
+            "value": 2
+          },
+          "bonus": "armour",
+          "inline": false
+        }
+      ],
       "supports": [],
       "origin": {
         "sourceId": "fixture",

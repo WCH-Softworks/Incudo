@@ -57,7 +57,9 @@ export function validateCharacter(
   value: unknown,
   schemas: SchemaBundle,
 ): ValidationResult<Character> {
-  return result(value as Character, validateJson(value, schemas.character));
+  const errors = validateJson(value, schemas.character);
+  if (errors.length === 0) errors.push(...checkCharacterReferences(value as Character));
+  return result(value as Character, errors);
 }
 
 export function validateManifest(
@@ -74,6 +76,31 @@ export function validateManifest(
 
 function result<T>(value: T, errors: SchemaError[]): ValidationResult<T> {
   return { valid: errors.length === 0, value: errors.length === 0 ? value : undefined, errors };
+}
+
+/**
+ * The one thing about a character the schema cannot say: `instanceId` is unique.
+ *
+ * It matters because it is an address. `setInventoryEntry` replaces by it and a UI keys rows
+ * by it, so two entries sharing one is a file where editing an item changes a different item
+ * (ADR 0024). Everything else about a character is either structural — which the schema
+ * checks — or a reference into content, which the save deliberately does not have loaded.
+ */
+function checkCharacterReferences(character: Character): SchemaError[] {
+  const errors: SchemaError[] = [];
+  const seen = new Set<string>();
+  const inventory = character.inventory ?? [];
+  for (let i = 0; i < inventory.length; i++) {
+    const id = inventory[i]!.instanceId;
+    if (seen.has(id)) {
+      errors.push({
+        path: `inventory[${i}].instanceId`,
+        message: `"${id}" is already used by another item — instance ids must be unique`,
+      });
+    }
+    seen.add(id);
+  }
+  return errors;
 }
 
 /**

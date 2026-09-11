@@ -5,12 +5,12 @@
   "characterKind": "hero",
   "characterId": "fixed-id-for-a-stable-test",
   "name": "Aelin of the Reeds",
-  "elementCount": 10,
+  "elementCount": 13,
   "assets": [],
   "sources": [],
   "integrity": {
-    "character.json": "sha256-915652d150cd8274ce328d6952b868c1a6ee3f367bb955e76fc1667348d9bb11",
-    "content.json": "sha256-6b0dd119c269dc503e8e045e6bf573375f2835562a065738b85fd9d87b1a84c5"
+    "character.json": "sha256-bbf4b894e195f6723130f75e1593c3d3d093be69eb4f178bddd5ae8b62208547",
+    "content.json": "sha256-7f682503cafd39fca871eba5bc4f2aa58cfdf74049ecd45c1816aa01226e852b"
   },
   "generator": "incudo-fixtures",
   "created": "2026-01-01T00:00:00.000Z",

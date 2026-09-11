@@ -249,6 +249,59 @@ test('a character and a manifest validate against their own schemas', async () =
   );
 });
 
+test('an inventory validates as instances, and a duplicate instance id does not', async () => {
+  const schemas = await loadSchemas();
+  const character = createCharacter('dnd5e', 'pc', { name: 'Vigaro', progress: 3 });
+
+  const bag = [
+    {
+      instanceId: 'one',
+      elementId: 'ID_WOTC_PHB_WEAPON_GREATSWORD',
+      equipped: true,
+      attuned: true,
+      adorners: [{ elementId: 'ID_WOTC_DMG_MAGIC_ITEM_FROST_BRAND' }],
+    },
+    { instanceId: 'two', elementId: 'ID_WOTC_PHB_WEAPON_GREATSWORD', quantity: 2 },
+  ];
+  assert.deepEqual(validateCharacter({ ...character, inventory: bag }, schemas).errors, []);
+
+  // A character written before ADR 0024 still opens.
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 3 }, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2' },
+  ]);
+
+  // The check no JSON Schema can express: an instance id is an address, so two entries
+  // sharing one is a file where editing an item changes a different item (ADR 0024).
+  assert.deepEqual(
+    validateCharacter(
+      { ...character, inventory: [bag[0], { ...bag[1], instanceId: 'one' }] },
+      schemas,
+    ).errors,
+    [
+      {
+        path: 'inventory[1].instanceId',
+        message: '"one" is already used by another item — instance ids must be unique',
+      },
+    ],
+  );
+
+  // An adornment has no identity of its own, on purpose — Aurora gives it none.
+  assert.deepEqual(
+    validateCharacter(
+      { ...character, inventory: [{ ...bag[0], adorners: [{ elementId: 'X', instanceId: 'y' }] }] },
+      schemas,
+    ).errors,
+    [{ path: 'inventory[0].adorners[0].instanceId', message: 'is not a known field' }],
+  );
+
+  // A stack is a count, and half an arrow is not a thing.
+  assert.deepEqual(
+    validateCharacter({ ...character, inventory: [{ ...bag[1], quantity: 1.5 }] }, schemas).errors,
+    [{ path: 'inventory[0].quantity', message: 'must be an integer, not a number' }],
+  );
+});
+
 test('a requires or budget that points nowhere is caught before the app loads it', async () => {
   assert.deepEqual(
     await errorsFor(broken((s) => (s.characterKinds[0]!.buildSteps![0]!.requires = ['ghost']))),

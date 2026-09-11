@@ -23,7 +23,7 @@
  */
 
 import type { Character, SourceRef } from './character.ts';
-import { advancementElementIds, chosenElementIds } from './character.ts';
+import { advancementElementIds, chosenElementIds, inventoryElementIds } from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { referencedElementIds } from './engine.ts';
 import { baselineElementIds, type ResolvedCharacterKind } from './system.ts';
@@ -112,8 +112,8 @@ export interface CollectOptions {
 const MAX_EMBEDDED_ELEMENTS = 20000;
 
 /**
- * The transitive closure of everything a character references: chosen, granted, and named
- * by requirements — plus, transitively, everything *those* reference.
+ * The transitive closure of everything a character references: chosen, granted, carried, and
+ * named by requirements — plus, transitively, everything *those* reference.
  *
  * Two decisions worth stating, because both are easy to get subtly wrong:
  *
@@ -146,6 +146,11 @@ export function collectCharacterContent(
     // A second class is named only by `advancement` (ADR 0015) — no select chose it. Leaving
     // these out embeds half a multiclassed character, which is the ADR 0012 failure exactly.
     ...advancementElementIds(character),
+    // The bag, entries and adornments alike, and deliberately **not** filtered to what is
+    // equipped (ADR 0024). A carried Frost Brand is as much part of the character as a worn
+    // one, and a save whose bag cannot be read is a broken save. Step 3's derivation will
+    // read only the equipped ones; that asymmetry is the point, not an oversight.
+    ...inventoryElementIds(character),
     ...(options.kind ? baselineElementIds(options.kind, character.progress) : []),
     ...(options.extraIds ?? []),
   ];

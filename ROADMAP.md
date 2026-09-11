@@ -120,6 +120,8 @@ Each of these is reported by `aurora verify` as `not-modelled` rather than quiet
 
 - **Inventory.** `<equipment>` is read and deliberately not imported — `Character` has no home
   for items, their equipped slot, or attunement. This is the `equipment` build step below.
+  *(The home arrived with [ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md); the
+  importer filling it is step 2, and nothing is derived from it until step 3.)*
 - **Spell slots and spell save DC as stats.** Aurora computes the multiclass slot table in its
   own code; the 5e system definition declares no slot table, no `spellcasting:dc`, and no
   ability-score maximum. *(All three landed: the maximum with ADR 0016, the slot table with
@@ -168,6 +170,15 @@ before any code, both touching a public API:
       [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which
       the first three can be checked against Aurora and the last two cannot. It is the same
       piece of work as the armour class below, and it comes first.
+  - [x] **Step 1 — the model** ([ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md)).
+        `Character.inventory` is a list of *instances*, `character.json`'s `formatVersion` is 2,
+        and the container embeds every entry's element with the carried ones included. Nothing
+        derives from it yet, and no baseline moved — which is the test that step 1 was step 1.
+  - [ ] Step 2 — the importer fills it, plus the 3 proxy ids into `generated-elements.ts`.
+  - [ ] Step 3 — the engine seeds equipped items. **The step the oracle checks**, and the one
+        that deliberately moves 47 `not-modelled` notes into compared elements.
+  - [ ] Steps 4 and 5 — slots publish tags, `equipped=` starts being evaluated, and `ac` gets
+        its derivation. A separate run: step 3 is the last point at which Aurora can referee.
 - [ ] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
       the differential verification could check the moment they existed. Reading the engine
       corrected that on two counts:

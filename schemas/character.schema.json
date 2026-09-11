@@ -10,7 +10,10 @@
   "properties": {
     "$schema": { "type": "string" },
 
-    "formatVersion": { "const": 1 },
+    "formatVersion": {
+      "enum": [1, 2],
+      "description": "1 is a character from before inventories existed; 2 is what a writer writes (ADR 0024). It moved here and not for baseStats, advancement or generation because a reader that cannot see an `inventory` does not merely miss a field: it re-collects content.json without the bag's elements, and the save silently stops being self-contained."
+    },
     "id": { "type": "string", "minLength": 1 },
     "systemId": {
       "type": "string",
@@ -95,6 +98,59 @@
       "type": "object",
       "description": "Which generation method each budgeted build step used, keyed by step id: { \"abilities\": \"point-buy\" } (ADR 0017). An INPUT like rolls, baseStats and advancement, and the one whose only purpose is to make a LATER edit behave sensibly: without it, reopening the abilities decision at level 4 cannot tell a rolled 15 from a bought one and would have to offer both readings.",
       "additionalProperties": { "type": "string" }
+    },
+
+    "inventory": {
+      "type": "array",
+      "description": "What the character carries and wears, as INSTANCES rather than references to elements (ADR 0024). An instance because one of the nine sample saves carries two greatswords with different enchantments — a Vorpal Sword on the carried one, a Frost Brand on the equipped one — so a model keyed by element id loses a real character's real items. An INPUT in the same sense as rolls, baseStats and advancement: the user put it there and no formula produces it. Every entry's element is embedded in the container, CARRIED ONES INCLUDED, or the bag cannot be read without sources and ADR 0012 breaks.",
+      "items": {
+        "type": "object",
+        "required": ["instanceId", "elementId"],
+        "additionalProperties": false,
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique within this character — a duplicate is rejected, because an edit would otherwise hit the wrong item. Aurora's `identifier` GUID, when the entry came from one."
+          },
+          "elementId": { "type": "string", "minLength": 1 },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "How many identical copies this row stands for; absent means 1. A count rather than several instances because the four stacked entries in the sample saves (2, 5, 5, 10) are none of them equipped, attuned or adorned, so a stack never carries per-instance state. The derivation reads the entry once however large it is."
+          },
+          "equipped": {
+            "type": "boolean",
+            "description": "Worn or wielded. Absent means carried, which is a different thing: all 26 equipped items across the nine saves are in Aurora's own derivation and 18 of 19 carried ones are not."
+          },
+          "slot": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Where it went, ONLY when that is not what the element itself says. Content declares a slot on 1,070 elements and the saves agree with it 15 times out of 15, so this is an override — a shield in the off hand, a versatile weapon in both — and is normally absent."
+          },
+          "attuned": {
+            "type": "boolean",
+            "description": "Attuned, covering this entry and its adornment together. Aurora has no per-adorner flag and neither does this (ADR 0023)."
+          },
+          "adorners": {
+            "type": "array",
+            "description": "Magic items attached to this one: a Frost Brand on a greatsword. Nested rather than flat with a parent reference, because that is what the saves are — at most one per host, never nested, never carried alone — and because nesting makes an orphan unrepresentable rather than merely invalid. An adornment has no instanceId: Aurora gives adorners no identity, and minting one would make an import non-deterministic.",
+            "items": {
+              "type": "object",
+              "required": ["elementId"],
+              "additionalProperties": false,
+              "properties": {
+                "elementId": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "name": {
+            "type": "string",
+            "description": "The user's own name for this one — never a copy of the element's, which goes stale: one sample save still calls a Hand Crossbow \"Crossbow, Hand\"."
+          },
+          "notes": { "type": "string" }
+        }
+      }
     },
 
     "freeform": {

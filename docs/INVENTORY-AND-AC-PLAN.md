@@ -1,8 +1,10 @@
 # Inventory and armour class — the plan
 
-**Status:** proposed · 2026-09-10 · nothing here is implemented · **every decision settled
-2026-09-11** — D1 by [ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md),
-D2 by [ADR 0023](./adr/0023-attunement-gates-and-reports.md), D3 below
+**Status:** proposed · 2026-09-10 · **every decision settled 2026-09-11** — D1 by
+[ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md), D2 by
+[ADR 0023](./adr/0023-attunement-gates-and-reports.md), D3 below ·
+**step 1 is done** — [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md), which settled
+the three questions step 1 left open and moved no baseline. Steps 2–5 are not started.
 
 ROADMAP Phase 2 lists **Inventory** and the `ac` derivation as two items. They are one piece
 of work in a fixed order, and this file is the plan asked for before any of it is written.
@@ -174,7 +176,7 @@ confirm nor deny it.
 Five steps. The first three are oracle-backed and should land before the last two, which are
 not.
 
-### Step 1 — `Character.inventory` · ADR · `character.json` formatVersion moves
+### Step 1 — `Character.inventory` · **done**, [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md) · `character.json` formatVersion is 2
 
 The model, and the expensive-to-reverse decision. An entry is an **instance**:
 
@@ -187,6 +189,13 @@ The model, and the expensive-to-reverse decision. An entry is an **instance**:
 
 It is an input, not a derivation, so ADR 0006 is satisfied: the user put it there and no
 formula produces it.
+
+ADR 0024 shipped that shape with three changes, all of them measurements rather than taste.
+`slot` stayed but is an **override**, absent unless the user disagreed with the element — the
+saves' `location` agrees with the element's own `slot` setter 15 times out of 15. `adorners`
+**nest** and carry no `instanceId`, because Aurora gives an adorner no identity and the saves
+never nest one, never carry one alone, and never put two on a host. And an adorner's `name` is
+dropped: 15 of 15 are a byte-for-byte copy of the element's own.
 
 `collectCharacterContent` must embed the elements of **every** entry, carried included — a save
 whose bag cannot be read is a broken save under ADR 0012 — while only equipped entries seed the
