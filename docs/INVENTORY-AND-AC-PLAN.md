@@ -3,8 +3,9 @@
 **Status:** proposed · 2026-09-10 · **every decision settled 2026-09-11** — D1 by
 [ADR 0022](./adr/0022-kinds-contribute-systems-do-not-ship-content.md), D2 by
 [ADR 0023](./adr/0023-attunement-gates-and-reports.md), D3 below ·
-**step 1 is done** — [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md), which settled
-the three questions step 1 left open and moved no baseline. Steps 2–5 are not started.
+**steps 1 and 2 are done** — [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md) settled
+the three questions step 1 left open, and step 2 filled the bag from Aurora. Neither moved a
+baseline. Steps 3–5 are not started.
 
 ROADMAP Phase 2 lists **Inventory** and the `ac` derivation as two items. They are one piece
 of work in a fixed order, and this file is the plan asked for before any of it is written.
@@ -145,11 +146,14 @@ Three findings, each from counting rather than reading:
   equipped with no location at all, and its slot comes from the item's own `slot` setter.
 
 The bag also carries things that are not items. `ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE`
-is how Aurora records the Tome of Clear Thought's permanent +2, and
+is how Aurora records an ability bump the character was simply given, and
 `ID_PHB_INTERNAL_ITEM_LANGUAGE_PROXY_LANGUAGE_ORC` is how it records a learned language. These
 are **the only 3 ids in all nine bags that neither the 740 files nor the 80-element overlay
 declare** — a third family of Aurora-app-materialized elements, the same shape as the two
-already handled.
+already handled. *(Step 2 added them; the overlay is now 83. The ASI proxy is not the Tome of
+Clear Thought, as this paragraph originally said — the Tome is an ordinary corpus element
+carrying its own `+2`, and the proxy grants the overlay's separate `+1`. Both are in arturo's
+bag, which is what made them easy to conflate.)*
 
 ### The oracle is strong for inventory and absent for AC
 
@@ -202,17 +206,44 @@ whose bag cannot be read is a broken save under ADR 0012 — while only equipped
 derivation. This is the same trap the kind's `grants` set: the container walks the character,
 and anything the character references without *choosing* has to be added deliberately.
 
-### Step 2 — the importer fills it · bugfix-shaped under ADR 0008
+### Step 2 — the importer fills it · **done**, bugfix-shaped under ADR 0008
 
-`save.equipment` is already parsed and complete: id, name, amount, equipped, location, attuned,
-adorners. This maps it onto step 1's model and nothing else.
+`save.equipment` was already parsed and nearly complete: id, name, amount, equipped, location,
+attuned, adorners. `toInventory` maps it onto step 1's model and does nothing else. Two fields
+the parser was not yet reading came with it — the `identifier` GUID that becomes `instanceId`,
+and `<details>`, which is where the user's own `name` and `notes` live as opposed to the
+denormalized `name=` attribute.
 
 Not new surface under the freeze: ROADMAP Phase 1 deferred this *by name* — "`<equipment>` is
-read and deliberately not imported — `Character` has no home for items". The home arrives in
+read and deliberately not imported — `Character` has no home for items". The home arrived in
 step 1.
 
 Plus the 3 proxy ids into `generated-elements.ts`, which is the same argument the 80 already
-there were added under.
+there were added under. They are a third family of Aurora-app-materialized elements and the
+first that only a *bag* reveals. Each carries **one grant and nothing else** — the ASI proxy
+grants `ID_INTERNAL_ASI_INTELLIGENCE`, which is already in the overlay carrying its own +1,
+and the two language proxies grant ordinary corpus elements. That is the "the rule is the
+identity" carve-out, not a widening of it, and two independent things say so. Aurora's save
+writes the granted element as the proxy's *only child* in the build tree, so the grant is
+stated rather than inferred. And the corpus declares two proxies of this same family itself
+— `ID_INTERNAL_ITEM_PROXY_FAMILIAR_SELECTION` and `…_COMPANION_SELECTION`, both `type="Item"`,
+both hidden from the sheet, both carrying the one rule they exist for — so a proxy with a rule
+on it is the established shape and not a new one. It does make these the first overlay
+elements to reference content outside the overlay.
+
+**What the real files said.** All 45 instances across the nine saves came across — 26 equipped,
+12 attuned, 15 adorners, 4 stacked rows, 1 user-given name, 0 notes — and every ADR 0024
+measurement held, including the falsifiable one: **`slot` was written zero times**. Both of
+Vigaro's greatswords survive with their different enchantments. All 60 element references the
+bags make are embedded in `content.json`. `aurora verify` moved no count in either direction;
+the only visible change is three `not-modelled` messages losing a `(via "…PROXY…")` clause,
+because the proxies' grants now resolve in the index instead of through the save's own tree.
+
+One gap left deliberately: `toSourceAllowlist` still reads only the decisions and Aurora's
+`<sum>`, so a *carried* item from a book the character draws on nowhere else would not put
+that book in `Character.sources`. No sample save exercises it — every bag element's source is
+already in the allowlist — and a save embeds its bag's content regardless (ADR 0012), so this
+costs only the update path. It belongs with step 3, where the bag starts being read.
 
 ### Step 3 — the engine seeds equipped items · **the step the oracle checks**
 
@@ -298,8 +329,9 @@ to prevent. `system.json`, by contrast, is the one thing a save deliberately doe
 
 So the project has been following a rule without stating it: **identity is embedded, mechanics
 are not.** That is why all seven ids in the 5e kind's `grants` carry zero rules, and why only
-six of the overlay's 80 elements carry any — all six ability score improvements, where the
-rule *is* the identity.
+six of the overlay's 80 elements carried any when this was written — all six ability score
+improvements, where the rule *is* the identity. (Step 2 made it nine of 83, on the same
+argument.)
 
 What this means for the steps below: the inventory work needs **no loader change, no second
 file per system, and no origin filter** in the container or in `aurora verify`. Step 5 gets

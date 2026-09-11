@@ -4,7 +4,7 @@
  * Aurora references a set of ids that no XML file in the corpus declares. They are not typos
  * and not missing content: the Aurora application materializes them itself, so a reader that
  * only reads files sees dangling references and a character sheet full of holes. There are
- * two families, and the second is only visible from a save:
+ * three families, and the last two are only visible from a save:
  *
  *  - **51 the corpus references.** Damage resistances, sizes, the six ability-score bumps,
  *    a dozen behaviour markers. Before this overlay these were 51 of the 57 unresolved
@@ -13,6 +13,11 @@
  *    baseline grants every 5e character carries. No content file mentions them; every one
  *    appears in the `<sum>` block of all eight sample saves, which is Aurora's own record of
  *    a derivation it performed. `ID_SIZE_MEDIUM` is in all eight too.
+ *  - **3 only real *bags* name** — `ITEM_PROXIES` below. Aurora lets a user put a bare
+ *    language or ability bump in the inventory, and materializes an `Item` to hold it.
+ *    These surfaced when the importer started reading `<equipment>` (step 2 of
+ *    docs/INVENTORY-AND-AC-PLAN.md); they are the only ids in the nine sample bags that
+ *    neither the 740 files nor the other 80 declare.
  *
  * This overlay declares them. It is not a content fix: ADR 0005 says the importer never
  * mutates upstream files, so this sits beside the corpus rather than in it, and it is
@@ -241,6 +246,64 @@ const MARKERS: Array<[id: string, type: string, name: string, description: strin
 ];
 
 /**
+ * Inventory proxies: an `Item` whose entire content is that it hands you one other element.
+ *
+ * Aurora's inventory can hold things that are not equipment. "Additional Language, Orc" and
+ * "Additional Ability Score Improvement, Intelligence" are how the app records a language or
+ * an ability bump the character was simply given, and it materializes an Item to hang them
+ * on. All three are `hidden="true"` in the save, are in its `<sum>`, and are declared by no
+ * file in the corpus. They are the only three ids across the nine sample bags that neither
+ * the 740 files nor the 80 elements above declare.
+ *
+ * **Each carries one grant, and the grant is the identity.** This is the same carve-out the
+ * six `ID_INTERNAL_ASI_*` elements sit in and it is not a general licence to put mechanics
+ * here (ADR 0022: an element's rules are frozen into every save that embeds it). An element
+ * called "Additional Language, Orc" that does not give you Orc is not a marker with a
+ * missing mechanic, it is nothing at all. Two independent things say so rather than one:
+ *
+ *  - **The save writes the grant outright**, as the proxy's only child in the build tree:
+ *
+ *    ```xml
+ *    <element type="Item" name="Additional Language, Orc" id="ID_PHB_INTERNAL_ITEM_LANGUAGE_PROXY_LANGUAGE_ORC">
+ *      <element type="Language" name="Orc" id="ID_LANGUAGE_ORC" />
+ *    </element>
+ *    ```
+ *
+ *  - **The corpus declares two proxies of this family itself** —
+ *    `ID_INTERNAL_ITEM_PROXY_FAMILIAR_SELECTION` and `…_COMPANION_SELECTION`, both
+ *    `type="Item"`, both hidden from the sheet, and both carrying the one rule they exist
+ *    for (a `<select>`). So an inventory proxy with a rule on it is the established shape
+ *    and not a new one.
+ *
+ * Nothing about the *size* of the bump is invented here: `ID_INTERNAL_ASI_INTELLIGENCE` is
+ * already in this overlay carrying its +1, and the two languages are ordinary corpus
+ * elements. (The ASI proxy is a distinct thing from the Tome of Clear Thought, which sits in
+ * the same sample bag and carries its own `+2` as an ordinary corpus element.) That makes
+ * these the first overlay elements to reference content outside the overlay, which is worth
+ * knowing: validating an index with no `ID_LANGUAGE_ORC` now reports one more unresolved
+ * reference than it used to. Both language ids are in AuroraLegacy's `core`.
+ *
+ * Nothing derives from them yet — step 2 stores the bag and step 3 seeds it.
+ */
+const ITEM_PROXIES: Array<[id: string, name: string, grants: [type: string, id: string]]> = [
+  [
+    'ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE',
+    'Additional Ability Score Improvement, Intelligence',
+    ['Ability Score Improvement', 'ID_INTERNAL_ASI_INTELLIGENCE'],
+  ],
+  [
+    'ID_PHB_INTERNAL_ITEM_LANGUAGE_PROXY_LANGUAGE_GNOMISH',
+    'Additional Language, Gnomish',
+    ['Language', 'ID_LANGUAGE_GNOMISH'],
+  ],
+  [
+    'ID_PHB_INTERNAL_ITEM_LANGUAGE_PROXY_LANGUAGE_ORC',
+    'Additional Language, Orc',
+    ['Language', 'ID_LANGUAGE_ORC'],
+  ],
+];
+
+/**
  * References that stay unresolved, with what they were meant to say.
  *
  * Kept as data rather than prose so `validate` can tell a known upstream mistake apart from
@@ -363,15 +426,28 @@ export function auroraGeneratedElements(options: GeneratedElementOptions = {}): 
     elements.push(make(sourceId, { id, type, name, description }));
   }
 
+  for (const [id, name, [grantType, grantId]] of ITEM_PROXIES) {
+    elements.push(
+      make(sourceId, {
+        id,
+        type: 'Item',
+        name,
+        description: `Aurora's placeholder for ${name.toLowerCase()}. It has no weight and no cost; all it does is grant ${grantId}.`,
+        rules: [{ kind: 'grant', key: 'grant-0', type: grantType, id: grantId }],
+      }),
+    );
+  }
+
   return elements.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
 /**
  * The element types this overlay introduces that a system definition must declare for its
  * elements to appear anywhere. `Size` and `Condition` exist only here: the corpus grants
- * both types 117 and 350-odd times but never declares an element of either.
+ * both types 117 and 350-odd times but never declares an element of either. `Item` is the
+ * odd one out — the corpus is full of them, and the three inventory proxies simply join it.
  */
-export const GENERATED_ELEMENT_TYPES = ['Size', 'Condition', 'Level', 'Option'];
+export const GENERATED_ELEMENT_TYPES = ['Size', 'Condition', 'Level', 'Option', 'Item'];
 
 interface Spec {
   id: string;

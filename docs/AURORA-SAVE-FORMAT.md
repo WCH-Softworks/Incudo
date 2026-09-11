@@ -31,6 +31,7 @@ Saves are XML. The extension is the system id: `.dnd5e`.
     <abilities available-points="15"> <!-- raw scores -->
     <elements level-count="12" registered-count="52">
                            <!-- THE ACTUAL BUILD: a nested tree -->
+    <equipment>            <!-- the bag: one <item> per instance, plus empty <storage> tags -->
     <sum>                  <!-- DERIVED: every resulting proficiency and feature, flattened -->
     <magic>                <!-- DERIVED: slots, DC, attack bonus, known/prepared spells -->
   <sources>
@@ -62,6 +63,45 @@ The only part that is genuinely input. Two kinds of node:
   names the **multiclass** element (`ID_WOTC_PHB_MULTICLASS_WARLOCK`) rather than the class
   (`ID_WOTC_PHB_CLASS_WARLOCK`); the two are separate elements and both matter. See
   [ADR 0015](./adr/0015-class-levels.md).
+
+### The equipment block
+
+The second genuinely-input part, and the only other one. 45 `<item>` instances across the nine
+sample saves — 26 equipped, 12 attuned, 15 adorned, 4 stacked.
+
+```xml
+<item identifier="42462837-…" name="Half Plate" id="ID_WOTC_ARMOR_MEDIUM_HALF_PLATE" sidebar="true">
+  <equipped location="Armor">true</equipped>
+  <attunement>true</attunement>
+  <items><adorner name="Mithral Armor" id="ID_WOTC_DMG_MAGIC_ITEM_MITHRAL_ARMOR" /></items>
+  <details card="true"><name/><notes/></details>
+</item>
+```
+
+- **`identifier`** — a GUID, present and distinct on all 45. It is what an instance *is*: one
+  save carries two greatswords under one element id with different enchantments.
+- **`amount`** — a stack. 2, 5, 5 and 10 in the corpus, and **none of the four** is equipped,
+  attuned or adorned, so a stack never carries per-instance state.
+- **`<equipped location="…">`** — `Primary Hand`, `Armor` and `Two-Handed` are the only three
+  values, and 11 of the 26 equipped items record no location at all: a cloak, a ring or boots
+  takes its slot from the element's own `slot` setter. Where a location *is* recorded it agrees
+  with that setter 15 times out of 15.
+- **`<attunement>`** — on the item, never on an adorner, and it covers both: 5 of the adorners
+  that require attunement are recorded by a flag on their mundane host.
+- **`<items><adorner>`** — a magic item attached to this one. Never nested, never more than one
+  per host, never carried standalone, and with no `identifier` of its own. Its `name=` is
+  byte-identical to the element's in 15 of 15 cases.
+- **`<details><name>`/`<notes>`** — the user's own words, as opposed to the `name=` attribute,
+  which is a denormalized copy of the element's name and is stale in 1 of 42 known cases. Both
+  tags are written on every item and usually hold nothing but whitespace: 1 of 45 items has a
+  name, 0 have notes.
+- `sidebar`, `hidden`, `card` — display state for a UI that no longer exists. Not modelled.
+- `<storage name="#1" />` — empty in every sample. Aurora's container feature; no save nests an
+  item inside another, so nothing about containers is modelled either.
+
+Three ids in these bags are declared by no content file: two "Additional Language, …" proxies
+and one "Additional Ability Score Improvement, Intelligence". They are Aurora's way of putting
+a bare grant in the inventory, and they are supplied by `generated-elements.ts`.
 
 ## What the files actually contain
 
@@ -120,7 +160,7 @@ than a per-element mismatch.
 | `<sources><restricted>` | inverted, then discarded | a blocklist is the wrong thing to keep |
 | nested `id=` nodes, `<sum>`, `<magic>`, `<display-properties>` | **nothing** | derived; re-derived instead |
 | `class=` on a `Level` node | `advancement` | the only record of a multiclass split ([ADR 0015](./adr/0015-class-levels.md)) |
-| `<equipment>` | **nothing yet**; `inventory` exists to receive it | the model landed with [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md); the importer filling it is step 2 |
+| `<equipment>` | `inventory`, one row per `<item>` | [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md). **Nothing derives from it yet** — that is step 3 |
 
 Three details that are not obvious from the format:
 
@@ -204,8 +244,11 @@ is a check nobody runs.
   expands that in code. One note, not sixty failures.
 - **Anything from the character's inventory**, transitively. A suit of plate brings a stealth
   marker; a Tome of Clear Thought brings +2 Intelligence and therefore +1 to a spell save DC.
-  Incudo has no inventory yet, so its number is lower and is not wrong to be. One sample
-  wizard's DC differs by exactly this, and the report names the tome.
+  Incudo now *stores* the bag but derives nothing from it, so its number is lower and is not
+  wrong to be. One sample wizard's DC differs by exactly this, and the report names the tome.
+  The message still says "Incudo has no inventory yet", which since step 2 is stale in wording
+  and true in substance; step 3 is where the sentence stops being true either way and the
+  47 notes become compared elements.
 - **Content from a source this run did not load.** A statement about which books are enabled.
   When an absence traces back to such an element, the whole subtree is attributed to it —
   a Half-Elf variant that is not loaded takes its Keen Senses and its Perception proficiency

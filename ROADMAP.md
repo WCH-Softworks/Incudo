@@ -81,11 +81,12 @@ this is it.
 - [x] Portrait extraction — decode inline base64 out to a real image file
 - [x] Invert `<sources><restricted>` into a source allowlist — and then discard all but the
       handful the character actually draws on. 37,235 disabled ids become 1–4 source refs.
-- [x] `ID_INTERNAL_*` overlay so those dangling references resolve. It ended up covering **80**
+- [x] `ID_INTERNAL_*` overlay so those dangling references resolve. It ended up covering **83**
       elements, not 45: real saves revealed a second family no content file mentions (twenty
       levels, two campaign options, seven baseline grants). The `ID_SIZE_*` family turned out
       to be generated too, not the upstream typos this file used to call them — they are in
-      all 8 saves' `<sum>`.
+      all 8 saves' `<sum>`. Reading `<equipment>` later found a third family of 3, the
+      inventory proxies — and finding them needed a *bag*, not a reading of the format.
 - [x] **Differential verification**: `incudo aurora verify` re-derives each imported character
       and diffs against the `<sum>` / `<magic>` Aurora itself wrote.
 - [x] Mark `packages/aurora-import` 🔒 **DONE** — bugfix-only from here
@@ -120,8 +121,9 @@ Each of these is reported by `aurora verify` as `not-modelled` rather than quiet
 
 - **Inventory.** `<equipment>` is read and deliberately not imported — `Character` has no home
   for items, their equipped slot, or attunement. This is the `equipment` build step below.
-  *(The home arrived with [ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md); the
-  importer filling it is step 2, and nothing is derived from it until step 3.)*
+  *(The home arrived with [ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md) and
+  the importer now fills it — step 2. Nothing is derived from it until step 3, so these are
+  still `not-modelled`.)*
 - **Spell slots and spell save DC as stats.** Aurora computes the multiclass slot table in its
   own code; the 5e system definition declares no slot table, no `spellcasting:dc`, and no
   ability-score maximum. *(All three landed: the maximum with ADR 0016, the slot table with
@@ -174,7 +176,11 @@ before any code, both touching a public API:
         `Character.inventory` is a list of *instances*, `character.json`'s `formatVersion` is 2,
         and the container embeds every entry's element with the carried ones included. Nothing
         derives from it yet, and no baseline moved — which is the test that step 1 was step 1.
-  - [ ] Step 2 — the importer fills it, plus the 3 proxy ids into `generated-elements.ts`.
+  - [x] **Step 2 — the importer fills it**, plus the 3 inventory proxies into
+        `generated-elements.ts` (80 overlay elements became 83). All 45 item instances across
+        the nine saves come across, and every one of ADR 0024's measurements held on the real
+        files — including its falsifiable one: `slot` was written **zero** times.
+        No `aurora verify` count moved, which is what makes step 3's diff readable.
   - [ ] Step 3 — the engine seeds equipped items. **The step the oracle checks**, and the one
         that deliberately moves 47 `not-modelled` notes into compared elements.
   - [ ] Steps 4 and 5 — slots publish tags, `equipped=` starts being evaluated, and `ac` gets

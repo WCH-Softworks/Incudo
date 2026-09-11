@@ -11,6 +11,7 @@
  * |-----------------------------|-----------------------|----------------------------------|
  * | `registered=` nodes         | `choices`             | the only real input in the file  |
  * | `<abilities>`               | `baseStats`           | ADR 0014                         |
+ * | `<equipment>`               | `inventory`           | ADR 0024                         |
  * | `rndhp`                     | `rolls`               | a die roll has no formula        |
  * | `<input>` / `<appearance>`  | `freeform`            | the rules never read it          |
  * | `<display-properties>` b64  | `assets/portrait.png` | bytes, never base64 (ADR 0007)   |
@@ -32,10 +33,11 @@ import {
   type Element,
   type ElementId,
   type ElementIndex,
+  type InventoryEntry,
   type SourceRef,
 } from '@incudo/core';
 import { decodeBase64, imageExtension } from './base64.ts';
-import type { AuroraSave, SaveDiagnostic } from './parse-save.ts';
+import type { AuroraItem, AuroraSave, SaveDiagnostic } from './parse-save.ts';
 
 export interface ImportCharacterOptions {
   /**
@@ -121,6 +123,8 @@ export function importAuroraCharacter(
   character.rolls = toRolls(save);
   const advancement = toAdvancement(save, options.index, diagnostics);
   if (advancement) character.advancement = advancement;
+  const inventory = toInventory(save, options.index, known, diagnostics);
+  if (inventory) character.inventory = inventory;
   character.freeform = toFreeform(save);
 
   const { assets, assetRefs } = extractPortrait(save, options.portraitName ?? 'portrait', diagnostics);
@@ -416,6 +420,175 @@ function multiclassOwners(index: ElementIndex): Map<string, ElementId> {
     if (id && !owners.has(id)) owners.set(id, element.id);
   }
   return owners;
+}
+
+// --- inventory -------------------------------------------------------------
+
+/**
+ * Aurora's three `<equipped location=…>` strings, against the vocabulary content uses.
+ *
+ * These are the *only* three values in the nine sample saves: everything else — a cloak, a
+ * ring, boots — is equipped with no location at all and takes its slot from the element.
+ * An unrecognised location is reported rather than written through: Aurora's words and
+ * content's words are two vocabularies, and copying one into a field that holds the other
+ * would put "Secondary Hand" where `onehand` belongs.
+ */
+const LOCATION_SLOTS: Record<string, string> = {
+  'Primary Hand': 'onehand',
+  'Two-Handed': 'twohand',
+  Armor: 'body',
+};
+
+/**
+ * `<build><equipment>` -> `Character.inventory` (ADR 0024).
+ *
+ * One row per `<item>`, in the order the save lists them, and nothing is derived from it
+ * here — that is step 3 of docs/INVENTORY-AND-AC-PLAN.md. This step only gives the bag a
+ * home, which is why it moves no `aurora verify` count.
+ *
+ * Four of the mappings are decisions rather than transcription, all settled by ADR 0024:
+ *
+ * - **`instanceId` is Aurora's `identifier`.** All 45 items in the nine saves have one and
+ *   all 45 are distinct, so nothing is minted — minting would make an import
+ *   non-deterministic and the golden fixtures would move on every run. The fallback below
+ *   is derived from the file too, for the same reason.
+ * - **`name` comes from `<details><name>`, not from the `name=` attribute.** The attribute
+ *   is a denormalized copy of the element's own name and is already stale in 1 of 42 known
+ *   cases ("Crossbow, Hand"), so carrying it would ship a wrong name inside a save that
+ *   also embeds the element with the right one.
+ * - **An adorner is a nested `elementId` and nothing else.** Aurora gives it no identity,
+ *   and its `name=` is byte-identical to the element's in 15 of 15 cases.
+ * - **`slot` is written only where Aurora disagrees with the element** — see below.
+ */
+function toInventory(
+  save: AuroraSave,
+  index: ElementIndex | undefined,
+  generated: Set<ElementId>,
+  diagnostics: SaveDiagnostic[],
+): InventoryEntry[] | undefined {
+  if (!save.equipment.length) return undefined;
+
+  const entries: InventoryEntry[] = [];
+  const used = new Set<string>();
+  const unknownLocations = new Set<string>();
+  const missing = new Set<ElementId>();
+  let locatedWithoutIndex = 0;
+
+  save.equipment.forEach((item, position) => {
+    const entry: InventoryEntry = {
+      instanceId: instanceIdFor(item, position, used, diagnostics),
+      elementId: item.id,
+    };
+    // Omitted means 1, and the derivation reads a row once however large it is: ten arrows
+    // are not ten contributions of whatever an arrow contributes (ADR 0024).
+    if (item.amount !== undefined && item.amount !== 1) entry.quantity = item.amount;
+    if (item.equipped) entry.equipped = true;
+
+    const slot = slotOverride(item, index);
+    if (slot === 'no-index') locatedWithoutIndex++;
+    else if (slot) entry.slot = slot;
+    if (item.location && !(item.location in LOCATION_SLOTS)) unknownLocations.add(item.location);
+
+    // One flag covering host and adornment together. Aurora has no per-adorner one, and 5
+    // of the adorners that require attunement are recorded by a flag on their host.
+    if (item.attuned) entry.attuned = true;
+    if (item.adorners.length) entry.adorners = item.adorners.map((a) => ({ elementId: a.id }));
+    if (item.details?.name) entry.name = item.details.name;
+    if (item.details?.notes) entry.notes = item.details.notes;
+    entries.push(entry);
+
+    if (index) {
+      for (const id of [item.id, ...item.adorners.map((a) => a.id)]) {
+        if (!index.get(id) && !generated.has(id)) missing.add(id);
+      }
+    }
+  });
+
+  for (const location of [...unknownLocations].sort()) {
+    diagnostics.push({
+      level: 'warning',
+      message: `"${location}" is not a slot this importer knows, so the item keeps whatever slot its element declares. Check where it ended up.`,
+      where: 'build/equipment',
+    });
+  }
+  if (locatedWithoutIndex) {
+    // The comparison below needs the element, so with no content there is no way to tell an
+    // override from agreement. Saying nothing beats writing a slot that is probably a copy
+    // of the element's own — the same reasoning `toAdvancement` uses for multiclass levels.
+    diagnostics.push({
+      level: 'warning',
+      message: `${locatedWithoutIndex} item(s) record where they are worn, but no content is loaded to compare that against, so no slot was recorded. The elements' own slots will be used.`,
+      where: 'build/equipment',
+    });
+  }
+  for (const id of [...missing].sort()) {
+    diagnostics.push({
+      level: 'warning',
+      message: `The bag holds "${id}", which is not in the loaded content. The item is kept — the source it came from is probably not enabled.`,
+      where: 'build/equipment',
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Aurora's GUID, or something else derived from the file.
+ *
+ * Every item in every sample save has an `identifier`, so the fallback is for homebrew and
+ * for hand-edited files. It has to be deterministic (a minted id would change the bytes of
+ * an imported save on every run) and unique (two entries sharing an `instanceId` is a
+ * validation error under ADR 0024, and a file where an edit hits the wrong row).
+ */
+function instanceIdFor(
+  item: AuroraItem,
+  position: number,
+  used: Set<string>,
+  diagnostics: SaveDiagnostic[],
+): string {
+  const identifier = item.identifier;
+  if (identifier && !used.has(identifier)) {
+    used.add(identifier);
+    return identifier;
+  }
+  if (identifier) {
+    diagnostics.push({
+      level: 'warning',
+      message: `Two items share the identifier "${identifier}"; the second one is numbered by its position instead.`,
+      where: 'build/equipment',
+    });
+  }
+  const fallback = `${item.id}#${position}`;
+  used.add(fallback);
+  return fallback;
+}
+
+/**
+ * Where the item went, **only when that is not what the element itself says** (ADR 0024).
+ *
+ * Content declares a slot on 1,070 elements, and across all 26 equipped items in the nine
+ * saves the recorded `location` agrees with it 15 times out of 15 — the other 11 record no
+ * location at all. So the slot is derived from the element and this field means "the user
+ * put this somewhere the element did not say": a shield in the off hand, a versatile weapon
+ * in both.
+ *
+ * Two elements in the corpus declare a compound slot (`onehand,secondary`), which nothing
+ * in the saves exercises; a location naming one member of the set is agreement, not an
+ * override.
+ *
+ * Returns `'no-index'` rather than a slot when there is content to compare against but none
+ * loaded — the caller turns that into one diagnostic for the whole bag.
+ */
+function slotOverride(item: AuroraItem, index: ElementIndex | undefined): string | undefined | 'no-index' {
+  if (!item.location) return undefined;
+  const slot = LOCATION_SLOTS[item.location];
+  if (!slot) return undefined; // Reported by the caller; never written through.
+  if (!index) return 'no-index';
+
+  const declared = index.get(item.id)?.setters['slot']?.value;
+  if (!declared) return slot; // The element says nothing, so the location is all there is.
+  const members = declared.split(',').map((s) => s.trim());
+  return members.includes(slot) ? undefined : slot;
 }
 
 // --- rolls -----------------------------------------------------------------

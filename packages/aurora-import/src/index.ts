@@ -27,7 +27,7 @@
  *   xml.ts                 a small XML reader for Aurora's narrow dialect
  *   parse-index.ts         `.index` files
  *   parse-elements.ts      elements XML -> `Element`, plus unapplied `<append>` blocks
- *   generated-elements.ts  the 80 elements Aurora's app materializes and no file declares
+ *   generated-elements.ts  the 83 elements Aurora's app materializes and no file declares
  *   base64.ts              portraits out of the XML and into real bytes
  *   parse-save.ts          `.dnd5e` -> a structure, with no interpretation
  *   import-character.ts    that structure -> a `Character`

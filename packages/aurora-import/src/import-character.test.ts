@@ -25,6 +25,11 @@ function element(id: string, type: string, name = id, source = 'Test Book'): Ele
   };
 }
 
+/** An element that declares where it is worn, which is what the bag's `slot` is measured against. */
+function slotted(id: string, type: string, slot: string): Element {
+  return { ...element(id, type), setters: { slot: { value: slot } } };
+}
+
 function index(...elements: Element[]): MapElementIndex {
   const map = new MapElementIndex();
   map.addAll(elements);
@@ -63,6 +68,30 @@ const SAVE = `<character version="1.0.3">
         <element type="List" name="Bond" isList="true" requiredLevel="1" checksum="f" registered="3" />
       </element>
     </elements>
+    <equipment>
+      <storage name="#1" />
+      <item identifier="uuid-blade-worn" name="Blade" id="ID_ITEM_BLADE" sidebar="true">
+        <equipped location="Primary Hand">true</equipped>
+        <attunement>true</attunement>
+        <items><adorner name="Blade" id="ID_MAGIC_SPARKLE" /></items>
+      </item>
+      <item identifier="uuid-blade-spare" name="Blade" id="ID_ITEM_BLADE">
+        <items><adorner name="Blade" id="ID_MAGIC_FROST" /></items>
+        <details card="true"><name>Swiftpursuit</name><notes>Won at cards.</notes></details>
+      </item>
+      <item identifier="uuid-plate" name="Plate" id="ID_ITEM_PLATE">
+        <equipped location="Two-Handed">true</equipped>
+      </item>
+      <item identifier="uuid-hat" name="Hat" id="ID_ITEM_HAT">
+        <equipped location="Nose">true</equipped>
+      </item>
+      <item identifier="uuid-cloak" name="Cloak" id="ID_ITEM_CLOAK">
+        <equipped>true</equipped>
+      </item>
+      <item name="Rations" id="ID_ITEM_RATIONS" amount="7" />
+      <item name="Rations" id="ID_ITEM_RATIONS" amount="1" />
+      <item identifier="uuid-ghost" name="Ghost" id="ID_ITEM_FROM_A_BOOK_YOU_DISABLED" />
+    </equipment>
     <sum element-count="3">
       <element type="Race" id="ID_RACE_TEST" />
       <element type="Racial Trait" id="ID_TRAIT_TEST" />
@@ -87,6 +116,13 @@ const CONTENT = index(
   element('ID_PROF_TWO', 'Proficiency'),
   element('ID_OPTION_CUSTOM_ASI', 'Option'),
   element('ID_INTERNAL_OPTION_ALLOW_FEATS', 'Option'),
+  slotted('ID_ITEM_BLADE', 'Weapon', 'onehand'),
+  slotted('ID_ITEM_PLATE', 'Armor', 'body'),
+  slotted('ID_ITEM_HAT', 'Item', 'head'),
+  slotted('ID_ITEM_CLOAK', 'Item', 'shoulders'),
+  element('ID_ITEM_RATIONS', 'Item'),
+  element('ID_MAGIC_SPARKLE', 'Magic Item'),
+  element('ID_MAGIC_FROST', 'Magic Item'),
 );
 
 function imported() {
@@ -214,6 +250,103 @@ test('an id outside Aurora’s namespace is reported as missing content, not inv
     character.choices.some((c) => c.elementIds.includes('ID_RACE_FROM_A_BOOK_YOU_DISABLED')),
     'and keeps the choice, because the source may simply not be enabled',
   );
+});
+
+// --- inventory (ADR 0024) --------------------------------------------------
+
+test('the bag comes across one row per item, and a save that has one is format 2', () => {
+  const { character } = imported();
+  assert.equal(character.formatVersion, 2);
+  assert.equal(character.inventory!.length, 8, 'every item, carried ones included');
+});
+
+test('two instances of one element stay two rows, with their own enchantments', () => {
+  // The measured case: one of the nine sample saves carries two greatswords, a Vorpal Sword
+  // on the carried one and a Frost Brand on the equipped one. Keying the bag by element id
+  // loses that on the first real character.
+  const blades = imported().character.inventory!.filter((e) => e.elementId === 'ID_ITEM_BLADE');
+  assert.equal(blades.length, 2);
+  assert.deepEqual(
+    blades.map((b) => b.adorners![0]!.elementId),
+    ['ID_MAGIC_SPARKLE', 'ID_MAGIC_FROST'],
+  );
+  assert.equal(blades[0]!.equipped, true);
+  assert.equal(blades[1]!.equipped, undefined, 'carried is not equipped, and means something else');
+});
+
+test('instanceId is Aurora’s identifier, and the fallback is derived from the file too', () => {
+  const inventory = imported().character.inventory!;
+  assert.equal(inventory[0]!.instanceId, 'uuid-blade-worn');
+  // Minting an id would make `aurora import` non-deterministic and move the golden fixtures
+  // on every run, so an item with no identifier is numbered by its position instead.
+  assert.deepEqual(
+    inventory.filter((e) => e.elementId === 'ID_ITEM_RATIONS').map((e) => e.instanceId),
+    ['ID_ITEM_RATIONS#5', 'ID_ITEM_RATIONS#6'],
+  );
+  assert.equal(new Set(inventory.map((e) => e.instanceId)).size, inventory.length, 'unique');
+});
+
+test('attunement sits on the entry and covers its adornment; Aurora has no second flag', () => {
+  const [blade] = imported().character.inventory!;
+  assert.equal(blade!.attuned, true);
+  assert.deepEqual(blade!.adorners, [{ elementId: 'ID_MAGIC_SPARKLE' }], 'no name, no id of its own');
+});
+
+test('quantity is a count on the row, and 1 is written as nothing at all', () => {
+  const rations = imported().character.inventory!.filter((e) => e.elementId === 'ID_ITEM_RATIONS');
+  assert.equal(rations[0]!.quantity, 7);
+  assert.equal(rations[1]!.quantity, undefined, 'omitted means 1');
+});
+
+test('name and notes are the user’s own words, never the denormalized name= attribute', () => {
+  const inventory = imported().character.inventory!;
+  const named = inventory.find((e) => e.instanceId === 'uuid-blade-spare')!;
+  assert.equal(named.name, 'Swiftpursuit');
+  assert.equal(named.notes, 'Won at cards.');
+  // `name="Blade"` is a copy of the element's own name and is stale in 1 of 42 known cases.
+  assert.equal(inventory[0]!.name, undefined);
+});
+
+test('slot is an override: written only where Aurora disagrees with the element', () => {
+  const inventory = imported().character.inventory!;
+  const bySlot = (id: string) => inventory.find((e) => e.instanceId === id)!.slot;
+  // "Primary Hand" is `onehand`, which is what the blade declares. Nothing to record.
+  assert.equal(bySlot('uuid-blade-worn'), undefined);
+  // Equipped with no location at all — a cloak, a ring, boots. 11 of the 26 real ones.
+  assert.equal(bySlot('uuid-cloak'), undefined);
+  // "Two-Handed" is `twohand` and the plate says `body`, so the user moved it.
+  assert.equal(bySlot('uuid-plate'), 'twohand');
+});
+
+test('an unrecognised location is reported, never written through as a slot', () => {
+  const { character, diagnostics } = imported();
+  // Aurora's words and content's words are two vocabularies. "Nose" belongs to neither.
+  assert.equal(character.inventory!.find((e) => e.instanceId === 'uuid-hat')!.slot, undefined);
+  assert.ok(diagnostics.some((d) => d.message.includes('"Nose" is not a slot')));
+});
+
+test('an item whose content is not loaded is kept, and said out loud', () => {
+  const { character, diagnostics } = imported();
+  assert.ok(
+    character.inventory!.some((e) => e.elementId === 'ID_ITEM_FROM_A_BOOK_YOU_DISABLED'),
+    'kept — the source may simply not be enabled',
+  );
+  assert.ok(
+    diagnostics.some((d) => d.message.includes('The bag holds "ID_ITEM_FROM_A_BOOK_YOU_DISABLED"')),
+  );
+});
+
+test('with no content loaded, no slot is guessed and the import says why', () => {
+  const { character, diagnostics } = importAuroraCharacter(parseAuroraSave(SAVE));
+  assert.equal(character.inventory!.length, 8, 'the bag still comes across in full');
+  assert.ok(character.inventory!.every((e) => e.slot === undefined));
+  assert.ok(diagnostics.some((d) => d.message.includes('no content is loaded to compare that against')));
+});
+
+test('a save with no equipment has no inventory, rather than an empty one', () => {
+  const save = parseAuroraSave(SAVE.replace(/<equipment>[\s\S]*<\/equipment>/, ''));
+  const { character } = importAuroraCharacter(save, { index: CONTENT });
+  assert.equal(character.inventory, undefined);
 });
 
 test('Aurora’s own <sum> comes back as extraIds, so the save can carry it', () => {

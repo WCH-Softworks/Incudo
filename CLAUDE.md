@@ -29,7 +29,7 @@ already exists on this machine and works **entirely offline**:
 ```bash
 npm run incudo -- validate \
   "C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index" --aurora-folder
-# 740 files, 12,058 elements (+80 generated), 0 errors, 1 unresolved, ~1.5s
+# 740 files, 12,058 elements (+83 generated), 0 errors, 1 unresolved, ~1.5s
 ```
 
 `--aurora-folder` resolves files the way Aurora's downloader stores them (a folder per index,
@@ -98,7 +98,7 @@ Diagrams drawn in code (SVG, Mermaid) and UI built from CSS are not artwork and 
 
 ## Baselines that must not regress
 
-Content corpus: **740 files · 12,058 elements (+80 generated) · 0 errors · 1 unresolved
+Content corpus: **740 files · 12,058 elements (+83 generated) · 0 errors · 1 unresolved
 reference · 23 unmeetable requirements · 57 warnings.**
 
 - **1 unresolved reference** — one upstream typo, `…VULNERAILITY…`. This is a *grant* to an
@@ -108,9 +108,10 @@ reference · 23 unmeetable requirements · 57 warnings.**
   requirement naming an id nothing declares is a membership test that reads false, and
   `!ID_X` against an id that will never exist is how the corpus says "unless the 2024
   replacement is in play". Five of the six `KNOWN_UPSTREAM_TYPOS` live here.
-- **80 generated elements** — what Aurora's app materializes at runtime, supplied by
+- **83 generated elements** — what Aurora's app materializes at runtime, supplied by
   `packages/aurora-import/src/generated-elements.ts`. Not counted in the 12,058, because
-  they do not come from a file.
+  they do not come from a file. It was 80 until the importer started reading `<equipment>`
+  and found three more that only a *bag* names (ADR 0024's step 2).
 - **57 warnings** — 56 `<grant>` elements with no id, and one id defined in two files.
 
 This used to read "57 unresolved references, 57 warnings, equal by coincidence". Both halves
@@ -165,9 +166,11 @@ Three things Phase 1 changed that are easy to trip over:
   give every character elements nobody chose — the 5e base armour class, one `ID_LEVEL_N` per
   level. They are *not* stored on the character, so `collectCharacterContent` needs the kind
   passed in or the save will not embed them and ADR 0012 quietly breaks.
-- **`packages/aurora-import` supplies 80 elements no content file declares.** The 5e system
+- **`packages/aurora-import` supplies 83 elements no content file declares.** The 5e system
   definition names seven of them in `kind.grants`. That coupling is deliberate — 5e content in
   this project *is* Aurora content — but it is why a missing kind grant warns rather than errors.
+  The last three arrived with the bag: Aurora's inventory proxies, which only a real
+  `<equipment>` block names.
 - **Four Aurora constructs were being silently dropped**: element-level `<supports>`
   (3,611 blocks — *every* support tag in the corpus), element-level `<requirements>` (1,845),
   `<append>` (171), and — found later, fixed by ADR 0021 — `equipped=` (79, none of which is
@@ -225,11 +228,20 @@ greatswords with different enchantments, so an element-keyed bag loses a real ch
 `slot` setter 15 times out of 15); and adorners **nest** with no id of their own (Aurora gives them
 none, and minting one would make an import non-deterministic). `collectCharacterContent` seeds
 from every entry **including the carried ones** — that asymmetry is deliberate, because only the
-*equipped* ones will seed the derivation at step 3. Nothing derives from the bag yet, and step 1
-moved no baseline.
+*equipped* ones will seed the derivation at step 3. Nothing derives from the bag yet, and
+neither step 1 nor step 2 moved a baseline.
 
-**Inventory steps 2–5 are planned, not started** — `docs/INVENTORY-AND-AC-PLAN.md`, five
-steps with the evidence behind each, of which step 1 is done. Read it before touching either,
+**The importer fills the bag, and `slot` is written zero times** (step 2). All 45 instances
+across the nine saves come across — 26 equipped, 12 attuned, 15 adorners, 4 stacked rows, 1
+user-given name — and every ADR 0024 measurement held on the real files, including the one it
+offered as falsifiable: no recorded `location` ever disagreed with the element's own `slot`, so
+the override is never written. `instanceId` is Aurora's `identifier` GUID, and an item without
+one is numbered by its position rather than given a minted id, because minting would make
+`aurora import` non-deterministic. An unrecognised `location` is reported and never written
+through: Aurora's three location strings and content's 18 slot values are two vocabularies.
+
+**Inventory steps 3–5 are planned, not started** — `docs/INVENTORY-AND-AC-PLAN.md`, five
+steps with the evidence behind each, of which steps 1 and 2 are done. Read it before touching either,
 and in particular before adding an `ac` derivation on its own: `ac` is `default: 10` with nothing derived, and it stays
 that way until a character can wear armour, because 64 of the corpus's AC rules are gated on
 what is equipped. Two things from it worth knowing without opening it. **Equipped means derived
@@ -250,9 +262,9 @@ bucket. The prose in `addition="by a wizard"` is display text and is never evalu
 **Identity is embedded in a save; mechanics are not** (ADR 0022). `collectCharacterContent`
 seeds from `baselineElementIds(kind, progress)`, so every element a kind grants is copied into
 `content.json` and frozen there, while `system.json` is the one thing a save deliberately does
-*not* embed. That is why all seven of the 5e kind's `grants` carry zero rules, and why only six
-of the overlay's 80 elements carry any — all six ability score improvements, where the rule
-*is* the identity. Put a game rule on an element and you have put it in every save written
+*not* embed. That is why all seven of the 5e kind's `grants` carry zero rules, and why only nine
+of the overlay's 83 elements carry any — the six ability score improvements and the three
+inventory proxies, where the rule *is* the identity. Put a game rule on an element and you have put it in every save written
 before you fixed it. A kind's `contributions` is where a conditional baseline rule goes
 instead, and **a system definition ships no content** — decided and closed, so do not reach
 for `.incuset` when a system needs a rule.

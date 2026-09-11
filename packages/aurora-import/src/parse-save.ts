@@ -96,9 +96,18 @@ export interface AuroraGrant {
   parentId?: string;
 }
 
-/** One `<item>` in `<build><equipment>`, with the things a Phase 2 inventory will need. */
+/** One `<item>` in `<build><equipment>` — one **instance**, not a reference (ADR 0024). */
 export interface AuroraItem {
+  /**
+   * Aurora's `identifier` GUID. Distinct on every item in every sample save, which is what
+   * lets the importer carry an `instanceId` across instead of minting one.
+   */
+  identifier?: string;
   id: string;
+  /**
+   * The `name=` attribute: a denormalized copy of the element's own name, and stale in 1 of
+   * 42 known cases. The importer deliberately does not carry it — see `details.name`.
+   */
   name: string;
   amount?: number;
   equipped?: boolean;
@@ -107,6 +116,8 @@ export interface AuroraItem {
   attuned?: boolean;
   /** Magic items attached to this one — a staff with a `<adorner>` enchantment on it. */
   adorners: Array<{ id: string; name: string }>;
+  /** `<details>` — the user's own words, as opposed to the denormalized `name=` above. */
+  details?: { name?: string; notes?: string };
 }
 
 export interface AuroraPortrait {
@@ -177,10 +188,9 @@ export interface AuroraSave {
   /**
    * `<build><equipment>` — items the user put in the character's inventory.
    *
-   * Genuine input, and Incudo has nowhere to put it yet: `Character` records choices, rolls,
-   * base stats and free text, and an inventory is none of those. Equipment is ROADMAP Phase
-   * 2 (the `equipment` build step the 5e system already declares). Read here so the import
-   * can say exactly what it is not carrying instead of dropping it silently.
+   * Genuine input, and since ADR 0024 `Character.inventory` is where it lands:
+   * `import-character.ts`'s `toInventory` maps this across one row per `<item>`. Nothing
+   * *derives* from it yet — that is step 3 of docs/INVENTORY-AND-AC-PLAN.md.
    */
   equipment: AuroraItem[];
   /** `<sum>`: every element Aurora's own derivation ended up with. The oracle. */
@@ -406,6 +416,7 @@ function readEquipment(node: XmlNode | undefined): AuroraItem[] {
     if (!id) continue;
     const equipped = firstChild(child, 'equipped');
     items.push({
+      identifier: child.attrs['identifier'] || undefined,
       id,
       name: child.attrs['name'] ?? '',
       amount: numberOrUndefined(child.attrs['amount']),
@@ -413,9 +424,25 @@ function readEquipment(node: XmlNode | undefined): AuroraItem[] {
       location: equipped?.attrs['location'],
       attuned: firstChild(child, 'attunement')?.text.trim() === 'true' ? true : undefined,
       adorners: readAdorners(firstChild(child, 'items')),
+      details: readItemDetails(firstChild(child, 'details')),
     });
   }
   return items;
+}
+
+/**
+ * `<details><name>` and `<details><notes>`.
+ *
+ * Aurora writes both tags on every item and leaves them holding nothing but a newline and a
+ * tab, so whitespace-only has to mean absent — otherwise 44 of the 45 sample items would
+ * arrive carrying an indented empty string. `card=` is display state and is not read.
+ */
+function readItemDetails(node: XmlNode | undefined): { name?: string; notes?: string } | undefined {
+  if (!node) return undefined;
+  const name = firstChild(node, 'name')?.text.trim();
+  const notes = firstChild(node, 'notes')?.text.trim();
+  if (!name && !notes) return undefined;
+  return { name: name || undefined, notes: notes || undefined };
 }
 
 function readAdorners(node: XmlNode | undefined): Array<{ id: string; name: string }> {

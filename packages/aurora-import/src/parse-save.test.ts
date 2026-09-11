@@ -78,8 +78,16 @@ const SAVE = `<?xml version="1.0" encoding="utf-8"?>
         <items>
           <adorner name="Sparkle" id="ID_MAGIC_SPARKLE" />
         </items>
+        <details card="true"><name>Knobbly</name><notes>Traded for a goat.</notes></details>
       </item>
-      <item identifier="uuid-2" name="Rations" id="ID_ITEM_RATIONS" amount="7" />
+      <item identifier="uuid-2" name="Rations" id="ID_ITEM_RATIONS" amount="7">
+        <details card="true">
+          <name>
+          </name>
+          <notes>
+          </notes>
+        </details>
+      </item>
     </equipment>
     <sum element-count="4">
       <element type="Level" id="ID_LEVEL_1" />
@@ -226,16 +234,26 @@ test('the derived blocks are read intact, because they are the oracle', () => {
   assert.equal(block!.spells[0]!.prepared, true);
 });
 
-test('equipment comes across with the state a Phase 2 inventory will want', () => {
+test('equipment comes across as instances, with everything the bag needs', () => {
   const save = parseAuroraSave(SAVE);
   assert.equal(save.equipment.length, 2);
   const [staff, rations] = save.equipment;
   assert.equal(staff!.id, 'ID_ITEM_STAFF');
+  // The GUID is what lets the importer carry an instanceId across instead of minting one.
+  assert.equal(staff!.identifier, 'uuid-1');
   assert.equal(staff!.equipped, true);
   assert.equal(staff!.location, 'Primary Hand');
   assert.equal(staff!.attuned, undefined);
   assert.deepEqual(staff!.adorners, [{ id: 'ID_MAGIC_SPARKLE', name: 'Sparkle' }]);
+  assert.deepEqual(staff!.details, { name: 'Knobbly', notes: 'Traded for a goat.' });
   assert.equal(rations!.amount, 7);
+});
+
+test('a <details> holding nothing but whitespace is absent, which is 44 of 45 real items', () => {
+  const save = parseAuroraSave(SAVE);
+  // Aurora writes <name> and <notes> on every item and leaves them holding a newline and a
+  // tab. Reading that as the user's own name would put an indented empty string in the bag.
+  assert.equal(save.equipment[1]!.details, undefined);
 });
 
 test('the blocklist is read so it can be inverted', () => {

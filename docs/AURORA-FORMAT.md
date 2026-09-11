@@ -309,7 +309,7 @@ Two resolution modes therefore exist, and they are not interchangeable:
 
 ```
 files:    740
-elements: 12,058  (+80 Aurora generates at runtime)
+elements: 12,058  (+83 Aurora generates at runtime)
 errors:   0
 unresolved references:              1
 requirements that can never be met: 23

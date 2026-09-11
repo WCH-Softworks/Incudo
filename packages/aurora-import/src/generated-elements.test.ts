@@ -41,6 +41,30 @@ test('the ability score elements carry the one mechanic the corpus states outrig
   ]);
 });
 
+test('an inventory proxy grants the one thing it exists to grant', () => {
+  const elements = auroraGeneratedElements();
+  // "Additional Language, Orc" that does not give you Orc is not a marker with a missing
+  // mechanic; it is nothing at all. Aurora's own save writes the grant as the proxy's only
+  // child in the build tree, so nothing here is inferred.
+  const orc = elements.find((e) => e.id === 'ID_PHB_INTERNAL_ITEM_LANGUAGE_PROXY_LANGUAGE_ORC')!;
+  assert.equal(orc.type, 'Item');
+  assert.deepEqual(orc.rules, [
+    { kind: 'grant', key: 'grant-0', type: 'Language', id: 'ID_LANGUAGE_ORC' },
+  ]);
+  // The size of the bump is not invented here either: ID_INTERNAL_ASI_INTELLIGENCE is in
+  // this same overlay and already carries its +1.
+  const asi = elements.find((e) => e.id === 'ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE')!;
+  assert.deepEqual(asi.rules, [
+    {
+      kind: 'grant',
+      key: 'grant-0',
+      type: 'Ability Score Improvement',
+      id: 'ID_INTERNAL_ASI_INTELLIGENCE',
+    },
+  ]);
+  assert.ok(elements.some((e) => e.id === 'ID_INTERNAL_ASI_INTELLIGENCE'));
+});
+
 test('markers carry identity and no invented mechanics', () => {
   const elements = auroraGeneratedElements();
   for (const id of [
