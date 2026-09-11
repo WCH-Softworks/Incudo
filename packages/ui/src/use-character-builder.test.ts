@@ -391,3 +391,33 @@ test('a growing allowance is one decision the shell can answer, not three', () =
   assert.deepEqual(after.decisions.filter((d) => d.id === 'CASTER/select:Cantrip'), []);
   assert.deepEqual(after.derived.problems, []);
 });
+
+test('a filter Incudo cannot evaluate is named, not silently empty', () => {
+  // The distinction that cost a wrong diagnosis: an unresolved `$(…)` matches nothing, so the
+  // candidate list is empty — which is indistinguishable on screen from "you have not loaded
+  // the content". A shell needs to tell the two apart, so the term is carried out by name.
+  const sys = system();
+  const caster = element('CASTER', 'Widget', [
+    {
+      kind: 'select',
+      key: 'k',
+      type: 'Gadget',
+      name: 'Spell',
+      number: 1,
+      supports: { kind: 'interpolate', key: 'spellcasting:list' },
+    },
+  ]);
+
+  const b = builder(indexWith(caster, element('G1', 'Gadget')), sys);
+  b.choose('seed', ['CASTER']);
+
+  const spell = b.getState().decisions.find((d) => d.label === 'Spell');
+  assert.deepEqual(spell?.candidates, [], 'an unresolved term matches nothing, deliberately');
+  assert.deepEqual(spell?.unresolved, ['spellcasting:list']);
+
+  // And an ordinary filter reports nothing unresolved, so the flag means what it says.
+  const plain = builder(indexWith(element('G1', 'Gadget')), sys)
+    .getState()
+    .decisions.find((d) => d.kind === 'pick');
+  assert.deepEqual(plain?.unresolved, []);
+});

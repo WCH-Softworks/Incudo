@@ -45,7 +45,7 @@ import {
   type ExpressionContext,
   type StatExpr,
 } from './expression.ts';
-import { matchesSupports, type SupportsContext } from './supports.ts';
+import { matchesSupports, supportsInterpolations, type SupportsContext } from './supports.ts';
 
 const MAX_PASSES = 24;
 
@@ -71,6 +71,14 @@ export interface PendingChoice {
   number: number;
   optional: boolean;
   candidates: ElementId[];
+  /**
+   * `$(…)` terms in this pool's filter that nothing resolves, so `candidates` is short.
+   *
+   * An unresolved interpolation matches nothing rather than everything, which is the safe
+   * reading — but it makes an unimplemented filter look exactly like missing content. Naming the
+   * term is what lets a builder say which of the two it is. Empty in every other case.
+   */
+  unresolvedSupports: string[];
   from: ElementId;
   /**
    * The progression point this became available at — the `level` on the rule that opened
@@ -903,6 +911,14 @@ function collectPendingChoices(
         number: allowed,
         optional: rules.every((rule) => rule.optional ?? false),
         candidates: [...candidates],
+        // Across the whole pool, not just the next rule: any rule with room left can be the
+        // one whose filter cannot be evaluated.
+        unresolvedSupports: [
+          ...open.reduce(
+            (into, rule) => supportsInterpolations(rule.supports, into),
+            new Set<string>(),
+          ),
+        ],
         from: element.id,
         level: next.level,
       });

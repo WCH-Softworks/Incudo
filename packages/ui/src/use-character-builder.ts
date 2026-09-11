@@ -86,6 +86,15 @@ export interface OpenDecision {
    * Empty for a `budget`, which assigns numbers rather than elements.
    */
   candidates: ElementId[];
+  /**
+   * Filter terms Incudo cannot evaluate yet, so `candidates` is short rather than complete.
+   *
+   * Empty in the normal case. A `<select supports="$(spellcasting:list)">` is the only source
+   * today: an unresolved `$(…)` matches nothing, which produces an empty list that looks exactly
+   * like "you have not loaded the right content". Naming the term is the difference between a
+   * user adding a source that will not help and a user knowing to wait for the feature.
+   */
+  unresolved: string[];
 }
 
 /**
@@ -275,6 +284,7 @@ export class CharacterBuilder {
       openedAt: choice.level,
       remaining: choice.remaining,
       candidates: choice.candidates,
+      unresolved: choice.unresolvedSupports,
     }));
 
     // Top-level picks — the race, class and background nothing declares a select for.
@@ -295,6 +305,8 @@ export class CharacterBuilder {
         stepId: step.id,
         blocking: true,
         remaining: 1,
+        // A top-level pick has no supports filter; the step names types and nothing else.
+        unresolved: [],
         candidates: step.types.flatMap((type) =>
           this.elements
             .byType(type)
@@ -329,6 +341,7 @@ export class CharacterBuilder {
             state.pooled && state.remaining > 0 ? state.remaining : state.unassigned.length,
           // A budget assigns numbers, not elements.
           candidates: [],
+          unresolved: [],
         });
       }
     }

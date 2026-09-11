@@ -84,6 +84,34 @@ export interface SupportsContext {
   resolve(key: string): string | undefined;
 }
 
+/**
+ * The `$(key)` interpolations an expression contains, in order, deduplicated.
+ *
+ * Exists so a builder can tell "nothing in your content matches this filter" from "Incudo
+ * cannot evaluate this filter yet" — two sentences that look identical on screen and mean
+ * completely different things. An unresolved interpolation matches nothing (below), so a
+ * select carrying one silently offers an empty list, and that emptiness is indistinguishable
+ * from a missing content source. It cost one wrong diagnosis already.
+ */
+export function supportsInterpolations(
+  expr: SupportsExpr | undefined,
+  into = new Set<string>(),
+): Set<string> {
+  if (!expr) return into;
+  switch (expr.kind) {
+    case 'interpolate':
+      into.add(expr.key);
+      break;
+    case 'and':
+    case 'or':
+      for (const child of expr.children) supportsInterpolations(child, into);
+      break;
+    default:
+      break;
+  }
+  return into;
+}
+
 export function matchesSupports(expr: SupportsExpr | undefined, ctx: SupportsContext): boolean {
   if (!expr) return true;
   switch (expr.kind) {

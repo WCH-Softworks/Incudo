@@ -167,6 +167,15 @@ function Decision({
               </option>
             ))}
         </select>
+      ) : decision.unresolved.length > 0 ? (
+        // Not the same sentence as the one below, and the difference matters: adding a content
+        // source will not help here, so saying "no content matches" would send the user to do
+        // something useless. See OpenDecision.unresolved.
+        <p className="hint">
+          This choice filters on <code>{decision.unresolved.map((k) => `$(${k})`).join(', ')}</code>
+          , which Incudo does not resolve yet — so it can offer nothing rather than the wrong
+          thing. Not a missing content source.
+        </p>
       ) : (
         <p className="hint">No candidate in the loaded content matches this choice.</p>
       )}
