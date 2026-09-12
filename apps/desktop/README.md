@@ -13,9 +13,15 @@ npm run desktop:app      # the real Tauri window (see "Icons" below)
 npm run desktop:build    # production web bundle into apps/desktop/dist
 ```
 
-**Start with `npm run desktop`.** It is the whole application in a browser: it loads and
-validates the shipped 5e system definition, loads an Aurora content index over the network,
-and builds a character. Every piece of UI work can happen there.
+**Start with `npm run desktop`.** It is the whole application in a browser: it opens on the
+character library, reads and writes real `.incu` files in a folder you pick, manages content
+sources, and builds a character. Every piece of UI work can happen there.
+
+The library in that build is the **File System Access API** — a real directory handle with real
+bytes, not a localStorage pretence (ADR 0027). One honest difference from the Tauri window: a
+browser grants a directory per session unless you have said "allow on every visit", so a reload
+may need one click on **Choose folder** to reconnect. Firefox and Safari have no such API at
+all, and there the app says so and offers nothing rather than faking a library.
 
 If the port is busy, `npm run desktop` names the process holding it and prints the command to
 kill it. The port is fixed rather than auto-selected because Tauri points its window at
@@ -45,10 +51,44 @@ purpose: the product is "point it at any content index you like", so an allowlis
 be a list of which third-party content packs are permitted to exist. Narrowing it to a few hosts
 would be a product decision, not a security tidy-up.
 
+## Two capabilities, opposite widths, and why
+
+`dialog` and `fs` joined `http` when the library arrived, and the filesystem scope is as narrow
+as the HTTP scope is wide. That asymmetry is the decision, not an inconsistency.
+
+**The fs capability grants the commands and no paths at all.** `capabilities/default.json` lists
+`fs:allow-read-dir`, `fs:allow-read-file` and so on — what the window may *do* — and the set of
+paths it may do them to starts empty. One `#[tauri::command]` in `src-tauri/src/lib.rs`,
+`allow_library_folder`, widens it to exactly the directory the picker returned. Nothing else can
+add to it, and nothing in the JS API could have done this, which is why the project's only piece
+of application-shaped Rust exists.
+
+An app that can read any path on the machine is not the same app as one that can read the folder
+its user chose in a dialog, and a content index is a URL somebody publishes while a library is a
+folder full of somebody's files.
+
+**None of this is verified by a build.** `cargo check` stops in `build.rs` on the missing icon
+below, so the Rust half of the library is written and unexercised. What *is* checked is that
+every permission identifier used exists in the plugins' own manifests under
+`~/.cargo/registry/.../tauri-plugin-{fs,dialog}-*/permissions/`. Treat the Tauri path as
+unproven until someone with an icon runs it.
+
 ## What belongs here
 
 Windows and menus, navigation, file dialogs, keyboard shortcuts, the dense multi-pane
-layout, and the two platform implementations in `src/platform.ts`.
+layout, and the platform implementations in `src/platform.ts`.
+
+That file now carries four ports rather than two — `Fetcher`, `Storage`, `CharacterStore` and
+`ZipCodec` — and it is still the only file allowed to say the word Tauri. Two of them are worth
+knowing about before changing anything:
+
+- **`Storage` is IndexedDB in both builds.** It holds the content cache and the current draft:
+  app-managed, invisible to the user. It was `localStorage`, which caps out near 5 MB and would
+  silently fail to cache a 15 MB corpus. Real files were the other option and they lose on
+  Windows — a cache key is a source URL plus a file URL, both percent-encoded, which comes to
+  roughly 290 characters against a MAX_PATH of 260.
+- **`CharacterStore` is the user's folder**, and is never in `Storage`. Different rules, so a
+  different port (ADR 0027).
 
 ## What does not
 

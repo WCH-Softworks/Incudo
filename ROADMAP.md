@@ -166,11 +166,41 @@ before any code, both touching a public API:
         artwork, per the README's standing commitment —
         `apps/desktop/src-tauri/icons/README.md` says what is needed, and `npm run desktop:app`
         explains itself instead of failing inside a Rust build.
-  - [ ] Routing beyond a three-pane switch, menus, file dialogs, keyboard shortcuts.
+  - [ ] Menus and keyboard shortcuts. The file dialog arrived with the library (ADR 0027) and
+        navigation is a four-pane switch now, not three; what is still missing is everything
+        that makes it feel like a desktop application rather than a page.
   - [ ] **`$(...)` in a `<select supports=…>` resolves to nothing**, so a Rogue's skill and
         expertise picks offer no candidates. `candidatesFor` says the UI layer supplies that
         build context and no caller does. This blocks the phase's exit criterion.
-- [ ] Content manager: add an index by URL, enable/disable sources, **stream or download**
+- [x] **The app opens on a character library**
+      ([ADR 0027](./docs/adr/0027-a-library-is-a-folder.md)). It used to open on Sources, with
+      an index URL in a text box, doing nothing at all until 238 files had come down over the
+      network — the first screen contradicting ADR 0012, which is the decision that a save
+      carries its content and opens with nothing configured. The library is a folder the user
+      picks, remembered between launches and rescanned on open: every `.incu` in it, plus every
+      subfolder holding a `manifest.json`, and nothing else touched. No index file and no
+      database, because the folder is the list and the user edits it directly.
+      `CharacterLibrary` is a view-model in `packages/ui`; the folder picker and the directory
+      scan are a `CharacterStore` port with three implementations (Tauri, the browser's File
+      System Access API, and `node:fs` in a test).
+      **Listing and opening need zero sources**, which is asserted twice: against a fake store
+      in `packages/ui`, and against the nine real `.dnd5e` saves in
+      `tools/incudo/src/library.test.ts`. Still to do: renaming a file, an import/export flow
+      for `.dnd5e`, and the refresh that would move a recorded source version.
+- [x] **Content manager: add an index by URL, enable/disable sources, stream or download**
+      ([ADR 0028](./docs/adr/0028-sources-are-a-profile-characters-carry-an-allowlist.md),
+      [ADR 0029](./docs/adr/0029-a-cache-is-keyed-by-source-and-evicted-by-version.md)). Add,
+      name, remove, enable, disable, per-source stream/download, check for updates, refresh,
+      and what each source contributes. The configured sources are a *profile* that no
+      character depends on; a character's own `sources` is a record of what it was built
+      against, and the two are allowed to disagree — that disagreement is what makes ADR 0004's
+      promised warning possible, as `present` / `moved` / `missing` per source.
+      ADR 0004's composition was finally wired up: the cache goes in front of the network, so
+      a reload costs 0.5 s instead of re-fetching 238 files. Both of ADR 0004's open questions
+      are answered — pinning is a **no**, and the rate-limit measurement is in ADR 0029.
+      What is *not* done and is named rather than implied: `stream` and `download` differ only
+      in **when** files are fetched, because ADR 0004's lazy per-file loading needs an
+      `ElementIndex` that can miss and there is not one.
 - [x] **Build flow as open decisions rather than a wizard**
       ([ADR 0017](./docs/adr/0017-open-decisions-not-steps.md)). `CharacterBuilder` publishes one
       flat, always-current `decisions` list and has no cursor, so there is nothing to navigate
@@ -185,7 +215,11 @@ before any code, both touching a public API:
       screen (ADR 0017): `setProgress` changes a number and the decisions it opens arrive in the
       same list as every other, tagged with the level that raised them.
 - [ ] Character sheet
-- [ ] Save/load `.incu` files; import `.dnd5e` (the importer is done — this is the UI for it)
+- [ ] Save/load `.incu` files; import `.dnd5e` (the importer is done — this is the UI for it).
+      *Half done:* the library reads and writes `.incu` in both forms, and the desktop shell
+      finally has a `ZipCodec` at all — the framing moved into `packages/core` so the browser's
+      `CompressionStream` and Node's `zlib` share one implementation. What is left is the
+      `.dnd5e` import button and an explicit export.
 - [x] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
       attunement, and magic items attached to other items. Planned in
       [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which
@@ -319,6 +353,15 @@ is written. Every number settled in this phase was settled against Aurora's own 
 was explicitly marked as one Aurora could not check. **A view layer has no oracle at all.**
 There is no `<sum>` for a screen, and "it looked right" is the evidence a UI usually ships on.
 Decide how the shells are kept honest before building them, not after.
+
+**Two answers to that, from the library work, and they are worth reusing.** First: put the
+screen's *state* in `packages/ui` as a view-model and test it in Node, so "which characters
+exist, which are broken, which sources have moved" has assertions even though the grid does
+not. Second, and the one that keeps earning: **run it against the real data**. The nine
+`.dnd5e` saves are not only an oracle for arithmetic — driven through the library they caught a
+portrait that is a **JPEG**, which every unit fixture had assumed was a PNG. Neither of those
+replaces using the app. Of the three real bugs this session found, two came from the app in a
+browser and one from the real saves, and **none had a failing test first**.
 
 ### Known gaps, carried deliberately
 

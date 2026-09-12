@@ -12,6 +12,7 @@ when something here looks odd, the ADR usually says why.
 ```bash
 npm install            # ~25s. If it starts pulling Expo, apps/mobile got added to workspaces — don't.
 npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, start here.
+                       # Opens on the character library; pick a folder to see anything in it.
 npm run desktop:app    # the real Tauri window — needs Rust, and an icon nobody has drawn yet
 npm run typecheck      # tsc --build --force
 npm test               # node --test, no build step
@@ -43,7 +44,7 @@ when a file is not in the mirror, which is right for a partial mirror and quietl
 everywhere else: an "offline" run that silently fetches proves nothing. With `--offline` a
 miss is a named error giving both the URL refused and the mirror path checked. The command
 above passes all 740 files with `--offline`, so that corpus really is complete.
-Eight real Aurora saves sit beside it as `*.dnd5e`. They stay **local and out of the repo**:
+Nine real Aurora saves sit beside it as `*.dnd5e`. They stay **local and out of the repo**:
 read them for verification, never commit them or their contents.
 
 ## Hard constraints
@@ -162,29 +163,60 @@ are personal data and never enter the repo — and neither do screenshots of the
 Working: core engine, Aurora content **and save** importer, content sources, CLI, two system
 definitions, the `.incu` container, the JSON Schemas and the validator behind them, the whole of
 the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class — and
-**the desktop shell, which runs**: `npm run desktop` loads the system definition, loads a real
-content index, builds a character and renders the sheet.
+**the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR
+0027), manages content sources (ADR 0028/0029), builds a character, renders the sheet, and
+reads and writes real `.incu` files into a folder the user picks.
 Not started: the mobile shell (only its `platform.ts` contract exists).
+
+**The library is the part to understand before touching the shell.** It is a folder the user
+chooses, scanned on open, with no index file and no database — the folder *is* the list, because
+the user edits it directly. `CharacterLibrary` (`packages/ui`) is the view-model; `CharacterStore`
+(`core/platform.ts`) is the port, with three implementations: Tauri's dialog and fs plugins,
+the browser's File System Access API, and a `node:fs` one that exists only in a test. **Listing
+and opening reach for no source, no index and no fetcher**, which is ADR 0012 being used rather
+than merely proved; two tests hold that line, one with a fake store and one over the nine real
+saves. If either starts needing content loaded, the feature is wrong.
 
 **Run the app before trusting this file about what works.** Every phase up to the shell was
 verified against fixtures, a corpus and an oracle, and the first five minutes of actually using
 it still found a view-model bug that no test had: a required build step with nothing picked
 reported itself `complete`, so there was no way to choose a race or a class at all. Usability is
-only testable by using it — see `apps/desktop/README.md`. Two things the shell has surfaced and
-not yet fixed are listed under "Known from running it" below.
+only testable by using it — see `apps/desktop/README.md`. It keeps paying: the library work
+found three real bugs this way and **none of them had a failing test first** — a character
+saved from the app recorded no sources at all, so ADR 0028's warning could never fire; nothing
+loaded content at startup, so a reload left the builder empty until you visited Sources; and one
+of the nine real portraits is a **JPEG**, which both halves of the library had assumed was a
+PNG. What the shell has surfaced and not fixed is under "Known from running it" below.
 
 ### Known from running it
 
-- **`<select supports="$(...)">` offers nothing.** `candidatesFor` in the engine says in as many
-  words that resolving `$(...)` "needs build context the caller supplies in the UI layer", and no
-  caller supplies it — so an unresolved interpolation matches nothing. Live effect: picking Rogue
-  opens *Skill Proficiency (Rogue)* and *Expertise (Rogue)*, both of which say "no candidate
-  matches". This blocks Phase 2's exit criterion and is the next thing to fix.
-- **Loading a content index re-fetches every file.** 244 files, one at a time, about a minute,
-  and a reload does it again — `HttpContentSource`'s `writeThrough` writes the cache but nothing
-  reads it back. That is ADR 0004's live-vs-downloaded question arriving in practice.
+- **`<select supports="$(...)">` still offers nothing**, and the Rogue example this entry used
+  to give was **wrong** and is fixed. `candidatesFor` says resolving `$(...)` "needs build
+  context the caller supplies in the UI layer" and no caller supplies it, so an unresolved
+  interpolation matches nothing. The *symptom* that was blamed on it — a Rogue's skill and
+  expertise picks offering no candidates — turned out to be a `<supports>` block stored as one
+  tag instead of a list, and both now offer candidates in the running app. What is left is the
+  real `$(...)` case, spell lists, and since ADR-less commit e59bb70 the shell at least says
+  which filter it cannot evaluate rather than showing an empty list that looks like a missing
+  source. Do not re-diagnose one as the other; that has happened twice.
+- **~~Loading a content index re-fetches every file.~~** Fixed (ADR 0029). The app composes
+  `LayeredContentSource(cache → http)` now, so the cache `writeThrough` was already writing is
+  finally read back. Measured in the running app: 18.4 s cold for 238 files, **0.5 s** on a
+  reload, and 11.1 s after an explicit Refresh, which is how you can tell an eviction really
+  happened.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025 and 0026 are implemented, and **Phase 1 is done — `packages/aurora-import`
+Two things the library work surfaced and did **not** fix:
+
+- **Scanning a library reads every container in full.** There is no manifest-only fast path,
+  because the zip codec inflates the whole archive — nine saves is imperceptible, two hundred
+  will not be. Same for the portrait bytes a grid holds in memory. ADR 0027 names the
+  mitigation (a summary and thumbnail cache keyed by path and mtime) and deliberately does not
+  build it.
+- **Nothing moves a recorded source version.** ADR 0028's `moved` state is computed and shown,
+  and the "refresh this character against the newer source" flow it points at does not exist,
+  so a character says a source has moved until someone builds that.
+
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028 and 0029 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,

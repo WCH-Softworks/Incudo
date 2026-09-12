@@ -97,24 +97,44 @@ exists specifically to prove this by shipping a second one.
   compare the index's `update.version` against what is cached.
 - **`BundledContentSource`** — content shipped inside the app (SRD-safe material only).
 - **`LayeredContentSource`** — composes the above: cache → network → bundled, so "live"
-  degrades gracefully to whatever was last seen rather than failing.
+  degrades gracefully to whatever was last seen rather than failing. The app composes one of
+  these per enabled source (ADR 0029). It did not until the library work — it built a bare
+  `HttpContentSource` whose `writeThrough` wrote a cache nothing read back — so a reload
+  re-fetched all 238 files every time. `BundledContentSource` is still the one implementation
+  in this list that does not exist; nothing has needed it.
 
 The user-facing toggle is **per source**: *stream* or *download*. Mobile defaults to download
-(metered connections); desktop defaults to stream with an opt-in download.
+(metered connections); desktop defaults to stream with an opt-in download. Today the two differ
+only in *when* files are fetched — ADR 0004's lazy per-file loading needs an `ElementIndex` that
+can miss, and there is not one. ADR 0029 says so rather than letting the toggle imply more.
+
+Which sources exist is a **profile** the user owns; a character's `sources` is a record of what
+it was built against. The two are allowed to disagree, and that disagreement is what lets the app
+say "Xanathar's has moved since you built this" instead of silently changing someone's character
+(ADR 0028). Neither is consulted to *open* a character — a save carries its own content.
 
 ## Platform boundaries
 
 Core and content never import platform APIs. They take two injected interfaces:
 
 ```ts
-interface Fetcher  { fetchText(url: string): Promise<FetchResult> }
-interface Storage  { read(key): Promise<string|null>; write(key, value): Promise<void>; ... }
+interface Fetcher        { fetchText(url: string): Promise<FetchResult> }
+interface Storage        { read(key): Promise<string|null>; write(key, value): Promise<void>; ... }
+interface ZipCodec       { zip(files): Promise<Uint8Array>; unzip(bytes): Promise<...> }
+interface CharacterStore { location(); choose(); list(); read(entry); write(entry, files); ... }
 ```
 
 | | desktop | mobile | CLI / tests |
 |---|---|---|---|
 | `Fetcher` | Tauri HTTP plugin | `fetch` | `fetch` |
-| `Storage` | Tauri fs plugin | `expo-file-system` | node `fs` |
+| `Storage` | IndexedDB | `expo-file-system` | node `fs` |
+| `ZipCodec` | `CompressionStream` | a native module | `node:zlib` |
+| `CharacterStore` | Tauri dialog + fs | `expo-file-system` | node `fs` |
+
+`CharacterStore` is the user's **library folder** (ADR 0027) and is deliberately not `Storage`:
+`Storage` is the app's own key/value space, holding a content cache and a draft that the user
+never opens, while a library is their files, very possibly in git. `ZipCodec` is DEFLATE only —
+the zip framing itself lives in `core`, so the two shells cannot drift.
 
 This is the single rule that keeps one codebase serving two apps. It also means the whole engine
 is testable in Node with no mocks beyond a fake fetcher.
