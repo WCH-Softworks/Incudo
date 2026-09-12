@@ -545,3 +545,66 @@ ul.sources {
   color: var(--fg-muted);
   white-space: nowrap;
 }
+
+/* --- the first-run question, and settings -------------------------------- */
+
+/*
+ * A real <dialog>, so the browser handles focus trapping, Escape and the backdrop. Choosing
+ * a library folder is a setup question asked once (ADR 0027); after that it lives in Settings
+ * rather than sitting next to "New character" looking like something you must press.
+ */
+dialog.ask {
+  max-width: 60ch;
+  padding: 22px 26px 18px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+dialog.ask::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+dialog.ask h2 {
+  margin-top: 0;
+  font-size: 16px;
+}
+
+dialog.ask .row {
+  margin-bottom: 0;
+  justify-content: flex-end;
+}
+
+/* A button that reads as prose, for the one-line offers inside a sentence. */
+button.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+button.link:hover {
+  text-decoration: none;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px 14px;
+  margin: 10px 0;
+  max-width: 68ch;
+}
+
+.setting-value {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

@@ -17,6 +17,11 @@ npm run desktop:build    # production web bundle into apps/desktop/dist
 character library, reads and writes real `.incu` files in a folder you pick, manages content
 sources, and builds a character. Every piece of UI work can happen there.
 
+Choosing the library folder is a **setup question asked once**: the first run puts it in front
+of you as a dismissible dialog, and after that it is a row in **Settings** rather than a button
+beside "New character". Declining is a real answer — sources and the builder work without a
+library, and only *saving* needs somewhere to save to.
+
 The library in that build is the **File System Access API** — a real directory handle with real
 bytes, not a localStorage pretence (ADR 0027). One honest difference from the Tauri window: a
 browser grants a directory per session unless you have said "allow on every visit", so a reload

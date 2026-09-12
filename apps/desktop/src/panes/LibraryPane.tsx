@@ -11,7 +11,7 @@
  * where the mobile shell will read the identical thing.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LibraryEntry, LibraryState } from '@incudo/ui';
 
 export function LibraryPane({
@@ -21,6 +21,9 @@ export function LibraryPane({
   onOpen,
   onNew,
   onRemove,
+  onOpenSettings,
+  askForFolder,
+  onDismissAsk,
   shell,
 }: {
   state: LibraryState;
@@ -29,6 +32,10 @@ export function LibraryPane({
   onOpen: (entry: LibraryEntry) => void;
   onNew: () => void;
   onRemove: (entry: LibraryEntry) => void;
+  onOpenSettings: () => void;
+  /** First run: nobody has chosen a folder and nobody has waved the question away yet. */
+  askForFolder: boolean;
+  onDismissAsk: () => void;
   shell: 'tauri' | 'browser';
 }): React.JSX.Element {
   if (state.status === 'unavailable') {
@@ -50,21 +57,23 @@ export function LibraryPane({
   if (state.status === 'no-location') {
     return (
       <main className="pane">
-        <h2>Where do you keep your characters?</h2>
+        <FirstRunDialog
+          open={askForFolder}
+          onChooseFolder={onChooseFolder}
+          onDismiss={onDismissAsk}
+          shell={shell}
+        />
+        <h2>Characters</h2>
         <p className="lede">
-          Pick a folder. Incudo lists every <code>.incu</code> in it and remembers the choice.
-          It is your folder — put it in git, sync it, copy files in and out; Incudo rescans and
-          never renames anything.
-        </p>
-        <div className="row">
-          <button type="button" className="on" onClick={onChooseFolder}>
-            Choose folder…
+          Incudo does not know where you keep your characters yet.{' '}
+          <button type="button" className="link" onClick={onChooseFolder}>
+            Choose a folder
+          </button>{' '}
+          and everything in it shows up here. You can change it later in{' '}
+          <button type="button" className="link" onClick={onOpenSettings}>
+            Settings
           </button>
-        </div>
-        <p className="hint">
-          You do not need a content source to open a character. Every save carries the content it
-          uses (ADR 0012).
-          {shell === 'browser' && ' In the browser build, a reload may need one click here to reconnect.'}
+          .
         </p>
       </main>
     );
@@ -74,7 +83,12 @@ export function LibraryPane({
     <main className="pane">
       <div className="library-head">
         <h2>Characters</h2>
-        <span className="status">
+        {/*
+          The folder is named, and changing it is not. That is a setting you go and find
+          (ADR 0027's folder is chosen once and remembered); a "Change folder…" button sitting
+          next to "New character" reads like something you are meant to press.
+        */}
+        <span className="status" title={state.location ?? undefined}>
           {state.location}
           {state.entries.length > 0 && ` · ${state.entries.length}`}
         </span>
@@ -84,9 +98,6 @@ export function LibraryPane({
           </button>
           <button type="button" onClick={onRefresh} disabled={state.busy}>
             {state.busy ? 'Scanning…' : 'Refresh'}
-          </button>
-          <button type="button" onClick={onChooseFolder}>
-            Change folder…
           </button>
         </div>
       </div>
@@ -117,6 +128,64 @@ export function LibraryPane({
         ))}
       </ul>
     </main>
+  );
+}
+
+/**
+ * The one-time question: where do you keep your characters?
+ *
+ * A real `<dialog>` rather than a div with a high z-index, because the browser already knows
+ * how to trap focus, close on Escape and paint a backdrop, and doing any of that by hand is
+ * how a modal ends up unreachable from a keyboard.
+ *
+ * **Dismissible on purpose.** Not having a library folder is a perfectly workable state: you
+ * can add content sources and build a character without one, and only *saving* needs somewhere
+ * to save to. A dialog you cannot decline would be the toll gate ADR 0027 exists to remove,
+ * just moved to a different screen.
+ */
+function FirstRunDialog({
+  open,
+  onChooseFolder,
+  onDismiss,
+  shell,
+}: {
+  open: boolean;
+  onChooseFolder: () => void;
+  onDismiss: () => void;
+  shell: 'tauri' | 'browser';
+}): React.JSX.Element | null {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  return (
+    <dialog ref={ref} className="ask" onClose={onDismiss} onCancel={onDismiss}>
+      <h2>Where do you keep your characters?</h2>
+      <p className="lede">
+        Pick a folder and Incudo remembers it. It lists every <code>.incu</code> inside, and
+        leaves everything else in there alone — it is your folder, so put it in git, sync it, copy
+        files in and out. Incudo rescans and never renames anything.
+      </p>
+      <p className="hint">
+        You do not need one to look around: content sources and the builder work without it, and
+        a saved character needs no content sources to open (ADR 0012).
+        {shell === 'browser' &&
+          ' In this browser build a reload may need one click to reconnect to the folder.'}
+      </p>
+      <div className="row">
+        <button type="button" className="on" onClick={onChooseFolder}>
+          Choose folder…
+        </button>
+        <button type="button" onClick={onDismiss}>
+          Not now
+        </button>
+      </div>
+    </dialog>
   );
 }
 

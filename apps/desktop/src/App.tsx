@@ -44,9 +44,10 @@ import { LibraryPane } from './panes/LibraryPane.tsx';
 import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
 import { BuilderPane } from './panes/BuilderPane.tsx';
 import { SheetPane } from './panes/SheetPane.tsx';
+import { SettingsPane } from './panes/SettingsPane.tsx';
 import { loadSources, type LoadProgress, type LoadedContent } from './content.ts';
 
-type Pane = 'library' | 'build' | 'sheet' | 'sources';
+type Pane = 'library' | 'build' | 'sheet' | 'sources' | 'settings';
 
 const EMPTY_INDEX: ElementIndex = new MapElementIndex();
 
@@ -112,6 +113,22 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
 
   const library = useMemo(() => new CharacterLibrary(platform.characters), []);
   const libraryState = useLibrary(library);
+
+  /**
+   * Whether the first-run "where do you keep your characters?" dialog has been waved away.
+   *
+   * Here rather than inside `LibraryPane` because that pane unmounts when you switch tabs, and
+   * a question you have already declined should not come back because you looked at Sources.
+   * Session-lived on purpose: it is not a preference worth persisting, and the answer next
+   * launch is usually different.
+   */
+  const [askDismissed, setAskDismissed] = useState(false);
+
+  const chooseFolder = useCallback(async (): Promise<void> => {
+    // Declining the OS picker counts as an answer: do not ask again this session.
+    setAskDismissed(true);
+    await library.chooseLocation();
+  }, [library]);
 
   // The profile, then the library. Neither needs the other, and the library deliberately
   // does not wait for content: ADR 0012 is what lets the first screen render with nothing
@@ -294,6 +311,7 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
     ['build', 'Build'],
     ['sheet', 'Sheet'],
     ['sources', 'Sources'],
+    ['settings', 'Settings'],
   ];
 
   return (
@@ -331,11 +349,14 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
         <LibraryPane
           state={libraryState}
           shell={platform.shell}
-          onChooseFolder={() => void library.chooseLocation()}
+          onChooseFolder={() => void chooseFolder()}
           onRefresh={() => void library.refresh()}
           onOpen={(entry) => void openFromLibrary(entry)}
           onNew={startNew}
           onRemove={(entry) => void library.remove({ name: entry.name, form: entry.form })}
+          onOpenSettings={() => setPane('settings')}
+          askForFolder={libraryState.status === 'no-location' && !askDismissed}
+          onDismissAsk={() => setAskDismissed(true)}
         />
       )}
       {pane === 'build' && (
@@ -368,6 +389,17 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
         </>
       )}
       {pane === 'sheet' && <SheetPane state={state} />}
+      {pane === 'settings' && (
+        <SettingsPane
+          location={libraryState.location}
+          unavailableReason={
+            libraryState.status === 'unavailable' ? libraryState.unavailableReason : undefined
+          }
+          entryCount={libraryState.entries.length}
+          onChooseFolder={() => void chooseFolder()}
+          shell={platform.shell}
+        />
+      )}
       {pane === 'sources' && (
         <SourcesPane
           sources={sources}
