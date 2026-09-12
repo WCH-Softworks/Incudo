@@ -29,6 +29,7 @@ import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  createCharacter,
   deriveCharacter,
   validateGameSystem,
   type CharacterStore,
@@ -40,7 +41,7 @@ import {
 } from '@incudo/core';
 import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { imageExtension } from '@incudo/aurora-import';
-import { CharacterLibrary, importAuroraSavesIntoLibrary } from '@incudo/ui';
+import { CharacterBuilder, CharacterLibrary, importAuroraSavesIntoLibrary } from '@incudo/ui';
 
 import { summarize } from './character-commands.ts';
 import { readContainer, writeContainer } from './node-save.ts';
@@ -205,6 +206,65 @@ test(
           `${entry.name} is named ${entry.portraitPath} but its bytes are ${extension}`,
         );
       }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  'a character built in the app keeps its ability scores with zero sources configured',
+  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  async () => {
+    // The other half of ADR 0012 for the ability score editor: not "an imported character
+    // survives" but "one built here does". Every write goes through `CharacterBuilder`, which
+    // is the same view-model the desktop shell drives, so what is checked is the product's own
+    // path rather than a hand-made character. Doing this by hand in the app is what turned up
+    // the two shell bugs in `use-builder.ts`; this is the part of it that stays checked.
+    const system = await shippedSystem();
+    const corpus = await auroraCorpus();
+
+    const dir = await mkdtemp(join(tmpdir(), 'incudo-abilities-'));
+    try {
+      const builder = new CharacterBuilder(
+        createCharacter('dnd5e', 'pc', { progress: 1, name: 'Point Buy Dwarf' }),
+        system,
+        corpus,
+      );
+
+      // Point buy, then seven of the twenty-seven points on Constitution: 8 → 14.
+      builder.setGenerationMethod('abilities', 'point-buy');
+      for (let i = 0; i < 6; i += 1) builder.adjustBudgetStat('abilities', 'constitution', +1);
+      // A dwarf, whose +2 must land on top of the 14 rather than replacing it (ADR 0014).
+      builder.choose('build/race', ['ID_SRD_RACE_DWARF']);
+      builder.choose('build/class', ['ID_WOTC_PHB_CLASS_FIGHTER']);
+
+      const built = builder.getState();
+      assert.equal(built.character.baseStats?.['constitution'], 14, 'the base is what is stored');
+      assert.equal(built.character.overrides?.['constitution'], undefined, 'never an override');
+      assert.equal(built.derived.stats.get('constitution')?.value, 16, '14 plus the dwarf');
+      assert.equal(built.derived.stats.get('hp')?.value, 3, 'and a score nobody rolled moves hp');
+      const expected = summarize(built.derived);
+
+      const writing = new CharacterLibrary(new NodeCharacterStore(dir));
+      await writing.restore();
+      const saved = await writing.save(built.character, system, corpus, {
+        generator: 'library-test',
+      });
+      assert.ok(saved.ok, `should save: ${saved.ok ? '' : saved.message}`);
+
+      // Forget the corpus entirely — no profile, no fetcher, nothing configured.
+      const library = new CharacterLibrary(new NodeCharacterStore(dir));
+      await library.restore();
+      const entry = library.getState().entries[0]!;
+      const opened = await library.open(entry.name);
+      assert.ok(opened, 'should open with no sources');
+
+      const reopened = deriveCharacter(opened.character, system, opened.elements);
+      assert.equal(opened.character.baseStats?.['constitution'], 14);
+      assert.equal(opened.character.generation?.['abilities'], 'point-buy');
+      assert.equal(reopened.stats.get('constitution')?.value, 16, 'the dwarf came with it');
+      assert.deepEqual(summarize(reopened), expected, 'and the whole sheet is identical');
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
