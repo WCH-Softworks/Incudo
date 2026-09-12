@@ -35,10 +35,20 @@ import {
   type ElementIndex,
   type RequirementContext,
   type GameSystem,
-  type GenerationMethodDef,
   type ResolvedCharacterKind,
   type StatKey,
 } from '@incudo/core';
+
+import {
+  budgetRollKey,
+  computeBudgetState,
+  initialBudgetValues,
+  planBudgetAdjust,
+  planBudgetSet,
+  rollBudgetValues,
+  type BudgetState,
+  type BudgetWrite,
+} from './budget.ts';
 
 /**
  * One thing the character still has to decide.
@@ -117,32 +127,6 @@ export interface BuilderStep {
   budget?: BudgetState;
 }
 
-/**
- * A points pool, as a view can render it — ADR 0017.
- *
- * `granted` is the budget stat, summed by the engine like any other, so whatever content
- * adds to it lands here without this file knowing what did. `spent` depends on the method,
- * because the methods are genuinely different questions: point buy spends from a pool,
- * a standard array assigns a fixed set, rolling assigns what you rolled, manual entry is
- * neither.
- */
-export interface BudgetState {
-  stat: StatKey;
-  targets: StatKey[];
-  /** The methods this step offers, resolved from the system. */
-  methods: GenerationMethodDef[];
-  /** The method the character used, if one has been recorded. */
-  methodId?: string;
-  /** Points available: the method's own pool plus whatever content granted. */
-  available: number;
-  spent: number;
-  remaining: number;
-  /** Targets with no value set yet. A budget is open while any of these remain. */
-  unassigned: StatKey[];
-  /** True when this method is a pool of points rather than a set of values to assign. */
-  pooled: boolean;
-}
-
 export interface BuilderState {
   character: Character;
   derived: DerivedCharacter;
@@ -177,10 +161,20 @@ export class CharacterBuilder {
   private focusedId: string | undefined;
   private readonly listeners = new Set<() => void>();
   private cached: BuilderState | undefined;
+  private readonly random: () => number;
 
-  constructor(character: Character, system: GameSystem, elements: ElementIndex) {
+  constructor(
+    character: Character,
+    system: GameSystem,
+    elements: ElementIndex,
+    options: { random?: () => number } = {},
+  ) {
     this.character = character;
     this.system = system;
+    // Injected for the reason every other platform dependency is (CODE-REUSE-POLICY rule 1):
+    // a test needs a sequence it chose. Nothing below cares where the numbers come from, and
+    // only `rollBudget` ever asks for one.
+    this.random = options.random ?? Math.random;
     // The build flow comes from the kind, not the system: a monster stat block and a PC
     // sheet share nothing but the stats underneath (ADR 0009).
     this.kind = resolveCharacterKind(system, character.kind);
@@ -235,11 +229,105 @@ export class CharacterBuilder {
     this.invalidate();
   };
 
-  /** Record how a budgeted step's values were produced, so a later edit reads them right. */
+  /**
+   * Record how a budgeted step's values were produced, so a later edit reads them right.
+   *
+   * **Changing the method clears what the step had assigned**, and that is a decision rather
+   * than an accident. The three methods cannot describe each other's answers: a standard
+   * array's 13 is not a value point buy prices, a bought 15 is not one of the six numbers you
+   * rolled, and carrying either across would leave the step holding a set its own method could
+   * never have produced — legal-looking, unreachable, and impossible to explain in the UI.
+   *
+   * Recorded **rolls survive**, because ADR 0007 says a recorded random result is an input and
+   * never silently disappears. Switching to point buy and back leaves the same six numbers
+   * waiting to be assigned; it is only the assignment that goes.
+   */
   setGenerationMethod = (stepId: string, methodId: string | undefined): void => {
-    this.character = setGenerationMethod(this.character, stepId, methodId);
+    const step = this.steps.find((s) => s.id === stepId);
+    const previous = this.character.generation?.[stepId];
+    let next = setGenerationMethod(this.character, stepId, methodId);
+
+    if (step?.budget && previous !== methodId) {
+      for (const target of step.budget.targets) next = clearBase(next, target);
+      const method = (this.system.generationMethods ?? []).find((m) => m.id === methodId);
+      next = applyWrites(next, initialBudgetValues(step.budget.targets, method));
+    }
+
+    this.character = next;
     this.invalidate();
   };
+
+  /**
+   * Set one of a budgeted step's target stats — the single write path of an ability editor.
+   *
+   * Validated here and not in the shell: an unaffordable point buy, a value the cost table does
+   * not price, a standard-array value that is not in the array, and an out-of-bounds manual
+   * entry are all refused or clamped by `planBudgetSet`. A refused set writes nothing, which is
+   * safe because the state it came from already said the control should be disabled.
+   *
+   * The interesting case is an assignment method: dropping a 15 on a target while another holds
+   * the only 15 **swaps** them rather than duplicating the value. See `planBudgetSet`.
+   */
+  setBudgetStat = (stepId: string, stat: StatKey, value: number | undefined): void => {
+    const budget = this.budgetFor(stepId);
+    if (!budget) return;
+    this.applyBudgetWrites(planBudgetSet(budget, stat, value));
+  };
+
+  /** Move one target a step up or down — the `+` and `−` of a point-buy row. */
+  adjustBudgetStat = (stepId: string, stat: StatKey, delta: number): void => {
+    const budget = this.budgetFor(stepId);
+    if (!budget) return;
+    this.applyBudgetWrites(planBudgetAdjust(budget, stat, delta));
+  };
+
+  /**
+   * Roll the values a rolled method still owes, and record them.
+   *
+   * Only the unrolled ones, so this is idempotent in the way that matters: calling it again
+   * does not change a number the user has already seen. **Re-rendering cannot reach it** — the
+   * state a view reads comes from `computeBudgetState`, which writes nothing — so there is no
+   * path from a repaint to a different character.
+   */
+  rollBudget = (stepId: string): void => {
+    const budget = this.budgetFor(stepId);
+    if (!budget) return;
+    let next = this.character;
+    for (const result of rollBudgetValues(stepId, budget, this.character, this.random)) {
+      next = setRoll(next, result.key, result.roll.total);
+    }
+    if (next === this.character) return;
+    this.character = next;
+    this.invalidate();
+  };
+
+  /**
+   * Discard a rolled set and the assignment made from it, so it can be rolled again.
+   *
+   * The explicit act `rollBudget` refuses to do implicitly. Both halves go together on purpose:
+   * the assignment is only meaningful as a placement of these six values, so keeping it while
+   * the pool disappears would leave scores nothing accounts for.
+   */
+  clearBudgetRolls = (stepId: string): void => {
+    const budget = this.budgetFor(stepId);
+    if (!budget?.dice) return;
+    let next = this.character;
+    for (let i = 0; i < budget.dice.count; i += 1) next = setRoll(next, budgetRollKey(stepId, i), undefined);
+    for (const target of budget.targets) next = clearBase(next, target);
+    this.character = next;
+    this.invalidate();
+  };
+
+  /** The budget of one step, as the editor sees it, or undefined if that step has none. */
+  budgetFor = (stepId: string): BudgetState | undefined => {
+    return this.getState().steps.find((step) => step.id === stepId)?.budget;
+  };
+
+  private applyBudgetWrites(writes: BudgetWrite[]): void {
+    if (!writes.length) return;
+    this.character = applyWrites(this.character, writes);
+    this.invalidate();
+  }
 
   /**
    * Show a decision. Presentation only — nothing in the model depends on it, and there is
@@ -375,41 +463,27 @@ export class CharacterBuilder {
   }
 
   private budgetState(step: BuildStepDef, derived: DerivedCharacter): BudgetState {
-    const budget = step.budget!;
-    const methods = (budget.methods ?? [])
-      .map((id) => (this.system.generationMethods ?? []).find((m) => m.id === id))
-      .filter((m): m is GenerationMethodDef => m !== undefined);
-    const methodId = this.character.generation?.[step.id];
-    const method = methods.find((m) => m.id === methodId);
-
-    const base = this.character.baseStats ?? {};
-    const valueOf = (stat: StatKey): number | undefined =>
-      base[stat] ?? base[stat.toLowerCase()];
-
-    const granted = derived.stats.get(budget.stat.toLowerCase())?.value ?? 0;
-    // A points method is one that says what a value costs. Reporting a pool for a rolled
-    // set would be a fiction — you did not buy those numbers, you rolled them.
-    const pooled = method?.costs !== undefined || method?.pool !== undefined;
-    const available = (method?.pool ?? 0) + granted;
-
-    let spent = 0;
-    if (pooled && method?.costs) {
-      for (const target of budget.targets) {
-        const value = valueOf(target);
-        if (value !== undefined) spent += method.costs[String(value)] ?? 0;
-      }
-    }
-
-    return {
-      stat: budget.stat,
-      targets: budget.targets,
-      methods,
-      methodId,
-      available,
-      spent,
-      remaining: available - spent,
-      unassigned: budget.targets.filter((target) => valueOf(target) === undefined),
-      pooled,
-    };
+    return computeBudgetState(step, this.character, derived, this.system, this.kind);
   }
+}
+
+/**
+ * Clear a base stat under either spelling.
+ *
+ * `baseStats` keys are matched case-insensitively everywhere they are read (ADR 0014), and the
+ * Aurora importer writes them lower-cased, so deleting only the spelling the budget declares
+ * would leave the other one behind — a score that reappears the moment anything re-reads it.
+ */
+function clearBase(character: Character, stat: StatKey): Character {
+  const cleared = setBaseStat(character, stat, undefined);
+  return stat === stat.toLowerCase() ? cleared : setBaseStat(cleared, stat.toLowerCase(), undefined);
+}
+
+/** Apply a plan from `budget.ts`, one `setBaseStat` at a time, without re-deriving between. */
+function applyWrites(character: Character, writes: BudgetWrite[]): Character {
+  let next = character;
+  for (const write of writes) {
+    next = write.value === undefined ? clearBase(next, write.stat) : setBaseStat(next, write.stat, write.value);
+  }
+  return next;
 }
