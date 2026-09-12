@@ -208,7 +208,7 @@ function CharacterCard({
  * artwork"), and a grid of faces is exactly where it is most tempting to break.
  */
 function Portrait({ entry }: { entry: LibraryEntry }): React.JSX.Element {
-  const src = useObjectUrl(entry.portrait);
+  const src = useObjectUrl(entry.portrait, mediaTypeOf(entry.portraitPath));
   if (!src) {
     return (
       <div className="portrait empty" aria-hidden="true">
@@ -219,11 +219,28 @@ function Portrait({ entry }: { entry: LibraryEntry }): React.JSX.Element {
   return <img className="portrait" src={src} alt={`Portrait of ${entry.title}`} />;
 }
 
+/**
+ * The media type, from the name the importer gave the file.
+ *
+ * Not always PNG: the importer sniffs five formats and names the asset accordingly, and one
+ * of the nine real sample saves carries a JPEG. Assuming PNG here handed the browser a blob
+ * under the wrong type — found by running the library against those saves, which no unit test
+ * had caught because every fixture portrait was a PNG.
+ */
+function mediaTypeOf(path: string | undefined): string {
+  const extension = path?.toLowerCase().split('.').pop();
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'gif') return 'image/gif';
+  if (extension === 'bmp') return 'image/bmp';
+  if (extension === 'webp') return 'image/webp';
+  return 'image/png';
+}
+
 /** Blob URLs are a resource; this revokes them when the card goes away or the bytes change. */
-function useObjectUrl(bytes: Uint8Array | undefined): string | undefined {
+function useObjectUrl(bytes: Uint8Array | undefined, type: string): string | undefined {
   const blob = useMemo(
-    () => (bytes ? new Blob([bytes as BlobPart], { type: 'image/png' }) : undefined),
-    [bytes],
+    () => (bytes ? new Blob([bytes as BlobPart], { type }) : undefined),
+    [bytes, type],
   );
   const [url, setUrl] = useState<string | undefined>(undefined);
 

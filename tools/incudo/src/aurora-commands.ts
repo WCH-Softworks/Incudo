@@ -31,6 +31,7 @@ import {
 } from '@incudo/aurora-import';
 import {
   BundleElementIndex,
+  LayeredElementIndex,
   collectCharacterContent,
   deriveCharacter,
   packCharacterContainer,
@@ -268,21 +269,15 @@ async function importSave(
 /**
  * One index that answers from `extra` first and falls back to `base`.
  *
- * Small enough to keep here rather than in `core`: only the Aurora save importer needs a
- * per-character content overlay, and giving `core` a general layering type would be
- * inventing a concept for one caller.
+ * This used to be a local literal, with a comment saying `core` should not grow a general
+ * layering type "for one caller". There are two callers now — the desktop shell has to put a
+ * save's embedded content in front of any loaded source without letting the source silently
+ * replace it — so the concept moved to `core` as `LayeredElementIndex` and this is the
+ * remaining sentence about *why* the importer wants one: the generated elements belong to
+ * this character, not to anyone's content library.
  */
 function overlay(base: ElementIndex, extra: Element[]): ElementIndex {
-  const own = new BundleElementIndex(extra);
-  return {
-    get: (id) => own.get(id) ?? base.get(id),
-    all: function* () {
-      yield* base.all();
-      yield* own.all();
-    },
-    byType: (type) => [...base.byType(type), ...own.byType(type)],
-    bySupport: (tag) => [...base.bySupport(tag), ...own.bySupport(tag)],
-  };
+  return new LayeredElementIndex([new BundleElementIndex(extra), base]);
 }
 
 async function readSave(file: string, ctx: CommandContext): Promise<AuroraSave | undefined> {

@@ -15,6 +15,7 @@
  */
 
 import {
+  ASSETS_PREFIX,
   BundleElementIndex,
   collectCharacterContent,
   packCharacterContainer,
@@ -62,6 +63,15 @@ export interface LibraryEntry {
    * exactly where it is most tempting to break it.
    */
   portrait?: Uint8Array;
+  /**
+   * Where those bytes sit in the container — `assets/portrait.png`, or `.jpg`, or nothing.
+   *
+   * Carried because the extension *is* the media type, and a view needs one to build a blob
+   * URL. Aurora's saves are not all PNGs: one of the nine real sample saves holds a JPEG,
+   * which the importer sniffed and named correctly and which a card assuming PNG would hand
+   * to the browser under the wrong type. Found by running this against the real saves.
+   */
+  portraitPath?: string;
   /**
    * Whatever `readCharacterContainer` had to say. Shown, never swallowed — a save that
    * half-opens is the case ADR 0005's "report it, don't guess" exists for.
@@ -370,7 +380,8 @@ export class CharacterLibrary {
       elementCount: manifest.elementCount ?? container.content.elements.length,
       sources,
       sourceStatuses: compareSourceRefs(sources, this.profile),
-      portrait,
+      portrait: portrait?.bytes,
+      portraitPath: portrait?.path,
       problems,
       broken: false,
     };
@@ -404,10 +415,17 @@ function brokenEntry(ref: LibraryEntryRef, message: string): LibraryEntry {
 function portraitOf(
   assets: ContainerFiles,
   referenced: Record<string, string> | undefined,
-): Uint8Array | undefined {
-  const path = referenced?.portrait;
-  if (path && assets.has(path)) return assets.get(path);
-  return assets.get('assets/portrait.png');
+): { bytes: Uint8Array; path: string } | undefined {
+  const named = referenced?.portrait;
+  if (named && assets.has(named)) return { bytes: assets.get(named)!, path: named };
+  // A container assembled by hand still shows a face. Every extension the importer can
+  // produce, because a save may hold any of them — and it really does; see `portraitPath`.
+  for (const extension of ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']) {
+    const path = ASSETS_PREFIX + 'portrait.' + extension;
+    const bytes = assets.get(path);
+    if (bytes) return { bytes, path };
+  }
+  return undefined;
 }
 
 function manifestOf(files: ContainerFiles): ContainerManifest | undefined {
