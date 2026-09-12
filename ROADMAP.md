@@ -185,8 +185,9 @@ before any code, both touching a public API:
       System Access API, and `node:fs` in a test).
       **Listing and opening need zero sources**, which is asserted twice: against a fake store
       in `packages/ui`, and against the nine real `.dnd5e` saves in
-      `tools/incudo/src/library.test.ts`. Still to do: renaming a file, an import/export flow
-      for `.dnd5e`, and the refresh that would move a recorded source version.
+      `tools/incudo/src/library.test.ts`. The `.dnd5e` **import** landed with the line below,
+      and that same test now drives it. Still to do: renaming a file, an explicit export, and
+      the refresh that would move a recorded source version.
 - [x] **Content manager: add an index by URL, enable/disable sources, stream or download**
       ([ADR 0028](./docs/adr/0028-sources-are-a-profile-characters-carry-an-allowlist.md),
       [ADR 0029](./docs/adr/0029-a-cache-is-keyed-by-source-and-evicted-by-version.md)). Add,
@@ -201,6 +202,13 @@ before any code, both touching a public API:
       What is *not* done and is named rather than implied: `stream` and `download` differ only
       in **when** files are fetched, because ADR 0004's lazy per-file loading needs an
       `ElementIndex` that can miss and there is not one.
+      **The cache shipped subtly wrong and the `.dnd5e` import found it.**
+      `CachedContentSource.loadFile` returned everything the network layer did except
+      `appends`, so all 171 `<append>` blocks were dropped on every load after the first —
+      no error, no warning, the same 740 files and 12,058 elements, and a corpus whose
+      elements simply reach 23 fewer things. It showed up as the same Aurora save importing
+      250 elements and then 227 a minute later. Fixed, and `compose.test.ts` now asserts the
+      two layers *agree* rather than that the cache merely answers.
 - [x] **Build flow as open decisions rather than a wizard**
       ([ADR 0017](./docs/adr/0017-open-decisions-not-steps.md)). `CharacterBuilder` publishes one
       flat, always-current `decisions` list and has no cursor, so there is nothing to navigate
@@ -215,11 +223,20 @@ before any code, both touching a public API:
       screen (ADR 0017): `setProgress` changes a number and the decisions it opens arrive in the
       same list as every other, tagged with the level that raised them.
 - [ ] Character sheet
-- [ ] Save/load `.incu` files; import `.dnd5e` (the importer is done — this is the UI for it).
-      *Half done:* the library reads and writes `.incu` in both forms, and the desktop shell
-      finally has a `ZipCodec` at all — the framing moved into `packages/core` so the browser's
-      `CompressionStream` and Node's `zlib` share one implementation. What is left is the
-      `.dnd5e` import button and an explicit export.
+- [x] Save/load `.incu` files; **import `.dnd5e`** (the importer was done — this was the UI
+      for it). The library reads and writes `.incu` in both forms, and the desktop shell has a
+      `ZipCodec` — the framing moved into `packages/core` so the browser's `CompressionStream`
+      and Node's `zlib` share one implementation. **Import from Aurora…** picks one or more
+      `.dnd5e` files and writes each into the library; the sequence between the picker and the
+      folder is `importAuroraSaveIntoLibrary` in `packages/ui`, so the mobile shell inherits it
+      and `tools/incudo/src/library.test.ts` drives the identical function over the nine real
+      saves. Reading a file from outside the library is a fifth port, `FilePicker` — deliberately
+      not a method on `CharacterStore`, whose every method means "inside the folder the user
+      chose". Importing is the one library operation that needs a content source, because a
+      `.dnd5e` records Aurora's element ids and nothing about what they mean; the app says so
+      rather than writing a character full of ids nothing can resolve.
+  - [ ] An **explicit export** is still missing. Saving writes into the library folder; there is
+        no "save a copy somewhere else", which needs the write half of the port above.
 - [x] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
       attunement, and magic items attached to other items. Planned in
       [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which

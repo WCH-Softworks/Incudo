@@ -164,8 +164,9 @@ Working: core engine, Aurora content **and save** importer, content sources, CLI
 definitions, the `.incu` container, the JSON Schemas and the validator behind them, the whole of
 the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class — and
 **the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR
-0027), manages content sources (ADR 0028/0029), builds a character, renders the sheet, and
-reads and writes real `.incu` files into a folder the user picks.
+0027), manages content sources (ADR 0028/0029), builds a character, renders the sheet,
+reads and writes real `.incu` files into a folder the user picks, and **imports Aurora
+`.dnd5e` saves into it**.
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **The library is the part to understand before touching the shell.** It is a folder the user
@@ -177,6 +178,19 @@ and opening reach for no source, no index and no fetcher**, which is ADR 0012 be
 than merely proved; two tests hold that line, one with a fake store and one over the nine real
 saves. If either starts needing content loaded, the feature is wrong.
 
+**Importing is the one library operation that does need content, and that is not a contradiction.**
+A `.dnd5e` records Aurora's element ids and nothing about what they mean, so an import resolves
+them against a corpus and copies what they name into the container; with no source enabled the
+app says so rather than writing a character full of ids nothing can resolve.
+`importAuroraSaveIntoLibrary` (`packages/ui/src/aurora-import.ts`) therefore takes an
+`ElementIndex` and `character-library.ts` still takes none — keep it that way. Reading the file
+itself is a fifth port, `FilePicker`, deliberately *not* a method on `CharacterStore`: every
+method there means "inside the folder the user chose", and an import is one file outside it,
+read once and forgotten. Two steps inside that function fail silently if dropped — the
+`LayeredElementIndex` overlay of `imported.generated`, and `imported.extraIds` — so
+`aurora-import.test.ts` asserts both by reading the container back with zero sources, and both
+assertions were checked by perturbation.
+
 **Run the app before trusting this file about what works.** Every phase up to the shell was
 verified against fixtures, a corpus and an oracle, and the first five minutes of actually using
 it still found a view-model bug that no test had: a required build step with nothing picked
@@ -186,7 +200,10 @@ found three real bugs this way and **none of them had a failing test first** —
 saved from the app recorded no sources at all, so ADR 0028's warning could never fire; nothing
 loaded content at startup, so a reload left the builder empty until you visited Sources; and one
 of the nine real portraits is a **JPEG**, which both halves of the library had assumed was a
-PNG. What the shell has surfaced and not fixed is under "Known from running it" below.
+PNG. The `.dnd5e` import kept the run going: importing one save twice, a minute apart, gave
+**250 elements embedded and then 227** — a `packages/content` cache bug three subsystems away
+that no count anywhere could have shown. What the shell has surfaced and not fixed is under
+"Known from running it" below.
 
 ### Known from running it
 
@@ -204,8 +221,18 @@ PNG. What the shell has surfaced and not fixed is under "Known from running it" 
   finally read back. Measured in the running app: 18.4 s cold for 238 files, **0.5 s** on a
   reload, and 11.1 s after an explicit Refresh, which is how you can tell an eviction really
   happened.
+- **~~A corpus read from that cache was not the same corpus.~~** Fixed, and worth remembering
+  how it was found. `CachedContentSource.loadFile` returned everything the network layer did
+  **except `appends`**, so all 171 `<append>` blocks were dropped on every load after the
+  first. Nothing said so: same 740 files, same 12,058 elements, same 57 warnings — what changed
+  was what a character's elements could *reach*. It surfaced as one Aurora save importing
+  "250 elements embedded" and then 227 a minute later, and it would have written short saves
+  for every user from their second session on, which is the ADR 0012 failure exactly. The
+  lesson is the one ADR 0008 already recorded about `<supports>`: **counts do not catch a
+  reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
+  the cache answers.
 
-Two things the library work surfaced and did **not** fix:
+Four things the shell has surfaced and deliberately **not** fixed:
 
 - **Scanning a library reads every container in full.** There is no manifest-only fast path,
   because the zip codec inflates the whole archive — nine saves is imperceptible, two hundred
@@ -215,6 +242,13 @@ Two things the library work surfaced and did **not** fix:
 - **Nothing moves a recorded source version.** ADR 0028's `moved` state is computed and shown,
   and the "refresh this character against the newer source" flow it points at does not exist,
   so a character says a source has moved until someone builds that.
+- **Importing N saves rescans the library N times.** `CharacterLibrary.save` refreshes after
+  every write, because the collision suffix reads the current listing — so importing the nine
+  real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
+  above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the
+  summary cache ADR 0027 names.
+- **There is no export.** Saving writes into the library folder; "save a copy somewhere else"
+  needs a write counterpart to `FilePicker` and does not exist.
 
 ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028 and 0029 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
