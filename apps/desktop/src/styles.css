@@ -370,3 +370,178 @@ ul.problems li.error {
 .result dl {
   margin-top: 6px;
 }
+
+/* --- the character library (ADR 0027) ------------------------------------ */
+
+.library-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.library-head h2 {
+  margin: 0;
+}
+
+.library-head .status {
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.library-head .row {
+  margin-left: auto;
+}
+
+ul.library {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px;
+  background: var(--bg);
+  height: 100%;
+}
+
+.card.broken {
+  border-color: var(--error-line);
+  background: var(--error-bg);
+}
+
+/*
+ * The portrait, and the gap where one is not.
+ *
+ * `assets/portrait.png` is the user's own image, carried inside the container as real bytes.
+ * When a character has none, `.portrait.empty` is what shows: a dashed outline and the words
+ * "no portrait". No silhouette, no avatar, no generated texture, not even a monogram — see the
+ * README's standing commitment. CSS and type are explicitly fine and are all this is.
+ */
+.portrait {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--bg-sunken);
+}
+
+.portrait.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--line);
+  background: none;
+  color: var(--fg-muted);
+  font-size: 10px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px;
+}
+
+.card-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--fg);
+}
+
+.card-meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.card-meta .bad {
+  color: var(--error-line);
+}
+
+.card-note {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+  border-left: 2px solid var(--warn-line);
+  padding-left: 8px;
+}
+
+.card-note ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.card .row {
+  margin: 8px 0 0;
+  flex-wrap: wrap;
+}
+
+button.danger {
+  border-color: var(--error-line);
+  color: var(--error-line);
+}
+
+.pane-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-sunken);
+  flex-wrap: wrap;
+}
+
+/* --- sources -------------------------------------------------------------- */
+
+ul.sources {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.source {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px;
+}
+
+.source-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.source-head input[type='text'],
+.source-head input:not([type]) {
+  flex: 1;
+  min-width: 140px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}

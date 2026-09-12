@@ -13,11 +13,14 @@
     "tauri:build": "node scripts/check-icon.mjs && tauri build"
   },
   "dependencies": {
-    "@incudo/core": "*",
-    "@incudo/content": "*",
     "@incudo/aurora-import": "*",
+    "@incudo/content": "*",
+    "@incudo/core": "*",
     "@incudo/ui": "*",
     "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.3",
+    "@tauri-apps/plugin-fs": "^2.5.2",
+    "@tauri-apps/plugin-http": "^2.6.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

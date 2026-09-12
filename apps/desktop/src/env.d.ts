@@ -15,3 +15,32 @@ declare module '*.json' {
   const value: unknown;
   export default value;
 }
+
+/**
+ * The File System Access API, which `lib.dom` does not yet describe in full.
+ *
+ * `showDirectoryPicker` and the async-iterable `entries()` are Chromium-only, and the two
+ * permission methods are a WICG extension no standard library declares. The browser build's
+ * character library is built on them (ADR 0027), and every call site feature-detects before
+ * reaching for one — `createDesktopPlatform` falls back to a store that says it is
+ * unavailable. These declarations only stop the compiler pretending they cannot exist.
+ */
+interface FileSystemHandlePermissionDescriptor {
+  mode?: 'read' | 'readwrite';
+}
+
+interface FileSystemDirectoryHandle {
+  entries(): AsyncIterableIterator<[string, FileSystemFileHandle | FileSystemDirectoryHandle]>;
+  queryPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
+  requestPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
+}
+
+interface DirectoryPickerOptions {
+  id?: string;
+  mode?: 'read' | 'readwrite';
+  startIn?: FileSystemHandle | string;
+}
+
+interface Window {
+  showDirectoryPicker?(options?: DirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
+}

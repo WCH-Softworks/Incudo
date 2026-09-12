@@ -263,6 +263,64 @@ export class MapElementIndex implements ElementIndex {
   }
 }
 
+/**
+ * Several indexes read as one, with the first that has an id winning.
+ *
+ * This exists for one situation and it is worth naming precisely. A save embeds the content
+ * its character uses (ADR 0012). Open that save in an app that *also* has sources loaded, and
+ * there are two answers for every element the character already has. Preferring the loaded
+ * source would be the silent upstream refresh ADR 0012 spends a whole section refusing;
+ * ignoring the loaded source would mean a character opened from a library could never be
+ * given anything new.
+ *
+ * So: the save's own content first, everything else behind it. Nothing the character already
+ * has changes, and material it does not have becomes available. A deliberate refresh is then
+ * an action the user takes, which is what the ADR asks for.
+ *
+ * `byType` and `bySupport` concatenate and de-duplicate by id, keeping the front index's
+ * version — a candidate list must not offer the same element twice under two definitions.
+ */
+export class LayeredElementIndex implements ElementIndex {
+  private readonly layers: ElementIndex[];
+
+  constructor(layers: ElementIndex[]) {
+    this.layers = layers.filter(Boolean);
+  }
+
+  get(id: ElementId): Element | undefined {
+    for (const layer of this.layers) {
+      const found = layer.get(id);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  all(): Iterable<Element> {
+    return this.merge((layer) => [...layer.all()]);
+  }
+
+  byType(type: ElementType): Element[] {
+    return this.merge((layer) => layer.byType(type));
+  }
+
+  bySupport(tag: string): Element[] {
+    return this.merge((layer) => layer.bySupport(tag));
+  }
+
+  private merge(from: (layer: ElementIndex) => Element[]): Element[] {
+    const seen = new Set<ElementId>();
+    const out: Element[] = [];
+    for (const layer of this.layers) {
+      for (const element of from(layer)) {
+        if (seen.has(element.id)) continue;
+        seen.add(element.id);
+        out.push(element);
+      }
+    }
+    return out;
+  }
+}
+
 function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
   const existing = map.get(key);
   if (existing) existing.push(value);
