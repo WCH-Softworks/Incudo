@@ -9,7 +9,9 @@
  */
 
 import type { CharacterBuilder, BuilderState, OpenDecision } from '@incudo/ui';
-import type { ElementId, ElementIndex } from '@incudo/core';
+import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
+
+import { BudgetEditor } from './BudgetEditor.tsx';
 
 export function BuilderPane({
   builder,
@@ -25,6 +27,13 @@ export function BuilderPane({
   const { kind, derived, decisions, steps } = state;
   const progression = kind.progression;
   const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
+
+  /** Budgeted steps with nothing outstanding — still editable, see below. */
+  const settled = steps.filter(
+    (step) =>
+      step.budget &&
+      !decisions.some((decision) => decision.kind === 'budget' && decision.stepId === step.id),
+  );
 
   return (
     <main className="pane builder">
@@ -96,12 +105,39 @@ export function BuilderPane({
                   decision={decision}
                   builder={builder}
                   nameOf={nameOf}
+                  kind={kind}
+                  budget={steps.find((step) => step.id === decision.stepId)?.budget}
                 />
               </li>
             ))}
           </ul>
         </section>
       </div>
+
+      {/*
+        A budget that is finished leaves `decisions`, which is correct — it is not outstanding —
+        and would take the editor off the screen with it, leaving no way to change a score you
+        had already set. So a settled budget renders here instead. The two conditions are
+        mutually exclusive, so the editor appears exactly once either way.
+
+        The same hole exists for an answered `pick`: once you have chosen a race, this pane
+        offers no way to choose a different one. That is the next thing to fix and it is bigger
+        than this pane — see CLAUDE.md, "Known from running it".
+      */}
+      {settled.length > 0 && (
+        <section>
+          <h2>Values already set</h2>
+          {settled.map((step) => (
+            <div key={step.id} className="settled">
+              <div className="decision-head">
+                <span className="label">{step.label}</span>
+                <span className="tag done">complete</span>
+              </div>
+              <BudgetEditor stepId={step.id} budget={step.budget!} builder={builder} kind={kind} />
+            </div>
+          ))}
+        </section>
+      )}
 
       {derived.problems.length > 0 && (
         <section>
@@ -123,10 +159,14 @@ function Decision({
   decision,
   builder,
   nameOf,
+  kind,
+  budget,
 }: {
   decision: OpenDecision;
   builder: CharacterBuilder;
   nameOf: (id: ElementId) => string;
+  kind: ResolvedCharacterKind;
+  budget: BuilderState['steps'][number]['budget'];
 }): React.JSX.Element {
   return (
     <>
@@ -143,11 +183,13 @@ function Decision({
       </div>
 
       {decision.kind === 'budget' ? (
-        <p className="hint">
-          Ability scores are an input with no formula (ADR 0014). The point-buy and standard-array
-          editor is still to be built — this shell shows that the decision is open and does not
-          pretend to answer it.
-        </p>
+        budget ? (
+          <BudgetEditor stepId={decision.stepId} budget={budget} builder={builder} kind={kind} />
+        ) : (
+          // A budget decision whose step has no budget is a contradiction the view-model cannot
+          // produce; it is here so a future one says so rather than rendering nothing.
+          <p className="hint">This step declares a budget the builder did not publish.</p>
+        )
       ) : decision.candidates.length > 0 ? (
         <select
           defaultValue=""

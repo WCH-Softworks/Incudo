@@ -603,6 +603,41 @@ test('changing method clears the assignment and keeps the rolls', () => {
   assert.deepEqual(b.budgetFor('scores')!.unassigned, ['vigour', 'grit']);
 });
 
+test('a character with scores and no recorded method keeps them under free entry', () => {
+  // Every one of the nine real Aurora saves is this: six scores and no method, because Aurora
+  // records none. Found by opening one in the running app — the editor had nothing to show and
+  // picking a method to see the scores was how a user would have lost them.
+  const character = createCharacter('test', 'pc', { progress: 1 });
+  const imported = { ...character, baseStats: { vigour: 18, grit: 17 } };
+  const b = new CharacterBuilder(imported, system(), indexWith());
+
+  const before = b.budgetFor('scores')!;
+  assert.equal(before.methodId, undefined);
+  assert.equal(before.mode, 'free', 'so the rows are editable rather than hidden');
+  assert.deepEqual(before.rows.map((r) => r.base), [18, 17]);
+
+  b.setGenerationMethod('scores', 'manual');
+  assert.deepEqual(
+    b.budgetFor('scores')!.rows.map((r) => r.base),
+    [18, 17],
+    'manual entry can hold anything the others produced, so nothing is thrown away',
+  );
+});
+
+test('a points method starts clean even from values it happens to price', () => {
+  // The mode is the rule, not the number. The fixture's table prices 9, so a leftover rolled 9
+  // would survive a per-value check — and would sit inside a spend nobody made.
+  const character = createCharacter('test', 'pc', { progress: 1 });
+  const b = new CharacterBuilder(
+    { ...character, baseStats: { vigour: 18, grit: 9 } },
+    system(),
+    indexWith(),
+  );
+  b.setGenerationMethod('scores', 'buy');
+  assert.deepEqual(b.budgetFor('scores')!.rows.map((r) => r.base), [8, 8]);
+  assert.equal(b.budgetFor('scores')!.spent, 0);
+});
+
 test('choosing the method already recorded changes nothing', () => {
   // Re-selecting the current method must not wipe the work: the clear is for a *change*.
   const b = builder(indexWith());

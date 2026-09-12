@@ -644,3 +644,139 @@ ul.import-report .card-meta code {
 ul.import-report li.error {
   color: var(--error-line);
 }
+
+/*
+ * A budgeted step — 5e's ability scores (ADR 0017).
+ *
+ * Dense on purpose: six rows, four numbers each, and every one of them visible at once, because
+ * the whole argument for this editor is that you can see what a base is and what lands on top
+ * of it. No icons; the stepper's − and + are characters.
+ */
+.budget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.budget-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.budget-methods label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  cursor: pointer;
+}
+
+.budget-methods label.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.budget-pool,
+.budget-dice,
+.budget-values {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.budget-pool strong {
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.budget-values .value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 34px;
+  justify-content: center;
+  padding: 3px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* A value that has found a home. Still shown, because the set is the point. */
+.budget-values .value.taken {
+  border-color: var(--line);
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.budget-values .value small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
+table.budget-rows {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 480px;
+}
+
+table.budget-rows th,
+table.budget-rows td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+table.budget-rows thead th {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+table.budget-rows .numeric {
+  text-align: right;
+}
+
+table.budget-rows .muted {
+  color: var(--fg-muted);
+}
+
+table.budget-rows .total {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+table.budget-rows input[type='number'] {
+  width: 56px;
+  text-align: right;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepper b {
+  min-width: 22px;
+  text-align: center;
+}
+
+.stepper button {
+  width: 24px;
+  padding: 0;
+  line-height: 20px;
+}
+
+.settled {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}

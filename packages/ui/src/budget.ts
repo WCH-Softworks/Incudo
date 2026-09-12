@@ -441,9 +441,38 @@ export function rollBudgetValues(
 export function initialBudgetValues(
   targets: StatKey[],
   method: GenerationMethodDef | undefined,
+  character: Character,
 ): BudgetWrite[] {
   if (modeOf(method) !== 'points') return [];
   const start = method?.min ?? attainableValues(method)[0];
   if (start === undefined) return [];
-  return targets.map((stat) => ({ stat, value: start }));
+  const base = character.baseStats ?? {};
+  return targets
+    .filter((stat) => (base[stat] ?? base[stat.toLowerCase()]) === undefined)
+    .map((stat) => ({ stat, value: start }));
+}
+
+/**
+ * Whether a value already held is one the given method could have produced.
+ *
+ * The rule for what survives a change of method, and it is a rule about the *mode* rather than
+ * about the number: **a method that hands out or prices values starts clean; a free method
+ * keeps what it is given.**
+ *
+ * Both halves earn their place. Point buy and a standard array are authorities on their own
+ * values — a rolled 9 that the cost table happens to price is not a bought 9, and keeping it
+ * would leave one score as a leftover roll inside a spend nobody made. Free entry is a superset
+ * of all of them, so it can hold what any of them produced, and a character imported from
+ * Aurora — six real scores, no recorded method, which is all nine of the sample saves — keeps
+ * them when the user picks "enter manually" to fine-tune.
+ */
+export function canExpressValue(
+  method: GenerationMethodDef | undefined,
+  value: number | undefined,
+): boolean {
+  if (value === undefined) return true;
+  if (modeOf(method) !== 'free') return false;
+  if (method?.min !== undefined && value < method.min) return false;
+  if (method?.max !== undefined && value > method.max) return false;
+  return true;
 }

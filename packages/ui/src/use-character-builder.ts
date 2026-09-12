@@ -41,6 +41,7 @@ import {
 
 import {
   budgetRollKey,
+  canExpressValue,
   computeBudgetState,
   initialBudgetValues,
   planBudgetAdjust,
@@ -232,15 +233,21 @@ export class CharacterBuilder {
   /**
    * Record how a budgeted step's values were produced, so a later edit reads them right.
    *
-   * **Changing the method clears what the step had assigned**, and that is a decision rather
-   * than an accident. The three methods cannot describe each other's answers: a standard
-   * array's 13 is not a value point buy prices, a bought 15 is not one of the six numbers you
-   * rolled, and carrying either across would leave the step holding a set its own method could
-   * never have produced — legal-looking, unreachable, and impossible to explain in the UI.
+   * **The new method keeps only the values it can express**, which is the rule rather than
+   * "changing method clears everything". The methods cannot describe each other's answers — a
+   * rolled 18 is not a value point buy prices, a bought 15 is not one of the six numbers you
+   * rolled — so carrying such a value across would leave the step holding a set its own method
+   * could never have produced: legal-looking, unreachable, and unexplainable on screen.
    *
-   * Recorded **rolls survive**, because ADR 0007 says a recorded random result is an input and
-   * never silently disappears. Switching to point buy and back leaves the same six numbers
-   * waiting to be assigned; it is only the assignment that goes.
+   * The case that forced the distinction is the common one. Every character imported from
+   * Aurora arrives with six real scores and **no recorded method**, because Aurora does not
+   * record one. Under a blanket clear, a user who opened such a character and touched
+   * "Enter manually" — the method that can hold those numbers perfectly well — would lose all
+   * six. Found by running the app on an imported character, which had no failing test.
+   *
+   * Recorded **rolls survive** either way, because ADR 0007 says a recorded random result is an
+   * input and never silently disappears. Switching to point buy and back leaves the same six
+   * numbers waiting to be assigned; it is only their placement that goes.
    */
   setGenerationMethod = (stepId: string, methodId: string | undefined): void => {
     const step = this.steps.find((s) => s.id === stepId);
@@ -248,9 +255,13 @@ export class CharacterBuilder {
     let next = setGenerationMethod(this.character, stepId, methodId);
 
     if (step?.budget && previous !== methodId) {
-      for (const target of step.budget.targets) next = clearBase(next, target);
       const method = (this.system.generationMethods ?? []).find((m) => m.id === methodId);
-      next = applyWrites(next, initialBudgetValues(step.budget.targets, method));
+      const budget = this.budgetFor(stepId);
+      for (const target of step.budget.targets) {
+        const held = budget?.rows.find((row) => row.stat === target)?.base;
+        if (!canExpressValue(method, held)) next = clearBase(next, target);
+      }
+      next = applyWrites(next, initialBudgetValues(step.budget.targets, method, next));
     }
 
     this.character = next;
