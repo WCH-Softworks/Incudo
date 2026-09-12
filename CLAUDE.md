@@ -164,10 +164,36 @@ Working: core engine, Aurora content **and save** importer, content sources, CLI
 definitions, the `.incu` container, the JSON Schemas and the validator behind them, the whole of
 the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class — and
 **the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR
-0027), manages content sources (ADR 0028/0029), builds a character, renders the sheet,
-reads and writes real `.incu` files into a folder the user picks, and **imports Aurora
-`.dnd5e` saves into it**.
+0027), manages content sources (ADR 0028/0029), builds a character, **sets its ability scores by
+all four of 5e's methods**, renders the sheet, reads and writes real `.incu` files into a folder
+the user picks, and **imports Aurora `.dnd5e` saves into it**.
 Not started: the mobile shell (only its `platform.ts` contract exists).
+
+**A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
+`packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool
+covers it, which of six values is still unplaced, what a swap should move, what a change of
+method keeps — all of it there, under `node --test`. `apps/desktop/src/panes/BudgetEditor.tsx`
+computes nothing, which is CODE-REUSE-POLICY rule 2's stated test kept honest: "point buy let me
+spend 28 points" is fixable in a package. Four things decided rather than fallen into:
+
+- **A points method seeds every target at the cheapest value it prices.** Without it a target
+  nobody touched has no base, and the derivation reads the stat's declared `default` — 10 in 5e,
+  *higher* than the 8 point buy gives away free. A set nobody bought, that looks legal. The
+  decision stays open on the unspent pool, which is what `BudgetState`'s two openness conditions
+  were always for.
+- **An assignment method swaps; it never duplicates.** Dropping the 15 on a target while another
+  holds the only 15 hands that one whatever this target held.
+- **A change of method keeps only what the new method can express**, and that is a rule about the
+  *mode*, not the number: point buy and the standard array start clean because they are
+  authorities on their own values, and free entry keeps what it is given. The case that forced it
+  is the common one — every imported Aurora character has six real scores and **no recorded
+  method**, so a blanket clear would have destroyed all nine sample characters' scores the moment
+  someone touched "enter manually".
+- **Rolling is in `packages/ui/src/dice.ts`, above the engine and below the shell.** ADR 0019
+  forbids core learning to roll (a derivation runs on every keystroke, so a roller it could reach
+  would eventually be called by one); `"4d6dl1"` is declared in `system.json`, which makes
+  parsing it a rule about the game and not a component's business. `rollBudget` fills only the
+  unrolled slots and the state a view reads is a pure function, so **no repaint can reroll**.
 
 **The library is the part to understand before touching the shell.** It is a folder the user
 chooses, scanned on open, with no index file and no database — the folder *is* the list, because
@@ -205,6 +231,19 @@ PNG. The `.dnd5e` import kept the run going: importing one save twice, a minute 
 that no count anywhere could have shown. What the shell has surfaced and not fixed is under
 "Known from running it" below.
 
+**The ability score editor found three more, and one was data loss.** Both of the serious ones
+were in `apps/desktop/src/use-builder.ts` and had been there since the file was written.
+Enabling or disabling a content source replaces `elements`, which rebuilds the `CharacterBuilder`
+— **from the shell's `working.character`, which is the character as it was opened and is never
+written back to.** Six scores, a race and a class silently back to straight 10s, with the
+autosave then writing the reversion over the draft, so reloading did not bring it back. It ate a
+character mid-session. And **"New character" did nothing at all**, because the memo saw the same
+system and the same index; opening from the library only ever *appeared* to work, since a save
+carries embedded content and so changed `elements` by accident. The hook now resumes from the
+builder's own state and keys on `character.id`. Twelve green test files cover this code and none
+of them rebuilds a builder mid-edit, which is the whole lesson: **the tests protect the rules,
+running it protects the product.**
+
 ### Known from running it
 
 - **`<select supports="$(...)">` still offers nothing**, and the Rogue example this entry used
@@ -232,8 +271,18 @@ that no count anywhere could have shown. What the shell has surfaced and not fix
   reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
   the cache answers.
 
-Four things the shell has surfaced and deliberately **not** fixed:
+Seven things the shell has surfaced and deliberately **not** fixed:
 
+- **An answered `pick` cannot be changed.** Choose a race and the decision correctly leaves
+  `decisions`, and with it goes the only control that could pick a different one. A budget does
+  not have this problem — `BuilderPane` renders a settled one in a section of its own — but doing
+  the same for race, class and background is a real screen rather than a two-line fix, and it is
+  the next obvious thing to build in that pane.
+- **A granted ability point is unspendable except under a points method.** `BudgetState.granted`
+  reports it and the editor shows it, but only a cost table says what a point buys, so a
+  standard-array or rolled character cannot spend one. Inventing "a point is +1" is the guess
+  ADR 0005 rules out. It fires zero times today: nothing in the 740 files contributes to
+  `ability points`, and a 5e ASI is a `+1` straight to the stat.
 - **Scanning a library reads every container in full.** There is no manifest-only fast path,
   because the zip codec inflates the whole archive — nine saves is imperceptible, two hundred
   will not be. Same for the portrait bytes a grid holds in memory. ADR 0027 names the
@@ -249,6 +298,12 @@ Four things the shell has surfaced and deliberately **not** fixed:
   summary cache ADR 0027 names.
 - **There is no export.** Saving writes into the library folder; "save a copy somewhere else"
   needs a write counterpart to `FilePicker` and does not exist.
+- **An NPC or legendary creature has no way to set ability scores.** Both kinds declare a
+  required `abilities` step with `"types": []` and **no `budget`** — the inert shape ADR 0017
+  names, which matches no pending choice and reports itself complete. The editor is a budget
+  renderer and knows nothing about 5e, so this is one `budget` block per kind in
+  `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
+  not bought). Left unwritten while the phase is about a PC.
 
 ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028 and 0029 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
@@ -280,6 +335,9 @@ flat, always-current list — and `steps` is a grouping with `available`/`blocke
 sequence to walk. There is no `goToStep` and no Back button; `focus()` is presentation and
 nothing depends on it. A decision opened at level 4 arrives in the same list as every other.
 `Character` gained a sixth input, `generation`, recording which method a budgeted step used.
+A budget is written through `setBudgetStat`, `adjustBudgetStat`, `rollBudget`, `clearBudgetRolls`
+and `setGenerationMethod` — all validated, all on the builder. `setBaseStat` still exists and
+bypasses every rule; it is for a caller that has no budget, not for an editor.
 
 **Hit points are the one number no oracle checks** (ADR 0019). Aurora's saves record the
 per-level rolls and never the total, so `aurora verify` has nothing to diff. Do not describe

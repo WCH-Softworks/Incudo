@@ -219,6 +219,30 @@ before any code, both touching a public API:
       a placeholder: the step used to declare `"types": []`, match no pending choice, and report
       itself complete from the first render, and the view-model had no way to set a score at all.
       What remains for the shells is the rendering — this is the view-model, not a screen.
+- [x] **The ability score editor, so a character can have ability scores.** Until this, every
+      character built in the app had straight 10s — 0 hit points and a meaningless sheet — and
+      `BuilderPane` rendered a paragraph saying the editor was still to be built. All four of
+      5e's methods work in the running app: point buy against the declared cost table, the
+      standard array, `4d6dl1` × 6, and free entry. The logic is `packages/ui/src/budget.ts` and
+      `dice.ts`, testable in Node; `BudgetEditor.tsx` computes nothing, so
+      CODE-REUSE-POLICY rule 2's stated test — "point buy let me spend 28 points" must be
+      fixable in a package — still holds. Rolling lives above the engine because ADR 0019
+      forbids core learning to roll, and below the shell because `"4d6dl1"` is declared in
+      `system.json` and parsing it is a rule about the game.
+      Three decisions that could have gone the other way are recorded in the commits: a points
+      method **seeds every target at the cheapest value it prices** (otherwise an untouched
+      target derives the stat's declared default — 10 in 5e, higher than the 8 point buy gives
+      free, and a set nobody bought); an assignment method **swaps rather than duplicating**;
+      and a change of method **keeps only what the new method can express**, which is what
+      saves an imported character's six scores when the user picks "enter manually".
+      **Using it found three bugs, none with a failing test.** Two were pre-existing and in the
+      shell, both in `use-builder.ts`: changing a content source rebuilt the builder from the
+      shell's stale copy and **silently threw away every edit** (then autosaved the reverted
+      character over the draft, so a reload did not bring it back), and "New character" did
+      nothing at all because the memo saw no changed dependency. The third was in this work: the
+      editor hid its rows until a method was picked, which is exactly the state every Aurora
+      import lands in — six real scores and no recorded method — so picking one to see them was
+      how a user would have lost them.
 - [ ] Level-up with `level="N"` grants and pending `<select>` choices — no longer a separate
       screen (ADR 0017): `setProgress` changes a number and the decisions it opens arrive in the
       same list as every other, tagged with the level that raised them.
@@ -377,8 +401,15 @@ exist, which are broken, which sources have moved" has assertions even though th
 not. Second, and the one that keeps earning: **run it against the real data**. The nine
 `.dnd5e` saves are not only an oracle for arithmetic — driven through the library they caught a
 portrait that is a **JPEG**, which every unit fixture had assumed was a PNG. Neither of those
-replaces using the app. Of the three real bugs this session found, two came from the app in a
-browser and one from the real saves, and **none had a failing test first**.
+replaces using the app. Of the three real bugs the library session found, two came from the app
+in a browser and one from the real saves, and **none had a failing test first**.
+
+The ability score editor then found three more the same way, and one of them was **data loss**:
+changing a content source reverted the character to what it was when opened, then autosaved the
+reversion over the draft. Twelve green test files over the same code said nothing, because
+nothing there rebuilds a builder mid-edit. That is now three sessions running in which using the
+app found every bug that mattered, and the tally for the view layer is worth keeping: the tests
+protect the rules, and **running it protects the product**.
 
 ### Known gaps, carried deliberately
 
@@ -403,6 +434,19 @@ so that finding one again is recognition rather than discovery.
 - **`hp` and `ac` are unverifiable against Aurora, permanently.** The save format records the
   per-level rolls and never the total, and records no armour class at all. Both are derived
   from published rules and checked by perturbation. Do not describe either as verified.
+- **A granted ability point is only spendable under a method that prices values.** ADR 0017's
+  headline case — "a class gave you one more attribute point" — works for point buy, where the
+  cost table says what a point buys. Under the standard array or a rolled set there is no cost
+  table, so a granted point is reported on `BudgetState.granted` and cannot be spent. Inventing
+  "one point is +1" would be the guess ADR 0005 rules out. Nothing in the 740 files contributes
+  to 5e's `ability points` today, so this fires zero times; an ASI is a `+1` straight to the
+  stat and lands as an ordinary contribution.
+- **An NPC or legendary creature still has no way to set ability scores.** Both kinds declare a
+  required `abilities` step with `"types": []` and **no `budget`**, which is the shape ADR 0017
+  called inert: it matches no pending choice and reports itself complete. The editor is ready
+  for them — it is a budget renderer and knows nothing about 5e — so this is one `budget` block
+  per kind in `systems/dnd5e/system.json`, deliberately not written while the phase is about a
+  PC. A monster's scores are printed rather than bought, so the method is `manual`.
 
 **Exit criteria:** a level 8 multiclassed Rogue/Wizard with a subclass, feats and prepared
 spells is buildable end to end and matches Aurora's output for the same choices.
