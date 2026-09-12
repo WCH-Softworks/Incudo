@@ -171,3 +171,98 @@ test('nothing cached yet is unknown rather than current', async () => {
   assert.equal(status.state, 'unknown');
   assert.match((status as { reason: string }).reason, /nothing was cached/i);
 });
+
+/**
+ * A load from the cache has to be the *same* load, not merely a load of the same size.
+ *
+ * For the whole life of ADR 0029's cache, `CachedContentSource.loadFile` returned everything
+ * `HttpContentSource` did **except `appends`**. Every `<append>` in a corpus — 171 of them in
+ * AuroraLegacy, the mechanism by which a supplement extends a core element without editing
+ * it — was therefore dropped on every load after the first.
+ *
+ * Nothing said so. Same file count, same element count, same diagnostics: what changed was
+ * what the character's own elements could *reach*, and that only shows when something walks
+ * the graph. It was found by importing one Aurora save twice in the running app and watching
+ * "250 elements embedded" become 227 — the missing 23 being the firearms option and every
+ * proficiency it grants, which upstream declares with exactly this construct. It would have
+ * written short saves for every user from their second session onwards, which is the ADR 0012
+ * failure exactly.
+ *
+ * So the assertion is not "the cache works". It is "the two layers answer the same".
+ */
+class AppendingFetcher implements Fetcher {
+  offline = false;
+
+  async fetchText(url: string): Promise<FetchResult> {
+    if (this.offline) throw new Error(`offline: refused ${url}`);
+    if (url.endsWith('.index')) {
+      return {
+        url,
+        text: [
+          '<?xml version="1.0" encoding="utf-8"?>',
+          '<index>',
+          '  <info><name>Core</name><update version="1.0.0" /></info>',
+          '  <files>',
+          '    <file name="Core" url="core.xml" />',
+          '    <file name="Supplement" url="supplement.xml" />',
+          '  </files>',
+          '</index>',
+        ].join('\n'),
+      };
+    }
+    if (url.endsWith('supplement.xml')) {
+      return {
+        url,
+        text: [
+          '<?xml version="1.0" encoding="utf-8"?>',
+          '<elements>',
+          '  <append id="ID_MARTIAL_RANGED">',
+          '    <supports>Extra Tag</supports>',
+          '    <rules><grant type="Proficiency" id="ID_REVOLVER" /></rules>',
+          '  </append>',
+          '</elements>',
+        ].join('\n'),
+      };
+    }
+    return {
+      url,
+      text: [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<elements>',
+        '  <element name="Martial Ranged" type="Proficiency" source="Core" id="ID_MARTIAL_RANGED">',
+        '    <rules />',
+        '  </element>',
+        '</elements>',
+      ].join('\n'),
+    };
+  }
+}
+
+test('a load from the cache carries the appends a load from the network did', async () => {
+  const fetcher = new AppendingFetcher();
+  const storage = new MemoryStorage();
+  const source = configured();
+
+  const fresh = new ContentLibrary();
+  const first = await fresh.loadSource(composeSource(source, { fetcher, storage }), INDEX_URL);
+  assert.equal(first.filesLoaded, 2);
+  assert.equal(first.elementsLoaded, 1, 'an append is not an element');
+  assert.equal(fresh.elements.get('ID_MARTIAL_RANGED')?.rules.length, 1);
+  assert.deepEqual(fresh.elements.get('ID_MARTIAL_RANGED')?.supports, ['Extra Tag']);
+
+  fetcher.offline = true;
+  const reloaded = new ContentLibrary();
+  const second = await reloaded.loadSource(composeSource(source, { fetcher, storage }), INDEX_URL);
+
+  // Every count agrees, which is the whole problem with counting.
+  assert.equal(second.filesLoaded, first.filesLoaded);
+  assert.equal(second.elementsLoaded, first.elementsLoaded);
+  assert.equal(second.diagnostics.length, first.diagnostics.length);
+
+  assert.equal(
+    reloaded.elements.get('ID_MARTIAL_RANGED')?.rules.length,
+    1,
+    'the append has to survive the cache, or the corpus is quietly a different corpus',
+  );
+  assert.deepEqual(reloaded.elements.get('ID_MARTIAL_RANGED')?.supports, ['Extra Tag']);
+});

@@ -56,6 +56,14 @@ export class CachedContentSource implements ContentSource {
       name: parsed.name,
       version: parsed.version,
       elements: parsed.elements,
+      // `appends` was missing here, and `HttpContentSource` has always returned it. Every
+      // `<append>` in the corpus — 171 of them, the mechanism a supplement uses to extend a
+      // core element — was therefore dropped on every load served from the cache, which is
+      // every load after the first. It produced no error, no warning and the same element
+      // count: what changed was *reachability*, so a character saved against a cached corpus
+      // embedded fewer elements than the same character saved a minute earlier. Found by
+      // importing one Aurora save twice in the running app and watching 250 become 227.
+      appends: parsed.appends,
       diagnostics: parsed.diagnostics,
     };
   }
