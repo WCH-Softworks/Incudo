@@ -9,3 +9,4 @@
  * apps end up bad on both platforms. See docs/CODE-REUSE-POLICY.md, rule 3.
  */
 export * from './use-character-builder.ts';
+export * from './character-library.ts';

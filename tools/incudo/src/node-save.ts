@@ -14,10 +14,10 @@
 
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
-import type { ContainerFiles } from '@incudo/core';
+import type { ContainerFiles, ContainerForm } from '@incudo/core';
 import { nodeZipCodec } from './node-zip.ts';
 
-export type ContainerForm = 'zip' | 'folder';
+export type { ContainerForm };
 
 /** Where a path would be written, given only its name. */
 export function formOf(path: string): ContainerForm {
