@@ -34,7 +34,12 @@ import {
   type SourceMode,
   type UpdateStatus,
 } from '@incudo/content';
-import { CharacterLibrary, type LibraryEntry } from '@incudo/ui';
+import {
+  CharacterLibrary,
+  importAuroraSavesIntoLibrary,
+  type AuroraImportReport,
+  type LibraryEntry,
+} from '@incudo/ui';
 
 import { loadCharacter, loadShippedSystem, newCharacter, saveCharacter } from './boot.ts';
 import { createDesktopPlatform } from './platform.ts';
@@ -110,6 +115,10 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
     readAt?: string;
   }>({ character: initial });
   const [saveNote, setSaveNote] = useState<string | null>(null);
+
+  /** The Aurora import: what it is doing, and what it did. Cleared by the user, not a timer. */
+  const [importing, setImporting] = useState(false);
+  const [importReports, setImportReports] = useState<AuroraImportReport[] | null>(null);
 
   const library = useMemo(() => new CharacterLibrary(platform.characters), []);
   const libraryState = useLibrary(library);
@@ -264,6 +273,74 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
     [persist, reload],
   );
 
+  /**
+   * Why the import button cannot be pressed, in a sentence, or undefined.
+   *
+   * The middle one is the interesting case and it is not a bug: opening a character needs
+   * no content at all (ADR 0012), and importing one genuinely does, because a `.dnd5e`
+   * names Aurora's element ids and says nothing about what they mean. That asymmetry gets
+   * said out loud rather than left as a greyed-out button.
+   */
+  const importBlockedBecause = useMemo((): string | undefined => {
+    if (!platform.files.available) return platform.files.unavailableReason;
+    if (libraryState.status !== 'ready') {
+      return 'Choose a library folder first — an imported character has to land somewhere.';
+    }
+    if (!content || content.elementCount === 0) {
+      return (
+        'Importing needs a content source loaded: an Aurora save records element ids and ' +
+        'nothing about what they mean. Add one under Sources. (Opening a character you have ' +
+        'already imported needs none.)'
+      );
+    }
+    return undefined;
+  }, [libraryState.status, content]);
+
+  /**
+   * Pick `.dnd5e` files and write each one into the library.
+   *
+   * Everything between the picker and the folder is `importAuroraSavesIntoLibrary` in
+   * `packages/ui` — the parse, the overlay of the elements Aurora generates at runtime, the
+   * `extraIds` that keep `aurora verify` meaningful, and the packing. None of that is here,
+   * because none of it is a fact about a window (CODE-REUSE-POLICY rule 2).
+   */
+  const importFromAurora = useCallback(async () => {
+    if (!content) return;
+    setImporting(true);
+    try {
+      const picked = await platform.files.pick({
+        title: 'Import Aurora characters',
+        extensions: ['dnd5e'],
+        label: 'Aurora character',
+        multiple: true,
+      });
+      // Cancelling is an answer. It leaves whatever report was on screen alone.
+      if (!picked.length) return;
+      setImportReports(
+        await importAuroraSavesIntoLibrary(library, picked, {
+          system,
+          elements: content.elements,
+          generator: 'incudo-desktop (aurora import)',
+        }),
+      );
+    } catch (error) {
+      // The picker itself failing — a permission lapsed, a file vanished between the dialog
+      // and the read. One report with no file name, rather than a swallowed exception.
+      setImportReports([
+        {
+          file: 'the file you picked',
+          ok: false,
+          message: error instanceof Error ? error.message : String(error),
+          unresolved: [],
+          assetCount: 0,
+          diagnostics: [],
+        },
+      ]);
+    } finally {
+      setImporting(false);
+    }
+  }, [library, system, content]);
+
   const openFromLibrary = useCallback(
     async (entry: LibraryEntry) => {
       const opened = await library.open(entry.name);
@@ -355,6 +432,11 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
           onNew={startNew}
           onRemove={(entry) => void library.remove({ name: entry.name, form: entry.form })}
           onOpenSettings={() => setPane('settings')}
+          onImport={() => void importFromAurora()}
+          onDismissImport={() => setImportReports(null)}
+          importing={importing}
+          importBlockedBecause={importBlockedBecause}
+          importReports={importReports}
           askForFolder={libraryState.status === 'no-location' && !askDismissed}
           onDismissAsk={() => setAskDismissed(true)}
         />

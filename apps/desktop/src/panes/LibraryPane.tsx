@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { LibraryEntry, LibraryState } from '@incudo/ui';
+import type { AuroraImportReport, LibraryEntry, LibraryState } from '@incudo/ui';
 
 export function LibraryPane({
   state,
@@ -22,6 +22,11 @@ export function LibraryPane({
   onNew,
   onRemove,
   onOpenSettings,
+  onImport,
+  onDismissImport,
+  importing,
+  importBlockedBecause,
+  importReports,
   askForFolder,
   onDismissAsk,
   shell,
@@ -33,6 +38,18 @@ export function LibraryPane({
   onNew: () => void;
   onRemove: (entry: LibraryEntry) => void;
   onOpenSettings: () => void;
+  onImport: () => void;
+  onDismissImport: () => void;
+  importing: boolean;
+  /**
+   * Why importing is not possible right now, in a sentence, or undefined when it is.
+   *
+   * A disabled button with no explanation is the worst of both: the one real precondition
+   * here is that an import needs content loaded while opening a character does not, and
+   * that asymmetry is worth a sentence rather than a greyed-out control.
+   */
+  importBlockedBecause?: string;
+  importReports: AuroraImportReport[] | null;
   /** First run: nobody has chosen a folder and nobody has waved the question away yet. */
   askForFolder: boolean;
   onDismissAsk: () => void;
@@ -42,7 +59,7 @@ export function LibraryPane({
     return (
       <main className="pane">
         <h2>Characters</h2>
-        <div className="problem warn">
+        <div className="problem warning">
           <strong>There is no character library in this browser.</strong>
           <p>{state.unavailableReason}</p>
           <p className="hint">
@@ -96,14 +113,28 @@ export function LibraryPane({
           <button type="button" className="on" onClick={onNew}>
             New character
           </button>
+          <button
+            type="button"
+            onClick={onImport}
+            disabled={importing || importBlockedBecause !== undefined}
+            title={importBlockedBecause}
+          >
+            {importing ? 'Importing…' : 'Import from Aurora…'}
+          </button>
           <button type="button" onClick={onRefresh} disabled={state.busy}>
             {state.busy ? 'Scanning…' : 'Refresh'}
           </button>
         </div>
       </div>
 
+      {importBlockedBecause !== undefined && (
+        <p className="hint">{importBlockedBecause}</p>
+      )}
+
+      {importReports && <ImportReport reports={importReports} onDismiss={onDismissImport} />}
+
       {state.problems.length > 0 && (
-        <div className="problem warn">
+        <div className="problem warning">
           <strong>{state.problems.length} thing(s) in that folder could not be read.</strong>
           <ul>
             {state.problems.slice(0, 20).map((problem) => (
@@ -128,6 +159,85 @@ export function LibraryPane({
         ))}
       </ul>
     </main>
+  );
+}
+
+/**
+ * What the import did, per file.
+ *
+ * Deliberately not a toast. An Aurora save that imports with warnings is the **normal** case
+ * — content moves upstream, a book gets renamed, a character keeps something from a source it
+ * had switched off — and ADR 0005's "report it, don't guess" is worth nothing if the report
+ * is gone in four seconds. It stays until dismissed, and it names counts rather than the
+ * character's contents: these are somebody's personal files.
+ */
+function ImportReport({
+  reports,
+  onDismiss,
+}: {
+  reports: AuroraImportReport[];
+  onDismiss: () => void;
+}): React.JSX.Element {
+  const failed = reports.filter((report) => !report.ok);
+  const imported = reports.length - failed.length;
+
+  return (
+    <section className={`problem ${failed.length ? 'warning' : 'ok'}`}>
+      <div className="library-head">
+        <strong>
+          {imported} of {reports.length} imported
+          {failed.length > 0 && `, ${failed.length} refused`}
+        </strong>
+        <div className="row">
+          <button type="button" onClick={onDismiss}>
+            Dismiss
+          </button>
+        </div>
+      </div>
+
+      <ul className="import-report">
+        {reports.map((report) => (
+          <li key={report.file}>
+            <p className="card-meta">
+              <code>{report.file}</code>
+              {report.ok ? (
+                <>
+                  {' → '}
+                  <code>{report.entry?.name}</code>
+                  {` · ${report.embedded} elements embedded`}
+                  {report.assetCount > 0 && ` · ${report.assetCount} asset(s)`}
+                </>
+              ) : (
+                <span className="bad"> · not imported</span>
+              )}
+            </p>
+            {report.message && <p className="card-note">{report.message}</p>}
+            {report.unresolved.length > 0 && (
+              <p className="card-note">
+                {report.unresolved.length} id(s) this save names are not in the content you have
+                loaded. The character imported anyway and will be missing them — usually a
+                disabled source, or a book this index does not carry.
+              </p>
+            )}
+            {report.diagnostics.length > 0 && (
+              <details className="card-note">
+                <summary>
+                  {report.diagnostics.length} thing(s) the importer had to say
+                </summary>
+                <ul>
+                  {report.diagnostics.map((diagnostic, i) => (
+                    <li key={i} className={diagnostic.level === 'error' ? 'error' : undefined}>
+                      {diagnostic.message}
+                      {diagnostic.count > 1 && ` (×${diagnostic.count})`}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

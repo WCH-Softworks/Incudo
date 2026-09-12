@@ -6,13 +6,14 @@
  * which is also why the folder picker and the directory scan are here rather than inside a
  * component that happens to need them.
  *
- * Four ports, and two implementations of each where the two builds genuinely differ:
+ * Five ports, and two implementations of each where the two builds genuinely differ:
  *
  * | port             | Tauri window                    | `npm run desktop` in a browser     |
  * |------------------|---------------------------------|------------------------------------|
  * | `Fetcher`        | `tauri-plugin-http` (no CORS)   | `window.fetch` (CORS applies)      |
  * | `Storage`        | IndexedDB                       | IndexedDB                          |
  * | `CharacterStore` | `dialog` + `fs` plugins         | File System Access API             |
+ * | `FilePicker`     | `dialog` + `fs` plugins         | `showOpenFilePicker`               |
  * | `ZipCodec`       | `CompressionStream`             | `CompressionStream`                |
  *
  * `Storage` is IndexedDB in **both**, deliberately. It holds the content cache and the
@@ -24,6 +25,9 @@
  *
  * A *library* is the opposite case and is never in here: it is the user's own folder, full of
  * files they can see, copy and put in git (ADR 0027).
+ *
+ * `FilePicker` is neither. It is one file, outside both, read once and forgotten — the
+ * Aurora import, and nothing else so far.
  */
 
 import type {
@@ -32,7 +36,10 @@ import type {
   Fetcher,
   FetchOptions,
   FetchResult,
+  FilePickOptions,
+  FilePicker,
   LibraryEntryRef,
+  PickedFile,
   Storage,
   ZipCodec,
   ZipCompressor,
@@ -519,10 +526,118 @@ class UnavailableCharacterStore implements CharacterStore {
   }
 }
 
+// --- picking a file from outside the library -------------------------------
+
+/**
+ * The file picker, which exists for exactly one thing: importing an Aurora `.dnd5e`.
+ *
+ * A separate port from `CharacterStore` (see `FilePicker` in `packages/core/src/platform.ts`)
+ * and, in the Tauri build, a happier one than expected. `dialog.open` already widens the fs
+ * scope to each *file* it returns — `tauri-plugin-dialog`'s open command calls `allow_file`
+ * on the fs scope for every path it hands back — so an import needs no new Rust at all.
+ * `allow_library_folder` is still there because the *folder* case genuinely needs it: the
+ * dialog grants a picked directory non-recursively, an unpacked container has an `assets/`
+ * subfolder, and a remembered folder has to be re-granted on the next launch because the
+ * scope is not persisted. A file picked now and read now has neither problem.
+ */
+class TauriFilePicker implements FilePicker {
+  readonly available = true;
+
+  async pick(options: FilePickOptions = {}): Promise<PickedFile[]> {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    // Cast because the plugin's return type keys off a *literal* `multiple`, and this one is
+    // a variable: as `boolean` it resolves to the single-file branch and would be a lie.
+    const picked = (await open({
+      directory: false,
+      multiple: options.multiple ?? false,
+      title: options.title,
+      filters: options.extensions?.length
+        ? [{ name: options.label ?? 'Supported files', extensions: options.extensions }]
+        : undefined,
+    })) as string | string[] | null;
+
+    if (picked === null) return [];
+    const paths = Array.isArray(picked) ? picked : [picked];
+
+    const fs = await import('@tauri-apps/plugin-fs');
+    const files: PickedFile[] = [];
+    for (const path of paths) {
+      files.push({ name: baseNameOf(path), bytes: await fs.readFile(path) });
+    }
+    return files;
+  }
+}
+
+/**
+ * The same in a browser, through `showOpenFilePicker`.
+ *
+ * An `<input type="file">` would work in every browser and this deliberately does not use
+ * one: where `showOpenFilePicker` is missing so is the rest of the File System Access API,
+ * so there is no library for an import to land in, and a picker that can only ever end in
+ * "no library folder has been chosen" is worse than saying so up front.
+ */
+class BrowserFilePicker implements FilePicker {
+  readonly available = true;
+
+  async pick(options: FilePickOptions = {}): Promise<PickedFile[]> {
+    let handles: FileSystemFileHandle[];
+    try {
+      // Non-null because `createDesktopPlatform` only builds this where it exists.
+      handles = await window.showOpenFilePicker!({
+        id: 'incudo-import',
+        multiple: options.multiple ?? false,
+        ...(options.extensions?.length
+          ? {
+              types: [
+                {
+                  description: options.label ?? 'Supported files',
+                  // A media type is required and no registry has one for `.dnd5e`. The
+                  // extension is what actually filters; this is the key it hangs on.
+                  accept: { 'application/octet-stream': options.extensions.map((e) => `.${e}`) },
+                },
+              ],
+            }
+          : {}),
+      });
+    } catch (error) {
+      // Cancelling throws `AbortError` here and returns null under Tauri. One port, one
+      // meaning: cancelling is an answer, so both come back as an empty list.
+      if (error instanceof DOMException && error.name === 'AbortError') return [];
+      throw error;
+    }
+
+    const files: PickedFile[] = [];
+    for (const handle of handles) {
+      const file = await handle.getFile();
+      files.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+    }
+    return files;
+  }
+}
+
+/** No picker here, and it says why — the same posture as `UnavailableCharacterStore`. */
+class UnavailableFilePicker implements FilePicker {
+  readonly available = false;
+  readonly unavailableReason =
+    'This browser cannot open a file from your computer, so there is nothing to import from. ' +
+    'Use the desktop build (npm run desktop:app), or a Chromium-based browser.';
+  async pick(): Promise<PickedFile[]> {
+    throw new Error(this.unavailableReason);
+  }
+}
+
+/** The last segment of a path, whichever separator the platform used. */
+function baseNameOf(path: string): string {
+  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return cut < 0 ? path : path.slice(cut + 1);
+}
+
 export interface DesktopPlatform {
   fetcher: Fetcher;
   storage: Storage;
   characters: CharacterStore;
+  /** Reading one file from outside the library — the Aurora import, and nothing else yet. */
+  files: FilePicker;
   zip: ZipCodec;
   /** Which build this is, for the one line of UI that has to admit the difference. */
   shell: 'tauri' | 'browser';
@@ -538,8 +653,20 @@ export function createDesktopPlatform(): DesktopPlatform {
     : typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function'
       ? new FileSystemAccessCharacterStore(zip)
       : new UnavailableCharacterStore();
+  const files = tauri
+    ? new TauriFilePicker()
+    : typeof window !== 'undefined' && typeof window.showOpenFilePicker === 'function'
+      ? new BrowserFilePicker()
+      : new UnavailableFilePicker();
 
-  return { fetcher: new DesktopFetcher(), storage, characters, zip, shell: tauri ? 'tauri' : 'browser' };
+  return {
+    fetcher: new DesktopFetcher(),
+    storage,
+    characters,
+    files,
+    zip,
+    shell: tauri ? 'tauri' : 'browser',
+  };
 }
 
 export type { ContainerForm };

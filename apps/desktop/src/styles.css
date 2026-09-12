@@ -608,3 +608,39 @@ button.link:hover {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+
+/* --- the Aurora import report -------------------------------------------- */
+
+/*
+ * A clean import is still a report, not a toast: an Aurora save that imports with warnings is
+ * the normal case, and a message that disappears on a timer is a message nobody reads. The
+ * "everything worked" variant is the same box in the neutral colour, so a successful import
+ * does not shout.
+ */
+.problem.ok {
+  background: var(--bg-sunken);
+  border-color: var(--done);
+}
+
+ul.import-report {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+ul.import-report > li {
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+ul.import-report > li:first-child {
+  border-top: none;
+}
+
+ul.import-report .card-meta code {
+  overflow-wrap: anywhere;
+}
+
+ul.import-report li.error {
+  color: var(--error-line);
+}

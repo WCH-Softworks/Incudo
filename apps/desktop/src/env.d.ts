@@ -43,4 +43,24 @@ interface DirectoryPickerOptions {
 
 interface Window {
   showDirectoryPicker?(options?: DirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
+  showOpenFilePicker?(options?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
+}
+
+/**
+ * Opening a *file* the user points at, which is how an Aurora `.dnd5e` gets in.
+ *
+ * Same story as the directory picker above: Chromium-only, and `createDesktopPlatform`
+ * hands back a picker that says it is unavailable where this is missing.
+ */
+interface FilePickerAcceptType {
+  description?: string;
+  accept: Record<string, string[]>;
+}
+
+interface OpenFilePickerOptions {
+  id?: string;
+  multiple?: boolean;
+  excludeAcceptAllOption?: boolean;
+  startIn?: FileSystemHandle | string;
+  types?: FilePickerAcceptType[];
 }

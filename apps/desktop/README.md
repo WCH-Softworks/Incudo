@@ -14,8 +14,9 @@ npm run desktop:build    # production web bundle into apps/desktop/dist
 ```
 
 **Start with `npm run desktop`.** It is the whole application in a browser: it opens on the
-character library, reads and writes real `.incu` files in a folder you pick, manages content
-sources, and builds a character. Every piece of UI work can happen there.
+character library, reads and writes real `.incu` files in a folder you pick, imports Aurora
+`.dnd5e` saves into it, manages content sources, and builds a character. Every piece of UI
+work can happen there.
 
 Choosing the library folder is a **setup question asked once**: the first run puts it in front
 of you as a dismissible dialog, and after that it is a row in **Settings** rather than a button
@@ -56,6 +57,21 @@ purpose: the product is "point it at any content index you like", so an allowlis
 be a list of which third-party content packs are permitted to exist. Narrowing it to a few hosts
 would be a product decision, not a security tidy-up.
 
+## Importing an Aurora save needs no new Rust, and that was worth checking
+
+**Import from Aurora…** on the library screen reads one or more `.dnd5e` files from anywhere
+on disk. That is a path outside the library folder, and the fs scope below starts empty — so
+the obvious assumption is that it needs a second `#[tauri::command]` beside
+`allow_library_folder`. It does not: `tauri-plugin-dialog`'s own `open` command calls
+`allow_file` on the fs scope for every path it returns, so a file picked now and read now is
+already in scope. (`allow_library_folder` still earns its place, for two reasons the file
+case does not have: the dialog grants a picked *directory* non-recursively while an unpacked
+container has an `assets/` subfolder, and the scope is not persisted, so a remembered folder
+must be re-granted at launch.)
+
+Everything between the picker and the library folder is `importAuroraSaveIntoLibrary` in
+`packages/ui`, not here. This app supplies the `FilePicker` port and renders the report.
+
 ## Two capabilities, opposite widths, and why
 
 `dialog` and `fs` joined `http` when the library arrived, and the filesystem scope is as narrow
@@ -83,9 +99,9 @@ unproven until someone with an icon runs it.
 Windows and menus, navigation, file dialogs, keyboard shortcuts, the dense multi-pane
 layout, and the platform implementations in `src/platform.ts`.
 
-That file now carries four ports rather than two — `Fetcher`, `Storage`, `CharacterStore` and
-`ZipCodec` — and it is still the only file allowed to say the word Tauri. Two of them are worth
-knowing about before changing anything:
+That file now carries five ports rather than two — `Fetcher`, `Storage`, `CharacterStore`,
+`FilePicker` and `ZipCodec` — and it is still the only file allowed to say the word Tauri.
+Three of them are worth knowing about before changing anything:
 
 - **`Storage` is IndexedDB in both builds.** It holds the content cache and the current draft:
   app-managed, invisible to the user. It was `localStorage`, which caps out near 5 MB and would
@@ -94,6 +110,12 @@ knowing about before changing anything:
   roughly 290 characters against a MAX_PATH of 260.
 - **`CharacterStore` is the user's folder**, and is never in `Storage`. Different rules, so a
   different port (ADR 0027).
+- **`FilePicker` is neither.** One file, outside both, read once in full and then forgotten —
+  which is why it is not a method on `CharacterStore`, whose every method means "inside the
+  folder the user chose". In the browser build it is `showOpenFilePicker`, and where that is
+  missing so is the rest of the File System Access API, so there would be no library for an
+  import to land in: the picker says it is unavailable rather than offering a dialog whose
+  only possible ending is "no library folder has been chosen".
 
 ## What does not
 
