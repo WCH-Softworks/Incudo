@@ -116,6 +116,11 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
   // The profile, then the library. Neither needs the other, and the library deliberately
   // does not wait for content: ADR 0012 is what lets the first screen render with nothing
   // configured, so making it depend on a source load would quietly undo the whole point.
+  //
+  // The content load is started afterwards and never awaited. Ordering, not politeness — the
+  // library has to be on screen before the network is touched, or the app is back to being a
+  // toll gate with a nicer front door. Warm, it is half a second; cold it is twenty, and the
+  // library is usable throughout either.
   useEffect(() => {
     void (async () => {
       const loaded = await SourceProfile.load(platform.storage);
@@ -123,6 +128,7 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
       setSources([...loaded.sources]);
       library.setProfile(loaded.sources);
       await library.restore();
+      if (loaded.enabled.length) void reloadRef.current?.();
     })();
   }, [library]);
 
@@ -179,6 +185,11 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
       setProgress(null);
     }
   }, [persist]);
+
+  // The startup effect runs once, before `reload` has been declared; a ref is how it reaches
+  // the current one without listing it as a dependency and re-running on every render.
+  const reloadRef = useRef<typeof reload | null>(null);
+  reloadRef.current = reload;
 
   const actions: SourcesActions = useMemo(
     () => ({

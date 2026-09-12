@@ -13,7 +13,7 @@
  * implemented.
  */
 
-import type { SourceRef, Storage } from '@incudo/core';
+import type { Element, SourceRef, Storage } from '@incudo/core';
 import { compareVersions, type SourceMode } from './source.ts';
 
 /** Where the profile lives in the injected Storage. One small JSON document. */
@@ -162,6 +162,40 @@ export function compareSourceRefs(
     const state = compareVersions(ref.version, configured.version) === 0 ? 'present' : 'moved';
     return { ref, state, configured };
   });
+}
+
+/**
+ * What a character was built against, worked out from the content it actually embeds.
+ *
+ * ADR 0028 says a character's `sources` is written "only when a character is saved after
+ * actually drawing on that source", and until this existed nothing wrote it at all outside the
+ * Aurora importer — so a character built in the app recorded no sources, and the warning the
+ * ADR designed could never fire for one. Every element carries `origin.sourceId`, which for a
+ * configured source is its index URL, so the answer is derivable rather than guessable.
+ *
+ * **An existing ref is never modified.** Not its version, not its name. The recorded version
+ * is what this character was built against, and re-stamping it with whatever the profile says
+ * today is exactly the "makes the warning permanently impossible to fire" alternative ADR 0028
+ * rejected. Moving one is what a deliberate refresh is for — and that flow does not exist yet,
+ * so a character that outlives a source update keeps saying so until someone builds it.
+ */
+export function recordSourceRefs(
+  existing: readonly SourceRef[],
+  elements: Iterable<Element>,
+  profile: readonly ConfiguredSource[],
+): SourceRef[] {
+  const known = new Set(existing.map((ref) => ref.id));
+  const refs = [...existing];
+
+  const contributed = new Set<string>();
+  for (const element of elements) contributed.add(element.origin.sourceId);
+
+  for (const source of profile) {
+    if (!contributed.has(source.id) || known.has(source.id)) continue;
+    known.add(source.id);
+    refs.push({ id: source.id, name: source.name, version: source.version, mode: source.mode });
+  }
+  return refs;
 }
 
 function isConfigured(value: unknown): value is ConfiguredSource {

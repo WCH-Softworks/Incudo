@@ -432,7 +432,7 @@ class FileSystemAccessCharacterStore implements CharacterStore {
     const stored = await withStore<unknown>(HANDLE_STORE, 'readonly', (store) =>
       store.get(LIBRARY_HANDLE_KEY),
     ).catch(() => undefined);
-    if (stored && typeof (stored as FileSystemDirectoryHandle).queryPermission === 'function') {
+    if (stored && (stored as FileSystemDirectoryHandle).kind === 'directory') {
       this.handle = stored as FileSystemDirectoryHandle;
     }
     return this.handle;
@@ -448,8 +448,11 @@ class FileSystemAccessCharacterStore implements CharacterStore {
   private async require(): Promise<FileSystemDirectoryHandle> {
     const handle = await this.remembered();
     if (!handle) throw new Error('No library folder has been chosen yet.');
+    // The two permission methods are a WICG extension, not part of any standard, and a handle
+    // that does not carry them was not gated behind a prompt in the first place.
+    if (typeof handle.queryPermission !== 'function') return handle;
     if ((await handle.queryPermission({ mode: 'readwrite' })) === 'granted') return handle;
-    if ((await handle.requestPermission({ mode: 'readwrite' })) === 'granted') return handle;
+    if ((await handle.requestPermission?.({ mode: 'readwrite' })) === 'granted') return handle;
     throw new Error(
       `This browser has not granted access to "${handle.name}" in this session. Click "Choose folder" and pick it again to reconnect.`,
     );

@@ -31,7 +31,12 @@ import {
   type LibraryEntryRef,
   type SourceRef,
 } from '@incudo/core';
-import { compareSourceRefs, type ConfiguredSource, type SourceRefStatus } from '@incudo/content';
+import {
+  compareSourceRefs,
+  recordSourceRefs,
+  type ConfiguredSource,
+  type SourceRefStatus,
+} from '@incudo/content';
 
 /** One character, as the library found it on disk. */
 export interface LibraryEntry {
@@ -282,7 +287,13 @@ export class CharacterLibrary {
     try {
       const kind = resolveCharacterKind(system, character.kind);
       const content = collectCharacterContent(character, elements, { kind });
-      const files = packCharacterContainer(character, content, {
+      // Provenance, recorded from the content this character actually embeds (ADR 0028). It
+      // only ever gains entries: a version already recorded is what the character was built
+      // against and is never re-stamped from the profile.
+      const sources = recordSourceRefs(character.sources ?? [], content.elements, this.profile);
+      const recorded =
+        sources.length === (character.sources?.length ?? 0) ? character : { ...character, sources };
+      const files = packCharacterContainer(recorded, content, {
         assets: options.assets,
         generator: options.generator,
       });

@@ -1,9 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { MemoryStorage, type SourceRef } from '@incudo/core';
+import { MemoryStorage, type Element, type SourceRef } from '@incudo/core';
 
-import { SourceProfile, SOURCE_PROFILE_KEY, compareSourceRefs } from './profile.ts';
+import {
+  SourceProfile,
+  SOURCE_PROFILE_KEY,
+  compareSourceRefs,
+  recordSourceRefs,
+} from './profile.ts';
 
 const CORE = 'https://example.test/core.index';
 
@@ -99,4 +104,58 @@ test('a ref is matched on the url as well as on the id', () => {
 
   const [status] = compareSourceRefs([{ id: CORE, version: '1.2.0' }], [configured]);
   assert.equal(status!.state, 'present');
+});
+
+// --- recording what a character was built against ---------------------------
+
+function element(id: string, sourceId: string): Element {
+  return {
+    id,
+    name: id,
+    type: 'Widget',
+    source: 'Book',
+    setters: {},
+    rules: [],
+    supports: [],
+    origin: { sourceId, fileUrl: 'f.xml', format: 'aurora' },
+  };
+}
+
+test('saving records the sources the embedded content actually came from', () => {
+  const profile = new SourceProfile(new MemoryStorage());
+  const core = profile.add(CORE, { version: '1.2.0', mode: 'download' });
+  const unused = profile.add('https://example.test/unused.index', { version: '9.9.9' });
+
+  const refs = recordSourceRefs([], [element('ID_A', CORE), element('ID_B', CORE)], [core, unused]);
+
+  assert.deepEqual(refs, [{ id: CORE, name: 'core', version: '1.2.0', mode: 'download' }]);
+});
+
+/**
+ * The alternative ADR 0028 rejected, as a test: re-stamping a recorded version with whatever
+ * the profile says today makes the `moved` warning permanently impossible to fire.
+ */
+test('a version already recorded is never re-stamped from the profile', () => {
+  const profile = new SourceProfile(new MemoryStorage());
+  const core = profile.add(CORE, { version: '2.0.0' });
+
+  const refs = recordSourceRefs([{ id: CORE, name: 'Core', version: '1.2.0' }], [element('ID_A', CORE)], [core]);
+
+  assert.deepEqual(refs, [{ id: CORE, name: 'Core', version: '1.2.0' }]);
+  assert.equal(compareSourceRefs(refs, [core])[0]!.state, 'moved');
+});
+
+test('a recorded source the profile no longer has survives a save', () => {
+  // Saving a character in a profile that lost one of its sources must not quietly drop the
+  // only record of where that content came from.
+  const gone: SourceRef = { id: 'https://example.test/homebrew.index', name: 'Dragons', version: '3' };
+  const refs = recordSourceRefs([gone], [element('ID_A', 'https://example.test/homebrew.index')], []);
+  assert.deepEqual(refs, [gone]);
+});
+
+test('the Aurora overlay is not a configured source, so it records nothing', () => {
+  // The 83 elements Aurora's app generates carry their own origin and belong to no index.
+  const profile = new SourceProfile(new MemoryStorage());
+  const core = profile.add(CORE, { version: '1.2.0' });
+  assert.deepEqual(recordSourceRefs([], [element('ID_INTERNAL_X', 'aurora:generated')], [core]), []);
 });
