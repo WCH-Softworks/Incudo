@@ -27,6 +27,8 @@ import {
   type ContainerForm,
   type ContainerManifest,
   type ContainerProblem,
+  type ContentSubset,
+  type ElementId,
   type ElementIndex,
   type GameSystem,
   type LibraryEntryRef,
@@ -121,10 +123,35 @@ export interface SaveOptions {
   expectUpdatedAt?: string;
   generator?: string;
   assets?: ContainerFiles;
+  /**
+   * Ids to embed on top of what the character reaches on its own — `collectCharacterContent`'s
+   * `extraIds`.
+   *
+   * Here for the Aurora import, whose source of these is Aurora's own `<sum>`: every element
+   * *its* derivation ended up with. Embedding that set is what keeps `incudo aurora verify`
+   * meaningful after the original `.dnd5e` is gone. It is a fact about the character being
+   * written rather than about the packing, which is why it rides with the other save options
+   * instead of forking a second packing path.
+   */
+  extraIds?: ElementId[];
 }
 
 export type SaveResult =
-  | { ok: true; entry: LibraryEntryRef }
+  | {
+      ok: true;
+      entry: LibraryEntryRef;
+      /** How many elements the container ended up embedding. */
+      elementCount: number;
+      /**
+       * Ids the character names that the index it was packed against does not declare.
+       *
+       * Recorded in the container either way (`collectCharacterContent` reports rather than
+       * guessing — ADR 0005) and handed back here so a caller can say so. The Aurora import
+       * is where this matters: a save built with a book the user has not loaded still
+       * imports, and this is the only place that says which parts of it will be missing.
+       */
+      unresolved: ElementId[];
+    }
   | { ok: false; reason: 'conflict' | 'failed'; message: string };
 
 export class CharacterLibrary {
@@ -294,9 +321,13 @@ export class CharacterLibrary {
       if (conflict) return { ok: false, reason: 'conflict', message: conflict };
     }
 
+    let packed: ContentSubset;
     try {
       const kind = resolveCharacterKind(system, character.kind);
-      const content = collectCharacterContent(character, elements, { kind });
+      const content = collectCharacterContent(character, elements, {
+        kind,
+        extraIds: options.extraIds,
+      });
       // Provenance, recorded from the content this character actually embeds (ADR 0028). It
       // only ever gains entries: a version already recorded is what the character was built
       // against and is never re-stamped from the profile.
@@ -308,12 +339,18 @@ export class CharacterLibrary {
         generator: options.generator,
       });
       await this.store.write(target, files);
+      packed = content;
     } catch (error) {
       return { ok: false, reason: 'failed', message: messageOf(error) };
     }
 
     await this.refresh();
-    return { ok: true, entry: target };
+    return {
+      ok: true,
+      entry: target,
+      elementCount: packed.elements.length,
+      unresolved: packed.unresolved,
+    };
   };
 
   remove = async (entry: LibraryEntryRef): Promise<void> => {

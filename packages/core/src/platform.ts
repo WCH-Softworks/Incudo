@@ -100,6 +100,47 @@ export interface LibraryEntryRef {
  */
 export type ContainerForm = 'zip' | 'folder';
 
+/**
+ * One file the user pointed at, from anywhere on their machine (ADR 0027's library is the
+ * only folder the app otherwise reaches).
+ *
+ * A separate port from `CharacterStore` rather than a method on it, and the reason is a
+ * lifetime rather than tidiness. A `CharacterStore` is *one folder*, chosen once, remembered
+ * between launches, read and written repeatedly, and addressed by entry name — every method
+ * on it takes a `LibraryEntryRef` and means "inside there". Importing is the opposite shape:
+ * a file outside that folder, read once, in full, and then forgotten. Folding it in would
+ * give the library port a method with none of its invariants, which every implementation
+ * would then have to hold two contracts for.
+ *
+ * It hands back **bytes, not a handle**, because that is the whole of what an import needs
+ * and it is what keeps the grant momentary: nothing retains a path, and nothing can come
+ * back to the file later.
+ */
+export interface PickedFile {
+  /** The file's own name with its extension — `Aelin.dnd5e`. Never a path, never absolute. */
+  name: string;
+  bytes: Uint8Array;
+}
+
+export interface FilePickOptions {
+  /** Dialog title, where the platform shows one. */
+  title?: string;
+  /** Extensions without the dot: `['dnd5e']`. Absent or empty offers every file. */
+  extensions?: string[];
+  /** What to call that set in the picker's filter — "Aurora character". */
+  label?: string;
+  multiple?: boolean;
+}
+
+export interface FilePicker {
+  /** False where this platform cannot show the user a file picker at all. */
+  readonly available: boolean;
+  /** Why, when `available` is false. Shown verbatim, so write it for the user. */
+  readonly unavailableReason?: string;
+  /** Empty when the user cancels — which is an answer, not a failure. Throws when a read does. */
+  pick(options?: FilePickOptions): Promise<PickedFile[]>;
+}
+
 /** An in-memory Storage. Useful for tests and for a "don't persist" mode. */
 export class MemoryStorage implements Storage {
   private readonly map = new Map<string, string>();

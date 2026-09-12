@@ -1,11 +1,17 @@
 /**
  * The library, over the nine real Aurora saves, with **zero sources configured**.
  *
- * `character-library.test.ts` in `packages/ui` proves the same property against a fake store
- * and hand-made containers, which is where the logic is. This is the other half: real
- * characters, imported from real `.dnd5e` files against the real 12,058-element corpus,
- * written to a real folder, listed and opened by the real view-model with nothing configured
- * and no network. It is the difference between "the code path works" and "the product works".
+ * `character-library.test.ts` and `aurora-import.test.ts` in `packages/ui` prove the same
+ * properties against a fake store and hand-made saves, which is where the logic is. This is
+ * the other half: real characters, imported from real `.dnd5e` files against the real
+ * 12,058-element corpus, written to a real folder, listed and opened by the real view-model
+ * with nothing configured and no network. It is the difference between "the code path works"
+ * and "the product works".
+ *
+ * The import runs through `importAuroraSavesIntoLibrary` — the same function the desktop
+ * shell's button calls — rather than a transcription of it here. This file used to carry its
+ * own copy of the sequence, and a copy is exactly where the overlay or `extraIds` goes
+ * missing in the app while the test stays green.
  *
  * Skipped rather than failed where the Aurora install is not on the machine, exactly as
  * `self-contained.test.ts` does — those files are personal data and will never be in this
@@ -23,22 +29,18 @@ import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  BundleElementIndex,
-  LayeredElementIndex,
-  collectCharacterContent,
   deriveCharacter,
-  packCharacterContainer,
-  resolveCharacterKind,
   validateGameSystem,
   type CharacterStore,
   type ContainerFiles,
   type ElementIndex,
   type GameSystem,
   type LibraryEntryRef,
+  type PickedFile,
 } from '@incudo/core';
 import { ContentLibrary, HttpContentSource } from '@incudo/content';
-import { imageExtension, importAuroraCharacter, parseAuroraSave } from '@incudo/aurora-import';
-import { CharacterLibrary } from '@incudo/ui';
+import { imageExtension } from '@incudo/aurora-import';
+import { CharacterLibrary, importAuroraSavesIntoLibrary } from '@incudo/ui';
 
 import { summarize } from './character-commands.ts';
 import { readContainer, writeContainer } from './node-save.ts';
@@ -114,37 +116,38 @@ test(
 
     const dir = await mkdtemp(join(tmpdir(), 'incudo-library-'));
     try {
-      // 1. Import each save with the whole corpus loaded, and write it into the library —
-      //    an app with 200 books, in ADR 0012's words.
+      // 1. Import every save with the whole corpus loaded, exactly as the desktop shell's
+      //    "Import from Aurora…" does — an app with 200 books, in ADR 0012's words.
+      const picked: PickedFile[] = [];
+      for (const path of saves) {
+        picked.push({ name: basename(path), bytes: await readFile(path) });
+      }
+
+      const importing = new CharacterLibrary(new NodeCharacterStore(dir));
+      await importing.restore();
+      const reports = await importAuroraSavesIntoLibrary(importing, picked, {
+        system,
+        elements: corpus,
+        sourceId: AURORA_INDEX,
+        generator: 'library-test',
+      });
+
       const expected = new Map<string, ReturnType<typeof summarize>>();
       let withPortrait = 0;
-
-      for (const path of saves) {
-        const imported = importAuroraCharacter(parseAuroraSave(await readFile(path, 'utf8')), {
-          index: corpus,
-          systemId: 'dnd5e',
-          source: { id: AURORA_INDEX },
-        });
-        const elements: ElementIndex = imported.generated.length
-          ? new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus])
-          : corpus;
-        const kind = resolveCharacterKind(system, imported.character.kind);
-        const content = collectCharacterContent(imported.character, elements, {
-          kind,
-          extraIds: imported.extraIds,
-        });
-
-        const name = `${basename(path, extname(path)).toLowerCase().replace(/[^a-z0-9]+/g, '-')}.incu`;
-        await writeContainer(
-          join(dir, name),
-          packCharacterContainer(imported.character, content, {
-            assets: imported.assets,
-            generator: 'library-test',
-          }),
+      for (const report of reports) {
+        assert.ok(report.ok, `${report.file} should import: ${report.message}`);
+        assert.deepEqual(
+          report.diagnostics.filter((diagnostic) => diagnostic.level === 'error'),
+          [],
+          `${report.file} should import without errors`,
         );
-        expected.set(name, summarize(deriveCharacter(imported.character, system, elements)));
-        if (imported.assets.size) withPortrait++;
+        expected.set(
+          report.entry!.name,
+          summarize(deriveCharacter(report.character!, system, report.elements!)),
+        );
+        if (report.assetCount) withPortrait++;
       }
+      assert.equal(reports.length, saves.length);
 
       // 2. Now forget all of it. No profile, no ContentLibrary, no fetcher — a fresh install.
       const library = new CharacterLibrary(new NodeCharacterStore(dir));

@@ -9,7 +9,8 @@
   "types": "./src/index.ts",
   "dependencies": {
     "@incudo/core": "*",
-    "@incudo/content": "*"
+    "@incudo/content": "*",
+    "@incudo/aurora-import": "*"
   },
   "peerDependencies": {
     "react": ">=18"
