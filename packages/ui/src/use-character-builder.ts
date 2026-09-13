@@ -137,8 +137,39 @@ export interface BuilderState {
   decisions: OpenDecision[];
   /** Steps in their suggested order — a topological sort of `requires`. */
   steps: BuilderStep[];
+  /**
+   * Top-level picks that already have an answer — the race you chose, and how to choose again.
+   *
+   * `decisions` is what is *outstanding*, so an answered pick correctly leaves it. It used to
+   * leave with the only control that could change it, which made the race, class and background
+   * one-way doors: the Steps list said "complete" and never said complete *what*. A settled
+   * budget already had this problem and already had this answer, in `BuilderState.steps[].budget`.
+   *
+   * Candidates are computed exactly as they are for the open form, so changing an answer offers
+   * the same list choosing it did — minus anything whose requirements the first choice has since
+   * made false.
+   */
+  picks: SettledPick[];
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
+}
+
+/**
+ * A top-level pick with an answer, and the means to change it.
+ *
+ * Deliberately not an `OpenDecision` with a flag: "outstanding" and "settled" are read by
+ * different parts of a screen, and a shell that had to filter `decisions` to count what is
+ * left would get that wrong eventually.
+ */
+export interface SettledPick {
+  /** The key it is recorded under — pass it straight to `choose`. */
+  ruleKey: string;
+  stepId: string;
+  label: string;
+  /** What is chosen now. One element for every pick that exists today. */
+  chosen: ElementId[];
+  /** What could be chosen instead, including what is chosen now. */
+  candidates: ElementId[];
 }
 
 /**
@@ -428,10 +459,35 @@ export class CharacterBuilder {
     // `Character.advancement` and belongs to `setProgress` (ADR 0015), not to a choice. Steps
     // that are neither — equipment, spells, details — are left alone rather than given an
     // invented decision, because the bag (ADR 0024) and content's own selects already own them.
+    const picks: SettledPick[] = [];
     for (const step of this.steps) {
       if (!step.required || step.perLevel || !step.types.length) continue;
       const ruleKey = pickRuleKey(step.id);
-      if (this.character.choices.some((c) => c.ruleKey === ruleKey && c.elementIds.length)) continue;
+      const candidates = step.types.flatMap((type) =>
+        this.elements
+          .byType(type)
+          // The element's own `requirements` — the Human Variant is only offered when the
+          // campaign uses feats. Same filter `candidatesFor` applies to a select's pool.
+          .filter((element) => evaluateRequirements(element.requirements, requirementContext))
+          .map((element) => element.id),
+      );
+
+      const answer = this.character.choices.find(
+        (c) => c.ruleKey === ruleKey && c.elementIds.length,
+      );
+      if (answer) {
+        // Settled, not gone. The candidate list is rebuilt here rather than remembered from
+        // when the choice was made, so it reflects the character as it is now — which is the
+        // only way a second choice can be as legal as the first was.
+        picks.push({
+          ruleKey,
+          stepId: step.id,
+          label: step.label,
+          chosen: [...answer.elementIds],
+          candidates,
+        });
+        continue;
+      }
 
       decisions.push({
         id: ruleKey,
@@ -442,14 +498,7 @@ export class CharacterBuilder {
         remaining: 1,
         // A top-level pick has no supports filter; the step names types and nothing else.
         unresolved: [],
-        candidates: step.types.flatMap((type) =>
-          this.elements
-            .byType(type)
-            // The element's own `requirements` — the Human Variant is only offered when the
-            // campaign uses feats. Same filter `candidatesFor` applies to a select's pool.
-            .filter((element) => evaluateRequirements(element.requirements, requirementContext))
-            .map((element) => element.id),
-        ),
+        candidates,
       });
     }
 
@@ -505,6 +554,7 @@ export class CharacterBuilder {
       kind: this.kind,
       decisions,
       steps,
+      picks,
       focusedId: this.focusedId,
     };
   }

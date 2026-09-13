@@ -6,6 +6,12 @@
  * and a decision that opens at level 4 arrives in the same list as the one that opened at level
  * 1, tagged with where it came from. The shell may focus a decision; it may not decide what is
  * outstanding.
+ *
+ * Which is right, and for a while it was also being used to excuse a real hole. "No Back button"
+ * is a statement about *navigation*; it was letting an answered pick take its own control off
+ * the screen, so the race was a one-way door and the Steps list said "complete" without ever
+ * saying complete what. `BuilderState.picks` is the fix, and it is not a Back button: a settled
+ * pick is not somewhere you go, it is something on screen that still has a control.
  */
 
 import type { CharacterBuilder, BuilderState, OpenDecision } from '@incudo/ui';
@@ -24,7 +30,7 @@ export function BuilderPane({
   elements: ElementIndex;
   hasContent: boolean;
 }): React.JSX.Element {
-  const { kind, derived, decisions, steps } = state;
+  const { kind, derived, decisions, steps, picks } = state;
   const progression = kind.progression;
   const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
 
@@ -87,6 +93,23 @@ export function BuilderPane({
             {steps.map((step) => (
               <li key={step.id} className={step.available ? '' : 'blocked'}>
                 <span className="label">{step.label}</span>
+                {/*
+                  What a completed step actually settled on. "Race — complete" never said
+                  complete *what*, which mattered most where it was least visible: before
+                  candidates carried their book, the Race list offered four identical Aasimars
+                  and nothing afterwards told you which one you had.
+                */}
+                {picks
+                  .filter((pick) => pick.stepId === step.id)
+                  .map((pick) => (
+                    <span key={pick.ruleKey} className="chosen">
+                      {/*
+                        The book, not just the name. "Race — Aasimar" is no answer at all when
+                        four of them are on offer, which is the case this line exists for.
+                      */}
+                      {pick.chosen.map(candidateLabel).join(', ')}
+                    </span>
+                  ))}
                 {step.available ? (
                   <span className={step.complete ? 'tag done' : 'tag open'}>
                     {step.complete ? 'complete' : `${step.openCount} open`}
@@ -136,10 +159,40 @@ export function BuilderPane({
         had already set. So a settled budget renders here instead. The two conditions are
         mutually exclusive, so the editor appears exactly once either way.
 
-        The same hole exists for an answered `pick`: once you have chosen a race, this pane
-        offers no way to choose a different one. That is the next thing to fix and it is bigger
-        than this pane — see CLAUDE.md, "Known from running it".
+        An answered `pick` had the same hole, and now has the same answer one section down.
       */}
+      {picks.length > 0 && (
+        <section>
+          <h2>Choices already made</h2>
+          <p className="hint">
+            Changing one of these rebuilds everything that followed from it. Anything it opened
+            that you had answered is kept only where the new choice offers it too.
+          </p>
+          {picks.map((pick) => (
+            <div key={pick.ruleKey} className="settled">
+              <div className="decision-head">
+                <span className="label">{pick.label}</span>
+              </div>
+              <select
+                value={pick.chosen[0] ?? ''}
+                onChange={(event) => {
+                  if (event.target.value) builder.choose(pick.ruleKey, [event.target.value]);
+                }}
+              >
+                {pick.candidates
+                  .map((id) => ({ id, name: candidateLabel(id) }))
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          ))}
+        </section>
+      )}
+
       {settled.length > 0 && (
         <section>
           <h2>Values already set</h2>

@@ -302,6 +302,15 @@ ul.decisions li {
   font-size: 12px;
 }
 
+/* What a completed step settled on, in the Steps list. Pushed right so the tags stay in a
+   column however long a race's name and book run. */
+.chosen {
+  color: var(--fg-muted);
+  font-size: 12px;
+  margin-left: auto;
+  text-align: right;
+}
+
 .tag {
   font-size: 11px;
   padding: 1px 7px;

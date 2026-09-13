@@ -802,3 +802,61 @@ test('rerolling a budget with no dice changes nothing', () => {
   b.rerollBudget('scores');
   assert.equal(b.getState().character, before, 'same character, untouched');
 });
+
+// --- picks you can change ---------------------------------------------------
+
+test('an answered pick stays on screen, with what it chose and what it could choose instead', () => {
+  // Answering used to delete the only control that could change the answer: the pick left
+  // `decisions` (correctly — it is not outstanding) and nothing replaced it, so race, class
+  // and background were one-way doors. `picks` is the settled half.
+  const b = builder(indexWith(element('W1', 'Widget'), element('W2', 'Widget')));
+  assert.deepEqual(b.getState().picks, [], 'nothing settled before anything is chosen');
+
+  b.choose('build/kit', ['W1']);
+
+  const settled = b.getState().picks;
+  assert.equal(settled.length, 1);
+  assert.equal(settled[0]!.ruleKey, 'build/kit');
+  assert.equal(settled[0]!.stepId, 'kit');
+  assert.deepEqual(settled[0]!.chosen, ['W1']);
+  assert.deepEqual(
+    settled[0]!.candidates.sort(),
+    ['W1', 'W2'],
+    'including what is chosen now, so the control can show it selected',
+  );
+  assert.deepEqual(
+    b.getState().decisions.filter((d) => d.kind === 'pick'),
+    [],
+    'and it is still not outstanding',
+  );
+});
+
+test('changing a settled pick replaces it rather than adding to it', () => {
+  const b = builder(indexWith(element('W1', 'Widget'), element('W2', 'Widget')));
+  b.choose('build/kit', ['W1']);
+  b.choose('build/kit', ['W2']);
+
+  const state = b.getState();
+  assert.deepEqual(state.picks[0]!.chosen, ['W2']);
+  assert.ok(state.derived.elementIds.has('W2'));
+  assert.ok(!state.derived.elementIds.has('W1'), 'the old choice stops seeding the derivation');
+});
+
+test('a settled pick rebuilds its candidates against the character as it is now', () => {
+  // Not remembered from when the choice was made. An element gated on something the *current*
+  // character no longer has must not be offered as a replacement.
+  const gated = element('W2', 'Widget');
+  gated.requirements = { kind: 'has', id: 'OPTION' };
+  const b = builder(indexWith(element('W1', 'Widget'), gated, element('OPTION', 'Gadget')));
+
+  b.choose('build/options', ['OPTION']);
+  b.choose('build/kit', ['W1']);
+  assert.deepEqual(b.getState().picks[0]!.candidates.sort(), ['W1', 'W2']);
+
+  b.choose('build/options', []);
+  assert.deepEqual(
+    b.getState().picks[0]!.candidates,
+    ['W1'],
+    'the option is off, so the gated widget is no longer an alternative',
+  );
+});
