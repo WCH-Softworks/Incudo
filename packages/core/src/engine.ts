@@ -976,6 +976,16 @@ function selectPools(
   return pools;
 }
 
+/** A candidate's setter values, lowercased — the other half of what an operand may name. */
+function setterValues(element: Element): ReadonlySet<string> {
+  const values = new Set<string>();
+  for (const setter of Object.values(element.setters)) {
+    const value = setter.value?.trim().toLowerCase();
+    if (value) values.add(value);
+  }
+  return values;
+}
+
 /**
  * Elements a select rule would accept, excluding ones already chosen for it.
  *
@@ -997,6 +1007,8 @@ export function candidatesFor(
     if (context && !evaluateRequirements(candidate.requirements, context)) return false;
     const ctx: SupportsContext = {
       tags: new Set(candidate.supports.map((s) => s.toLowerCase())),
+      // A spell's level and school are setters and not tags — ADR 0030.
+      setterValues: setterValues(candidate),
       id: candidate.id,
       // Resolving `$(...)` needs build context the caller supplies in the UI layer;
       // here an unresolved interpolation simply matches nothing rather than everything.
