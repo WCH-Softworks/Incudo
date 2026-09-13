@@ -1,15 +1,17 @@
 /**
- * The elements parser, on the four constructs it used to walk straight past.
+ * The elements parser, on the five constructs it used to walk straight past.
  *
- * All four were found by pointing the differential verification at real saves and then
+ * All five were found by pointing the differential verification at real saves and then
  * counting what the corpus actually contains: 3,611 element-level `<supports>` blocks, 1,845
- * element-level `<requirements>`, 171 `<append>`, and 79 `equipped=` attributes of which not
- * one is `"true"`. None were being read, and the first of those meant no
- * `<select supports="…">` had ever matched anything.
+ * element-level `<requirements>`, 171 `<append>`, 79 `equipped=` attributes of which not
+ * one is `"true"`, and 17 `<spellcasting><list>` children (ADR 0030). None were being read,
+ * and the first of those meant no `<select supports="…">` had ever matched anything.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+
+import { declaredBlocks } from '@incudo/core';
 
 import { parseAuroraElements } from './parse-elements.ts';
 
@@ -184,4 +186,40 @@ test('empty and whitespace-only entries are dropped rather than becoming blank t
       <supports>Alpha,,  ,Beta,</supports>
     </element>`);
   assert.deepEqual(file.elements[0]!.supports, ['Alpha', 'Beta']);
+});
+
+// --- <spellcasting><list> — the fifth dropped construct (ADR 0030) -----------------------
+
+test('a spellcasting block keeps its <list> child, which is not always its name', () => {
+  const file = parse(`
+    <element name="Spellcasting" type="Class Feature" id="ID_EK">
+      <spellcasting name="Eldritch Knight" ability="Intelligence" allowReplace="true">
+        <list>Wizard,(Abjuration||Evocation)</list>
+      </spellcasting>
+    </element>`);
+
+  const [block] = file.elements[0]!.spellcasting!;
+  assert.equal(block!.name, 'Eldritch Knight');
+  assert.equal(block!.list, 'Wizard,(Abjuration||Evocation)');
+});
+
+test('a block with no <list> carries none rather than an empty string', () => {
+  // 74 of the corpus's 91 named blocks are this shape, and the difference matters: an empty
+  // string would resolve a "{list}" placeholder and shadow the fallback to the block's name.
+  const file = parse(`
+    <element name="Spellcasting" type="Class Feature" id="ID_CLERIC">
+      <spellcasting name="Cleric" ability="Wisdom" prepare="true" />
+    </element>`);
+  assert.equal(file.elements[0]!.spellcasting![0]!.list, undefined);
+});
+
+test('the list reaches the neutral view of a block, where a filter can read it', () => {
+  const file = parse(`
+    <element name="Spellcasting" type="Class Feature" id="ID_AT">
+      <spellcasting name="Arcane Trickster" ability="Intelligence">
+        <list>Wizard,(Enchantment||Illusion)</list>
+      </spellcasting>
+    </element>`);
+  const [block] = declaredBlocks(file.elements[0]!);
+  assert.equal(block!.attributes['list'], 'Wizard,(Enchantment||Illusion)');
 });

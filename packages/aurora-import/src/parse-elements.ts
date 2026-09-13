@@ -253,7 +253,18 @@ function parseSheet(node: XmlNode | undefined): SheetHints | undefined {
   return Object.keys(hints).length ? hints : undefined;
 }
 
+/**
+ * A `<spellcasting>` block, including the `<list>` child this used to drop.
+ *
+ * The fifth silently dropped construct, found the way the other four were — by counting what
+ * the corpus contains rather than by reading the format. Every attribute was read and the one
+ * child element was not, so `$(spellcasting:list)` had nothing to resolve against and every
+ * spell select in the game offered an empty list. 17 blocks carry a `<list>`, across 10
+ * distinct values, and five of them differ from their block's name. Bugfix, so ADR 0008's
+ * freeze allows it; see docs/AURORA-FORMAT.md.
+ */
 function parseSpellcasting(node: XmlNode): SpellcastingBlock {
+  const list = firstChild(node, 'list')?.text.trim();
   return {
     name: node.attrs['name'] ?? '',
     ability: node.attrs['ability'],
@@ -261,6 +272,7 @@ function parseSpellcasting(node: XmlNode): SpellcastingBlock {
     extend: node.attrs['extend'],
     all: node.attrs['all'] === 'true',
     allowReplace: node.attrs['allowReplace'] === 'true',
+    ...(list ? { list } : {}),
   };
 }
 

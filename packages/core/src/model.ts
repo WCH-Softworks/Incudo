@@ -132,6 +132,17 @@ export interface MulticlassBlock {
 export interface SpellcastingBlock {
   name: string;
   ability?: string;
+  /**
+   * The block's own filter tag, when it declares one — Aurora's `<list>` child.
+   *
+   * A fifth silently dropped construct, in the family of the four docs/AURORA-FORMAT.md
+   * already names: the importer read every attribute of `<spellcasting>` and never its one
+   * child, so `$(spellcasting:list)` had nothing to resolve against. 17 blocks in the corpus
+   * carry one, and it is *not* always the block's name — an Eldritch Knight's block is called
+   * `Eldritch Knight` and its list is `Wizard,(Abjuration||Evocation)`. Whatever it holds is
+   * a `supports` sub-expression, not a single tag.
+   */
+  list?: string;
   prepare?: string;
   extend?: string;
   all?: boolean;
@@ -165,11 +176,14 @@ export function declaredBlocks(element: Element): DeclaredBlock[] {
   for (const block of element.spellcasting ?? []) {
     const name = block.name.trim();
     // `<spellcasting all="true" extend="true">` is how the corpus extends a list rather
-    // than declaring a namespace, and it names nothing at all — 91 of the 118 blocks in
-    // the corpus. A block with no name yields no stat key, so there is nothing to do.
+    // than declaring a namespace, and it names nothing at all — 27 of the corpus's 118
+    // blocks. (ADR 0020 and this comment used to say 91, which is the *named* count; the
+    // behaviour was always right and only the number was upside down.) A block with no name
+    // yields no stat key, so there is nothing to do.
     if (!name) continue;
     const attributes: Record<string, string> = {};
     if (block.ability !== undefined) attributes['ability'] = block.ability;
+    if (block.list !== undefined) attributes['list'] = block.list;
     if (block.prepare !== undefined) attributes['prepare'] = block.prepare;
     if (block.extend !== undefined) attributes['extend'] = block.extend;
     if (block.all) attributes['all'] = 'true';
