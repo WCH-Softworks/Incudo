@@ -61,9 +61,12 @@ anyway.
 </elements>
 ```
 
-### Three constructs that are easy to miss, and were
+### Constructs that are easy to miss, and were
 
-All three were being read past in silence until Phase 1, and the first is the expensive one.
+There are five of them now. Every one was read past in silence, none of them errored, and
+every one was found the same way — by counting what the corpus contains rather than by
+reading the format. Three are below, `equipped=` follows them, and the fifth is
+`<spellcasting><list>`, in the `supports` section further down. The first is the expensive one.
 
 **`<supports>` is a child of `<element>`, not of `<rules>`.** The corpus contains 3,611 of
 them and **not one** inside `<rules>` — so an importer that only looks inside `<rules>` ends
@@ -102,8 +105,7 @@ them, not one of which is `"true"`**:
 The importer used to read it as `attrs['equipped'] === 'true'`, so all 79 parsed to `false`,
 and `Rule.equipped` was a boolean that was always false — dead twice over, since nothing read
 it either and all 79 rules applied unconditionally. That was the fourth construct in this
-family, after `<supports>`, element-level `<requirements>` and `<append>`, and it was found
-the same way: by counting what the corpus contains rather than by reading the format.
+family, after `<supports>`, element-level `<requirements>` and `<append>`.
 
 Since [ADR 0021](./adr/0021-equipped-is-a-condition.md) it is a `RequirementExpr`, parsed by
 the same `parseRequirements` that reads `requirements=`. 76 of the 79 sit on `<stat>` and 3 on
@@ -178,7 +180,7 @@ engine system-agnostic: Aurora hardcodes them, Incudo reads them.
 | `stat` | `name`, `value`, `bonus`, `level`, `requirements`, `equipped`, `alt`, `inline`, `max`/`maximum`, `base`, `condition` |
 | `supports` | (text content) — but see above: in practice it lives outside `<rules>` |
 | `append` | `id` + nested `supports`, `rules`; a child of `<elements>`, not of `<element>` |
-| `spellcasting` | `name`, `ability`, `prepare`, `extend`, `allowReplace`, `all` |
+| `spellcasting` | `name`, `ability`, `prepare`, `extend`, `allowReplace`, `all` + a nested `<list>` — see below |
 | `multiclass` | `id` + nested `prerequisite`, `requirements`, `setters`, `rules` |
 | `setter` / `set` | `name` + text; extra attrs `currency`, `lb`, `addition`, `type`, `modifier`, `override`, … |
 
@@ -238,14 +240,101 @@ Precedence observed: `!` > `,` (and) > `||` (or). `@incudo/core`'s
 
 ### `supports` — the `select` filter language
 
-`select@supports` is a filter over element `supports` tags:
+A filter over an element's `supports` tags, its id, **and its setter values**:
 
 - `"Skill"` — element must support `Skill`
 - `"Skill,Rogue"` — must support **both** (AND)
 - `"Standard||Exotic"` — must support **either** (OR)
-- `"$(spellcasting:list), $(spellcasting:slots)"` — `$(…)` interpolates a stat/context value
-  before matching. This is the nastiest corner of the format and where a naive importer breaks.
-- `"ID_PHB_FEAT_ASI_STRENGTH|ID_PHB_FEAT_ASI_DEXTERITY"` — bare IDs are also legal operands.
+- `"1,(Druid||Wizard)"` — parentheses group
+- `"ID_PHB_FEAT_ASI_STRENGTH|ID_PHB_FEAT_ASI_DEXTERITY"` — bare IDs are legal operands
+- `"0"`, `"Evocation"`, `"Tiny"` — so are **setter values**: a spell's level and school and
+  a companion's size are `<set>`s, not tags
+- `"$(spellcasting:list), $(spellcasting:slots)"` — `$(…)` expands to a sub-expression before
+  matching. The nastiest corner of the format and where a naive importer breaks.
+
+**Precedence: `,` (and) binds tighter than `||` (or)** — the same reading `requirements`
+gets, and Incudo read it the other way round until
+[ADR 0030](./adr/0030-a-declared-block-answers-a-filter.md). The corpus settles it, with a
+piece of content written specifically to be OR-ed in. Tasha's Aberrant Mind writes
+
+```xml
+<select type="Spell" supports="1,(Divination||Enchantment),(Sorcerer||Warlock||Wizard)||Arms of Hadar" />
+<append id="ID_PHB_SPELL_ARMS_OF_HADAR"><supports>Arms of Hadar</supports></append>
+```
+
+Arms of Hadar is a 1st-level **Conjuration**, so under the other precedence the school clause
+ANDs across the whole filter, excludes the very spell the `||` exists to add, and that appended
+tag is dead content. Find Familiar is the second witness from another book:
+`"Familiar||Variant Familiar||Beast,0"` means "any familiar, or a CR 0 beast", and the Imp is
+CR 1 and tagged `Familiar` precisely so this finds it.
+
+**Three things about this language were unread until ADR 0030**, all found by counting the
+corpus rather than by reading the format, and all three had to be fixed before a caster could
+choose a spell:
+
+| | count | what it broke |
+|---|---|---|
+| precedence inverted | 40 filters changed | `||<named exception>` clauses, and Find Familiar |
+| `(` `)` never parsed | **131** of 2,466 `supports=` attributes | `Skill,(Intelligence||Wisdom||Charisma)` offered only the Wisdom skills |
+| setter values never read | **210** filters changed | every level or school clause matched nothing |
+
+Together those take the number of interpolation-free select filters that match **nothing** in
+the corpus from 343 to 124. Most of the remaining 124 name options no loaded book provides,
+which is a legitimate answer; three constructs in them are genuinely unread and are listed at
+the end of this section.
+
+**A paren in a filter groups; a paren in an element's `<supports>` is a character.** The two
+are different languages — one an expression, one a comma-separated list of literal tags — and
+16 elements carry a tag like `Fighter (Eldritch Knight)`. A filter can no longer name such a
+tag. Measured before deciding that was acceptable: **zero** of the corpus's 2,466 filters have
+a `(` following a word character, so nothing existing is affected.
+
+#### `<spellcasting><list>` — the fifth dropped construct
+
+`parseSpellcasting` read every attribute of `<spellcasting>` and dropped its one child
+element, so the tag `$(spellcasting:list)` needs never reached the engine at all. **17 blocks
+carry a `<list>`, across 10 distinct values.** Fixed under ADR 0008's freeze as a bugfix.
+
+Two things about those 17 that a naive fix gets wrong:
+
+- **A `<list>` is usually absent.** 17 of the corpus's 91 *named* blocks declare one; the other
+  74 do not, including Cleric and Druid, whose spells are tagged with the block's own name. So
+  the fallback to the name is the path almost every caster takes, not the exception.
+- **It is not always the block's name, and not always one tag.** Five of the 17 differ, and two
+  are sub-expressions: `Wizard,(Abjuration||Evocation)` for the 2014 Eldritch Knight and
+  `Wizard,(Enchantment||Illusion)` for the 2014 Arcane Trickster. Nothing in the corpus is
+  tagged `Eldritch Knight`, so a name-only fallback offers that character zero spells forever.
+
+(Block counts, since two docs used to have them upside down: **118** `<spellcasting>` blocks,
+**91 named** and 27 nameless, **93** carrying `extend="true"` of which 66 are named.)
+
+#### `$(…)` — two keys, and both need a block
+
+```
+$(spellcasting:list)    280 occurrences
+$(spellcasting:slots)   266 occurrences
+```
+
+That is the whole vocabulary. They appear in **one attribute** (`supports`) on **one tag**
+(`<select>`), across **328** select rules, and **every one of those 328 names its block** with
+`spellcasting="…"` — 11 distinct names. Nothing else in the corpus interpolates anything.
+
+`$(spellcasting:list)` is the block's `<list>` child, falling back to the block's name.
+`$(spellcasting:slots)` is the set of levels the character can cast at, read off the slot stats
+content and the system already publish (ADR 0018), filled downwards from the highest — a
+warlock publishes exactly one positive slot stat and can really pick spells of every level
+below it. Incudo resolves both through a character kind's `blockFilters`, so the keys live in
+`systems/dnd5e/system.json` and not in the engine; see ADR 0030.
+
+#### Still unread, and reported rather than guessed at
+
+- **`!` negation inside a filter** — 13 uses (`Artificer Infusion, !TCOE Base`). Read as a
+  literal tag, so those nine selects offer an empty list. Unambiguous; simply not done yet.
+- **`Ritual`** — 17 uses. A spell carries `<set name="isRitual">true</set>`, so Aurora maps a
+  true boolean setter to a tag named after it. Deriving the tag name from the setter name is a
+  guess with no second witness.
+- **`Class`** — 15 uses, on the level 4/8/12/16/19 ability score improvement. Not a tag on any
+  of the 12,058 elements, not any setter's value, unexplained by anything in the corpus.
 
 ### `stat` values
 
@@ -284,7 +373,7 @@ of the bytes.
 
 Worth reading even if you only care about *content*, for one reason: the derived snapshot in
 every save is a record of a derivation Aurora actually performed, and diffing against it is
-what found the three dropped constructs above. `incudo aurora verify` is that diff.
+what found the dropped constructs above. `incudo aurora verify` is that diff.
 
 ---
 

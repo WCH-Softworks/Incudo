@@ -162,7 +162,8 @@ are personal data and never enter the repo — and neither do screenshots of the
 
 Working: core engine, Aurora content **and save** importer, content sources, CLI, two system
 definitions, the `.incu` container, the JSON Schemas and the validator behind them, the whole of
-the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class — and
+the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class —
+**spell selection, filtered by list, school and slot level** (ADR 0030), and
 **the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR
 0027), manages content sources (ADR 0028/0029), builds a character, **sets its ability scores by
 all four of 5e's methods**, renders the sheet, reads and writes real `.incu` files into a folder
@@ -246,15 +247,19 @@ running it protects the product.**
 
 ### Known from running it
 
-- **`<select supports="$(...)">` still offers nothing**, and the Rogue example this entry used
-  to give was **wrong** and is fixed. `candidatesFor` says resolving `$(...)` "needs build
-  context the caller supplies in the UI layer" and no caller supplies it, so an unresolved
-  interpolation matches nothing. The *symptom* that was blamed on it — a Rogue's skill and
-  expertise picks offering no candidates — turned out to be a `<supports>` block stored as one
-  tag instead of a list, and both now offer candidates in the running app. What is left is the
-  real `$(...)` case, spell lists, and since ADR-less commit e59bb70 the shell at least says
-  which filter it cannot evaluate rather than showing an empty list that looks like a missing
-  source. Do not re-diagnose one as the other; that has happened twice.
+- **~~`<select supports="$(...)">` still offers nothing.~~** Fixed (ADR 0030), and the shape
+  of the fix is worth knowing before touching a filter. Resolving the interpolation was one of
+  **four** things, and on its own it would have changed nothing visible: three separate defects
+  in the `supports` language had to go first. `||` bound *tighter* than `,` (it is the looser
+  operator, as in `requirements`); parentheses were never parsed at all, in 131 of the corpus's
+  2,466 `supports=` attributes; and an operand could not name a **setter's value**, which is
+  where a spell keeps its level and its school, so no levelled select could ever have matched
+  however well the `$(…)` resolved. Those three alone take the interpolation-free select
+  filters that match nothing from 343 to 124.
+  Do not read a green `aurora verify` as evidence about any of this: it compares the elements
+  a character *chose*, so a filter resolving to **everything** would move no count anywhere.
+  The evidence is measurement and perturbation — see ADR 0030's numbers, and the engine tests
+  that remove each half of the resolution and assert the list gets wider.
 - **~~Loading a content index re-fetches every file.~~** Fixed (ADR 0029). The app composes
   `LayeredContentSource(cache → http)` now, so the cache `writeThrough` was already writing is
   finally read back. Measured in the running app: 18.4 s cold for 238 files, **0.5 s** on a
@@ -271,7 +276,7 @@ running it protects the product.**
   reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
   the cache answers.
 
-Seven things the shell has surfaced and deliberately **not** fixed:
+Eight things the shell has surfaced and deliberately **not** fixed:
 
 - **An answered `pick` cannot be changed.** Choose a race and the decision correctly leaves
   `decisions`, and with it goes the only control that could pick a different one. A budget does
@@ -296,6 +301,15 @@ Seven things the shell has surfaced and deliberately **not** fixed:
   real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
   above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the
   summary cache ADR 0027 names.
+- **Three `supports` operands are still unread, and are reported rather than guessed at**
+  (ADR 0030, ADR 0005). `!` **negation** inside a filter — 13 uses, read as a literal tag, so
+  `Artificer Infusion, !TCOE Base` offers an empty list; unambiguous and simply not done, and
+  the obvious next one. `Ritual` — 17 uses, where a spell carries `<set name="isRitual">true</set>`
+  and Aurora evidently maps a true boolean setter to a tag named after it; deriving the tag name
+  from the setter name is a guess with no second witness. `Class` — 15 uses, on the level
+  4/8/12/16/19 ability score improvement, matching no tag on any of the 12,058 elements and no
+  setter's value at all. The shell shows "No candidate in the loaded content matches this
+  choice" for these, which is honest but not the whole truth.
 - **There is no export.** Saving writes into the library folder; "save a copy somewhere else"
   needs a write counterpart to `FilePicker` and does not exist.
 - **An NPC or legendary creature has no way to set ability scores.** Both kinds declare a
@@ -305,7 +319,7 @@ Seven things the shell has surfaced and deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028 and 0029 are implemented, and **Phase 1 is done — `packages/aurora-import`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029 and 0030 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
@@ -324,11 +338,13 @@ Three things Phase 1 changed that are easy to trip over:
   this project *is* Aurora content — but it is why a missing kind grant warns rather than errors.
   The last three arrived with the bag: Aurora's inventory proxies, which only a real
   `<equipment>` block names.
-- **Four Aurora constructs were being silently dropped**: element-level `<supports>`
+- **Five Aurora constructs were being silently dropped**: element-level `<supports>`
   (3,611 blocks — *every* support tag in the corpus), element-level `<requirements>` (1,845),
-  `<append>` (171), and — found later, fixed by ADR 0021 — `equipped=` (79, none of which is
-  `"true"`, all read as `false`). Every one was found by counting what the corpus contains
-  rather than by reading the format. See docs/AURORA-FORMAT.md.
+  `<append>` (171), `equipped=` (79, none of which is `"true"`, all read as `false` — fixed by
+  ADR 0021), and `<spellcasting><list>` (17, fixed by ADR 0030 — the tag
+  `$(spellcasting:list)` needs, which had never reached the engine). Every one was found by
+  counting what the corpus contains rather than by reading the format. See
+  docs/AURORA-FORMAT.md.
 
 **The builder has no current step** (ADR 0017). `CharacterBuilder` publishes `decisions` — one
 flat, always-current list — and `steps` is a grouping with `available`/`blockedBy`, not a
@@ -478,6 +494,21 @@ inventory proxies, where the rule *is* the identity. Put a game rule on an eleme
 before you fixed it. A kind's `contributions` is where a conditional baseline rule goes
 instead, and **a system definition ships no content** — decided and closed, so do not reach
 for `.incuset` when a system needs a rule.
+
+**A declared block does four things, and the fourth is a filter** (ADR 0030). Three are the
+stat keyings below; the fourth is that a `<select>` attached to a block may write its filter in
+terms of what that block and the derivation publish. A kind's `blockFilters` says how a
+`$(key)` expands: `tags` is a **fallback chain** over the block's name and attributes (first to
+resolve wins, and the result is parsed as a sub-expression, because an Eldritch Knight's list is
+`Wizard,(Abjuration||Evocation)`), and `tagsFromStats` globs stat names and turns positive
+matches into an OR of their captures. `fillFrom` is not decoration: a warlock's pact table
+publishes exactly **one** positive slot stat, and without filling downwards a level 18 warlock is
+offered 5th-level spells and nothing else — the two real warlock saves hold levels 1 through 5.
+Reach for `tagsFromStats` before recomputing anything; ADR 0018 already made every slot table
+derive, and a second copy is the one that goes stale.
+An expansion that finds nothing returns `NEVER_MATCHES` and is **not** reported as unresolved.
+"You have no spell slots yet" and "Incudo cannot read this filter" are different sentences and
+conflating them has already cost one wrong diagnosis.
 
 **There are four keyings of a stat** (ADR 0020, then ADR 0022). A stat is contributed to a
 character by content, or once per *track* (`trackStats`, ADR 0018), or once per *declared block*

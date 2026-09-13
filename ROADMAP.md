@@ -169,9 +169,27 @@ before any code, both touching a public API:
   - [ ] Menus and keyboard shortcuts. The file dialog arrived with the library (ADR 0027) and
         navigation is a four-pane switch now, not three; what is still missing is everything
         that makes it feel like a desktop application rather than a page.
-  - [ ] **`$(...)` in a `<select supports=…>` resolves to nothing**, so a Rogue's skill and
-        expertise picks offer no candidates. `candidatesFor` says the UI layer supplies that
-        build context and no caller does. This blocks the phase's exit criterion.
+  - [x] **`$(...)` in a `<select supports=…>` resolves**
+        ([ADR 0030](./docs/adr/0030-a-declared-block-answers-a-filter.md)), so a caster can
+        choose spells — the last engine-side blocker on this phase's exit criterion.
+        `candidatesFor` used to say the UI layer supplied that build context; no caller did
+        and none could have, because the context is which block the rule belongs to and what
+        the derivation published for it. A character kind now declares how a key expands
+        (`blockFilters`), so the two Aurora keys live in `systems/dnd5e/system.json` and the
+        engine still cannot spell "spell".
+        The entry this replaces also blamed a Rogue's empty skill and expertise picks on it,
+        which was **wrong twice over**: that was a `<supports>` block stored as one tag
+        (fixed in c239c44), and the real `$(…)` cases were the spell lists. Do not re-merge
+        the two.
+        Making it resolve turned out to be one of four things, and the other three were
+        defects in the filter language itself — `||` bound tighter than `,`, parentheses
+        never parsed at all (131 attributes), and an operand could not name a setter's value,
+        which is where a spell keeps its level and its school. Fixing those took the
+        interpolation-free select filters that match **nothing** from 343 to 124, so a Battle
+        Master's manoeuvres and a Find Familiar started working alongside the spell lists.
+        A fifth silently dropped Aurora construct came out of it: `<spellcasting><list>`,
+        17 blocks, which is the tag `$(spellcasting:list)` needs and had never reached the
+        engine.
 - [x] **The app opens on a character library**
       ([ADR 0027](./docs/adr/0027-a-library-is-a-folder.md)). It used to open on Sources, with
       an index URL in a text box, doing nothing at all until 238 files had come down over the
@@ -450,6 +468,12 @@ so that finding one again is recognition rather than discovery.
 
 **Exit criteria:** a level 8 multiclassed Rogue/Wizard with a subclass, feats and prepared
 spells is buildable end to end and matches Aurora's output for the same choices.
+
+The engine side of that is met: an Arcane Trickster in the running app is offered its
+school-restricted spell list, a bard's pool widens from 54 to 161 between levels 1 and 5, and
+`aurora verify` still reports 0 `spell-missing` across the nine saves. What is left is
+shell work — an answered `pick` cannot be changed, so a subclass chosen by mistake is
+permanent, and there is no level-up flow beyond typing a number.
 
 ---
 
