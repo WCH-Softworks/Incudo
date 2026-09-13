@@ -88,7 +88,18 @@ export function BuilderPane({
 
       <div className="columns">
         <section>
-          <h2>Steps</h2>
+          {/*
+            Not "Steps". ADR 0017 is explicit that this is a grouping and not a sequence —
+            there is no cursor, no order to walk and nothing to go back to — and calling it
+            Steps told the user the opposite, which is why "I chose a race and was moved to
+            the next step" was a reasonable thing to believe. It is a list of the parts of a
+            character and what each still needs.
+
+            `buildSteps` keeps its name in the system format: that is a public API with a
+            `formatVersion` (ADR 0011), and a rename there costs every author a migration to
+            fix a word only this heading ever showed.
+          */}
+          <h2>Your character</h2>
           <ul className="steps">
             {steps.map((step) => (
               <li key={step.id} className={step.available ? '' : 'blocked'}>

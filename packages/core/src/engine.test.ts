@@ -707,7 +707,11 @@ test('a pool offers the candidates of every rule that still has room', () => {
   character.choices = [{ ruleKey: 'seed', elementIds: ['CASTER'] }];
 
   const empty = deriveCharacter(character, system(), index).pendingChoices[0]!;
-  assert.deepEqual([...empty.candidates].sort(), ['CASTER', 'G', 'W']);
+  // `W` comes from the first rule and `G` from the second, which is the union this test is
+  // about. `CASTER` used to be here too: it is a Widget, so the first rule accepted it, and
+  // the character has it — it is the element declaring the select. A pool no longer offers
+  // what the character already has, so an element cannot be a candidate for its own select.
+  assert.deepEqual([...empty.candidates].sort(), ['G', 'W']);
 
   // One picked closes the first rule, so only the second's candidates remain.
   character.choices = [
@@ -1017,4 +1021,63 @@ test('a rule naming a block nothing declares resolves nothing rather than guessi
   const pick = derivedPick(blockFilterSystem(), index);
   assert.deepEqual(pick.candidates, []);
   assert.deepEqual(pick.unresolvedSupports.sort(), ['gizmo:catalogue', 'gizmo:charge']);
+});
+
+test('a pool does not offer something the character already has', () => {
+  // The elf-and-Sage case. A background's "two languages of your choice" is a support-tag
+  // select; a race grants a language outright. Neither file can know about the other, so the
+  // overlap only exists once one character has both.
+  const index = indexWith(
+    element('RACE', 'Widget', [{ kind: 'grant', key: 'g', type: 'Tongue', id: 'ELVISH' }]),
+    element('BACKGROUND', 'Widget', [
+      { kind: 'select', key: 'select:L', type: 'Tongue', name: 'L', number: 2 },
+    ]),
+    element('ELVISH', 'Tongue'),
+    element('DWARVISH', 'Tongue'),
+    element('ORC', 'Tongue'),
+  );
+
+  const character = createCharacter('test', 'levelled');
+  character.choices = [{ ruleKey: 'seed', elementIds: ['BACKGROUND'] }];
+  const alone = deriveCharacter(character, system(), index).pendingChoices[0]!;
+  assert.deepEqual(
+    [...alone.candidates].sort(),
+    ['DWARVISH', 'ELVISH', 'ORC'],
+    'without the race, every language is on offer',
+  );
+
+  // Perturbation: the only thing that changed is that the character is now an elf.
+  character.choices = [{ ruleKey: 'seed', elementIds: ['BACKGROUND', 'RACE'] }];
+  const asElf = deriveCharacter(character, system(), index).pendingChoices[0]!;
+  assert.deepEqual(
+    [...asElf.candidates].sort(),
+    ['DWARVISH', 'ORC'],
+    'an elf is not offered Elvish, because picking it would do nothing',
+  );
+  assert.equal(asElf.remaining, 2, 'and it still owes two languages, not one');
+});
+
+test('having the proficiency does not hide the expertise that wants it', () => {
+  // The case that looks like a counter-example and is not. Aurora models expertise as its own
+  // element of its own type, so "you may pick a skill you are proficient in" is expressed by
+  // needing a *different* element that the character does not have.
+  const expertise = element('EXPERTISE_ACROBATICS', 'Feature');
+  expertise.requirements = { kind: 'has', id: 'PROF_ACROBATICS' };
+
+  const index = indexWith(
+    element('ROGUE', 'Widget', [
+      { kind: 'grant', key: 'g', type: 'Proficiency', id: 'PROF_ACROBATICS' },
+      { kind: 'select', key: 'select:E', type: 'Feature', name: 'E', number: 1 },
+    ]),
+    element('PROF_ACROBATICS', 'Proficiency'),
+    expertise,
+  );
+
+  const character = createCharacter('test', 'levelled');
+  character.choices = [{ ruleKey: 'seed', elementIds: ['ROGUE'] }];
+  assert.deepEqual(
+    deriveCharacter(character, system(), index).pendingChoices[0]!.candidates,
+    ['EXPERTISE_ACROBATICS'],
+    'the proficiency the character has is what makes this offerable, not what hides it',
+  );
 });

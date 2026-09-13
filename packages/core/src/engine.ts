@@ -913,6 +913,21 @@ function collectPendingChoices(
       const candidates = new Set<ElementId>();
       for (const rule of open) {
         for (const candidate of candidatesFor(rule, index, chosen, ctx, filters)) {
+          // Not something the character already has. An elf offered Elvish by a background's
+          // "two languages of your choice" is being offered a pick that does nothing, and no
+          // content file can say so: the select names a support tag and every language-granting
+          // race writes a plain grant. Neither knows about the other, so the overlap exists
+          // only once a character puts the two together — which is here and nowhere else.
+          //
+          // The same rule `candidatesFor` already applies to `chosen`, widened from "this pool
+          // picked it" to "the character has it". It stays out of `candidatesFor`, which
+          // answers what a *rule* accepts and has no character to ask.
+          //
+          // Safe against the case that looks like a counter-example: a rogue's Expertise
+          // offers `ID_EXPERTISE_SKILL_ACROBATICS`, a Class Feature, while the proficiency it
+          // requires is `ID_PROFICIENCY_SKILL_ACROBATICS`. Different elements, so wanting the
+          // one you have is expressed by having the other.
+          if (active.has(candidate.id)) continue;
           candidates.add(candidate.id);
         }
       }
