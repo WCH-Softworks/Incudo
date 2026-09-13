@@ -14,6 +14,7 @@
  */
 
 import type {
+  DeclaredBlock,
   Element,
   ElementId,
   ElementIndex,
@@ -22,12 +23,19 @@ import type {
   SelectRule,
   StatRule,
 } from './model.ts';
+import { declaredBlockName } from './model.ts';
 import type { Character } from './character.ts';
 import { advancementCounts, advancementElementIds, equippedElementIds } from './character.ts';
-import type { GameSystem, ResolvedCharacterKind, StatDef } from './system.ts';
+import type {
+  BlockFilterDef,
+  GameSystem,
+  ResolvedCharacterKind,
+  StatDef,
+} from './system.ts';
 import {
   baselineElementIds,
   collectDeclaredBlocks,
+  expandBlockFilter,
   progressionStat,
   resolveCharacterKind,
   substituteBlockPlaceholders,
@@ -45,7 +53,12 @@ import {
   type ExpressionContext,
   type StatExpr,
 } from './expression.ts';
-import { matchesSupports, supportsInterpolations, type SupportsContext } from './supports.ts';
+import {
+  matchesSupports,
+  supportsInterpolations,
+  type SupportsContext,
+  type SupportsExpr,
+} from './supports.ts';
 
 const MAX_PASSES = 24;
 
@@ -289,6 +302,7 @@ export function deriveCharacter(
     problems,
     trackLevelReader(tracks, trackLevels, character.progress),
     equipment,
+    makeBlockFilterResolver(kind, active, stats),
   );
 
   return {
@@ -856,6 +870,7 @@ function collectPendingChoices(
   problems: Problem[],
   levelFor: TrackLevelReader,
   equipment: EquipmentState,
+  filters: BlockFilterResolver | undefined,
 ): PendingChoice[] {
   const pending: PendingChoice[] = [];
 
@@ -897,7 +912,9 @@ function collectPendingChoices(
       // `candidatesFor` already makes about an element's own requirements.
       const candidates = new Set<ElementId>();
       for (const rule of open) {
-        for (const candidate of candidatesFor(rule, index, chosen, ctx)) candidates.add(candidate.id);
+        for (const candidate of candidatesFor(rule, index, chosen, ctx, filters)) {
+          candidates.add(candidate.id);
+        }
       }
 
       pending.push({
@@ -912,11 +929,15 @@ function collectPendingChoices(
         optional: rules.every((rule) => rule.optional ?? false),
         candidates: [...candidates],
         // Across the whole pool, not just the next rule: any rule with room left can be the
-        // one whose filter cannot be evaluated.
+        // one whose filter cannot be evaluated. Only the terms that really did not resolve —
+        // before ADR 0030 nothing resolved, so listing every interpolation was the same list.
         unresolvedSupports: [
-          ...open.reduce(
-            (into, rule) => supportsInterpolations(rule.supports, into),
-            new Set<string>(),
+          ...new Set(
+            open.flatMap((rule) =>
+              [...supportsInterpolations(rule.supports)].filter(
+                (key) => filters?.expand(rule, key) === undefined,
+              ),
+            ),
           ),
         ],
         from: element.id,
@@ -976,6 +997,66 @@ function selectPools(
   return pools;
 }
 
+
+/**
+ * Expands the `$(key)` interpolations a select's filter carries — ADR 0030.
+ *
+ * Built once per derivation, after the fixed point, because both halves it needs are settled
+ * by then: which blocks the character's elements declare, and what the derivation published
+ * for each of them. The old comment here claimed the UI layer supplied this context. It never
+ * did, no caller ever could have, and the sentence outlived two wrong diagnoses; it is gone
+ * rather than corrected, because the context is a property of the character and the rule and
+ * belongs nowhere near a screen.
+ */
+export interface BlockFilterResolver {
+  expand(rule: SelectRule, key: string): SupportsExpr | undefined;
+}
+
+/**
+ * The resolver for one derivation, or nothing when the kind declares no `blockFilters`.
+ *
+ * Memoised per (block, key): a candidate list runs the filter once per element in the pool,
+ * which for a spell select is 1,079 elements, and re-scanning every stat for each of them
+ * would make an expansion quadratic for no reason.
+ */
+function makeBlockFilterResolver(
+  kind: ResolvedCharacterKind,
+  active: Map<ElementId, Element>,
+  stats: Map<StatKey, ResolvedStat>,
+): BlockFilterResolver | undefined {
+  if (kind.blockFilters.length === 0) return undefined;
+  const blocks = new Map<string, DeclaredBlock>();
+  for (const block of collectDeclaredBlocks(active.values())) {
+    blocks.set(block.name.trim().toLowerCase(), block);
+  }
+  const defs = new Map<string, BlockFilterDef>();
+  for (const def of kind.blockFilters) defs.set(def.key.trim().toLowerCase(), def);
+  const statValues: (readonly [StatKey, number])[] = [...stats].map(
+    ([name, stat]) => [name, stat.value] as const,
+  );
+  const cache = new Map<string, SupportsExpr | undefined>();
+
+  return {
+    expand(rule, key) {
+      // Which block the rule is attached to is the rule's to say, and every one of the 323
+      // interpolated selects in the corpus says it. A rule naming no block, or naming one
+      // nothing declares, resolves nothing rather than guessing at the only block present.
+      const blockName = declaredBlockName(rule);
+      if (blockName === undefined) return undefined;
+      const cacheKey = blockName + '\u0000' + key;
+      if (cache.has(cacheKey)) return cache.get(cacheKey);
+      const block = blocks.get(blockName);
+      const def = defs.get(key.trim().toLowerCase());
+      const expanded =
+        block === undefined || def === undefined
+          ? undefined
+          : expandBlockFilter(def, block, statValues);
+      cache.set(cacheKey, expanded);
+      return expanded;
+    },
+  };
+}
+
 /** A candidate's setter values, lowercased — the other half of what an operand may name. */
 function setterValues(element: Element): ReadonlySet<string> {
   const values = new Set<string>();
@@ -993,12 +1074,18 @@ function setterValues(element: Element): ReadonlySet<string> {
  * Human Variant, which exists only in a campaign using feats. Without a context those
  * elements stay in the list: a candidate list built with no knowledge of the character is
  * better over-inclusive than silently short.
+ *
+ * `filters` is optional for the same reason and behaves the opposite way: without it a
+ * `$(…)` term resolves to nothing and the filter matches nothing, which is deliberately
+ * *short* rather than over-inclusive. A filter Incudo cannot evaluate that silently offered
+ * the whole spell catalogue would look like a working feature (ADR 0030).
  */
 export function candidatesFor(
   rule: SelectRule,
   index: ElementIndex,
   exclude: ElementId[] = [],
   context?: RequirementContext,
+  filters?: BlockFilterResolver,
 ): Element[] {
   const excluded = new Set(exclude);
   const pool = index.byType(rule.type);
@@ -1010,9 +1097,7 @@ export function candidatesFor(
       // A spell's level and school are setters and not tags — ADR 0030.
       setterValues: setterValues(candidate),
       id: candidate.id,
-      // Resolving `$(...)` needs build context the caller supplies in the UI layer;
-      // here an unresolved interpolation simply matches nothing rather than everything.
-      resolve: () => undefined,
+      resolve: (key) => filters?.expand(rule, key),
     };
     return matchesSupports(rule.supports, ctx);
   });

@@ -193,6 +193,18 @@ export function declaredBlocks(element: Element): DeclaredBlock[] {
   return blocks;
 }
 
+/**
+ * The block a rule is attached to, lowercased, or nothing when it names none.
+ *
+ * The rule-side companion to {@link declaredBlocks}, and the only other place core reads the
+ * Aurora-shaped field name. A select's filter can be written in terms of the block it belongs
+ * to (ADR 0030), and 323 of the corpus's selects are; every one of them names its block.
+ */
+export function declaredBlockName(rule: { spellcasting?: string }): string | undefined {
+  const name = rule.spellcasting?.trim().toLowerCase();
+  return name ? name : undefined;
+}
+
 export interface ElementOrigin {
   /** Which content source this came from. */
   sourceId: string;

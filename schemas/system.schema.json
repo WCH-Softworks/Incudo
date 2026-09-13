@@ -300,6 +300,7 @@
         },
         "trackStats": { "type": "array", "items": { "$ref": "#/$defs/trackStat" } },
         "blockStats": { "type": "array", "items": { "$ref": "#/$defs/blockStat" } },
+        "blockFilters": { "type": "array", "items": { "$ref": "#/$defs/blockFilter" } },
         "contributions": { "type": "array", "items": { "$ref": "#/$defs/contribution" } },
         "inventory": { "$ref": "#/$defs/inventory" },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
@@ -344,6 +345,34 @@
         "value": {
           "$ref": "#/$defs/expr",
           "description": "Evaluated once per block. Placeholders resolve inside a `ref`'s stat name too, so \"{ability}:modifier\" reads charisma:modifier for the Bard and intelligence:modifier for the Wizard. An entry with a placeholder the block does not declare contributes nothing and is reported."
+        }
+      }
+    },
+
+"blockFilter": {
+      "description": "How a $(key) in a select's filter expands, for a rule attached to a declared block (ADR 0030). The fourth thing a declared block does, after ADR 0020's three keyings of a stat, and the same framing: a rule may be attached to a named block, and its filter is written in terms of what that block and the derivation publish. The keys cannot live in the engine — Aurora's two both spell a word the engine is not allowed to know — so they are declared here, beside the rest of the system's vocabulary. Declare either `tags` or `tagsFromStats`; when both are given, `tags` is tried first. An expansion that legitimately finds nothing matches nothing and is not reported as unresolved, so \"you have no spell slots yet\" and \"Incudo cannot read this filter\" stay different sentences.",
+      "type": "object",
+      "required": ["key"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The interpolation key as content writes it, without the $( and the ). Compared lowercased."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Ordered alternatives over the block's name and attributes, written with the same {name} and {attribute} placeholders blockStats uses. The FIRST entry whose placeholders all resolve wins — a fallback chain, not an OR, because the alternatives disagree on purpose: an Eldritch Knight's block is named \"Eldritch Knight\" and its list is \"Wizard,(Abjuration||Evocation)\", and OR-ing them would offer the whole wizard list. Whatever the winning entry expands to is parsed as a supports sub-expression, so it may be a group rather than one tag."
+        },
+        "tagsFromStats": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Stat-name patterns, each carrying exactly one *, which matches a single :-delimited segment. Every stat the derivation settled that matches a pattern and holds a POSITIVE value contributes its captured segment as a tag, and the whole is an OR. This is how \"any level you have slots for\" is written without the engine learning what a slot is; it widens on its own as the character levels, because the stats it reads are the ones content and the system already publish. Placeholders resolve first, so \"{name}:spellcasting:slots:*\" reads the block's own table and \"spellcasting:slots:*\" the shared one."
+        },
+        "fillFrom": {
+          "type": "integer",
+          "description": "Emit every integer from here up to the largest numeric capture, instead of the captures themselves; non-numeric captures are still emitted verbatim. The system's way of saying \"a resource published at one level covers everything at or below it\". 5e needs it because a warlock's pact table publishes exactly one positive slot level — 5th at high level — while the character really can pick spells of every level up to it."
         }
       }
     },

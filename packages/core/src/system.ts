@@ -16,6 +16,7 @@ import type { DeclaredBlock, Element, ElementId, ElementType, StatKey } from './
 import { declaredBlocks } from './model.ts';
 import type { StatExpr } from './expression.ts';
 import { parseRequirements, type RequirementExpr } from './requirements.ts';
+import { NEVER_MATCHES, parseSupports, type SupportsExpr } from './supports.ts';
 
 export interface ElementTypeDef {
   /** The type name as it appears on elements, e.g. "Class Feature". */
@@ -131,6 +132,132 @@ export interface BlockStatDef {
   stat: StatKey;
   /** Evaluated once per block. Placeholders inside a `ref`'s stat name resolve too. */
   value: StatExpr;
+}
+
+/**
+ * How a `$(key)` in a select's filter expands, for a rule attached to a declared block —
+ * ADR 0030.
+ *
+ * The fourth thing a block does, after ADR 0020's three keyings of a stat, and the same
+ * framing: a rule may be attached to a named block, and the filter it carries is written in
+ * terms of what that block and the derivation publish. Core cannot own the keys — there are
+ * exactly two in the Aurora corpus and both spell the word this package is not allowed to
+ * know, so they are declared where the rest of 5e's vocabulary already lives.
+ *
+ * Two forms, because the corpus's two keys ask two different questions:
+ *
+ *  - `tags` asks *what is this block called, for filtering purposes?* A fallback chain over
+ *    the block's own name and attributes, where the **first entry whose placeholders all
+ *    resolve wins**. 5e's is `["{list}", "{name}"]`, and it is a fallback rather than an OR
+ *    because the two disagree on purpose: an Eldritch Knight's block is named
+ *    `Eldritch Knight` and its list is `Wizard,(Abjuration||Evocation)`, and OR-ing them
+ *    would offer the whole wizard list. 17 blocks in the corpus declare a list and the other
+ *    74 have only a name, which is why the chain has two entries rather than one.
+ *  - `tagsFromStats` asks *what has the derivation published for this block?* A set, not a
+ *    value. Each pattern is a stat name carrying one `*`, which matches a single
+ *    `:`-delimited segment; every stat matching it whose value is **positive** contributes
+ *    its captured segment as a tag, and the whole is an OR. That is how "any level you have
+ *    slots for" is written without core learning what a slot is, and it widens on its own as
+ *    the character levels, because it reads stats the derivation already settled (ADR 0018).
+ *
+ * `fillFrom` turns numeric captures into a contiguous range, and the corpus's own saves are
+ * what forced it. A bard's slot table is cumulative, so its captures are already `1,2,3` and
+ * a range changes nothing — but a **warlock's is not**. Aurora writes pact magic as
+ * `+count` at one level and `-count` at the next, so a warlock 18 publishes exactly one
+ * positive slot stat, at level 5, while the real save holds spells of levels 1 through 5
+ * (and 6 through 9 from Mystic Arcanum, whose selects hardcode their level). Taking the
+ * captures literally would offer that character 5th-level spells and nothing else.
+ *
+ * An expansion that legitimately finds no tags matches nothing and is **not** reported as
+ * unresolved: a level 1 paladin has no slots, and that is an answer rather than a gap.
+ */
+export interface BlockFilterDef {
+  /** The interpolation key, without the `$(` and the `)`. Compared lowercased. */
+  key: string;
+  /** Ordered alternatives over the block's name and attributes; the first to resolve wins. */
+  tags?: string[];
+  /** Stat-name patterns carrying one `*`. A positive match contributes its capture as a tag. */
+  tagsFromStats?: string[];
+  /**
+   * Emit every integer from here up to the largest numeric capture, rather than the captures
+   * themselves. Non-numeric captures are still emitted verbatim.
+   *
+   * The system's way of saying "a resource published at one level covers everything at or
+   * below it", which is a statement about the game and not about the engine.
+   */
+  fillFrom?: number;
+}
+
+/** One `:`-delimited segment — what a `*` in a `tagsFromStats` pattern captures. */
+const STAT_SEGMENT = '[^:]+';
+
+function statPatternToRegExp(pattern: string): RegExp | undefined {
+  const star = pattern.indexOf('*');
+  // Exactly one wildcard: none means the pattern names a single stat and should have been
+  // written as one, and two would make the capture ambiguous.
+  if (star < 0 || pattern.indexOf('*', star + 1) >= 0) return undefined;
+  const quote = (text: string) => text.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+  return new RegExp(
+    '^' + quote(pattern.slice(0, star)) + '(' + STAT_SEGMENT + ')' + quote(pattern.slice(star + 1)) + '$',
+  );
+}
+
+/** `{5}` with `fillFrom` 1 becomes `{1,2,3,4,5}`; anything unparseable is kept as written. */
+function filledRange(captured: Set<string>, from: number): Set<string> {
+  const out = new Set<string>();
+  let highest: number | undefined;
+  for (const capture of captured) {
+    const value = Number(capture);
+    if (Number.isInteger(value)) highest = highest === undefined ? value : Math.max(highest, value);
+    else out.add(capture);
+  }
+  if (highest !== undefined) for (let n = from; n <= highest; n++) out.add(String(n));
+  return out;
+}
+
+/**
+ * Expand one `$(key)` for one block, against the stats the derivation settled — ADR 0030.
+ *
+ * Returns `undefined` only when the definition cannot be evaluated at all: no alternative's
+ * placeholders resolve, or no pattern carries a single `*`. An evaluation that legitimately
+ * finds nothing returns {@link NEVER_MATCHES}, so a builder can tell "you have no spell slots
+ * yet" from "Incudo cannot read this filter".
+ */
+export function expandBlockFilter(
+  def: BlockFilterDef,
+  block: DeclaredBlock,
+  stats: Iterable<readonly [StatKey, number]>,
+): SupportsExpr | undefined {
+  for (const alternative of def.tags ?? []) {
+    const text = substituteBlockPlaceholders(alternative, block);
+    if (text === undefined) continue;
+    const expr = parseSupports(text);
+    if (expr !== undefined) return expr;
+  }
+
+  const patterns = def.tagsFromStats ?? [];
+  if (patterns.length === 0) return undefined;
+  const captured = new Set<string>();
+  let usable = false;
+  for (const pattern of patterns) {
+    const substituted = substituteBlockPlaceholders(pattern, block);
+    if (substituted === undefined) continue;
+    // Stat keys are held lowercased, and a pattern is authored beside them.
+    const regexp = statPatternToRegExp(substituted.toLowerCase());
+    if (regexp === undefined) continue;
+    usable = true;
+    for (const [name, value] of stats) {
+      if (value <= 0) continue;
+      const match = regexp.exec(name.toLowerCase());
+      if (match) captured.add(match[1]!);
+    }
+  }
+  if (!usable) return undefined;
+  if (captured.size === 0) return NEVER_MATCHES;
+  const tags = def.fillFrom === undefined ? captured : filledRange(captured, def.fillFrom);
+  // Sorted so an expansion is stable between derivations. Matching does not care.
+  const children = [...tags].sort().map((tag) => ({ kind: 'tag', tag }) as SupportsExpr);
+  return children.length === 1 ? children[0]! : { kind: 'or', children };
 }
 
 /**
@@ -314,9 +441,9 @@ export function substituteBlockPlaceholders(
  *
  * Merging matters and is not tidiness. A block name is a stat *namespace*, so contributing
  * once per declaration would double a Bard's save DC the day a character holds both the
- * 2014 and the 2024 Bard — and 91 of the corpus's 118 blocks are `extend="true"`
- * continuations that declare no ability at all, whose whole purpose is to be the same block
- * as the one that does. First declaration wins per attribute, in element order.
+ * 2014 and the 2024 Bard — and 93 of the corpus's 118 blocks are `extend="true"`
+ * continuations, 66 of them named, whose whole purpose is to be the same block as the one
+ * that declares the ability. First declaration wins per attribute, in element order.
  */
 export function collectDeclaredBlocks(elements: Iterable<Element>): DeclaredBlock[] {
   const byName = new Map<string, DeclaredBlock>();
@@ -660,6 +787,12 @@ export interface CharacterKindDef {
    */
   blockStats?: BlockStatDef[];
   /**
+   * How a `$(key)` in a select's filter expands, per declared block — ADR 0030. Replaced
+   * rather than merged along an `extends` chain, like `blockStats`. A kind declaring none
+   * resolves no interpolation, and a select carrying one offers nothing and says so.
+   */
+  blockFilters?: BlockFilterDef[];
+  /**
    * Stats this kind contributes itself, conditionally or not — ADR 0022. Replaced rather than
    * merged along an `extends` chain, like `trackStats` and `blockStats`.
    */
@@ -690,6 +823,8 @@ export interface ResolvedCharacterKind {
   trackStats: TrackStatDef[];
   /** Stats each block the character's elements declare contributes — ADR 0020. */
   blockStats: BlockStatDef[];
+  /** How a select's `$(key)` expands, per declared block — ADR 0030. */
+  blockFilters: BlockFilterDef[];
   /** Stats the kind itself contributes, conditionally or not — ADR 0022. */
   contributions: ContributionDef[];
   /** How an item's setters are read, or nothing at all — ADR 0025. */
@@ -817,6 +952,7 @@ export function resolveCharacterKind(
   let grants: ElementId[] = [];
   let trackStats: TrackStatDef[] = [];
   let blockStats: BlockStatDef[] = [];
+  let blockFilters: BlockFilterDef[] = [];
   let contributions: ContributionDef[] = [];
   let inventory: InventoryDef | undefined;
   let buildSteps: BuildStepDef[] = [];
@@ -833,6 +969,7 @@ export function resolveCharacterKind(
     if (layer.grants !== undefined) grants = layer.grants;
     if (layer.trackStats !== undefined) trackStats = layer.trackStats;
     if (layer.blockStats !== undefined) blockStats = layer.blockStats;
+    if (layer.blockFilters !== undefined) blockFilters = layer.blockFilters;
     if (layer.contributions !== undefined) contributions = layer.contributions;
     if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
@@ -850,6 +987,7 @@ export function resolveCharacterKind(
     grants,
     trackStats,
     blockStats,
+    blockFilters,
     contributions,
     inventory,
     buildSteps,

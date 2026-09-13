@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { deriveCharacter } from './engine.ts';
+import { deriveCharacter, type PendingChoice } from './engine.ts';
 import { createCharacter, type Character } from './character.ts';
 import { MapElementIndex, type Element, type Rule } from './model.ts';
+import { parseSupports } from './supports.ts';
 import type { GameSystem, TrackStatDef } from './system.ts';
 import { evaluateExpr, type StatExpr } from './expression.ts';
 import { parseRequirements, type RequirementExpr } from './requirements.ts';
@@ -853,4 +854,167 @@ test('an unattuned item contributes none of its rules, and the derivation says w
   assert.equal(given.stats.get('vigour')?.value, 14);
   assert.equal(given.elementIds.has('BOON'), true);
   assert.equal(given.problems.length, 0);
+});
+
+// --- $(...) in a select's filter, per declared block (ADR 0030) --------------------------
+
+/**
+ * A system that filters on what a block publishes, with no game in it.
+ *
+ * `gizmo:charge:*` stands in for a spell slot table: content publishes a positive stat per
+ * tier the character has reached, and a select offers the things it can spend one on.
+ */
+function blockFilterSystem(options: { fillFrom?: number; tags?: string[] } = {}): GameSystem {
+  const base = system();
+  const kind = base.characterKinds[0]!;
+  return {
+    ...base,
+    characterKinds: [
+      {
+        ...kind,
+        blockFilters: [
+          { key: 'gizmo:catalogue', tags: options.tags ?? ['{list}', '{name}'] },
+          {
+            key: 'gizmo:charge',
+            tagsFromStats: ['{name}:gizmo:charge:*'],
+            ...(options.fillFrom === undefined ? {} : { fillFrom: options.fillFrom }),
+          },
+        ],
+        buildSteps: [],
+        sheet: { sections: [] },
+      },
+      ...base.characterKinds.slice(1),
+    ],
+  };
+}
+
+function widget(id: string, supports: string[], setters: Record<string, string> = {}): Element {
+  const el = element(id, 'Gadget');
+  el.supports = supports;
+  for (const [name, value] of Object.entries(setters)) el.setters[name] = { value };
+  return el;
+}
+
+function blockCaster(rules: Rule[], block: { name: string; catalogue?: string }): Element {
+  const el = element('CASTER', 'Widget', rules);
+  el.spellcasting = [{ name: block.name, ...(block.catalogue ? { list: block.catalogue } : {}) }];
+  return el;
+}
+
+const CHARGE_1 = { kind: 'stat', key: 'c1', name: 'orange:gizmo:charge:1', value: { kind: 'number', value: 2 } } as const;
+const CHARGE_3 = { kind: 'stat', key: 'c3', name: 'orange:gizmo:charge:3', value: { kind: 'number', value: 1 } } as const;
+const PICK = {
+  kind: 'select',
+  key: 'select:P',
+  type: 'Gadget',
+  name: 'P',
+  number: 1,
+  spellcasting: 'Orange',
+  supports: parseSupports('$(gizmo:catalogue), $(gizmo:charge)'),
+} as const;
+
+function derivedPick(system_: GameSystem, index: MapElementIndex): PendingChoice {
+  const character = { ...createCharacter('test', 'levelled'), progress: 1 };
+  character.choices = [{ ruleKey: 'seed', elementIds: ['CASTER'] }];
+  return deriveCharacter(character, system_, index).pendingChoices[0]!;
+}
+
+test('an interpolation resolves against the block the rule names and what it published', () => {
+  const index = indexWith(
+    blockCaster([CHARGE_1, PICK], { name: 'Orange' }),
+    widget('IN', ['Orange'], { tier: '1' }),
+    widget('WRONG_LIST', ['Purple'], { tier: '1' }),
+    widget('WRONG_TIER', ['Orange'], { tier: '2' }),
+  );
+  const pick = derivedPick(blockFilterSystem(), index);
+  assert.deepEqual([...pick.candidates].sort(), ['IN']);
+  assert.deepEqual(pick.unresolvedSupports, [], 'both terms resolved, so nothing is reported');
+});
+
+/**
+ * Perturbation, because a green corpus run cannot see this: `aurora verify` compares the
+ * elements a character *chose*, so a filter that resolved to everything would move no count
+ * anywhere. Each half is removed in turn and the list has to get wider.
+ */
+test('a filter that resolves to everything is not the same as one that works', () => {
+  const index = indexWith(
+    blockCaster([CHARGE_1, PICK], { name: 'Orange' }),
+    widget('IN', ['Orange'], { tier: '1' }),
+    widget('WRONG_LIST', ['Purple'], { tier: '1' }),
+    widget('WRONG_TIER', ['Orange'], { tier: '2' }),
+  );
+  // The catalogue term alone would let the wrong tier through.
+  const noCharge = blockFilterSystem();
+  noCharge.characterKinds[0]!.blockFilters = [{ key: 'gizmo:catalogue', tags: ['{name}'] }];
+  assert.deepEqual([...derivedPick(noCharge, index).candidates].sort(), []);
+  assert.deepEqual(derivedPick(noCharge, index).unresolvedSupports, ['gizmo:charge']);
+});
+
+test('a kind that declares no blockFilters offers nothing, and says which term it could not read', () => {
+  const index = indexWith(
+    blockCaster([CHARGE_1, PICK], { name: 'Orange' }),
+    widget('IN', ['Orange'], { tier: '1' }),
+  );
+  const pick = derivedPick(system(), index);
+  assert.deepEqual(pick.candidates, []);
+  assert.deepEqual(pick.unresolvedSupports.sort(), ['gizmo:catalogue', 'gizmo:charge']);
+});
+
+test("a block's own declared value beats its name, and may be a sub-expression", () => {
+  // The Eldritch Knight case: the block is called one thing and filters on another, and the
+  // other is a group rather than a tag. A chain that OR-ed the two would offer BY_NAME too.
+  const index = indexWith(
+    blockCaster([CHARGE_1, PICK], { name: 'Orange', catalogue: 'Purple,(Round||Square)' }),
+    widget('ROUND', ['Purple', 'Round'], { tier: '1' }),
+    widget('SPIKY', ['Purple', 'Spiky'], { tier: '1' }),
+    widget('BY_NAME', ['Orange'], { tier: '1' }),
+  );
+  assert.deepEqual([...derivedPick(blockFilterSystem(), index).candidates].sort(), ['ROUND']);
+});
+
+test('a chain falls through to its next entry when the block declares nothing for the first', () => {
+  // 74 of the corpus's 91 named blocks declare no list at all, so the fallback is the
+  // overwhelmingly common path rather than the exceptional one.
+  const index = indexWith(
+    blockCaster([CHARGE_1, PICK], { name: 'Orange' }),
+    widget('BY_NAME', ['Orange'], { tier: '1' }),
+  );
+  assert.deepEqual([...derivedPick(blockFilterSystem(), index).candidates].sort(), ['BY_NAME']);
+});
+
+test('a set published with gaps fills, so a resource held at one tier reaches the ones below', () => {
+  // The warlock case: one positive stat at tier 3 and nothing at 1 or 2, and the character
+  // can really pick any of the three.
+  const index = indexWith(
+    blockCaster([CHARGE_3, PICK], { name: 'Orange' }),
+    widget('T1', ['Orange'], { tier: '1' }),
+    widget('T2', ['Orange'], { tier: '2' }),
+    widget('T3', ['Orange'], { tier: '3' }),
+    widget('T4', ['Orange'], { tier: '4' }),
+  );
+  assert.deepEqual([...derivedPick(blockFilterSystem({ fillFrom: 1 }), index).candidates].sort(), ['T1', 'T2', 'T3']);
+  // Without the fill, the literal captures are all there is — which is what made a level 18
+  // warlock unable to choose anything but a 5th-level spell.
+  assert.deepEqual([...derivedPick(blockFilterSystem(), index).candidates].sort(), ['T3']);
+});
+
+test('a block that has published nothing yet resolves to no candidates rather than to a gap', () => {
+  const index = indexWith(
+    blockCaster([PICK], { name: 'Orange' }),
+    widget('T1', ['Orange'], { tier: '1' }),
+  );
+  const pick = derivedPick(blockFilterSystem({ fillFrom: 1 }), index);
+  assert.deepEqual(pick.candidates, []);
+  assert.deepEqual(pick.unresolvedSupports, [], 'a level 1 paladin has no slots; that is an answer');
+});
+
+test('a rule naming a block nothing declares resolves nothing rather than guessing at the only one present', () => {
+  const stray = { ...PICK, spellcasting: 'Lemon' } as Rule;
+  const index = indexWith(
+    blockCaster([CHARGE_1, stray], { name: 'Orange' }),
+    widget('IN', ['Orange'], { tier: '1' }),
+  );
+  const pick = derivedPick(blockFilterSystem(), index);
+  assert.deepEqual(pick.candidates, []);
+  assert.deepEqual(pick.unresolvedSupports.sort(), ['gizmo:catalogue', 'gizmo:charge']);
 });

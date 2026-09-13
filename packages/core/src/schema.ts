@@ -275,6 +275,37 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       }
     }
 
+    // A `blockFilters` entry that resolves nothing is invisible at runtime: the select it
+    // was meant to fill just goes on offering an empty list, which is exactly the sentence
+    // ADR 0030's `unresolvedSupports` exists to keep separate from "you have no content".
+    // Two mistakes an author actually makes, and both are checkable here.
+    const filterKeys = new Set<string>();
+    for (const filter of resolved.blockFilters) {
+      const key = filter.key.trim().toLowerCase();
+      if (filterKeys.has(key)) {
+        errors.push({
+          path: `${where}.blockFilters`,
+          message: `expands "${filter.key}" twice; only the first would ever be reached`,
+        });
+      }
+      filterKeys.add(key);
+      if ((filter.tags?.length ?? 0) === 0 && (filter.tagsFromStats?.length ?? 0) === 0) {
+        errors.push({
+          path: `${where}.blockFilters`,
+          message: `expands "${filter.key}" into nothing: give it tags or tagsFromStats`,
+        });
+      }
+      for (const pattern of filter.tagsFromStats ?? []) {
+        const stars = pattern.split('*').length - 1;
+        if (stars !== 1) {
+          errors.push({
+            path: `${where}.blockFilters`,
+            message: `the "${filter.key}" pattern "${pattern}" needs exactly one *, and has ${stars}`,
+          });
+        }
+      }
+    }
+
     // A `perBlock` section names stats no system definition can declare — the key comes
     // from content, so `bard:spellcasting:dc` is unknowable here (ADR 0020). What *is*
     // checkable, and worth checking, is that its patterns are ones this kind publishes:

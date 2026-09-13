@@ -204,6 +204,11 @@
               "right": { "kind": "ref", "stat": "spellcasting:attack" } } } }
       ],
 
+      "blockFilters": [
+        { "key": "spellcasting:list", "tags": ["{list}", "{name}"] },
+        { "key": "spellcasting:slots", "tagsFromStats": ["{name}:spellcasting:slots:*", "spellcasting:slots:*"], "fillFrom": 1 }
+      ],
+
       "contributions": [
         { "stat": "ac:armored:armor", "value": { "kind": "number", "value": 10 }, "requirements": "[armor:none]" },
 

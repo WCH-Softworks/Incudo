@@ -387,6 +387,50 @@ test('a slot that publishes into nothing, or twice, is caught before the app loa
   );
 });
 
+test('a blockFilter that could never expand is caught before the app loads it', async () => {
+  // The failure mode this guards is silent by construction: a filter that resolves nothing
+  // leaves the select offering an empty list, which looks exactly like a content source the
+  // user has not enabled. ADR 0030 splits those two sentences apart at runtime; this stops
+  // the system definition from creating the confusion in the first place.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.blockFilters = [{ key: 'gizmo:catalogue' }];
+      }),
+    ),
+    ['characterKinds[0].blockFilters: expands "gizmo:catalogue" into nothing: give it tags or tagsFromStats'],
+  );
+
+  // A pattern is a stat name with one wildcard. None captures nothing; two is ambiguous.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.blockFilters = [
+          { key: 'gizmo:charge', tagsFromStats: ['{name}:gizmo:charge', '{name}:*:charge:*'] },
+        ];
+      }),
+    ),
+    [
+      'characterKinds[0].blockFilters: the "gizmo:charge" pattern "{name}:gizmo:charge" needs exactly one *, and has 0',
+      'characterKinds[0].blockFilters: the "gizmo:charge" pattern "{name}:*:charge:*" needs exactly one *, and has 2',
+    ],
+  );
+
+  // Keys are matched once, so a second entry for one key is dead weight rather than an
+  // alternative — the same reading a duplicate slot id gets.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.blockFilters = [
+          { key: 'gizmo:catalogue', tags: ['{name}'] },
+          { key: 'Gizmo:Catalogue', tags: ['{list}'] },
+        ];
+      }),
+    ),
+    ['characterKinds[0].blockFilters: expands "Gizmo:Catalogue" twice; only the first would ever be reached'],
+  );
+});
+
 test("a contribution's requirements is content's language, and it has to parse", async () => {
   // The one place the system format embeds a *different* language inside JSON (ADR 0022). The
   // schema can only check that it is a string, so the parse happens in checkSystemReferences
