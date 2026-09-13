@@ -43,6 +43,7 @@ import {
 } from '@incudo/content';
 import {
   CharacterLibrary,
+  UserSystemStore,
   importAuroraSavesIntoLibrary,
   type AuroraImportReport,
   type LibraryEntry,
@@ -54,6 +55,7 @@ import {
   newCharacter,
   readChosenSystem,
   saveCharacter,
+  schemas,
   writeChosenSystem,
   type SystemFailure,
 } from './boot.ts';
@@ -76,8 +78,11 @@ const EMPTY_INDEX: ElementIndex = new MapElementIndex();
 const platform = createDesktopPlatform();
 
 interface Booted {
+  /** Shipped and user-authored together, in that order. */
   systems: GameSystem[];
   failures: SystemFailure[];
+  /** Which of them the user added themselves, and can therefore remove. */
+  mine: Set<string>;
   /** What the user picked last time, if that system still exists. */
   remembered: GameSystem | null;
 }
@@ -90,18 +95,32 @@ export function App(): React.JSX.Element {
   /** Set while the user is deliberately changing systems, so the launcher can say "current". */
   const [changing, setChanging] = useState(false);
 
+  const reboot = useCallback(async (): Promise<Booted> => {
+    const shipped = loadShippedSystems();
+    // ADR 0011's other half. A user definition is revalidated on every load rather than trusted
+    // from when it was added, because Incudo's schema moves under a file written months ago.
+    const store = new UserSystemStore(platform.storage, schemas, shipped.systems.map((s) => s.id));
+    const user = await store.load();
+    const rememberedId = await readChosenSystem((key) => platform.storage.read(key));
+    const systems = [...shipped.systems, ...user.systems];
+    return {
+      systems,
+      failures: [...shipped.failures, ...user.failures],
+      mine: new Set(user.systems.map((s) => s.id)),
+      remembered: systems.find((s) => s.id === rememberedId) ?? null,
+    };
+  }, []);
+
   useEffect(() => {
     void (async () => {
-      const { systems, failures } = loadShippedSystems();
-      const rememberedId = await readChosenSystem((key) => platform.storage.read(key));
-      const remembered = systems.find((s) => s.id === rememberedId) ?? null;
-      setBooted({ systems, failures, remembered });
-      if (remembered) {
-        setSystem(remembered);
-        setCharacter(await loadCharacter(remembered, (key) => platform.storage.read(key)));
+      const next = await reboot();
+      setBooted(next);
+      if (next.remembered) {
+        setSystem(next.remembered);
+        setCharacter(await loadCharacter(next.remembered, (key) => platform.storage.read(key)));
       }
     })();
-  }, []);
+  }, [reboot]);
 
   /**
    * Switch systems, character first.
@@ -132,7 +151,7 @@ export function App(): React.JSX.Element {
   if (booted.systems.length === 0) {
     return (
       <main className="fatal">
-        <h1>No shipped system definition validates.</h1>
+        <h1>No system definition could be loaded.</h1>
         <ul>
           {booted.failures.flatMap((failure) =>
             failure.errors.map((error) => (
@@ -152,6 +171,13 @@ export function App(): React.JSX.Element {
         booted={booted}
         current={changing && system ? system.id : undefined}
         onChoose={(picked) => void choose(picked)}
+        onChanged={(next) => {
+          setBooted(next);
+          // The system in play may have just been removed. Back to the launcher, deliberately
+          // and visibly, rather than leaving a Shell bound to a definition that is gone.
+          if (system && !next.systems.some((s) => s.id === system.id)) setSystem(null);
+        }}
+        reboot={reboot}
       />
     );
   }
@@ -178,21 +204,81 @@ function Launcher({
   booted,
   current,
   onChoose,
+  onChanged,
+  reboot,
 }: {
   booted: Booted;
   current?: string;
   onChoose: (system: GameSystem) => void;
+  onChanged: (booted: Booted) => void;
+  reboot: () => Promise<Booted>;
 }): React.JSX.Element {
   const [summaries, setSummaries] = useState<Record<string, SystemSummary>>({});
   const [location, setLocation] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addProblem, setAddProblem] = useState<
+    { message: string; errors?: { path: string; message: string }[] } | undefined
+  >();
+
+  const store = useMemo(
+    () =>
+      new UserSystemStore(
+        platform.storage,
+        schemas,
+        // Only the *shipped* ids are reserved. A user system may of course be replaced by
+        // another file with the same id — that is what editing your own definition means.
+        loadShippedSystems().systems.map((s) => s.id),
+      ),
+    [],
+  );
+
+  const addSystem = useCallback(async (): Promise<void> => {
+    setAddProblem(undefined);
+    setAdding(true);
+    try {
+      const picked = await platform.files.pick({
+        title: 'Add a game system',
+        extensions: ['json'],
+        label: 'System definition',
+        multiple: false,
+      });
+      // Cancelling is an answer, and leaves the screen exactly as it was.
+      if (!picked.length) return;
+      const result = await store.add(picked[0]!);
+      if (!result.ok) {
+        setAddProblem({ message: result.message, errors: result.errors });
+        return;
+      }
+      onChanged(await reboot());
+    } catch (error) {
+      setAddProblem({ message: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setAdding(false);
+    }
+  }, [store, onChanged, reboot]);
+
+  const removeSystem = useCallback(
+    async (system: GameSystem): Promise<void> => {
+      // Removing a definition removes no character. A save records its system by id and keeps
+      // every element it uses (ADR 0012), so the characters stay on disk and reappear the day
+      // the definition comes back — they are simply not listed while nothing can read them.
+      await store.remove(system.id);
+      onChanged(await reboot());
+    },
+    [store, onChanged, reboot],
+  );
 
   useEffect(() => {
     void (async () => {
       const profile = await SourceProfile.load(platform.storage);
       const next: Record<string, SystemSummary> = {};
       for (const system of booted.systems) {
-        const mine = sourcesForSystem(profile.sources, system.id);
-        next[system.id] = { sources: mine.length, enabled: mine.filter((s) => s.enabled).length };
+        const forSystem = sourcesForSystem(profile.sources, system.id);
+        next[system.id] = {
+          sources: forSystem.length,
+          enabled: forSystem.filter((s) => s.enabled).length,
+          mine: booted.mine.has(system.id),
+        };
       }
 
       // The library is scanned once, here, and counted per system. Reading every container in
@@ -222,6 +308,13 @@ function Launcher({
       summaries={summaries}
       current={current}
       onChoose={onChoose}
+      onAddSystem={() => void addSystem()}
+      onRemoveSystem={(system) => void removeSystem(system)}
+      adding={adding}
+      addProblem={addProblem}
+      onDismissAddProblem={() => setAddProblem(undefined)}
+      canAdd={platform.files.available}
+      cannotAddReason={platform.files.unavailableReason}
       libraryLocation={location}
     />
   );

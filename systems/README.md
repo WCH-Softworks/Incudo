@@ -12,10 +12,21 @@ The shape is defined by [`schemas/system.schema.json`](../schemas/system.schema.
 schema is a contract rather than documentation: *if it validates, the app can build in it*
 ([ADR 0011](../docs/adr/0011-user-systems.md)).
 
-| folder | what it is |
-|---|---|
-| `dnd5e/` | D&D 5th edition. The system Incudo is actually tested against. |
-| `cairn/` | A deliberately tiny, classless, level-less system. It exists to break 5e-shaped assumptions in the engine while they are still cheap to fix. |
+| folder | what it is | why it is here |
+|---|---|---|
+| `dnd5e/` | D&D 5th edition. | The first definition and the one Incudo is actually tested against — the corpus, the nine sample saves and every `aurora verify` number are 5e. |
+| `cairn/` | A small, classless, level-less game by Yochai Gal. | It exists to break 5e-shaped assumptions in the engine while they are still cheap to fix. A structural sketch, not a licensed implementation — replace the content before shipping it. |
+
+**A definition's own `description` is not the place for any of the column on the right.** The
+launcher shows it on a card to someone choosing a game, so it is prose for a player: what the
+game is, who publishes it, what it feels like. It used to read "the first system definition, and
+the one Incudo is tested against… see docs/adr/0003", which is true, useful to a maintainer, and
+exactly the wrong sentence in front of a user. Notes for maintainers go here.
+
+A definition may also carry a `logo`, which is a **reference** and never inline bytes
+([ADR 0007](../docs/adr/0007-native-formats.md)) — an `https:` URL or a path beside the
+definition. Neither shipped system has one, and the app draws no substitute for a missing one:
+it generates no artwork, not even a placeholder.
 
 Official systems must clear the licensing bar in
 [docs/LICENSING.md](../docs/LICENSING.md) before they are added here. User-authored systems

@@ -216,6 +216,17 @@ three of them are correctness rather than presentation:
   profile written before ADR 0031) belongs to *nothing* and is offered for assignment rather
   than counted as the current system's; counting it would put another game's content into a
   character and freeze it there when the save is written (ADR 0012).
+- **A system card is written for a player, and `description` is user-facing prose.** It used
+  to render 5e's "the one Incudo is tested against… see docs/adr/0003" on the launcher.
+  Maintainer notes go in `systems/README.md`; nothing on a card cites an ADR. `logo` is
+  optional, a **reference** rather than inline bytes (ADR 0007), and a card with none draws
+  nothing — never a generated stand-in.
+- **A user can add a system**, which ADR 0011 has promised since Phase 0 and nothing implemented.
+  `UserSystemStore` (`packages/ui`) validates a picked `system.json` through the same
+  `validateGameSystem` everything else uses, **revalidates on every load** rather than trusting
+  the add-time verdict, refuses an id the app ships, and encodes the storage key — `remove` and
+  `has` take an id from a caller, and a `Storage` key becomes a file path under `NodeStorage`,
+  whose sanitiser permits `.` and `/`.
 - **A system definition may `suggest` sources**, which is what keeps the tagging invisible: a
   user who clicks Add on 5e's AuroraLegacy suggestion has said which system it serves by
   picking it. `official` is a claim by whoever wrote the system definition, not a check by

@@ -212,6 +212,12 @@ before any code, both touching a public API:
       handed to another. Content sources now carry the system they were added under, recorded
       and never inferred, and a system definition can **suggest** indexes so the common case
       never sees a system field at all.
+      **ADR 0011's user-authored systems became reachable with it** — promised since Phase 0,
+      with the format a public API since ADR 0007, and no way to get a file into the app until
+      now. `Add a system…` validates a picked `system.json` through the same validator
+      everything else uses and lists it beside the shipped ones. The cards were rewritten for
+      players at the same time: `description` is prose about the game rather than a note to
+      whoever maintains the definition, and a definition may carry an optional `logo`.
 - [x] **The app opens on a character library**
       ([ADR 0027](./docs/adr/0027-a-library-is-a-folder.md)). It used to open on Sources, with
       an index URL in a text box, doing nothing at all until 238 files had come down over the

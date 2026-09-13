@@ -21,7 +21,10 @@
       "maxLength": 64
     },
     "name": { "type": "string", "minLength": 1 },
-    "description": { "type": "string" },
+    "description": {
+      "type": "string",
+      "description": "What this system is, in a sentence a player would read. The launcher shows it on a card, so it is user-facing prose — what the game is, who publishes it, what it feels like — and not a note to whoever maintains the definition. Notes for maintainers belong in systems/README.md."
+    },
     "version": {
       "type": "string",
       "minLength": 1,
@@ -59,6 +62,11 @@
       "type": "object",
       "additionalProperties": { "type": "string" },
       "description": "Aurora element types that map onto this system's types. Only needed to consume Aurora content."
+    },
+    "logo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "An image shown beside this system's name, as a reference and never inline bytes: an https: URL, or a path relative to this definition. ADR 0007 — Incudo's formats are JSON and images are never inlined. Optional; a system without one gets a card with no image, and the app draws no substitute (it generates no artwork, not even a placeholder)."
     },
     "suggestedSources": {
       "type": "array",

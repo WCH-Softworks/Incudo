@@ -868,8 +868,26 @@ export interface GameSystem {
   formatVersion: 1;
   id: string;
   name: string;
-  /** Free text: edition, publisher, licence note. */
+  /**
+   * What this system is, **in a sentence a player would read**.
+   *
+   * A launcher card shows this, so it is user-facing prose: what the game is, who publishes
+   * it, what it feels like. Not a note to whoever maintains the definition — the 5e one used
+   * to read "the one Incudo is tested against… see docs/adr/0003", which is true, useful, and
+   * exactly the wrong thing to put in front of someone choosing a game. Notes for maintainers
+   * belong in `systems/README.md`.
+   */
   description?: string;
+  /**
+   * An image to show beside the name, or nothing — a **reference**, never inline bytes.
+   *
+   * ADR 0007 is the rule: Incudo's own formats are JSON and images are never inlined, so this
+   * is an `https:` URL or a path relative to the definition. Optional in the strongest sense:
+   * a system with no logo gets a card with no image, and the app never draws a substitute. It
+   * generates no artwork, not even a placeholder (see the README), and a generated glyph
+   * standing in for a missing publisher logo is precisely where that would slip.
+   */
+  logo?: string;
   version: string;
   licence?: LicenceRef;
   /** A user overlay names the official system it patches. ADR 0011. */

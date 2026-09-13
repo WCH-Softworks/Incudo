@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "id": "dnd5e",
   "name": "Dungeons & Dragons 5th Edition",
-  "description": "The first system definition, and the one Incudo is tested against. Nothing in @incudo/core imports this file — it is data. See docs/adr/0003.",
+  "description": "The world's most widely played tabletop roleplaying game, published by Wizards of the Coast. Classes, levels and ability scores, from 1st to 20th. Incudo reads the same community content Aurora Builder did, covering the core books, supplements and Unearthed Arcana.",
   "version": "0.2.0",
 
   "licence": {

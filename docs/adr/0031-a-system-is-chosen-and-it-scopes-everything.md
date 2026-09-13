@@ -157,6 +157,54 @@ filename nothing on disk is using. Asking the *filtered* list would have let a n
 be written straight over a Cairn one with the same name — silent data loss, from a change whose
 entire subject is what to show on a screen. There is a test named after it.
 
+## Follow-ups that landed with it
+
+Two things the first cut of the launcher got wrong, both caught by reading the screen rather
+than the code.
+
+**A card was written for a maintainer.** It rendered `description` verbatim, and 5e's read
+"The first system definition, and the one Incudo is tested against. Nothing in `@incudo/core`
+imports this file — it is data. See docs/adr/0003." Every word true, and every word aimed at
+whoever maintains the definition rather than at someone choosing a game. Cairn's was worse: its
+*name* was "Cairn (example non-D&D system)". So `description` is now documented in the schema
+as **user-facing prose**, both shipped definitions were rewritten, and the maintainer's notes
+moved to `systems/README.md` where they were always meant to be. Nothing on a card cites an
+ADR. The facts line changed with it — "0 characters · no content sources yet" was a database
+row, and reads "No characters yet · content ready" now.
+
+A definition may also carry a **`logo`**, optional, and a **reference rather than inline bytes**
+because ADR 0007 says images are never inlined in Incudo's own formats. Neither shipped system
+has one, and a card with no logo draws **nothing** — never a generated glyph or an initial in a
+coloured circle, which is the standing commitment in the README and exactly the sort of place it
+would slip.
+
+**There was no way to add a system.** ADR 0011 has promised user-authored systems since Phase 0
+and the format has been a public API since ADR 0007, but `boot.ts` imported the shipped
+definitions at build time and that was the whole of it — the promise was unreachable from the
+product. `UserSystemStore` in `packages/ui` reads a picked `system.json` through the **same**
+`validateGameSystem` the CLI and the shipped definitions go through, keeps it in `Storage`, and
+lists it beside them with a "yours" badge and a Remove.
+
+Four rules in it are worth knowing:
+
+- **Revalidated on every load, not trusted from when it was added.** Incudo's schema moves under
+  a file the user wrote months ago; a definition that no longer validates is reported, not
+  half-loaded, which is what ADR 0011 actually promises.
+- **An id the app ships is refused**, with a sentence pointing at `extends`. A character records
+  its system by id and nothing else (ADR 0012), so two systems answering to one id makes "which
+  rules is this character's?" unanswerable in a file the user already saved.
+- **The file is stored verbatim**, not round-tripped through `JSON.stringify`. Key order and
+  spacing are the author's.
+- **The storage key is encoded.** `remove` and `has` take an id from a caller rather than from a
+  schema-validated definition, and a `Storage` key becomes a file path under `NodeStorage`,
+  whose sanitiser permits `.` and `/`. An id of `../../something` would otherwise reach outside
+  the app's own directory. There is a test named after it.
+
+Removing a definition removes **no character**: a save keeps every element it uses, so the
+characters stay on disk and reappear the day the definition comes back. Removing the system
+currently in play drops to the launcher rather than leaving a `Shell` bound to a definition that
+is gone.
+
 ## Consequences
 
 **Good**
@@ -182,6 +230,10 @@ entire subject is what to show on a screen. There is a test named after it.
 - **The launcher scans the library to show a character count**, which reads every container in
   full. That is the cost ADR 0027 already names and deliberately does not optimise — nine saves
   is imperceptible, two hundred will not be, and the summary cache it names is still unbuilt.
+- **A logo is fetched from wherever the definition points**, which for a user-authored system
+  is a URL the app did not choose. It is an `<img src>` and nothing more — no credentials, no
+  script — but it is a request, and a hostile definition could use one to see that you opened
+  the launcher.
 - **`official` is self-asserted.** A fork of the 5e definition inherits `official: true` on
   AuroraLegacy and can add its own. The UI names the voucher, which is the honest presentation,
   but there is no verification and there is no plan for one.

@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "id": "cairn",
-  "name": "Cairn (example non-D&D system)",
-  "description": "A deliberately tiny, classless, level-less system. It exists to break 5e-shaped assumptions in the engine early, while they are still cheap to fix. See docs/adr/0003. This is a structural sketch, not a licensed implementation — replace the content before shipping.",
+  "name": "Cairn",
+  "description": "A small, classless, level-less game of cautious dungeon delving, by Yochai Gal. Characters have three ability scores and whatever they are carrying; there is no advancement table to climb. Included as a worked example of a non-D&D system — the content is a sketch rather than a full implementation.",
   "version": "0.1.0",
 
   "elementTypes": [

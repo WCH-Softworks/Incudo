@@ -861,3 +861,33 @@ table.budget-rows input[type='number'] {
   cursor: pointer;
   text-decoration: underline;
 }
+
+/* A card is a card: a logo where there is one, a name, a sentence, two facts. */
+.system-choose {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.system-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.system-text {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.system-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.system-remove {
+  flex: 0 0 auto;
+}
