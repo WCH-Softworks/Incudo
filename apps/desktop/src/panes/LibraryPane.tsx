@@ -145,7 +145,11 @@ export function LibraryPane({
 
       {state.problems.length > 0 && (
         <div className="problem warning">
-          <strong>{state.problems.length} thing(s) in that folder could not be read.</strong>
+          <strong>
+            {state.problems.length === 1
+              ? 'One thing in that folder could not be read.'
+              : `${state.problems.length} things in that folder could not be read.`}
+          </strong>
           <ul>
             {state.problems.slice(0, 20).map((problem) => (
               <li key={problem}>{problem}</li>

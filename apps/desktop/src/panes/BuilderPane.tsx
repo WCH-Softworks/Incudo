@@ -28,6 +28,21 @@ export function BuilderPane({
   const progression = kind.progression;
   const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
 
+  /**
+   * A candidate's name plus the book it came from, where a book is recorded.
+   *
+   * Names alone are not distinguishing, and the corpus is where you find that out rather than
+   * where you would guess it: the Class list offers *every* class twice, once from the
+   * Player's Handbook and once from its 2024 revision, and Aasimar four times — DMG, VGtM,
+   * MotM and PHB 2024, which are four different sets of rules. `nameOf` stays as it is for
+   * `decision.from` ("from Aasimar"), where the source would be noise.
+   */
+  const candidateLabel = (id: ElementId): string => {
+    const element = elements.get(id);
+    if (!element) return id;
+    return element.source ? `${element.name} — ${element.source}` : element.name;
+  };
+
   /** Budgeted steps with nothing outstanding — still editable, see below. */
   const settled = steps.filter(
     (step) =>
@@ -105,6 +120,7 @@ export function BuilderPane({
                   decision={decision}
                   builder={builder}
                   nameOf={nameOf}
+                  candidateLabel={candidateLabel}
                   kind={kind}
                   budget={steps.find((step) => step.id === decision.stepId)?.budget}
                 />
@@ -159,12 +175,15 @@ function Decision({
   decision,
   builder,
   nameOf,
+  candidateLabel,
   kind,
   budget,
 }: {
   decision: OpenDecision;
   builder: CharacterBuilder;
   nameOf: (id: ElementId) => string;
+  /** A candidate's name plus the book it came from — see `candidateLabel` in the pane. */
+  candidateLabel: (id: ElementId) => string;
   kind: ResolvedCharacterKind;
   budget: BuilderState['steps'][number]['budget'];
 }): React.JSX.Element {
@@ -201,7 +220,7 @@ function Decision({
             Choose one of {decision.candidates.length}…
           </option>
           {decision.candidates
-            .map((id) => ({ id, name: nameOf(id) }))
+            .map((id) => ({ id, name: candidateLabel(id) }))
             .sort((a, b) => a.name.localeCompare(b.name))
             .map((candidate) => (
               <option key={candidate.id} value={candidate.id}>

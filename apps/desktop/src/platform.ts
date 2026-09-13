@@ -359,12 +359,24 @@ class FileSystemAccessCharacterStore implements CharacterStore {
   }
 
   async choose(): Promise<string | null> {
-    // Non-null because `createDesktopPlatform` only builds this store where it exists.
-    const picked = await window.showDirectoryPicker!({
-      id: 'incudo-library',
-      mode: 'readwrite',
-      startIn: await this.remembered(),
-    });
+    let picked: FileSystemDirectoryHandle;
+    try {
+      // Non-null because `createDesktopPlatform` only builds this store where it exists.
+      picked = await window.showDirectoryPicker!({
+        id: 'incudo-library',
+        mode: 'readwrite',
+        startIn: await this.remembered(),
+      });
+    } catch (error) {
+      // Cancelling throws `AbortError` here and returns null under Tauri — the same split
+      // `BrowserFilePicker.pick` already handles. One port, one meaning: cancelling is an
+      // answer, so both come back as "no folder chosen". Without this the rejection escaped
+      // `CharacterLibrary.chooseLocation`, which is written expecting a null, and every
+      // cancel logged an unhandled rejection — taking any *real* picker failure with it,
+      // so the user saw nothing at all when one happened.
+      if (error instanceof DOMException && error.name === 'AbortError') return null;
+      throw error;
+    }
     this.handle = picked;
     await withStore(HANDLE_STORE, 'readwrite', (store) => store.put(picked, LIBRARY_HANDLE_KEY));
     return picked.name;
