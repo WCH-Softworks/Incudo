@@ -8,6 +8,8 @@ import {
   SOURCE_PROFILE_KEY,
   compareSourceRefs,
   recordSourceRefs,
+  sourcesForSystem,
+  unassignedSources,
 } from './profile.ts';
 
 const CORE = 'https://example.test/core.index';
@@ -158,4 +160,45 @@ test('the Aurora overlay is not a configured source, so it records nothing', () 
   const profile = new SourceProfile(new MemoryStorage());
   const core = profile.add(CORE, { version: '1.2.0' });
   assert.deepEqual(recordSourceRefs([], [element('ID_INTERNAL_X', 'aurora:generated')], [core]), []);
+});
+
+// --- which system a source serves (ADR 0031) -------------------------------
+
+test('a source belongs to the system the user assigned it, and to no other', () => {
+  const profile = new SourceProfile(new MemoryStorage());
+  profile.add(CORE, { systemId: 'dnd5e', official: true });
+  profile.add('https://example.test/cairn.incuset', { systemId: 'cairn' });
+
+  assert.deepEqual(sourcesForSystem(profile.sources, 'dnd5e').map((s) => s.id), [CORE]);
+  assert.deepEqual(sourcesForSystem(profile.sources, 'cairn').map((s) => s.name), ['cairn']);
+  assert.deepEqual(sourcesForSystem(profile.sources, 'nothing'), []);
+});
+
+/**
+ * The case that decides the shape. A profile written before ADR 0031 has no `systemId` on
+ * anything, and counting those as the current system's would feed a Pathfinder index to a D&D
+ * character the first time someone kept two. They are a question, not an answer.
+ */
+test('an untagged source belongs to no system, and is offered rather than hidden', () => {
+  const profile = new SourceProfile(new MemoryStorage());
+  profile.add(CORE);
+
+  assert.deepEqual(sourcesForSystem(profile.sources, 'dnd5e'), []);
+  assert.deepEqual(unassignedSources(profile.sources).map((s) => s.id), [CORE]);
+
+  profile.update(CORE, { systemId: 'dnd5e' });
+  assert.deepEqual(sourcesForSystem(profile.sources, 'dnd5e').map((s) => s.id), [CORE]);
+  assert.deepEqual(unassignedSources(profile.sources), []);
+});
+
+test('the assignment survives a round trip through storage', async () => {
+  const storage = new MemoryStorage();
+  const profile = new SourceProfile(storage);
+  profile.add(CORE, { systemId: 'dnd5e', official: true });
+  await profile.save();
+
+  const reloaded = await SourceProfile.load(storage);
+  const source = reloaded.find(CORE);
+  assert.equal(source?.systemId, 'dnd5e');
+  assert.equal(source?.official, true);
 });

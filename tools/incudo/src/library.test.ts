@@ -271,6 +271,64 @@ test(
   },
 );
 
+/**
+ * The system filter, over the nine real saves — ADR 0031.
+ *
+ * The unit tests in `packages/ui` prove the partition against a fake store. This proves the
+ * thing that actually worries me about a filter: that a folder holding nine perfectly good
+ * characters, viewed as another system, says so out loud instead of looking empty. "Nothing
+ * here" and "nine, in another system" are different sentences, and a user who sees the first
+ * one concludes they picked the wrong folder.
+ */
+test(
+  'nine D&D saves viewed as another system are counted, not hidden',
+  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  async () => {
+    const system = await shippedSystem();
+    const corpus = await auroraCorpus();
+    const saves = (await readdir(SAVES_DIR))
+      .filter((name) => extname(name).toLowerCase() === '.dnd5e')
+      .map((name) => join(SAVES_DIR, name));
+
+    const dir = await mkdtemp(join(tmpdir(), 'incudo-filter-'));
+    try {
+      const picked: PickedFile[] = [];
+      for (const path of saves) picked.push({ name: basename(path), bytes: await readFile(path) });
+
+      const library = new CharacterLibrary(new NodeCharacterStore(dir));
+      await library.restore();
+      await importAuroraSavesIntoLibrary(library, picked, {
+        system,
+        elements: corpus,
+        sourceId: AURORA_INDEX,
+        generator: 'library-test',
+      });
+
+      const all = library.getState().entries.length;
+      assert.equal(all, saves.length, 'every save imported');
+
+      // The system the app was actually built around shows all of them.
+      library.setSystem('dnd5e');
+      assert.equal(library.getState().entries.length, all);
+      assert.deepEqual(library.getState().elsewhere, []);
+
+      // Any other system shows none of them — and says how many it is not showing.
+      library.setSystem('cairn');
+      assert.deepEqual(library.getState().entries, []);
+      assert.deepEqual(library.getState().elsewhere, [{ systemId: 'dnd5e', count: all }]);
+
+      // And opening one is still a thing you can do the moment you switch back, with no
+      // rescan and no sources — which is ADR 0012 surviving ADR 0031.
+      library.setSystem('dnd5e');
+      const opened = await library.open(library.getState().entries[0]!.name);
+      assert.ok(opened, 'a real save still opens with nothing configured');
+      assert.equal(opened.character.systemId, 'dnd5e');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+);
+
 async function shippedSystem(): Promise<GameSystem> {
   const path = join(
     dirname(fileURLToPath(import.meta.url)),

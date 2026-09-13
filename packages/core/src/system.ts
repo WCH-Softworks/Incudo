@@ -833,6 +833,36 @@ export interface ResolvedCharacterKind {
   sheet: SheetLayoutDef;
 }
 
+/**
+ * A content index this system's author suggests — ADR 0031.
+ *
+ * Not content, and not a dependency. A system definition still ships no elements
+ * ([ADR 0022](./0022)) and a character still opens with no sources at all (ADR 0012); this is
+ * a *pointer*, the same thing Aurora's "Additional Content" tab held, so that the first thing
+ * a new user meets is a list to pick from rather than an empty URL box.
+ *
+ * It lives on the system rather than in a catalogue beside the app for one reason: a
+ * user-authored system (ADR 0011) has content of its own to point at, and a fork of an
+ * official system should inherit the suggestions it was forked from. Nothing here is fetched
+ * until the user says so.
+ */
+export interface SuggestedSource {
+  /** The index URL. Becomes the `ConfiguredSource` id verbatim when the user adds it. */
+  url: string;
+  name: string;
+  description?: string;
+  /**
+   * The system definition's author vouches for this one.
+   *
+   * **A claim, not a check.** Anyone can write `true` in their own system definition, so a
+   * view must say *who* is vouching rather than presenting it as a verdict — for a system that
+   * ships with Incudo that is the Incudo project, and for a fork it is whoever forked it.
+   * Deliberately not a statement about the content's licence, quality or affiliation: the
+   * projects these point at are other people's (ADR 0010).
+   */
+  official?: boolean;
+}
+
 export interface GameSystem {
   /** Bumped only by a breaking change to the system format itself. ADR 0011. */
   formatVersion: 1;
@@ -859,6 +889,8 @@ export interface GameSystem {
    * want to consume Aurora content; a native Incudo system omits it.
    */
   auroraTypeMap?: Record<string, ElementType>;
+  /** Content indexes to offer when the user adds a source — ADR 0031. */
+  suggestedSources?: SuggestedSource[];
 }
 
 export function findStatDef(system: GameSystem, name: StatKey): StatDef | undefined {

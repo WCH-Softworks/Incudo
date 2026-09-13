@@ -30,9 +30,30 @@ export interface ConfiguredSource {
   url: string;
   /** The user's name for it. Defaults to whatever the index calls itself. */
   name: string;
+  /**
+   * Which game system this source serves — ADR 0031.
+   *
+   * **Recorded, never inferred.** Nothing in a content index says what game it is for: an
+   * Aurora `.index` has no field for one and never will (the format is frozen, ADR 0008), and
+   * two indexes of different games are byte-shaped the same. Guessing from the element types a
+   * source contributes would need it loaded first and would still be a guess, which is what
+   * ADR 0005 rules out. So the app records what the user said when they added it — and for a
+   * source picked from a system's own `suggestedSources` the user said it by picking it.
+   *
+   * Optional because a profile written before ADR 0031 has none, and because an entry with no
+   * system is a real state rather than a defect. Such a source is **shown and never silently
+   * hidden**: {@link unassignedSources} is what a view uses to offer "assign this to …".
+   */
+  systemId?: string;
   enabled: boolean;
   /** ADR 0029: `download` fetches when added, `stream` fetches when first used. */
   mode: SourceMode;
+  /**
+   * This came from the system definition's `suggestedSources` and that definition vouched
+   * for it — carried so a view can show the badge without re-reading the system. A claim by
+   * whoever wrote the system, not a check by Incudo; see `SuggestedSource.official`.
+   */
+  official?: boolean;
   /** The version last seen in the index. The cache's stamp, mirrored here for display. */
   version?: string;
   addedAt: string;
@@ -105,6 +126,8 @@ export class SourceProfile {
       enabled: options.enabled ?? true,
       mode: options.mode ?? 'stream',
       version: options.version,
+      systemId: options.systemId,
+      official: options.official,
       addedAt: options.addedAt ?? new Date().toISOString(),
     };
     this.entries.push(source);
@@ -129,6 +152,27 @@ export class SourceProfile {
     const data: SourceProfileData = { formatVersion: 1, sources: this.entries };
     await this.storage.write(SOURCE_PROFILE_KEY, JSON.stringify(data, null, 2) + '\n');
   }
+}
+
+/**
+ * The sources that serve one system — ADR 0031.
+ *
+ * Untagged sources are **not** included. A source with no `systemId` is one the app has never
+ * been told anything about, and quietly counting it as this system's would put a Pathfinder
+ * index into a D&D character's content the first time someone kept two. They are surfaced by
+ * {@link unassignedSources} instead, which is a question to put to the user rather than an
+ * answer to invent.
+ */
+export function sourcesForSystem(
+  profile: readonly ConfiguredSource[],
+  systemId: string,
+): ConfiguredSource[] {
+  return profile.filter((source) => source.systemId === systemId);
+}
+
+/** Sources the user has never assigned to a system. Shown, never hidden. */
+export function unassignedSources(profile: readonly ConfiguredSource[]): ConfiguredSource[] {
+  return profile.filter((source) => source.systemId === undefined);
 }
 
 export type SourceRefState = 'present' | 'moved' | 'missing';

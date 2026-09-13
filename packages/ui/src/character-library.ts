@@ -83,6 +83,13 @@ export interface LibraryEntry {
   broken: boolean;
 }
 
+/** Characters in the folder that belong to a system other than the one in view — ADR 0031. */
+export interface ElsewhereCount {
+  /** Undefined for a container whose manifest names no system at all. */
+  systemId?: string;
+  count: number;
+}
+
 export interface LibraryState {
   /**
    * `unavailable` — this platform has no filesystem the app may reach.
@@ -92,7 +99,22 @@ export interface LibraryState {
   status: 'unavailable' | 'no-location' | 'scanning' | 'ready';
   unavailableReason?: string;
   location: string | null;
+  /**
+   * The characters of the system in view, or every character when no system is set.
+   *
+   * Filtered rather than flagged, because the user's model is that choosing D&D means seeing
+   * D&D characters and nothing else (ADR 0031). What must not follow from that is a folder
+   * that looks empty when it is not — see {@link elsewhere}.
+   */
   entries: LibraryEntry[];
+  /**
+   * What the filter is hiding, counted by system. Empty when nothing is hidden.
+   *
+   * A library folder holds whatever the user put in it, and "you have no characters" and "you
+   * have nine, in another system" are different sentences. This is the second one, and a view
+   * that drops it turns a filter into a disappearance.
+   */
+  elsewhere: ElsewhereCount[];
   /** Something that went wrong with the scan itself, rather than with one character. */
   problems: string[];
   busy: boolean;
@@ -159,6 +181,16 @@ export class CharacterLibrary {
   private readonly listeners = new Set<() => void>();
   private state: LibraryState;
   private profile: readonly ConfiguredSource[] = [];
+  /**
+   * Every container the last scan found, before the system filter.
+   *
+   * Kept separately from `state.entries` for a reason that is not tidiness: `freeName` picks a
+   * filename that nothing on disk is using, and asking the *filtered* list would let a new D&D
+   * character be written straight over a Cairn one with the same name. The folder is the list
+   * (ADR 0027) and the whole folder is what a name has to be free of.
+   */
+  private scanned: LibraryEntry[] = [];
+  private systemId: string | undefined;
 
   constructor(store: CharacterStore) {
     this.store = store;
@@ -167,6 +199,7 @@ export class CharacterLibrary {
       unavailableReason: store.unavailableReason,
       location: null,
       entries: [],
+      elsewhere: [],
       problems: [],
       busy: false,
     };
@@ -188,14 +221,28 @@ export class CharacterLibrary {
    */
   setProfile = (profile: readonly ConfiguredSource[]): void => {
     this.profile = profile;
-    if (this.state.entries.length) {
-      this.patch({
-        entries: this.state.entries.map((entry) => ({
-          ...entry,
-          sourceStatuses: compareSourceRefs(entry.sources, this.profile),
-        })),
-      });
-    }
+    if (!this.scanned.length) return;
+    // Restated across the whole scan, not just the visible slice: a source status that went
+    // stale while its character was filtered out would come back wrong when the user switched
+    // systems, and nothing would rescan in between.
+    this.scanned = this.scanned.map((entry) => ({
+      ...entry,
+      sourceStatuses: compareSourceRefs(entry.sources, this.profile),
+    }));
+    this.patch(this.partition(this.scanned));
+  };
+
+  /**
+   * Show only the characters of this system — ADR 0031.
+   *
+   * Passing `undefined` shows everything, which is what the CLI and the tests want: the filter
+   * is a property of a shell that has asked the user which game they are playing, not of the
+   * library itself. No rescan; the folder was already read.
+   */
+  setSystem = (systemId: string | undefined): void => {
+    if (this.systemId === systemId) return;
+    this.systemId = systemId;
+    this.patch(this.partition(this.scanned));
   };
 
   /** Pick up a library chosen in an earlier session, and scan it. */
@@ -235,10 +282,12 @@ export class CharacterLibrary {
     try {
       refs = await this.store.list();
     } catch (error) {
+      this.scanned = [];
       this.patch({
         status: 'ready',
         busy: false,
         entries: [],
+        elsewhere: [],
         problems: [`Could not read the library folder: ${messageOf(error)}`],
       });
       return;
@@ -259,8 +308,28 @@ export class CharacterLibrary {
     }
 
     entries.sort(byRecency);
-    this.patch({ status: 'ready', busy: false, entries, problems });
+    this.scanned = entries;
+    this.patch({ status: 'ready', busy: false, problems, ...this.partition(entries) });
   };
+
+  /** Split a scan into what this system shows and what it is hiding. */
+  private partition(scanned: LibraryEntry[]): Pick<LibraryState, 'entries' | 'elsewhere'> {
+    if (this.systemId === undefined) return { entries: scanned, elsewhere: [] };
+    const entries: LibraryEntry[] = [];
+    const counts = new Map<string | undefined, number>();
+    for (const entry of scanned) {
+      // A broken container has no readable manifest and so no system to judge it by. It stays
+      // visible in every system rather than vanishing from all of them: the user can see the
+      // file in their own file manager, and "this one will not open" is the more useful thing
+      // to say about it than nothing at all.
+      if (entry.broken || entry.systemId === this.systemId) entries.push(entry);
+      else counts.set(entry.systemId, (counts.get(entry.systemId) ?? 0) + 1);
+    }
+    const elsewhere = [...counts]
+      .map(([systemId, count]) => ({ systemId, count }))
+      .sort((a, b) => (a.systemId ?? '').localeCompare(b.systemId ?? ''));
+    return { entries, elsewhere };
+  }
 
   /**
    * Open one character, from its own container and nothing else.
@@ -387,7 +456,9 @@ export class CharacterLibrary {
   /** A file name that is not taken. The suffix is the whole of the collision handling. */
   private freeName(characterName: string, form: ContainerForm): string {
     const base = slug(characterName) || 'character';
-    const taken = new Set(this.state.entries.map((entry) => entry.name.toLowerCase()));
+    // Every container in the folder, not the filtered view: a name is free only if nothing on
+    // disk holds it, and a Cairn character is very much on disk while a D&D one is being saved.
+    const taken = new Set(this.scanned.map((entry) => entry.name.toLowerCase()));
     const extension = form === 'zip' ? '.incu' : '';
     for (let n = 0; ; n++) {
       const candidate = `${base}${n ? `-${n + 1}` : ''}${extension}`;

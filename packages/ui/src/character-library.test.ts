@@ -406,3 +406,118 @@ test('a library with nowhere chosen yet is a first run, not an error', async () 
   assert.equal(library.getState().status, 'no-location');
   assert.deepEqual(library.getState().problems, []);
 });
+
+// --- the system filter (ADR 0031) ------------------------------------------
+
+/** The other system in these tests. Same shape, different id — the library never reads more. */
+function otherSystem(): GameSystem {
+  return { ...testSystem(), id: 'other', name: 'Other' };
+}
+
+function otherHero(name: string): Character {
+  const character = hero(name);
+  character.systemId = 'other';
+  return character;
+}
+
+function containerForOther(character: Character): Map<string, Uint8Array> {
+  const content = collectCharacterContent(character, corpus(), {
+    kind: resolveCharacterKind(otherSystem(), 'hero'),
+  });
+  return packCharacterContainer(character, content, { now: '2026-01-02T00:00:00.000Z' });
+}
+
+async function mixedLibrary(): Promise<[CharacterLibrary, FakeStore]> {
+  const store = new FakeStore();
+  await store.write({ name: 'aelin.incu', form: 'zip' }, containerFor(hero('Aelin')));
+  await store.write({ name: 'borin.incu', form: 'zip' }, containerFor(hero('Borin')));
+  await store.write({ name: 'zeru.incu', form: 'zip' }, containerForOther(otherHero('Zeru')));
+  const library = new CharacterLibrary(store);
+  await library.restore();
+  return [library, store];
+}
+
+test('with no system set the library shows everything, which is what the CLI wants', async () => {
+  const [library] = await mixedLibrary();
+  assert.equal(library.getState().entries.length, 3);
+  assert.deepEqual(library.getState().elsewhere, []);
+});
+
+test('choosing a system shows only its characters', async () => {
+  const [library] = await mixedLibrary();
+  library.setSystem('test');
+  assert.deepEqual(
+    library.getState().entries.map((e) => e.title).sort(),
+    ['Aelin', 'Borin'],
+  );
+  library.setSystem('other');
+  assert.deepEqual(library.getState().entries.map((e) => e.title), ['Zeru']);
+});
+
+/**
+ * The half that stops a filter from being a disappearance. A folder with nine D&D characters
+ * viewed as Cairn must not read "nothing here yet" — that is indistinguishable from having
+ * picked the wrong folder, which is the mistake a user actually makes.
+ */
+test('what the filter hides is counted, not swallowed', async () => {
+  const [library] = await mixedLibrary();
+  library.setSystem('other');
+  assert.deepEqual(library.getState().elsewhere, [{ systemId: 'test', count: 2 }]);
+  library.setSystem('test');
+  assert.deepEqual(library.getState().elsewhere, [{ systemId: 'other', count: 1 }]);
+  library.setSystem(undefined);
+  assert.deepEqual(library.getState().elsewhere, []);
+});
+
+/**
+ * The bug this test exists to stop is data loss, and it is the reason the filtered list is not
+ * the list `freeName` asks. Two characters of two systems with one name are one filename.
+ */
+test('a name is free only if nothing in the whole folder holds it, filtered out or not', async () => {
+  const store = new FakeStore();
+  await store.write({ name: 'aelin.incu', form: 'zip' }, containerForOther(otherHero('Aelin')));
+  const library = new CharacterLibrary(store);
+  await library.restore();
+  library.setSystem('test');
+
+  // The Aelin already on disk belongs to the other system, so nothing about it is on screen.
+  assert.deepEqual(library.getState().entries, []);
+  assert.deepEqual(library.getState().elsewhere, [{ systemId: 'other', count: 1 }]);
+
+  const saved = await library.save(hero('Aelin'), testSystem(), corpus());
+  assert.equal(saved.ok && saved.entry.name, 'aelin-2.incu', 'must not land on the other one');
+  assert.equal(store.entries.has('aelin.incu'), true, 'the original is still there');
+});
+
+test('a container that will not read stays visible in every system, because nothing knows whose it is', async () => {
+  const store = new FakeStore();
+  await store.write({ name: 'aelin.incu', form: 'zip' }, containerFor(hero('Aelin')));
+  await store.write({ name: 'junk.incu', form: 'zip' }, new Map([['manifest.json', new TextEncoder().encode('{')]]));
+  const library = new CharacterLibrary(store);
+  await library.restore();
+
+  library.setSystem('other');
+  const titles = library.getState().entries.map((e) => e.name);
+  assert.ok(titles.includes('junk.incu'), 'a broken save must not vanish from every system at once');
+  assert.deepEqual(library.getState().elsewhere, [{ systemId: 'test', count: 1 }]);
+});
+
+test('a source status stays right across a system switch, with no rescan in between', async () => {
+  const [library] = await mixedLibrary();
+  library.setSystem('other');
+  library.setProfile([
+    {
+      id: 'https://example.test/core.index',
+      url: 'https://example.test/core.index',
+      name: 'Core',
+      enabled: true,
+      mode: 'stream',
+      version: '1.2.0',
+      addedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ]);
+  // Aelin was filtered out when the profile arrived. Switching back must not show her stale.
+  library.setSystem('test');
+  const aelin = library.getState().entries.find((e) => e.title === 'Aelin');
+  assert.equal(aelin?.sourceStatuses[0]?.state, 'present');
+});
