@@ -2,6 +2,10 @@
 
 **Status:** Accepted · 2026-09-11
 **Builds on:** [ADR 0012](./0012-self-contained-saves.md), [ADR 0007](./0007-native-formats.md)
+**Amended by:** [ADR 0031](./0031-a-system-is-chosen-and-it-scopes-everything.md) — a launcher
+now asks which game system before the library, and the library shows only that system's
+characters. The argument below is against a *content* gate and it still stands in full: picking
+a system leads straight to the library, and every save still opens with nothing configured.
 
 ## Context
 

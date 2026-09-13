@@ -7,15 +7,24 @@
  *
  * Adding a source is a thing you come here and do. It is not a toll gate: the library screen
  * works with this list empty, which is the whole point of ADR 0012.
+ *
+ * ADR 0031 added two things. A source now belongs to a **system**, because nothing in a content
+ * index says which game it is for and the app must not guess; the list here is this system's,
+ * and sources belonging to another are counted rather than hidden. And the system definition
+ * may **suggest** indexes, so the first thing a new user meets is a list to pick from instead
+ * of an empty URL box — which is also how the tagging stays invisible in the common case.
  */
 
 import { useState } from 'react';
 import type { ConfiguredSource, SourceMode, UpdateStatus } from '@incudo/content';
+import type { GameSystem, SuggestedSource } from '@incudo/core';
 
-import { AURORA_LEGACY_INDEX, type LoadProgress, type LoadedContent } from '../content.ts';
+import { type LoadProgress, type LoadedContent } from '../content.ts';
 
 export interface SourcesActions {
-  add: (url: string, mode: SourceMode) => Promise<void>;
+  add: (url: string, mode: SourceMode, options?: Partial<ConfiguredSource>) => Promise<void>;
+  /** Claim an untagged source for the system in view — ADR 0031. */
+  assignToSystem: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   rename: (id: string, name: string) => Promise<void>;
   setEnabled: (id: string, enabled: boolean) => Promise<void>;
@@ -26,7 +35,10 @@ export interface SourcesActions {
 }
 
 export function SourcesPane({
+  system,
   sources,
+  unassigned,
+  others,
   content,
   progress,
   busy,
@@ -34,7 +46,17 @@ export function SourcesPane({
   actions,
   shell,
 }: {
+  system: GameSystem;
+  /** This system's sources. */
   sources: readonly ConfiguredSource[];
+  /** Sources belonging to no system yet — offered, never hidden. */
+  unassigned: readonly ConfiguredSource[];
+  /**
+   * Sources belonging to other systems. Not editable here, but not invisible either: a source
+   * is keyed on its URL, so an index configured elsewhere cannot also be added here, and this
+   * screen has to be able to say so rather than appearing to do nothing.
+   */
+  others: readonly ConfiguredSource[];
   content: LoadedContent | null;
   progress: LoadProgress | null;
   busy: boolean;
@@ -42,14 +64,31 @@ export function SourcesPane({
   actions: SourcesActions;
   shell: 'tauri' | 'browser';
 }): React.JSX.Element {
-  const [url, setUrl] = useState(AURORA_LEGACY_INDEX);
+  // Every URL the profile already holds, whatever system it is under. Offering "Add" for one
+  // of these is what the running app showed: the same index appearing as a suggestion and as
+  // an unassigned source, with an Add button that would have retagged it in place.
+  const configured = new Map(
+    [...sources, ...unassigned, ...others].map((source) => [source.url, source]),
+  );
+  const suggestions = (system.suggestedSources ?? []).map((suggestion) => ({
+    suggestion,
+    already: configured.get(suggestion.url),
+  }));
+  const offerable = suggestions.filter((entry) => entry.already === undefined);
+  // Only a suggestion held by *another* system. One already configured here is simply
+  // configured, and one held by nobody is offered above.
+  const elsewhere = suggestions.filter(
+    (entry) =>
+      entry.already?.systemId !== undefined && entry.already.systemId !== system.id,
+  );
+  const [url, setUrl] = useState('');
   const [mode, setMode] = useState<SourceMode>('stream');
   const [failure, setFailure] = useState<string | null>(null);
 
-  async function add(): Promise<void> {
+  async function add(target: string, options?: Partial<ConfiguredSource>): Promise<void> {
     setFailure(null);
     try {
-      await actions.add(url.trim(), mode);
+      await actions.add(target.trim(), mode, options);
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
     }
@@ -59,20 +98,65 @@ export function SourcesPane({
 
   return (
     <main className="pane">
-      <h2>Content sources</h2>
+      <h2>Content sources for {system.name}</h2>
       <p className="lede">
         Incudo reads Aurora's content ecosystem as-is. Point it at an index and it loads every
         file that index references. You need one of these to <em>build</em> a character; you
         never need one to <em>open</em> a saved one.
       </p>
+      <p className="hint">
+        A source belongs to the system you add it under. Nothing in an index says which game it
+        is for — an Aurora <code>.index</code> has no field for one — so Incudo records what you
+        said rather than guessing (ADR 0031).
+        {others.length > 0 && ` ${others.length} source(s) belong to other systems and are not shown here.`}
+      </p>
 
-      <h3>Add a source</h3>
+      {offerable.length > 0 && (
+        <>
+          <h3>Suggested for {system.name}</h3>
+          <ul className="suggestions">
+            {offerable.map(({ suggestion }) => (
+              <li key={suggestion.url}>
+                <Suggestion
+                  suggestion={suggestion}
+                  systemName={system.name}
+                  busy={busy}
+                  onAdd={() =>
+                    void add(suggestion.url, {
+                      name: suggestion.name,
+                      official: suggestion.official,
+                    })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {/*
+        A suggestion this system cannot take, because the profile is keyed on the URL and
+        another system already holds it. Said out loud: an Add button that silently moved the
+        source out from under the other system would be the quiet destructive thing.
+      */}
+      {elsewhere.length > 0 && (
+        <p className="hint">
+          {elsewhere
+            .map(({ suggestion, already }) => `${suggestion.name} (configured for ${already!.systemId})`)
+            .join(', ')}{' '}
+          — suggested for {system.name}, but a source is identified by its URL, so it can only
+          belong to one system at a time.
+        </p>
+      )}
+
+      <h3>Add a source by URL</h3>
       <div className="row">
         <input
           type="url"
           value={url}
           spellCheck={false}
           disabled={busy}
+          placeholder="https://example.com/content.index"
           onChange={(event) => setUrl(event.target.value)}
           aria-label="Index URL"
         />
@@ -85,7 +169,7 @@ export function SourcesPane({
           <option value="stream">Stream</option>
           <option value="download">Download</option>
         </select>
-        <button type="button" onClick={() => void add()} disabled={busy || !url.trim()}>
+        <button type="button" onClick={() => void add(url)} disabled={busy || !url.trim()}>
           {busy ? 'Loading…' : 'Add'}
         </button>
       </div>
@@ -117,7 +201,7 @@ export function SourcesPane({
         </div>
       )}
 
-      <h3>Configured</h3>
+      <h3>Configured for {system.name}</h3>
       {sources.length === 0 && (
         <p className="lede">
           None yet. Your characters still open — a save carries the content it uses (ADR 0012).
@@ -146,6 +230,45 @@ export function SourcesPane({
         </div>
       )}
 
+      {/*
+        Sources from before ADR 0031, which recorded no system. Counting them as this one's
+        would put another game's content into a character and freeze it there when the save is
+        written (ADR 0012), so they are a question rather than an assumption — and a visible
+        one, because a source that silently stopped loading is the worse failure.
+      */}
+      {unassigned.length > 0 && (
+        <section className="warn">
+          <h3>Not assigned to a system</h3>
+          <p>
+            These were added before Incudo asked which system a source serves, so it does not
+            know — and will not guess. They load for nothing until you say.
+          </p>
+          <ul className="sources">
+            {unassigned.map((source) => (
+              <li key={source.id}>
+                <article className="source">
+                  <p className="card-meta">
+                    <strong>{source.name}</strong> — <code>{source.url}</code>
+                  </p>
+                  <div className="row">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void actions.assignToSystem(source.id)}
+                    >
+                      This is {system.name} content
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => void actions.remove(source.id)}>
+                      Remove
+                    </button>
+                  </div>
+                </article>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {content && (content.errors.length > 0 || content.warnings.length > 0) && (
         <section className="result">
           <h3>What the last load said</h3>
@@ -172,6 +295,48 @@ export function SourcesPane({
         </section>
       )}
     </main>
+  );
+}
+
+/**
+ * One index the system definition points at.
+ *
+ * The badge says *who* is vouching, not that Incudo checked anything: `official` is a claim a
+ * system definition's author writes about their own suggestion, and a user-authored system can
+ * write it too (ADR 0031). It says nothing about the content's licence or affiliation — these
+ * point at other people's projects (ADR 0010).
+ */
+function Suggestion({
+  suggestion,
+  systemName,
+  busy,
+  onAdd,
+}: {
+  suggestion: SuggestedSource;
+  systemName: string;
+  busy: boolean;
+  onAdd: () => void;
+}): React.JSX.Element {
+  return (
+    <article className="source suggestion">
+      <p className="card-meta">
+        <strong>{suggestion.name}</strong>
+        {suggestion.official && (
+          <span className="badge" title={`Vouched for by the ${systemName} system definition`}>
+            official
+          </span>
+        )}
+      </p>
+      {suggestion.description && <p className="card-note">{suggestion.description}</p>}
+      <p className="card-meta">
+        <code>{suggestion.url}</code>
+      </p>
+      <div className="row">
+        <button type="button" onClick={onAdd} disabled={busy}>
+          {busy ? 'Loading…' : 'Add'}
+        </button>
+      </div>
+    </article>
   );
 }
 

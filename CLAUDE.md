@@ -205,9 +205,34 @@ spend 28 points" is fixable in a package. Four things decided rather than fallen
   parsing it a rule about the game and not a component's business. `rollBudget` fills only the
   unrolled slots and the state a view reads is a pure function, so **no repaint can reroll**.
 
+**The app asks which system before it shows anything, and that answer scopes the library**
+(ADR 0031, amending ADR 0027). It used to import one `system.json` and print "Dungeons &
+Dragons 5th Edition" in the header to a user who had chosen nothing. Four things follow, and
+three of them are correctness rather than presentation:
+
+- **A source belongs to a system**, recorded when it is added and **never inferred**. Nothing in
+  a content index says which game it is for — an Aurora `.index` has no field for one and the
+  format is frozen — so `sourcesForSystem` reads what the user said. An untagged source (any
+  profile written before ADR 0031) belongs to *nothing* and is offered for assignment rather
+  than counted as the current system's; counting it would put another game's content into a
+  character and freeze it there when the save is written (ADR 0012).
+- **A system definition may `suggest` sources**, which is what keeps the tagging invisible: a
+  user who clicks Add on 5e's AuroraLegacy suggestion has said which system it serves by
+  picking it. `official` is a claim by whoever wrote the system definition, not a check by
+  Incudo, and the UI has to say *who* is vouching.
+- **A source is keyed on its URL**, so it can belong to one system at a time. Adding one that
+  another system holds is refused with a sentence rather than silently retagged.
+- **`Shell` is keyed on the system id.** Switching rebuilds every piece of per-system state.
+  Same class of bug as the `use-builder.ts` memo that made "New character" do nothing.
+
 **The library is the part to understand before touching the shell.** It is a folder the user
 chooses, scanned on open, with no index file and no database — the folder *is* the list, because
-the user edits it directly. `CharacterLibrary` (`packages/ui`) is the view-model; `CharacterStore`
+the user edits it directly. Since ADR 0031 it publishes only the chosen system's characters —
+and **keeps the whole scan privately**, which is not tidiness: `freeName` picks a filename
+nothing on disk is using, and asking the *filtered* list would let a new D&D character be
+written over a Cairn one of the same name. `LibraryState.elsewhere` counts what the filter
+hides, because a folder of nine characters reading "nothing here yet" is indistinguishable from
+having picked the wrong folder. `CharacterLibrary` (`packages/ui`) is the view-model; `CharacterStore`
 (`core/platform.ts`) is the port, with three implementations: Tauri's dialog and fs plugins,
 the browser's File System Access API, and a `node:fs` one that exists only in a test. **Listing
 and opening reach for no source, no index and no fetcher**, which is ADR 0012 being used rather
@@ -226,6 +251,13 @@ read once and forgotten. Two steps inside that function fail silently if dropped
 `LayeredElementIndex` overlay of `imported.generated`, and `imported.extraIds` — so
 `aurora-import.test.ts` asserts both by reading the container back with zero sources, and both
 assertions were checked by perturbation.
+
+**Two crashes ADR 0031 introduced and running it found, both in the first two minutes.** A
+switch to Cairn killed the app with `System "cairn" has no character kind "pc"`: `choose()` set
+the system and *then* awaited the character, leaving one render where the two disagreed and
+`useBuilder` resolved a 5e kind against Cairn. And the same index was offered as a suggestion
+while also listed as unassigned, with an Add button that would have retagged it in place. No
+test had either, because every test builds one system's character against that system.
 
 **Run the app before trusting this file about what works.** Every phase up to the shell was
 verified against fixtures, a corpus and an oracle, and the first five minutes of actually using
@@ -328,7 +360,7 @@ Eight things the shell has surfaced and deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029 and 0030 are implemented, and **Phase 1 is done — `packages/aurora-import`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030 and 0031 are implemented, and **Phase 1 is done — `packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,

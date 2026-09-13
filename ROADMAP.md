@@ -196,6 +196,22 @@ before any code, both touching a public API:
         A fifth silently dropped Aurora construct came out of it: `<spellcasting><list>`,
         17 blocks, which is the tag `$(spellcasting:list)` needs and had never reached the
         engine.
+- [x] **The app asks which system, then opens on the library**
+      ([ADR 0031](./docs/adr/0031-a-system-is-chosen-and-it-scopes-everything.md), amending
+      ADR 0027). The header used to read "Dungeons & Dragons 5th Edition" from the first frame
+      to a user who had never been asked, `boot.ts` was a single hardcoded import, and the
+      second shipped system was unreachable. A launcher lists the shipped definitions with the
+      facts each can be judged on — characters in your library, sources assigned and enabled —
+      remembers the answer, and scopes everything downstream to it: choose D&D and the library
+      shows D&D characters and only those, with a count of what it is hiding so a filter never
+      reads as an empty folder.
+      It gates a *question*, never content: picking a system leads straight to the library, and
+      a save still opens with nothing configured. Three correctness bugs went with it — a Cairn
+      save opened from the library was being derived against the 5e definition, every enabled
+      source loaded into every character regardless of game, and a draft of one system was
+      handed to another. Content sources now carry the system they were added under, recorded
+      and never inferred, and a system definition can **suggest** indexes so the common case
+      never sees a system field at all.
 - [x] **The app opens on a character library**
       ([ADR 0027](./docs/adr/0027-a-library-is-a-folder.md)). It used to open on Sources, with
       an index URL in a text box, doing nothing at all until 238 files had come down over the

@@ -44,3 +44,4 @@ new one that supersedes it.
 | [0028](./0028-sources-are-a-profile-characters-carry-an-allowlist.md) | Configured sources are a profile; a character's sources are a record it carries | Accepted (answers 0004) |
 | [0029](./0029-a-cache-is-keyed-by-source-and-evicted-by-version.md) | A source's cache is keyed by source, evicted by version, and filled six files at a time | Accepted (answers 0004) |
 | [0030](./0030-a-declared-block-answers-a-filter.md) | A declared block answers a select's filter, and three things about that filter were wrong | Accepted (builds on 0020) |
+| [0031](./0031-a-system-is-chosen-and-it-scopes-everything.md) | A system is chosen before anything else, and the choice scopes the library | Accepted (amends 0027) |

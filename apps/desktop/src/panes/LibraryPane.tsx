@@ -16,6 +16,10 @@ import type { AuroraImportReport, LibraryEntry, LibraryState } from '@incudo/ui'
 
 export function LibraryPane({
   state,
+  systemName,
+  needsSource,
+  onOpenSources,
+  onChangeSystem,
   onChooseFolder,
   onRefresh,
   onOpen,
@@ -32,6 +36,12 @@ export function LibraryPane({
   shell,
 }: {
   state: LibraryState;
+  /** Whose characters these are. The library folder holds every system's — ADR 0031. */
+  systemName: string;
+  /** True when this system has no enabled content source. A note, never a block. */
+  needsSource: boolean;
+  onOpenSources: () => void;
+  onChangeSystem: () => void;
   onChooseFolder: () => void;
   onRefresh: () => void;
   onOpen: (entry: LibraryEntry) => void;
@@ -144,10 +154,49 @@ export function LibraryPane({
         </div>
       )}
 
+      {/*
+        A source is needed to *build* and never to *open* (ADR 0012), so this is a note above
+        the list rather than a gate in front of it. It appears after the system is chosen,
+        which is the moment ADR 0031 says to check.
+      */}
+      {needsSource && !state.busy && (
+        <div className="problem warn">
+          <strong>No content loaded for {systemName}.</strong>
+          <p>
+            You need a content source to <em>build</em> a character. You do not need one to open
+            any of the saves below — each carries the content it uses.
+          </p>
+          <div className="row">
+            <button type="button" onClick={onOpenSources}>
+              Add a source
+            </button>
+          </div>
+        </div>
+      )}
+
       {state.entries.length === 0 && !state.busy && (
         <p className="lede">
-          Nothing in that folder yet. <strong>New character</strong> starts one, and anything you
-          copy in — a save from a friend, a folder out of git — shows up on the next refresh.
+          No {systemName} characters in that folder yet. <strong>New character</strong> starts
+          one, and anything you copy in — a save from a friend, a folder out of git — shows up on
+          the next refresh.
+        </p>
+      )}
+
+      {/*
+        The half that stops the system filter from being a disappearance. Nine characters in a
+        folder shown as "nothing here" is indistinguishable from having picked the wrong folder,
+        which is the mistake a user actually makes.
+      */}
+      {state.elsewhere.length > 0 && !state.busy && (
+        <p className="hint">
+          {state.elsewhere
+            .map((other) => `${other.count} ${other.systemId ?? 'unrecognised'}`)
+            .join(', ')}{' '}
+          character(s) in this folder belong to another system and are not shown.{' '}
+          <button type="button" className="linklike" onClick={onChangeSystem}>
+            Change system
+          </button>{' '}
+          to see them.
         </p>
       )}
 

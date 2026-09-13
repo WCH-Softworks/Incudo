@@ -6,10 +6,15 @@
  * the library from `CharacterLibrary`. If a bug is "the app computed the wrong AC" it must be
  * fixable in `packages/`, which is the test docs/CODE-REUSE-POLICY.md sets for this file.
  *
- * **It opens on the library** (ADR 0027). It used to open on Sources, with an index URL in a
- * text box, doing nothing at all until 238 files had come down over the network — which had
- * the app's own first screen contradicting ADR 0012, the decision that a save carries its
- * content and opens with nothing configured.
+ * **It opens on a launcher, then the library** (ADR 0031, amending ADR 0027). Before that it
+ * opened on Sources, with an index URL in a text box, doing nothing at all until 238 files had
+ * come down over the network — the app's own first screen contradicting ADR 0012, the decision
+ * that a save carries its content and opens with nothing configured. ADR 0027 replaced it with
+ * the library; what was still missing is that nobody ever picked a *system*, so the header
+ * announced "Dungeons & Dragons 5th Edition" to a user who had chosen nothing and two shipped
+ * definitions were one hardcoded import. The launcher asks, and the answer scopes the library.
+ * It is not a toll gate on content: picking a system leads to the library, never to "now add a
+ * source".
  *
  * There is no wizard and no Back button, because ADR 0017 says the screen is the wrong unit:
  * the builder publishes one flat, always-current list of what is outstanding, and this renders
@@ -29,6 +34,8 @@ import {
   SourceProfile,
   checkSourceForUpdates,
   evictSourceCache,
+  sourcesForSystem,
+  unassignedSources,
   writeVersionStamp,
   type ConfiguredSource,
   type SourceMode,
@@ -41,10 +48,19 @@ import {
   type LibraryEntry,
 } from '@incudo/ui';
 
-import { loadCharacter, loadShippedSystem, newCharacter, saveCharacter } from './boot.ts';
+import {
+  loadCharacter,
+  loadShippedSystems,
+  newCharacter,
+  readChosenSystem,
+  saveCharacter,
+  writeChosenSystem,
+  type SystemFailure,
+} from './boot.ts';
 import { createDesktopPlatform } from './platform.ts';
 import { useBuilder } from './use-builder.ts';
 import { useLibrary } from './use-library.ts';
+import { LauncherPane, type SystemSummary } from './panes/LauncherPane.tsx';
 import { LibraryPane } from './panes/LibraryPane.tsx';
 import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
 import { BuilderPane } from './panes/BuilderPane.tsx';
@@ -59,44 +75,167 @@ const EMPTY_INDEX: ElementIndex = new MapElementIndex();
 /** Built once. Nothing else in the app asks whether it is running in Tauri. */
 const platform = createDesktopPlatform();
 
+interface Booted {
+  systems: GameSystem[];
+  failures: SystemFailure[];
+  /** What the user picked last time, if that system still exists. */
+  remembered: GameSystem | null;
+}
+
 export function App(): React.JSX.Element {
+  const [booted, setBooted] = useState<Booted | null>(null);
+  /** The system in play. Null means the launcher is on screen. */
   const [system, setSystem] = useState<GameSystem | null>(null);
-  const [systemErrors, setSystemErrors] = useState<string[]>([]);
   const [character, setCharacter] = useState<Character | null>(null);
+  /** Set while the user is deliberately changing systems, so the launcher can say "current". */
+  const [changing, setChanging] = useState(false);
 
   useEffect(() => {
-    const result = loadShippedSystem();
-    if (!result.ok) {
-      setSystemErrors(result.errors.map((e) => `${e.path}: ${e.message}`));
-      return;
-    }
-    setSystem(result.system);
-    void loadCharacter(result.system, (key) => platform.storage.read(key)).then(setCharacter);
+    void (async () => {
+      const { systems, failures } = loadShippedSystems();
+      const rememberedId = await readChosenSystem((key) => platform.storage.read(key));
+      const remembered = systems.find((s) => s.id === rememberedId) ?? null;
+      setBooted({ systems, failures, remembered });
+      if (remembered) {
+        setSystem(remembered);
+        setCharacter(await loadCharacter(remembered, (key) => platform.storage.read(key)));
+      }
+    })();
   }, []);
 
-  if (systemErrors.length) {
+  /**
+   * Switch systems, character first.
+   *
+   * The order is the whole of this function and it was wrong the first time. Setting the system
+   * before awaiting the character leaves one render where `system` is the new one and
+   * `character` is still the old one, and `Shell` mounts on that pair: `useBuilder` calls
+   * `resolveCharacterKind(cairn, 'pc')` and the app dies with **System "cairn" has no character
+   * kind "pc"**. Found by switching systems in the running app; no test had it, because every
+   * test builds one system's character against that system.
+   *
+   * So the character is loaded first and both go into one render. React batches the three
+   * setters, and the pair is never mismatched.
+   */
+  const choose = useCallback(async (picked: GameSystem): Promise<void> => {
+    await writeChosenSystem(picked.id, (key, value) => platform.storage.write(key, value));
+    const next = await loadCharacter(picked, (key) => platform.storage.read(key));
+    setCharacter(next);
+    setSystem(picked);
+    setChanging(false);
+  }, []);
+
+  if (!booted) return <main className="fatal">Loading the system definitions…</main>;
+
+  // Every shipped definition broken is the only remaining fatal case, and it is a broken build
+  // rather than a broken character — the app refuses a system rather than loading half of one
+  // (ADR 0011). One broken definition among several is not fatal and the launcher says which.
+  if (booted.systems.length === 0) {
     return (
       <main className="fatal">
-        <h1>The shipped system definition does not validate.</h1>
-        <p>
-          A broken build rather than a broken character. The app refuses a system rather than
-          loading half of one — ADR 0011.
-        </p>
+        <h1>No shipped system definition validates.</h1>
         <ul>
-          {systemErrors.map((error) => (
-            <li key={error}>{error}</li>
-          ))}
+          {booted.failures.flatMap((failure) =>
+            failure.errors.map((error) => (
+              <li key={`${failure.id}${error.path}${error.message}`}>
+                {failure.id} — {error.path}: {error.message}
+              </li>
+            )),
+          )}
         </ul>
       </main>
     );
   }
 
-  if (!system || !character) return <main className="fatal">Loading the system definition…</main>;
+  if (!system || !character || changing) {
+    return (
+      <Launcher
+        booted={booted}
+        current={changing && system ? system.id : undefined}
+        onChoose={(picked) => void choose(picked)}
+      />
+    );
+  }
 
-  return <Shell system={system} initial={character} />;
+  return (
+    <Shell
+      key={system.id}
+      system={system}
+      initial={character}
+      onChangeSystem={() => setChanging(true)}
+    />
+  );
 }
 
-function Shell({ system, initial }: { system: GameSystem; initial: Character }): React.JSX.Element {
+/**
+ * The launcher, with the facts each system can be judged on.
+ *
+ * It reads the profile and scans the library itself rather than being handed them, because it
+ * runs *before* a `Shell` exists — and a `Shell` is per-system by construction (it is keyed on
+ * the system id, so switching rebuilds every piece of per-system state rather than leaving a
+ * stale builder behind).
+ */
+function Launcher({
+  booted,
+  current,
+  onChoose,
+}: {
+  booted: Booted;
+  current?: string;
+  onChoose: (system: GameSystem) => void;
+}): React.JSX.Element {
+  const [summaries, setSummaries] = useState<Record<string, SystemSummary>>({});
+  const [location, setLocation] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const profile = await SourceProfile.load(platform.storage);
+      const next: Record<string, SystemSummary> = {};
+      for (const system of booted.systems) {
+        const mine = sourcesForSystem(profile.sources, system.id);
+        next[system.id] = { sources: mine.length, enabled: mine.filter((s) => s.enabled).length };
+      }
+
+      // The library is scanned once, here, and counted per system. Reading every container in
+      // full to show a number is the cost ADR 0027 already names and deliberately does not
+      // optimise; nine saves is imperceptible and the manifest-only fast path does not exist.
+      const library = new CharacterLibrary(platform.characters);
+      await library.restore();
+      setLocation(library.getState().location);
+      if (library.getState().status === 'ready') {
+        const counts = new Map<string, number>();
+        for (const entry of library.getState().entries) {
+          if (!entry.systemId) continue;
+          counts.set(entry.systemId, (counts.get(entry.systemId) ?? 0) + 1);
+        }
+        for (const system of booted.systems) {
+          next[system.id] = { ...next[system.id]!, characters: counts.get(system.id) ?? 0 };
+        }
+      }
+      setSummaries(next);
+    })();
+  }, [booted]);
+
+  return (
+    <LauncherPane
+      systems={booted.systems}
+      failures={booted.failures}
+      summaries={summaries}
+      current={current}
+      onChoose={onChoose}
+      libraryLocation={location}
+    />
+  );
+}
+
+function Shell({
+  system,
+  initial,
+  onChangeSystem,
+}: {
+  system: GameSystem;
+  initial: Character;
+  onChangeSystem: () => void;
+}): React.JSX.Element {
   const [pane, setPane] = useState<Pane>('library');
   const [content, setContent] = useState<LoadedContent | null>(null);
   const [progress, setProgress] = useState<LoadProgress | null>(null);
@@ -122,6 +261,11 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
 
   const library = useMemo(() => new CharacterLibrary(platform.characters), []);
   const libraryState = useLibrary(library);
+
+  // ADR 0031: the library folder holds characters of every system and this one shows one
+  // system's. Set before the scan, so the first render is already filtered rather than
+  // flashing every character in the folder and then removing most of them.
+  library.setSystem(system.id);
 
   /**
    * Whether the first-run "where do you keep your characters?" dialog has been waved away.
@@ -152,9 +296,14 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
       const loaded = await SourceProfile.load(platform.storage);
       profile.current = loaded;
       setSources([...loaded.sources]);
+      // The *whole* profile, not this system's slice: a character records the sources it was
+      // built against by id, and comparing those against a filtered list would report every
+      // source of another system as `missing` (ADR 0028).
       library.setProfile(loaded.sources);
       await library.restore();
-      if (loaded.enabled.length) void reloadRef.current?.();
+      if (sourcesForSystem(loaded.sources, system.id).some((s) => s.enabled)) {
+        void reloadRef.current?.();
+      }
     })();
   }, [library]);
 
@@ -194,7 +343,11 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
     setBusy(true);
     setProgress(null);
     try {
-      const loaded = await loadSources(current.enabled, platform, setProgress);
+      // Only this system's, and only the enabled ones. Loading everything would put a Cairn
+      // index into a D&D character's candidate lists — and, worse, into the content a save
+      // embeds, where it would be frozen forever (ADR 0012).
+      const forSystem = sourcesForSystem(current.sources, system.id).filter((s) => s.enabled);
+      const loaded = await loadSources(forSystem, platform, setProgress);
       setContent(loaded);
       for (const source of loaded.sources) {
         if (source.failed) continue;
@@ -219,10 +372,27 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
 
   const actions: SourcesActions = useMemo(
     () => ({
-      add: async (url, mode) => {
+      add: async (url, mode, options = {}) => {
         const current = profile.current;
         if (!current) return;
-        current.add(url, { mode });
+        // A source is keyed on its URL, so adding one another system already holds would
+        // retag it in place and quietly take it away from that system. Refused, and said.
+        const existing = current.find(url);
+        if (existing?.systemId !== undefined && existing.systemId !== system.id) {
+          throw new Error(
+            `That index is already configured for "${existing.systemId}". A source is identified ` +
+              `by its URL, so it can only belong to one system at a time.`,
+          );
+        }
+        // Tagged with the system it is being added under — ADR 0031. Nothing in an index says
+        // what game it is for, so this is the only moment the answer is known, and for a
+        // source picked from the system's own suggestions the user said it by picking it.
+        current.add(url, { mode, systemId: system.id, ...options });
+        await persist();
+        await reload();
+      },
+      assignToSystem: async (id) => {
+        profile.current?.update(id, { systemId: system.id });
         await persist();
         await reload();
       },
@@ -271,6 +441,14 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
       reload,
     }),
     [persist, reload],
+  );
+
+  /** The profile, split the way ADR 0031 splits it: mine, nobody's, and everyone else's. */
+  const mySources = useMemo(() => sourcesForSystem(sources, system.id), [sources, system.id]);
+  const untagged = useMemo(() => unassignedSources(sources), [sources]);
+  const otherSources = useMemo(
+    () => sources.filter((s) => s.systemId !== undefined && s.systemId !== system.id),
+    [sources, system.id],
   );
 
   /**
@@ -414,17 +592,29 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
           ))}
         </nav>
         <span className="status">
-          {system.name}
+          {/*
+            The system is a *choice* now, so it is a control rather than a label. It used to
+            read "Dungeons & Dragons 5th Edition" to a user who had never been asked — ADR 0031.
+          */}
+          <button type="button" className="system-switch" onClick={onChangeSystem} title="Change system">
+            {system.name}
+          </button>
           {' · '}
           {content
             ? `${content.elementCount.toLocaleString()} elements from ${content.fileCount} files`
-            : 'no content loaded'}
+            : mySources.length === 0
+              ? 'no sources for this system'
+              : 'no content loaded'}
         </span>
       </header>
 
       {pane === 'library' && (
         <LibraryPane
           state={libraryState}
+          systemName={system.name}
+          needsSource={!mySources.some((source) => source.enabled)}
+          onOpenSources={() => setPane('sources')}
+          onChangeSystem={onChangeSystem}
           shell={platform.shell}
           onChooseFolder={() => void chooseFolder()}
           onRefresh={() => void library.refresh()}
@@ -484,7 +674,10 @@ function Shell({ system, initial }: { system: GameSystem; initial: Character }):
       )}
       {pane === 'sources' && (
         <SourcesPane
-          sources={sources}
+          system={system}
+          sources={mySources}
+          unassigned={untagged}
+          others={otherSources}
           content={content}
           progress={progress}
           busy={busy}
