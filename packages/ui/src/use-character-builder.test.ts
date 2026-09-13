@@ -759,3 +759,46 @@ test('a filter Incudo cannot evaluate is named, not silently empty', () => {
     .decisions.find((d) => d.kind === 'pick');
   assert.deepEqual(plain?.unresolved, []);
 });
+
+test('"discard and roll again" discards and rolls again, in one act', () => {
+  // The button said two things and did one: it cleared the set, brought the Roll button back
+  // and waited for a second click. `sequence` hands out 18, 9 and then 10, 12, so a working
+  // reroll lands on the second pair and a discard-only one lands on nothing at all.
+  const sys = system();
+  sys.generationMethods!.push({ id: 'roll', label: 'Roll', dice: '4d6dl1', count: 2 });
+  sys.characterKinds[0]!.buildSteps![0]!.budget!.methods!.push('roll');
+  const b = new CharacterBuilder(createCharacter('test', 'pc', { progress: 1 }), sys, indexWith(), {
+    random: sequence([6, 6, 6, 1, 3, 3, 3, 2, 4, 3, 3, 1, 5, 4, 3, 2], 6),
+  });
+
+  b.setGenerationMethod('scores', 'roll');
+  b.rollBudget('scores');
+  b.setBudgetStat('scores', 'vigour', 18);
+  assert.deepEqual(b.getState().character.rolls, { 'scores:roll:0': 18, 'scores:roll:1': 9 });
+
+  b.rerollBudget('scores');
+
+  const after = b.getState();
+  assert.deepEqual(
+    after.character.rolls,
+    { 'scores:roll:0': 10, 'scores:roll:1': 12 },
+    'a new set, not an empty one waiting for a second click',
+  );
+  assert.equal(after.steps[0]!.budget!.dice!.rolled, 2, 'and the step owes no further rolls');
+  assert.deepEqual(b.budgetFor('scores')!.pool, [{ value: 10 }, { value: 12 }]);
+  assert.equal(
+    after.character.baseStats?.['vigour'],
+    undefined,
+    'the old placement goes with the values it placed',
+  );
+});
+
+test('rerolling a budget with no dice changes nothing', () => {
+  // Point buy has no dice, so there is nothing to discard and nothing to throw. The guard is
+  // what stops a shell that shows the button under the wrong method from wiping a spend.
+  const b = builder(indexWith());
+  b.setGenerationMethod('scores', 'buy');
+  const before = b.getState().character;
+  b.rerollBudget('scores');
+  assert.equal(b.getState().character, before, 'same character, untouched');
+});

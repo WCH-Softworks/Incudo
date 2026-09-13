@@ -329,6 +329,42 @@ export class CharacterBuilder {
     this.invalidate();
   };
 
+  /**
+   * Throw the set away and throw a new one, as one act.
+   *
+   * `clearBudgetRolls` is the discard *half* — its own doc says "so it can be rolled again",
+   * and the shell's button borrowed that whole sentence while calling only the half. "Discard
+   * and roll again" discarded, brought the Roll button back, and waited: the label named two
+   * things and did one, and a user who read it had to work out that a second click was owed.
+   *
+   * It is one pass rather than `clearBudgetRolls` followed by `rollBudget`, so listeners see
+   * one new set and never the empty state in between. The budget is read *before* the clear,
+   * because it is where the dice notation and count live; the rolls are taken *after* it, so
+   * `rollBudgetValues` finds six empty slots and fills all six.
+   *
+   * None of this weakens ADR 0019. What that rule forbids is a *derivation* reaching a die —
+   * and the state a view reads is still `computeBudgetState`, which writes nothing. A click is
+   * an explicit ask, and this method exists only at the end of one.
+   */
+  rerollBudget = (stepId: string): void => {
+    const budget = this.budgetFor(stepId);
+    if (!budget?.dice) return;
+
+    let next = this.character;
+    for (let i = 0; i < budget.dice.count; i += 1) {
+      next = setRoll(next, budgetRollKey(stepId, i), undefined);
+    }
+    // The assignment goes with the pool it placed, for `clearBudgetRolls`'s reason: scores
+    // left behind by values that no longer exist are scores nothing accounts for.
+    for (const target of budget.targets) next = clearBase(next, target);
+    for (const result of rollBudgetValues(stepId, budget, next, this.random)) {
+      next = setRoll(next, result.key, result.roll.total);
+    }
+
+    this.character = next;
+    this.invalidate();
+  };
+
   /** The budget of one step, as the editor sees it, or undefined if that step has none. */
   budgetFor = (stepId: string): BudgetState | undefined => {
     return this.getState().steps.find((step) => step.id === stepId)?.budget;

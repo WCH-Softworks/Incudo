@@ -57,11 +57,13 @@ export function BudgetEditor({
         // from Aurora lands in this state — six real scores and no recorded method, because
         // Aurora records none — so hiding the editor until a method is picked would make those
         // six unreadable, and picking one to see them is how a user would have lost them.
+        // Plain, and no ADR number: the reasoning above is for whoever maintains this file,
+        // not for a player. ADR 0017 is what records the method; the user needs to know only
+        // that picking one is optional and that two of them clear the scores.
         <p className="hint">
-          No method recorded, so these are free entry. Choosing one below is optional and is
-          recorded on the character, so reopening this at level 4 knows whether it is adding to
-          a spend or to a rolled set (ADR 0017). Point buy and the standard array start clean,
-          because they are authorities on their own values; manual entry keeps what is here.
+          No method chosen, so you can type any values you like. Picking one is optional, and it
+          is saved with the character. Point buy and the standard array clear the scores below
+          when you pick them; Enter manually keeps them.
         </p>
       )}
 
@@ -74,7 +76,7 @@ export function BudgetEditor({
           {budget.granted > 0 && (
             // ADR 0017's headline case: something later in the build handed you points, and
             // they arrive here rather than behind a Back button.
-            <span className="hint"> — {budget.granted} of them granted by what you chose</span>
+            <span className="hint"> — {budget.granted} of them from choices you made</span>
           )}
         </p>
       )}
@@ -110,13 +112,18 @@ export function BudgetEditor({
         </tbody>
       </table>
 
+      {/*
+        A column key, and nothing else. The two facts underneath it are ADR 0014 (a base is a
+        base, so a contribution adds to it and never replaces it) and ADR 0016 (the cap is an
+        expression, and the middle column carries the clip as a negative). Both are worth
+        knowing here; neither number is.
+      */}
       <p className="hint">
-        <strong>Base</strong> is what you chose, and the only thing stored (ADR 0014).
-        <strong> From elsewhere</strong> is what your race, class, feats and items add on top of
-        it — a base is not an override, so nothing here replaces what you entered.
-        <strong> Total</strong> is what the sheet reads, and every number derived from it follows.
-        A negative figure in the middle column means a limit the system declares has clipped your
-        base — 5e caps an ability score at 20 unless something raises the cap (ADR 0016).
+        <strong>Base</strong> is the score you set.
+        <strong> From elsewhere</strong> is what your race, class, feats and items add to it.
+        <strong> Total</strong> is base plus those, and it is the number your sheet uses. A
+        negative number in the middle column means your total has been capped — in 5e an ability
+        score stops at 20 unless something raises the limit.
       </p>
     </div>
   );
@@ -215,9 +222,14 @@ function Dice({
       <div className="problem error">
         <strong>This method's dice cannot be read.</strong>
         <p>
-          {dice.unreadable} — the system definition declares <code>{dice.notation}</code>. Nothing
-          was rolled, because a guess would produce scores that look exactly like yours.
+          Nothing was rolled. Use another method, or correct the system file.
         </p>
+        {/*
+          The specific complaint, kept and kept separate. `unreadable` is a lowercase fragment
+          that sometimes opens with the quoted notation, so it cannot be spliced into a sentence
+          and stay grammatical either way.
+        */}
+        <p className="card-meta">{dice.unreadable}</p>
       </div>
     );
   }
@@ -232,13 +244,19 @@ function Dice({
         </button>
       )}
       {dice.rolled > 0 && (
-        <button type="button" onClick={() => builder.clearBudgetRolls(stepId)}>
+        <button type="button" onClick={() => builder.rerollBudget(stepId)}>
           Discard and roll again
         </button>
       )}
       <span className="hint">
-        {dice.rolled} of {dice.count} rolled. A roll is recorded, never recomputed (ADR 0019) —
-        nothing on this screen rerolls one, and discarding is something you have to ask for.
+        {dice.rolled} of {dice.count} rolled.
+        {/* "These results are saved" is nonsense before there are any. */}
+        {dice.rolled > 0 && (
+          <>
+            {' '}
+            These results are saved. Only <strong>Discard and roll again</strong> changes them.
+          </>
+        )}
       </span>
     </p>
   );
