@@ -160,12 +160,18 @@ before any code, both touching a public API:
       `complete`, so a character could not choose a race or a class at all. Fixed in
       `packages/ui` as a third decision kind, `pick`, keyed `build/<stepId>`, which is the
       convention the fixture save and `aurora-import` already used.
-  - [ ] **The Tauri window needs an icon nobody has drawn.** The Rust shell, its config and its
-        HTTP capability are written and the dependency tree compiles; `tauri-build` then stops
-        on a missing `icons/icon.ico`. Left as a marked gap rather than filled with generated
-        artwork, per the README's standing commitment —
-        `apps/desktop/src-tauri/icons/README.md` says what is needed, and `npm run desktop:app`
-        explains itself instead of failing inside a Rust build.
+  - [x] **The Tauri app builds.** The gap this entry described was an icon: the Rust shell, its
+        config and its HTTP capability were all written, and `tauri-build` stopped on a missing
+        `icons/icon.ico` that the project would not fill with generated artwork. The maintainer
+        supplied a logo — an anvil under a gear, black and white colourways — so `brand/` now
+        holds the source art and `npx tauri icon` generates the set from it. Every pixel of the
+        glyph is drawn; the README's commitment is intact.
+        The logo is a single-colour glyph on transparency, so the icon **vanishes against its own
+        colour** — white is the default because the app shell and the stock Windows/macOS chrome
+        are dark, and switching to black is one command. An icon that reads everywhere wants the
+        glyph on a solid tile, and that tile's colour is a brand decision rather than something
+        to infer from a stylesheet, so it is named in
+        `apps/desktop/src-tauri/icons/README.md` and left for a person.
   - [ ] Menus and keyboard shortcuts. The file dialog arrived with the library (ADR 0027) and
         navigation is a four-pane switch now, not three; what is still missing is everything
         that makes it feel like a desktop application rather than a page.

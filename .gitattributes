@@ -10,3 +10,9 @@ tools/incudo/fixtures/** text eol=lf
 # of one is what anybody wanted.
 schemas/*.json text eol=lf
 systems/**/*.json text eol=lf
+
+# The logo and the icons generated from it are binary. Without this, core.autocrlf=true
+# on Windows mangles them on checkout and the .ico stops being a valid .ico.
+*.png binary
+*.ico binary
+*.icns binary

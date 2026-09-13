@@ -13,7 +13,7 @@ when something here looks odd, the ADR usually says why.
 npm install            # ~25s. If it starts pulling Expo, apps/mobile got added to workspaces — don't.
 npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, start here.
                        # Opens on the character library; pick a folder to see anything in it.
-npm run desktop:app    # the real Tauri window — needs Rust, and an icon nobody has drawn yet
+npm run desktop:app    # the real Tauri window — needs Rust. Builds now; the icon arrived.
 npm run typecheck      # tsc --build --force
 npm test               # node --test, no build step
 npm run incudo -- --help   # the CLI: validate | types | inspect | system | content | character
@@ -98,6 +98,15 @@ matter; those two do.
 even as a temporary placeholder. This is a stated project commitment in the README, not a
 preference. If a visual asset is needed, leave a clearly-marked gap and say so — do not fill it.
 Diagrams drawn in code (SVG, Mermaid) and UI built from CSS are not artwork and are fine.
+
+The one gap this ever blocked is now filled by a person: `brand/` holds the real logo, and
+`apps/desktop/src-tauri/icons/` is generated from it with `npx tauri icon`. **Downscaling and
+re-encoding supplied art is not generating it**, and neither is deleting the mobile and
+Windows-Store variants that command also writes. Compositing the glyph onto a coloured tile
+*would* be a design decision, which is why it has not been done and is named as an open one
+instead — see that directory's README. The two source PNGs were re-encoded on the way in (4.67 MB
+each, stored uncompressed, down to 24 KB and 14 KB) and the decoded pixels are byte-for-byte
+what was supplied.
 
 ## Baselines that must not regress
 

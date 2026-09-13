@@ -50,6 +50,12 @@ Art arrives one of two ways: an artist offers their own original work because th
 featured here, or it is commissioned and paid for. Either way the artist is credited and keeps
 their rights. If you make art and that interests you, open an issue.
 
+The logo — an anvil under a gear — was drawn by the maintainer and lives in
+[`brand/`](./brand/). The desktop app's icons are generated from it by `npx tauri icon`, which
+only downscales and re-packs; see
+[`apps/desktop/src-tauri/icons/`](./apps/desktop/src-tauri/icons/). It is a working logo rather
+than a finished one.
+
 Game content is not AI-generated either. It comes from the content indexes you point Incudo at,
 written and maintained by people. Incudo reads that content — it does not generate, rewrite or
 "improve" it.
