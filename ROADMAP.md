@@ -293,6 +293,24 @@ before any code, both touching a public API:
       screen (ADR 0017): `setProgress` changes a number and the decisions it opens arrive in the
       same list as every other, tagged with the level that raised them.
 - [ ] Character sheet
+- [ ] **A decision may hold more than one element**
+      ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md), proposed). Two things, one
+      change. The bug first: `BuilderPane` answers a select with `choose(id, [value])` and
+      `setChoice` **replaces**, so a wizard owed three cantrips and six spellbook spells can
+      record exactly one of each — pick a second and it overwrites the first. `OpenDecision`
+      publishes `candidates` and never `chosen`, so a shell has nothing to add to. The engine
+      half has been right since ADR 0030; this is the view-model and the pane.
+      On top of that, `multiple: true` on a build step, which is what makes **campaign options**
+      reachable. That mechanism is entirely content's already — 294 `<select …
+      requirements="ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI">` across the corpus, each paired with
+      the fixed `<stat>` it replaces — and `aurora-import` has always written the six
+      `type="Option"` elements to `build/options`. So an imported Aurora character keeps its
+      options and one built in Incudo cannot have any, purely because no build step offers a
+      set. Tasha's customized ability scores, languages and proficiencies all arrive together,
+      and so does the Human Variant, which no race list the app has ever drawn included.
+      Ordered after the sheet because the multi-pick bug is worth more to a player than the
+      options are, and the sheet is worth more than both. Touches the system definition format,
+      which is why it is an ADR and not a commit.
 - [x] Save/load `.incu` files; **import `.dnd5e`** (the importer was done — this was the UI
       for it). The library reads and writes `.incu` in both forms, and the desktop shell has a
       `ZipCodec` — the framing moved into `packages/core` so the browser's `CompressionStream`

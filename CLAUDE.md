@@ -328,13 +328,33 @@ running it protects the product.**
   reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
   the cache answers.
 
-Eight things the shell has surfaced and deliberately **not** fixed:
+Ten things the shell has surfaced, one of them since fixed and struck through. The rest are
+deliberately **not** fixed:
 
-- **An answered `pick` cannot be changed.** Choose a race and the decision correctly leaves
-  `decisions`, and with it goes the only control that could pick a different one. A budget does
-  not have this problem — `BuilderPane` renders a settled one in a section of its own — but doing
-  the same for race, class and background is a real screen rather than a two-line fix, and it is
-  the next obvious thing to build in that pane.
+- **~~An answered `pick` cannot be changed.~~** Fixed. It was predicted here to be "a real screen
+  rather than a two-line fix" and it was one `continue` becoming a branch: `BuilderState.picks`
+  publishes the settled half of a top-level pick — rule key, what is chosen, what could be
+  chosen instead — exactly as `steps[].budget` already did for a settled budget, and the pane
+  renders "Choices already made" beside "Values already set". Candidates are rebuilt on every
+  read rather than remembered, so a replacement is filtered against the character as it is now.
+  **This is not a Back button and ADR 0017 is untouched**: a settled pick is not somewhere you
+  navigate to, it is something on screen that kept its control. The pane's header comment had
+  been using "no Back button" as cover for the hole, which is how it survived.
+- **A decision can only ever record one element, and that is a live bug** (ADR 0032, proposed).
+  `BuilderPane` answers a select with `choose(id, [value])` and `setChoice` **replaces**, so a
+  wizard owed three cantrips records one: pick a second and it silently overwrites the first.
+  The dropdown then displays a *third* spell, because the list re-renders without the taken one
+  and an uncontrolled `<select>` keeps its index. `OpenDecision` publishes `candidates` and
+  never `chosen`, so a shell has nothing to append to — the fix is a field on the view-model,
+  not a patch in the pane. Do not read ADR 0030's green result as covering this: that work
+  made the engine offer the right *candidates*, and this is about recording the answer.
+- **The character sheet renders no features, traits, proficiencies or languages.**
+  `SheetPane.tsx` does `if (!stats.length) return null`, and the `features` and `proficiencies`
+  sections declare `types` with no `stats`, so they are dropped whole. The CLI renders them
+  (`character-commands.ts`, `derived.elements.filter(e => section.types.includes(e.type))`), so
+  a level 1 wizard's sheet reads eight proficiencies and two class features there and six
+  ability scores and some numbers in the app. Same shape as every other divergence here: the
+  pane reimplements a slice of what the CLI already does properly.
 - **A granted ability point is unspendable except under a points method.** `BudgetState.granted`
   reports it and the editor shows it, but only a cost table says what a point buys, so a
   standard-array or rolled character cannot spend one. Inventing "a point is +1" is the guess
@@ -371,7 +391,8 @@ Eight things the shell has surfaced and deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030 and 0031 are implemented, and **Phase 1 is done — `packages/aurora-import`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030 and 0031 are implemented; **0032 is proposed and deliberately unbuilt** — read it before
+reaching for a multi-select anywhere. Phase 1 is done — **`packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
@@ -434,6 +455,17 @@ earned. Do not reintroduce per-rule quotas. What is genuinely lost is which slot
 made under: 89 groups in the corpus have rules that differ in `supports`, `requirements` or
 `type`, so a pending pool offers the union of the candidates of the rules with room left, and
 nothing checks that a recorded pick was legal for its slot. See docs/AURORA-FORMAT.md.
+
+**A pool never offers what the character already has.** `candidatesFor` has always excluded a
+pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,
+which is the only place the question can be asked — a background's "two languages of your
+choice" is a support-tag select and a race's Elvish is a plain `<grant>`, and neither file can
+know about the other. An Elf taking Sage sees 41 languages rather than 43, without Elvish or
+Common, and still owes two. The case that looks like a counter-example is not: a rogue's
+Expertise offers `ID_EXPERTISE_SKILL_ACROBATICS`, whose requirement is the *different* element
+`ID_PROFICIENCY_SKILL_ACROBATICS`, so wanting what you have is expressed by needing what you do
+not. **`aurora verify` cannot see any of this** — it compares elements a character chose, not
+ones it was offered — so a green run is not evidence; perturbation in `engine.test.ts` is.
 
 **A slot publishes a set of tags, and `equipped=` is evaluated** (ADR 0025, step 4). A character
 kind declares its `inventory`: which slots exist, what stat each publishes into, which setters
