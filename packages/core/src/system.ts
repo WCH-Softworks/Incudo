@@ -539,6 +539,33 @@ export interface BuildStepDef {
   requires?: string[];
   /** Points this step distributes, when it is about numbers rather than elements. */
   budget?: BudgetDef;
+  /** One roll (or a fixed alternative) this step records per point of progression — ADR 0019. */
+  levelRoll?: LevelRollDef;
+}
+
+/**
+ * A per-level recorded roll a `perLevel` step owns — ADR 0019's hit points, and anything
+ * shaped like them (a wound track, a per-level resource with no formula).
+ *
+ * The engine already sums `character.rolls` through a `{ "kind": "rolls" }` derive; what it
+ * cannot do, and must not learn to (ADR 0019 forbids core rolling anything), is say *what die*
+ * a given level owes. That varies per character — a d6 wizard and a d12 barbarian read the
+ * same `pattern` — so it is read off content: the element that governs a level names its die
+ * on a setter, exactly as Aurora's own content does (`<set name="hd">d6</set>`).
+ */
+export interface LevelRollDef {
+  /** The key a roll is recorded under, with `{n}` replaced by the level — "hp:level:{n}". */
+  pattern: string;
+  /** The setter naming the die, read off the governing element — Aurora's convention is `hd`. */
+  dieSetter: string;
+  /**
+   * The element type that governs a level — 5e's `Class`. `character.advancement` (ADR 0015)
+   * names the element for a level directly when it is recorded; where it is not — every
+   * character built in the app today, which has no multiclass UI yet — the single element of
+   * this type the character has stands in for every level, the same fallback the engine itself
+   * uses for an element in no track.
+   */
+  classType: ElementType;
 }
 
 /**

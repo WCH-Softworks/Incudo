@@ -524,7 +524,32 @@
           "items": { "type": "string", "minLength": 1 },
           "description": "Ids of steps that must be usable before this one is (ADR 0017). A genuine dependency and nothing else — you cannot pick spells before something makes you a spellcaster. The suggested order is a topological sort of these with the declared array order breaking ties, so a step that requires nothing sorts first; a step whose dependencies are unmet is not yet available rather than skippable."
         },
-        "budget": { "$ref": "#/$defs/budget" }
+        "budget": { "$ref": "#/$defs/budget" },
+        "levelRoll": { "$ref": "#/$defs/levelRoll" }
+      }
+    },
+
+    "levelRoll": {
+      "description": "A per-level recorded roll a perLevel step owns (ADR 0019) — 5e's hit points, and anything shaped like them. The engine already sums character.rolls through a `rolls` expression; what varies per character, and what content already declares, is which die a given level owes. `classType` names the element type that governs a level (5e's \"Class\"); when the character's advancement does not record which element that was for a given level — every character built in the app today, with no multiclass UI yet — the character's single element of that type stands in for all of them, the same fallback the engine itself uses for an element in no track.",
+      "type": "object",
+      "required": ["pattern", "dieSetter", "classType"],
+      "additionalProperties": false,
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The key a roll is recorded under, with {n} replaced by the level — \"hp:level:{n}\". Matches the pattern the stat's own `rolls` derive reads."
+        },
+        "dieSetter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The setter naming the die, read off the governing element. Aurora's content writes this as `hd`, e.g. `<set name=\"hd\">d6</set>`."
+        },
+        "classType": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The element type whose single instance on the character governs a level's die, absent a recorded advancement entry for that level."
+        }
       }
     },
 
