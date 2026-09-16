@@ -18,6 +18,7 @@ import type { CharacterBuilder, BuilderState, OpenDecision } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
 import { BudgetEditor } from './BudgetEditor.tsx';
+import { HitPointEditor } from './HitPointEditor.tsx';
 
 export function BuilderPane({
   builder,
@@ -49,11 +50,14 @@ export function BuilderPane({
     return element.source ? `${element.name} — ${element.source}` : element.name;
   };
 
-  /** Budgeted steps with nothing outstanding — still editable, see below. */
+  /** Budgeted or per-level-roll steps with nothing outstanding — still editable, see below. */
   const settled = steps.filter(
     (step) =>
-      step.budget &&
-      !decisions.some((decision) => decision.kind === 'budget' && decision.stepId === step.id),
+      (step.budget &&
+        !decisions.some((decision) => decision.kind === 'budget' && decision.stepId === step.id)) ||
+      (step.hitPoints &&
+        step.hitPoints.levels.length > 0 &&
+        !decisions.some((decision) => decision.kind === 'hitpoints' && decision.stepId === step.id)),
   );
 
   return (
@@ -157,6 +161,7 @@ export function BuilderPane({
                   candidateLabel={candidateLabel}
                   kind={kind}
                   budget={steps.find((step) => step.id === decision.stepId)?.budget}
+                  hitPoints={steps.find((step) => step.id === decision.stepId)?.hitPoints}
                 />
               </li>
             ))}
@@ -213,7 +218,12 @@ export function BuilderPane({
                 <span className="label">{step.label}</span>
                 <span className="tag done">complete</span>
               </div>
-              <BudgetEditor stepId={step.id} budget={step.budget!} builder={builder} kind={kind} />
+              {step.budget && (
+                <BudgetEditor stepId={step.id} budget={step.budget} builder={builder} kind={kind} />
+              )}
+              {step.hitPoints && (
+                <HitPointEditor stepId={step.id} state={step.hitPoints} builder={builder} />
+              )}
             </div>
           ))}
         </section>
@@ -242,6 +252,7 @@ function Decision({
   candidateLabel,
   kind,
   budget,
+  hitPoints,
 }: {
   decision: OpenDecision;
   builder: CharacterBuilder;
@@ -250,6 +261,7 @@ function Decision({
   candidateLabel: (id: ElementId) => string;
   kind: ResolvedCharacterKind;
   budget: BuilderState['steps'][number]['budget'];
+  hitPoints: BuilderState['steps'][number]['hitPoints'];
 }): React.JSX.Element {
   return (
     <>
@@ -272,6 +284,12 @@ function Decision({
           // A budget decision whose step has no budget is a contradiction the view-model cannot
           // produce; it is here so a future one says so rather than rendering nothing.
           <p className="hint">This step declares a budget the builder did not publish.</p>
+        )
+      ) : decision.kind === 'hitpoints' ? (
+        hitPoints ? (
+          <HitPointEditor stepId={decision.stepId} state={hitPoints} builder={builder} />
+        ) : (
+          <p className="hint">This step declares per-level rolls the builder did not publish.</p>
         )
       ) : decision.candidates.length > 0 ? (
         <select
