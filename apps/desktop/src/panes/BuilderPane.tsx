@@ -90,6 +90,16 @@ export function BuilderPane({
         </div>
       )}
 
+      {/*
+        Three columns, not two. Outstanding work (what to decide) and settled work (what you
+        already decided) used to be the same vertical stack — "Open decisions" first, however
+        long, then "Choices already made" and "Values already set" beneath it — so answering an
+        early decision meant scrolling past everything else to see what you had already settled.
+        They are different questions and now sit side by side: the middle column changes as you
+        answer, the right column only grows. On a narrow viewport (a phone, or this window
+        resized) `columns` collapses to one, in the same top-to-bottom order a mobile shell would
+        want for tabs — outstanding, then settled.
+      */}
       <div className="columns">
         <section>
           {/*
@@ -167,67 +177,73 @@ export function BuilderPane({
             ))}
           </ul>
         </section>
+
+        <aside className="settled-column">
+          {/*
+            A budget that is finished leaves `decisions`, which is correct — it is not
+            outstanding — and would take the editor off the screen with it, leaving no way to
+            change a score you had already set. So a settled budget renders here instead. The two
+            conditions are mutually exclusive, so the editor appears exactly once either way.
+
+            An answered `pick` had the same hole, and now has the same answer beside it.
+          */}
+          {picks.length > 0 && (
+            <section>
+              <h2>Choices already made</h2>
+              <p className="hint">
+                Changing one of these rebuilds everything that followed from it. Anything it
+                opened that you had answered is kept only where the new choice offers it too.
+              </p>
+              {picks.map((pick) => (
+                <div key={pick.ruleKey} className="settled">
+                  <div className="decision-head">
+                    <span className="label">{pick.label}</span>
+                  </div>
+                  <select
+                    value={pick.chosen[0] ?? ''}
+                    onChange={(event) => {
+                      if (event.target.value) builder.choose(pick.ruleKey, [event.target.value]);
+                    }}
+                  >
+                    {pick.candidates
+                      .map((id) => ({ id, name: candidateLabel(id) }))
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((candidate) => (
+                        <option key={candidate.id} value={candidate.id}>
+                          {candidate.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {settled.length > 0 && (
+            <section>
+              <h2>Values already set</h2>
+              {settled.map((step) => (
+                <div key={step.id} className="settled">
+                  <div className="decision-head">
+                    <span className="label">{step.label}</span>
+                    <span className="tag done">complete</span>
+                  </div>
+                  {step.budget && (
+                    <BudgetEditor stepId={step.id} budget={step.budget} builder={builder} kind={kind} />
+                  )}
+                  {step.hitPoints && (
+                    <HitPointEditor stepId={step.id} state={step.hitPoints} builder={builder} />
+                  )}
+                </div>
+              ))}
+            </section>
+          )}
+
+          {picks.length === 0 && settled.length === 0 && (
+            <p className="lede">Nothing settled yet. Answers appear here once you make them.</p>
+          )}
+        </aside>
       </div>
-
-      {/*
-        A budget that is finished leaves `decisions`, which is correct — it is not outstanding —
-        and would take the editor off the screen with it, leaving no way to change a score you
-        had already set. So a settled budget renders here instead. The two conditions are
-        mutually exclusive, so the editor appears exactly once either way.
-
-        An answered `pick` had the same hole, and now has the same answer one section down.
-      */}
-      {picks.length > 0 && (
-        <section>
-          <h2>Choices already made</h2>
-          <p className="hint">
-            Changing one of these rebuilds everything that followed from it. Anything it opened
-            that you had answered is kept only where the new choice offers it too.
-          </p>
-          {picks.map((pick) => (
-            <div key={pick.ruleKey} className="settled">
-              <div className="decision-head">
-                <span className="label">{pick.label}</span>
-              </div>
-              <select
-                value={pick.chosen[0] ?? ''}
-                onChange={(event) => {
-                  if (event.target.value) builder.choose(pick.ruleKey, [event.target.value]);
-                }}
-              >
-                {pick.candidates
-                  .map((id) => ({ id, name: candidateLabel(id) }))
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {settled.length > 0 && (
-        <section>
-          <h2>Values already set</h2>
-          {settled.map((step) => (
-            <div key={step.id} className="settled">
-              <div className="decision-head">
-                <span className="label">{step.label}</span>
-                <span className="tag done">complete</span>
-              </div>
-              {step.budget && (
-                <BudgetEditor stepId={step.id} budget={step.budget} builder={builder} kind={kind} />
-              )}
-              {step.hitPoints && (
-                <HitPointEditor stepId={step.id} state={step.hitPoints} builder={builder} />
-              )}
-            </div>
-          ))}
-        </section>
-      )}
 
       {derived.problems.length > 0 && (
         <section>
