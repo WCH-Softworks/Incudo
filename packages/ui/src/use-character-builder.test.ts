@@ -16,16 +16,22 @@ import {
   type Element,
   type GameSystem,
   type Rule,
+  type Setter,
 } from '@incudo/core';
 import { CharacterBuilder } from './use-character-builder.ts';
 
-function element(id: string, type: string, rules: Rule[] = []): Element {
+function element(
+  id: string,
+  type: string,
+  rules: Rule[] = [],
+  setters: Record<string, Setter> = {},
+): Element {
   return {
     id,
     type,
     name: id,
     source: 'test',
-    setters: {},
+    setters,
     rules,
     supports: [],
     origin: { sourceId: 'test', format: 'incudo' },
@@ -859,4 +865,107 @@ test('a settled pick rebuilds its candidates against the character as it is now'
     ['W1'],
     'the option is off, so the gated widget is no longer an alternative',
   );
+});
+
+// --- hit points (levelRoll) --------------------------------------------------
+
+function systemWithLevelRoll(): GameSystem {
+  const sys = system();
+  sys.characterKinds[0]!.buildSteps!.push({
+    id: 'levels',
+    label: 'Levels',
+    types: [],
+    perLevel: true,
+    requires: ['kit'],
+    levelRoll: { pattern: 'hp:level:{n}', dieSetter: 'hd', classType: 'Widget' },
+  });
+  return sys;
+}
+
+test('a step with no levelRoll publishes no hit point state', () => {
+  const b = builder(indexWith());
+  assert.equal(b.hitPointsFor('kit'), undefined);
+});
+
+test('the first level is always the maximum, and nothing is open before a class is chosen', () => {
+  const sys = systemWithLevelRoll();
+  const b = builder(indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } })), sys);
+  assert.equal(b.hitPointsFor('levels')?.pending.length, 0, 'no governing element yet');
+  assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), false);
+
+  b.choose('build/kit', ['CLASSY']);
+  const hp = b.hitPointsFor('levels')!;
+  assert.equal(hp.levels.length, 1);
+  assert.equal(hp.levels[0]!.isFirst, true);
+  assert.equal(hp.levels[0]!.dieSides, 8);
+  assert.equal(hp.levels[0]!.recorded, undefined);
+  assert.equal(hp.pending.length, 1);
+  assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), true);
+
+  // Asking to "roll" a first level still takes the maximum — it is not a choice.
+  b.recordHitPoints('levels', 1, 'roll');
+  assert.equal(b.getState().character.rolls['hp:level:1'], 8);
+  assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), false);
+});
+
+test('a later level offers a roll or the average, and the average is floor(sides/2)+1', () => {
+  const sys = systemWithLevelRoll();
+  const b = new CharacterBuilder(
+    createCharacter('test', 'pc', { progress: 2 }),
+    sys,
+    indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } })),
+    { random: sequence([5], 8) },
+  );
+  b.choose('build/kit', ['CLASSY']);
+  const level2 = b.hitPointsFor('levels')!.levels.find((l) => l.level === 2)!;
+  assert.equal(level2.isFirst, false);
+  assert.equal(level2.average, 5);
+
+  b.recordHitPoints('levels', 2, 'roll');
+  assert.equal(b.getState().character.rolls['hp:level:2'], 5, 'the sequenced roll');
+});
+
+test('recording an already-recorded level changes nothing', () => {
+  const sys = systemWithLevelRoll();
+  const b = builder(indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } })), sys);
+  b.choose('build/kit', ['CLASSY']);
+  b.recordHitPoints('levels', 1, 'average');
+  const before = b.getState().character.rolls;
+
+  b.recordHitPoints('levels', 1, 'roll');
+  assert.deepEqual(b.getState().character.rolls, before, 'no repaint or replay can reroll it');
+});
+
+test('a class with no readable die is reported and offers nothing', () => {
+  const sys = systemWithLevelRoll();
+  const b = builder(indexWith(element('CLASSY', 'Widget')), sys); // no hd setter at all
+  b.choose('build/kit', ['CLASSY']);
+
+  const level1 = b.hitPointsFor('levels')!.levels[0]!;
+  assert.equal(level1.dieSides, undefined);
+  assert.match(level1.unreadable!, /names no hit die/);
+  assert.equal(b.hitPointsFor('levels')!.pending.length, 0, 'nothing to record blindly');
+  assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), false);
+
+  b.recordHitPoints('levels', 1, 'average');
+  assert.deepEqual(b.getState().character.rolls, {}, 'rather than guessing at a die');
+});
+
+test('advancement names which element governs each level, for a character with no single class', () => {
+  const index = indexWith(
+    element('FIGHTER', 'Widget', [], { hd: { value: 'd10' } }),
+    element('WIZARD', 'Widget', [], { hd: { value: 'd6' } }),
+  );
+  const character = {
+    ...createCharacter('test', 'pc', { progress: 2 }),
+    advancement: [
+      { at: 1, elementId: 'FIGHTER' },
+      { at: 2, elementId: 'WIZARD' },
+    ],
+  };
+  const b = new CharacterBuilder(character, systemWithLevelRoll(), index);
+
+  const hp = b.hitPointsFor('levels')!;
+  assert.equal(hp.levels[0]!.dieSides, 10, 'level 1 went to the fighter');
+  assert.equal(hp.levels[1]!.dieSides, 6, 'level 2 went to the wizard');
 });

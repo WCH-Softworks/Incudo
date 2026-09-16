@@ -10,6 +10,7 @@
  */
 export * from './use-character-builder.ts';
 export * from './budget.ts';
+export * from './hitpoints.ts';
 export * from './dice.ts';
 export * from './character-library.ts';
 export * from './aurora-import.ts';

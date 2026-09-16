@@ -1,0 +1,159 @@
+/**
+ * A per-level recorded roll, as a view can render it — ADR 0019's hit points, and anything
+ * shaped like them.
+ *
+ * The engine already sums `character.rolls` through a `{ "kind": "rolls" }` derive, and has
+ * done since ADR 0019 landed. What it does not and must not do is decide *what to roll*: a
+ * die has no formula, and a derivation that could produce one could silently reroll it every
+ * time it ran. So the die comes from content — the element that governs a level names its die
+ * on a setter (`step.levelRoll.dieSetter`, Aurora's own convention is `hd`) — and the roll
+ * itself comes from a user clicking a button, exactly as a budgeted step's dice do
+ * (`packages/ui/src/dice.ts`, `budget.ts`'s `rollBudgetValues`).
+ *
+ * One rule the rulebook states and content does not: the first level of a track is always the
+ * die's maximum, never a roll and never an average. That is not a choice to render, so
+ * `HitPointLevel.isFirst` says so and `planHitPointRecord` enforces it regardless of what a
+ * caller asks for.
+ */
+
+import {
+  type BuildStepDef,
+  type Character,
+  type DerivedCharacter,
+  type ElementId,
+  type Progression,
+} from '@incudo/core';
+
+import { parseDice, rollDice } from './dice.ts';
+
+/** One level's roll, and everything a view needs to offer or show it. */
+export interface HitPointLevel {
+  level: number;
+  /** The element that governs this level — a class, in 5e. Undefined until one is chosen. */
+  classElementId?: ElementId;
+  className?: string;
+  /** The die's face count, read off `classElementId`'s own setter. */
+  dieSides?: number;
+  /**
+   * Why `dieSides` could not be read, when a governing element is known but its die is not.
+   *
+   * Reported rather than guessed at (ADR 0005): recording a wrong die's roll would hand the
+   * user a wrong hit point total with no way to tell.
+   */
+  unreadable?: string;
+  /** `character.rolls[…]` for this level, once recorded. */
+  recorded?: number;
+  /** The fixed value the rules allow taking instead of rolling — floor(sides / 2) + 1. */
+  average?: number;
+  /** The progression's first level. Always the die's maximum; never rolled, never averaged. */
+  isFirst: boolean;
+}
+
+export interface HitPointState {
+  pattern: string;
+  levels: HitPointLevel[];
+  /** Levels whose die is known and have nothing recorded yet — what a decision offers. */
+  pending: HitPointLevel[];
+}
+
+/** The key one level's roll is recorded under: `hitPointRollKey("hp:level:{n}", 3)` is `"hp:level:3"`. */
+export function hitPointRollKey(pattern: string, level: number): string {
+  return pattern.replace('{n}', String(level));
+}
+
+function progressionMin(progression: Progression): number {
+  return progression.kind === 'none' ? 0 : (progression.min ?? 0);
+}
+
+/**
+ * Everything a `levelRoll` step's editor needs, computed from the character and its elements.
+ *
+ * Pure, like `computeBudgetState`: it reads, it does not write, so calling it twice cannot
+ * change a score. Undefined when the step declares no `levelRoll` at all, which is most steps.
+ */
+export function computeHitPointState(
+  step: BuildStepDef,
+  character: Character,
+  derived: DerivedCharacter,
+  progression: Progression,
+): HitPointState | undefined {
+  const config = step.levelRoll;
+  if (!config) return undefined;
+
+  // The fallback for a character with no recorded advancement: the single element of the
+  // governing type the character has stands in for every level. The same rule the engine
+  // itself uses for an element reached by no track (ADR 0015) — untracked means "the whole
+  // progression", not "unknown".
+  const fallback = derived.elements.find((element) => element.type === config.classType);
+
+  const min = progressionMin(progression);
+  const levels: HitPointLevel[] = [];
+  for (let level = min; level <= character.progress; level += 1) {
+    const advanced = character.advancement?.find((entry) => entry.at === level);
+    // Advancement recorded and this level is in it: that element, however its die reads.
+    // Advancement recorded and this level is not: genuinely unknown, so no fallback.
+    // No advancement at all: the single governing element stands in for every level.
+    const element = advanced
+      ? derived.elements.find((e) => e.id === advanced.elementId)
+      : character.advancement?.length
+        ? undefined
+        : fallback;
+
+    const dieNotation = element?.setters[config.dieSetter]?.value;
+    const parsed = dieNotation !== undefined ? parseDice(dieNotation) : undefined;
+    const dieSides = parsed?.ok ? parsed.spec.sides : undefined;
+    const key = hitPointRollKey(config.pattern, level);
+
+    levels.push({
+      level,
+      classElementId: element?.id,
+      className: element?.name,
+      dieSides,
+      unreadable:
+        element === undefined
+          ? undefined
+          : dieNotation === undefined
+            ? `"${element.name}" names no hit die`
+            : parsed && !parsed.ok
+              ? parsed.reason
+              : undefined,
+      recorded: character.rolls[key],
+      average: dieSides !== undefined ? Math.floor(dieSides / 2) + 1 : undefined,
+      isFirst: level === min,
+    });
+  }
+
+  return {
+    pattern: config.pattern,
+    levels,
+    pending: levels.filter((l) => l.dieSides !== undefined && l.recorded === undefined),
+  };
+}
+
+/** One roll to record: the key it goes under, and the value. */
+export interface HitPointRecord {
+  key: string;
+  value: number;
+}
+
+/**
+ * What recording a level should write — or nothing, when it is already recorded or its die is
+ * unknown.
+ *
+ * `isFirst` overrides whatever `method` asked for: a first level is always the maximum, which
+ * is a rule the Player's Handbook states rather than a choice a screen should offer. Idempotent
+ * in the sense `rollBudgetValues` is — a level already holding a value is left alone, so calling
+ * this again cannot change a number the user has already seen.
+ */
+export function planHitPointRecord(
+  pattern: string,
+  level: HitPointLevel,
+  method: 'average' | 'roll',
+  random: () => number,
+): HitPointRecord | undefined {
+  if (level.dieSides === undefined || level.recorded !== undefined) return undefined;
+  const key = hitPointRollKey(pattern, level.level);
+  if (level.isFirst) return { key, value: level.dieSides };
+  if (method === 'average') return { key, value: level.average! };
+  return { key, value: rollDice({ count: 1, sides: level.dieSides, dropLowest: 0, dropHighest: 0, modifier: 0 }, random).total };
+}

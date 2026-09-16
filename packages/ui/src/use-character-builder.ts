@@ -51,6 +51,8 @@ import {
   type BudgetWrite,
 } from './budget.ts';
 
+import { computeHitPointState, planHitPointRecord, type HitPointState } from './hitpoints.ts';
+
 /**
  * One thing the character still has to decide.
  *
@@ -65,7 +67,7 @@ export interface OpenDecision {
    * `select` is a `<select>` rule content opened. `budget` is a points pool. `pick` is a
    * **top-level choice no rule asks for** — a 5e character's race, class and background, which
    * nothing in 740 content files declares a select for because Aurora's app asks for them
-   * directly.
+   * directly. `hitpoints` is a `levelRoll` step's still-unrecorded levels (ADR 0019).
    *
    * Without `pick` a required build step reported itself `complete` from the first render with
    * nothing chosen, and there was no way to choose a class at all — found by running the desktop
@@ -74,7 +76,7 @@ export interface OpenDecision {
    * `aurora-import` says so above `OPTIONS_RULE_KEY`). This publishes what the rest of the
    * project was already writing by hand.
    */
-  kind: 'select' | 'budget' | 'pick';
+  kind: 'select' | 'budget' | 'pick' | 'hitpoints';
   label: string;
   /** Which grouping it belongs to, for presentation. */
   stepId: string;
@@ -126,6 +128,8 @@ export interface BuilderStep {
   /** No *blocking* decisions outstanding. An available step with optional picks is complete. */
   complete: boolean;
   budget?: BudgetState;
+  /** This step's per-level rolls, when it declares a `levelRoll` — ADR 0019. */
+  hitPoints?: HitPointState;
 }
 
 export interface BuilderState {
@@ -401,6 +405,30 @@ export class CharacterBuilder {
     return this.getState().steps.find((step) => step.id === stepId)?.budget;
   };
 
+  /** The per-level rolls of one step, or undefined if it declares no `levelRoll`. */
+  hitPointsFor = (stepId: string): HitPointState | undefined => {
+    return this.getState().steps.find((step) => step.id === stepId)?.hitPoints;
+  };
+
+  /**
+   * Record one level's roll — the maximum, the average, or an actual roll of the die content
+   * names for whatever governs that level.
+   *
+   * `method` is ignored for a track's first level: `planHitPointRecord` always takes the
+   * maximum there, because the rulebook does and a screen offering a choice would be lying
+   * about there being one. Recording an already-recorded level is a no-op, the same
+   * idempotency `rollBudget` holds — there is no path from a repaint to a new score.
+   */
+  recordHitPoints = (stepId: string, level: number, method: 'average' | 'roll'): void => {
+    const state = this.hitPointsFor(stepId);
+    const entry = state?.levels.find((l) => l.level === level);
+    if (!state || !entry) return;
+    const plan = planHitPointRecord(state.pattern, entry, method, this.random);
+    if (!plan) return;
+    this.character = setRoll(this.character, plan.key, plan.value);
+    this.invalidate();
+  };
+
   private applyBudgetWrites(writes: BudgetWrite[]): void {
     if (!writes.length) return;
     this.character = applyWrites(this.character, writes);
@@ -530,6 +558,26 @@ export class CharacterBuilder {
       }
     }
 
+    const hitPoints = new Map<string, HitPointState>();
+    for (const step of this.steps) {
+      const state = computeHitPointState(step, this.character, derived, this.kind.progression);
+      if (!state) continue;
+      hitPoints.set(step.id, state);
+      if (state.pending.length > 0) {
+        decisions.push({
+          id: `hitpoints:${step.id}`,
+          kind: 'hitpoints',
+          label: 'Hit Points',
+          stepId: step.id,
+          blocking: true,
+          remaining: state.pending.length,
+          // A per-level roll assigns a number, not an element.
+          candidates: [],
+          unresolved: [],
+        });
+      }
+    }
+
     const available = new Set<string>();
     const steps: BuilderStep[] = this.steps.map((step) => {
       const blockedBy = (step.requires ?? []).filter((id) => !available.has(id));
@@ -545,6 +593,7 @@ export class CharacterBuilder {
         openCount: open.length,
         complete: !open.some((decision) => decision.blocking),
         budget: budgets.get(step.id),
+        hitPoints: hitPoints.get(step.id),
       };
     });
 
