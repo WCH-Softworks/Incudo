@@ -147,6 +147,17 @@ own count and does not go through this path.
 
 ## Status note
 
-Proposed, and deliberately not built. It is placed in **Phase 2** of the roadmap after the
-character sheet, because it depends on `OpenDecision.chosen`, which is the same change that
-fixes multi-pick selects — and that bug is worth more to a player than campaign options are.
+The shared mechanism landed ahead of the feature this ADR is named for, and in the order this
+note originally predicted: `OpenDecision` gained `chosen: ElementId[]`, exactly as decision 1
+specifies, because it was also the fix for a live bug a player hit before any `multiple` step
+existed — a wizard's second and third cantrip silently overwrote the first, and the select could
+never close. `BuilderPane`'s write is now `choose(id, [...decision.chosen, value])` rather than
+`choose(id, [value])`, which is "replace" for a `pick` (`chosen` is always `[]` there) and "add
+to" for a `select` asking for more than one, with no branch between the two. Taking an answer
+back is the same write with one id removed, shown as a small removable tag per answer.
+
+**`multiple: true` on a build step — campaign options, and the Human Variant — is still proposed
+and not built.** That is a system-format change (decisions 2 and 3, and the schema/validation
+work in "The migration is nothing"), genuinely separate from the bug fix, and this note no longer
+predicts they land together. Read `OpenDecision.chosen` as done; read the rest of this ADR as
+still describing work to do.

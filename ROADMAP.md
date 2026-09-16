@@ -313,24 +313,33 @@ before any code, both touching a public API:
       it" — the level 4 Ability Score Improvement still reports "no candidate" (the `Class`
       `supports` operand), and the sheet still does not render features or proficiencies.
 - [ ] Character sheet
-- [ ] **A decision may hold more than one element**
-      ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md), proposed). Two things, one
-      change. The bug first: `BuilderPane` answers a select with `choose(id, [value])` and
-      `setChoice` **replaces**, so a wizard owed three cantrips and six spellbook spells can
-      record exactly one of each — pick a second and it overwrites the first. `OpenDecision`
-      publishes `candidates` and never `chosen`, so a shell has nothing to add to. The engine
-      half has been right since ADR 0030; this is the view-model and the pane.
-      On top of that, `multiple: true` on a build step, which is what makes **campaign options**
-      reachable. That mechanism is entirely content's already — 294 `<select …
-      requirements="ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI">` across the corpus, each paired with
-      the fixed `<stat>` it replaces — and `aurora-import` has always written the six
-      `type="Option"` elements to `build/options`. So an imported Aurora character keeps its
-      options and one built in Incudo cannot have any, purely because no build step offers a
-      set. Tasha's customized ability scores, languages and proficiencies all arrive together,
-      and so does the Human Variant, which no race list the app has ever drawn included.
-      Ordered after the sheet because the multi-pick bug is worth more to a player than the
-      options are, and the sheet is worth more than both. Touches the system definition format,
-      which is why it is an ADR and not a commit.
+- [x] **A decision can record more than one element**
+      ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md)'s bug fix — the ADR itself
+      stays proposed; see the entry below). `BuilderPane` answered a select with
+      `choose(id, [value])`, and `setChoice` **replaces**, so a wizard owed three cantrips and
+      six spellbook spells could record exactly one of each — pick a second and it overwrote the
+      first, and the select could never close. Found live, not by a test: a player choosing a
+      Skill Proficiency after a background had "Insight" stuck on screen no matter what they
+      picked next. `OpenDecision` now publishes `chosen: ElementId[]` alongside `candidates`, and
+      the pane's write is `choose(id, [...decision.chosen, value])` — "replace" for a `pick`,
+      where `chosen` is always `[]`, and "add to" for a `select` asking for more than one, with no
+      branch between the two. Each answer shows as a small removable tag; taking one back is the
+      same write with that id left out. The engine half needed nothing — `candidatesFor` and
+      `remaining` were already right for a multi-element `Choice`, proved by a same-render
+      three-cantrip test that predates this fix — the bug was entirely the pane never sending
+      more than one id at a time.
+  - [ ] **`multiple: true` on a build step — campaign options — is still unbuilt.** Genuinely
+        separate from the bug above: a system-format change
+        (`schemas/system.schema.json`, plus the `required`-and-`multiple` validation rejection)
+        that makes a build step publish a decision answered by zero or more of its candidates,
+        never blocking. The mechanism is entirely content's already — 294 `<select …
+        requirements="ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI">` across the corpus, each paired with
+        the fixed `<stat>` it replaces — and `aurora-import` has always written the six
+        `type="Option"` elements to `build/options`. So an imported Aurora character keeps its
+        options and one built in Incudo cannot have any, purely because no build step offers a
+        set. Tasha's customized ability scores, languages and proficiencies all arrive together,
+        and so does the Human Variant, which no race list the app has ever drawn included.
+        Touches the system definition format, which is why it is an ADR and not a commit.
 - [x] Save/load `.incu` files; **import `.dnd5e`** (the importer was done — this was the UI
       for it). The library reads and writes `.incu` in both forms, and the desktop shell has a
       `ZipCodec` — the framing moved into `packages/core` so the browser's `CompressionStream`
