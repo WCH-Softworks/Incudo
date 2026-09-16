@@ -468,7 +468,8 @@ export class CharacterBuilder {
     // is one the derivation will accept.
     const requirementContext: RequirementContext = requirementContextFor(derived);
 
-    const decisions: OpenDecision[] = derived.pendingChoices.map((choice) => ({
+    // A select opened by something already chosen — a class's Skill Proficiency, say.
+    const selectDecisions: OpenDecision[] = derived.pendingChoices.map((choice) => ({
       id: choice.ruleKey,
       kind: 'select',
       label: choice.label,
@@ -487,6 +488,7 @@ export class CharacterBuilder {
     // `Character.advancement` and belongs to `setProgress` (ADR 0015), not to a choice. Steps
     // that are neither — equipment, spells, details — are left alone rather than given an
     // invented decision, because the bag (ADR 0024) and content's own selects already own them.
+    const pickDecisions: OpenDecision[] = [];
     const picks: SettledPick[] = [];
     for (const step of this.steps) {
       if (!step.required || step.perLevel || !step.types.length) continue;
@@ -517,7 +519,7 @@ export class CharacterBuilder {
         continue;
       }
 
-      decisions.push({
+      pickDecisions.push({
         id: ruleKey,
         kind: 'pick',
         label: step.label,
@@ -529,6 +531,15 @@ export class CharacterBuilder {
         candidates,
       });
     }
+
+    // Picks first, then what they open. A background often grants a skill proficiency
+    // outright, and a class's own Skill Proficiency select already excludes whatever the
+    // character holds — so listing an unanswered Race or Background ahead of a select that
+    // something else already opened means a skill the character will get for free is off the
+    // list *before* it is picked from, not a wasted duplicate discovered after the fact.
+    // Presentation only, same as everywhere else in this file: nothing here is blocked, and
+    // any decision below is answerable in whatever order the screen is read (ADR 0017).
+    const decisions: OpenDecision[] = [...pickDecisions, ...selectDecisions];
 
     const budgets = new Map<string, BudgetState>();
     for (const step of this.steps) {

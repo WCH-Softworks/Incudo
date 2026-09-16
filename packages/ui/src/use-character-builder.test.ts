@@ -134,6 +134,44 @@ test('a decision opened by a later choice arrives without navigating anywhere', 
   assert.equal(character.choices.length, 0, 'the original character is untouched');
 });
 
+test('an unanswered pick sorts before a select that something already chosen opened', () => {
+  // Background before Skill Proficiency, generalised: an unanswered Race or Background often
+  // grants something outright that a class's own select would otherwise offer, and the select
+  // already excludes whatever the character holds (`candidatesFor`) — so listing the pick
+  // first means a skill the character will get for free is off the list before it is chosen
+  // from, not a wasted duplicate discovered after the fact. Presentation only: both are open
+  // and answerable regardless of order (ADR 0017), which the last assertion checks directly.
+  const sys = system();
+  sys.characterKinds[0]!.buildSteps!.push({
+    id: 'origin',
+    label: 'Origin',
+    types: ['Origin'],
+    required: true,
+  });
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'sub', type: 'Gadget', name: 'Subchoice', number: 1 },
+    ]),
+    element('GADGET', 'Gadget'),
+    element('AN_ORIGIN', 'Origin'),
+  );
+  const b = builder(index, sys);
+  b.choose('build/kit', ['CLASSY']);
+
+  const state = b.getState();
+  const kinds = state.decisions.map((d) => d.kind);
+  assert.ok(
+    kinds.indexOf('pick') < kinds.indexOf('select'),
+    `the still-open Origin pick should read before Subchoice, got ${kinds.join(', ')}`,
+  );
+
+  // Answering the select while the pick is still open is not refused — the order is a
+  // reading order, not a gate.
+  const subchoice = state.decisions.find((d) => d.kind === 'select')!;
+  b.choose(subchoice.id, ['GADGET']);
+  assert.ok(b.getState().derived.elementIds.has('GADGET'));
+});
+
 test('a decision that a level opens is tagged with the level that opened it', () => {
   const index = indexWith(
     element('CLASSY', 'Widget', [
