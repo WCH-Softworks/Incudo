@@ -774,6 +774,88 @@ test('a growing allowance is one decision the shell can answer, not three', () =
   assert.deepEqual(after.derived.problems, []);
 });
 
+// --- a decision that can hold more than one element (ADR 0032) --------------
+
+test('a multi-slot select publishes what it already holds, empty until something is chosen', () => {
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'skills', type: 'Gadget', name: 'Skills', number: 2 },
+    ]),
+    element('A', 'Gadget'),
+    element('B', 'Gadget'),
+  );
+  const b = builder(index);
+  b.choose('build/start', ['CLASSY']);
+
+  const decision = b.getState().decisions.find((d) => d.label === 'Skills')!;
+  assert.deepEqual(decision.chosen, []);
+  assert.equal(decision.remaining, 2);
+});
+
+test('sending the union of what is chosen and a new pick accumulates, one at a time', () => {
+  // The bug the report was named after: `choose(id, [value])` replaces the whole recorded
+  // list, so a second pick silently discarded the first and the select could never close.
+  // The pane's fix is to send `choose` what this test sends it — the union — not the new
+  // value alone.
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'skills', type: 'Gadget', name: 'Skills', number: 2 },
+    ]),
+    element('A', 'Gadget'),
+    element('B', 'Gadget'),
+    element('C', 'Gadget'),
+  );
+  const b = builder(index);
+  b.choose('build/start', ['CLASSY']);
+
+  let decision = b.getState().decisions.find((d) => d.label === 'Skills')!;
+  b.choose(decision.id, [...decision.chosen, 'A']);
+
+  decision = b.getState().decisions.find((d) => d.label === 'Skills')!;
+  assert.deepEqual(decision.chosen, ['A'], 'the first answer survives a second pick');
+  assert.equal(decision.remaining, 1);
+  assert.deepEqual(decision.candidates.sort(), ['B', 'C'], 'and is excluded from what is left');
+
+  b.choose(decision.id, [...decision.chosen, 'B']);
+
+  const state = b.getState();
+  assert.equal(
+    state.decisions.some((d) => d.label === 'Skills'),
+    false,
+    'both slots filled closes the decision',
+  );
+  assert.ok(state.derived.elementIds.has('A'));
+  assert.ok(state.derived.elementIds.has('B'));
+});
+
+test('taking back one answer reopens it as a candidate', () => {
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'skills', type: 'Gadget', name: 'Skills', number: 2 },
+    ]),
+    element('A', 'Gadget'),
+    element('B', 'Gadget'),
+  );
+  const b = builder(index);
+  b.choose('build/start', ['CLASSY']);
+  const first = b.getState().decisions.find((d) => d.label === 'Skills')!;
+  b.choose(first.id, ['A', 'B']);
+  assert.equal(b.getState().decisions.some((d) => d.label === 'Skills'), false);
+
+  // Removing one is the remaining set without it — the write `choose` already supports,
+  // not a new method.
+  b.choose(first.id, ['A']);
+  const reopened = b.getState().decisions.find((d) => d.label === 'Skills')!;
+  assert.deepEqual(reopened.chosen, ['A']);
+  assert.deepEqual(reopened.candidates, ['B']);
+});
+
+test("a pick's chosen is always empty, because an answered one leaves the open list", () => {
+  const b = builder(indexWith(element('W1', 'Widget')));
+  const pick = b.getState().decisions.find((d) => d.kind === 'pick')!;
+  assert.deepEqual(pick.chosen, []);
+});
+
 test('a filter Incudo cannot evaluate is named, not silently empty', () => {
   // The distinction that cost a wrong diagnosis: an unresolved `$(…)` matches nothing, so the
   // candidate list is empty — which is indistinguishable on screen from "you have not loaded

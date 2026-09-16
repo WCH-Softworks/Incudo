@@ -21,6 +21,7 @@ import {
   clampProgress,
   deriveCharacter,
   evaluateRequirements,
+  getChoice,
   orderBuildSteps,
   requirementContextFor,
   resolveCharacterKind,
@@ -96,9 +97,22 @@ export interface OpenDecision {
    *
    * Carried here so a shell never has to reach into `derived.pendingChoices` and re-implement
    * the filtering — that is the view-model's job, not the view's (CODE-REUSE-POLICY rule 2).
-   * Empty for a `budget`, which assigns numbers rather than elements.
+   * Empty for a `budget`, which assigns numbers rather than elements. Already excludes
+   * `chosen`, so a `<select>` offering this list never lists an answer twice.
    */
   candidates: ElementId[];
+  /**
+   * What a `select` already holds, for the slots answered so far — ADR 0032. Always `[]` for a
+   * one-slot select, because the moment its one answer is recorded it leaves this list
+   * entirely; only visible while `remaining > 0` with something already chosen, which is
+   * exactly a wizard's second and third cantrip.
+   *
+   * `choose` replaces the whole recorded list, which is right for a `pick` (one answer,
+   * swapped for a different one) and for a caller that already assembled the complete set
+   * itself. A `<select>` filling its slots one at a time needs to know what is already there
+   * before it can send `choose` the union — a shell cannot compute that without being told.
+   */
+  chosen: ElementId[];
   /**
    * Filter terms Incudo cannot evaluate yet, so `candidates` is short rather than complete.
    *
@@ -479,6 +493,10 @@ export class CharacterBuilder {
       openedAt: choice.level,
       remaining: choice.remaining,
       candidates: choice.candidates,
+      // What this rule already holds — a wizard's first cantrip, while its second is still
+      // open. `getChoice` and not `choice`'s own shape: the engine tracks how many are left,
+      // not which ids they were (ADR 0032).
+      chosen: getChoice(this.character, choice.ruleKey)?.elementIds ?? [],
       unresolved: choice.unresolvedSupports,
     }));
 
@@ -529,6 +547,8 @@ export class CharacterBuilder {
         // A top-level pick has no supports filter; the step names types and nothing else.
         unresolved: [],
         candidates,
+        // Unanswered by construction — the moment it has one it moves to `picks` below.
+        chosen: [],
       });
     }
 
@@ -564,6 +584,7 @@ export class CharacterBuilder {
             state.pooled && state.remaining > 0 ? state.remaining : state.unassigned.length,
           // A budget assigns numbers, not elements.
           candidates: [],
+          chosen: [],
           unresolved: [],
         });
       }
@@ -584,6 +605,7 @@ export class CharacterBuilder {
           remaining: state.pending.length,
           // A per-level roll assigns a number, not an element.
           candidates: [],
+          chosen: [],
           unresolved: [],
         });
       }

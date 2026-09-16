@@ -307,36 +307,77 @@ function Decision({
         ) : (
           <p className="hint">This step declares per-level rolls the builder did not publish.</p>
         )
-      ) : decision.candidates.length > 0 ? (
-        <select
-          defaultValue=""
-          onChange={(event) => {
-            if (event.target.value) builder.choose(decision.id, [event.target.value]);
-          }}
-        >
-          <option value="" disabled>
-            Choose one of {decision.candidates.length}…
-          </option>
-          {decision.candidates
-            .map((id) => ({ id, name: candidateLabel(id) }))
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-        </select>
-      ) : decision.unresolved.length > 0 ? (
-        // Not the same sentence as the one below, and the difference matters: adding a content
-        // source will not help here, so saying "no content matches" would send the user to do
-        // something useless. See OpenDecision.unresolved.
-        <p className="hint">
-          This choice filters on <code>{decision.unresolved.map((k) => `$(${k})`).join(', ')}</code>
-          , which Incudo does not resolve yet — so it can offer nothing rather than the wrong
-          thing. Not a missing content source.
-        </p>
       ) : (
-        <p className="hint">No candidate in the loaded content matches this choice.</p>
+        <>
+          {/*
+            What this decision already holds, for a slot filled while others are still open —
+            a wizard's first cantrip, say, with a second and third still to pick. Always empty
+            for a `pick`, which is answered once and moves to "Choices already made" instead;
+            visible here only for a `select` asking for more than one (ADR 0032). Each answer
+            can be taken back on its own, which `choose` already supports — the write is just
+            the remaining set with one id removed.
+          */}
+          {decision.chosen.length > 0 && (
+            <ul className="chosen-values">
+              {decision.chosen.map((id) => (
+                <li key={id}>
+                  {candidateLabel(id)}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      builder.choose(
+                        decision.id,
+                        decision.chosen.filter((chosenId) => chosenId !== id),
+                      )
+                    }
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {decision.candidates.length > 0 ? (
+            <select
+              defaultValue=""
+              onChange={(event) => {
+                // `choose` replaces the whole recorded list, so a slot that fills one at a
+                // time has to send it what is already there plus the new one — never just
+                // the new one, which is the bug this reopens every time the select is used
+                // again (ADR 0032). `decision.chosen` is `[]` for a `pick`, so this is exactly
+                // "replace" there and "add to" here without a separate branch for either.
+                if (event.target.value) {
+                  builder.choose(decision.id, [...decision.chosen, event.target.value]);
+                }
+              }}
+            >
+              <option value="" disabled>
+                Choose one of {decision.candidates.length}…
+              </option>
+              {decision.candidates
+                .map((id) => ({ id, name: candidateLabel(id) }))
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    {candidate.name}
+                  </option>
+                ))}
+            </select>
+          ) : decision.unresolved.length > 0 ? (
+            // Not the same sentence as the one below, and the difference matters: adding a
+            // content source will not help here, so saying "no content matches" would send the
+            // user to do something useless. See OpenDecision.unresolved.
+            <p className="hint">
+              This choice filters on{' '}
+              <code>{decision.unresolved.map((k) => `$(${k})`).join(', ')}</code>, which Incudo
+              does not resolve yet — so it can offer nothing rather than the wrong thing. Not a
+              missing content source.
+            </p>
+          ) : (
+            <p className="hint">No candidate in the loaded content matches this choice.</p>
+          )}
+        </>
       )}
     </>
   );

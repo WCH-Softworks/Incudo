@@ -314,6 +314,41 @@ ul.decisions li {
   font-size: 12px;
 }
 
+/* A select's answers so far, while it still has room for more (ADR 0032) — a wizard's first
+   cantrip, with a second and third still open. Not `.chosen`, which is the unrelated summary
+   in the Steps list. */
+.chosen-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.chosen-values li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 2px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.chosen-values button {
+  padding: 2px 7px;
+  border: none;
+  background: none;
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
+.chosen-values button:hover {
+  color: var(--error-line);
+  border-color: transparent;
+}
+
 /* What a completed step settled on, in the Steps list. Pushed right so the tags stay in a
    column however long a race's name and book run. */
 .chosen {
