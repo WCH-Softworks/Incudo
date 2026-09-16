@@ -289,9 +289,29 @@ before any code, both touching a public API:
       editor hid its rows until a method was picked, which is exactly the state every Aurora
       import lands in — six real scores and no recorded method — so picking one to see them was
       how a user would have lost them.
-- [ ] Level-up with `level="N"` grants and pending `<select>` choices — no longer a separate
-      screen (ADR 0017): `setProgress` changes a number and the decisions it opens arrive in the
-      same list as every other, tagged with the level that raised them.
+- [x] **Level-up.** `level="N"` grants and pending `<select>` choices already arrived correctly —
+      `setProgress` changes a number and ADR 0017/0018's machinery was right without rework. What
+      was missing, found by trying to level a character up rather than by reading the checklist,
+      was hit points: `hp`'s `rolls` derive (ADR 0019) had nothing to read, because nothing in the
+      app had ever written `hp:level:N`. A fresh level 1 wizard's sheet read **-1 hit points**.
+      A `perLevel` step may now declare `levelRoll: { pattern, dieSetter, classType }`
+      (`systems/dnd5e/system.json`'s "levels" step: `"hp:level:{n}"`, `"hd"`, `"Class"`).
+      `packages/ui/src/hitpoints.ts` reads the die off the governing element's own setter —
+      Aurora's content convention, `<set name="hd">d8</set>`, not something a system has to
+      invent — falling back to the character's single element of `classType` when no
+      `advancement` (ADR 0015) says otherwise, which is every character built in the app today.
+      Recording reuses `dice.ts` exactly as a budget's rolls do: idempotent (a level already
+      holding a value is left alone, so there is no path from a repaint to a reroll), and the
+      first level of the track is always the die's maximum — a rule the Player's Handbook states
+      outright, not a choice, so `planHitPointRecord` takes it regardless of which button was
+      pressed. The decision renders as a small table, one row per level, next to the ability
+      score editor in the same "outstanding, then settled" shape ADR 0017 already established.
+      **Run against the real AuroraLegacy corpus**: a level 1 Wizard read 6 hit points on
+      recording the maximum (a d6, Constitution 10); levelled to 5 with two averages, one actual
+      roll and one more average, the sheet read 22, matching the arithmetic by hand. The known
+      gaps this surfaced are pre-existing and already named above and in "Known from running
+      it" — the level 4 Ability Score Improvement still reports "no candidate" (the `Class`
+      `supports` operand), and the sheet still does not render features or proficiencies.
 - [ ] Character sheet
 - [ ] **A decision may hold more than one element**
       ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md), proposed). Two things, one
