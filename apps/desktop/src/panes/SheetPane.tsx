@@ -10,10 +10,16 @@
  * from content. It expands to one rendering per block the character's elements declare.
  */
 
-import type { BuilderState } from '@incudo/ui';
+import type { BuilderState, CharacterBuilder } from '@incudo/ui';
 import { collectDeclaredBlocks, substituteBlockPlaceholders, type ResolvedStat } from '@incudo/core';
 
-export function SheetPane({ state }: { state: BuilderState }): React.JSX.Element {
+export function SheetPane({
+  builder,
+  state,
+}: {
+  builder: CharacterBuilder;
+  state: BuilderState;
+}): React.JSX.Element {
   const { derived, kind } = state;
   const blocks = collectDeclaredBlocks(derived.elements);
 
@@ -27,7 +33,12 @@ export function SheetPane({ state }: { state: BuilderState }): React.JSX.Element
 
   return (
     <main className="pane sheet">
-      <h2>{state.character.name}</h2>
+      <input
+        className="sheet-name"
+        type="text"
+        value={state.character.name}
+        onChange={(event) => builder.setName(event.target.value)}
+      />
       <p className="lede">
         {kind.name} · {derived.elements.length} elements
       </p>

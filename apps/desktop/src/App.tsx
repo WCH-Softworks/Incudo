@@ -345,8 +345,18 @@ function Shell({
     entry?: LibraryEntryRef;
     /** What the manifest said when it was read — the conflict check compares this. */
     readAt?: string;
+    /**
+     * `character.name` as of the last successful save (or the open that gave us `entry`).
+     * `LibraryEntryRef.name` is never derived from this — a character renamed to Vigaro still
+     * lives in `aelin.incu` (ADR 0027) — so this is the one place that remembers what the name
+     * *was*, which is what lets the next save notice it changed and ask about the file too.
+     * Always set together with `entry`; undefined exactly when `entry` is.
+     */
+    savedName?: string;
   }>({ character: initial });
   const [saveNote, setSaveNote] = useState<string | null>(null);
+  /** A save whose character name no longer matches the file it would write to. */
+  const [renamePrompt, setRenamePrompt] = useState<{ from: string; to: string } | null>(null);
 
   /** The Aurora import: what it is doing, and what it did. Cleared by the user, not a timer. */
   const [importing, setImporting] = useState(false);
@@ -621,6 +631,7 @@ function Shell({
         embedded: opened.elements,
         entry: { name: entry.name, form: entry.form },
         readAt: entry.updatedAt,
+        savedName: opened.character.name,
       });
       setSaveNote(
         opened.problems.length
@@ -640,19 +651,67 @@ function Shell({
     setPane('build');
   }, [system]);
 
+  /**
+   * Write the character to `entry`, or — with `entry` left `undefined` — to a freshly chosen
+   * filename derived from the character's *current* name: a first save, or a rename the user
+   * just confirmed. Either way `working` ends up pointing at whichever file now holds it.
+   */
+  const performSave = useCallback(
+    async (entry: LibraryEntryRef | undefined): Promise<void> => {
+      const previousEntry = working.entry;
+      const result = await library.save(state.character, system, elements, {
+        entry,
+        form: entry?.form ?? previousEntry?.form,
+        expectUpdatedAt: entry ? working.readAt : undefined,
+        generator: 'incudo-desktop',
+      });
+      if (!result.ok) {
+        setSaveNote(result.message);
+        return;
+      }
+      // A rename save lands under a brand new name before the old file is touched — removing
+      // it only once the new one is confirmed written, so a crash in between leaves a harmless
+      // duplicate rather than losing the character.
+      if (previousEntry && entry === undefined && previousEntry.name !== result.entry.name) {
+        await library.remove(previousEntry);
+      }
+      setWorking((previous) => ({
+        ...previous,
+        entry: result.entry,
+        readAt: state.character.updatedAt,
+        savedName: state.character.name,
+      }));
+      setSaveNote(`Saved to ${result.entry.name}.`);
+    },
+    [library, state.character, system, elements, working.entry, working.readAt],
+  );
+
+  /**
+   * Save, unless the character was renamed since the last save. `LibraryEntryRef.name` never
+   * follows `character.name` (ADR 0027) — "a character renamed to Vigaro still lives in
+   * aelin.incu" — so without this a rename would save silently under the old filename, with
+   * nothing on screen to say the two had drifted apart.
+   */
   const saveToLibrary = useCallback(async () => {
-    const result = await library.save(state.character, system, elements, {
-      entry: working.entry,
-      expectUpdatedAt: working.entry ? working.readAt : undefined,
-      generator: 'incudo-desktop',
-    });
-    if (!result.ok) {
-      setSaveNote(result.message);
+    if (
+      working.entry &&
+      working.savedName !== undefined &&
+      working.savedName !== state.character.name
+    ) {
+      setRenamePrompt({ from: working.savedName, to: state.character.name });
       return;
     }
-    setWorking((previous) => ({ ...previous, entry: result.entry, readAt: state.character.updatedAt }));
-    setSaveNote(`Saved to ${result.entry.name}.`);
-  }, [library, state.character, system, elements, working.entry, working.readAt]);
+    await performSave(working.entry);
+  }, [working.entry, working.savedName, state.character.name, performSave]);
+
+  /** The rename prompt's two real answers: a fresh file under the new name, or keep the old one. */
+  const resolveRename = useCallback(
+    async (renameFile: boolean) => {
+      setRenamePrompt(null);
+      await performSave(renameFile ? undefined : working.entry);
+    },
+    [performSave, working.entry],
+  );
 
   const panes: Array<[Pane, string]> = [
     ['library', 'Characters'],
@@ -753,7 +812,7 @@ function Shell({
           />
         </>
       )}
-      {pane === 'sheet' && <SheetPane state={state} />}
+      {pane === 'sheet' && <SheetPane builder={builder} state={state} />}
       {pane === 'settings' && (
         <SettingsPane
           location={libraryState.location}
@@ -779,6 +838,66 @@ function Shell({
           shell={platform.shell}
         />
       )}
+      <RenameFileDialog
+        prompt={renamePrompt}
+        onRenameFile={() => void resolveRename(true)}
+        onKeepFilename={() => void resolveRename(false)}
+        onDismiss={() => setRenamePrompt(null)}
+      />
     </div>
+  );
+}
+
+/**
+ * "You renamed the character — rename the file too?", asked once per save that needs it.
+ *
+ * Declining is a real answer, not a dodge: `LibraryEntryRef.name` is deliberately never
+ * derived from `character.name` (ADR 0027), so keeping the old filename is a legitimate
+ * choice, not a state to nag the user out of on every later save. Only *this* save is asked
+ * about; saving again with the same drift asks again, the same way a re-save always might.
+ */
+function RenameFileDialog({
+  prompt,
+  onRenameFile,
+  onKeepFilename,
+  onDismiss,
+}: {
+  prompt: { from: string; to: string } | null;
+  onRenameFile: () => void;
+  onKeepFilename: () => void;
+  onDismiss: () => void;
+}): React.JSX.Element | null {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (prompt && !dialog.open) dialog.showModal();
+    if (!prompt && dialog.open) dialog.close();
+  }, [prompt]);
+
+  return (
+    <dialog ref={ref} className="ask" onClose={onDismiss} onCancel={onDismiss}>
+      {prompt && (
+        <>
+          <h2>Rename the file too?</h2>
+          <p className="lede">
+            This character is now called <strong>{prompt.to}</strong>, saved under a file named
+            after <strong>{prompt.from}</strong>.
+          </p>
+          <p className="hint">
+            Incudo never renames a file on its own — only when you ask, here.
+          </p>
+          <div className="row">
+            <button type="button" className="on" onClick={onRenameFile}>
+              Rename the file
+            </button>
+            <button type="button" onClick={onKeepFilename}>
+              Keep the old filename
+            </button>
+          </div>
+        </>
+      )}
+    </dialog>
   );
 }

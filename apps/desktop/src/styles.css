@@ -379,8 +379,31 @@ ul.problems li.error {
   font-weight: 600;
 }
 
-.progress-bar input {
+.progress-bar input[type='number'] {
   width: 72px;
+}
+
+.progress-bar input[type='text'] {
+  width: 220px;
+}
+
+.sheet-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 24px 0 8px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+}
+
+.sheet-name:hover,
+.sheet-name:focus {
+  border-color: var(--line);
+  outline: none;
 }
 
 .sheet-section {
