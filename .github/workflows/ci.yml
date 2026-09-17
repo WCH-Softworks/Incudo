@@ -64,5 +64,5 @@ jobs:
       - name: Import and validate
         run: |
           npm run incudo -- validate .corpus/AuroraLegacy.index --local --root .corpus --offline \
-            --expect-files 740 --expect-elements 12058 \
+            --expect-files 740 --expect-elements 14316 \
             --max-unresolved 1 --max-warnings 57

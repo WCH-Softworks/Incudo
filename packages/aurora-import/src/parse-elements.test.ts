@@ -1,17 +1,20 @@
 /**
- * The elements parser, on the five constructs it used to walk straight past.
+ * The elements parser, on the six constructs it used to walk straight past.
  *
- * All five were found by pointing the differential verification at real saves and then
+ * All six were found by pointing the differential verification at real saves and then
  * counting what the corpus actually contains: 3,611 element-level `<supports>` blocks, 1,845
  * element-level `<requirements>`, 171 `<append>`, 79 `equipped=` attributes of which not
- * one is `"true"`, and 17 `<spellcasting><list>` children (ADR 0030). None were being read,
- * and the first of those meant no `<select supports="…">` had ever matched anything.
+ * one is `"true"`, 17 `<spellcasting><list>` children (ADR 0030), and 346 `<select>`s whose
+ * candidates are inline `<item>` text rather than element references (2,258 items — a
+ * background's suggested Personality Trait, Ideal, Bond, Flaw, and similar). None were being
+ * read; the first meant no `<select supports="…">` had ever matched anything, and the last
+ * meant every one of those 346 selects offered nothing at all.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { declaredBlocks } from '@incudo/core';
+import { declaredBlocks, candidatesFor, MapElementIndex, type SelectRule } from '@incudo/core';
 
 import { parseAuroraElements } from './parse-elements.ts';
 
@@ -222,4 +225,121 @@ test('the list reaches the neutral view of a block, where a filter can read it',
     </element>`);
   const [block] = declaredBlocks(file.elements[0]!);
   assert.equal(block!.attributes['list'], 'Wizard,(Enchantment||Illusion)');
+});
+
+test('a <select>\'s nested <item>s become elements, keyed off the owner and the select name', () => {
+  const file = parse(`
+    <element name="Acolyte" type="Background" id="ID_BACKGROUND_ACOLYTE" source="Player's Handbook">
+      <rules>
+        <select type="List" name="Ideal" number="1">
+          <item id="1">Tradition. The ancient ways must be upheld.</item>
+          <item id="2">Charity. I always try to help those in need.</item>
+        </select>
+      </rules>
+    </element>`);
+
+  // The select rule itself is unaffected — it still just names its type and number.
+  // (Synthesized items land in `file.elements` ahead of their owner: `parseRules` pushes
+  // them while parsing the owner's own rules, before the owner itself is pushed.)
+  const owner = file.elements.find((e) => e.id === 'ID_BACKGROUND_ACOLYTE')!;
+  assert.equal(owner.rules.length, 1);
+  assert.equal(owner.rules[0]!.kind, 'select');
+
+  const items = file.elements.filter((e) => e.id !== owner!.id);
+  assert.equal(items.length, 2);
+  assert.deepEqual(
+    items.map((e) => e.id).sort(),
+    ['ID_BACKGROUND_ACOLYTE/list:Ideal/1', 'ID_BACKGROUND_ACOLYTE/list:Ideal/2'],
+  );
+  const first = items.find((e) => e.id === 'ID_BACKGROUND_ACOLYTE/list:Ideal/1')!;
+  assert.equal(first.type, 'List');
+  assert.equal(first.name, 'Tradition. The ancient ways must be upheld.');
+  assert.equal(first.source, "Player's Handbook", 'inherits the owner\'s source, not "Unknown"');
+  assert.deepEqual(first.rules, [], 'flavor text, no mechanical effect');
+});
+
+test('two backgrounds\' "Ideal" pools do not leak into each other, though both share type List', () => {
+  // Every one of the 346 `type="List"` selects in the corpus shares that one type and none
+  // declares its own `supports=`, so `candidatesFor`'s plain `elements.byType("List")` would
+  // return all 2,258 items from every background's table for any of them. A `supports` tag
+  // scoped to (owner, select name) is what keeps Acolyte's Ideal pool from also offering
+  // Noble's.
+  const acolyte = parse(`
+    <element name="Acolyte" type="Background" id="ID_BACKGROUND_ACOLYTE">
+      <rules>
+        <select type="List" name="Ideal" number="1">
+          <item id="1">Tradition. The ancient ways must be upheld.</item>
+        </select>
+      </rules>
+    </element>`);
+  const noble = parse(`
+    <element name="Noble" type="Background" id="ID_BACKGROUND_NOBLE">
+      <rules>
+        <select type="List" name="Ideal" number="1">
+          <item id="1">Noblesse oblige. It is my duty to protect those beneath me.</item>
+        </select>
+      </rules>
+    </element>`);
+
+  const index = new MapElementIndex();
+  for (const element of [...acolyte.elements, ...noble.elements]) index.add(element);
+
+  const acolyteOwner = acolyte.elements.find((e) => e.id === 'ID_BACKGROUND_ACOLYTE')!;
+  const acolyteIdeal = acolyteOwner.rules.find((r) => r.kind === 'select') as SelectRule;
+  const candidates = candidatesFor(acolyteIdeal, index);
+
+  assert.deepEqual(
+    candidates.map((c) => c.id),
+    ['ID_BACKGROUND_ACOLYTE/list:Ideal/1'],
+    'only Acolyte\'s own Ideal, not Noble\'s, despite both being type List',
+  );
+});
+
+test('an <item> with no id is reported rather than silently dropped', () => {
+  const file = parse(`
+    <element name="Acolyte" type="Background" id="ID_BACKGROUND_ACOLYTE">
+      <rules>
+        <select type="List" name="Ideal">
+          <item>No id on this one.</item>
+        </select>
+      </rules>
+    </element>`);
+  assert.equal(file.elements.length, 1, 'nothing was synthesized for the id-less item');
+  assert.equal(
+    file.diagnostics.filter((d) => d.message.includes('has no id and was skipped')).length,
+    1,
+  );
+});
+
+test('an <item> with no text is reported rather than becoming a blank candidate', () => {
+  const file = parse(`
+    <element name="Acolyte" type="Background" id="ID_BACKGROUND_ACOLYTE">
+      <rules>
+        <select type="List" name="Ideal">
+          <item id="1"></item>
+        </select>
+      </rules>
+    </element>`);
+  assert.equal(file.elements.length, 1);
+  assert.equal(
+    file.diagnostics.filter((d) => d.message.includes('has no text and was skipped')).length,
+    1,
+  );
+});
+
+test('an <item>\'s text survives inline markup, in order — Ghosts of Saltmarsh wraps a lead word', () => {
+  // background-smuggler.xml wraps the lead word of each Ideal in <strong>, the one exception
+  // to "plain text" the corpus has. `.text` only accumulates text nodes directly under
+  // <item>, so it would silently drop anything inside the nested tag; `innerXml` is the raw,
+  // order-preserving source, so stripping tags recovers the whole sentence in the right order.
+  const file = parse(`
+    <element name="Smuggler" type="Background" id="ID_BACKGROUND_SMUGGLER">
+      <rules>
+        <select type="List" name="Ideal">
+          <item id="1"><strong>Wealth.</strong> Heaps of coins are the only true measure of success.</item>
+        </select>
+      </rules>
+    </element>`);
+  const item = file.elements.find((e) => e.id === 'ID_BACKGROUND_SMUGGLER/list:Ideal/1')!;
+  assert.equal(item.name, 'Wealth. Heaps of coins are the only true measure of success.');
 });

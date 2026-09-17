@@ -1,4 +1,4 @@
-# Incudo — working notes for Claude Code
+# Incudo — working notes for Codex
 
 A system-agnostic tabletop character builder for desktop and mobile. Free, MIT, open source.
 A replacement for the discontinued Aurora Builder that reads its entire content ecosystem.
@@ -339,7 +339,7 @@ running it protects the product.**
   reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
   the cache answers.
 
-Ten things the shell has surfaced, two of them since fixed and struck through. The rest are
+Ten things the shell has surfaced, one of them since fixed and struck through. The rest are
 deliberately **not** fixed:
 
 - **~~An answered `pick` cannot be changed.~~** Fixed. It was predicted here to be "a real screen
@@ -351,38 +351,14 @@ deliberately **not** fixed:
   **This is not a Back button and ADR 0017 is untouched**: a settled pick is not somewhere you
   navigate to, it is something on screen that kept its control. The pane's header comment had
   been using "no Back button" as cover for the hole, which is how it survived.
-- **~~A decision could only ever record one element, and waited for the whole pool to close
-  before any of it could settle.~~** Fixed in three passes, all found live rather than by a
-  test. First: a player chose a Skill
-  Proficiency after a Sage background, and a second pick left the *first* one stuck on screen
-  with no way to add to it — `choose(id, [value])` replaces, so `BuilderPane` was always sending
-  a single-item array and `setChoice` always overwrote whatever was there. `OpenDecision` gained
-  `chosen: ElementId[]` alongside `candidates` (ADR 0032's decision 1, landed ahead of the rest
-  of that ADR), and the pane's write while a pool is open became
-  `choose(id, [...decision.chosen, value])` — "replace" for a `pick`, where `chosen` is always
-  `[]`, and "add to" for a `select` asking for more than one, with no branch needed between the
-  two. Second, reported once the first fix made it reachable: filling the *last* slot made the
-  whole decision vanish, exactly the hole ADR 0017 had already fixed for a top-level pick — a
-  second Skill Proficiency had nowhere to be changed once chosen, any more than Race did before
-  `picks` existed. The engine gained `answeredChoices` beside `pendingChoices`, publishing every
-  slot's answer and what any one slot could hold instead once a pool has nothing left to
-  choose — `pendingChoices` itself is untouched, so the CLI and the self-containment test needed
-  no changes — and `packages/ui` folds these into the same `picks`/`SettledPick` array a
-  top-level pick already used. A full Skill Proficiency now renders in "Choices already made"
-  exactly like Race: one `<select>` per filled slot, independently changeable, each excluding
-  every *other* slot's current answer so two slots can never agree on one.
-  Third, reported straight after the second: an answered slot was still waiting for its *whole
-  pool* to close, so a wizard's first cantrip sat inside the open decision as a tag until the
-  second and third were also picked — settled and outstanding shown as one undecided thing. Every
-  slot with an answer now settles the moment it is recorded, pool closed or not:
-  `use-character-builder.ts` builds a `SettledPick` straight from `pendingChoices` for any rule
-  with `chosen.length > 0`, using the exact "add `chosen` back into its own candidates" trick the
-  full-pool case already used, and the open decision that remains shows only what is left — "2
-  left", a plain dropdown, no tags. `answeredChoices` needed no change for this pass.
-  The engine's candidate-and-remaining math needed nothing for any of the three passes —
-  `candidatesFor` and `remaining` already handled a multi-element `Choice` correctly, proved by a
-  same-render three-answer test that predates all of them — so every one of these bugs was in the
-  pane and in what the engine chose to publish once a pool closed or a slot filled.
+- **A decision can only ever record one element, and that is a live bug** (ADR 0032, proposed).
+  `BuilderPane` answers a select with `choose(id, [value])` and `setChoice` **replaces**, so a
+  wizard owed three cantrips records one: pick a second and it silently overwrites the first.
+  The dropdown then displays a *third* spell, because the list re-renders without the taken one
+  and an uncontrolled `<select>` keeps its index. `OpenDecision` publishes `candidates` and
+  never `chosen`, so a shell has nothing to append to — the fix is a field on the view-model,
+  not a patch in the pane. Do not read ADR 0030's green result as covering this: that work
+  made the engine offer the right *candidates*, and this is about recording the answer.
 - **The character sheet renders no features, traits, proficiencies or languages.**
   `SheetPane.tsx` does `if (!stats.length) return null`, and the `features` and `proficiencies`
   sections declare `types` with no `stats`, so they are dropped whole. The CLI renders them
@@ -426,10 +402,8 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030 and 0031 are implemented; **0032 is proposed, and its `OpenDecision.chosen` half is now
-built** — the multi-pick bug it names is fixed, but `multiple: true` on a build step (campaign
-options) is not. Read the ADR's status note before reaching for a multi-select anywhere. Phase 1
-is done — **`packages/aurora-import`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030 and 0031 are implemented; **0032 is proposed and deliberately unbuilt** — read it before
+reaching for a multi-select anywhere. Phase 1 is done — **`packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,

@@ -63,10 +63,11 @@ anyway.
 
 ### Constructs that are easy to miss, and were
 
-There are five of them now. Every one was read past in silence, none of them errored, and
+There are six of them now. Every one was read past in silence, none of them errored, and
 every one was found the same way — by counting what the corpus contains rather than by
-reading the format. Three are below, `equipped=` follows them, and the fifth is
-`<spellcasting><list>`, in the `supports` section further down. The first is the expensive one.
+reading the format. Three are below, `equipped=` follows them, the fifth is
+`<spellcasting><list>` in the `supports` section further down, and the sixth is a `<select>`'s
+own nested `<item>`s, right after this list. The first is the expensive one.
 
 **`<supports>` is a child of `<element>`, not of `<rules>`.** The corpus contains 3,611 of
 them and **not one** inside `<rules>` — so an importer that only looks inside `<rules>` ends
@@ -151,6 +152,22 @@ treatment**; it needed `equipped` to parse and then to be evaluated, both of whi
 and what is left is a system definition that derives `ac` from `ac:calculation` — step 5, and
 the only piece of 5e's armour class still missing.
 
+**A `<select>`'s candidates are usually elements — 346 of them are text.** A background's
+suggested Personality Trait, Ideal, Bond and Flaw (and a few similarly-shaped tables —
+Trinket, Specialty, …) are written as `<select type="List" name="Ideal">` wrapping
+`<item id="1">Tradition. The ancient traditions…</item>` children, each with a small local
+number rather than a real `ID_…`. Nothing else in the corpus works this way — every other
+`<select>` offers elements the index already knows about — so `candidatesFor`'s
+`elements.byType(type)` found nothing for `type="List"`: no `<element type="List">` has ever
+existed to find. 2,258 of these across 346 selects, and every one read "No candidate in the
+loaded content matches this choice" until the importer started reading `<item>` at all.
+`parseRules` in `packages/aurora-import/src/parse-elements.ts` now synthesizes one element per
+item — id `<owner id>/list:<select name>/<item id>`, no rules, name is the item's text — so
+the rest of the select/candidate/`Choice` pipeline needs nothing new. Gated on the `<item>`
+shape being present, not on `type="List"` by name: the corpus happens to only use that type
+for this, but the construct is structural, and a system with a different type string for the
+same shape should get it for free.
+
 ## Element types seen in the wild
 
 Aurora does **not** define these anywhere — they are just strings, and the app has hardcoded
@@ -176,7 +193,7 @@ engine system-agnostic: Aurora hardcodes them, Incudo reads them.
 | tag | attributes observed |
 |---|---|
 | `grant` | `type`, `id`, `level`, `requirements`, `spellcasting`, `prepared`, `name`, `equipped`, `allowReplace` |
-| `select` | `type`, `name`, `supports`, `requirements`, `number`, `level`, `spellcasting`, `default`, `optional`, `allowReplace`, `prepared`, `default-behaviour` |
+| `select` | `type`, `name`, `supports`, `requirements`, `number`, `level`, `spellcasting`, `default`, `optional`, `allowReplace`, `prepared`, `default-behaviour` + nested `<item id="…">text</item>` on 346 of them — see below |
 | `stat` | `name`, `value`, `bonus`, `level`, `requirements`, `equipped`, `alt`, `inline`, `max`/`maximum`, `base`, `condition` |
 | `supports` | (text content) — but see above: in practice it lives outside `<rules>` |
 | `append` | `id` + nested `supports`, `rules`; a child of `<elements>`, not of `<element>` |
@@ -412,16 +429,22 @@ Two resolution modes therefore exist, and they are not interchangeable:
 
 ## Import baseline (measured)
 
-`incudo validate` run against a full local checkout of AuroraLegacy/elements, 2026-09-09:
+`incudo validate` run against a full local checkout of AuroraLegacy/elements, 2026-09-17:
 
 ```
 files:    740
-elements: 12,058  (+83 Aurora generates at runtime)
+elements: 14,316  (+83 Aurora generates at runtime)
 errors:   0
 unresolved references:              1
 requirements that can never be met: 23
 warnings:                           57
 ```
+
+It was 12,058 elements until a `<select>`'s nested `<item>`s started being read (see above) —
+2,258 of them, synthesized from inline text rather than an `<element>` tag, and every other
+number here held exactly still: same 0 errors, same 1 unresolved reference, same 23 unmeetable
+requirements, same 57 warnings. None of the new elements carry a rule or a support tag, so
+they had nothing to newly break.
 
 It was 57 unresolved references when this document was first written. Two things changed.
 
@@ -453,11 +476,16 @@ What is left:
 
 **These numbers are the regression baseline.** CI fails if the budgeted one grows.
 
-### One thing the format does not tell you
+### Two things the format does not tell you
 
 `<multiclass id="ID_WOTC_PHB_MULTICLASS_ROGUE">` declares an id that other content references
 (`requirements="!ID_WOTC_PHB_MULTICLASS_ROGUE"`), but nothing in the XML ever declares an
 *element* with that id — Aurora's app creates one when you multiclass. The importer synthesizes
-it (type `Multiclass`), which resolved 24 dangling references in `core.index` alone. Expect more
-undocumented app-side behaviour of this kind; the way to find it is to keep running the CLI over
-the whole corpus.
+it (type `Multiclass`), which resolved 24 dangling references in `core.index` alone.
+
+A `<select type="List">`'s `<item>`s are the same move for a different reason: nothing is
+*missing* here, the text is right there in the file, but there is still no `<element>` for it
+to become a candidate — Aurora's app reads the `<item>`s itself and Incudo has to too. Same
+fix, same shape: mint a deterministic id and synthesize an element, so the format's own
+`<select>`/`Choice` machinery needs nothing new. Expect more undocumented app-side behaviour of
+this kind; the way to find it is to keep running the CLI over the whole corpus.

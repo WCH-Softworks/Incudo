@@ -16,7 +16,7 @@ import {
   type SpellcastingBlock,
   type SheetHints,
 } from '@incudo/core';
-import { parseXml, childrenNamed, firstChild, findFirst, type XmlNode } from './xml.ts';
+import { parseXml, childrenNamed, firstChild, findFirst, decodeEntities, type XmlNode } from './xml.ts';
 
 export interface ImportDiagnostic {
   level: 'error' | 'warning';
@@ -66,7 +66,7 @@ export function parseAuroraElements(xml: string, options: ParseElementsOptions):
 
   const elements: Element[] = [];
   for (const node of childrenNamed(root, 'element')) {
-    const element = toElement(node, options, diagnostics);
+    const element = toElement(node, options, diagnostics, elements);
     if (!element) continue;
     elements.push(element);
     // A <multiclass> block declares an id that other content references by name
@@ -88,7 +88,11 @@ export function parseAuroraElements(xml: string, options: ParseElementsOptions):
       });
       continue;
     }
-    const parsed = parseRules(firstChild(node, 'rules'), id, diagnostics, options.fileUrl);
+    // An append targets another file's element by id and carries no `source` of its own —
+    // no `type="List"` select has ever been observed inside one (the construct is
+    // background-only, ADR 0005's "measure, don't guess" territory), but `'Unknown'`
+    // is the same fallback a same-shaped omission gets in `toElement`.
+    const parsed = parseRules(firstChild(node, 'rules'), id, 'Unknown', diagnostics, options, elements);
     appends.push({
       id,
       rules: parsed.rules,
@@ -111,6 +115,7 @@ function toElement(
   node: XmlNode,
   options: ParseElementsOptions,
   diagnostics: ImportDiagnostic[],
+  extraElements: Element[],
 ): Element | undefined {
   const id = node.attrs['id'];
   const type = node.attrs['type'];
@@ -126,14 +131,22 @@ function toElement(
     return undefined;
   }
 
+  const source = node.attrs['source'] ?? 'Unknown';
   const rulesNode = firstChild(node, 'rules');
-  const { rules, supports } = parseRules(rulesNode, id, diagnostics, options.fileUrl);
+  const { rules, supports } = parseRules(
+    rulesNode,
+    id,
+    source,
+    diagnostics,
+    options,
+    extraElements,
+  );
 
   const element: Element = {
     id,
     type,
     name,
-    source: node.attrs['source'] ?? 'Unknown',
+    source,
     setters: parseSetters(firstChild(node, 'setters')),
     rules,
     // Aurora puts `<supports>` beside `<rules>`, not inside it — 3,611 blocks in the corpus
@@ -151,7 +164,14 @@ function toElement(
     ),
     description: firstChild(node, 'description')?.innerXml.trim() || undefined,
     sheet: parseSheet(firstChild(node, 'sheet')),
-    multiclass: parseMulticlass(firstChild(node, 'multiclass'), id, diagnostics, options.fileUrl),
+    multiclass: parseMulticlass(
+      firstChild(node, 'multiclass'),
+      id,
+      source,
+      diagnostics,
+      options,
+      extraElements,
+    ),
     spellcasting: childrenNamed(node, 'spellcasting').map(parseSpellcasting),
     origin: { sourceId: options.sourceId, fileUrl: options.fileUrl, format: 'aurora' },
   };
@@ -279,11 +299,21 @@ function parseSpellcasting(node: XmlNode): SpellcastingBlock {
 function parseMulticlass(
   node: XmlNode | undefined,
   ownerId: string,
+  ownerSource: string,
   diagnostics: ImportDiagnostic[],
-  fileUrl: string,
+  options: ParseElementsOptions,
+  extraElements: Element[],
 ): MulticlassBlock | undefined {
   if (!node) return undefined;
-  const { rules } = parseRules(firstChild(node, 'rules'), `${ownerId}#multiclass`, diagnostics, fileUrl);
+  const fileUrl = options.fileUrl;
+  const { rules } = parseRules(
+    firstChild(node, 'rules'),
+    `${ownerId}#multiclass`,
+    ownerSource,
+    diagnostics,
+    options,
+    extraElements,
+  );
   return {
     id: node.attrs['id'] ?? `${ownerId}_MULTICLASS`,
     prerequisite: firstChild(node, 'prerequisite')?.text.trim() || undefined,
@@ -301,9 +331,12 @@ function parseMulticlass(
 function parseRules(
   node: XmlNode | undefined,
   ownerId: string,
+  ownerSource: string,
   diagnostics: ImportDiagnostic[],
-  fileUrl: string,
+  options: ParseElementsOptions,
+  extraElements: Element[],
 ): { rules: Rule[]; supports: string[] } {
+  const fileUrl = options.fileUrl;
   const rules: Rule[] = [];
   const supports: string[] = [];
   if (!node) return { rules, supports };
@@ -343,14 +376,37 @@ function parseRules(
         break;
       }
       case 'select': {
+        const selectName = child.attrs['name'] ?? 'Choice';
+        const selectType = child.attrs['type'] ?? '';
+        const items = childrenNamed(child, 'item');
+        // A background's suggested Personality Trait / Ideal / Bond / Flaw (and a handful
+        // of similarly-shaped tables — Trinket, Specialty, ...): 346 selects across the
+        // corpus whose candidates are inline text, `<item id="1">...text...</item>`, with
+        // small local numbers rather than a real `ID_...` reference — nothing else in the
+        // format works this way, and there is no `<element type="List">` anywhere for
+        // `candidatesFor` to find. Synthesizing one element per `<item>`, keyed
+        // deterministically off the owner and the select's own name, lets every existing
+        // select/candidate/Choice mechanism pick these up unchanged — the same move already
+        // made for a `<multiclass>` block's synthetic element (`multiclassAsElement` above).
+        // Gated on the `<item>` shape being present, not on `type="List"` by name: the
+        // corpus happens to only use that type for this, but the construct is structural,
+        // not a rule about what "List" means.
+        //
+        // Every background shares the type "List" (there is no `supports=` on any of these
+        // 346 selects to tell them apart), so without more, an Acolyte's "Personality Trait"
+        // would offer all 2,258 items from every background's tables, not its own 6–8. A
+        // `supports` tag scoped to (owner, select name) is what a filter is *for* — no new
+        // mechanism, and it leaves `Element.type` at the plain literal the XML wrote, so
+        // `incudo types` still reports one "List" bucket rather than 346 one-off ones.
+        const scopeTag = items.length > 0 ? `${ownerId}:list:${selectName}` : undefined;
         rules.push({
           kind: 'select',
           // Selects are keyed by name, not by position: a content update that inserts a
           // rule above must not silently reassign a user's recorded choice.
           key: `select:${child.attrs['name'] ?? nextKey('select')}`,
-          type: child.attrs['type'] ?? '',
-          name: child.attrs['name'] ?? 'Choice',
-          supports: parseSupports(child.attrs['supports']),
+          type: selectType,
+          name: selectName,
+          supports: scopeTag ? { kind: 'tag', tag: scopeTag } : parseSupports(child.attrs['supports']),
           number: numberOrUndefined(child.attrs['number']) ?? 1,
           level,
           requirements,
@@ -360,6 +416,38 @@ function parseRules(
           prepared: child.attrs['prepared'] === 'true',
           allowReplace: child.attrs['allowReplace'] === 'true',
         });
+        for (const item of items) {
+          const localId = item.attrs['id'];
+          if (!localId) {
+            diagnostics.push({
+              level: 'warning',
+              message: `An <item> inside the "${selectName}" select has no id and was skipped.`,
+              elementId: ownerId,
+              fileUrl,
+            });
+            continue;
+          }
+          const text = itemText(item);
+          if (!text) {
+            diagnostics.push({
+              level: 'warning',
+              message: `An <item id="${localId}"> inside the "${selectName}" select has no text and was skipped.`,
+              elementId: ownerId,
+              fileUrl,
+            });
+            continue;
+          }
+          extraElements.push({
+            id: `${ownerId}/list:${selectName}/${localId}`,
+            type: selectType,
+            name: text,
+            source: ownerSource,
+            setters: {},
+            rules: [],
+            supports: [scopeTag!],
+            origin: { sourceId: options.sourceId, fileUrl: options.fileUrl, format: 'aurora' },
+          });
+        }
         break;
       }
       case 'stat': {
@@ -432,4 +520,15 @@ function numberOrUndefined(raw: string | undefined): number | undefined {
   if (raw === undefined || raw.trim() === '') return undefined;
   const value = Number(raw);
   return Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * The plain-text label for a `<item>` inside a `<select>`. `innerXml`, not `.text`: one file
+ * (Ghosts of Saltmarsh's Smuggler background) wraps a lead word in `<strong>`, and `.text`
+ * only accumulates text nodes directly under the item — it would silently drop anything
+ * inside a nested tag. `innerXml` is the raw, order-preserving source slice, so stripping
+ * tags and decoding entities recovers the whole sentence in the order it was written.
+ */
+function itemText(node: XmlNode): string {
+  return decodeEntities(node.innerXml.replace(/<[^>]+>/g, '')).trim();
 }
