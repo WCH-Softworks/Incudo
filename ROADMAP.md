@@ -336,10 +336,19 @@ before any code, both touching a public API:
       filled slot, each independently changeable, each excluding every *other* slot's current
       answer. `pendingChoices` kept its existing contract throughout — it still means only
       "outstanding", so the CLI and the self-containment test needed no changes.
-      The engine's candidate-and-remaining math needed nothing for either pass — `candidatesFor`
-      and `remaining` were already right for a multi-element `Choice`, proved by a same-render
-      three-cantrip test that predates both fixes. Both bugs were entirely in the pane and in
-      what the engine chose to publish once a pool closed.
+      Third: an answered slot used to wait for the *whole pool* to close before it could settle,
+      so a wizard's first cantrip sat inside the still-open decision as a tag until the second
+      and third were also picked. Every slot with an answer now settles into `picks` the moment
+      it is recorded, whether or not its pool owes more — `use-character-builder.ts` builds this
+      straight from `pendingChoices`, whose own `candidates` already excludes everything the
+      character holds, so the same "add `chosen` back for this pool's entries" trick a full pool
+      uses works unchanged for a partial one. Choosing one of three cantrips now reads "Cantrip
+      (Wizard), 2 left" with a plain dropdown in Open Decisions and the one already picked beside
+      Race and Class in Choices Already Made, in the same render.
+      The engine's candidate-and-remaining math needed nothing for any of the three passes —
+      `candidatesFor` and `remaining` were already right for a multi-element `Choice`, proved by
+      a same-render three-cantrip test that predates all of them. Every bug was in the pane and
+      in what the engine chose to publish once a pool closed or a slot filled.
   - [ ] **`multiple: true` on a build step — campaign options — is still unbuilt.** Genuinely
         separate from the bug above: a system-format change
         (`schemas/system.schema.json`, plus the `required`-and-`multiple` validation rejection)

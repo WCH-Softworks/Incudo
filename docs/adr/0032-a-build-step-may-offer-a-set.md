@@ -169,6 +169,18 @@ Background: one `<select>` per filled slot, each independently changeable, each 
 existing contract — it still means only "outstanding" — so the CLI and the self-containment test
 needed no changes at all.
 
+**A third pass split the two apart, per slot, rather than waiting for the whole pool.** A
+wizard's first cantrip used to sit inside the open decision (as a tag, in the intermediate shape
+the first pass shipped) until the second and third were also answered — one part settled, one
+part outstanding, but shown as if the whole pool were still one undecided thing. Now every slot
+with an answer settles into `picks` the moment it is recorded, whether or not the pool it belongs
+to still owes more, and the open decision shows only what is left: "Cantrip (Wizard), 2 left"
+with a plain dropdown, no tags, once the first of three is picked. `use-character-builder.ts`
+builds this from `pendingChoices` alone — a partially-filled pool's own `candidates` already
+excludes everything the character holds, so the same "add `chosen` back for that pool's own
+entries" trick used for a full pool works unchanged for a partial one, and `answeredChoices` was
+not touched.
+
 **`multiple: true` on a build step — campaign options, and the Human Variant — is still proposed
 and not built.** That is a system-format change (decisions 2 and 3, and the schema/validation
 work in "The migration is nothing"), genuinely separate from both bug fixes above, and this note
