@@ -267,12 +267,14 @@
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["point-buy", "standard-array", "roll", "manual"] } },
         { "id": "race", "label": "Race", "types": ["Race"], "required": true },
         { "id": "class", "label": "Class", "types": ["Class"], "required": true },
-        { "id": "background", "label": "Background", "types": ["Background"], "required": true },
-        { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true, "requires": ["class"],
+        { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true, "requires": ["class"], "priority": 2.5,
           "levelRoll": { "pattern": "hp:level:{n}", "dieSetter": "hd", "classType": "Class" } },
+        { "id": "languages", "label": "Languages", "types": ["Language"], "priority": 2.9 },
+        { "id": "background", "label": "Background", "types": ["Background"], "required": true, "priority": 3 },
+        { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency"], "priority": 3.5 },
         { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
         { "id": "spells", "label": "Spells", "types": ["Spell"], "requires": ["class"] },
-        { "id": "details", "label": "Details", "types": ["Alignment", "Deity", "Language"] }
+        { "id": "details", "label": "Details", "types": ["Alignment", "Deity"] }
       ],
 
       "sheet": {

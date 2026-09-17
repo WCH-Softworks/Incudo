@@ -14,7 +14,13 @@
  * pick is not somewhere you go, it is something on screen that still has a control.
  */
 
-import type { CharacterBuilder, BuilderState, OpenDecision, SettledPick } from '@incudo/ui';
+import type {
+  CharacterBuilder,
+  BuilderState,
+  OpenDecision,
+  SettledPick,
+  DeclinedDecision,
+} from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
 import { BudgetEditor } from './BudgetEditor.tsx';
@@ -31,7 +37,7 @@ export function BuilderPane({
   elements: ElementIndex;
   hasContent: boolean;
 }): React.JSX.Element {
-  const { kind, derived, decisions, steps, picks } = state;
+  const { kind, derived, decisions, steps, picks, declined } = state;
   const progression = kind.progression;
   const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
 
@@ -63,6 +69,14 @@ export function BuilderPane({
   return (
     <main className="pane builder">
       <section className="progress-bar">
+        <label>
+          Name
+          <input
+            type="text"
+            value={state.character.name}
+            onChange={(event) => builder.setName(event.target.value)}
+          />
+        </label>
         <label>
           {progression.kind === 'none' ? 'Progress' : progression.stat ?? progression.kind}
           <input
@@ -225,7 +239,32 @@ export function BuilderPane({
             </section>
           )}
 
-          {picks.length === 0 && settled.length === 0 && (
+          {declined.length > 0 && (
+            <section>
+              <h2>Skipped</h2>
+              <p className="hint">
+                These are optional and answering them is not required. Reconsider brings one back
+                to Open decisions.
+              </p>
+              {declined.map((decision: DeclinedDecision) => (
+                <div key={decision.id} className="settled">
+                  <div className="decision-head">
+                    <span className="label">{decision.label}</span>
+                    {decision.from && <span className="from">from {nameOf(decision.from)}</span>}
+                    <button
+                      type="button"
+                      className="link"
+                      onClick={() => builder.reconsider(decision.id)}
+                    >
+                      Reconsider
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {picks.length === 0 && settled.length === 0 && declined.length === 0 && (
             <p className="lede">Nothing settled yet. Answers appear here once you make them.</p>
           )}
         </aside>
@@ -277,6 +316,16 @@ function Decision({
           <span className="tag">opened at {decision.openedAt}</span>
         )}
         {decision.from && <span className="from">from {nameOf(decision.from)}</span>}
+        {/*
+          Only where declining means anything (ADR 0033) — a blocking decision has no Skip
+          button at all rather than a disabled one, since "you must answer this, but here is
+          a button that refuses to" is not a clearer sentence than no button.
+        */}
+        {!decision.blocking && (
+          <button type="button" className="link" onClick={() => builder.decline(decision.id)}>
+            Skip
+          </button>
+        )}
       </div>
 
       {decision.kind === 'budget' ? (
@@ -306,6 +355,14 @@ function Decision({
           */}
           {decision.candidates.length > 0 ? (
             <select
+              // Keyed on how many slots are already filled, not just `decision.id`: this is
+              // an uncontrolled element (`defaultValue`), and answering one slot of a pool
+              // shrinks `candidates` without changing `decision.id` at all — React reused the
+              // same DOM node and never re-applied `defaultValue`, so the "2 left" dropdown
+              // for a wizard's remaining cantrips showed the alphabetically-first remaining
+              // candidate as if chosen, when nothing had been picked for that slot. Changing
+              // the key forces a remount, which is what actually resets an uncontrolled input.
+              key={`${decision.id}:${decision.chosen.length}`}
               defaultValue=""
               onChange={(event) => {
                 // `choose` replaces the whole recorded list, so a slot that fills one at a

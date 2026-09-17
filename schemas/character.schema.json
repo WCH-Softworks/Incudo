@@ -175,6 +175,12 @@
       "additionalProperties": { "type": ["number", "string"] }
     },
 
+    "declinedDecisions": {
+      "type": "array",
+      "description": "Non-blocking decisions the user has explicitly said to skip, by OpenDecision.id (ADR 0033). An INPUT in the same sense as rolls and baseStats — the decision to skip something is itself a fact nothing derives, and deliberately not recorded as an empty entry in `choices`, which already means \"never answered\" and would recompute as pending on the next derive.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+
     "createdAt": { "type": "string" },
     "updatedAt": { "type": "string" }
   }

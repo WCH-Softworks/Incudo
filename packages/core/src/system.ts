@@ -541,6 +541,19 @@ export interface BuildStepDef {
   budget?: BudgetDef;
   /** One roll (or a fixed alternative) this step records per point of progression — ADR 0019. */
   levelRoll?: LevelRollDef;
+  /**
+   * Where this step's own pick, and everything answering it opens, ranks among "Open
+   * decisions" — lower sorts first. Defaults to this step's position in `orderBuildSteps`'s
+   * result, so a system that never sets it keeps exactly the order its array already implies.
+   *
+   * A genuine ranking, not an availability gate: `requires` decides when a step *can* be
+   * reached, `priority` only decides where it reads once it can be. The two are independent
+   * on purpose — a system author who wants an unanswered Background to keep outranking an
+   * already-open Class select (the concern the engine used to hardcode a rule for) states
+   * that as data here, by giving `background` a lower number than `class`, rather than the
+   * app enforcing one universal reading for every system.
+   */
+  priority?: number;
 }
 
 /**

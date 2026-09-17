@@ -300,6 +300,14 @@ test('an inventory validates as instances, and a duplicate instance id does not'
     validateCharacter({ ...character, inventory: [{ ...bag[1], quantity: 1.5 }] }, schemas).errors,
     [{ path: 'inventory[0].quantity', message: 'must be an integer, not a number' }],
   );
+
+  // A skipped decision, by id (ADR 0033) — an input in the same family as rolls and
+  // baseStats, and not a formatVersion bump: a reader blind to it just shows the decision
+  // again, which is the pre-existing behaviour this field improves on.
+  assert.deepEqual(
+    validateCharacter({ ...character, declinedDecisions: ['build/options'] }, schemas).errors,
+    [],
+  );
 });
 
 test('a requires or budget that points nowhere is caught before the app loads it', async () => {

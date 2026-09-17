@@ -134,13 +134,21 @@ test('a decision opened by a later choice arrives without navigating anywhere', 
   assert.equal(character.choices.length, 0, 'the original character is untouched');
 });
 
-test('an unanswered pick sorts before a select that something already chosen opened', () => {
-  // Background before Skill Proficiency, generalised: an unanswered Race or Background often
-  // grants something outright that a class's own select would otherwise offer, and the select
-  // already excludes whatever the character holds (`candidatesFor`) — so listing the pick
-  // first means a skill the character will get for free is off the list before it is chosen
-  // from, not a wasted duplicate discovered after the fact. Presentation only: both are open
-  // and answerable regardless of order (ADR 0017), which the last assertion checks directly.
+test('by default, a select ranks by its own step\'s position, not automatically behind every unanswered pick', () => {
+  // This used to be a hardcoded rule instead of data: every unanswered pick sorted before
+  // every select, full stop, specifically so an unanswered Background couldn't let a class's
+  // own select get picked out from under it — a background often grants something outright,
+  // and picking the same thing from Class first is a wasted choice.
+  //
+  // That blanket rule could not coexist with a *different*, later request: Sub Race (opened
+  // by Race) should rank ahead of a still-open Background. Sub Race and a class's own select
+  // are the same shape relative to an unanswered Background — both are opened by an earlier
+  // step — so any rule that keeps Background ahead of one keeps it ahead of the other too.
+  // Asked directly, the call was to let the earlier step win; see `BuildStepDef.priority` and
+  // the test below for how a system gets the old behaviour back where it still wants it.
+  //
+  // "kit" is declared before "origin" in this fixture, so by that default position alone —
+  // no priority set on either — what kit opened outranks origin's still-unanswered pick.
   const sys = system();
   sys.characterKinds[0]!.buildSteps!.push({
     id: 'origin',
@@ -161,8 +169,8 @@ test('an unanswered pick sorts before a select that something already chosen ope
   const state = b.getState();
   const kinds = state.decisions.map((d) => d.kind);
   assert.ok(
-    kinds.indexOf('pick') < kinds.indexOf('select'),
-    `the still-open Origin pick should read before Subchoice, got ${kinds.join(', ')}`,
+    kinds.indexOf('select') < kinds.indexOf('pick'),
+    `kit is declared before origin, so Subchoice should read before the still-open Origin pick, got ${kinds.join(', ')}`,
   );
 
   // Answering the select while the pick is still open is not refused — the order is a
@@ -170,6 +178,277 @@ test('an unanswered pick sorts before a select that something already chosen ope
   const subchoice = state.decisions.find((d) => d.kind === 'select')!;
   b.choose(subchoice.id, ['GADGET']);
   assert.ok(b.getState().derived.elementIds.has('GADGET'));
+});
+
+test('a system can give a still-unanswered pick priority over an earlier step\'s open select', () => {
+  // The other half of the trade the previous test documents: a system that specifically wants
+  // "Background before this class select" back — the exact concern the old hardcoded rule
+  // existed for — states it as data, by giving that step a lower `priority` number than
+  // whatever it needs to outrank. Nothing in the engine special-cases picks or Background by
+  // name; `origin` here stands in for either.
+  const sys = system();
+  sys.characterKinds[0]!.buildSteps!.push({
+    id: 'origin',
+    label: 'Origin',
+    types: ['Origin'],
+    required: true,
+    priority: -1, // ahead of every step this fixture declares, "kit" included.
+  });
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'sub', type: 'Gadget', name: 'Subchoice', number: 1 },
+    ]),
+    element('GADGET', 'Gadget'),
+    element('AN_ORIGIN', 'Origin'),
+  );
+  const b = builder(index, sys);
+  b.choose('build/kit', ['CLASSY']);
+
+  const kinds = b.getState().decisions.map((d) => d.kind);
+  assert.ok(
+    kinds.indexOf('pick') < kinds.indexOf('select'),
+    `origin's priority of -1 should put the still-open Origin pick ahead of Subchoice, got ${kinds.join(', ')}`,
+  );
+});
+
+test('a select sorts by its pick step\'s position in the build order, not by when it was answered', () => {
+  // Generalised, not "Sub Race specifically": a select's rank comes from `orderBuildSteps`'s
+  // fixed, declared order — the same list "Your character" already renders in — rather than
+  // from a clock. Recency was tried first and measured wrong against the real corpus: ranking
+  // by *when* a pick was last answered means answering Origin after Kit makes Origin's own
+  // openings outrank Kit's forever after, however long Kit's own opening has sat there
+  // unanswered. That is backwards from what "Sub Race right after Race" asks for — Race
+  // should stay ahead of whatever Class or Background later open, not just until the player
+  // touches something else. `sys`'s "kit" step is declared before "origin" below, so what Kit
+  // opened (Sub A) should read first regardless of answer order — which is why this test
+  // answers Origin FIRST, the reverse of declaration order, and still expects Sub A to lead.
+  const sys = system();
+  sys.characterKinds[0]!.buildSteps!.push({
+    id: 'origin',
+    label: 'Origin',
+    types: ['Origin'],
+    required: true,
+  });
+  const index = indexWith(
+    element('KIT_A', 'Widget', [
+      { kind: 'select', key: 'sub-a', type: 'Trinket', name: 'Sub A', number: 1 },
+    ]),
+    element('ORIGIN_A', 'Origin', [
+      { kind: 'select', key: 'sub-b', type: 'Trinket', name: 'Sub B', number: 1 },
+    ]),
+    element('TRINKET_1', 'Trinket'),
+    element('TRINKET_2', 'Trinket'),
+  );
+  const b = builder(index, sys);
+  b.choose('build/origin', ['ORIGIN_A']);
+  b.choose('build/kit', ['KIT_A']);
+
+  const labels = b.getState().decisions.map((d) => d.label);
+  assert.ok(
+    labels.indexOf('Sub A') < labels.indexOf('Sub B'),
+    `Kit is declared before Origin, so Sub A should read first however they were answered: ${labels.join(', ')}`,
+  );
+});
+
+test('a select opened through a grant, not chosen directly, still sorts by its pick\'s step', () => {
+  // The shape a one-hop lookup misses, found by running the real corpus: Elf does not
+  // declare the Sub Race select itself, it grants "Elven Subrace", and that marker element
+  // is what declares it — so `character.choices` never records MARKER_A or MARKER_B as
+  // chosen, only KIT_A and ORIGIN_A. The fix has to walk what a chosen element granted.
+  //
+  // "Trinket" is a type nothing declares under any step's `types` — the shape "Sub Race"
+  // actually has in `systems/dnd5e/system.json` — so it falls through to this grant-chain
+  // ranking at all. A declared type (like this fixture's own "Gadget") ranks by its step
+  // instead, whatever granted it; see the next test down for that half.
+  const sys = system();
+  sys.characterKinds[0]!.buildSteps!.push({
+    id: 'origin',
+    label: 'Origin',
+    types: ['Origin'],
+    required: true,
+  });
+  const index = indexWith(
+    element('KIT_A', 'Widget', [{ kind: 'grant', key: 'g', type: 'Gadget', id: 'MARKER_A' }]),
+    element('MARKER_A', 'Gadget', [
+      { kind: 'select', key: 'sub-a', type: 'Trinket', name: 'Sub A', number: 1 },
+    ]),
+    element('ORIGIN_A', 'Origin', [{ kind: 'grant', key: 'g', type: 'Gadget', id: 'MARKER_B' }]),
+    element('MARKER_B', 'Gadget', [
+      { kind: 'select', key: 'sub-b', type: 'Trinket', name: 'Sub B', number: 1 },
+    ]),
+    element('TRINKET_1', 'Trinket'),
+    element('TRINKET_2', 'Trinket'),
+  );
+  const b = builder(index, sys);
+  b.choose('build/origin', ['ORIGIN_A']);
+  b.choose('build/kit', ['KIT_A']);
+
+  const labels = b.getState().decisions.map((d) => d.label);
+  assert.ok(
+    labels.indexOf('Sub A') < labels.indexOf('Sub B'),
+    `Kit's marker granted Sub A, and Kit is declared before Origin, so Sub A should read ` +
+      `first: ${labels.join(', ')}`,
+  );
+});
+
+test('a select ranks through its own chosen answer, not only through grants', () => {
+  // A grant edge alone strands anything past a select: the engine seeds a select's answer
+  // into `active` straight from `character.choices` (`chosenIds` in `packages/core/src/
+  // engine.ts`), never through a `<grant>` rule — so a picked subrace's own further traits,
+  // or a picked class archetype's own features (a cleric choosing a Divine Domain, say),
+  // have no grant edge leading to them from the pick that opened the select in between.
+  // TRINKET_1 stands in for the chosen subrace/domain; MARKER_A2 and its own select stand in
+  // for what that specific choice grants that nothing else does. "Trinket" stays a type
+  // nothing declares, same reason as the test above.
+  const sys = system();
+  sys.characterKinds[0]!.buildSteps!.push({
+    id: 'origin',
+    label: 'Origin',
+    types: ['Origin'],
+    required: true,
+  });
+  const index = indexWith(
+    element('KIT_A', 'Widget', [{ kind: 'grant', key: 'g', type: 'Gadget', id: 'MARKER_A' }]),
+    element('MARKER_A', 'Gadget', [
+      { kind: 'select', key: 'sub-a', type: 'Trinket', name: 'Sub A', number: 1 },
+    ]),
+    element('TRINKET_1', 'Trinket', [
+      { kind: 'grant', key: 'g2', type: 'Gadget', id: 'MARKER_A2' },
+    ]),
+    element('MARKER_A2', 'Gadget', [
+      { kind: 'select', key: 'sub-a2', type: 'Trinket', name: 'Sub A Follow-up', number: 1 },
+    ]),
+    element('ORIGIN_A', 'Origin', [{ kind: 'grant', key: 'g', type: 'Gadget', id: 'MARKER_B' }]),
+    element('MARKER_B', 'Gadget', [
+      { kind: 'select', key: 'sub-b', type: 'Trinket', name: 'Sub B', number: 1 },
+    ]),
+    element('TRINKET_2', 'Trinket'),
+    element('TRINKET_3', 'Trinket'),
+  );
+  const b = builder(index, sys);
+  b.choose('build/origin', ['ORIGIN_A']);
+  b.choose('build/kit', ['KIT_A']);
+  // Answer Sub A with TRINKET_1 — the chosen-answer edge, not a grant, is what has to carry
+  // Kit's rank across this hop.
+  const subA = b.getState().decisions.find((d) => d.label === 'Sub A')!;
+  b.choose(subA.id, ['TRINKET_1']);
+
+  const labels = b.getState().decisions.map((d) => d.label);
+  assert.ok(
+    labels.includes('Sub A Follow-up'),
+    `expected the follow-up select to be open once TRINKET_1 is chosen: ${labels.join(', ')}`,
+  );
+  assert.ok(
+    labels.indexOf('Sub A Follow-up') < labels.indexOf('Sub B'),
+    `Sub A Follow-up traces back to Kit through a grant, a chosen answer, then another ` +
+      `grant, and Kit is declared before Origin, so it should still read before Sub B: ${labels.join(', ')}`,
+  );
+});
+
+test('a select whose type IS declared under a step ranks there, not with whatever pick unlocked it', () => {
+  // The bug an earlier version of this fix actually shipped, caught before it reached
+  // anyone: ranking purely by the grant/choice chain back to a pick meant a cantrip granted
+  // by a racial feature read as a "Race" decision instead of a "Spells" one — backwards from
+  // the plain expectation that choosing spells comes after the character itself is built.
+  // "extras" is declared with `types: ['Gadget']`, so a Gadget-typed select has a real,
+  // declared home and must rank there, whatever granted it — only a type nothing declares
+  // (the previous two tests' "Trinket") falls back to the grant/choice chain at all.
+  //
+  // "origin" requires "kit" here specifically so it sorts *after* "extras" (`requires`
+  // makes both tier-1 steps, and "extras" is declared first) — the arrangement that would
+  // expose the bug: if "Late Pick" had inherited Origin's rank instead of using its own
+  // declared step, it would read *after* "Trinket Pick" below rather than before it.
+  const sys = system();
+  sys.characterKinds[0]!.buildSteps!.push({
+    id: 'origin',
+    label: 'Origin',
+    types: ['Origin'],
+    required: true,
+    requires: ['kit'],
+  });
+  const index = indexWith(
+    element('ORIGIN_A', 'Origin', [
+      { kind: 'grant', key: 'g', type: 'Gadget', id: 'MARKER' },
+      // A type nothing declares, opened directly by Origin — the comparison point this
+      // test needs: it has no declared step of its own, so it falls back to Origin's rank.
+      { kind: 'select', key: 'homeless', type: 'Trinket', name: 'Trinket Pick', number: 1 },
+    ]),
+    element('MARKER', 'Gadget', [
+      { kind: 'select', key: 'sub', type: 'Gadget', name: 'Late Pick', number: 1 },
+    ]),
+    element('GADGET_1', 'Gadget'),
+    element('TRINKET_1', 'Trinket'),
+  );
+  const b = builder(index, sys);
+  b.choose('build/origin', ['ORIGIN_A']);
+
+  const latePick = b.getState().decisions.find((d) => d.label === 'Late Pick');
+  assert.equal(latePick?.stepId, 'extras', 'grouped under the step declaring its type');
+
+  const labels = b.getState().decisions.map((d) => d.label);
+  assert.ok(
+    labels.indexOf('Late Pick') < labels.indexOf('Trinket Pick'),
+    `Late Pick's type is declared under "extras", earlier than Origin's own rank that ` +
+      `Trinket Pick falls back to: ${labels.join(', ')}`,
+  );
+});
+
+test('answering a content select afterward does not reshuffle what an earlier step opened', () => {
+  // The bug an earlier version of this fix actually shipped, twice over: first it ranked by
+  // recency of every recorded choice, then (once that was caught) by recency of picks only —
+  // and both still sink an earlier pick's opening below a later pick's the moment the later
+  // one is answered. Neither a content select nor a later pick may move this ranking; only a
+  // step's own fixed position in the build order does.
+  const sys = system();
+  sys.characterKinds[0]!.buildSteps!.push({
+    id: 'origin',
+    label: 'Origin',
+    types: ['Origin'],
+    required: true,
+  });
+  const index = indexWith(
+    element('KIT_A', 'Widget', [{ kind: 'grant', key: 'g', type: 'Gadget', id: 'MARKER_A' }]),
+    element('MARKER_A', 'Gadget', [
+      { kind: 'select', key: 'sub-a', type: 'Gadget', name: 'Sub A', number: 2 },
+    ]),
+    element('ORIGIN_A', 'Origin', [{ kind: 'grant', key: 'g', type: 'Gadget', id: 'MARKER_B' }]),
+    element('MARKER_B', 'Gadget', [
+      { kind: 'select', key: 'sub-b', type: 'Gadget', name: 'Sub B', number: 2 },
+    ]),
+    element('GADGET_1', 'Gadget'),
+    element('GADGET_2', 'Gadget'),
+    element('GADGET_3', 'Gadget'),
+  );
+  const b = builder(index, sys);
+  b.choose('build/kit', ['KIT_A']);
+  b.choose('build/origin', ['ORIGIN_A']);
+  assert.ok(
+    b.getState().decisions.map((d) => d.label).indexOf('Sub A') <
+      b.getState().decisions.map((d) => d.label).indexOf('Sub B'),
+    'Kit is declared before Origin, so Sub A leads before anything else happens',
+  );
+
+  // Fill one of Sub B's two slots — the most recent entry in `character.choices` by far, and
+  // opened by the *later* step, but neither fact may touch the ranking. Sub B keeps one slot
+  // open afterward (a "1 left" pool, same as Sub A never moved), so it stays comparable.
+  const subB = b.getState().decisions.find((d) => d.label === 'Sub B')!;
+  b.choose(subB.id, ['GADGET_1']);
+
+  const labels = b.getState().decisions.map((d) => d.label);
+  assert.ok(
+    labels.indexOf('Sub A') < labels.indexOf('Sub B'),
+    `answering Sub B's own select must not make Origin outrank Kit: ${labels.join(', ')}`,
+  );
+});
+
+test('setName renames the character, and nothing else', () => {
+  const b = builder(indexWith());
+  const before = b.getState();
+  b.setName('Vigaro');
+  const after = b.getState();
+  assert.equal(after.character.name, 'Vigaro');
+  assert.equal(after.character.id, before.character.id, 'renaming is not a new character');
+  assert.notEqual(after.character.updatedAt, before.character.updatedAt);
 });
 
 test('a decision that a level opens is tagged with the level that opened it', () => {
@@ -202,6 +481,71 @@ test('an optional select is open but not blocking', () => {
   const optional = b.getState().decisions.find((d) => d.label === 'Optional');
   assert.equal(optional?.blocking, false);
   assert.equal(b.getState().steps.find((s) => s.id === 'extras')?.complete, true);
+});
+
+// --- declining an optional decision (ADR 0033) ------------------------------
+
+test('declining an optional decision moves it out of Open decisions, and its step completes', () => {
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'o', type: 'Gadget', name: 'Optional', number: 1, optional: true },
+    ]),
+    element('GADGET', 'Gadget'),
+  );
+  const b = builder(index);
+  b.choose('build/start', ['CLASSY']);
+  const optional = b.getState().decisions.find((d) => d.label === 'Optional')!;
+
+  b.decline(optional.id);
+
+  const state = b.getState();
+  assert.equal(state.decisions.some((d) => d.label === 'Optional'), false);
+  assert.equal(state.declined.length, 1);
+  assert.equal(state.declined[0]?.label, 'Optional');
+  assert.equal(
+    state.steps.find((s) => s.id === 'extras')?.complete,
+    true,
+    'a step with nothing left but a declined decision reads complete',
+  );
+
+  // Not recorded as an empty answer — the whole reason a separate field exists (ADR 0033):
+  // an empty `elementIds` entry is indistinguishable from "never answered", so the engine
+  // would recompute the pool as pending on the very next read.
+  assert.equal(b.getState().character.choices.some((c) => c.ruleKey === optional.id), false);
+});
+
+test('declining a blocking decision is refused', () => {
+  const b = builder(indexWith(element('W1', 'Widget'), element('W2', 'Widget')));
+  const pick = b.getState().decisions.find((d) => d.kind === 'pick')!;
+  assert.equal(pick.blocking, true);
+
+  b.decline(pick.id);
+
+  assert.equal(b.getState().decisions.some((d) => d.id === pick.id), true, 'still open');
+  assert.equal(b.getState().declined.length, 0);
+});
+
+test('reconsidering a declined decision brings it back, answerable as before', () => {
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'o', type: 'Gadget', name: 'Optional', number: 1, optional: true },
+    ]),
+    element('GADGET', 'Gadget'),
+  );
+  const b = builder(index);
+  b.choose('build/start', ['CLASSY']);
+  const optional = b.getState().decisions.find((d) => d.label === 'Optional')!;
+  b.decline(optional.id);
+  assert.equal(b.getState().decisions.some((d) => d.label === 'Optional'), false);
+
+  b.reconsider(optional.id);
+
+  const state = b.getState();
+  assert.equal(state.declined.length, 0);
+  const reopened = state.decisions.find((d) => d.label === 'Optional');
+  assert.ok(reopened, 'back among the open decisions');
+  b.choose(reopened!.id, ['GADGET']);
+  assert.ok(b.getState().derived.elementIds.has('GADGET'));
 });
 
 test('focus is presentation and changes nothing about what is outstanding', () => {

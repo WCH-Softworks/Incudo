@@ -525,7 +525,11 @@
           "description": "Ids of steps that must be usable before this one is (ADR 0017). A genuine dependency and nothing else — you cannot pick spells before something makes you a spellcaster. The suggested order is a topological sort of these with the declared array order breaking ties, so a step that requires nothing sorts first; a step whose dependencies are unmet is not yet available rather than skippable."
         },
         "budget": { "$ref": "#/$defs/budget" },
-        "levelRoll": { "$ref": "#/$defs/levelRoll" }
+        "levelRoll": { "$ref": "#/$defs/levelRoll" },
+        "priority": {
+          "type": "number",
+          "description": "Where this step's own pick, and everything answering it opens, ranks among \"Open decisions\" — lower sorts first. Defaults to this step's position in the declared/topological build order, so a system that never sets it keeps that order unchanged. Independent of `requires`, which decides when a step can be reached rather than where it reads once it can be — a system author who wants an unanswered Background to keep outranking an already-open Class select states that here, by giving `background` a lower number than `class`, rather than the app enforcing one universal reading for every system."
+        }
       }
     },
 

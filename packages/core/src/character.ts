@@ -177,6 +177,15 @@ export interface Character {
    * a user being stuck; the UI should present it as a repair tool, clearly marked.
    */
   overrides?: Record<StatKey, number | string>;
+  /**
+   * Non-blocking decisions the user has explicitly said to skip, by `OpenDecision.id`
+   * (ADR 0033). An input in the same family as `rolls` and `baseStats` — the decision to
+   * decline something is itself a fact nothing derives — and deliberately not a sentinel
+   * inside `choices`: an empty `elementIds` there already means "remove this record", so
+   * reusing that shape for "skipped, don't ask again" would be indistinguishable from
+   * "never answered" and the engine would recompute it as pending on the very next read.
+   */
+  declinedDecisions?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -215,6 +224,11 @@ export function createCharacter(
 
 export function getChoice(character: Character, ruleKey: string): Choice | undefined {
   return character.choices.find((c) => c.ruleKey === ruleKey);
+}
+
+/** Rename a character. An input like any other — nothing derives what a player calls them. */
+export function setName(character: Character, name: string): Character {
+  return { ...character, name, updatedAt: new Date().toISOString() };
 }
 
 export function setChoice(
@@ -262,6 +276,37 @@ export function setBaseStat(
   return {
     ...character,
     baseStats: empty ? undefined : baseStats,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Whether the user has explicitly said to skip this decision — ADR 0033. */
+export function isDeclined(character: Character, decisionId: string): boolean {
+  return character.declinedDecisions?.includes(decisionId) ?? false;
+}
+
+/**
+ * Skip a non-blocking decision, or bring a skipped one back.
+ *
+ * Deliberately not a write to `choices`: `setChoice(character, id, [])` already means
+ * "forget this answer", which is indistinguishable from "never answered" and would leave
+ * the decision recomputed as pending the moment anything re-derives. Declining has to
+ * survive a re-derive without looking like an answer, so it is its own list.
+ */
+export function setDeclined(
+  character: Character,
+  decisionId: string,
+  declined: boolean,
+): Character {
+  const current = character.declinedDecisions ?? [];
+  const next = declined
+    ? current.includes(decisionId)
+      ? current
+      : [...current, decisionId]
+    : current.filter((id) => id !== decisionId);
+  return {
+    ...character,
+    declinedDecisions: next.length ? next : undefined,
     updatedAt: new Date().toISOString(),
   };
 }

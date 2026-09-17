@@ -27,7 +27,9 @@ import {
   resolveCharacterKind,
   setBaseStat,
   setChoice,
+  setDeclined,
   setGenerationMethod,
+  setName,
   setRoll,
   type BuildStepDef,
   type Character,
@@ -125,6 +127,21 @@ export interface OpenDecision {
 }
 
 /**
+ * A non-blocking decision the user has said to skip — ADR 0033.
+ *
+ * Trimmed to what a "bring it back" control needs; a shell that wants to answer it again
+ * calls `reconsider` first, which moves it back into `decisions` with its full candidate
+ * list rather than trying to keep one stale here.
+ */
+export interface DeclinedDecision {
+  id: string;
+  kind: OpenDecision['kind'];
+  label: string;
+  stepId: string;
+  from?: ElementId;
+}
+
+/**
  * A build step, as something to group decisions under and possibly not reach yet.
  *
  * `available` is the part that matters: a step whose dependencies are unmet is *not yet
@@ -171,6 +188,12 @@ export interface BuilderState {
    * made false.
    */
   picks: SettledPick[];
+  /**
+   * Non-blocking decisions the user has said to skip (ADR 0033) — off `decisions` and off
+   * a step's `openCount`/`complete`, same as an answered one, but reachable again through
+   * `reconsider` rather than gone the way an answer's own record can be.
+   */
+  declined: DeclinedDecision[];
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -260,6 +283,28 @@ export class CharacterBuilder {
   };
 
   /**
+   * Stop a non-blocking decision from cluttering `decisions`, without answering it.
+   *
+   * Refuses a decision that is currently blocking — "you must choose at least one of the
+   * optional rules your table uses" is not a sentence, the same reading ADR 0032 already
+   * rejected for `required` and `multiple` together — so a shell that only ever shows a
+   * Skip control next to `!decision.blocking` cannot reach this refusal in practice, but the
+   * guard exists so the model does not depend on the view getting that right.
+   */
+  decline = (decisionId: string): void => {
+    const decision = this.getState().decisions.find((d) => d.id === decisionId);
+    if (!decision || decision.blocking) return;
+    this.character = setDeclined(this.character, decisionId, true);
+    this.invalidate();
+  };
+
+  /** Bring a skipped decision back into `decisions`, answerable exactly as before. */
+  reconsider = (decisionId: string): void => {
+    this.character = setDeclined(this.character, decisionId, false);
+    this.invalidate();
+  };
+
+  /**
    * Move the character along its progression — a level, a challenge rating, an xp total.
    * A kind with no progression pins this at 0, so the caller does not have to know which.
    *
@@ -271,6 +316,12 @@ export class CharacterBuilder {
       ...this.character,
       progress: clampProgress(this.kind.progression, progress),
     };
+    this.invalidate();
+  };
+
+  /** Rename the character. An input like any other; nothing derives what a player calls them. */
+  setName = (name: string): void => {
+    this.character = setName(this.character, name);
     this.invalidate();
   };
 
@@ -488,6 +539,17 @@ export class CharacterBuilder {
       for (const type of step.types) if (!stepForType.has(type)) stepForType.set(type, step.id);
     }
 
+    // Where each step falls for ranking "Open decisions" — a system's own declared
+    // `priority`, or its position in `orderBuildSteps`'s topological sort when it declares
+    // none, so a system that never sets it keeps exactly the order its array already implies.
+    // This is a fixed ranking, not one that shifts with whatever the user happens to answer
+    // next — it is what lets a select opened by an answered pick stay pinned near that pick
+    // permanently, and lets an unanswered pick's own position be tuned the same way, rather
+    // than the engine hardcoding one universal reading — see the note further down on why
+    // recency, and then a single hardcoded "picks always first" rule, were each tried and
+    // dropped.
+    const stepOrderIndex = new Map(this.steps.map((step, i) => [step.id, step.priority ?? i]));
+
     // The engine's own view of what this character has and what its stats read. Built once per
     // computation and borrowed from core rather than reimplemented, so a candidate this offers
     // is one the derivation will accept.
@@ -499,12 +561,28 @@ export class CharacterBuilder {
     // so both halves of one pool can land in the right place in the same pass.
     const picks: SettledPick[] = [];
 
+    // What a select's own answer is worth for the ranking further down — every chosen
+    // element inherits whatever rank its granting element carries, the same as a `<grant>`
+    // target does. It has to be gathered separately from a grant edge: the engine seeds a
+    // chosen element into `active` straight from `character.choices` (`chosenIds` in
+    // `deriveCharacter`), never through a `<grant>` rule, so a picked subrace or a picked
+    // class archetype has no grant edge leading to it at all — only this one, built from the
+    // same `from`/`chosen` pairs the loops below already compute.
+    const choiceEdges = new Map<ElementId, ElementId[]>();
+    const addChoiceEdge = (from: ElementId, chosen: ElementId[]): void => {
+      if (!chosen.length) return;
+      const existing = choiceEdges.get(from);
+      if (existing) existing.push(...chosen);
+      else choiceEdges.set(from, [...chosen]);
+    };
+
     // A select opened by something already chosen — a class's Skill Proficiency, say.
     const selectDecisions: OpenDecision[] = [];
     for (const choice of derived.pendingChoices) {
       // `getChoice` and not `choice`'s own shape: the engine tracks how many are left, not
       // which ids they were (ADR 0032).
       const chosen = getChoice(this.character, choice.ruleKey)?.elementIds ?? [];
+      addChoiceEdge(choice.from, chosen);
       const stepId = stepForType.get(choice.type) ?? '';
       selectDecisions.push({
         id: choice.ruleKey,
@@ -540,6 +618,10 @@ export class CharacterBuilder {
     // that are neither — equipment, spells, details — are left alone rather than given an
     // invented decision, because the bag (ADR 0024) and content's own selects already own them.
     const pickDecisions: OpenDecision[] = [];
+    // What an answered pick's own elements are worth for the structural ordering further
+    // down — its step's fixed position, never a timestamp. Filled as the loop below finds
+    // each answered pick, same as `picks` and `pickDecisions` are.
+    const pickElementRank = new Map<ElementId, number>();
     for (const step of this.steps) {
       if (!step.required || step.perLevel || !step.types.length) continue;
       const ruleKey = pickRuleKey(step.id);
@@ -566,6 +648,8 @@ export class CharacterBuilder {
           chosen: [...answer.elementIds],
           candidates,
         });
+        const rank = stepOrderIndex.get(step.id) ?? Number.MAX_SAFE_INTEGER;
+        for (const id of answer.elementIds) pickElementRank.set(id, rank);
         continue;
       }
 
@@ -600,16 +684,89 @@ export class CharacterBuilder {
         chosen: answered.chosen,
         candidates: [...answered.candidates, ...answered.chosen],
       });
+      addChoiceEdge(answered.from, answered.chosen);
     }
 
-    // Picks first, then what they open. A background often grants a skill proficiency
-    // outright, and a class's own Skill Proficiency select already excludes whatever the
-    // character holds — so listing an unanswered Race or Background ahead of a select that
-    // something else already opened means a skill the character will get for free is off the
-    // list *before* it is picked from, not a wasted duplicate discovered after the fact.
-    // Presentation only, same as everywhere else in this file: nothing here is blocked, and
-    // any decision below is answerable in whatever order the screen is read (ADR 0017).
+    // What an answered pick opened stays pinned near that pick's own step (ADR 0034),
+    // generalised rather than hardcoded to any one content shape. Recency was tried first and
+    // measured wrong against the real corpus: ranking by *when* a pick was last answered means
+    // the moment a later pick is answered, its own openings outrank an earlier pick's — Elven
+    // Subrace sinking below Skill Proficiency the moment Class is answered, then below
+    // Background's own openings once that is answered too, however long Elven Subrace itself
+    // has sat there unanswered. `stepOrderIndex` fixes that: it is the build's declared order
+    // (or a system's own explicit `priority`), not a clock, so Race's openings rank ahead of
+    // Class's and Background's permanently, whatever gets answered afterward.
+    //
+    // A select's `from` is rarely the element the character chose directly, either — Elf
+    // grants "Elven Subrace", and that marker is what actually declares the Sub Race select;
+    // Wizard grants "Spellcasting" the same way. So a pick's rank has to walk forward through
+    // what it granted, transitively, and let a marker reachable from more than one path keep
+    // whichever pick gives it the better (numerically lower) rank.
+    //
+    // Two kinds of edge carry a rank forward, and a chain switches between them freely: a
+    // `<grant>` rule (Elf → "Elven Subrace"), and a select's own answer (the marker's Sub
+    // Race select → whichever subrace the player picked — "High Elf", say). Only following
+    // grants would strand everything past the first select: a subrace's own further traits,
+    // or a cleric's chosen Divine Domain and everything *that* grants, would all read as
+    // unranked, because nothing granted the chosen subrace or the chosen domain — the engine
+    // seeds a select's answer into `active` straight from `character.choices`, never through
+    // a `<grant>` rule (see `chosenIds` in `packages/core/src/engine.ts`). `choiceEdges`
+    // supplies the edge the grant walk cannot see, and once High Elf or a domain is ranked
+    // this way, its own grants are ordinary further hops in the same walk.
+    const elementRank = new Map(pickElementRank);
+    const byId = new Map(derived.elements.map((element) => [element.id, element]));
+    let frontier = [...elementRank.keys()];
+    while (frontier.length > 0) {
+      const next: ElementId[] = [];
+      for (const id of frontier) {
+        const rank = elementRank.get(id)!;
+        const targets: ElementId[] = [...(choiceEdges.get(id) ?? [])];
+        for (const rule of byId.get(id)?.rules ?? []) {
+          if (rule.kind === 'grant' && byId.has(rule.id)) targets.push(rule.id);
+        }
+        for (const target of targets) {
+          if ((elementRank.get(target) ?? Number.MAX_SAFE_INTEGER) <= rank) continue;
+          elementRank.set(target, rank);
+          next.push(target);
+        }
+      }
+      frontier = next;
+    }
+    // An unanswered pick ranks by its own step; a select ranks by whatever it was granted
+    // through. One scale for both (ADR 0034), so Race's Sub Race and Skill Proficiency and an
+    // unanswered Background all compare on the same terms.
+    //
+    // This used to be two rules instead of one: every unanswered pick sorted before every
+    // select, full stop, specifically so an unanswered Background couldn't let a class's
+    // Skill Proficiency get picked out from under it — a background often grants a skill
+    // outright, and picking the same one from Class first is a wasted choice. That rule is
+    // gone now, on purpose, and not by accident: it could not coexist with Sub Race staying
+    // ahead of a still-open Background, because Sub Race (from Race) and Skill Proficiency
+    // (from Class) are the same shape relative to an unanswered Background — both come from
+    // an earlier step — so any rule that keeps Background ahead of one keeps it ahead of the
+    // other too. Asked directly, the call was to let Sub Race win. The Skill Proficiency
+    // case is not simply reopened: `BuildStepDef.priority` lets a system restate it as data
+    // instead of the engine hardcoding it — `systems/dnd5e/system.json`'s `background: 1.5`
+    // is exactly that, sitting between race's 1 and class's 2. `use-character-builder.test.ts`
+    // documents both halves of the trade.
+    // A select's *declared* category wins over how it happened to get unlocked. A cantrip
+    // is a "Spells" decision — `decision.stepId` already says so, via `stepForType` reading
+    // straight from `system.json`'s `types` — and it stays one whether a class or a racial
+    // feature is what opened its pool, so it ranks with `spells`, not with whatever earlier
+    // step granted the marker. `elementRank`'s grant/choice-chain walk only matters for a
+    // type nothing claims (`stepId === ''`) — Sub Race is that case: no step lists it, so it
+    // has no declared home and falls back to riding along with Race, exactly as intended.
+    const rankOf = (decision: OpenDecision): number => {
+      if (decision.kind === 'pick') return stepOrderIndex.get(decision.stepId) ?? Number.MAX_SAFE_INTEGER;
+      const declared = decision.stepId !== '' ? stepOrderIndex.get(decision.stepId) : undefined;
+      if (declared !== undefined) return declared;
+      return (
+        (decision.from !== undefined ? elementRank.get(decision.from) : undefined) ??
+        Number.MAX_SAFE_INTEGER
+      );
+    };
     const decisions: OpenDecision[] = [...pickDecisions, ...selectDecisions];
+    decisions.sort((a, b) => rankOf(a) - rankOf(b));
 
     const budgets = new Map<string, BudgetState>();
     for (const step of this.steps) {
@@ -661,12 +818,32 @@ export class CharacterBuilder {
       }
     }
 
+    // A non-blocking decision the user declined (ADR 0033) leaves `decisions` the same way an
+    // answered one does, and for the same reason: a step whose only outstanding items are
+    // declined ones should read complete, not stuck open forever on something nobody intends
+    // to answer. `declinedDecisions` never touches `character.choices`, so nothing here is
+    // gated — a `blocking` decision is never filtered out even if its id somehow ended up in
+    // the list, which is the same refusal `decline()` itself makes.
+    const declinedIds = new Set(this.character.declinedDecisions ?? []);
+    const declined: DeclinedDecision[] = [];
+    const openDecisions = decisions.filter((decision) => {
+      if (decision.blocking || !declinedIds.has(decision.id)) return true;
+      declined.push({
+        id: decision.id,
+        kind: decision.kind,
+        label: decision.label,
+        stepId: decision.stepId,
+        from: decision.from,
+      });
+      return false;
+    });
+
     const available = new Set<string>();
     const steps: BuilderStep[] = this.steps.map((step) => {
       const blockedBy = (step.requires ?? []).filter((id) => !available.has(id));
       const isAvailable = blockedBy.length === 0;
       if (isAvailable) available.add(step.id);
-      const open = decisions.filter((decision) => decision.stepId === step.id);
+      const open = openDecisions.filter((decision) => decision.stepId === step.id);
       return {
         id: step.id,
         label: step.label,
@@ -684,9 +861,10 @@ export class CharacterBuilder {
       character: this.character,
       derived,
       kind: this.kind,
-      decisions,
+      decisions: openDecisions,
       steps,
       picks,
+      declined,
       focusedId: this.focusedId,
     };
   }
