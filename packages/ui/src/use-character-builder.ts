@@ -493,23 +493,45 @@ export class CharacterBuilder {
     // is one the derivation will accept.
     const requirementContext: RequirementContext = requirementContextFor(derived);
 
+    // Answered slots settle immediately, even inside a pool that still owes more — a wizard's
+    // first cantrip moves to "Choices already made" the moment it is picked, and only its
+    // still-open second and third slots stay behind here. `picks` is declared before this loop
+    // so both halves of one pool can land in the right place in the same pass.
+    const picks: SettledPick[] = [];
+
     // A select opened by something already chosen — a class's Skill Proficiency, say.
-    const selectDecisions: OpenDecision[] = derived.pendingChoices.map((choice) => ({
-      id: choice.ruleKey,
-      kind: 'select',
-      label: choice.label,
-      stepId: stepForType.get(choice.type) ?? '',
-      blocking: !choice.optional,
-      from: choice.from,
-      openedAt: choice.level,
-      remaining: choice.remaining,
-      candidates: choice.candidates,
-      // What this rule already holds — a wizard's first cantrip, while its second is still
-      // open. `getChoice` and not `choice`'s own shape: the engine tracks how many are left,
-      // not which ids they were (ADR 0032).
-      chosen: getChoice(this.character, choice.ruleKey)?.elementIds ?? [],
-      unresolved: choice.unresolvedSupports,
-    }));
+    const selectDecisions: OpenDecision[] = [];
+    for (const choice of derived.pendingChoices) {
+      // `getChoice` and not `choice`'s own shape: the engine tracks how many are left, not
+      // which ids they were (ADR 0032).
+      const chosen = getChoice(this.character, choice.ruleKey)?.elementIds ?? [];
+      const stepId = stepForType.get(choice.type) ?? '';
+      selectDecisions.push({
+        id: choice.ruleKey,
+        kind: 'select',
+        label: choice.label,
+        stepId,
+        blocking: !choice.optional,
+        from: choice.from,
+        openedAt: choice.level,
+        remaining: choice.remaining,
+        candidates: choice.candidates,
+        chosen,
+        unresolved: choice.unresolvedSupports,
+      });
+      if (chosen.length > 0) {
+        // Settled so far. `choice.candidates` already excludes it along with everything else
+        // the character holds, so adding it back is what lets its own slot's dropdown keep
+        // showing it — the same trick a fully answered pool uses below.
+        picks.push({
+          ruleKey: choice.ruleKey,
+          stepId,
+          label: choice.label,
+          chosen,
+          candidates: [...choice.candidates, ...chosen],
+        });
+      }
+    }
 
     // Top-level picks — the race, class and background nothing declares a select for.
     //
@@ -518,7 +540,6 @@ export class CharacterBuilder {
     // that are neither — equipment, spells, details — are left alone rather than given an
     // invented decision, because the bag (ADR 0024) and content's own selects already own them.
     const pickDecisions: OpenDecision[] = [];
-    const picks: SettledPick[] = [];
     for (const step of this.steps) {
       if (!step.required || step.perLevel || !step.types.length) continue;
       const ruleKey = pickRuleKey(step.id);

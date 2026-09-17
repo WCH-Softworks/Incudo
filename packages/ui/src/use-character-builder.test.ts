@@ -828,6 +828,39 @@ test('sending the union of what is chosen and a new pick accumulates, one at a t
   assert.ok(state.derived.elementIds.has('B'));
 });
 
+test('an answered slot settles immediately, splitting one pool across pending and picks', () => {
+  // The point of the split: a wizard's first Skill Proficiency should not wait for the second
+  // to become editable in "Choices already made", and the still-open decision should stop
+  // showing an answer that has already moved there.
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'skills', type: 'Gadget', name: 'Skills', number: 2 },
+    ]),
+    element('A', 'Gadget'),
+    element('B', 'Gadget'),
+    element('C', 'Gadget'),
+  );
+  const b = builder(index);
+  b.choose('build/start', ['CLASSY']);
+  const decision = b.getState().decisions.find((d) => d.label === 'Skills')!;
+  b.choose(decision.id, ['A']);
+
+  const state = b.getState();
+  const stillOpen = state.decisions.find((d) => d.label === 'Skills')!;
+  assert.ok(stillOpen, 'one slot remains outstanding');
+  assert.equal(stillOpen.remaining, 1);
+  assert.deepEqual(stillOpen.candidates.sort(), ['B', 'C']);
+
+  const settled = state.picks.find((p) => p.ruleKey === decision.id)!;
+  assert.ok(settled, 'and the filled slot is already in "Choices already made"');
+  assert.deepEqual(settled.chosen, ['A']);
+  assert.deepEqual(
+    settled.candidates.sort(),
+    ['A', 'B', 'C'],
+    'its own dropdown can keep A or swap to whatever nobody else holds',
+  );
+});
+
 test('taking back one answer reopens it as a candidate', () => {
   const index = indexWith(
     element('CLASSY', 'Widget', [
