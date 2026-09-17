@@ -296,34 +296,14 @@ function Decision({
       ) : (
         <>
           {/*
-            What this decision already holds, for a slot filled while others are still open —
-            a wizard's first cantrip, say, with a second and third still to pick. Always empty
-            for a `pick`, which is answered once and moves to "Choices already made" instead;
-            visible here only for a `select` asking for more than one (ADR 0032). Each answer
-            can be taken back on its own, which `choose` already supports — the write is just
-            the remaining set with one id removed.
+            No rendering of `decision.chosen` here on purpose. A slot a select already filled
+            settles into `picks` the moment it is recorded (ADR 0032) — a wizard's first
+            cantrip moves to "Choices already made" while its second and third are still open —
+            so this column only ever shows what a `pick` or a `select` still owes. `chosen` is
+            still on the decision because the write below needs it (a select fills one slot at
+            a time, so it has to send the ones already recorded plus the new one); it is not
+            shown twice.
           */}
-          {decision.chosen.length > 0 && (
-            <ul className="chosen-values">
-              {decision.chosen.map((id) => (
-                <li key={id}>
-                  {candidateLabel(id)}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      builder.choose(
-                        decision.id,
-                        decision.chosen.filter((chosenId) => chosenId !== id),
-                      )
-                    }
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
           {decision.candidates.length > 0 ? (
             <select
               defaultValue=""
