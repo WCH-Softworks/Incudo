@@ -151,13 +151,26 @@ The shared mechanism landed ahead of the feature this ADR is named for, and in t
 note originally predicted: `OpenDecision` gained `chosen: ElementId[]`, exactly as decision 1
 specifies, because it was also the fix for a live bug a player hit before any `multiple` step
 existed — a wizard's second and third cantrip silently overwrote the first, and the select could
-never close. `BuilderPane`'s write is now `choose(id, [...decision.chosen, value])` rather than
-`choose(id, [value])`, which is "replace" for a `pick` (`chosen` is always `[]` there) and "add
-to" for a `select` asking for more than one, with no branch between the two. Taking an answer
-back is the same write with one id removed, shown as a small removable tag per answer.
+never close. `BuilderPane`'s write while a pool is still open is now
+`choose(id, [...decision.chosen, value])` rather than `choose(id, [value])`, which is "replace"
+for a `pick` (`chosen` is always `[]` there) and "add to" for a `select` asking for more than
+one, with no branch between the two.
+
+**A second pass, once the first one shipped, fixed the part that still did not match "the other
+selections": a full pool used to vanish outright**, with no way back to it — closer to the hole
+[ADR 0017](./0017-open-decisions-not-steps.md) already named and fixed for a top-level pick than
+to anything new. The engine gained `answeredChoices` alongside `pendingChoices`
+(`packages/core/src/engine.ts`) — the same pool-grouping work, but for the pools with nothing
+left to choose, publishing every slot's answer plus what any one slot could hold instead.
+`packages/ui` folds these into the existing `picks`/`SettledPick` array a top-level pick already
+used, so a full content `select` now renders in "Choices already made" exactly like Race or
+Background: one `<select>` per filled slot, each independently changeable, each excluding every
+*other* slot's current answer so two slots can never agree on one. `pendingChoices` kept its
+existing contract — it still means only "outstanding" — so the CLI and the self-containment test
+needed no changes at all.
 
 **`multiple: true` on a build step — campaign options, and the Human Variant — is still proposed
 and not built.** That is a system-format change (decisions 2 and 3, and the schema/validation
-work in "The migration is nothing"), genuinely separate from the bug fix, and this note no longer
-predicts they land together. Read `OpenDecision.chosen` as done; read the rest of this ADR as
-still describing work to do.
+work in "The migration is nothing"), genuinely separate from both bug fixes above, and this note
+no longer predicts they land together. Read `OpenDecision.chosen`, `AnsweredChoice` and the
+settled rendering as done; read the rest of this ADR as still describing work to do.

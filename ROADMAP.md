@@ -313,21 +313,33 @@ before any code, both touching a public API:
       it" — the level 4 Ability Score Improvement still reports "no candidate" (the `Class`
       `supports` operand), and the sheet still does not render features or proficiencies.
 - [ ] Character sheet
-- [x] **A decision can record more than one element**
-      ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md)'s bug fix — the ADR itself
-      stays proposed; see the entry below). `BuilderPane` answered a select with
-      `choose(id, [value])`, and `setChoice` **replaces**, so a wizard owed three cantrips and
-      six spellbook spells could record exactly one of each — pick a second and it overwrote the
-      first, and the select could never close. Found live, not by a test: a player choosing a
-      Skill Proficiency after a background had "Insight" stuck on screen no matter what they
-      picked next. `OpenDecision` now publishes `chosen: ElementId[]` alongside `candidates`, and
-      the pane's write is `choose(id, [...decision.chosen, value])` — "replace" for a `pick`,
-      where `chosen` is always `[]`, and "add to" for a `select` asking for more than one, with no
-      branch between the two. Each answer shows as a small removable tag; taking one back is the
-      same write with that id left out. The engine half needed nothing — `candidatesFor` and
-      `remaining` were already right for a multi-element `Choice`, proved by a same-render
-      three-cantrip test that predates this fix — the bug was entirely the pane never sending
-      more than one id at a time.
+- [x] **A decision can record more than one element, and stays as editable as any other once it
+      does** ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md)'s bug fix — the ADR
+      itself stays proposed; see the entry below). Two passes, found live rather than by a test.
+      First: `BuilderPane` answered a select with `choose(id, [value])`, and `setChoice`
+      **replaces**, so a wizard owed three cantrips and six spellbook spells could record exactly
+      one of each — pick a second and it overwrote the first, and the select could never close. A
+      player choosing a Skill Proficiency after a background had "Insight" stuck on screen no
+      matter what they picked next. `OpenDecision` gained `chosen: ElementId[]` alongside
+      `candidates`, and the pane's write while a pool is open became
+      `choose(id, [...decision.chosen, value])` — "replace" for a `pick`, where `chosen` is
+      always `[]`, and "add to" for a `select` asking for more than one, with no branch between
+      the two.
+      Second: filling the last slot made the whole decision **vanish outright**, exactly the hole
+      ADR 0017 had already named and fixed for a top-level pick — a wizard's second Skill
+      Proficiency had nowhere to be changed once chosen, any more than Race did before `picks`
+      existed. The engine gained `answeredChoices` beside `pendingChoices`
+      (`packages/core/src/engine.ts`), publishing every slot's answer and what any one slot could
+      hold instead once a pool has nothing left to choose; `packages/ui` folds these into the same
+      `picks`/`SettledPick` array a top-level pick already used. A full Skill Proficiency now
+      renders in "Choices already made" exactly like Race or Background: one `<select>` per
+      filled slot, each independently changeable, each excluding every *other* slot's current
+      answer. `pendingChoices` kept its existing contract throughout — it still means only
+      "outstanding", so the CLI and the self-containment test needed no changes.
+      The engine's candidate-and-remaining math needed nothing for either pass — `candidatesFor`
+      and `remaining` were already right for a multi-element `Choice`, proved by a same-render
+      three-cantrip test that predates both fixes. Both bugs were entirely in the pane and in
+      what the engine chose to publish once a pool closed.
   - [ ] **`multiple: true` on a build step — campaign options — is still unbuilt.** Genuinely
         separate from the bug above: a system-format change
         (`schemas/system.schema.json`, plus the `required`-and-`multiple` validation rejection)

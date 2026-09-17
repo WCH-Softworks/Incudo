@@ -340,18 +340,29 @@ deliberately **not** fixed:
   **This is not a Back button and ADR 0017 is untouched**: a settled pick is not somewhere you
   navigate to, it is something on screen that kept its control. The pane's header comment had
   been using "no Back button" as cover for the hole, which is how it survived.
-- **~~A decision could only ever record one element.~~** Fixed, and found live rather than by a
-  test: a player chose a Skill Proficiency after a Sage background, and a second pick left the
-  *first* one stuck on screen with no way to add to it — `choose(id, [value])` replaces, so
-  `BuilderPane` was always sending a single-item array and `setChoice` always overwrote whatever
-  was there. `OpenDecision` now publishes `chosen: ElementId[]` alongside `candidates` (ADR
-  0032's decision 1, landed ahead of the rest of that ADR), and the pane's write became
+- **~~A decision could only ever record one element, and disappeared once it held enough.~~**
+  Fixed in two passes, both found live rather than by a test. First: a player chose a Skill
+  Proficiency after a Sage background, and a second pick left the *first* one stuck on screen
+  with no way to add to it — `choose(id, [value])` replaces, so `BuilderPane` was always sending
+  a single-item array and `setChoice` always overwrote whatever was there. `OpenDecision` gained
+  `chosen: ElementId[]` alongside `candidates` (ADR 0032's decision 1, landed ahead of the rest
+  of that ADR), and the pane's write while a pool is open became
   `choose(id, [...decision.chosen, value])` — "replace" for a `pick`, where `chosen` is always
   `[]`, and "add to" for a `select` asking for more than one, with no branch needed between the
-  two. Each answer renders as a small removable tag. The engine side had been correct since
-  before ADR 0030 — `candidatesFor` and `remaining` already handled a multi-element `Choice`
-  correctly, proved by a same-render three-answer test that predates this fix — so the whole bug
-  was the pane never sending more than one id at a time.
+  two. Second, reported once the first fix made it reachable: filling the *last* slot made the
+  whole decision vanish, exactly the hole ADR 0017 had already fixed for a top-level pick — a
+  second Skill Proficiency had nowhere to be changed once chosen, any more than Race did before
+  `picks` existed. The engine gained `answeredChoices` beside `pendingChoices`, publishing every
+  slot's answer and what any one slot could hold instead once a pool has nothing left to
+  choose — `pendingChoices` itself is untouched, so the CLI and the self-containment test needed
+  no changes — and `packages/ui` folds these into the same `picks`/`SettledPick` array a
+  top-level pick already used. A full Skill Proficiency now renders in "Choices already made"
+  exactly like Race: one `<select>` per filled slot, independently changeable, each excluding
+  every *other* slot's current answer so two slots can never agree on one. The engine's
+  candidate-and-remaining math needed nothing for either pass — `candidatesFor` and `remaining`
+  already handled a multi-element `Choice` correctly, proved by a same-render three-answer test
+  that predates both fixes — so both bugs were entirely in the pane and in what the engine chose
+  to publish once a pool closed.
 - **The character sheet renders no features, traits, proficiencies or languages.**
   `SheetPane.tsx` does `if (!stats.length) return null`, and the `features` and `proficiencies`
   sections declare `types` with no `stats`, so they are dropped whole. The CLI renders them
