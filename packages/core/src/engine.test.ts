@@ -652,10 +652,31 @@ test('same-named selects on one element are one pool, and its allowance is their
   assert.equal(choice!.remaining, 4);
 });
 
-test('a pool that is full reports nothing — the bug every imported caster hit', () => {
+test('a pool that is full reports nothing pending — the bug every imported caster hit', () => {
   const derived = deriveCharacter(withCantrips(10, 'A', 'B', 'C', 'D'), system(), CANTRIPS());
   assert.deepEqual(derived.problems, []);
   assert.deepEqual(derived.pendingChoices, []);
+});
+
+test('a pool that is full is answered, not gone — ADR 0032', () => {
+  // pendingChoices only ever lists what is outstanding; a full pool needs to stay somewhere
+  // a shell can still change it, which is what answeredChoices is for.
+  const derived = deriveCharacter(withCantrips(10, 'A', 'B', 'C', 'D'), system(), CANTRIPS());
+  assert.equal(derived.answeredChoices.length, 1);
+  const [answered] = derived.answeredChoices;
+  assert.equal(answered!.ruleKey, 'CASTER/select:Cantrip');
+  assert.deepEqual(answered!.chosen, ['A', 'B', 'C', 'D']);
+  assert.deepEqual(
+    answered!.candidates,
+    ['E'],
+    'the fifth Gadget is what any one slot could hold instead',
+  );
+});
+
+test('a pool with room left is pending, not answered', () => {
+  const derived = deriveCharacter(withCantrips(10, 'A', 'B', 'C'), system(), CANTRIPS());
+  assert.equal(derived.pendingChoices.length, 1);
+  assert.deepEqual(derived.answeredChoices, []);
 });
 
 test('over-selected fires on the pool, not on one rule of it', () => {

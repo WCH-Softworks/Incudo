@@ -105,6 +105,36 @@ export interface PendingChoice {
   level?: number;
 }
 
+/**
+ * A `select` pool with nothing left to choose — the settled counterpart of `PendingChoice`.
+ *
+ * `pendingChoices` only ever lists what is still outstanding, and that contract is not moving:
+ * the CLI reports its length as "choices pending" and the self-containment test reads it as
+ * "what is open". A pool that fills its last slot needs somewhere to keep being editable
+ * rather than vanishing outright — a wizard's second cantrip should stay changeable exactly as
+ * its first one was — and this is that somewhere.
+ */
+export interface AnsweredChoice {
+  ruleKey: string;
+  label: string;
+  type: string;
+  optional: boolean;
+  /** Every slot's answer, in the order it was recorded. */
+  chosen: ElementId[];
+  /**
+   * What a slot could hold instead of its own answer.
+   *
+   * The same computation `pendingChoices` makes while a pool is open — every rule's candidates,
+   * minus everything `active` (which already covers every id in `chosen`, this pool's own
+   * included). A view that wants to let one slot keep its current answer adds it back for that
+   * slot alone; adding it to every slot would let two slots agree on one answer, which nothing
+   * here or in `character.choices` forbids but a view should not offer.
+   */
+  candidates: ElementId[];
+  unresolvedSupports: string[];
+  from: ElementId;
+}
+
 export type ProblemLevel = 'error' | 'warning';
 
 export interface Problem {
@@ -139,6 +169,9 @@ export interface DerivedCharacter {
   elementIds: ReadonlySet<ElementId>;
   stats: Map<StatKey, ResolvedStat>;
   pendingChoices: PendingChoice[];
+  /** Every `select` pool with nothing left to choose — the counterpart `pendingChoices` never
+   * lists once a pool is full, and where a slot stays editable after it is. */
+  answeredChoices: AnsweredChoice[];
   problems: Problem[];
   /**
    * What the character's slots hold — ADR 0025. Carried on the result because it is computed
@@ -293,7 +326,7 @@ export function deriveCharacter(
   reportAttunementLimit(kind, stats, equipment, problems);
 
   const ctx = makeContext(active, stats, character, kind, equipment);
-  const pendingChoices = collectPendingChoices(
+  const { pending: pendingChoices, answered: answeredChoices } = collectPendingChoices(
     active,
     character,
     kind,
@@ -313,6 +346,7 @@ export function deriveCharacter(
     elementIds: new Set(active.keys()),
     stats,
     pendingChoices,
+    answeredChoices,
     equipment,
     // The derivation is a fixed point, so an unresolvable grant is discovered again on
     // every pass. The user has one broken reference, not four, and should be told once.
@@ -871,8 +905,9 @@ function collectPendingChoices(
   levelFor: TrackLevelReader,
   equipment: EquipmentState,
   filters: BlockFilterResolver | undefined,
-): PendingChoice[] {
+): { pending: PendingChoice[]; answered: AnsweredChoice[] } {
   const pending: PendingChoice[] = [];
+  const answered: AnsweredChoice[] = [];
 
   for (const element of active.values()) {
     for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor, equipment)) {
@@ -891,7 +926,33 @@ function collectPendingChoices(
       }
 
       const remaining = allowed - chosen.length;
-      if (remaining <= 0) continue;
+      if (remaining <= 0) {
+        // Full, not gone: what a slot could hold instead is the same question `candidatesFor`
+        // answers while a pool is open, asked of every rule rather than just the ones with
+        // room — none do, so "every rule" and "the rules with room" are the same set anyway.
+        const candidates = new Set<ElementId>();
+        const unresolvedSupports = new Set<string>();
+        for (const rule of rules) {
+          for (const candidate of candidatesFor(rule, index, chosen, ctx, filters)) {
+            if (active.has(candidate.id)) continue;
+            candidates.add(candidate.id);
+          }
+          for (const key of supportsInterpolations(rule.supports)) {
+            if (filters?.expand(rule, key) === undefined) unresolvedSupports.add(key);
+          }
+        }
+        answered.push({
+          ruleKey,
+          label,
+          type: rules[0]!.type,
+          optional: rules.every((rule) => rule.optional ?? false),
+          chosen: [...chosen],
+          candidates: [...candidates],
+          unresolvedSupports: [...unresolvedSupports],
+          from: element.id,
+        });
+        continue;
+      }
 
       // Which rules still have room. Picks fill the pool in level order — the order the
       // importer writes them in and the order a character is actually built in — so the
@@ -961,7 +1022,7 @@ function collectPendingChoices(
     }
   }
 
-  return pending;
+  return { pending, answered };
 }
 
 /**
