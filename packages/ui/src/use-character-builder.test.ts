@@ -856,6 +856,61 @@ test("a pick's chosen is always empty, because an answered one leaves the open l
   assert.deepEqual(pick.chosen, []);
 });
 
+test('a fully answered multi-select settles into picks, not gone, once every slot is filled', () => {
+  // The follow-up to the bug fix above: filling the last slot used to make the whole decision
+  // disappear with no way back to it, the same hole a top-level pick had before `picks`
+  // existed. This is that same fix, one level down (ADR 0032).
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'skills', type: 'Gadget', name: 'Skills', number: 2 },
+    ]),
+    element('A', 'Gadget'),
+    element('B', 'Gadget'),
+    element('C', 'Gadget'),
+  );
+  const b = builder(index);
+  b.choose('build/start', ['CLASSY']);
+  const decision = b.getState().decisions.find((d) => d.label === 'Skills')!;
+  b.choose(decision.id, ['A', 'B']);
+
+  const state = b.getState();
+  assert.equal(state.decisions.some((d) => d.label === 'Skills'), false, 'no longer outstanding');
+
+  const settled = state.picks.find((p) => p.ruleKey === decision.id)!;
+  assert.ok(settled, 'but not gone — it moved to picks');
+  assert.equal(settled.label, 'Skills');
+  assert.deepEqual(settled.chosen, ['A', 'B'], 'one entry per filled slot, in order');
+  assert.deepEqual(
+    settled.candidates.sort(),
+    ['A', 'B', 'C'],
+    'candidates always include what is chosen now, same contract as a top-level pick',
+  );
+});
+
+test('changing one slot of a settled multi-select keeps the others', () => {
+  const index = indexWith(
+    element('CLASSY', 'Widget', [
+      { kind: 'select', key: 'skills', type: 'Gadget', name: 'Skills', number: 2 },
+    ]),
+    element('A', 'Gadget'),
+    element('B', 'Gadget'),
+    element('C', 'Gadget'),
+  );
+  const b = builder(index);
+  b.choose('build/start', ['CLASSY']);
+  const decision = b.getState().decisions.find((d) => d.label === 'Skills')!;
+  b.choose(decision.id, ['A', 'B']);
+
+  // The write a per-slot dropdown makes: the recorded list with just that index replaced.
+  const settled = b.getState().picks.find((p) => p.ruleKey === decision.id)!;
+  const next = [...settled.chosen];
+  next[0] = 'C';
+  b.choose(settled.ruleKey, next);
+
+  const after = b.getState().picks.find((p) => p.ruleKey === decision.id)!;
+  assert.deepEqual(after.chosen, ['C', 'B'], 'the untouched slot survives the write');
+});
+
 test('a filter Incudo cannot evaluate is named, not silently empty', () => {
   // The distinction that cost a wrong diagnosis: an unresolved `$(…)` matches nothing, so the
   // candidate list is empty — which is indistinguishable on screen from "you have not loaded

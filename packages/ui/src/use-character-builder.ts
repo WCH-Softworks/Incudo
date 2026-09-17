@@ -156,12 +156,15 @@ export interface BuilderState {
   /** Steps in their suggested order — a topological sort of `requires`. */
   steps: BuilderStep[];
   /**
-   * Top-level picks that already have an answer — the race you chose, and how to choose again.
+   * Answered decisions, and how to change them — the race you chose, and a wizard's second
+   * Skill Proficiency once it too has an answer (ADR 0032).
    *
-   * `decisions` is what is *outstanding*, so an answered pick correctly leaves it. It used to
-   * leave with the only control that could change it, which made the race, class and background
-   * one-way doors: the Steps list said "complete" and never said complete *what*. A settled
-   * budget already had this problem and already had this answer, in `BuilderState.steps[].budget`.
+   * `decisions` is what is *outstanding*, so an answered one correctly leaves it. A top-level
+   * pick used to leave with the only control that could change it, which made race, class and
+   * background one-way doors: the Steps list said "complete" and never said complete *what*. A
+   * settled budget already had this problem and already had this answer, in
+   * `BuilderState.steps[].budget` — a full content `select` pool is the same shape again, one
+   * level down from a build step.
    *
    * Candidates are computed exactly as they are for the open form, so changing an answer offers
    * the same list choosing it did — minus anything whose requirements the first choice has since
@@ -173,20 +176,28 @@ export interface BuilderState {
 }
 
 /**
- * A top-level pick with an answer, and the means to change it.
+ * An answered decision, and the means to change it — a top-level pick (Race, Class,
+ * Background) or a content `select` pool with every slot filled (ADR 0032).
  *
  * Deliberately not an `OpenDecision` with a flag: "outstanding" and "settled" are read by
  * different parts of a screen, and a shell that had to filter `decisions` to count what is
  * left would get that wrong eventually.
+ *
+ * `chosen` holds one element for a top-level pick and one *per slot* for a multi-answer
+ * select — a wizard's two Skill Proficiencies are two entries, in the order they were
+ * recorded. `candidates` is a single shared list covering every slot, always including
+ * `chosen` itself so "what could this slot hold instead" and "what does it hold" are answered
+ * from the same array; keeping one slot's answer from also appearing in another slot's list is
+ * presentation, not a rule, and is `BuilderPane.tsx`'s job.
  */
 export interface SettledPick {
   /** The key it is recorded under — pass it straight to `choose`. */
   ruleKey: string;
   stepId: string;
   label: string;
-  /** What is chosen now. One element for every pick that exists today. */
+  /** What is chosen now — one entry for a pick, one per filled slot for a multi-answer select. */
   chosen: ElementId[];
-  /** What could be chosen instead, including what is chosen now. */
+  /** What could be chosen instead, including everything in `chosen`. */
   candidates: ElementId[];
 }
 
@@ -549,6 +560,24 @@ export class CharacterBuilder {
         candidates,
         // Unanswered by construction — the moment it has one it moves to `picks` below.
         chosen: [],
+      });
+    }
+
+    // A content `select` pool with nothing left to choose stays visible and editable too,
+    // exactly as a top-level pick does — a wizard's second cantrip should not vanish the
+    // moment it is chosen, any more than Race should (this is `pendingChoices`' counterpart,
+    // `answeredChoices`, which the engine only ever produces once a pool is full). Its
+    // `candidates` already excludes everything the character holds, `chosen` included, so
+    // adding `chosen` back here keeps this array's contract the same for every entry: what
+    // could be chosen instead always includes what is chosen now. Keeping one slot's answer
+    // out of another slot's list is the pane's job, not this file's — see `BuilderPane.tsx`.
+    for (const answered of derived.answeredChoices) {
+      picks.push({
+        ruleKey: answered.ruleKey,
+        stepId: stepForType.get(answered.type) ?? '',
+        label: answered.label,
+        chosen: answered.chosen,
+        candidates: [...answered.candidates, ...answered.chosen],
       });
     }
 
