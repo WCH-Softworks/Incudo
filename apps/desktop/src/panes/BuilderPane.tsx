@@ -14,7 +14,7 @@
  * pick is not somewhere you go, it is something on screen that still has a control.
  */
 
-import type { CharacterBuilder, BuilderState, OpenDecision } from '@incudo/ui';
+import type { CharacterBuilder, BuilderState, OpenDecision, SettledPick } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
 import { BudgetEditor } from './BudgetEditor.tsx';
@@ -199,21 +199,7 @@ export function BuilderPane({
                   <div className="decision-head">
                     <span className="label">{pick.label}</span>
                   </div>
-                  <select
-                    value={pick.chosen[0] ?? ''}
-                    onChange={(event) => {
-                      if (event.target.value) builder.choose(pick.ruleKey, [event.target.value]);
-                    }}
-                  >
-                    {pick.candidates
-                      .map((id) => ({ id, name: candidateLabel(id) }))
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((candidate) => (
-                        <option key={candidate.id} value={candidate.id}>
-                          {candidate.name}
-                        </option>
-                      ))}
-                  </select>
+                  <SettledPickEditor pick={pick} builder={builder} candidateLabel={candidateLabel} />
                 </div>
               ))}
             </section>
@@ -380,5 +366,57 @@ function Decision({
         </>
       )}
     </>
+  );
+}
+
+/**
+ * A settled pick or a fully-answered multi-select, as one `<select>` per slot.
+ *
+ * `pick.chosen` has one entry for a top-level pick and one per filled slot for a content
+ * `select` pool (ADR 0032) — a wizard's two Skill Proficiencies, say — and this renders the
+ * same control either way rather than branching on how many there are. `pick.candidates`
+ * already includes every one of `chosen`, which is what lets a slot offer its own current
+ * answer; what it does not do on its own is stop two slots from agreeing on one answer, so
+ * each slot's own option list drops every *other* slot's current value before it renders.
+ */
+function SettledPickEditor({
+  pick,
+  builder,
+  candidateLabel,
+}: {
+  pick: SettledPick;
+  builder: CharacterBuilder;
+  /** A candidate's name plus the book it came from — see `candidateLabel` in the pane. */
+  candidateLabel: (id: ElementId) => string;
+}): React.JSX.Element {
+  return (
+    <div className="settled-slots">
+      {pick.chosen.map((id, index) => {
+        const options = pick.candidates.filter(
+          (candidate) => candidate === id || !pick.chosen.includes(candidate),
+        );
+        return (
+          <select
+            key={index}
+            value={id}
+            onChange={(event) => {
+              if (!event.target.value) return;
+              const next = [...pick.chosen];
+              next[index] = event.target.value;
+              builder.choose(pick.ruleKey, next);
+            }}
+          >
+            {options
+              .map((candidateId) => ({ id: candidateId, name: candidateLabel(candidateId) }))
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.name}
+                </option>
+              ))}
+          </select>
+        );
+      })}
+    </div>
   );
 }

@@ -837,6 +837,15 @@ table.budget-rows input[type='number'] {
   border-bottom: 1px solid var(--line);
 }
 
+/* One `<select>` per slot of a settled pick — a single row for a top-level pick, several for a
+   full content select (ADR 0032). Stacked rather than side by side: the settled column is
+   narrow, and a race or spell name plus its book runs long. */
+.settled-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 /* --- the launcher, and what came with it (ADR 0031) --------------------- */
 
 .launcher .system-list {
