@@ -26,6 +26,7 @@ import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/cor
 
 import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
 import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
+import { ClassLevels } from './ClassLevels.tsx';
 import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 
@@ -60,6 +61,8 @@ export function BuilderPane({
     // kind, and the formatting is `candidateLabel` in `packages/ui`, which the search matches too.
     return describeCandidate(element, kind.candidateNotes);
   };
+
+  const classLevelsStep = steps.find((step) => step.classLevels);
 
   /** Budgeted or per-level-roll steps with nothing outstanding — still editable, see below. */
   const settled = steps.filter(
@@ -236,6 +239,25 @@ export function BuilderPane({
                   />
                 </div>
               ))}
+            </section>
+          )}
+
+          {/*
+            Which class each level went to. Not a decision and never outstanding, so it does not
+            live in Open decisions: a character with one class has nothing to answer here, and the
+            control is for taking a level in another one — or for correcting what an earlier level
+            went to. What a level in a new class opens still arrives in the list beside it.
+          */}
+          {classLevelsStep?.classLevels && (
+            <section>
+              <h2>Classes</h2>
+              <ClassLevels
+                stepId={classLevelsStep.id}
+                state={classLevelsStep.classLevels}
+                builder={builder}
+                nameOf={nameOf}
+                candidateLabel={candidateLabel}
+              />
             </section>
           )}
 

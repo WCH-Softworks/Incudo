@@ -971,6 +971,57 @@ table.budget-rows input[type='number'] {
   white-space: nowrap;
 }
 
+/*
+ * Which class each level went to. Blocks, not a table, for the reason `.hp-level` gives: this sits
+ * in the narrow settled column, where a class name plus its book and a select do not share a row.
+ */
+.class-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.class-summary {
+  margin: 0;
+  font-weight: 600;
+}
+
+.class-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.class-add label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.class-add select,
+.class-level-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+.class-level-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.class-level-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.class-level-row select {
+  grid-column: 1 / -1;
+}
+
 .settled {
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
