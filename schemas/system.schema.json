@@ -332,6 +332,7 @@
         "blockFilters": { "type": "array", "items": { "$ref": "#/$defs/blockFilter" } },
         "contributions": { "type": "array", "items": { "$ref": "#/$defs/contribution" } },
         "inventory": { "$ref": "#/$defs/inventory" },
+        "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },
         "repeatableSetter": {
           "type": "string",
           "minLength": 1,
@@ -407,6 +408,28 @@
         "fillFrom": {
           "type": "integer",
           "description": "Emit every integer from here up to the largest numeric capture, instead of the captures themselves; non-numeric captures are still emitted verbatim. The system's way of saying \"a resource published at one level covers everything at or below it\". 5e needs it because a warlock's pact table publishes exactly one positive slot level — 5th at high level — while the character really can pick spells of every level up to it."
+        }
+      }
+    },
+
+    "candidateNote": {
+      "description": "A short fact a picker prints beside a candidate of certain types — a spell's level, say. Which setter says it and how it reads are the system's business, because the engine does not know that a spell has a level or that level 0 is called a cantrip. The text becomes part of the candidate's label, so a search matches it too: typing \"cantrip\" narrows a spell list to cantrips. A candidate without the setter gets no note. Replaced rather than merged along an extends chain; a kind that declares none prints a name and a source.",
+      "type": "object",
+      "required": ["types", "setter", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "types": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Element types the note is printed for."
+        },
+        "setter": { "type": "string", "minLength": 1, "description": "The setter whose value is shown." },
+        "label": { "type": "string", "minLength": 1, "description": "The text, with {value} standing for the setter's value." },
+        "labels": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 },
+          "description": "Exact-value replacements, tried before label: { \"0\": \"Cantrip\" }."
         }
       }
     },

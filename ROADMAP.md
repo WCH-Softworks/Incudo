@@ -350,7 +350,10 @@ before any code, both touching a public API:
       by a hardcoded rule or by recency, which measured wrong against the real corpus. The element
       picker stopped being a `<select>`: `CandidatePicker` is searchable and no longer capped at
       40, and hovering a candidate reads its description in a fixed dock beside the list
-      (`PreviewDock`), which replaced a Details button and then a floating panel.
+      (`PreviewDock`), which replaced a Details button and then a floating panel. A spell reads
+      "Fireball (Level 3)" and a level 0 one "(Cantrip)": a kind's `candidateNotes` names the
+      setter and the wording, so nothing in core or the pane knows what a spell level is, and the
+      note is part of the label, so searching "cantrip" or "level 3" filters the list.
 - [x] **A decision can record more than one element, and stays as editable as any other once it
       does** ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md)'s bug fix — the ADR
       itself stays proposed; see the entry below). Two passes, found live rather than by a test.

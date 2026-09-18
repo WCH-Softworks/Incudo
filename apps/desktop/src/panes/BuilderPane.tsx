@@ -21,6 +21,7 @@ import type {
   SettledPick,
   DeclinedDecision,
 } from '@incudo/ui';
+import { candidateLabel as describeCandidate } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
 import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
@@ -55,7 +56,9 @@ export function BuilderPane({
   const candidateLabel = (id: ElementId): string => {
     const element = elements.get(id);
     if (!element) return id;
-    return element.source ? `${element.name} — ${element.source}` : element.name;
+    // What a system asks a picker to say beside a candidate — a spell's level — is data on the
+    // kind, and the formatting is `candidateLabel` in `packages/ui`, which the search matches too.
+    return describeCandidate(element, kind.candidateNotes);
   };
 
   /** Budgeted or per-level-roll steps with nothing outstanding — still editable, see below. */

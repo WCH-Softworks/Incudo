@@ -188,6 +188,25 @@ export interface BlockFilterDef {
   fillFrom?: number;
 }
 
+/**
+ * A short fact a picker prints beside a candidate of certain types — a spell's level, say.
+ *
+ * Which setter says it and how it reads are the system's business: core does not know that a
+ * spell has a level, or that level 0 is called a cantrip, and a system where neither is true
+ * simply declares no notes. The text is part of the picker's label, so it is also what a search
+ * matches — typing "cantrip" narrows a spell list to cantrips without a filter control.
+ */
+export interface CandidateNoteDef {
+  /** Element types this note is printed for. */
+  types: ElementType[];
+  /** The setter whose value is shown. A candidate without it gets no note. */
+  setter: string;
+  /** The text, with `{value}` standing for the setter's value. */
+  label: string;
+  /** Exact-value replacements, tried before `label` — `{ "0": "Cantrip" }`. */
+  labels?: Record<string, string>;
+}
+
 /** One `:`-delimited segment — what a `*` in a `tagsFromStats` pattern captures. */
 const STAT_SEGMENT = '[^:]+';
 
@@ -844,6 +863,11 @@ export interface CharacterKindDef {
    */
   inventory?: InventoryDef;
   /**
+   * What a picker prints beside a candidate, per element type. Replaced rather than merged along
+   * an `extends` chain, like `trackStats`. A kind that declares none prints a name and a source.
+   */
+  candidateNotes?: CandidateNoteDef[];
+  /**
    * The setter an element carries to say it may be taken more than once — ADR 0035. Replaced
    * rather than merged along an `extends` chain, like `trackStats`. A kind that names none
    * treats every element as taken at most once, which is what the engine did before.
@@ -883,6 +907,8 @@ export interface ResolvedCharacterKind {
   inventory?: InventoryDef;
   /** The setter that marks an element as repeatable, or none — ADR 0035. */
   repeatableSetter?: string;
+  /** What a picker prints beside a candidate of certain types. */
+  candidateNotes: CandidateNoteDef[];
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -1060,6 +1086,7 @@ export function resolveCharacterKind(
   let contributions: ContributionDef[] = [];
   let inventory: InventoryDef | undefined;
   let repeatableSetter: string | undefined;
+  let candidateNotes: CandidateNoteDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -1078,6 +1105,7 @@ export function resolveCharacterKind(
     if (layer.contributions !== undefined) contributions = layer.contributions;
     if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.repeatableSetter !== undefined) repeatableSetter = layer.repeatableSetter;
+    if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -1097,6 +1125,7 @@ export function resolveCharacterKind(
     contributions,
     inventory,
     repeatableSetter,
+    candidateNotes,
     buildSteps,
     sheet,
   };

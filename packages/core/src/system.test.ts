@@ -276,3 +276,15 @@ test('the repeatable setter is inherited down an extends chain, and a child may 
   system.characterKinds[2]!.repeatableSetter = 'twice';
   assert.equal(resolveCharacterKind(system, 'gamma').repeatableSetter, 'twice', 'replaced');
 });
+
+test('candidate notes are inherited down an extends chain, and a child may replace them', () => {
+  const system = fixture();
+  const note = { types: ['Widget'], setter: 'tier', label: 'Tier {value}' };
+  system.characterKinds[1]!.candidateNotes = [note];
+  assert.deepEqual(resolveCharacterKind(system, 'alpha').candidateNotes, [], 'none unless declared');
+  assert.deepEqual(resolveCharacterKind(system, 'beta').candidateNotes, [note]);
+  assert.deepEqual(resolveCharacterKind(system, 'gamma').candidateNotes, [note], 'inherited');
+
+  system.characterKinds[2]!.candidateNotes = [];
+  assert.deepEqual(resolveCharacterKind(system, 'gamma').candidateNotes, [], 'replaced, not merged');
+});
