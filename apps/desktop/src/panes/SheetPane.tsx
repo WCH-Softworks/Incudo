@@ -11,7 +11,7 @@
  */
 
 import type { BuilderState, CharacterBuilder } from '@incudo/ui';
-import { collectDeclaredBlocks, substituteBlockPlaceholders, type ResolvedStat } from '@incudo/core';
+import { collectDeclaredBlocks, renderSheetSection, type ResolvedStat } from '@incudo/core';
 
 export function SheetPane({
   builder,
@@ -43,46 +43,35 @@ export function SheetPane({
         {kind.name} · {derived.elements.length} elements
       </p>
 
-      {kind.sheet.sections.map((section) => {
-        const stats = section.stats ?? [];
-        if (!stats.length) return null;
+      {kind.sheet.sections
+        .flatMap((section) => renderSheetSection(section, blocks))
+        .map((rendering) => {
+          const elements = derived.elements.filter((e) => rendering.types.includes(e.type));
+          if (!rendering.stats.length && !elements.length) return null;
 
-        if (section.perBlock) {
-          return blocks.map((block) => (
-            <section key={`${section.id}:${block.name}`} className="sheet-section">
-              <h3>
-                {section.label} — {block.name}
-              </h3>
-              <dl>
-                {stats.map((pattern) => {
-                  const key = substituteBlockPlaceholders(pattern, block);
-                  if (key === undefined) return null;
-                  return (
-                    <div key={pattern}>
-                      <dt>{key}</dt>
+          return (
+            <section key={rendering.id} className="sheet-section">
+              <h3>{rendering.label}</h3>
+              {rendering.stats.length > 0 && (
+                <dl>
+                  {rendering.stats.map((key) => (
+                    <div key={key}>
+                      <dt>{rendering.blockName ? key : labelOf(key)}</dt>
                       <dd>{valueOf(key)}</dd>
                     </div>
-                  );
-                })}
-              </dl>
+                  ))}
+                </dl>
+              )}
+              {elements.length > 0 && (
+                <ul className="sheet-elements">
+                  {elements.map((element) => (
+                    <li key={element.id}>{element.name}</li>
+                  ))}
+                </ul>
+              )}
             </section>
-          ));
-        }
-
-        return (
-          <section key={section.id} className="sheet-section">
-            <h3>{section.label}</h3>
-            <dl>
-              {stats.map((key) => (
-                <div key={key}>
-                  <dt>{labelOf(key)}</dt>
-                  <dd>{valueOf(key)}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        );
-      })}
+          );
+        })}
     </main>
   );
 }

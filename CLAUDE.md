@@ -339,7 +339,7 @@ running it protects the product.**
   reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
   the cache answers.
 
-Ten things the shell has surfaced, two of them since fixed and struck through. The rest are
+Ten things the shell has surfaced, three of them since fixed and struck through. The rest are
 deliberately **not** fixed:
 
 - **~~An answered `pick` cannot be changed.~~** Fixed. It was predicted here to be "a real screen
@@ -383,13 +383,14 @@ deliberately **not** fixed:
   `candidatesFor` and `remaining` already handled a multi-element `Choice` correctly, proved by a
   same-render three-answer test that predates all of them — so every one of these bugs was in the
   pane and in what the engine chose to publish once a pool closed or a slot filled.
-- **The character sheet renders no features, traits, proficiencies or languages.**
-  `SheetPane.tsx` does `if (!stats.length) return null`, and the `features` and `proficiencies`
-  sections declare `types` with no `stats`, so they are dropped whole. The CLI renders them
-  (`character-commands.ts`, `derived.elements.filter(e => section.types.includes(e.type))`), so
-  a level 1 wizard's sheet reads eight proficiencies and two class features there and six
-  ability scores and some numbers in the app. Same shape as every other divergence here: the
-  pane reimplements a slice of what the CLI already does properly.
+- **~~The character sheet renders no features, traits, proficiencies or languages.~~** Fixed.
+  `SheetPane.tsx` did `if (!stats.length) return null`, and the `features` and `proficiencies`
+  sections declare `types` with no `stats`, so they were dropped whole. It now calls the shared
+  `renderSheetSection` (`packages/core/src/system.ts`) instead of reimplementing `perBlock`
+  expansion by hand, and renders a section whenever it has non-empty `stats` *or* a non-empty
+  `derived.elements.filter(e => section.types.includes(e.type))` — the same test
+  `character-commands.ts`'s `printSheet` already used. A level 1 wizard's app sheet now lists
+  its features, proficiencies and spells the same as the CLI's.
 - **A granted ability point is unspendable except under a points method.** `BudgetState.granted`
   reports it and the editor shows it, but only a cost table says what a point buys, so a
   standard-array or rolled character cannot spend one. Inventing "a point is +1" is the guess

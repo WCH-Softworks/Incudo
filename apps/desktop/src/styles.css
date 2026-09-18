@@ -468,6 +468,16 @@ ul.problems li.error {
   border-bottom: 1px solid var(--line);
 }
 
+.sheet-elements {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
 .result dl {
   margin-top: 6px;
 }
