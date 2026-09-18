@@ -16,3 +16,4 @@ export * from './character-library.ts';
 export * from './aurora-import.ts';
 export * from './user-systems.ts';
 export * from './candidate-search.ts';
+export * from './preview-placement.ts';
