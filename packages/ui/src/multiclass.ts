@@ -36,6 +36,7 @@ import {
   type ElementType,
   type LevelRollDef,
   type Progression,
+  type RequirementExpr,
 } from '@incudo/core';
 
 import { parseDice } from './dice.ts';
@@ -95,10 +96,14 @@ export interface ClassOption {
   eligible: boolean;
   /**
    * `no-multiclass-rules`: the class declares no way to be taken second (one Unearthed Arcana
-   * class in the corpus). `prerequisite`: the class's own `requirements` or its multiclass
-   * block's do not hold for this character as it stands.
+   * class in the corpus). `excluded`: something the character holds is one of the things the
+   * requirement says must be absent — the other edition of a class it already has, across the
+   * corpus's 2014/2024 pairs — and no score can change that. `prerequisite`: the class's own
+   * `requirements` or its multiclass block's do not hold for this character as it stands.
    */
-  unavailable?: 'no-multiclass-rules' | 'prerequisite';
+  unavailable?: 'no-multiclass-rules' | 'excluded' | 'prerequisite';
+  /** For `excluded`: the element the character holds that rules this class out. */
+  excludedBy?: ElementId;
   /** The block's own words for what it needs — "Strength 13 and Charisma 13" — when it has any. */
   prerequisite?: string;
 }
@@ -344,6 +349,37 @@ export function planFirstClass(
   return writeClassLevels(character, config, elements, levels, next);
 }
 
+/**
+ * A held element that a requirement, which is known to be false, says must not be held.
+ *
+ * Content writes "not the other edition of this class" as `!(ID_…_CLASS_X||ID_…_MULTICLASS_X)`, and
+ * a boolean cannot say which of a block's terms failed — so an ability minimum the character
+ * meets read as the reason it was refused. Only called for an expression that is already false,
+ * which is what makes a negated `has` of something held a term that *did* fail.
+ */
+function forbiddenBy(
+  expr: RequirementExpr | undefined,
+  held: ReadonlySet<ElementId>,
+  negated = false,
+): ElementId | undefined {
+  if (!expr) return undefined;
+  switch (expr.kind) {
+    case 'has':
+      return negated && held.has(expr.id) ? expr.id : undefined;
+    case 'not':
+      return forbiddenBy(expr.child, held, !negated);
+    case 'and':
+    case 'or':
+      for (const child of expr.children) {
+        const found = forbiddenBy(child, held, negated);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
 function dieSides(element: Element | undefined, dieSetter: string): number | undefined {
   const notation = element?.setters[dieSetter]?.value;
   if (notation === undefined) return undefined;
@@ -390,11 +426,16 @@ export function computeClassLevelState(
       const met =
         evaluateRequirements(element.requirements, context) &&
         evaluateRequirements(block.requirements, context);
+      const excludedBy = met
+        ? undefined
+        : (forbiddenBy(element.requirements, derived.elementIds) ??
+          forbiddenBy(block.requirements, derived.elementIds));
       options.push({
         id: element.id,
         taken,
         eligible: met,
-        ...(met ? {} : { unavailable: 'prerequisite' as const }),
+        ...(met ? {} : { unavailable: excludedBy ? ('excluded' as const) : ('prerequisite' as const) }),
+        ...(excludedBy ? { excludedBy } : {}),
         ...(block.prerequisite ? { prerequisite: block.prerequisite } : {}),
       });
     }

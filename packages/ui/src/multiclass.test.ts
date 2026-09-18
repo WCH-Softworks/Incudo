@@ -290,6 +290,22 @@ test('the other edition of a class you hold is ineligible, from content\'s own e
   assert.equal(b.setLevelClass('levels', 3, 'RANGER_NEW'), false);
 });
 
+test('an edition exclusion says so, instead of blaming an ability score the character meets', () => {
+  // Vigour 14 meets the "Vigour 13" the block names, so reading its prerequisite as the reason is
+  // wrong — the term that failed is the negated `has`.
+  const b = fighter(3, { vigour: 14 });
+  b.setLevelClass('levels', 2, 'RANGER');
+  const excluded = b.classLevelsFor('levels')!.options.find((o) => o.id === 'RANGER_NEW')!;
+  assert.equal(excluded.unavailable, 'excluded');
+  assert.equal(excluded.excludedBy, 'RANGER');
+  assert.equal(excluded.prerequisite, 'Vigour 13', 'the block\'s words are still there to quote');
+
+  // And a shortfall stays a shortfall: no exclusion is invented where nothing is held.
+  const short = fighter(3, { vigour: 14, grit: 8 }).classLevelsFor('levels')!.options.find((o) => o.id === 'MAGE')!;
+  assert.equal(short.unavailable, 'prerequisite');
+  assert.equal(short.excludedBy, undefined);
+});
+
 // --- writing a level ---------------------------------------------------------------------
 
 test('spending a level on a second class writes advancement AND its multiclass element', () => {
