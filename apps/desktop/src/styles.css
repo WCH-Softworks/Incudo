@@ -1095,6 +1095,65 @@ table.budget-rows input[type='number'] {
 }
 
 /*
+ * The preview dock (`PreviewDock.tsx`): where the option being pointed at is read when the
+ * builder's columns sit side by side. Sticky at the top of the right-hand column, so it stays in
+ * view while the settled lists below it scroll. A fixed height, not a maximum: sweeping the
+ * pointer down a list swaps the text every few rows, and a box that resized to each description
+ * would shift everything beneath it every time. A long description scrolls inside it and a
+ * short one leaves it part empty. The shadow in the page colour hides the gap under it, where
+ * scrolled content would otherwise show through.
+ */
+.preview-dock {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: min(45vh, 420px);
+  overflow-y: auto;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg-sunken);
+  box-shadow: 0 10px 0 0 var(--bg);
+}
+
+.preview-dock-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* The row whose text is showing, kept marked after the pointer leaves it. */
+.picker-row {
+  position: relative;
+}
+
+.picker-row.previewing {
+  background: var(--bg-sunken);
+}
+
+/* A bar rather than an inset shadow: the hovered button paints its own background over a
+   shadow, which broke the marker into fragments. */
+.picker-row.previewing::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+
+.picker-chosen {
+  border-left: 3px solid transparent;
+  padding-left: 6px;
+}
+
+.picker-chosen.previewing {
+  border-left-color: var(--accent);
+}
+
+/*
  * `Element.description`, sanitized and rendered as-is (`sanitize-html.ts`) — Aurora's own rich
  * text, not Incudo's. A light reset so paragraph and list spacing reads at this size without
  * inheriting whatever margins the source HTML assumed; no color rules, because the sanitizer

@@ -4,19 +4,22 @@
  * Replaces the plain `<select>` `BuilderPane.tsx` used for every element decision — Race,
  * Class, Cantrip, Spellbook and the rest — none of which let a player read a candidate's own
  * description before picking it. `Element.description` (`packages/core/src/model.ts`) is where
- * that text lives; `sanitizeDescriptionHtml` (`../sanitize-html.ts`) is what makes it safe to
- * show, and only runs for the one row being read, never for the whole list at once.
+ * that text lives; `CandidateDescription` sanitizes it (`../sanitize-html.ts`) before showing
+ * it, and only for the one row being read, never for the whole list at once.
  *
- * **How the text is reached depends on whether the pointer can hover.** With a mouse or a
- * trackpad, resting on a row (or focusing it with the keyboard) opens a floating preview beside
- * it, and there is no button to press. A touch screen has no hover, so there each row keeps a
+ * **How the text is reached depends on the device and the layout.** With a mouse or a
+ * trackpad, resting on a row (or focusing it with the keyboard) shows the text, and there is no
+ * button to press. Where the three builder columns sit side by side it goes to the shared
+ * `PreviewDock` at the top of the right-hand column, which keeps it when the pointer leaves.
+ * Where they are stacked the dock would be far from the row, so the picker floats its own
+ * preview beside the row instead. A touch screen has no hover, so there each row keeps a
  * Details button that expands the text inline. The choice follows the input device, not the
  * window width (`useCanHover`), because a narrow desktop window still has a mouse.
  *
- * The preview is a panel positioned against the window rather than a child of the row: the row
- * sits inside a scrolling list inside a scrolling column, and either would clip it. It can be
- * entered and scrolled, since a spell's text is longer than a tooltip, and Escape dismisses it
- * from anywhere.
+ * The floating preview is a panel positioned against the window rather than a child of the row:
+ * the row sits inside a scrolling list inside a scrolling column, and either would clip it. It
+ * can be entered and scrolled, since a spell's text is longer than a tooltip, and Escape
+ * dismisses it from anywhere.
  *
  * The volume problem is the reason this is not "one card per candidate": Race offers ~139
  * options and a mid-level Wizard's Spellbook decision 300+, so every row is just a name, in a
@@ -35,11 +38,15 @@ import { createPortal } from 'react-dom';
 import { placePreview, searchCandidates, type PreviewPlacement } from '@incudo/ui';
 import type { ElementId, ElementIndex } from '@incudo/core';
 
-import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
 import { useCanHover } from '../use-can-hover.ts';
+import { CandidateDescription } from './CandidateDescription.tsx';
+import { usePreviewDock } from './PreviewDock.tsx';
 
-/** Resting on a row before the preview opens, so sweeping the mouse down a list stays quiet. */
+/** Resting on a row before a floating preview opens, so sweeping the mouse down a list stays quiet. */
 const SHOW_DELAY = 250;
+/** Before the dock switches. Shorter, since it replaces text rather than covering the screen,
+ *  but not zero: a sweep down 300 rows should not sanitize and render 300 descriptions. */
+const DOCK_DELAY = 120;
 /** Moving to another row while a preview is already up: nearly immediate, or it feels laggy. */
 const SWITCH_DELAY = 40;
 /** Long enough to cross the gap from a row into its own preview, which can be scrolled. */
@@ -81,7 +88,11 @@ export function CandidatePicker({
       ) : (
         <ul className="picker-list">
           {matches.map((option) => (
-            <li key={String(option.id)} className="picker-row" {...preview.rowProps(option.id)}>
+            <li
+              key={String(option.id)}
+              className={preview.previewing(option.id) ? 'picker-row previewing' : 'picker-row'}
+              {...preview.rowProps(option.id)}
+            >
               <div className="picker-row-head">
                 <button
                   type="button"
@@ -156,7 +167,10 @@ export function ChosenCandidate({
   }
 
   return (
-    <div className="picker-chosen" {...preview.rowProps(id)}>
+    <div
+      className={preview.previewing(id) ? 'picker-chosen previewing' : 'picker-chosen'}
+      {...preview.rowProps(id)}
+    >
       <div className="picker-row-head">
         <span className="picker-name">{candidateLabel(id)}</span>
         {!preview.canHover && (
@@ -183,15 +197,21 @@ export function ChosenCandidate({
 }
 
 /**
- * The state behind a hover preview: which candidate is showing, where its row was, and the
- * timers that make it feel right (a pause before it opens, a grace period before it closes).
+ * How a row's description reaches the screen when the pointer can hover.
  *
- * Each picker and each chosen card owns one, so two can never show at once from one place.
+ * With a `PreviewDock` on screen, resting on a row writes its id to the dock and nothing is
+ * ever hidden: the dock keeps what it last showed, and `previewing` marks the row it belongs
+ * to. Without one (stacked columns) this owns a floating panel instead: which candidate is
+ * showing, where its row was, and the timers that make it feel right (a pause before it opens,
+ * a grace period before it closes).
+ *
  * `rowProps` goes on whatever should trigger it; on a device that cannot hover it is empty and
  * `panel` is always null, leaving the Details buttons as the only way to read a description.
  */
 function useCandidatePreview(elements: ElementIndex, candidateLabel: (id: ElementId) => string) {
   const canHover = useCanHover();
+  const dock = usePreviewDock();
+  const docked = canHover && dock?.docked === true;
   const panelId = useId();
   const [shown, setShown] = useState<{ id: ElementId; anchor: DOMRect } | null>(null);
   const timer = useRef<number | undefined>(undefined);
@@ -219,6 +239,17 @@ function useCandidatePreview(elements: ElementIndex, candidateLabel: (id: Elemen
 
   const rowProps = (id: ElementId): React.HTMLAttributes<HTMLElement> => {
     if (!canHover) return {};
+    if (docked && dock) {
+      return {
+        onMouseEnter: () => later(DOCK_DELAY, () => dock.show(id)),
+        // Leaving only stops a switch that has not happened yet. What is showing stays.
+        onMouseLeave: cancel,
+        onFocus: () => {
+          cancel();
+          dock.show(id);
+        },
+      };
+    }
     return {
       onMouseEnter: (event) => show(id, event.currentTarget, live.current ? SWITCH_DELAY : SHOW_DELAY),
       onMouseLeave: hideSoon,
@@ -232,9 +263,14 @@ function useCandidatePreview(elements: ElementIndex, candidateLabel: (id: Elemen
     canHover,
     close,
     rowProps,
-    describedBy: (id: ElementId): string | undefined => (shown?.id === id ? panelId : undefined),
+    /** Whether this row is the one whose text is on screen, wherever that is. */
+    previewing: (id: ElementId): boolean => (docked ? dock?.currentId === id : shown?.id === id),
+    describedBy: (id: ElementId): string | undefined => {
+      if (docked) return dock?.currentId === id ? dock.regionId : undefined;
+      return shown?.id === id ? panelId : undefined;
+    },
     panel:
-      canHover && shown ? (
+      canHover && !docked && shown ? (
         <CandidatePreview
           key={shown.id}
           id={shown.id}
@@ -334,19 +370,5 @@ function CandidateDetails({ id, elements }: { id: ElementId; elements: ElementIn
     <div className="picker-details">
       <CandidateDescription id={id} elements={elements} />
     </div>
-  );
-}
-
-/** A candidate's sanitized description, or a plain note that it has none. */
-function CandidateDescription({ id, elements }: { id: ElementId; elements: ElementIndex }): React.JSX.Element {
-  const element = elements.get(id);
-  const html = useMemo(
-    () => (element?.description ? sanitizeDescriptionHtml(element.description) : undefined),
-    [element],
-  );
-  return html ? (
-    <div className="picker-description" dangerouslySetInnerHTML={{ __html: html }} />
-  ) : (
-    <p className="hint">No description available.</p>
   );
 }

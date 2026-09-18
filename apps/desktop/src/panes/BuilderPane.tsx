@@ -26,6 +26,7 @@ import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/cor
 import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
 import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
 import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
+import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 
 export function BuilderPane({
   builder,
@@ -115,6 +116,7 @@ export function BuilderPane({
         resized) `columns` collapses to one, in the same top-to-bottom order a mobile shell would
         want for tabs — outstanding, then settled.
       */}
+      <PreviewDockProvider>
       <div className="columns">
         <section>
           {/*
@@ -196,6 +198,14 @@ export function BuilderPane({
 
         <aside className="settled-column">
           {/*
+            Where the option being pointed at is read, above everything else in this column so it
+            is in the same place whichever list the pointer is over. It keeps its content when the
+            pointer leaves, which is what lets a long description be scrolled. It renders nothing
+            when the columns are stacked or the device cannot hover; see `PreviewDock`.
+          */}
+          <PreviewDock elements={elements} candidateLabel={candidateLabel} />
+
+          {/*
             A budget that is finished leaves `decisions`, which is correct — it is not
             outstanding — and would take the editor off the screen with it, leaving no way to
             change a score you had already set. So a settled budget renders here instead. The two
@@ -276,6 +286,7 @@ export function BuilderPane({
           )}
         </aside>
       </div>
+      </PreviewDockProvider>
 
       {derived.problems.length > 0 && (
         <section>
