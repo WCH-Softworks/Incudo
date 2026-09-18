@@ -23,8 +23,9 @@ import type {
 } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
-import { BudgetEditor } from './BudgetEditor.tsx';
+import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
 import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
+import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 
 export function BuilderPane({
   builder,
@@ -181,6 +182,7 @@ export function BuilderPane({
                 <Decision
                   decision={decision}
                   builder={builder}
+                  elements={elements}
                   nameOf={nameOf}
                   candidateLabel={candidateLabel}
                   kind={kind}
@@ -213,7 +215,12 @@ export function BuilderPane({
                   <div className="decision-head">
                     <span className="label">{pick.label}</span>
                   </div>
-                  <SettledPickEditor pick={pick} builder={builder} candidateLabel={candidateLabel} />
+                  <SettledPickEditor
+                    pick={pick}
+                    builder={builder}
+                    elements={elements}
+                    candidateLabel={candidateLabel}
+                  />
                 </div>
               ))}
             </section>
@@ -229,7 +236,7 @@ export function BuilderPane({
                     <span className="tag done">complete</span>
                   </div>
                   {step.budget && (
-                    <BudgetEditor stepId={step.id} budget={step.budget} builder={builder} kind={kind} />
+                    <CompactBudget stepId={step.id} budget={step.budget} builder={builder} kind={kind} />
                   )}
                   {step.hitPoints && (
                     <CompactHitPoints stepId={step.id} state={step.hitPoints} builder={builder} />
@@ -289,6 +296,7 @@ export function BuilderPane({
 function Decision({
   decision,
   builder,
+  elements,
   nameOf,
   candidateLabel,
   kind,
@@ -297,6 +305,7 @@ function Decision({
 }: {
   decision: OpenDecision;
   builder: CharacterBuilder;
+  elements: ElementIndex;
   nameOf: (id: ElementId) => string;
   /** A candidate's name plus the book it came from — see `candidateLabel` in the pane. */
   candidateLabel: (id: ElementId) => string;
@@ -354,39 +363,25 @@ function Decision({
             shown twice.
           */}
           {decision.candidates.length > 0 ? (
-            <select
-              // Keyed on how many slots are already filled, not just `decision.id`: this is
-              // an uncontrolled element (`defaultValue`), and answering one slot of a pool
-              // shrinks `candidates` without changing `decision.id` at all — React reused the
-              // same DOM node and never re-applied `defaultValue`, so the "2 left" dropdown
-              // for a wizard's remaining cantrips showed the alphabetically-first remaining
-              // candidate as if chosen, when nothing had been picked for that slot. Changing
-              // the key forces a remount, which is what actually resets an uncontrolled input.
+            <CandidatePicker
+              // Keyed on how many slots are already filled, not just `decision.id`: answering
+              // one slot of a pool shrinks `candidates` without changing `decision.id` at all,
+              // so without this a wizard's remaining cantrips would reopen on the same search
+              // text and expanded row the previous slot was left on. Same remount trick the
+              // `<select>` this replaced used, and for the same reason.
               key={`${decision.id}:${decision.chosen.length}`}
-              defaultValue=""
-              onChange={(event) => {
+              candidates={decision.candidates}
+              elements={elements}
+              candidateLabel={candidateLabel}
+              onSelect={(id) => {
                 // `choose` replaces the whole recorded list, so a slot that fills one at a
                 // time has to send it what is already there plus the new one — never just
-                // the new one, which is the bug this reopens every time the select is used
+                // the new one, which is the bug this reopens every time the picker is used
                 // again (ADR 0032). `decision.chosen` is `[]` for a `pick`, so this is exactly
                 // "replace" there and "add to" here without a separate branch for either.
-                if (event.target.value) {
-                  builder.choose(decision.id, [...decision.chosen, event.target.value]);
-                }
+                builder.choose(decision.id, [...decision.chosen, id]);
               }}
-            >
-              <option value="" disabled>
-                Choose one of {decision.candidates.length}…
-              </option>
-              {decision.candidates
-                .map((id) => ({ id, name: candidateLabel(id) }))
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.name}
-                  </option>
-                ))}
-            </select>
+            />
           ) : decision.unresolved.length > 0 ? (
             // Not the same sentence as the one below, and the difference matters: adding a
             // content source will not help here, so saying "no content matches" would send the
@@ -407,7 +402,7 @@ function Decision({
 }
 
 /**
- * A settled pick or a fully-answered multi-select, as one `<select>` per slot.
+ * A settled pick or a fully-answered multi-select, as one `ChosenCandidate` card per slot.
  *
  * `pick.chosen` has one entry for a top-level pick and one per filled slot for a content
  * `select` pool (ADR 0032) — a wizard's two Skill Proficiencies, say — and this renders the
@@ -419,10 +414,12 @@ function Decision({
 function SettledPickEditor({
   pick,
   builder,
+  elements,
   candidateLabel,
 }: {
   pick: SettledPick;
   builder: CharacterBuilder;
+  elements: ElementIndex;
   /** A candidate's name plus the book it came from — see `candidateLabel` in the pane. */
   candidateLabel: (id: ElementId) => string;
 }): React.JSX.Element {
@@ -433,25 +430,18 @@ function SettledPickEditor({
           (candidate) => candidate === id || !pick.chosen.includes(candidate),
         );
         return (
-          <select
+          <ChosenCandidate
             key={index}
-            value={id}
-            onChange={(event) => {
-              if (!event.target.value) return;
-              const next = [...pick.chosen];
-              next[index] = event.target.value;
-              builder.choose(pick.ruleKey, next);
+            id={id}
+            elements={elements}
+            candidateLabel={candidateLabel}
+            options={options}
+            onChange={(next) => {
+              const chosen = [...pick.chosen];
+              chosen[index] = next;
+              builder.choose(pick.ruleKey, chosen);
             }}
-          >
-            {options
-              .map((candidateId) => ({ id: candidateId, name: candidateLabel(candidateId) }))
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.name}
-                </option>
-              ))}
-          </select>
+          />
         );
       })}
     </div>

@@ -19,8 +19,68 @@
  * the screen shows both halves. It shows both halves.
  */
 
+import { useState } from 'react';
 import type { BudgetRow, BudgetState, CharacterBuilder } from '@incudo/ui';
 import type { ResolvedCharacterKind, StatKey } from '@incudo/core';
+
+/**
+ * A settled budget, collapsed to the numbers a sheet would show — the six totals, and which
+ * method produced them, where one is recorded.
+ *
+ * The full `BudgetEditor` below is a method picker, a pool, and a base/bonus/total table per
+ * stat: right for the one place a value is actually being set, wrong for a card sitting in
+ * "Values already set" next to a settled Race and Background that are each one line. "Edit"
+ * swaps it back in, exactly as `ChosenCandidate` swaps a search list back in for an answered
+ * element pick — same shape, because both are "here is the settled answer; here is how to
+ * reopen the control that sets it."
+ */
+export function CompactBudget({
+  stepId,
+  budget,
+  builder,
+  kind,
+}: {
+  stepId: string;
+  budget: BudgetState;
+  builder: CharacterBuilder;
+  kind: ResolvedCharacterKind;
+}): React.JSX.Element {
+  const [editing, setEditing] = useState(false);
+  const labelOf = (stat: StatKey): string =>
+    kind.stats.find((s) => s.name.toLowerCase() === stat.toLowerCase())?.label ?? stat;
+
+  if (editing) {
+    return (
+      <div className="budget-compact-open">
+        <BudgetEditor stepId={stepId} budget={budget} builder={builder} kind={kind} />
+        <button type="button" className="link" onClick={() => setEditing(false)}>
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  const method = budget.methods.find((m) => m.id === budget.methodId);
+
+  return (
+    <div className="budget-compact">
+      <dl>
+        {budget.rows.map((row) => (
+          <div key={row.stat}>
+            <dt>{labelOf(row.stat)}</dt>
+            <dd>{row.total}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="decision-head">
+        {method && <span className="hint">{method.label ?? method.id}</span>}
+        <button type="button" className="link" onClick={() => setEditing(true)}>
+          Edit
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function BudgetEditor({
   stepId,

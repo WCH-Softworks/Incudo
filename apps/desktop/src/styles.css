@@ -58,7 +58,10 @@ code {
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  /* Bounded, not just a floor: this is what lets a pane hold its own scrollbar instead of the
+     page growing past the viewport underneath it. See `.pane` below. */
+  height: 100vh;
+  overflow: hidden;
 }
 
 header {
@@ -144,6 +147,16 @@ select {
 .pane {
   padding: 20px 24px 48px;
   max-width: 1100px;
+  /* Centered rather than left-anchored: without this, a pane narrower than the window sits
+     flush against the left edge and the unused width is one dead strip on the right, which is
+     more obvious the wider the window gets. */
+  margin: 0 auto;
+  /* Every pane scrolls itself now, rather than the page growing past `.app`'s fixed height —
+     the precondition the builder's three columns need to scroll independently below, applied
+     uniformly so no other pane's scrolling changes. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .fatal {
@@ -246,14 +259,58 @@ summary {
   color: var(--fg-muted);
 }
 
+/*
+ * The builder pane, at the width where its three columns sit side by side: fixed to the
+ * viewport rather than growing with its content, so a taller card-style decision scrolls its
+ * own column instead of pushing "Your character" and "Choices already made" off the page.
+ *
+ * Below `.pane`'s own scrolling (every pane's default, above) this is the second half of the
+ * same idea, scoped to `.builder` because it is the one pane whose three side-by-side sections
+ * are meant to stay on screen together. `.pane.builder` gives up its own scrollbar in favour of
+ * three inner ones; the two-column and single-column breakpoints below give it back, because
+ * three independently-scrolling boxes stacked in one narrow column is worse than one page that
+ * scrolls, not better.
+ */
+.pane.builder {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Wider than `.pane`'s 1100px, and scaling with the window rather than pinned to one number —
+     three columns of cards is the one pane that actually wants the room a large monitor has.
+     `82vw` is what grows; the two bounds are what keep it from ever reading as "narrow" (below
+     1100px, `.pane`'s own floor) or as "the window" (above 1800px, past which a card gets wide
+     rather than useful — the picker's own description text is capped separately, see
+     `.picker-description`). Never 100vw: the point was more room, not edge-to-edge. */
+  max-width: clamp(1100px, 82vw, 1800px);
+}
+
 .columns {
   display: grid;
   grid-template-columns: minmax(200px, 0.8fr) minmax(320px, 1.6fr) minmax(240px, 1fr);
   gap: 32px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.columns > * {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 @media (max-width: 1000px) {
+  /* Back to one scrolling page. Three independent scrollbars only earns its keep when the
+     columns are side by side; stacked, it is just three small windows onto a longer page. */
+  .pane.builder {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .columns > * {
+    overflow: visible;
+    min-height: auto;
+  }
+
   .columns {
     grid-template-columns: minmax(200px, 1fr) minmax(320px, 2fr);
   }
@@ -703,6 +760,37 @@ ul.import-report li.error {
   margin-top: 4px;
 }
 
+/*
+ * A settled budget, collapsed — the six totals `dl`/`dt`/`dd` already renders on the Sheet
+ * pane, reused here rather than reinvented, at the tighter spacing the settled column's own
+ * width asks for. `CompactHitPoints` in HitPointEditor.tsx reuses these same two classes for
+ * a settled hit point table, for the same reason: one settled level or six, it is still a
+ * `dl` of totals with an Edit link.
+ */
+.budget-compact dl {
+  gap: 4px 14px;
+}
+
+.budget-compact dl > div {
+  min-width: 0;
+}
+
+.budget-compact dd {
+  font-size: 14px;
+}
+
+.budget-compact .decision-head {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.budget-compact-open {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
 .budget-methods {
   display: flex;
   flex-wrap: wrap;
@@ -825,13 +913,133 @@ table.budget-rows input[type='number'] {
   border-bottom: 1px solid var(--line);
 }
 
-/* One `<select>` per slot of a settled pick — a single row for a top-level pick, several for a
-   full content select (ADR 0032). Stacked rather than side by side: the settled column is
-   narrow, and a race or spell name plus its book runs long. */
+/* One card per slot of a settled pick — a single row for a top-level pick, several for a full
+   content select (ADR 0032). Stacked rather than side by side: the settled column is narrow,
+   and a race or spell name plus its book runs long. */
 .settled-slots {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/*
+ * The candidate picker — a searchable, expandable replacement for a plain `<select>` wherever
+ * a decision offers elements to choose from. Collapsed by default: Race offers ~139 candidates
+ * and a Spellbook decision can offer 300+, so only a name renders until a row is expanded, and
+ * `.picker-list` caps how tall the whole thing gets rather than growing to match the count.
+ */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.picker-search {
+  width: 100%;
+}
+
+.picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.picker-row {
+  border-bottom: 1px solid var(--line);
+}
+
+.picker-row:last-child {
+  border-bottom: none;
+}
+
+.picker-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The primary action of a row — name plus book, styled as a full-width row rather than a link
+   so it reads as "choose this" and not as secondary to the Details toggle beside it. */
+.picker-choose {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  border-radius: 0;
+  background: none;
+  padding: 6px 10px;
+  overflow-wrap: anywhere;
+}
+
+.picker-choose:hover {
+  background: var(--bg-sunken);
+}
+
+.picker-row-head button.link {
+  flex: 0 0 auto;
+  padding-right: 10px;
+  font-size: 12px;
+}
+
+/* A chosen candidate, shown as a card rather than a `<select>` — `ChosenCandidate` in
+   `CandidatePicker.tsx`. Same head shape as an open row, minus the picker's own border, since
+   it already sits inside `.settled-slots`. */
+.picker-chosen .picker-row-head {
+  padding: 2px 0;
+}
+
+.picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.picker-details {
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-sunken);
+}
+
+/*
+ * `Element.description`, sanitized and rendered as-is (`sanitize-html.ts`) — Aurora's own rich
+ * text, not Incudo's. A light reset so paragraph and list spacing reads at this size without
+ * inheriting whatever margins the source HTML assumed; no color rules, because the sanitizer
+ * strips every `style` attribute and what is left inherits `--fg` and `--bg` like anything
+ * else on the page, in both themes.
+ */
+.picker-description {
+  font-size: 13px;
+  /* The builder pane's own column can now grow past 700px (see `.pane.builder`), and Aurora's
+     rulebook prose gets harder to read as a line, not easier, past a point — the same reasoning
+     `.hint`/`.lede` already apply at 68ch. */
+  max-width: 70ch;
+}
+
+.picker-description :first-child {
+  margin-top: 0;
+}
+
+.picker-description :last-child {
+  margin-bottom: 0;
+}
+
+.picker-description ul,
+.picker-description ol {
+  padding-left: 1.4em;
+}
+
+.picker-description table {
+  border-collapse: collapse;
+}
+
+.picker-description td,
+.picker-description th {
+  border: 1px solid var(--line);
+  padding: 3px 8px;
 }
 
 /* --- the launcher, and what came with it (ADR 0031) --------------------- */
