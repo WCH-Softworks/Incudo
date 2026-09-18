@@ -111,7 +111,11 @@ multiclass block's `requirements` hold, evaluated by `requirementContextFor` —
 answer, so the builder cannot offer what the derivation then refuses. A class the character
 already has needs no gate: another level in it is not a multiclass. A class with no block is
 listed as unavailable with that reason rather than hidden, because "why isn't the Mystic here?" has
-an answer.
+an answer. A class ruled out by something the character holds — the other edition of a class it
+has, from `!(ID_…_CLASS_X||ID_…_MULTICLASS_X)` — says so (`unavailable: 'excluded'`, `excludedBy`),
+found by walking the false expression for a negated `has` of a held element: a boolean cannot say
+which term failed, and the first run of the app told a Dexterity 16 character that the 2024
+Fighter "needs Dexterity 13".
 
 Deliberately **not** gated, each for a stated reason:
 

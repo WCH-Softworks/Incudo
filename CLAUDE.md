@@ -191,8 +191,52 @@ the inventory work — a bag, slots, `equipped=`, attunement and a derived armou
 **the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR
 0027), manages content sources (ADR 0028/0029), builds a character, **sets its ability scores by
 all four of 5e's methods**, renders the sheet, reads and writes real `.incu` files into a folder
-the user picks, and **imports Aurora `.dnd5e` saves into it**.
+the user picks, and **imports Aurora `.dnd5e` saves into it**, and **multiclasses**: a level can
+be spent on any class the character qualifies for (ADR 0036).
 Not started: the mobile shell (only its `platform.ts` contract exists).
+
+**A level is spent on a class by writing two records, and one of them is easy to forget**
+(ADR 0036). `Character.advancement` says which class each level went to; the class's own
+*multiclass element* says it was taken second. The second is load-bearing: on the oracle, dropping
+it while keeping `advancement` loses `ID_INTERNAL_GRANT_MULTICLASS` (caster level 1 → 0, every slot
+with it) and opens an unearned "choose two skills", with no error anywhere. Everything is in
+`packages/ui/src/multiclass.ts` under `node --test`; `apps/desktop/src/panes/ClassLevels.tsx`
+computes nothing. Things to know before touching it:
+
+- **`advancement` exists only while there is more than one class**, and then covers every level.
+  A single-class character carries none, as an imported one never did. Records are keyed exactly
+  as the importer keys them (`ID_LEVEL_3/select:Multiclass (Level 3)`), so an imported multiclass
+  character and a built one hold the same records, and they are *found by what they hold*, not
+  by key. The first class never gets a multiclass element.
+- **The first class is found from content, not from `build/class`.** An import records it under
+  `ID_LEVEL_1/select:Class`. (That same mismatch means an imported character opens with Race,
+  Class and Background listed as unanswered — pre-existing, not fixed here, filed.)
+- **Gated on what content declares and nothing else:** the class's own `requirements` plus its
+  `<multiclass>` block's, through the engine's own requirement context. Not gated, deliberately:
+  `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` (0 of 740 files reference it, and campaign options
+  cannot be switched on yet), the *current* class's prerequisite (content never states it, so the
+  builder is more permissive than the Player's Handbook), and *when* a score was met (the engine
+  has no time axis). 28 of 29 classes have a block; the UA Mystic does not and is listed as
+  unavailable rather than hidden.
+- **Six declared stats were the real blocker.** Content reads `str dex con int wis cha` 72 times
+  in requirements (36 multiclass gates, 24 feat prerequisites, 6 rules) and nothing published
+  those names, so every one read false for every character — all 28 gates for a Charisma 20
+  character, and 24 feats never offered. `systems/dnd5e/system.json` now declares them as refs,
+  no format change. `aurora verify` is byte-identical before and after and *cannot* see this.
+- **Moving a level between classes with different dice clears that level's hit point roll**, and
+  it reopens as a decision. A level that comes into being keeps any roll already recorded for it:
+  the oracle's own rolls include a 10 on a d8, so a value above the die is something real saves
+  hold, and deleting one on a plausibility guess is destroying data. `addLevel` is one write for
+  the same reason — grow-then-reassign passes through a die change that never happened.
+- **Nothing prunes the picks of a class whose levels went away**, nor of a level lowered away.
+  They stay in `choices` and still seed the derivation, as they do after re-picking a race. A gap
+  carried deliberately; it wants a decision about every pick, not about levels.
+- **Evidence:** the Paladin 2 / Warlock 18 oracle rebuilt through the builder (fresh character,
+  `addLevel` × 18) has the same `advancement`, the same record, every element and every stat as
+  the import, and the same differences against Aurora's save (1 element-missing, 0
+  stat-mismatch, 0 spell-missing) — `tools/incudo/src/multiclass.test.ts`, skipped where the save
+  is not installed. It cannot prove hit points: the save records rolls and never a total, so that
+  test checks the per-level dice and a sum worked by hand, not Aurora's number.
 
 **A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
 `packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool
@@ -456,7 +500,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034 and 0035 are implemented; **0032 is proposed, and its `OpenDecision.chosen` half is now
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035 and 0036 are implemented; **0032 is proposed, and its `OpenDecision.chosen` half is now
 built** — the multi-pick bug it names is fixed, but `multiple: true` on a build step (campaign
 options) is not. Read the ADR's status note before reaching for a multi-select anywhere.
 0033 lets a non-blocking decision be skipped (`decline`, `reconsider`) as its own recorded input;

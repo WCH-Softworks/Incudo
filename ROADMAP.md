@@ -534,15 +534,33 @@ before any code, both touching a public API:
       already met in Phase 0 and duplicated here, and `tools/incudo/src/self-contained.test.ts`
       has been proving it against the real 12,058-element corpus since. A bag does not weaken
       it: all nine imported saves still re-derive identically with no sources configured.
-- [ ] Multiclassing — the model half is done ([ADR 0015](./docs/adr/0015-class-levels.md)) and
-      so is the slot table ([ADR 0018](./docs/adr/0018-tables-and-track-stats.md)); what remains
-      is the UI for choosing a class at each level.
+- [x] **Multiclassing** — the model half was [ADR 0015](./docs/adr/0015-class-levels.md) and the
+      slot table [ADR 0018](./docs/adr/0018-tables-and-track-stats.md); this is the writing half
+      ([ADR 0036](./docs/adr/0036-a-level-is-spent-on-a-class-by-writing-two-records.md)). The
+      builder spends a level on a class (`addLevel`, `setLevelClass`), publishes per class whether
+      it is eligible and why not, and keeps `advancement` in step with `setProgress` and a changed
+      first class; the desktop **Classes** control renders it and computes nothing.
+      **A level is two records, not one.** The oracle showed it: keep `advancement`, drop the
+      class's multiclass element, and caster level goes 1 → 0 with every slot and an unearned
+      skill pick opens. The builder writes both, keyed as an Aurora import keys them.
+      **The blocker was not the UI.** Content reads `[cha:13]` and its siblings 72 times and no
+      stat was called `cha`, so every multiclass gate — and 24 feat prerequisites — read false for
+      every character. Six declared stats in `systems/dnd5e/system.json` fixed it with no format
+      change, and `aurora verify` could not have seen it (byte-identical on all nine saves).
+      **Rebuilt through the builder, the level 20 Paladin 2 / Warlock 18 oracle is the character
+      Aurora wrote:** same `advancement`, same record, every element and stat, the same
+      differences against the save. Hit points are the one number that comparison cannot vouch
+      for (ADR 0019). Gated on what content declares only: not the campaign option (0 of 740
+      files read it), not the current class's prerequisite (content never states it), and not
+      *when* a score was met. Known gap: picks of a class whose levels went away stay in
+      `choices`. Found while doing it and filed rather than fixed: an imported save records Race,
+      Class and Background under Aurora's keys, so it opens with all three listed as unanswered.
 
 ### Where this phase actually stands
 
 **The engine half of Phase 2 is finished and everything left is a shell.** Every remaining box
 above is view-layer work — menus and shortcuts, an explicit export, the multiclass screen, and
-the campaign options ADR 0032 describes. Nothing in the rules engine is outstanding, though the
+the campaign options ADR 0032 describes (the multiclass screen is done). Nothing in the rules engine is outstanding, though the
 first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
 and not by any test, which is worth keeping in mind before believing that sentence.
 
@@ -612,10 +630,12 @@ The engine side of that is met: an Arcane Trickster in the running app is offere
 school-restricted spell list, a bard's pool widens from 54 to 161 between levels 1 and 5, and
 `aurora verify` still reports 0 `spell-missing` across the nine saves. Levelling works — an
 answered pick can be changed, and raising the level opens hit points, a subclass and each
-ability score improvement in the same list, with a +2 landing as +2. What is left is shell work
-and one system-format item: choosing a class at each level (multiclassing), and feats, which
-need the campaign options of ADR 0032 (`multiple: true`) before a character built here can take
-one at all.
+ability score improvement in the same list, with a +2 landing as +2. A class can now be chosen
+at each level: a Fighter 4 / Rogue 1 / Wizard 3 built in the running app is offered the Rogue's
+multiclass skill, the Wizard's cantrips and spellbook, Arcane Tradition and hit points on each
+level's own die. What is left is one system-format item: feats, which need the campaign options
+of ADR 0032 (`multiple: true`) before a character built here can take one at all — so the
+Rogue/Wizard-with-feats sentence above is met except for the feats.
 
 ---
 
