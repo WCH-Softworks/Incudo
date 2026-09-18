@@ -16,6 +16,13 @@ test('an empty query returns every option, alphabetically, up to the limit', () 
   assert.equal(result.matchCount, 3);
 });
 
+test('with no limit given, nothing is cut', () => {
+  const labels = Array.from({ length: 300 }, (_, i) => `Option ${String(i).padStart(3, '0')}`);
+  const result = searchCandidates(options(labels), '');
+  assert.equal(result.matches.length, 300);
+  assert.equal(result.matchCount, 300);
+});
+
 test('a query filters by substring, case-insensitively', () => {
   const result = searchCandidates(options(['Elf', 'Half-Elf', 'Dwarf']), 'ELF');
   assert.deepEqual(
