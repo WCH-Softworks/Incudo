@@ -48,3 +48,4 @@ new one that supersedes it.
 | [0032](./0032-a-build-step-may-offer-a-set.md) | A build step may offer a set, and campaign options are the first one | **Proposed** (builds on 0017, 0011) |
 | [0033](./0033-declining-a-decision-is-its-own-input.md) | Declining a decision is its own input, not an empty answer | Accepted (amends 0017) |
 | [0034](./0034-open-decisions-rank-by-a-declared-step-priority.md) | Open decisions rank by a declared step priority, not a hardcoded rule | Accepted (amends 0017) |
+| [0035](./0035-a-repeatable-element-counts-once-per-pick.md) | A repeatable element counts once per pick, and the improvement Aurora's app generates is derived from content | Accepted (builds on 0030) |

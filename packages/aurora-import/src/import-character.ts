@@ -70,7 +70,9 @@ export interface ImportedCharacter {
    * those are a fixed list. Saves reveal a second, open-ended family: one element per class
    * per ability-score-improvement level (`ID_INTERNAL_CLASS_FEATURE_FEAT_4_WIZARD`,
    * `…ASI_8_CLERIC`), which cannot be enumerated in advance because the set of classes is
-   * content, not code.
+   * content, not code. `improvement-options.ts` now generates these *with* their rules whenever
+   * the content that asks for them is loaded (ADR 0035), so what is synthesized here is what is
+   * left: an option for a class whose content is not in the index this save was imported against.
    *
    * They are only synthesized for ids in Aurora's own `ID_INTERNAL_` namespace, and only
    * from the type and name the save itself records — nothing is invented, and an id outside

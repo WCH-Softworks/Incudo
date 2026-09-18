@@ -310,9 +310,47 @@ before any code, both touching a public API:
       recording the maximum (a d6, Constitution 10); levelled to 5 with two averages, one actual
       roll and one more average, the sheet read 22, matching the arithmetic by hand. The known
       gaps this surfaced are pre-existing and already named above and in "Known from running
-      it" — the level 4 Ability Score Improvement still reports "no candidate" (the `Class`
-      `supports` operand), and the sheet still does not render features or proficiencies.
-- [ ] Character sheet
+      it" — the level 4 Ability Score Improvement reported "no candidate", and the sheet did not
+      render features or proficiencies. Both are fixed since: the next two entries.
+- [x] **Levelling past level 3** ([ADR 0035](./docs/adr/0035-a-repeatable-element-counts-once-per-pick.md)).
+      A level 4 Fighter opened a blocking Ability Score Improvement decision with no candidates and
+      no diagnostic, and the diagnosis on file — the `Class` `supports` operand — was wrong.
+      Reproducing it first showed `candidates: []` *and* `unresolved: []`: the filter was fine and
+      nothing carried the tags, because **Aurora's app generates these options** and only the two
+      Artificers' are written in a file. 88 of the 123 select filters in the corpus that match
+      nothing were this one protocol; **123 → 35 after**, the 35 being exactly `!` negation,
+      `Ritual` and two proficiency lists.
+      `improvement-options.ts` derives an ASI option and a feat option for every class and level the
+      loaded content asks for and nothing declares (73 pairs, 146 elements; generated 83 → 229),
+      and the six `ID_INTERNAL_ASI_*` elements gained the two tags the filter names.
+      **Taking +2 to one score turned out to need more than offering it.** It is the same +1
+      picked twice, and Aurora's `<sum>` lists the id twice, so a character kind may now declare a
+      `repeatableSetter` (5e: `allow duplicate`) — an element carrying it is offered again and its
+      stat rules apply once per pick. The importer had been **dropping the second pick**, so an
+      imported Fighter 12 read Constitution 19 where Aurora computes 20, and `aurora verify` cannot
+      see it. In the running app a level 4 Fighter takes the improvement, picks Strength twice and
+      reads 12; raising the level to 8 opens the level 6 and 8 improvements beside it.
+  - [ ] **The feat half is generated and unreachable.** It is gated on
+        `ID_INTERNAL_OPTION_ALLOW_FEATS`, and switching that on is the `multiple: true` item
+        below. **Eight of the nine sample characters took a feat at level 4**, so this is the
+        next thing a real player will hit rather than an edge.
+- [x] **Character sheet.** `SheetPane` renders whatever the kind's own `sheet` declares: stats,
+      per-block sections such as a spellcaster's save DC (through the shared
+      `renderSheetSection`, which the CLI uses too), and the elements a section lists by type —
+      features, proficiencies, spells, inventory. The character's name is editable from it, with a
+      confirmation before it renames the file. It used to drop every section that named types and
+      no stats, so a level 1 wizard's sheet showed six scores and some numbers. Not built: a
+      print layout or a PDF (Phase 5), and nothing on it is interactive during play (Phase 6).
+- [x] **Open decisions can be skipped, ranked, and picked from a real list.**
+      [ADR 0033](./docs/adr/0033-declining-a-decision-is-its-own-input.md): a non-blocking
+      decision can be declined (`decline`, `reconsider`), recorded as its own input rather than as
+      an empty answer, because an empty answer is indistinguishable from "never looked".
+      [ADR 0034](./docs/adr/0034-open-decisions-rank-by-a-declared-step-priority.md): what an
+      answered pick opened ranks by its step's declared `priority` — Sub Race beside Race — and not
+      by a hardcoded rule or by recency, which measured wrong against the real corpus. The element
+      picker stopped being a `<select>`: `CandidatePicker` is searchable and no longer capped at
+      40, and hovering a candidate reads its description in a fixed dock beside the list
+      (`PreviewDock`), which replaced a Details button and then a floating panel.
 - [x] **A decision can record more than one element, and stays as editable as any other once it
       does** ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md)'s bug fix — the ADR
       itself stays proposed; see the entry below). Two passes, found live rather than by a test.
@@ -500,8 +538,10 @@ before any code, both touching a public API:
 ### Where this phase actually stands
 
 **The engine half of Phase 2 is finished and everything left is a shell.** Every remaining box
-above is view-layer work — the desktop shell, the content manager, the sheet, save/load, the
-level-up and multiclass screens. Nothing in the rules engine is outstanding.
+above is view-layer work — menus and shortcuts, an explicit export, the multiclass screen, and
+the campaign options ADR 0032 describes. Nothing in the rules engine is outstanding, though the
+first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
+and not by any test, which is worth keeping in mind before believing that sentence.
 
 That is a change of kind, not just of subject, and it is worth naming before the first screen
 is written. Every number settled in this phase was settled against Aurora's own arithmetic, or
@@ -567,9 +607,12 @@ spells is buildable end to end and matches Aurora's output for the same choices.
 
 The engine side of that is met: an Arcane Trickster in the running app is offered its
 school-restricted spell list, a bard's pool widens from 54 to 161 between levels 1 and 5, and
-`aurora verify` still reports 0 `spell-missing` across the nine saves. What is left is
-shell work — an answered `pick` cannot be changed, so a subclass chosen by mistake is
-permanent, and there is no level-up flow beyond typing a number.
+`aurora verify` still reports 0 `spell-missing` across the nine saves. Levelling works — an
+answered pick can be changed, and raising the level opens hit points, a subclass and each
+ability score improvement in the same list, with a +2 landing as +2. What is left is shell work
+and one system-format item: choosing a class at each level (multiclassing), and feats, which
+need the campaign options of ADR 0032 (`multiple: true`) before a character built here can take
+one at all.
 
 ---
 

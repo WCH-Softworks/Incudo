@@ -32,7 +32,7 @@ already exists on this machine and works **entirely offline**:
 ```bash
 npm run incudo -- validate \
   "C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index" --aurora-folder
-# 740 files, 14,316 elements (+83 generated), 0 errors, 1 unresolved, ~1.5s
+# 740 files, 14,316 elements (+229 generated), 0 errors, 1 unresolved, ~1.5s
 ```
 
 `--aurora-folder` resolves files the way Aurora's downloader stores them (a folder per index,
@@ -110,7 +110,7 @@ what was supplied.
 
 ## Baselines that must not regress
 
-Content corpus: **740 files · 14,316 elements (+83 generated) · 0 errors · 1 unresolved
+Content corpus: **740 files · 14,316 elements (+229 generated) · 0 errors · 1 unresolved
 reference · 23 unmeetable requirements · 57 warnings.**
 
 - **1 unresolved reference** — one upstream typo, `…VULNERAILITY…`. This is a *grant* to an
@@ -120,10 +120,14 @@ reference · 23 unmeetable requirements · 57 warnings.**
   requirement naming an id nothing declares is a membership test that reads false, and
   `!ID_X` against an id that will never exist is how the corpus says "unless the 2024
   replacement is in play". Five of the six `KNOWN_UPSTREAM_TYPOS` live here.
-- **83 generated elements** — what Aurora's app materializes at runtime, supplied by
-  `packages/aurora-import/src/generated-elements.ts`. Not counted in the 14,316, because
-  they do not come from a file. It was 80 until the importer started reading `<equipment>`
-  and found three more that only a *bag* names (ADR 0024's step 2).
+- **229 generated elements** — what Aurora's app materializes at runtime, not counted in the
+  14,316 because they do not come from a file. 83 are the fixed overlay in
+  `packages/aurora-import/src/generated-elements.ts` (it was 80 until the importer started
+  reading `<equipment>` and found three more that only a *bag* names, ADR 0024's step 2), and
+  **146 are the ability score improvement options**, derived from whatever content is loaded by
+  `improvement-options.ts` (73 class-and-level pairs, an ASI option and a feat option each —
+  ADR 0035). The second kind depends on what is loaded, so the total is a property of the corpus
+  and not of the code.
 - **2,258 of the 14,316 are synthesized from inline text, not from an `<element id="ID_…">`
   tag** — a background's suggested Personality Trait, Ideal, Bond and Flaw, and a handful of
   similarly-shaped tables (Trinket, Specialty, …). Aurora writes these as a `<select
@@ -339,7 +343,7 @@ running it protects the product.**
   reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
   the cache answers.
 
-Ten things the shell has surfaced, three of them since fixed and struck through. The rest are
+Eleven things the shell has surfaced, four of them since fixed and struck through. The rest are
 deliberately **not** fixed:
 
 - **~~An answered `pick` cannot be changed.~~** Fixed. It was predicted here to be "a real screen
@@ -391,6 +395,30 @@ deliberately **not** fixed:
   `derived.elements.filter(e => section.types.includes(e.type))` — the same test
   `character-commands.ts`'s `printSheet` already used. A level 1 wizard's app sheet now lists
   its features, proficiencies and spells the same as the CLI's.
+- **~~A level 4 character has an Ability Score Improvement decision it can never close.~~**
+  Fixed (ADR 0035), and the diagnosis this file gave was wrong. It blamed the `Class` operand.
+  Reproduced first, the decision published `candidates: []` **and** `unresolved: []`: the
+  filter was well-formed and nothing carried the tags, because Aurora's app generates the
+  options (`ID_INTERNAL_CLASS_FEATURE_{ASI|FEAT}_{level}_{CLASS}`) and only the two Artificers'
+  are written in a file. The nine saves record the generated ids and select names; 88 of the 123
+  empty select filters in the corpus were this one protocol, and the 35 left are exactly `!`
+  negation, `Ritual` and two proficiency lists. `improvement-options.ts` derives the options
+  from what is loaded and `ContentLibrary` runs it after every source.
+  Two more things had to be true for a +2 to land, and the second was **data loss found by
+  measuring rather than by a test**. A +2 to one score is the same +1 element picked twice —
+  Aurora's `<sum>` lists `ID_INTERNAL_ASI_CONSTITUTION` twice for Vigaro's Fighter 12 — so a
+  kind may declare `repeatableSetter` (5e: `allow duplicate`): an element carrying it is offered
+  again by a pool that holds it and its stat rules apply once per pick, counted across every
+  choice. And the importer used to drop the second pick ("keeping one"), so Vigaro imported with
+  a Constitution of 19 where Aurora computes 20. `aurora verify` cannot see it: it compares chosen
+  elements and never an ability score, and came back byte-identical on all nine saves before and
+  after — which proves nothing regressed and nothing else.
+  The feat half is generated too, gated on `ID_INTERNAL_OPTION_ALLOW_FEATS`, and unreachable in
+  a character built here until ADR 0032's `multiple: true`. **Eight of the nine sample
+  characters took a feat at level 4**, so that is the next thing a real user will meet.
+  Perturbation is the evidence and it is in the tests; running it is the rest — a level 4 Fighter
+  is offered the option, taking it offers all six abilities, Strength twice reads +2 (12), and
+  both picks settle as slots that each still offer Strength.
 - **A granted ability point is unspendable except under a points method.** `BudgetState.granted`
   reports it and the editor shows it, but only a cost table says what a point buys, so a
   standard-array or rolled character cannot spend one. Inventing "a point is +1" is the guess
@@ -409,15 +437,16 @@ deliberately **not** fixed:
   real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
   above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the
   summary cache ADR 0027 names.
-- **Three `supports` operands are still unread, and are reported rather than guessed at**
-  (ADR 0030, ADR 0005). `!` **negation** inside a filter — 13 uses, read as a literal tag, so
+- **Two `supports` operands are still unread, and are reported rather than guessed at**
+  (ADR 0030, ADR 0005). There were three; `Class` was never an operand problem (see the
+  improvement entry above), and neither of these two is what that decision needed. `!` **negation** inside a filter — 13 uses, read as a literal tag, so
   `Artificer Infusion, !TCOE Base` offers an empty list; unambiguous and simply not done, and
   the obvious next one. `Ritual` — 17 uses, where a spell carries `<set name="isRitual">true</set>`
   and Aurora evidently maps a true boolean setter to a tag named after it; deriving the tag name
-  from the setter name is a guess with no second witness. `Class` — 15 uses, on the level
-  4/8/12/16/19 ability score improvement, matching no tag on any of the 14,316 elements and no
-  setter's value at all. The shell shows "No candidate in the loaded content matches this
-  choice" for these, which is honest but not the whole truth.
+  from the setter name is a guess with no second witness. ~~`Class` — 15 uses, matching no tag
+  on any of the 14,316 elements~~ — a tag on the six `ID_INTERNAL_ASI_*` elements the overlay
+  supplies, which is what those 15 filters select. The shell shows "No candidate in the loaded
+  content matches this choice" for the two above, which is honest but not the whole truth.
 - **There is no export.** Saving writes into the library folder; "save a copy somewhere else"
   needs a write counterpart to `FilePicker` and does not exist.
 - **An NPC or legendary creature has no way to set ability scores.** Both kinds declare a
@@ -427,10 +456,15 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030 and 0031 are implemented; **0032 is proposed, and its `OpenDecision.chosen` half is now
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034 and 0035 are implemented; **0032 is proposed, and its `OpenDecision.chosen` half is now
 built** — the multi-pick bug it names is fixed, but `multiple: true` on a build step (campaign
-options) is not. Read the ADR's status note before reaching for a multi-select anywhere. Phase 1
-is done — **`packages/aurora-import`
+options) is not. Read the ADR's status note before reaching for a multi-select anywhere.
+0033 lets a non-blocking decision be skipped (`decline`, `reconsider`) as its own recorded input;
+0034 ranks Open decisions by a step's declared `priority` rather than by a hardcoded rule. Neither
+has anything to do with 0032 despite the numbers. The element picker is also not a `<select>`
+any more: `CandidatePicker.tsx` is searchable and uncapped, hovering a candidate reads its
+description in a fixed dock (`PreviewDock.tsx`), and none of that has an ADR — it is presentation.
+Phase 1 is done — **`packages/aurora-import`
 is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
@@ -444,8 +478,9 @@ Three things Phase 1 changed that are easy to trip over:
   give every character elements nobody chose — the 5e base armour class, one `ID_LEVEL_N` per
   level. They are *not* stored on the character, so `collectCharacterContent` needs the kind
   passed in or the save will not embed them and ADR 0012 quietly breaks.
-- **`packages/aurora-import` supplies 83 elements no content file declares.** The 5e system
-  definition names seven of them in `kind.grants`. That coupling is deliberate — 5e content in
+- **`packages/aurora-import` supplies 83 elements no content file declares** (plus 146 it
+  derives from what is loaded, ADR 0035). The 5e system definition names seven of them in
+  `kind.grants`. That coupling is deliberate — 5e content in
   this project *is* Aurora content — but it is why a missing kind grant warns rather than errors.
   The last three arrived with the bag: Aurora's inventory proxies, which only a real
   `<equipment>` block names.
@@ -612,7 +647,8 @@ seeds from `baselineElementIds(kind, progress)`, so every element a kind grants 
 `content.json` and frozen there, while `system.json` is the one thing a save deliberately does
 *not* embed. That is why all seven of the 5e kind's `grants` carry zero rules, and why only nine
 of the overlay's 83 elements carry any — the six ability score improvements and the three
-inventory proxies, where the rule *is* the identity. Put a game rule on an element and you have put it in every save written
+inventory proxies, where the rule *is* the identity. The 146 improvement options carry a
+`select` each on the same ground: the select is what the saves record them as. Put a game rule on an element and you have put it in every save written
 before you fixed it. A kind's `contributions` is where a conditional baseline rule goes
 instead, and **a system definition ships no content** — decided and closed, so do not reach
 for `.incuset` when a system needs a rule.

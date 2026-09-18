@@ -433,7 +433,7 @@ Two resolution modes therefore exist, and they are not interchangeable:
 
 ```
 files:    740
-elements: 14,316  (+83 Aurora generates at runtime)
+elements: 14,316  (+229 Aurora generates at runtime)
 errors:   0
 unresolved references:              1
 requirements that can never be met: 23
@@ -461,6 +461,15 @@ loses something. A `requirements="…"` naming an id nothing declares is a membe
 reads false, and `!ID_X` against an id that will never exist is ordinary content — eighteen of
 the twenty-three are the 2024 rules saying "unless the replacement feature is in play". Only
 the first kind is budgeted in CI.
+
+**A sixth thing the app generates, and this one is derived rather than listed** — ADR 0035. Every
+class's `Ability Score Improvement` feature declares a `<select supports="Improvement
+Option,Fighter,4">` per level and no file declares what it offers: 73 (class, level) pairs across
+14 classes, and the Artificers are the only ones written out. The nine saves record what the app
+generated for them (`ID_INTERNAL_CLASS_FEATURE_{ASI|FEAT}_{level}_{CLASS}`), so
+`improvement-options.ts` derives the same two elements per pair from whatever content is loaded.
+That is 146 of the 229. The count above was 83 until that landed; nothing that comes from a file
+moved.
 
 What is left:
 

@@ -44,7 +44,7 @@
  * **The feat half is gated, not offered.** It carries `requirements="ID_INTERNAL_OPTION_ALLOW_FEATS"`,
  * exactly as all three Artificer workarounds do, so a campaign that does not use feats is never
  * offered one. Nothing here builds the way to switch that option on — that is ADR 0032's
- * `multiple: true` — but the element is what four of the nine sample characters actually took
+ * `multiple: true` — but the element is what eight of the nine sample characters actually took
  * at level 4, so leaving it out would make their imports less faithful for no saving.
  *
  * **What is inferred, and from what.** `Ability Score Improvement,Class` is the one filter
