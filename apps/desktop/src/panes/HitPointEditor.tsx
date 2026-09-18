@@ -8,7 +8,56 @@
  * needs computing in this file, that guarantee is gone.
  */
 
+import { useState } from 'react';
 import type { CharacterBuilder, HitPointState } from '@incudo/ui';
+
+/**
+ * A settled hit point table, collapsed to what a sheet would show — one line per level, or a
+ * single "N hp" when there is only one. Same shape as `CompactBudget` in `BudgetEditor.tsx` and
+ * for the same reason: the full per-level table with its Roll/Take the average buttons is right
+ * for the one place a value is actually being recorded, wrong for a card sitting in "Values
+ * already set" next to a settled Race that is one line. "Edit" swaps the full table back in.
+ */
+export function CompactHitPoints({
+  stepId,
+  state,
+  builder,
+}: {
+  stepId: string;
+  state: HitPointState;
+  builder: CharacterBuilder;
+}): React.JSX.Element {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <div className="budget-compact-open">
+        <HitPointEditor stepId={stepId} state={state} builder={builder} />
+        <button type="button" className="link" onClick={() => setEditing(false)}>
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="budget-compact">
+      <dl>
+        {state.levels.map((level) => (
+          <div key={level.level}>
+            <dt>{state.levels.length > 1 ? `Level ${level.level}` : 'Hit points'}</dt>
+            <dd>{level.recorded ?? '—'} hp</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="decision-head">
+        <button type="button" className="link" onClick={() => setEditing(true)}>
+          Edit
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function HitPointEditor({
   stepId,

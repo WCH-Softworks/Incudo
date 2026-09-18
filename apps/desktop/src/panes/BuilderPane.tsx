@@ -24,7 +24,7 @@ import type {
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
 import { BudgetEditor } from './BudgetEditor.tsx';
-import { HitPointEditor } from './HitPointEditor.tsx';
+import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
 
 export function BuilderPane({
   builder,
@@ -232,7 +232,7 @@ export function BuilderPane({
                     <BudgetEditor stepId={step.id} budget={step.budget} builder={builder} kind={kind} />
                   )}
                   {step.hitPoints && (
-                    <HitPointEditor stepId={step.id} state={step.hitPoints} builder={builder} />
+                    <CompactHitPoints stepId={step.id} state={step.hitPoints} builder={builder} />
                   )}
                 </div>
               ))}
