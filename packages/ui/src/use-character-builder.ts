@@ -55,6 +55,17 @@ import {
 } from './budget.ts';
 
 import {
+  computeClassLevelState,
+  firstClassOf,
+  multiclassConfig,
+  planFirstClass,
+  planLevelClass,
+  planProgress,
+  type ClassLevelState,
+  type MulticlassConfig,
+} from './multiclass.ts';
+
+import {
   computeHitPointState,
   planHitPointChange,
   planHitPointRecord,
@@ -170,6 +181,12 @@ export interface BuilderStep {
   budget?: BudgetState;
   /** This step's per-level rolls, when it declares a `levelRoll` — ADR 0019. */
   hitPoints?: HitPointState;
+  /**
+   * Which class each level went to, when the step is per-level and names what governs one
+   * (`levelRoll.classType`) — ADR 0036. The rows a control renders, and the classes each may be
+   * changed to, with the reason a class is unavailable when it is.
+   */
+  classLevels?: ClassLevelState;
 }
 
 export interface BuilderState {
@@ -266,6 +283,14 @@ export class CharacterBuilder {
   private readonly reviewingHitPoints = new Set<string>();
   private cached: BuilderState | undefined;
   private readonly random: () => number;
+  /**
+   * The step that publishes class levels, if the kind has one — ADR 0036. Resolved once: it is a
+   * property of the definition, and `choose` and `setProgress` both need to know whether a
+   * character's `advancement` is theirs to keep in step.
+   */
+  private readonly multiclass:
+    | { stepId: string; config: MulticlassConfig; classPickKey: string | undefined }
+    | undefined;
 
   constructor(
     character: Character,
@@ -285,6 +310,22 @@ export class CharacterBuilder {
     this.elements = elements;
     // Sorted once: `requires` is a property of the definition, not of the character.
     this.steps = orderBuildSteps(this.kind.buildSteps);
+
+    for (const step of this.steps) {
+      const config = multiclassConfig(step, this.kind.progression);
+      if (!config) continue;
+      // The pick that names the *first* class, which `choose` has to watch: changing it
+      // re-homes the levels the old one held.
+      const classStep = this.steps.find(
+        (s) => s.required && !s.perLevel && s.types.includes(config.classType),
+      );
+      this.multiclass = {
+        stepId: step.id,
+        config,
+        classPickKey: classStep ? pickRuleKey(classStep.id) : undefined,
+      };
+      break;
+    }
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -298,7 +339,26 @@ export class CharacterBuilder {
   };
 
   choose = (ruleKey: string, elementIds: ElementId[]): void => {
+    const multiclass = this.multiclass;
+    // Read before the write: once the pick is recorded the old first class is only in
+    // `advancement`, and `planFirstClass` has to know which levels were its.
+    const previousFirst =
+      multiclass && ruleKey === multiclass.classPickKey
+        ? firstClassOf(this.character, multiclass.config, this.elements)
+        : undefined;
+
     this.character = setChoice(this.character, ruleKey, elementIds);
+
+    const nextFirst = elementIds[0];
+    if (multiclass && previousFirst !== undefined && nextFirst !== undefined) {
+      this.character = planFirstClass(
+        this.character,
+        previousFirst,
+        nextFirst,
+        multiclass.config,
+        this.elements,
+      );
+    }
     this.invalidate();
   };
 
@@ -332,11 +392,69 @@ export class CharacterBuilder {
    * opens arrive in the same list as every other, tagged with the level that raised them.
    */
   setProgress = (progress: number): void => {
-    this.character = {
-      ...this.character,
-      progress: clampProgress(this.kind.progression, progress),
-    };
+    const clamped = clampProgress(this.kind.progression, progress);
+    // A multiclass character's `advancement` has to follow: new levels continue the class you
+    // were playing and the ones that go take their class with them (ADR 0036). For a
+    // single-class character this is exactly the old body — only the number moves.
+    this.character = this.multiclass
+      ? planProgress(this.character, clamped, this.multiclass.config, this.elements)
+      : { ...this.character, progress: clamped };
     this.invalidate();
+  };
+
+  /** Which class each level went to, or undefined if this step publishes none — ADR 0036. */
+  classLevelsFor = (stepId: string): ClassLevelState | undefined => {
+    return this.getState().steps.find((step) => step.id === stepId)?.classLevels;
+  };
+
+  /**
+   * Spend one level on a class — the single write path of a multiclass control.
+   *
+   * Validated here and not in the shell, the way `setBudgetStat` is: a class the state lists as
+   * ineligible, the character's first level, a level outside the progression and a class nothing
+   * knows about are all refused, and a refused call writes nothing. Returns whether the level now
+   * holds that class, so a caller can tell a refusal from a no-op without reading the state twice.
+   *
+   * Two records change together and neither is optional — see `multiclass.ts`. A hit point roll
+   * made on a different die than the new class's is cleared, and the level's hit points reopen.
+   */
+  setLevelClass = (stepId: string, level: number, classId: ElementId): boolean => {
+    const multiclass = this.multiclass;
+    const state = this.classLevelsFor(stepId);
+    if (!multiclass || multiclass.stepId !== stepId || !state) return false;
+    if (!state.options.find((option) => option.id === classId)?.eligible) return false;
+    const next = planLevelClass(this.character, level, classId, multiclass.config, this.elements);
+    if (!next) return false;
+    if (next !== this.character) {
+      this.character = next;
+      this.invalidate();
+    }
+    return true;
+  };
+
+  /**
+   * Take one more level, in a class you choose — "level up" as the verb a player actually has.
+   *
+   * One write and one derivation, so the character is never seen at the new level in a class
+   * nobody picked. Refused at the top of the progression and for a class the state lists as
+   * ineligible; taking a level in a class you already have needs no prerequisite.
+   */
+  addLevel = (stepId: string, classId: ElementId): boolean => {
+    const multiclass = this.multiclass;
+    const state = this.classLevelsFor(stepId);
+    if (!multiclass || multiclass.stepId !== stepId || !state?.canAddLevel) return false;
+    if (!state.options.find((option) => option.id === classId)?.eligible) return false;
+    // One write, through `planProgress`, and not "grow then reassign": the new level is never the
+    // previous class's, so no roll recorded for it could have been made on that class's die.
+    this.character = planProgress(
+      this.character,
+      this.character.progress + 1,
+      multiclass.config,
+      this.elements,
+      classId,
+    );
+    this.invalidate();
+    return true;
   };
 
   /** Rename the character. An input like any other; nothing derives what a player calls them. */
@@ -924,6 +1042,15 @@ export class CharacterBuilder {
         complete: !open.some((decision) => decision.blocking),
         budget: budgets.get(step.id),
         hitPoints: hitPoints.get(step.id),
+        classLevels:
+          this.multiclass?.stepId === step.id
+            ? computeClassLevelState(
+                this.character,
+                derived,
+                this.multiclass.config,
+                this.elements,
+              )
+            : undefined,
       };
     });
 

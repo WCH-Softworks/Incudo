@@ -70,7 +70,7 @@ export function hitPointRollKey(pattern: string, level: number): string {
   return pattern.replace('{n}', String(level));
 }
 
-function progressionMin(progression: Progression): number {
+export function progressionMin(progression: Progression): number {
   return progression.kind === 'none' ? 0 : (progression.min ?? 0);
 }
 

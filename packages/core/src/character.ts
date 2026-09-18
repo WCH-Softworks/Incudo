@@ -280,6 +280,24 @@ export function setBaseStat(
   };
 }
 
+/**
+ * Replace which element each point of progression was spent on — ADR 0015.
+ *
+ * `undefined` or an empty list removes the field, which is what "this character has one track"
+ * means: a character without `advancement` behaves as a single-tracked one, and an empty array
+ * would say the same thing in a way every reader has to know about.
+ */
+export function setAdvancement(
+  character: Character,
+  advancement: AdvancementEntry[] | undefined,
+): Character {
+  return {
+    ...character,
+    advancement: advancement?.length ? advancement : undefined,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 /** Whether the user has explicitly said to skip this decision — ADR 0033. */
 export function isDeclined(character: Character, decisionId: string): boolean {
   return character.declinedDecisions?.includes(decisionId) ?? false;
