@@ -918,28 +918,56 @@ table.budget-rows input[type='number'] {
   line-height: 20px;
 }
 
-/* The per-level hit point table, which lives in the wide Open decisions column and has text
-   buttons to fit, unlike the six-row ability score table `.budget-rows`' 480px cap was sized
-   for. Fills its column; the action cell takes whatever width the other four leave. */
-table.budget-rows.hp-rows {
-  max-width: none;
+/*
+ * The per-level hit point editor, one block per level rather than a table row. The same editor
+ * sits in the wide Open decisions column and in the narrow settled one (about 275px), and a
+ * five-column table with three text buttons per row fits the first and overflows the second —
+ * `.budget-rows`' 480px cap was sized for six short numbers, not for this. A block per level has
+ * no width it needs: the head line holds the level and its value, the buttons wrap underneath.
+ */
+.hp-levels {
+  display: flex;
+  flex-direction: column;
 }
 
-.hp-rows .hp-actions-cell {
+.hp-level {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hp-level-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hp-level-value {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.hp-level-value input[type='number'] {
+  width: 64px;
   text-align: right;
 }
 
 /* Not `.stepper`: that one squeezes every button to 24px for a − / +, which is what turned
    "Roll a d8" and "Take the average" into a column of clipped fragments. */
 .hp-actions {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 6px;
 }
 
-.hp-actions button,
-.hp-rows .hp-actions-cell > button {
+.hp-actions button {
   white-space: nowrap;
 }
 

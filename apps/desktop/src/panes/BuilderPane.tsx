@@ -318,7 +318,9 @@ function Decision({
       <div className="decision-head">
         <span className="label">{decision.label}</span>
         {!decision.blocking && <span className="tag">optional</span>}
-        <span className="tag open">{decision.remaining} left</span>
+        <span className="tag open">
+          {decision.remaining > 0 ? `${decision.remaining} left` : 'all recorded'}
+        </span>
         {decision.openedAt !== undefined && (
           // The level in the *granting element's own track*, not the character's total — on a
           // Rogue 5 / Wizard 3 a wizard rule's level 3 means wizard 3 (ADR 0015).
@@ -347,7 +349,19 @@ function Decision({
         )
       ) : decision.kind === 'hitpoints' ? (
         hitPoints ? (
-          <HitPointEditor stepId={decision.stepId} state={hitPoints} builder={builder} />
+          <>
+            <HitPointEditor stepId={decision.stepId} state={hitPoints} builder={builder} />
+            {/*
+              Only once nothing is left to record. The decision has stayed open for this on
+              purpose — a roll is not an acceptance — and this is what closes it. Until then
+              the rows above are the way forward, so a Done here would be a way to skip them.
+            */}
+            {hitPoints.reviewing && hitPoints.pending.length === 0 && (
+              <button type="button" onClick={() => builder.confirmHitPoints(decision.stepId)}>
+                Done
+              </button>
+            )}
+          </>
         ) : (
           <p className="hint">This step declares per-level rolls the builder did not publish.</p>
         )
