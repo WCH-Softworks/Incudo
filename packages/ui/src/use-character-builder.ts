@@ -231,6 +231,16 @@ export interface SettledPick {
   chosen: ElementId[];
   /** What could be chosen instead, including everything in `chosen`. */
   candidates: ElementId[];
+  /**
+   * Which of `candidates` may fill more than one slot of this pick — ADR 0035. A +1 to
+   * Constitution taken twice is a +2, so a slot's own option list must not drop it just because
+   * another slot holds it; a language must, because two slots agreeing on one does nothing.
+   * Empty for a top-level pick, which has one slot.
+   *
+   * Published here rather than left to the view to work out, for the reason `candidates` is: which
+   * elements repeat is the system's declaration, and a pane that guessed would guess per shell.
+   */
+  repeatable: ElementId[];
 }
 
 /**
@@ -650,12 +660,15 @@ export class CharacterBuilder {
         // Settled so far. `choice.candidates` already excludes it along with everything else
         // the character holds, so adding it back is what lets its own slot's dropdown keep
         // showing it — the same trick a fully answered pool uses below.
+        //
+        // Deduplicated: an element the kind lets be taken again (ADR 0035) is in both lists.
         picks.push({
           ruleKey: choice.ruleKey,
           stepId,
           label: choice.label,
           chosen,
-          candidates: [...choice.candidates, ...chosen],
+          candidates: [...new Set([...choice.candidates, ...chosen])],
+          repeatable: choice.repeatable,
         });
       }
     }
@@ -696,6 +709,7 @@ export class CharacterBuilder {
           label: step.label,
           chosen: [...answer.elementIds],
           candidates,
+          repeatable: [],
         });
         const rank = stepOrderIndex.get(step.id) ?? Number.MAX_SAFE_INTEGER;
         for (const id of answer.elementIds) pickElementRank.set(id, rank);
@@ -731,7 +745,8 @@ export class CharacterBuilder {
         stepId: stepForType.get(answered.type) ?? '',
         label: answered.label,
         chosen: answered.chosen,
-        candidates: [...answered.candidates, ...answered.chosen],
+        candidates: [...new Set([...answered.candidates, ...answered.chosen])],
+        repeatable: answered.repeatable,
       });
       addChoiceEdge(answered.from, answered.chosen);
     }

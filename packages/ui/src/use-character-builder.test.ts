@@ -1629,3 +1629,80 @@ test('a first level on its own has nothing to review, and a saved set opens fini
   assert.equal(saved.getState().decisions.some((d) => d.kind === 'hitpoints'), false, 'opening it asks nothing');
   assert.equal(saved.getState().steps.find((s) => s.id === 'levels')!.complete, true);
 });
+
+// --- a slot may repeat an answer — ADR 0035 -----------------------------------------------
+
+function repeatingSystem(): GameSystem {
+  const base = system();
+  return {
+    ...base,
+    characterKinds: base.characterKinds.map((kind) => ({ ...kind, repeatableSetter: 'again' })),
+  };
+}
+
+/** Two picks from Gadgets, one of which is worth +1 vigour and may be taken again. */
+function bumpBuilder(sys: GameSystem): CharacterBuilder {
+  const index = indexWith(
+    element('TRAINER', 'Widget', [
+      { kind: 'select', key: 'bumps', type: 'Gadget', name: 'Bumps', number: 2 },
+    ]),
+    element(
+      'BUMP',
+      'Gadget',
+      [{ kind: 'stat', key: 'stat-0', name: 'vigour', value: { kind: 'number', value: 1 } }],
+      { again: { value: 'true' } },
+    ),
+    element('ONCE', 'Gadget'),
+  );
+  const b = builder(index, sys);
+  b.choose('build/start', ['TRAINER']);
+  return b;
+}
+
+test('a repeatable answer is offered again while its pool is open, and settles once per slot', () => {
+  const b = bumpBuilder(repeatingSystem());
+  const open = b.getState().decisions.find((d) => d.label === 'Bumps')!;
+  b.choose(open.id, ['BUMP']);
+
+  const state = b.getState();
+  const still = state.decisions.find((d) => d.label === 'Bumps')!;
+  assert.deepEqual(still.candidates.sort(), ['BUMP', 'ONCE'], 'the bump is offered a second time');
+
+  const settled = state.picks.find((p) => p.ruleKey === open.id)!;
+  assert.deepEqual(settled.chosen, ['BUMP']);
+  assert.deepEqual(
+    settled.candidates.sort(),
+    ['BUMP', 'ONCE'],
+    'the chosen one is in the list once, though the engine offers it and `chosen` holds it',
+  );
+  assert.deepEqual(settled.repeatable, ['BUMP'], 'and the pane is told which of them may repeat');
+});
+
+test('the same repeatable answer in both slots is a +2, and stays changeable', () => {
+  const b = bumpBuilder(repeatingSystem());
+  const open = b.getState().decisions.find((d) => d.label === 'Bumps')!;
+  b.choose(open.id, ['BUMP', 'BUMP']);
+
+  const state = b.getState();
+  assert.equal(state.decisions.some((d) => d.label === 'Bumps'), false, 'nothing is owed');
+  assert.equal(state.derived.stats.get('vigour')!.value, 12);
+
+  const settled = state.picks.find((p) => p.ruleKey === open.id)!;
+  assert.deepEqual(settled.chosen, ['BUMP', 'BUMP']);
+  assert.deepEqual(settled.candidates.sort(), ['BUMP', 'ONCE']);
+  assert.deepEqual(settled.repeatable, ['BUMP']);
+
+  // The write a per-slot control makes, exactly as for any other settled pool.
+  b.choose(settled.ruleKey, ['BUMP', 'ONCE']);
+  assert.equal(b.getState().derived.stats.get('vigour')!.value, 11);
+});
+
+test('a kind that names no repeatable setter publishes none, and offers nothing twice', () => {
+  const b = bumpBuilder(system());
+  const open = b.getState().decisions.find((d) => d.label === 'Bumps')!;
+  b.choose(open.id, ['BUMP']);
+
+  const state = b.getState();
+  assert.deepEqual(state.decisions.find((d) => d.label === 'Bumps')!.candidates, ['ONCE']);
+  assert.deepEqual(state.picks.find((p) => p.ruleKey === open.id)!.repeatable, []);
+});
