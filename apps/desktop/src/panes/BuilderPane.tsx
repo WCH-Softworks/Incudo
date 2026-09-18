@@ -434,7 +434,9 @@ function Decision({
  * same control either way rather than branching on how many there are. `pick.candidates`
  * already includes every one of `chosen`, which is what lets a slot offer its own current
  * answer; what it does not do on its own is stop two slots from agreeing on one answer, so
- * each slot's own option list drops every *other* slot's current value before it renders.
+ * each slot's own option list drops every *other* slot's current value before it renders —
+ * except for a `repeatable` one, which is offered to every slot because taking it twice is the
+ * point: "increase one score by 2" is the same score chosen in both slots (ADR 0035).
  */
 function SettledPickEditor({
   pick,
@@ -452,7 +454,10 @@ function SettledPickEditor({
     <div className="settled-slots">
       {pick.chosen.map((id, index) => {
         const options = pick.candidates.filter(
-          (candidate) => candidate === id || !pick.chosen.includes(candidate),
+          (candidate) =>
+            candidate === id ||
+            !pick.chosen.includes(candidate) ||
+            pick.repeatable.includes(candidate),
         );
         return (
           <ChosenCandidate
