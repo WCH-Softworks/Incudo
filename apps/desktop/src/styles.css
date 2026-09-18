@@ -918,6 +918,31 @@ table.budget-rows input[type='number'] {
   line-height: 20px;
 }
 
+/* The per-level hit point table, which lives in the wide Open decisions column and has text
+   buttons to fit, unlike the six-row ability score table `.budget-rows`' 480px cap was sized
+   for. Fills its column; the action cell takes whatever width the other four leave. */
+table.budget-rows.hp-rows {
+  max-width: none;
+}
+
+.hp-rows .hp-actions-cell {
+  text-align: right;
+}
+
+/* Not `.stepper`: that one squeezes every button to 24px for a − / +, which is what turned
+   "Roll a d8" and "Take the average" into a column of clipped fragments. */
+.hp-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.hp-actions button,
+.hp-rows .hp-actions-cell > button {
+  white-space: nowrap;
+}
+
 .settled {
   padding: 10px 0;
   border-bottom: 1px solid var(--line);

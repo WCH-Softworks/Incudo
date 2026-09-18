@@ -69,7 +69,7 @@ export function HitPointEditor({
   builder: CharacterBuilder;
 }): React.JSX.Element {
   return (
-    <table className="budget-rows">
+    <table className="budget-rows hp-rows">
       <thead>
         <tr>
           <th>Level</th>
@@ -86,7 +86,7 @@ export function HitPointEditor({
             <td>{level.className ?? '—'}</td>
             <td className="numeric muted">{level.dieSides ? `d${level.dieSides}` : '—'}</td>
             <td className="numeric total">{level.recorded ?? '—'}</td>
-            <td>
+            <td className="hp-actions-cell">
               {level.recorded === undefined && level.dieSides !== undefined && (
                 level.isFirst ? (
                   <button
@@ -96,7 +96,7 @@ export function HitPointEditor({
                     Record the maximum ({level.dieSides})
                   </button>
                 ) : (
-                  <span className="stepper">
+                  <span className="hp-actions">
                     <button
                       type="button"
                       onClick={() => builder.recordHitPoints(stepId, level.level, 'roll')}
