@@ -28,6 +28,7 @@
  *   parse-index.ts         `.index` files
  *   parse-elements.ts      elements XML -> `Element`, plus unapplied `<append>` blocks
  *   generated-elements.ts  the 83 elements Aurora's app materializes and no file declares
+ *   improvement-options.ts the per-class, per-level ability score improvement it also generates
  *   base64.ts              portraits out of the XML and into real bytes
  *   parse-save.ts          `.dnd5e` -> a structure, with no interpretation
  *   import-character.ts    that structure -> a `Character`
@@ -41,6 +42,7 @@ export * from './xml.ts';
 export * from './parse-index.ts';
 export * from './parse-elements.ts';
 export * from './generated-elements.ts';
+export * from './improvement-options.ts';
 export * from './base64.ts';
 export * from './parse-save.ts';
 export * from './import-character.ts';

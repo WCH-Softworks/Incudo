@@ -377,3 +377,65 @@ test('with no content loaded it still imports, and says what it could not check'
   assert.deepEqual(character.sources, [], 'no allowlist rather than a guessed one');
   assert.ok(diagnostics.some((d) => d.message.includes('no content is loaded')));
 });
+
+// --- the same element picked twice — ADR 0035 ---------------------------------------------
+
+/** A save whose class recorded one ability bump under both numbers of a select, as Aurora writes +2. */
+const DOUBLE = `<character version="1.0.3">
+  <build>
+    <elements level-count="4">
+      <element type="Level" name="4" id="ID_LEVEL_4">
+        <element type="Class" name="Class" requiredLevel="1" checksum="b" registered="ID_CLASS_TEST">
+          <element type="Ability Score Improvement" name="Ability Score Increase (TEST 4)" requiredLevel="4" number="1" checksum="x" registered="ID_BUMP" />
+          <element type="Ability Score Improvement" name="Ability Score Increase (TEST 4)" requiredLevel="4" number="2" checksum="y" registered="ID_BUMP" />
+          <element type="Proficiency" name="Skill (Test)" requiredLevel="1" number="1" checksum="p" registered="ID_PROF_ONE" />
+          <element type="Proficiency" name="Skill (Test)" requiredLevel="1" number="2" checksum="q" registered="ID_PROF_ONE" />
+        </element>
+      </element>
+    </elements>
+  </build>
+</character>`;
+
+function bump(repeatable: boolean): Element {
+  const e = element('ID_BUMP', 'Ability Score Improvement');
+  if (repeatable) e.setters = { 'allow duplicate': { value: 'true' } };
+  return e;
+}
+
+function importedDouble(content: MapElementIndex | undefined) {
+  return importAuroraCharacter(parseAuroraSave(DOUBLE), { index: content });
+}
+
+const BUMP_KEY = 'ID_CLASS_TEST/select:Ability Score Increase (TEST 4)';
+const SKILL_KEY = 'ID_CLASS_TEST/select:Skill (Test)';
+
+test('an element that allows duplicates is kept once per pick, which is how +2 is written', () => {
+  const { character, diagnostics } = importedDouble(
+    index(bump(true), element('ID_CLASS_TEST', 'Class'), element('ID_PROF_ONE', 'Proficiency')),
+  );
+  assert.deepEqual(character.choices.find((c) => c.ruleKey === BUMP_KEY)!.elementIds, ['ID_BUMP', 'ID_BUMP']);
+  assert.equal(
+    diagnostics.filter((d) => d.message.includes('ID_BUMP')).length,
+    0,
+    'nothing was dropped, so nothing is reported',
+  );
+});
+
+test('an element that does not is kept once and the second pick is reported, as before', () => {
+  const { character, diagnostics } = importedDouble(
+    index(bump(false), element('ID_CLASS_TEST', 'Class'), element('ID_PROF_ONE', 'Proficiency')),
+  );
+  assert.deepEqual(character.choices.find((c) => c.ruleKey === BUMP_KEY)!.elementIds, ['ID_BUMP']);
+  assert.ok(diagnostics.some((d) => d.message.includes('"ID_BUMP" is recorded twice')));
+  assert.deepEqual(
+    character.choices.find((c) => c.ruleKey === SKILL_KEY)!.elementIds,
+    ['ID_PROF_ONE'],
+    'a repeated proficiency is not a +2 of anything',
+  );
+});
+
+test('with no content loaded there is no way to know, so the second pick is dropped and reported', () => {
+  const { character, diagnostics } = importedDouble(undefined);
+  assert.deepEqual(character.choices.find((c) => c.ruleKey === BUMP_KEY)!.elementIds, ['ID_BUMP']);
+  assert.ok(diagnostics.some((d) => d.message.includes('"ID_BUMP" is recorded twice')));
+});

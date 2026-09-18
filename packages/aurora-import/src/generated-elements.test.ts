@@ -6,6 +6,7 @@ import {
   GENERATED_ELEMENT_TYPES,
   GENERATED_SOURCE_ID,
   KNOWN_UPSTREAM_TYPOS,
+  REPEATABLE_SETTER,
 } from './generated-elements.ts';
 
 test('the overlay is deterministic, because saves checksum what it produces', () => {
@@ -107,4 +108,16 @@ test('the types the overlay introduces are named, so a system can declare them',
 test('the source id is overridable, for a caller that tracks provenance its own way', () => {
   const elements = auroraGeneratedElements({ sourceId: 'somewhere-else' });
   assert.ok(elements.every((e) => e.origin.sourceId === 'somewhere-else'));
+});
+
+test('the six ability score elements are what a class improvement filters on, and may be picked twice', () => {
+  const six = auroraGeneratedElements().filter((e) => e.id.startsWith('ID_INTERNAL_ASI_'));
+  assert.equal(six.length, 6);
+  for (const element of six) {
+    // `Ability Score Improvement,Class` is the filter on all 15 of the corpus's improvement
+    // selects that name it, and no other element in the 14,316 carries either tag.
+    assert.deepEqual(element.supports, ['Ability Score Improvement', 'Class'], element.id);
+    // Vigaro Safeguard's level 12 Fighter chose Constitution twice, which is how +2 is written.
+    assert.equal(element.setters[REPEATABLE_SETTER]?.value, 'true', element.id);
+  }
 });

@@ -37,6 +37,7 @@ import {
   type SourceRef,
 } from '@incudo/core';
 import { decodeBase64, imageExtension } from './base64.ts';
+import { REPEATABLE_SETTER } from './generated-elements.ts';
 import type { AuroraItem, AuroraSave, SaveDiagnostic } from './parse-save.ts';
 
 export interface ImportCharacterOptions {
@@ -220,6 +221,20 @@ function synthesizeGenerated(
  * sorting keeps the list in the order the character was actually built, which is what a
  * "spells you learned at level 5" view will want.
  */
+/**
+ * Whether an element declares that it may be picked more than once — ADR 0035.
+ *
+ * Needs the element, and so the loaded content: with no index there is no way to know, and the
+ * second pick is dropped with a warning exactly as before. Vigaro Safeguard's level 12 Fighter
+ * records `ID_INTERNAL_ASI_CONSTITUTION` under both numbers of one select, and Aurora's own
+ * `<sum>` lists it twice — the two picks are a +2, and losing one makes a Constitution of 19
+ * out of 20.
+ */
+function repeatable(index: ElementIndex | undefined, id: ElementId): boolean {
+  const value = index?.get(id)?.setters[REPEATABLE_SETTER]?.value;
+  return value !== undefined && value.trim().toLowerCase() !== 'false';
+}
+
 function toChoices(
   save: AuroraSave,
   index: ElementIndex | undefined,
@@ -258,10 +273,11 @@ function toChoices(
     );
     const elementIds: ElementId[] = [];
     for (const decision of sorted) {
-      if (elementIds.includes(decision.registered)) {
+      if (elementIds.includes(decision.registered) && !repeatable(index, decision.registered)) {
         // Aurora allows the same element under two `number=`s of one select in a few
-        // homebrew files. Incudo's choice list is a set of ids, so the duplicate would be
-        // silently absorbed; say so instead.
+        // homebrew files, and a derivation counts an element once, so keeping the second would
+        // change nothing; say so instead. An element that says it may be picked again is the
+        // other case and is kept below — that is how Aurora writes "+2 to one ability".
         diagnostics.push({
           level: 'warning',
           message: `"${decision.registered}" is recorded twice for "${decision.ruleName}"; keeping one.`,

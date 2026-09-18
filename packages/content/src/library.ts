@@ -3,7 +3,11 @@
  * element index the engine can query. It walks nested indexes and can load lazily.
  */
 
-import { auroraGeneratedElements, type ElementAppend } from '@incudo/aurora-import';
+import {
+  auroraGeneratedElements,
+  improvementOptionElements,
+  type ElementAppend,
+} from '@incudo/aurora-import';
 import { MapElementIndex, type Element, type ElementIndex } from '@incudo/core';
 import type { ContentIndex, ContentSource, FileRef, SourceDiagnostic } from './source.ts';
 
@@ -169,6 +173,11 @@ export class ContentLibrary {
     }
 
     this.applyAppends(pending);
+    // After the appends, because an append may carry the `<supports>` tags that say an option is
+    // already declared; and after every file, because the classes that ask for one are content.
+    if (root.format === 'aurora' && !options.withoutGeneratedElements) {
+      this.addImprovementOptions();
+    }
     return { index: root, filesLoaded, elementsLoaded, diagnostics: this.diagnostics };
   }
 
@@ -222,6 +231,17 @@ export class ContentLibrary {
     const generated = auroraGeneratedElements();
     for (const element of generated) this.index.add(element);
     this.generatedElements = generated.length;
+  }
+
+  /**
+   * The ability score improvement Aurora's app offers at each class level and no file declares —
+   * see `improvement-options.ts`. Derived from what is loaded rather than listed, so it runs
+   * after every source and is safe to run again: it only adds what no element already has.
+   */
+  private addImprovementOptions(): void {
+    const { elements } = improvementOptionElements(this.index.all());
+    for (const element of elements) this.index.add(element);
+    this.generatedElements += elements.length;
   }
 
   addElements(elements: Iterable<Element>): void {

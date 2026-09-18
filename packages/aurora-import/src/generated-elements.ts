@@ -44,7 +44,7 @@
  * them is how they eventually get fixed.
  */
 
-import type { Element, ElementId, Rule } from '@incudo/core';
+import type { Element, ElementId, Rule, Setter } from '@incudo/core';
 
 /** Default `origin.sourceId` for overlay elements, so their provenance is never ambiguous. */
 export const GENERATED_SOURCE_ID = 'aurora:generated';
@@ -56,6 +56,13 @@ export interface GeneratedElementOptions {
   /** Recorded as `origin.sourceId`. */
   sourceId?: string;
 }
+
+/**
+ * The setter Aurora content uses to say an element may be picked again. `systems/dnd5e/system.json`
+ * names the same string as its kind's `repeatableSetter`, so a character built in Incudo and one
+ * imported from Aurora agree about which elements count once per pick (ADR 0035).
+ */
+export const REPEATABLE_SETTER = 'allow duplicate';
 
 const ABILITIES = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
 
@@ -363,6 +370,13 @@ export function auroraGeneratedElements(options: GeneratedElementOptions = {}): 
         // item that grants this is named "…ASI_STRENGTH_INCREASE_1", and the changeling
         // offers the six of them as its single +1.
         rules: [{ kind: 'stat', key: 'stat-0', name: ability, value: { kind: 'number', value: 1 } }],
+        // What a class's improvement level filters on — `Ability Score Improvement,Class`, 15
+        // uses in the corpus and a tag nothing else carries — and the setter that lets one
+        // ability be picked twice. Both are inferred, and improvement-options.ts says from what:
+        // the saves record these six ids being chosen for exactly that select, and Vigaro
+        // Safeguard's level 12 Fighter chose Constitution twice, which is how "+2" is written.
+        supports: ['Ability Score Improvement', 'Class'],
+        setters: { [REPEATABLE_SETTER]: { value: 'true' } },
       }),
     );
   }
@@ -455,6 +469,8 @@ interface Spec {
   name: string;
   description: string;
   rules?: Rule[];
+  supports?: string[];
+  setters?: Record<string, Setter>;
 }
 
 function make(sourceId: string, spec: Spec): Element {
@@ -463,9 +479,9 @@ function make(sourceId: string, spec: Spec): Element {
     type: spec.type,
     name: spec.name,
     source: GENERATED_SOURCE,
-    setters: {},
+    setters: spec.setters ?? {},
     rules: spec.rules ?? [],
-    supports: [],
+    supports: spec.supports ?? [],
     description: `<p>${spec.description}</p>`,
     origin: { sourceId, format: 'aurora' },
   };
