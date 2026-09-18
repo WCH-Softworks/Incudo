@@ -843,6 +843,18 @@ export interface CharacterKindDef {
    * `equipped=` condition and gates nothing on attunement.
    */
   inventory?: InventoryDef;
+  /**
+   * The setter an element carries to say it may be taken more than once — ADR 0035. Replaced
+   * rather than merged along an `extends` chain, like `trackStats`. A kind that names none
+   * treats every element as taken at most once, which is what the engine did before.
+   *
+   * The name is the system's and never core's: Aurora spells it "allow duplicate", another
+   * format would not. An element that carries it (with a value that is not `false`) is offered
+   * again by a select that already holds it, and its rules apply once for every time the
+   * character chose it. Everything else is unchanged: a second Athletics is still no more
+   * Athletics.
+   */
+  repeatableSetter?: string;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -869,6 +881,8 @@ export interface ResolvedCharacterKind {
   contributions: ContributionDef[];
   /** How an item's setters are read, or nothing at all — ADR 0025. */
   inventory?: InventoryDef;
+  /** The setter that marks an element as repeatable, or none — ADR 0035. */
+  repeatableSetter?: string;
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -1045,6 +1059,7 @@ export function resolveCharacterKind(
   let blockFilters: BlockFilterDef[] = [];
   let contributions: ContributionDef[] = [];
   let inventory: InventoryDef | undefined;
+  let repeatableSetter: string | undefined;
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -1062,6 +1077,7 @@ export function resolveCharacterKind(
     if (layer.blockFilters !== undefined) blockFilters = layer.blockFilters;
     if (layer.contributions !== undefined) contributions = layer.contributions;
     if (layer.inventory !== undefined) inventory = layer.inventory;
+    if (layer.repeatableSetter !== undefined) repeatableSetter = layer.repeatableSetter;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -1080,6 +1096,7 @@ export function resolveCharacterKind(
     blockFilters,
     contributions,
     inventory,
+    repeatableSetter,
     buildSteps,
     sheet,
   };

@@ -265,3 +265,14 @@ test('an ordinary section renders itself, blocks or no blocks', () => {
     { id: 's', label: 'S', stats: ['vigour'], types: ['Widget'] },
   ]);
 });
+
+test('the repeatable setter is inherited down an extends chain, and a child may replace it', () => {
+  const system = fixture();
+  system.characterKinds[1]!.repeatableSetter = 'again';
+  assert.equal(resolveCharacterKind(system, 'alpha').repeatableSetter, undefined, 'none unless named');
+  assert.equal(resolveCharacterKind(system, 'beta').repeatableSetter, 'again');
+  assert.equal(resolveCharacterKind(system, 'gamma').repeatableSetter, 'again', 'inherited');
+
+  system.characterKinds[2]!.repeatableSetter = 'twice';
+  assert.equal(resolveCharacterKind(system, 'gamma').repeatableSetter, 'twice', 'replaced');
+});

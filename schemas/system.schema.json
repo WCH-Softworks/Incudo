@@ -332,6 +332,11 @@
         "blockFilters": { "type": "array", "items": { "$ref": "#/$defs/blockFilter" } },
         "contributions": { "type": "array", "items": { "$ref": "#/$defs/contribution" } },
         "inventory": { "$ref": "#/$defs/inventory" },
+        "repeatableSetter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The setter an element carries to say it may be taken more than once (ADR 0035). An element carrying it is offered again by a select that already holds it, and its rules apply once for every time the character chose it — a +1 to a score taken twice is +2. The name is the system's: Aurora spells it \"allow duplicate\". A kind that names none treats every element as taken at most once. Replaced rather than merged along an extends chain."
+        },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
       }

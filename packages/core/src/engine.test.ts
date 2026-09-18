@@ -1102,3 +1102,130 @@ test('having the proficiency does not hide the expertise that wants it', () => {
     'the proficiency the character has is what makes this offerable, not what hides it',
   );
 });
+
+// --- Repeatable elements — ADR 0035 -----------------------------------------------------
+//
+// A +2 to one score is the same +1 element taken twice, and nothing else in the engine could
+// say so: elements are keyed by id, so a second pick of one was invisible. The fixture has no
+// game in it — "Bump" is any element a select may hand out more than once.
+
+function bump(id: string, repeatable: boolean): Element {
+  const e = element(id, 'Bump', [
+    { kind: 'stat', key: 'stat-0', name: 'vigour', value: { kind: 'number', value: 1 } },
+  ]);
+  if (repeatable) e.setters = { repeatable: { value: 'true' } };
+  return e;
+}
+
+function bumpIndex(): MapElementIndex {
+  return indexWith(
+    element('TRAINER', 'Widget', [
+      { kind: 'select', key: 'select:Bump', type: 'Bump', name: 'Bump', number: 2 },
+    ]),
+    bump('BUMP_A', true),
+    bump('BUMP_B', true),
+    bump('BUMP_FIXED', false),
+  );
+}
+
+function repeatingSystem(setter: string | undefined): GameSystem {
+  const base = system();
+  return {
+    ...base,
+    elementTypes: [...base.elementTypes, { name: 'Bump' }],
+    characterKinds: base.characterKinds.map((kind) =>
+      kind.id === 'levelled' ? { ...kind, repeatableSetter: setter } : kind,
+    ),
+  };
+}
+
+function withBumps(...chosen: string[]): Character {
+  const character = { ...createCharacter('test', 'levelled'), progress: 1 };
+  character.choices = [
+    { ruleKey: 'seed', elementIds: ['TRAINER'] },
+    { ruleKey: 'TRAINER/select:Bump', elementIds: chosen },
+  ];
+  return character;
+}
+
+test('a repeatable element taken twice applies its rules twice', () => {
+  const derived = deriveCharacter(withBumps('BUMP_A', 'BUMP_A'), repeatingSystem('repeatable'), bumpIndex());
+  assert.equal(derived.stats.get('vigour')!.value, 12, 'two +1s on a base of 10');
+  assert.equal(
+    derived.stats.get('vigour')!.contributions.filter((c) => c.from === 'BUMP_A').length,
+    2,
+    'two contributions, so the sheet can say where each came from',
+  );
+});
+
+test('the same pick without the setter is one element and one +1 — the perturbation', () => {
+  // Nothing about the character or the content changed; only the kind stopped naming the
+  // setter. If this reads 12, the multiplicity was never coming from the declaration.
+  const derived = deriveCharacter(withBumps('BUMP_A', 'BUMP_A'), repeatingSystem(undefined), bumpIndex());
+  assert.equal(derived.stats.get('vigour')!.value, 11);
+});
+
+test('an element that is not repeatable is still applied once, however often it is recorded', () => {
+  const derived = deriveCharacter(
+    withBumps('BUMP_FIXED', 'BUMP_FIXED'),
+    repeatingSystem('repeatable'),
+    bumpIndex(),
+  );
+  assert.equal(derived.stats.get('vigour')!.value, 11, 'a second Athletics is no more Athletics');
+});
+
+test('two different picks of a repeatable element in two pools count twice', () => {
+  // Constitution at level 4 and again at level 8: two selects, one bump each, +2 in all.
+  const index = indexWith(
+    element('FOUR', 'Widget', [
+      { kind: 'select', key: 'select:Four', type: 'Bump', name: 'Four', number: 1 },
+    ]),
+    element('EIGHT', 'Widget', [
+      { kind: 'select', key: 'select:Eight', type: 'Bump', name: 'Eight', number: 1 },
+    ]),
+    bump('BUMP_A', true),
+  );
+  const character = { ...createCharacter('test', 'levelled'), progress: 8 };
+  character.choices = [
+    { ruleKey: 'seed', elementIds: ['FOUR', 'EIGHT'] },
+    { ruleKey: 'FOUR/select:Four', elementIds: ['BUMP_A'] },
+    { ruleKey: 'EIGHT/select:Eight', elementIds: ['BUMP_A'] },
+  ];
+  const derived = deriveCharacter(character, repeatingSystem('repeatable'), index);
+  assert.equal(derived.stats.get('vigour')!.value, 12);
+});
+
+test('a pool that holds a repeatable element offers it again, and one that holds a fixed one does not', () => {
+  const repeating = deriveCharacter(withBumps('BUMP_A'), repeatingSystem('repeatable'), bumpIndex());
+  const [pool] = repeating.pendingChoices;
+  assert.equal(pool!.remaining, 1);
+  assert.deepEqual([...pool!.candidates].sort(), ['BUMP_A', 'BUMP_B', 'BUMP_FIXED']);
+  assert.deepEqual(
+    [...pool!.repeatable].sort(),
+    ['BUMP_A', 'BUMP_B'],
+    'the view is told which of the two kinds of candidate it is looking at',
+  );
+
+  const fixed = deriveCharacter(withBumps('BUMP_FIXED'), repeatingSystem('repeatable'), bumpIndex());
+  assert.deepEqual(
+    [...fixed.pendingChoices[0]!.candidates].sort(),
+    ['BUMP_A', 'BUMP_B'],
+    'the fixed one is spent, exactly as it always was',
+  );
+});
+
+test('a kind that names no repeatable setter offers nothing again — the behaviour before ADR 0035', () => {
+  const [pool] = deriveCharacter(withBumps('BUMP_A'), repeatingSystem(undefined), bumpIndex()).pendingChoices;
+  assert.deepEqual([...pool!.candidates].sort(), ['BUMP_B', 'BUMP_FIXED']);
+  assert.deepEqual(pool!.repeatable, []);
+});
+
+test('a full pool of one repeatable answer twice is answered, and still says what could replace it', () => {
+  const derived = deriveCharacter(withBumps('BUMP_A', 'BUMP_A'), repeatingSystem('repeatable'), bumpIndex());
+  assert.deepEqual(derived.pendingChoices, [], 'two slots, two answers: nothing owed');
+  assert.deepEqual(derived.problems, [], 'and two of the same is not over-selected');
+  const [answered] = derived.answeredChoices;
+  assert.deepEqual(answered!.chosen, ['BUMP_A', 'BUMP_A']);
+  assert.deepEqual([...answered!.candidates].sort(), ['BUMP_A', 'BUMP_B', 'BUMP_FIXED']);
+  assert.deepEqual([...answered!.repeatable].sort(), ['BUMP_A', 'BUMP_B']);
+});

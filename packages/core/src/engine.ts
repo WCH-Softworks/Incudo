@@ -85,6 +85,13 @@ export interface PendingChoice {
   optional: boolean;
   candidates: ElementId[];
   /**
+   * Which of `candidates` and `chosen` may fill more than one slot of this pool — ADR 0035.
+   * A +1 to Constitution is repeatable, so choosing it twice is a +2; a language is not. Always
+   * a subset of the two lists it describes, and empty for a kind that names no
+   * `repeatableSetter`.
+   */
+  repeatable: ElementId[];
+  /**
    * `$(…)` terms in this pool's filter that nothing resolves, so `candidates` is short.
    *
    * An unresolved interpolation matches nothing rather than everything, which is the safe
@@ -131,6 +138,8 @@ export interface AnsweredChoice {
    * here or in `character.choices` forbids but a view should not offer.
    */
   candidates: ElementId[];
+  /** As on `PendingChoice`: which of `candidates` and `chosen` may fill more than one slot. */
+  repeatable: ElementId[];
   unresolvedSupports: string[];
   from: ElementId;
 }
@@ -599,10 +608,18 @@ function computeStats(
     owners.set(rule, from);
   };
 
+  // An element the character chose several times applies its rules that many times — ADR 0035.
+  // A +2 to one score is the same +1 element taken twice, and Aurora's own `<sum>` lists it
+  // twice for exactly that reason.
+  const repeats = repeatCounts(character, active, kind);
   for (const element of active.values()) {
+    const times = repeats.get(element.id) ?? 1;
     for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
       if (rule.kind !== 'stat') continue;
       contribute(rule, element.id);
+      // A copy each time: `owners` is keyed on the rule object, and one object listed twice
+      // would be one contribution wearing two names.
+      for (let again = 1; again < times; again++) contribute({ ...rule }, element.id);
     }
   }
 
@@ -895,6 +912,44 @@ function boundValue(
   return typeof bound === 'number' ? bound : evaluateExpr(bound, ctx);
 }
 
+/**
+ * Whether an element may be taken more than once, by the setter the kind names — ADR 0035.
+ *
+ * Present and not `false`, which is how a flag setter reads everywhere else. A kind that names
+ * no setter has no repeatable elements, so this is false for all of them and the engine behaves
+ * exactly as it did before the field existed.
+ */
+function isRepeatable(element: Element | undefined, kind: ResolvedCharacterKind): boolean {
+  const name = kind.repeatableSetter;
+  if (!name || !element) return false;
+  const setter = element.setters[name];
+  if (!setter) return false;
+  return setter.value.trim().toLowerCase() !== 'false';
+}
+
+/**
+ * How many times the character chose each repeatable element, where that is more than once.
+ *
+ * Counted across every recorded choice rather than within one pool: a Constitution bump taken at
+ * level 4 and again at level 8 is two picks in two pools and is +2 all the same. An element that
+ * is not repeatable never appears here, so choosing Athletics twice is still one Athletics.
+ */
+function repeatCounts(
+  character: Character,
+  active: Map<ElementId, Element>,
+  kind: ResolvedCharacterKind,
+): Map<ElementId, number> {
+  const counts = new Map<ElementId, number>();
+  if (!kind.repeatableSetter) return counts;
+  for (const choice of character.choices) {
+    for (const id of choice.elementIds) counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  for (const [id, times] of counts) {
+    if (times < 2 || !isRepeatable(active.get(id), kind)) counts.delete(id);
+  }
+  return counts;
+}
+
 function collectPendingChoices(
   active: Map<ElementId, Element>,
   character: Character,
@@ -908,6 +963,14 @@ function collectPendingChoices(
 ): { pending: PendingChoice[]; answered: AnsweredChoice[] } {
   const pending: PendingChoice[] = [];
   const answered: AnsweredChoice[] = [];
+
+  // What a pool's own answers exclude from what it offers next: everything except an element
+  // the kind lets be taken again (ADR 0035).
+  const unrepeatable = (ids: ElementId[]): ElementId[] =>
+    ids.filter((id) => !isRepeatable(index.get(id), kind));
+  const repeatableAmong = (ids: ElementId[]): ElementId[] => [
+    ...new Set(ids.filter((id) => isRepeatable(index.get(id), kind))),
+  ];
 
   for (const element of active.values()) {
     for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor, equipment)) {
@@ -933,8 +996,8 @@ function collectPendingChoices(
         const candidates = new Set<ElementId>();
         const unresolvedSupports = new Set<string>();
         for (const rule of rules) {
-          for (const candidate of candidatesFor(rule, index, chosen, ctx, filters)) {
-            if (active.has(candidate.id)) continue;
+          for (const candidate of candidatesFor(rule, index, unrepeatable(chosen), ctx, filters)) {
+            if (active.has(candidate.id) && !isRepeatable(candidate, kind)) continue;
             candidates.add(candidate.id);
           }
           for (const key of supportsInterpolations(rule.supports)) {
@@ -948,6 +1011,7 @@ function collectPendingChoices(
           optional: rules.every((rule) => rule.optional ?? false),
           chosen: [...chosen],
           candidates: [...candidates],
+          repeatable: repeatableAmong([...candidates, ...chosen]),
           unresolvedSupports: [...unresolvedSupports],
           from: element.id,
         });
@@ -973,7 +1037,7 @@ function collectPendingChoices(
       // `candidatesFor` already makes about an element's own requirements.
       const candidates = new Set<ElementId>();
       for (const rule of open) {
-        for (const candidate of candidatesFor(rule, index, chosen, ctx, filters)) {
+        for (const candidate of candidatesFor(rule, index, unrepeatable(chosen), ctx, filters)) {
           // Not something the character already has. An elf offered Elvish by a background's
           // "two languages of your choice" is being offered a pick that does nothing, and no
           // content file can say so: the select names a support tag and every language-granting
@@ -988,7 +1052,9 @@ function collectPendingChoices(
           // offers `ID_EXPERTISE_SKILL_ACROBATICS`, a Class Feature, while the proficiency it
           // requires is `ID_PROFICIENCY_SKILL_ACROBATICS`. Different elements, so wanting the
           // one you have is expressed by having the other.
-          if (active.has(candidate.id)) continue;
+          //
+          // Except what the kind marks repeatable, which is offered again by design — ADR 0035.
+          if (active.has(candidate.id) && !isRepeatable(candidate, kind)) continue;
           candidates.add(candidate.id);
         }
       }
@@ -1004,6 +1070,7 @@ function collectPendingChoices(
         number: allowed,
         optional: rules.every((rule) => rule.optional ?? false),
         candidates: [...candidates],
+        repeatable: repeatableAmong([...candidates, ...chosen]),
         // Across the whole pool, not just the next rule: any rule with room left can be the
         // one whose filter cannot be evaluated. Only the terms that really did not resolve —
         // before ADR 0030 nothing resolved, so listing every interpolation was the same list.

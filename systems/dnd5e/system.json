@@ -250,6 +250,8 @@
         "attunement": { "setter": "attunement", "requires": "true", "countStat": "attunement:current", "maxStat": "attunement:max" }
       },
 
+      "repeatableSetter": "allow duplicate",
+
       "elementTypes": [
         "Race", "Sub Race", "Race Variant", "Racial Trait",
         "Class", "Multiclass", "Class Feature", "Archetype", "Archetype Feature",
