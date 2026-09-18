@@ -1521,3 +1521,111 @@ test('advancement names which element governs each level, for a character with n
   assert.equal(hp.levels[0]!.dieSides, 10, 'level 1 went to the fighter');
   assert.equal(hp.levels[1]!.dieSides, 6, 'level 2 went to the wizard');
 });
+
+function levelTwoBuilder(random: () => number): CharacterBuilder {
+  const b = new CharacterBuilder(
+    createCharacter('test', 'pc', { progress: 2 }),
+    systemWithLevelRoll(),
+    indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } })),
+    { random },
+  );
+  b.choose('build/kit', ['CLASSY']);
+  return b;
+}
+
+test('rolling with 1s rerolled keeps the second result, and asks again only once', () => {
+  const rerolled = levelTwoBuilder(sequence([1, 6], 8));
+  rerolled.recordHitPoints('levels', 2, 'rollRerollOnes');
+  assert.equal(rerolled.getState().character.rolls['hp:level:2'], 6, 'the 1 was thrown away');
+
+  const twice = levelTwoBuilder(sequence([1, 1, 7], 8));
+  twice.recordHitPoints('levels', 2, 'rollRerollOnes');
+  assert.equal(twice.getState().character.rolls['hp:level:2'], 1, 'a second 1 stands; the 7 is never rolled');
+
+  const plain = levelTwoBuilder(sequence([4, 7], 8));
+  plain.recordHitPoints('levels', 2, 'rollRerollOnes');
+  assert.equal(plain.getState().character.rolls['hp:level:2'], 4, 'anything but a 1 is kept as rolled');
+
+  const ordinary = levelTwoBuilder(sequence([1, 7], 8));
+  ordinary.recordHitPoints('levels', 2, 'roll');
+  assert.equal(ordinary.getState().character.rolls['hp:level:2'], 1, 'a plain roll never rerolls');
+});
+
+test('changeHitPoints overwrites a recorded level, which recordHitPoints will not', () => {
+  const b = levelTwoBuilder(sequence([5, 7], 8));
+  b.recordHitPoints('levels', 2, 'roll');
+  b.recordHitPoints('levels', 2, 'roll');
+  assert.equal(b.getState().character.rolls['hp:level:2'], 5, 'the replay changed nothing');
+
+  assert.equal(b.changeHitPoints('levels', 2, 'roll'), 7);
+  assert.equal(b.getState().character.rolls['hp:level:2'], 7, 'the click did');
+  assert.equal(b.changeHitPoints('levels', 2, 'average'), 5);
+  assert.equal(b.getState().character.rolls['hp:level:2'], 5);
+});
+
+test('a typed value is held to the die, and a non-number writes nothing', () => {
+  const b = levelTwoBuilder(sequence([], 8));
+  assert.equal(b.changeHitPoints('levels', 2, { value: 99 }), 8, 'a d8 has no 99');
+  assert.equal(b.changeHitPoints('levels', 2, { value: 0 }), 1);
+  assert.equal(b.changeHitPoints('levels', 2, { value: 3.6 }), 4, 'rounded to a face');
+  assert.equal(b.changeHitPoints('levels', 2, { value: Number.NaN }), undefined);
+  assert.equal(b.getState().character.rolls['hp:level:2'], 4, 'the refused value left it alone');
+});
+
+test('the first level cannot be changed, whatever is asked', () => {
+  const b = levelTwoBuilder(sequence([], 8));
+  b.recordHitPoints('levels', 1, 'average');
+  assert.equal(b.getState().character.rolls['hp:level:1'], 8);
+
+  assert.equal(b.changeHitPoints('levels', 1, 'roll'), undefined);
+  assert.equal(b.changeHitPoints('levels', 1, { value: 2 }), undefined);
+  assert.equal(b.getState().character.rolls['hp:level:1'], 8, 'still the maximum');
+});
+
+test('the last roll does not close the decision until the user confirms it', () => {
+  const b = levelTwoBuilder(sequence([3], 8));
+  const hpDecision = () => b.getState().decisions.find((d) => d.kind === 'hitpoints');
+  const levelsStep = () => b.getState().steps.find((s) => s.id === 'levels')!;
+
+  b.recordHitPoints('levels', 1, 'average');
+  assert.equal(hpDecision()?.remaining, 1, 'level 2 is still to do');
+  b.recordHitPoints('levels', 2, 'roll');
+
+  assert.equal(b.hitPointsFor('levels')!.pending.length, 0, 'everything is recorded');
+  assert.equal(b.hitPointsFor('levels')!.reviewing, true);
+  assert.equal(hpDecision()?.remaining, 0, 'so nothing is left, but it is not closed');
+  assert.equal(levelsStep().complete, false, 'and the step does not say it is');
+
+  b.confirmHitPoints('levels');
+  assert.equal(hpDecision(), undefined);
+  assert.equal(levelsStep().complete, true);
+  assert.equal(b.hitPointsFor('levels')!.reviewing, false);
+});
+
+test('rolling a confirmed level again does not reopen the decision', () => {
+  const b = levelTwoBuilder(sequence([3, 6], 8));
+  b.recordHitPoints('levels', 1, 'average');
+  b.recordHitPoints('levels', 2, 'roll');
+  b.confirmHitPoints('levels');
+
+  b.changeHitPoints('levels', 2, 'roll');
+  assert.equal(b.getState().character.rolls['hp:level:2'], 6);
+  assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), false, 'the settled card stays put');
+});
+
+test('a first level on its own has nothing to review, and a saved set opens finished', () => {
+  const single = builder(indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } })), systemWithLevelRoll());
+  single.choose('build/kit', ['CLASSY']);
+  single.recordHitPoints('levels', 1, 'average');
+  assert.equal(single.hitPointsFor('levels')!.reviewing, false);
+  assert.equal(single.getState().decisions.some((d) => d.kind === 'hitpoints'), false);
+
+  const saved = new CharacterBuilder(
+    { ...createCharacter('test', 'pc', { progress: 2 }), rolls: { 'hp:level:1': 8, 'hp:level:2': 5 } },
+    systemWithLevelRoll(),
+    indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } })),
+  );
+  saved.choose('build/kit', ['CLASSY']);
+  assert.equal(saved.getState().decisions.some((d) => d.kind === 'hitpoints'), false, 'opening it asks nothing');
+  assert.equal(saved.getState().steps.find((s) => s.id === 'levels')!.complete, true);
+});

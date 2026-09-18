@@ -54,7 +54,16 @@ import {
   type BudgetWrite,
 } from './budget.ts';
 
-import { computeHitPointState, planHitPointRecord, type HitPointState } from './hitpoints.ts';
+import {
+  computeHitPointState,
+  planHitPointChange,
+  planHitPointRecord,
+  type HitPointChange,
+  type HitPointLevel,
+  type HitPointMethod,
+  type HitPointRecord,
+  type HitPointState,
+} from './hitpoints.ts';
 
 /**
  * One thing the character still has to decide.
@@ -244,6 +253,7 @@ export class CharacterBuilder {
   private readonly steps: BuildStepDef[];
   private focusedId: string | undefined;
   private readonly listeners = new Set<() => void>();
+  private readonly reviewingHitPoints = new Set<string>();
   private cached: BuilderState | undefined;
   private readonly random: () => number;
 
@@ -495,15 +505,54 @@ export class CharacterBuilder {
    * about there being one. Recording an already-recorded level is a no-op, the same
    * idempotency `rollBudget` holds — there is no path from a repaint to a new score.
    */
-  recordHitPoints = (stepId: string, level: number, method: 'average' | 'roll'): void => {
+  recordHitPoints = (stepId: string, level: number, method: HitPointMethod): void => {
     const state = this.hitPointsFor(stepId);
     const entry = state?.levels.find((l) => l.level === level);
     if (!state || !entry) return;
     const plan = planHitPointRecord(state.pattern, entry, method, this.random);
     if (!plan) return;
-    this.character = setRoll(this.character, plan.key, plan.value);
+    this.writeHitPoints(stepId, entry, plan);
+  };
+
+  /**
+   * Overwrite one level's value — roll it again, take the average, or set a number the user
+   * typed. Refused for a track's first level, which is always the maximum.
+   *
+   * `recordHitPoints` will not do this, on purpose: it leaves a recorded level alone so nothing
+   * but a click can change one. This is the click. Returns what was written, which is not always
+   * what was asked for — a typed 14 on a d10 is held to 10 — so an input can show the number the
+   * character actually has; undefined when nothing was written.
+   */
+  changeHitPoints = (stepId: string, level: number, change: HitPointChange): number | undefined => {
+    const state = this.hitPointsFor(stepId);
+    const entry = state?.levels.find((l) => l.level === level);
+    if (!state || !entry) return undefined;
+    const plan = planHitPointChange(state.pattern, entry, change, this.random);
+    if (!plan) return undefined;
+    this.writeHitPoints(stepId, entry, plan);
+    return plan.value;
+  };
+
+  /**
+   * Say the recorded set is what the user wants, so the decision can close.
+   *
+   * Recording the last pending level does not close it on its own (see `HitPointState.reviewing`):
+   * whoever just rolled has not necessarily accepted the roll.
+   */
+  confirmHitPoints = (stepId: string): void => {
+    if (!this.reviewingHitPoints.delete(stepId)) return;
     this.invalidate();
   };
+
+  private writeHitPoints(stepId: string, entry: HitPointLevel, plan: HitPointRecord): void {
+    // Only a level's *first* value opens a review. Rolling one again from the settled card is
+    // the user already being in the middle of editing it, and bouncing the card back into Open
+    // decisions under their cursor would undo the point of having an Edit button. Level 1 never
+    // does either: there is nothing about it to reconsider.
+    if (entry.recorded === undefined && !entry.isFirst) this.reviewingHitPoints.add(stepId);
+    this.character = setRoll(this.character, plan.key, plan.value);
+    this.invalidate();
+  }
 
   private applyBudgetWrites(writes: BudgetWrite[]): void {
     if (!writes.length) return;
@@ -799,10 +848,16 @@ export class CharacterBuilder {
 
     const hitPoints = new Map<string, HitPointState>();
     for (const step of this.steps) {
-      const state = computeHitPointState(step, this.character, derived, this.kind.progression);
+      const state = computeHitPointState(
+        step,
+        this.character,
+        derived,
+        this.kind.progression,
+        this.reviewingHitPoints.has(step.id),
+      );
       if (!state) continue;
       hitPoints.set(step.id, state);
-      if (state.pending.length > 0) {
+      if (state.pending.length > 0 || (state.reviewing && state.levels.length > 0)) {
         decisions.push({
           id: `hitpoints:${step.id}`,
           kind: 'hitpoints',
