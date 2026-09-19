@@ -251,3 +251,85 @@ test(
     assert.equal(wrong - total, 18);
   },
 );
+
+test(
+  'an imported character has its race, class and background answered, and changing one replaces it',
+  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  async () => {
+    // The import records the three under Aurora's own keys (`ID_LEVEL_1/select:Race`, ...) and is
+    // frozen, so the builder used to look under `build/<stepId>` only: all three read as open and
+    // blocking, and choosing a race added a second beside the imported one. Counts and shapes
+    // only — no name or prose from the save.
+    const system = await fiveE();
+    const corpus = await auroraCorpus();
+    const save = parseAuroraSave(await readFile(ORACLE_FILE, 'utf8'));
+    const imported = importAuroraCharacter(save, { index: corpus, systemId: 'dnd5e' });
+    const elements = new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus]);
+    const reference = imported.character;
+
+    assert.equal(
+      reference.choices.some((c) => c.ruleKey.startsWith('build/') && c.ruleKey !== 'build/options'),
+      false,
+      'precondition: the import writes nothing under the builder\'s own pick keys',
+    );
+
+    const builder = new CharacterBuilder(reference, system, elements);
+    const before = builder.getState();
+    assert.deepEqual(
+      before.decisions.filter((d) => d.kind === 'pick').map((d) => d.stepId),
+      [],
+      'no race, class or background is reported as open',
+    );
+    const settled = new Map(before.picks.map((p) => [p.stepId, p]));
+    for (const step of ['race', 'class', 'background']) {
+      const pick = settled.get(step);
+      assert.ok(pick, `${step} is a settled pick`);
+      assert.equal(pick.chosen.length, 1);
+      assert.match(pick.ruleKey, /^ID_LEVEL_1\/select:/, 'published under the key it is recorded under');
+    }
+    assert.equal(before.steps.find((s) => s.id === 'race')?.complete, true);
+
+    // Changing the race replaces the imported record: exactly one choice holds a Race afterwards.
+    const race = settled.get('race')!;
+    const replacement = race.candidates.find((id) => id !== race.chosen[0])!;
+    assert.ok(replacement, 'the corpus offers another race');
+    const raceHolders = (id: string, type: string) =>
+      builder.getState().character.choices.filter((c) =>
+        c.elementIds.some((held) => held === id || elements.get(held)?.type === type),
+      );
+    assert.equal(raceHolders(race.chosen[0]!, 'Race').length, 1);
+    builder.choose(race.ruleKey, [replacement]);
+    const after = builder.getState();
+    assert.deepEqual(
+      raceHolders(replacement, 'Race').map((c) => c.ruleKey),
+      [race.ruleKey],
+      'one Race record, still under the import\'s key',
+    );
+    assert.equal(after.derived.elementIds.has(race.chosen[0]!), false);
+    assert.equal(after.derived.elementIds.has(replacement), true);
+    assert.deepEqual(after.decisions.filter((d) => d.kind === 'pick'), []);
+
+    // Changing the class re-homes what the old first class held, exactly as it does for a
+    // character the builder wrote: the Paladin's two levels go to the new class, the Warlock's
+    // eighteen stay, and the class records do not multiply.
+    const cls = settled.get('class')!;
+    const advancement = reference.advancement!;
+    const paladin = advancement[0]!.elementId;
+    assert.equal(cls.chosen[0], paladin);
+    const other = cls.candidates.find(
+      (id) => id !== paladin && id !== advancement[19]!.elementId,
+    )!;
+    builder.choose(cls.ruleKey, [other]);
+    const rehomed = builder.getState().character;
+    assert.equal(
+      rehomed.advancement?.filter((entry) => entry.elementId === other).length,
+      2,
+      'both of the old first class\'s levels moved',
+    );
+    assert.equal(rehomed.advancement?.some((entry) => entry.elementId === paladin), false);
+    assert.equal(
+      rehomed.choices.filter((c) => c.elementIds.some((id) => elements.get(id)?.type === 'Class')).length,
+      1,
+    );
+  },
+);

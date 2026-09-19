@@ -209,8 +209,16 @@ computes nothing. Things to know before touching it:
   character and a built one hold the same records, and they are *found by what they hold*, not
   by key. The first class never gets a multiclass element.
 - **The first class is found from content, not from `build/class`.** An import records it under
-  `ID_LEVEL_1/select:Class`. (That same mismatch means an imported character opens with Race,
-  Class and Background listed as unanswered — pre-existing, not fixed here, filed.)
+  `ID_LEVEL_1/select:Class`. The same mismatch used to leave an imported character's Race, Class
+  and Background open and blocking, and choosing a race added a second one beside the imported
+  record, both seeding the derivation. Fixed in the builder, not the frozen importer:
+  `packages/ui/src/top-level-pick.ts` answers a pick from **any recorded choice holding an element
+  of one of the step's `types`** (`build/<stepId>` first, and never a key a content `select` pool
+  owns). `SettledPick.ruleKey` is the key the answer is actually recorded under, so `choose`
+  replaces an imported record in place and drops any other record made only of that step's types
+  — which is also what repairs a character an earlier build left holding both. Measured on the
+  oracle and in the running app; `aurora verify` cannot see it (it compares chosen elements, not
+  which control is open).
 - **Gated on what content declares and nothing else:** the class's own `requirements` plus its
   `<multiclass>` block's, through the engine's own requirement context. Not gated, deliberately:
   `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` (0 of 740 files reference it, and campaign options

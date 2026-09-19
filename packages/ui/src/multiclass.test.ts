@@ -632,6 +632,25 @@ test('an imported multiclass character is read and edited without a duplicate re
   );
 });
 
+test('changing an imported first class re-homes its levels, though it is not under build/kit', () => {
+  // The class pick used to be recognised by its key alone, so on the characters this exists for
+  // the change wrote a second class record and never re-homed anything. Perturbation: compare
+  // the key with `build/<stepId>` again and `advancement` keeps the old class.
+  const b = new CharacterBuilder(imported(), system(), corpus());
+  const pick = b.getState().picks.find((p) => p.stepId === 'kit')!;
+  assert.equal(pick.ruleKey, 'LVL_1/select:Class');
+  b.choose(pick.ruleKey, ['RANGER']);
+
+  assert.deepEqual(advancementOf(b), ['1:RANGER', '2:RANGER', '3:MAGE', '4:MAGE']);
+  assert.deepEqual(
+    b.getState().character.choices.filter((c) => c.elementIds.includes('RANGER')).map((c) => c.ruleKey),
+    ['LVL_1/select:Class'],
+    'one class record, in place',
+  );
+  assert.equal(b.classLevelsFor('levels')!.firstClassId, 'RANGER');
+  assert.deepEqual(multiclassRecords(b), ['LVL_3/select:Multiclass (Level 3)=MC_MAGE']);
+});
+
 test('a level an import could not attribute is reported and never filled in', () => {
   const partial: Character = {
     ...imported(),

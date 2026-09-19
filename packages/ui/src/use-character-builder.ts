@@ -66,6 +66,14 @@ import {
 } from './multiclass.ts';
 
 import {
+  pickAnswerOf,
+  pickRuleKey,
+  pickStepForKey,
+  replacePickAnswer,
+  topLevelPickSteps,
+} from './top-level-pick.ts';
+
+import {
   computeHitPointState,
   planHitPointChange,
   planHitPointRecord,
@@ -260,18 +268,6 @@ export interface SettledPick {
   repeatable: ElementId[];
 }
 
-/**
- * The rule key a top-level pick is recorded under.
- *
- * Not an `<element>/select:<name>` key, because no element declares a select for a 5e character's
- * race — Aurora's app asks for it directly. The convention predates this function: the committed
- * fixture save records `"ruleKey": "build/kin"`, and `aurora-import` documents the same shape
- * above `OPTIONS_RULE_KEY`.
- */
-export function pickRuleKey(stepId: string): string {
-  return `build/${stepId}`;
-}
-
 export class CharacterBuilder {
   private character: Character;
   private readonly system: GameSystem;
@@ -289,7 +285,7 @@ export class CharacterBuilder {
    * character's `advancement` is theirs to keep in step.
    */
   private readonly multiclass:
-    | { stepId: string; config: MulticlassConfig; classPickKey: string | undefined }
+    | { stepId: string; config: MulticlassConfig; classStepId: string | undefined }
     | undefined;
 
   constructor(
@@ -316,14 +312,8 @@ export class CharacterBuilder {
       if (!config) continue;
       // The pick that names the *first* class, which `choose` has to watch: changing it
       // re-homes the levels the old one held.
-      const classStep = this.steps.find(
-        (s) => s.required && !s.perLevel && s.types.includes(config.classType),
-      );
-      this.multiclass = {
-        stepId: step.id,
-        config,
-        classPickKey: classStep ? pickRuleKey(classStep.id) : undefined,
-      };
+      const classStep = topLevelPickSteps(this.steps).find((s) => s.types.includes(config.classType));
+      this.multiclass = { stepId: step.id, config, classStepId: classStep?.id };
       break;
     }
   }
@@ -340,14 +330,21 @@ export class CharacterBuilder {
 
   choose = (ruleKey: string, elementIds: ElementId[]): void => {
     const multiclass = this.multiclass;
+    // A top-level pick's answer may live under an imported save's own key rather than
+    // `build/<stepId>`, so which pick a key belongs to is read from the character, and the write
+    // replaces that record instead of adding a second beside it.
+    const reserved = this.poolKeys();
+    const pick = pickStepForKey(this.character, this.steps, this.elements, ruleKey, reserved);
     // Read before the write: once the pick is recorded the old first class is only in
     // `advancement`, and `planFirstClass` has to know which levels were its.
     const previousFirst =
-      multiclass && ruleKey === multiclass.classPickKey
+      multiclass && pick && pick.id === multiclass.classStepId
         ? firstClassOf(this.character, multiclass.config, this.elements)
         : undefined;
 
-    this.character = setChoice(this.character, ruleKey, elementIds);
+    this.character = pick
+      ? replacePickAnswer(this.character, pick, ruleKey, elementIds, this.elements, reserved)
+      : setChoice(this.character, ruleKey, elementIds);
 
     const nextFirst = elementIds[0];
     if (multiclass && previousFirst !== undefined && nextFirst !== undefined) {
@@ -697,6 +694,17 @@ export class CharacterBuilder {
     this.invalidate();
   };
 
+  /**
+   * The rule keys a content `select` pool owns, answered or not — see `top-level-pick.ts` for why
+   * a top-level pick must not claim one.
+   */
+  private poolKeys(derived: DerivedCharacter = this.getState().derived): Set<string> {
+    return new Set([
+      ...derived.pendingChoices.map((choice) => choice.ruleKey),
+      ...derived.answeredChoices.map((choice) => choice.ruleKey),
+    ]);
+  }
+
   private invalidate(): void {
     this.cached = undefined;
     for (const listener of this.listeners) listener();
@@ -793,17 +801,16 @@ export class CharacterBuilder {
 
     // Top-level picks — the race, class and background nothing declares a select for.
     //
-    // Only `required` steps, and never a `perLevel` one: what a level was spent on is
-    // `Character.advancement` and belongs to `setProgress` (ADR 0015), not to a choice. Steps
-    // that are neither — equipment, spells, details — are left alone rather than given an
-    // invented decision, because the bag (ADR 0024) and content's own selects already own them.
+    // Which steps count is `topLevelPickSteps`'s decision, and which record answers one is
+    // `pickAnswerOf`'s: an imported save keeps its race under Aurora's own key, so the answer is
+    // found by what it holds rather than by `build/<stepId>`.
     const pickDecisions: OpenDecision[] = [];
+    const reserved = this.poolKeys(derived);
     // What an answered pick's own elements are worth for the structural ordering further
     // down — its step's fixed position, never a timestamp. Filled as the loop below finds
     // each answered pick, same as `picks` and `pickDecisions` are.
     const pickElementRank = new Map<ElementId, number>();
-    for (const step of this.steps) {
-      if (!step.required || step.perLevel || !step.types.length) continue;
+    for (const step of topLevelPickSteps(this.steps)) {
       const ruleKey = pickRuleKey(step.id);
       const candidates = step.types.flatMap((type) =>
         this.elements
@@ -814,15 +821,17 @@ export class CharacterBuilder {
           .map((element) => element.id),
       );
 
-      const answer = this.character.choices.find(
-        (c) => c.ruleKey === ruleKey && c.elementIds.length,
-      );
+      const answer = pickAnswerOf(this.character, step, this.elements, reserved);
       if (answer) {
         // Settled, not gone. The candidate list is rebuilt here rather than remembered from
         // when the choice was made, so it reflects the character as it is now — which is the
         // only way a second choice can be as legal as the first was.
+        //
+        // Published under the key the answer is *recorded* under, which for an imported
+        // character is not `build/<stepId>`: `choose` takes it straight back and replaces that
+        // record in place.
         picks.push({
-          ruleKey,
+          ruleKey: answer.ruleKey,
           stepId: step.id,
           label: step.label,
           chosen: [...answer.elementIds],

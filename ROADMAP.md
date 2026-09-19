@@ -553,8 +553,10 @@ before any code, both touching a public API:
       for (ADR 0019). Gated on what content declares only: not the campaign option (0 of 740
       files read it), not the current class's prerequisite (content never states it), and not
       *when* a score was met. Known gap: picks of a class whose levels went away stay in
-      `choices`. Found while doing it and filed rather than fixed: an imported save records Race,
-      Class and Background under Aurora's keys, so it opens with all three listed as unanswered.
+      `choices`. Found while doing it and fixed afterwards, in the builder and not the frozen
+      importer: an imported save records Race, Class and Background under Aurora's keys, so it
+      opened with all three listed as unanswered. A top-level pick is now answered by any recorded
+      choice holding an element of its step's types (`packages/ui/src/top-level-pick.ts`).
 
 ### Where this phase actually stands
 
