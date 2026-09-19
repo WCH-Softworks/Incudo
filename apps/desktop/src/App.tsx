@@ -43,9 +43,14 @@ import {
 } from '@incudo/content';
 import {
   CharacterLibrary,
+  COMMANDS,
   UserSystemStore,
+  describeCommand,
   importAuroraSavesIntoLibrary,
+  importBlock,
+  resolveCommands,
   type AuroraImportReport,
+  type Destination,
   type LibraryEntry,
 } from '@incudo/ui';
 
@@ -62,6 +67,7 @@ import {
 import { createDesktopPlatform } from './platform.ts';
 import { useBuilder } from './use-builder.ts';
 import { useLibrary } from './use-library.ts';
+import { useCommandHost, type CommandBinder, type CommandHandlers } from './use-commands.ts';
 import { LauncherPane, type SystemSummary } from './panes/LauncherPane.tsx';
 import { LibraryPane } from './panes/LibraryPane.tsx';
 import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
@@ -70,7 +76,7 @@ import { SheetPane } from './panes/SheetPane.tsx';
 import { SettingsPane } from './panes/SettingsPane.tsx';
 import { loadSources, type LoadProgress, type LoadedContent } from './content.ts';
 
-type Pane = 'library' | 'build' | 'sheet' | 'sources' | 'settings';
+type Pane = Destination;
 
 const EMPTY_INDEX: ElementIndex = new MapElementIndex();
 
@@ -94,6 +100,11 @@ export function App(): React.JSX.Element {
   const [character, setCharacter] = useState<Character | null>(null);
   /** Set while the user is deliberately changing systems, so the launcher can say "current". */
   const [changing, setChanging] = useState(false);
+  /**
+   * The menu and the keyboard (ADR 0037). Here, above `Shell`, because a window has one menu
+   * and a `Shell` is per system: it is rebuilt on every switch and the menu should not be.
+   */
+  const commands = useCommandHost(platform.commands);
 
   const reboot = useCallback(async (): Promise<Booted> => {
     const shipped = loadShippedSystems();
@@ -187,6 +198,7 @@ export function App(): React.JSX.Element {
       key={system.id}
       system={system}
       initial={character}
+      commands={commands}
       onChangeSystem={() => setChanging(true)}
     />
   );
@@ -323,10 +335,12 @@ function Launcher({
 function Shell({
   system,
   initial,
+  commands,
   onChangeSystem,
 }: {
   system: GameSystem;
   initial: Character;
+  commands: CommandBinder;
   onChangeSystem: () => void;
 }): React.JSX.Element {
   const [pane, setPane] = useState<Pane>('library');
@@ -355,6 +369,8 @@ function Shell({
     savedName?: string;
   }>({ character: initial });
   const [saveNote, setSaveNote] = useState<string | null>(null);
+  /** A save in flight. A second one would race the first on `working.readAt`. */
+  const [saving, setSaving] = useState(false);
   /** A save whose character name no longer matches the file it would write to. */
   const [renamePrompt, setRenamePrompt] = useState<{ from: string; to: string } | null>(null);
 
@@ -562,20 +578,30 @@ function Shell({
    * names Aurora's element ids and says nothing about what they mean. That asymmetry gets
    * said out loud rather than left as a greyed-out button.
    */
+  const contentLoaded = content !== null && content.elementCount > 0;
   const importBlockedBecause = useMemo((): string | undefined => {
-    if (!platform.files.available) return platform.files.unavailableReason;
-    if (libraryState.status !== 'ready') {
-      return 'Choose a library folder first — an imported character has to land somewhere.';
+    // Which reason applies is `importBlock`'s to say, so this sentence and the Import menu
+    // item cannot disagree about whether importing is possible. The sentences are this pane's.
+    const reason = importBlock({
+      pickerAvailable: platform.files.available,
+      library: libraryState.status,
+      contentLoaded,
+    });
+    switch (reason) {
+      case 'no-picker':
+        return platform.files.unavailableReason;
+      case 'no-library':
+        return 'Choose a library folder first — an imported character has to land somewhere.';
+      case 'no-content':
+        return (
+          'Importing needs a content source loaded: an Aurora save records element ids and ' +
+          'nothing about what they mean. Add one under Sources. (Opening a character you have ' +
+          'already imported needs none.)'
+        );
+      default:
+        return undefined;
     }
-    if (!content || content.elementCount === 0) {
-      return (
-        'Importing needs a content source loaded: an Aurora save records element ids and ' +
-        'nothing about what they mean. Add one under Sources. (Opening a character you have ' +
-        'already imported needs none.)'
-      );
-    }
-    return undefined;
-  }, [libraryState.status, content]);
+  }, [libraryState.status, contentLoaded]);
 
   /**
    * Pick `.dnd5e` files and write each one into the library.
@@ -659,12 +685,18 @@ function Shell({
   const performSave = useCallback(
     async (entry: LibraryEntryRef | undefined): Promise<void> => {
       const previousEntry = working.entry;
-      const result = await library.save(state.character, system, elements, {
-        entry,
-        form: entry?.form ?? previousEntry?.form,
-        expectUpdatedAt: entry ? working.readAt : undefined,
-        generator: 'incudo-desktop',
-      });
+      setSaving(true);
+      let result: Awaited<ReturnType<typeof library.save>>;
+      try {
+        result = await library.save(state.character, system, elements, {
+          entry,
+          form: entry?.form ?? previousEntry?.form,
+          expectUpdatedAt: entry ? working.readAt : undefined,
+          generator: 'incudo-desktop',
+        });
+      } finally {
+        setSaving(false);
+      }
       if (!result.ok) {
         setSaveNote(result.message);
         return;
@@ -713,35 +745,72 @@ function Shell({
     [performSave, working.entry],
   );
 
-  const panes: Array<[Pane, string]> = [
-    ['library', 'Characters'],
-    ['build', 'Build'],
-    ['sheet', 'Sheet'],
-    ['sources', 'Sources'],
-    ['settings', 'Settings'],
-  ];
+  // The menu, the shortcuts and the nav below are one list (ADR 0037). "Modal" is whatever
+  // dialog is open: nothing behind it should react to a shortcut.
+  const modal =
+    renamePrompt !== null ||
+    (pane === 'library' && libraryState.status === 'no-location' && !askDismissed);
+  const resolved = resolveCommands({
+    workspace: true,
+    pane,
+    modal,
+    library: libraryState.status,
+    libraryBusy: libraryState.busy,
+    contentBusy: busy,
+    hasEnabledSource: mySources.some((source) => source.enabled),
+    contentLoaded,
+    pickerAvailable: platform.files.available,
+    importing,
+    saving,
+  });
+
+  const handlers: CommandHandlers = {
+    'new-character': startNew,
+    'save-character': () => void saveToLibrary(),
+    'import-aurora': () => void importFromAurora(),
+    'choose-library-folder': () => void chooseFolder(),
+    'refresh-library': () => void library.refresh(),
+    'reload-sources': () => void reload(),
+    'change-system': onChangeSystem,
+  };
+  for (const command of COMMANDS) {
+    if (command.destination) handlers[command.id] = () => setPane(command.destination!);
+  }
+
+  // Every render, deliberately: the handlers close over the current character and pane, and
+  // `update` is a ref write plus a menu sync that sends only the flags that changed.
+  useEffect(() => {
+    commands.update(resolved, handlers);
+  });
+  useEffect(() => () => commands.release(), [commands]);
+
+  const navigation = COMMANDS.filter((command) => command.destination);
 
   return (
     <div className="app">
       <header>
         <h1>Incudo</h1>
         <nav>
-          {panes.map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              className={pane === id ? 'on' : ''}
-              onClick={() => setPane(id)}
-            >
-              {label}
-              {id === 'build' && state.decisions.length > 0 && (
-                <span className="badge">{state.decisions.length}</span>
-              )}
-              {id === 'library' && libraryState.entries.length > 0 && (
-                <span className="badge">{libraryState.entries.length}</span>
-              )}
-            </button>
-          ))}
+          {navigation.map((command) => {
+            const id = command.destination!;
+            return (
+              <button
+                key={id}
+                type="button"
+                className={pane === id ? 'on' : ''}
+                onClick={() => setPane(id)}
+                title={describeCommand(command.id, commands.os)}
+              >
+                {command.label}
+                {id === 'build' && state.decisions.length > 0 && (
+                  <span className="badge">{state.decisions.length}</span>
+                )}
+                {id === 'library' && libraryState.entries.length > 0 && (
+                  <span className="badge">{libraryState.entries.length}</span>
+                )}
+              </button>
+            );
+          })}
         </nav>
         <span className="status">
           {/*
@@ -799,6 +868,7 @@ function Shell({
               type="button"
               onClick={() => void saveToLibrary()}
               disabled={libraryState.status !== 'ready'}
+              title={describeCommand('save-character', commands.os)}
             >
               Save to library
             </button>

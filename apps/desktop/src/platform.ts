@@ -6,7 +6,7 @@
  * which is also why the folder picker and the directory scan are here rather than inside a
  * component that happens to need them.
  *
- * Five ports, and two implementations of each where the two builds genuinely differ:
+ * Six ports, and two implementations of each where the two builds genuinely differ:
  *
  * | port             | Tauri window                    | `npm run desktop` in a browser     |
  * |------------------|---------------------------------|------------------------------------|
@@ -15,6 +15,7 @@
  * | `CharacterStore` | `dialog` + `fs` plugins         | File System Access API             |
  * | `FilePicker`     | `dialog` + `fs` plugins         | `showOpenFilePicker`               |
  * | `ZipCodec`       | `CompressionStream`             | `CompressionStream`                |
+ * | `CommandHost`    | a native menu, from the list    | none — key events run the list     |
  *
  * `Storage` is IndexedDB in **both**, deliberately. It holds the content cache and the
  * current draft — things the app manages and the user never opens — so it wants a large,
@@ -45,6 +46,9 @@ import type {
   ZipCompressor,
 } from '@incudo/core';
 import { createZipCodec } from '@incudo/core';
+import { menuModel } from '@incudo/ui';
+import type { CommandHost, CommandId, InstalledMenu, Os, ResolvedCommand } from '@incudo/ui';
+import type { MenuItem as TauriMenuItem, Submenu as TauriSubmenu } from '@tauri-apps/api/menu';
 
 /**
  * Tauri sets this on the window before any application code runs. It is the one question
@@ -644,6 +648,133 @@ function baseNameOf(path: string): string {
   return cut < 0 ? path : path.slice(cut + 1);
 }
 
+// --- the menu --------------------------------------------------------------------------------
+
+/**
+ * Which keyboard this is, for the one thing that differs: whether the primary modifier is Cmd.
+ *
+ * `userAgentData` is the modern answer and Chromium-only; `platform` is deprecated and
+ * everywhere. Both are consulted because a WebKit webview on macOS has only the second.
+ */
+function detectOs(): Os {
+  if (typeof navigator === 'undefined') return 'other';
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  const name = nav.userAgentData?.platform ?? nav.platform ?? '';
+  return /mac/i.test(name) ? 'mac' : 'other';
+}
+
+/**
+ * The native menu, built from `packages/ui`'s list — every label, accelerator and separator
+ * comes from `menuModel()`, and this class only turns each entry into a widget.
+ *
+ * It is built from JavaScript on purpose. The alternative was a menu written in Rust, which
+ * would be a second copy of the list that has to be kept in step by hand, and would put the
+ * project's second piece of application-shaped Rust into a file ADR 0001 wants to stay small.
+ *
+ * **Who owns the shortcuts.** Once this menu is installed its accelerators are the shortcuts,
+ * and `install` says so by resolving to a handle; the keyboard handler is then not attached at
+ * all. Attaching both would run a command twice per keystroke wherever the platform lets the
+ * page see a key it has also given to a menu, and which platforms do is not something to stake
+ * a save on. If installing fails the caller gets `null` and the keyboard handler runs instead,
+ * so a broken menu costs the menu and not the shortcuts.
+ */
+class TauriCommandHost implements CommandHost {
+  readonly os: Os = detectOs();
+
+  async install(run: (id: CommandId) => void): Promise<InstalledMenu | null> {
+    try {
+      const { Menu, MenuItem, PredefinedMenuItem, Submenu } = await import('@tauri-apps/api/menu');
+      const items = new Map<CommandId, TauriMenuItem>();
+
+      const submenus: TauriSubmenu[] = [];
+      for (const menu of menuModel()) {
+        const entries = [];
+        for (const entry of menu.entries) {
+          if (entry.kind === 'separator') {
+            entries.push(await PredefinedMenuItem.new({ item: 'Separator' }));
+            continue;
+          }
+          const item = await MenuItem.new({
+            id: entry.id,
+            text: entry.label,
+            accelerator: entry.accelerator,
+            // Enabled flags arrive with the first `sync`, straight after install. Until then
+            // nothing is available, which is also the truth on the launcher.
+            enabled: false,
+            action: () => run(entry.id),
+          });
+          items.set(entry.id, item);
+          entries.push(item);
+        }
+        submenus.push(await Submenu.new({ text: menu.label, items: entries }));
+      }
+
+      // macOS has one menu bar for the whole app and no default to fall back on once this
+      // replaces Tauri's: without an application menu there is no Quit, and without an Edit
+      // menu Cmd+C, Cmd+V and Cmd+A stop working in every text field. Windows and Linux must
+      // NOT get an Edit menu: muda draws the items there but implements none of them, and its
+      // Ctrl+C accelerator would sit in front of the webview's own copy.
+      // (Unverified: written against muda's macOS behaviour, and no Mac was available.)
+      const macOnly: TauriSubmenu[] = [];
+      if (this.os === 'mac') {
+        macOnly.push(
+          await Submenu.new({
+            text: 'Incudo',
+            items: [
+              await PredefinedMenuItem.new({ item: 'Hide' }),
+              await PredefinedMenuItem.new({ item: 'HideOthers' }),
+              await PredefinedMenuItem.new({ item: 'ShowAll' }),
+              await PredefinedMenuItem.new({ item: 'Separator' }),
+              await PredefinedMenuItem.new({ item: 'Quit' }),
+            ],
+          }),
+          await Submenu.new({
+            text: 'Edit',
+            items: [
+              await PredefinedMenuItem.new({ item: 'Undo' }),
+              await PredefinedMenuItem.new({ item: 'Redo' }),
+              await PredefinedMenuItem.new({ item: 'Separator' }),
+              await PredefinedMenuItem.new({ item: 'Cut' }),
+              await PredefinedMenuItem.new({ item: 'Copy' }),
+              await PredefinedMenuItem.new({ item: 'Paste' }),
+              await PredefinedMenuItem.new({ item: 'SelectAll' }),
+            ],
+          }),
+        );
+      }
+      const [file, ...rest] = submenus;
+      const menu = await Menu.new({
+        items: this.os === 'mac' ? [macOnly[0]!, file!, macOnly[1]!, ...rest] : submenus,
+      });
+      await menu.setAsAppMenu();
+
+      // What was last sent, so a sync that changes one flag makes one call across the bridge.
+      const sent = new Map<CommandId, boolean>();
+      return {
+        sync(resolved: readonly ResolvedCommand[]): void {
+          for (const command of resolved) {
+            if (sent.get(command.id) === command.enabled) continue;
+            sent.set(command.id, command.enabled);
+            void items.get(command.id)?.setEnabled(command.enabled);
+          }
+        },
+      };
+    } catch (error) {
+      console.error('The native menu could not be installed; keyboard shortcuts are handled by the page.', error);
+      return null;
+    }
+  }
+}
+
+/** A browser tab has no menu of its own to fill, and the page handles the keyboard. */
+class BrowserCommandHost implements CommandHost {
+  readonly os: Os = detectOs();
+
+  async install(): Promise<InstalledMenu | null> {
+    return null;
+  }
+}
+
 export interface DesktopPlatform {
   fetcher: Fetcher;
   storage: Storage;
@@ -651,6 +782,8 @@ export interface DesktopPlatform {
   /** Reading one file from outside the library — the Aurora import, and nothing else yet. */
   files: FilePicker;
   zip: ZipCodec;
+  /** The menu, where there is one. See `CommandHost`. */
+  commands: CommandHost;
   /** Which build this is, for the one line of UI that has to admit the difference. */
   shell: 'tauri' | 'browser';
 }
@@ -677,6 +810,7 @@ export function createDesktopPlatform(): DesktopPlatform {
     characters,
     files,
     zip,
+    commands: tauri ? new TauriCommandHost() : new BrowserCommandHost(),
     shell: tauri ? 'tauri' : 'browser',
   };
 }
