@@ -183,6 +183,14 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         });
       }
       stepIds.add(step.id);
+      // "You must choose at least one of the optional rules your table uses" is not a sentence
+      // (ADR 0032). Refused rather than read one way or the other.
+      if (step.required && step.multiple) {
+        errors.push({
+          path: `${where}.buildSteps`,
+          message: `step "${step.id}" is both required and multiple; a set that may be empty cannot be required`,
+        });
+      }
       for (const type of step.types) {
         if (!typeNames.has(type)) {
           errors.push({

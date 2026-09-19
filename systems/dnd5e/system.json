@@ -278,6 +278,7 @@
       "buildSteps": [
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "Roll, buy, or take the standard array. First because what you rolled is a real input into which class is worth playing.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["point-buy", "standard-array", "roll", "manual"] } },
+        { "id": "options", "label": "Campaign options", "types": ["Option"], "multiple": true, "description": "Optional rules a table may use, such as feats or customized ability score increases. Choosing none is the ordinary answer." },
         { "id": "race", "label": "Race", "types": ["Race"], "required": true },
         { "id": "class", "label": "Class", "types": ["Class"], "required": true },
         { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true, "requires": ["class"], "priority": 2.5,

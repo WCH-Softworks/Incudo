@@ -152,6 +152,12 @@ export interface OpenDecision {
    * user adding a source that will not help and a user knowing to wait for the feature.
    */
   unresolved: string[];
+  /**
+   * This is a step answered by a set — zero or more of `candidates`, never blocking (ADR 0032).
+   * It stays open while anything is left to add, `chosen` is the set as it stands, and `choose`
+   * takes the whole set. Absent for everything else, so its meaning is never "false" by omission.
+   */
+  multiple?: boolean;
 }
 
 /**
@@ -266,6 +272,12 @@ export interface SettledPick {
    * elements repeat is the system's declaration, and a pane that guessed would guess per shell.
    */
   repeatable: ElementId[];
+  /**
+   * This is a set (ADR 0032): each answer may be taken back as well as changed, and taking the last
+   * one back leaves the decision open again. Absent for a pick or a select, which the shell
+   * replaces and never empties.
+   */
+  multiple?: boolean;
 }
 
 export class CharacterBuilder {
@@ -810,16 +822,21 @@ export class CharacterBuilder {
     // down — its step's fixed position, never a timestamp. Filled as the loop below finds
     // each answered pick, same as `picks` and `pickDecisions` are.
     const pickElementRank = new Map<ElementId, number>();
-    for (const step of topLevelPickSteps(this.steps)) {
-      const ruleKey = pickRuleKey(step.id);
-      const candidates = step.types.flatMap((type) =>
+    // What a step could put on the character right now. The element's own `requirements` are the
+    // filter — the Human Variant is only offered when the campaign uses feats — which is the same
+    // one `candidatesFor` applies to a select's pool. Shared by a pick and a set on purpose: a set
+    // that filtered differently would offer options a pick beside it would not.
+    const offeredBy = (step: BuildStepDef): ElementId[] =>
+      step.types.flatMap((type) =>
         this.elements
           .byType(type)
-          // The element's own `requirements` — the Human Variant is only offered when the
-          // campaign uses feats. Same filter `candidatesFor` applies to a select's pool.
           .filter((element) => evaluateRequirements(element.requirements, requirementContext))
           .map((element) => element.id),
       );
+
+    for (const step of topLevelPickSteps(this.steps)) {
+      const ruleKey = pickRuleKey(step.id);
+      const candidates = offeredBy(step);
 
       const answer = pickAnswerOf(this.character, step, this.elements, reserved);
       if (answer) {
@@ -856,6 +873,55 @@ export class CharacterBuilder {
         // Unanswered by construction — the moment it has one it moves to `picks` below.
         chosen: [],
       });
+    }
+
+    // Steps answered by a set — ADR 0032. A campaign's optional rules are the first: independent of
+    // each other, and "none of them" is the ordinary answer, so nothing here ever blocks.
+    //
+    // Recorded under `build/<stepId>` and nowhere else. An Aurora import writes a save's options to
+    // exactly that key (`OPTIONS_RULE_KEY`), so unlike a race there is no second place to look, and
+    // looking by type would only risk claiming a record a content `select` owns.
+    //
+    // The decision stays open for as long as there is something left to add — `chosen` is the set
+    // as it stands and `candidates` is what could join it — and the user closes it with Skip, as
+    // with any optional decision. What is already chosen settles into `picks` at the same time, the
+    // way a wizard's first cantrip does, so a set is always editable and never one-way.
+    for (const step of this.steps) {
+      if (!step.multiple || step.perLevel || !step.types.length) continue;
+      const ruleKey = pickRuleKey(step.id);
+      const chosen = [...(getChoice(this.character, ruleKey)?.elementIds ?? [])];
+      const held = new Set(chosen);
+      const offered = offeredBy(step);
+      const rank = stepOrderIndex.get(step.id) ?? Number.MAX_SAFE_INTEGER;
+      for (const id of chosen) pickElementRank.set(id, rank);
+
+      if (chosen.length > 0) {
+        picks.push({
+          ruleKey,
+          stepId: step.id,
+          label: step.label,
+          chosen,
+          // Including what is chosen, the contract every settled pick keeps.
+          candidates: [...new Set([...offered, ...chosen])],
+          repeatable: [],
+          multiple: true,
+        });
+      }
+      const candidates = offered.filter((id) => !held.has(id));
+      if (candidates.length > 0) {
+        pickDecisions.push({
+          id: ruleKey,
+          kind: 'pick',
+          label: step.label,
+          stepId: step.id,
+          blocking: false,
+          remaining: 0,
+          unresolved: [],
+          candidates,
+          chosen,
+          multiple: true,
+        });
+      }
     }
 
     // A content `select` pool with nothing left to choose stays visible and editable too,

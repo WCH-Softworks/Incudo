@@ -48,9 +48,14 @@ const NONE: ReadonlySet<string> = new Set();
  * what a level was spent on is `Character.advancement` and belongs to `setProgress` (ADR 0015),
  * not to a choice. Steps that are neither — equipment, spells, details — are left alone rather
  * than given an invented decision, because the bag (ADR 0024) and content's own selects own them.
+ * A `multiple` step is answered by a set and is published by `setSteps` in the builder instead;
+ * validation refuses `required` beside it, and this keeps a definition that skipped validation
+ * from being published as both.
  */
 export function topLevelPickSteps(steps: readonly BuildStepDef[]): BuildStepDef[] {
-  return steps.filter((step) => step.required && !step.perLevel && step.types.length > 0);
+  return steps.filter(
+    (step) => step.required && !step.multiple && !step.perLevel && step.types.length > 0,
+  );
 }
 
 function holdsStepType(choice: Choice, step: BuildStepDef, elements: ElementIndex): boolean {

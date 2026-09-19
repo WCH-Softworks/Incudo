@@ -546,6 +546,10 @@
         },
         "required": { "type": "boolean" },
         "perLevel": { "type": "boolean" },
+        "multiple": {
+          "type": "boolean",
+          "description": "This step is answered by a set: zero or more of its candidates, never blocking (ADR 0032). For a system's optional rules, where choosing none is the ordinary answer. Cannot be combined with `required`. A reader that does not know this key builds the character without the set, so it does not change formatVersion."
+        },
         "description": { "type": "string" },
         "requires": {
           "type": "array",

@@ -138,6 +138,7 @@ export function ChosenCandidate({
   candidateLabel,
   options,
   onChange,
+  onRemove,
 }: {
   id: ElementId;
   elements: ElementIndex;
@@ -145,6 +146,8 @@ export function ChosenCandidate({
   /** What this slot could hold instead, `id` included — a `SettledPick.candidates`, filtered. */
   options: ElementId[];
   onChange: (id: ElementId) => void;
+  /** Given only where an answer may be taken back — a member of a set, never a race. */
+  onRemove?: () => void;
 }): React.JSX.Element {
   const [changing, setChanging] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -189,6 +192,18 @@ export function ChosenCandidate({
         >
           Change
         </button>
+        {onRemove && (
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              preview.close();
+              onRemove();
+            }}
+          >
+            Remove
+          </button>
+        )}
       </div>
       {!preview.canHover && expanded && <CandidateDetails id={id} elements={elements} />}
       {preview.panel}

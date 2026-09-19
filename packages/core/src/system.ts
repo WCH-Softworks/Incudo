@@ -545,6 +545,19 @@ export interface BuildStepDef {
   required?: boolean;
   /** Repeats per point of progression (e.g. a level-up step). */
   perLevel?: boolean;
+  /**
+   * This step is answered by a *set*: zero or more of its candidates, never blocking — ADR 0032.
+   *
+   * What a table's optional rules are, in a system that has any: independent of each other, and
+   * "none of them" is the ordinary answer, so it must never read as an unanswered obligation.
+   * That is also why it cannot be combined with `required`, and why validation refuses the pair
+   * instead of choosing a reading.
+   *
+   * Absent or false, a step behaves exactly as it always has. An older reader handed a definition
+   * that has it ignores the key and publishes no decision for the step — the character is built
+   * without the set, which is what happened before this existed — so `formatVersion` did not move.
+   */
+  multiple?: boolean;
   description?: string;
   /**
    * Ids of steps that must be usable before this one is — ADR 0017.

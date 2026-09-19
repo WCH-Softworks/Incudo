@@ -470,3 +470,30 @@ test("a contribution's requirements is content's language, and it has to parse",
     [],
   );
 });
+
+test('a step may offer a set, and a set cannot also be required', async () => {
+  // Perturbation: drop `multiple` from the schema and the first assertion fails on an unknown
+  // key; drop the check in `validateGameSystem` and the second one fails.
+  assert.deepEqual(
+    await errorsFor(broken((s) => (s.characterKinds[0]!.buildSteps![0]!.multiple = true))),
+    [],
+    'a definition that offers a set is a valid one',
+  );
+
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        step.multiple = true;
+        step.required = true;
+      }),
+    ),
+    ['characterKinds[0].buildSteps: step "one" is both required and multiple; a set that may be empty cannot be required'],
+  );
+
+  // Not a boolean: the schema says so rather than the builder guessing a reading.
+  const notBoolean = broken((s) => {
+    (s.characterKinds[0]!.buildSteps![0] as unknown as Record<string, unknown>)['multiple'] = 'yes';
+  });
+  assert.equal((await errorsFor(notBoolean)).length, 1);
+});

@@ -354,9 +354,12 @@ function Decision({
       <div className="decision-head">
         <span className="label">{decision.label}</span>
         {!decision.blocking && <span className="tag">optional</span>}
-        <span className="tag open">
-          {decision.remaining > 0 ? `${decision.remaining} left` : 'all recorded'}
-        </span>
+        {/* A set has no count to run down — "3 left" of optional rules would say the opposite. */}
+        {!decision.multiple && (
+          <span className="tag open">
+            {decision.remaining > 0 ? `${decision.remaining} left` : 'all recorded'}
+          </span>
+        )}
         {decision.openedAt !== undefined && (
           // The level in the *granting element's own track*, not the character's total — on a
           // Rogue 5 / Wizard 3 a wizard rule's level 3 means wizard 3 (ADR 0015).
@@ -412,6 +415,12 @@ function Decision({
             a time, so it has to send the ones already recorded plus the new one); it is not
             shown twice.
           */}
+          {decision.multiple && (
+            <p className="hint">
+              Rules your table uses beyond the basic ones. Add any that apply, or skip this if it
+              uses none. What you add can be taken back later.
+            </p>
+          )}
           {decision.candidates.length > 0 ? (
             <CandidatePicker
               // Keyed on how many slots are already filled, not just `decision.id`: answering
@@ -496,6 +505,17 @@ function SettledPickEditor({
               chosen[index] = next;
               builder.choose(pick.ruleKey, chosen);
             }}
+            // Only for a set, which the view-model says: taking back one member of it writes the
+            // rest, and the last one leaves the decision open again.
+            onRemove={
+              pick.multiple
+                ? () =>
+                    builder.choose(
+                      pick.ruleKey,
+                      pick.chosen.filter((_, at) => at !== index),
+                    )
+                : undefined
+            }
           />
         );
       })}
