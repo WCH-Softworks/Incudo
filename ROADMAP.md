@@ -557,6 +557,36 @@ before any code, both touching a public API:
       importer: an imported save records Race, Class and Background under Aurora's keys, so it
       opened with all three listed as unanswered. A top-level pick is now answered by any recorded
       choice holding an element of its step's types (`packages/ui/src/top-level-pick.ts`).
+- [ ] **Remove the CLI (`tools/incudo`, `npm run incudo`).** The app is the product, and a command
+      line over the same engine is a second surface to keep in step with it for people the
+      project does not have — a player builds a character in the app, not in a terminal. It was
+      the engine's first consumer, before any UI existed (Phase 0), and that job is done. **It is
+      not a folder to delete**, because three different things live in it and only one of them
+      goes:
+      - **Goes:** `cli.ts`, `aurora-commands.ts`, the command half of `character-commands.ts`
+        (`validate | types | inspect | system | content | character | aurora`), the `incudo`
+        script and the `bin` entry, and every place that tells a reader or an agent to type one
+        of them — README, CONTRIBUTING, AGENTS, `systems/README.md`, and the Commands section of
+        CLAUDE.md. `renderSheetSection` is shared with `SheetPane` and stays where it is.
+      - **Stays, and has to move first:** the regression suite. CLAUDE.md's baselines — 740
+        files, 14,316 elements, 1 unresolved, 57 warnings, and all nine saves through
+        `aurora verify` with 0 stat-mismatch — are *measured by* CLI commands today, and CI's
+        `aurora-corpus` job runs `incudo validate` with budgets. Deleting the command deletes the
+        measurement. Both become a test or a script that is not a command line, with the same
+        budgets in the same `ci.yml`, **and the numbers reproduce exactly before a line is
+        removed** — that is the exit test for this item, not "it compiles".
+      - **Stays, and is not a CLI:** the 11 `tools/incudo/src/*.test.ts` files (self-containment
+        against the real corpus, the multiclass and armour-class oracles, the library over the
+        nine saves, schemas), and the Node adapters they stand on — `NodeFetcher`,
+        `LocalMirrorFetcher`, `node-zip`, `NodeStorage`, the `node:fs` `CharacterStore`,
+        `rebuild-fixtures.ts`. They need a home that says what they are; `tools/incudo` and
+        `@incudo/cli` stop being the name once there is no CLI.
+      Phase 7's `incudo system validate` and `incudo system new` go with it: validation is
+      already in the app (`UserSystemStore`, through the same `validateGameSystem`), and
+      scaffolding a system belongs in the app's system flow, not a terminal. Wants an ADR before
+      the code — it changes what CI runs and what CLAUDE.md tells the next agent to type — and it
+      is deliberately sequenced *after* the Phase 2 items above that are still open, because
+      those are what a player is waiting for.
 
 ### Where this phase actually stands
 
@@ -698,11 +728,12 @@ engine has no code that names any of them.
 *This is the phase that makes or breaks the project's premise. It should not slip.*
 See [ADR 0011](./docs/adr/0011-user-systems.md).
 
-- [ ] `schemas/system.schema.json` published, with `incudo system validate` and in-app validation
-      sharing one implementation
+- [ ] `schemas/system.schema.json` published, with in-app validation and any other checker
+      sharing one implementation (`incudo system validate` goes with the CLI — see Phase 2)
 - [ ] **Fork** an official system into user space
 - [ ] **Overlay** an official system (`extends` + patch), so house rules survive upstream updates
-- [ ] `incudo system new <id>` — scaffold a working system, never an empty file
+- [ ] Scaffold a working system from the app's system flow, never an empty file (this was
+      `incudo system new <id>` until the CLI was scheduled for removal — see Phase 2)
 - [ ] User systems load through *exactly* the same path as official ones, clearly labelled
 - [ ] Validation errors that a non-programmer can act on
 - [ ] "How to write a system definition" guide
