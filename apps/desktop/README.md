@@ -82,10 +82,12 @@ Reload content sources, Change system. On macOS the same shortcuts read Cmd.
 
 - **The Tauri window has a native menu**, built in `platform.ts` from `menuModel()`. **The browser
   build has no menu**, only the shortcuts; the nav and Save buttons show theirs as tooltips.
-- **A shell's shortcuts have one owner.** With a native menu, its accelerators are the shortcuts
-  and the page attaches no key listener. Without one, `use-commands.ts` is the listener. Both at
-  once would run a command twice per keystroke wherever the platform also shows the page a key
-  the menu took.
+- **The page owns the keyboard in both builds, and the menu is for the mouse.** `use-commands.ts`
+  is the one `keydown` listener. The native menu registers **no accelerator**: it prints each
+  shortcut as text after a tab and runs a command when clicked. This was first built the other way
+  round (menu accelerators own the keys) and pressing the keys in the Windows window showed it
+  does nothing: WebView2 gives the page the key and the host's accelerator table never runs the
+  item. Do not register accelerators without pressing the keys in the window afterwards.
 - **A command is enabled where its outcome can be seen**: New character and Import on the
   characters screen, Save on Build. Everything is off on the launcher and behind a dialog. A
   disabled command still *claims* its key, so Ctrl+S on the Sheet pane does not become "save this
@@ -97,35 +99,40 @@ Reload content sources, Change system. On macOS the same shortcuts read Cmd.
 
 ### What was and was not checked (2026-09-19)
 
-Browser build (`npm run desktop`, driven with injected key events): the five navigation chords;
-Ctrl+N from the characters screen and its refusal on Build; Ctrl+S from inside the name field,
-writing a real file through a directory handle; its refusal on Sheet; Ctrl+Shift+L picking up a
-file added behind the app's back (1 → 2); every chord refused, and none acting, while the rename
-dialog was open and working again once it closed; no chord acting on the launcher. Typing
-`n s l , 1 2 3 4` in the name field and in a search box was unaffected and no event was claimed.
-The console was clean.
+**By pressing real keys, in the Tauri window on Windows** (`npm run desktop:app`, reached through
+WebView2's debug port and the Win32 menu API, keystrokes sent as real input to the focused
+window): Ctrl+2, 3, 4, `,` and 1 each moved the page; Ctrl+Shift+L was claimed and rescanned;
+Ctrl+S on the characters screen, where it is off, was claimed and did nothing. In the Build
+screen's search box — real key events this time — typing `n s l , 1 2 3 4` came through intact,
+Ctrl+A selected all eight characters, Ctrl+X emptied the field, Ctrl+V restored it and Ctrl+Z
+undid the paste, with **none of those keys claimed**. The native menu has both submenus and every
+label, separator, order and shortcut text matches `menuModel()`; its enabled flags follow app
+state live (Build enables Save and disables New and Import; Sheet disables Save; the launcher
+disables all twelve; choosing the system restores them); all five View items and Change system,
+sent as the message Windows delivers for a click, did what they name.
 
-Two limits of that. Injected key events do not perform editing chords: with the app's handler
-blocked entirely, Ctrl+A still selected nothing, so "Ctrl+A/C/V/X/Z/Y keep working" is shown as
-*the app never claims them* (`defaultPrevented` stayed false on all seven) and not as text being
-selected. And they never pass through a browser's own shortcut layer, so which chords a real tab
-would hand to the page is untested; Chromium reserves Ctrl+N, so New character's shortcut is a
-window-only shortcut.
+**By pressing keys, in the browser build** (`npm run desktop`, injected key events): the same
+navigation chords; Ctrl+N from the characters screen and its refusal on Build; Ctrl+S from inside
+the name field, writing a real file through a directory handle; its refusal on Sheet; Ctrl+Shift+L
+picking up a file added behind the app's back (1 → 2); every chord refused, and none acting,
+while the rename dialog was open and working again once it closed; no chord acting on the
+launcher. The console was clean. Injected key events cannot perform editing chords there (with
+the app's handler blocked, Ctrl+A selected nothing), which is why that check was done in the
+window instead.
 
-Tauri window (`npm run desktop:app`, built in 20 s, reached through WebView2's debug port and the
-Win32 menu API): the menu exists with both submenus, and every label, accelerator, separator and
-ordering matches `menuModel()`; enabled flags follow app state live (Build enables Save and
-disables New and Import; Sheet disables Save; the launcher disables all twelve; choosing the
-system restores them); the five View items, sent as the message Windows delivers for a click,
-each moved the page; the page has no key listener there (a synthetic Ctrl+2 is unclaimed and does
-nothing).
+**Not verified:** the macOS application and Edit menus (written, never run), and how a macOS or
+Linux menu renders the shortcut text; a chord in a real browser tab, which injected events never
+pass through (Chromium reserves Ctrl+N, so New character's shortcut is a window-only shortcut);
+the file-dialog items (Import, Choose folder); and New character and Save in the Tauri window,
+which would have written to the developer's own library. Also not tried: a menu item clicked with
+a real mouse (a click was sent as its Windows message instead).
 
-**Not verified:** the accelerators themselves. The machine was at the lock screen, which cannot
-take keyboard input, so no keystroke reached the window and nothing shows a keypress running a
-menu item, or whether WebView2 also shows the page the key. The single-owner design exists so
-that question need not be answered; it has not been. Also not run: the macOS application and
-Edit menus (written, never executed), the file-dialog items (Import, Choose folder), and New
-character and Save in the window, which would have written to the developer's own library.
+**What the first attempt taught.** Everything that needed no keyboard passed on the first design:
+the menu existed, its flags followed state, its items drove the app. Then the keys did nothing.
+And a tap of Alt, used by the test harness to get focus, appeared to put the window into
+menu-bar mode: the page stopped answering the debug port and swallowed the Ctrl+2 that followed,
+until Escape. That is ordinary Windows behaviour for a window with a menu bar, and it was seen
+once, through the harness.
 
 ## Two capabilities, opposite widths, and why
 

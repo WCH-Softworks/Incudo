@@ -15,7 +15,7 @@
  * | `CharacterStore` | `dialog` + `fs` plugins         | File System Access API             |
  * | `FilePicker`     | `dialog` + `fs` plugins         | `showOpenFilePicker`               |
  * | `ZipCodec`       | `CompressionStream`             | `CompressionStream`                |
- * | `CommandHost`    | a native menu, from the list    | none — key events run the list     |
+ * | `CommandHost`    | a native menu (mouse only)      | none                               |
  *
  * `Storage` is IndexedDB in **both**, deliberately. It holds the content cache and the
  * current draft — things the app manages and the user never opens — so it wants a large,
@@ -664,19 +664,20 @@ function detectOs(): Os {
 }
 
 /**
- * The native menu, built from `packages/ui`'s list — every label, accelerator and separator
+ * The native menu, built from `packages/ui`'s list — every label, shortcut text and separator
  * comes from `menuModel()`, and this class only turns each entry into a widget.
  *
  * It is built from JavaScript on purpose. The alternative was a menu written in Rust, which
  * would be a second copy of the list that has to be kept in step by hand, and would put the
  * project's second piece of application-shaped Rust into a file ADR 0001 wants to stay small.
  *
- * **Who owns the shortcuts.** Once this menu is installed its accelerators are the shortcuts,
- * and `install` says so by resolving to a handle; the keyboard handler is then not attached at
- * all. Attaching both would run a command twice per keystroke wherever the platform lets the
- * page see a key it has also given to a menu, and which platforms do is not something to stake
- * a save on. If installing fails the caller gets `null` and the keyboard handler runs instead,
- * so a broken menu costs the menu and not the shortcuts.
+ * **This menu is for the mouse, and registers no accelerator.** The first version did, expecting
+ * the menu to own the keys, and on Windows it was found by pressing them that WebView2 hands
+ * the page the keystroke and the host's accelerator table never runs the item: Ctrl+2 reached
+ * the page, matched nothing there, and did nothing. So the page listens for the keyboard in
+ * every build (`use-commands.ts`), and the shortcut appears here only as text after a tab, which
+ * a Windows menu right-aligns as it would an accelerator. See ADR 0037. If installing fails the
+ * caller gets `null`, and a broken menu costs the menu and not the shortcuts.
  */
 class TauriCommandHost implements CommandHost {
   readonly os: Os = detectOs();
@@ -687,7 +688,7 @@ class TauriCommandHost implements CommandHost {
       const items = new Map<CommandId, TauriMenuItem>();
 
       const submenus: TauriSubmenu[] = [];
-      for (const menu of menuModel()) {
+      for (const menu of menuModel(this.os)) {
         const entries = [];
         for (const entry of menu.entries) {
           if (entry.kind === 'separator') {
@@ -696,8 +697,7 @@ class TauriCommandHost implements CommandHost {
           }
           const item = await MenuItem.new({
             id: entry.id,
-            text: entry.label,
-            accelerator: entry.accelerator,
+            text: entry.shortcut ? `${entry.label}\t${entry.shortcut}` : entry.label,
             // Enabled flags arrive with the first `sync`, straight after install. Until then
             // nothing is available, which is also the truth on the launcher.
             enabled: false,
@@ -712,8 +712,8 @@ class TauriCommandHost implements CommandHost {
       // macOS has one menu bar for the whole app and no default to fall back on once this
       // replaces Tauri's: without an application menu there is no Quit, and without an Edit
       // menu Cmd+C, Cmd+V and Cmd+A stop working in every text field. Windows and Linux must
-      // NOT get an Edit menu: muda draws the items there but implements none of them, and its
-      // Ctrl+C accelerator would sit in front of the webview's own copy.
+      // NOT get an Edit menu: muda draws the items there but implements none of them, so they
+      // would be entries that do nothing.
       // (Unverified: written against muda's macOS behaviour, and no Mac was available.)
       const macOnly: TauriSubmenu[] = [];
       if (this.os === 'mac') {
@@ -760,7 +760,7 @@ class TauriCommandHost implements CommandHost {
         },
       };
     } catch (error) {
-      console.error('The native menu could not be installed; keyboard shortcuts are handled by the page.', error);
+      console.error('The native menu could not be installed. Keyboard shortcuts are unaffected.', error);
       return null;
     }
   }

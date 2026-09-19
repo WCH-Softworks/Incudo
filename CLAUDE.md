@@ -365,16 +365,17 @@ of them rebuilds a builder mid-edit, which is the whole lesson: **the tests prot
 running it protects the product.**
 
 **What the app can be told to do is one list, and the menu and the shortcuts are two renderings of
-it** (ADR 0037). `packages/ui/src/commands.ts` holds twelve commands — id, label, shortcut, and a
+it** ([ADR 0037](docs/adr/0037-a-command-is-data-the-page-owns-the-keyboard.md)). `packages/ui/src/commands.ts` holds twelve commands — id, label, shortcut, and a
 rule for when each is available — under `node --test`; `apps/desktop/src/use-commands.ts` and
 `platform.ts`'s `TauriCommandHost` compute nothing. Adding a command is one entry in `COMMANDS`, one in
 `MENUS`, one rule in `ENABLED` (a `Record`, so leaving it out does not compile) and one handler in
 `App.tsx`. Things to know before touching it:
 
-- **A shell's shortcuts have exactly one owner.** A native menu, where one installed, owns them and
-  the page attaches no `keydown` listener; a shell with no menu uses the listener. Do not attach both:
-  nothing here shows what a platform does with a key a menu accelerator took, and the failure is a
-  command that runs twice.
+- **The page owns the keyboard in every build, and the menu is for the mouse.** The native menu
+  registers no accelerator; it prints the shortcut as label text. The first version did register
+  them and it passed every check that needed no keyboard — then pressing the keys in the Windows
+  window did nothing, because WebView2 hands the page the key and the host's accelerator table never
+  runs the item. Do not put accelerators back without pressing the keys in the window.
 - **A command is enabled where its outcome can be seen**, on purpose. New character replaces the
   character being edited without asking, so it is live only on the characters screen, where its
   button is; Save only on Build, where "Saved to …" is printed. Enabling New everywhere wants a dirty
@@ -382,10 +383,10 @@ rule for when each is available — under `node --test`; `apps/desktop/src/use-c
 - **A disabled command still claims its key** (Ctrl+S on the Sheet pane must not become the browser's
   "save page"), and no shortcut may be a bare printable key, use Alt (Ctrl+Alt is AltGr on a Brazilian
   keyboard) or take Ctrl+A/C/V/X/Z/Y. Tests hold each of these.
-- **The accelerators were never pressed.** The menu's structure, its enabled flags following app state
-  and its items driving the app were checked in the running window; a keystroke reaching it was not,
-  because the machine was at the lock screen. The macOS application and Edit menus have never run.
-  Do not describe the shortcuts as verified in the Tauri window.
+- **Verified by real keystrokes in the Windows window, not on macOS or Linux.** The navigation chords,
+  Refresh, and Ctrl+A/C/X/V/Z in a text field all behave; the macOS application and Edit menus were
+  written and have never run, and how a macOS or GTK menu renders the tab-separated shortcut text
+  was not seen. `platform.ts` `TauriCommandHost` on those platforms is unverified.
 
 ### Known from running it
 

@@ -7,20 +7,20 @@
  * `latest` cell that lets a menu item created once at startup call the handler of whatever
  * screen is showing now.
  *
- * **One owner per shortcut.** If the platform installed a native menu, its accelerators are the
- * shortcuts and no `keydown` listener exists; if it did not, the listener is the only path.
- * A listener that stayed on beside a menu would run a command twice per keystroke wherever the
- * page also sees a key the menu took, and which platforms do that is not worth finding out with
- * someone's save. See ADR 0037.
+ * **The page owns the keyboard, in every build, and a menu is for the mouse.** This was first
+ * written the other way round — a native menu registering accelerators, and the listener only
+ * where there was no menu — and pressing the keys in the Tauri window on Windows showed it was
+ * wrong: WebView2 delivers the keystroke to the page and the host's accelerator table never runs
+ * the item, so nothing happened. A shortcut now has one way in. See ADR 0037.
  *
  * **Staying in step with app state.** `Shell` hands over a freshly resolved list on every
  * render (`update`), which is cheap: a ref write, and a menu sync that sends only flags that
  * changed. Sending to a native menu is asynchronous, so `run` checks the *latest* list again
- * before calling a handler — an accelerator pressed in the gap between a state change and its
+ * before calling a handler — a menu item clicked in the gap between a state change and its
  * sync finds its command already disabled and does nothing.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   NO_WORKSPACE,
   isEnabled,
@@ -56,8 +56,6 @@ export function useCommandHost(host: CommandHost): CommandBinder {
   const latest = useRef<Bound>(IDLE);
   const menu = useRef<InstalledMenu | null>(null);
   const started = useRef(false);
-  /** True once a native menu exists and therefore owns the shortcuts. */
-  const [nativeMenu, setNativeMenu] = useState(false);
 
   const run = useCallback((id: CommandId): void => {
     const { resolved, handlers } = latest.current;
@@ -72,14 +70,11 @@ export function useCommandHost(host: CommandHost): CommandBinder {
     started.current = true;
     void host.install(run).then((installed) => {
       menu.current = installed;
-      if (!installed) return;
-      installed.sync(latest.current.resolved);
-      setNativeMenu(true);
+      installed?.sync(latest.current.resolved);
     });
   }, [host, run]);
 
   useEffect(() => {
-    if (nativeMenu) return;
     const onKeyDown = (event: KeyboardEvent): void => {
       const outcome = keyOutcome(event, host.os, latest.current.resolved);
       if (!outcome) return;
@@ -89,7 +84,7 @@ export function useCommandHost(host: CommandHost): CommandBinder {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [nativeMenu, host, run]);
+  }, [host, run]);
 
   return useMemo<CommandBinder>(
     () => ({

@@ -1,7 +1,13 @@
-# 0037 — A command is data in `packages/ui`, and a shell's shortcuts have exactly one owner
+# 0037 — A command is data in `packages/ui`, the page owns the keyboard, and the menu is for the mouse
 
 **Status:** Accepted · 2026-09-19 · builds on [0001](./0001-tech-stack.md) and the layering in
 [`CODE-REUSE-POLICY.md`](../CODE-REUSE-POLICY.md)
+
+> **Amended the same day, after pressing the keys.** Decision 3 first said the opposite: that a
+> native menu should own the shortcuts through its accelerators, with the page listener attached
+> only where there was no menu. Real keystrokes in the Tauri window on Windows showed the menu
+> never ran them. The decision below is the corrected one, and the wrong one is kept under
+> "Alternatives considered" with what disproved it.
 
 ## Context
 
@@ -59,23 +65,30 @@ Nothing is enabled while a dialog is open. The rename prompt and the first-run f
 A guard for unsaved work would let New character be enabled everywhere. That needs a dirty flag the
 app does not have, so it is left as the follow-up it is rather than approximated.
 
-### 3. A shell's shortcuts have exactly one owner
+### 3. The page owns the keyboard in every shell, and a menu is for the mouse
 
-**Where a native menu was installed, its accelerators are the shortcuts and the page attaches no
-`keydown` listener. Where there is none, the listener is the only path.** The port is
+**A `keydown` listener in the page is the only way a shortcut runs, in the browser build and the
+Tauri window alike. A native menu registers no accelerator; it shows each shortcut as label text
+and runs a command when clicked.** The port is
 
 ```ts
 interface CommandHost { os; install(run): Promise<InstalledMenu | null> }
 ```
 
-and `null` — no native menu, or building it failed — is also the answer to "who handles the
-keyboard?". A failed install therefore costs the menu and not the shortcuts.
+and `null` — no native menu, or building it failed — costs the menu and never the shortcuts.
 
-The alternative was both, with de-duplication. It was rejected because it cannot be shown to be
-right. Whether a page also receives a keystroke that a menu accelerator has taken differs between
-macOS (the menu takes it first), Windows (WebView2 offers it to the host) and Linux (GTK), and the
-failure is a command that runs twice per keystroke — two new characters, or two saves racing on one
-`readAt`. Single ownership is the design in which the question does not have to be answered.
+This is the second design. The first gave the keys to the menu's accelerators and attached the
+listener only where there was no menu, on the argument that both together might run a command
+twice. **Pressing the keys in the Windows window disproved the premise, not just the design:** with
+the menu's accelerators registered, the page received Ctrl+2 and Ctrl+3 as ordinary `keydown`
+events, the menu item never ran, and with the listener detached nothing happened at all. WebView2
+handles key input in its own process and hands the host only what the page declined, so the host's
+accelerator table (which Tauri does feed to `TranslateAcceleratorW`) is never consulted while the
+webview has focus. One path in also removes the double-run question wherever it does get delivered
+twice: there is no second registration to run.
+
+A shortcut is shown in a menu as text after a tab, which a Windows menu right-aligns as it would an
+accelerator. macOS and Linux menus were not seen and may render that text differently.
 
 ### 4. A disabled command still claims its key
 
@@ -100,24 +113,25 @@ otherwise be thirty characters.
 ### 6. The native menu is built from JavaScript, from `menuModel()`
 
 `TauriCommandHost` in `platform.ts` maps each entry to a menu widget with `@tauri-apps/api/menu`
-and calls `run(id)` when one fires. No Rust, and no capability change: `core:default` already
+and calls `run(id)` when one is clicked. No Rust, and no capability change: `core:default` already
 carries the menu permissions. The alternative, a menu written in Rust, is a second copy of the list
 and the project's second piece of application-shaped Rust in a file ADR 0001 wants to stay small.
 
 - **`enabled` stays in step** by `Shell` handing over a freshly resolved list on every render and
   the host sending only the flags that changed. The bridge is asynchronous, so the hook's `run`
-  re-checks the *latest* list before calling a handler: an accelerator pressed in the gap between a
+  re-checks the *latest* list before calling a handler: an item clicked in the gap between a
   state change and its sync finds the command already disabled.
 - **Windows and Linux get no Edit menu.** muda draws Copy, Paste and Select All there and
-  implements none of them, and registers Ctrl+C in front of the webview's own copy. **macOS gets an
+  implements none of them, so they would be entries that do nothing. **macOS gets an
   application menu and an Edit menu**, because replacing Tauri's default menu there removes Quit and
   makes Cmd+C/V/A stop working in every text field.
 
 ## Consequences
 
 - The window's menu and the browser build's shortcuts are one list, and a test holds it: every
-  command is in exactly one menu, every shortcut has a menu item, and the id a menu item fires is
-  the id its shortcut fires.
+  command is in exactly one menu, every shortcut has a menu item, the id a menu item fires is
+  the id its shortcut fires, and the menu model carries a shortcut to print and nothing that could
+  be registered as a key binding.
 - The browser build has **no menu**. It has the shortcuts, and the nav and Save buttons carry them
   as tooltips (`Build (Ctrl+2)`). An in-page menu bar was not built: it would duplicate the header
   and nobody asked what it would hold that the header does not. `Import`, `Choose library folder`,
@@ -129,13 +143,18 @@ and the project's second piece of application-shaped Rust in a file ADR 0001 wan
   layer, so the test that could show it cannot.
 - `importBlock` moved the rule for "why importing cannot start" into the package, so the button and
   the menu item cannot disagree; the sentences stayed in the pane that shows them.
-- **What this cannot show, and the desktop README says so:** the accelerators. Verifying a keystroke
-  reaching the native menu needs a session that can take input; the run recorded here had a locked
-  screen. The macOS half was written against muda's documented behaviour and has never run.
+- **Not seen, and the desktop README says so:** the macOS application and Edit menus, which were
+  written against muda's documented behaviour and have never run; how a macOS or GTK menu renders
+  tab-separated shortcut text; and whether WebView2 on macOS-less platforms behaves the same way
+  (only Windows was tried).
+- **Found only by running it.** The first design passed every test and every check that needed no
+  keyboard — the menu existed, its flags followed state, its items drove the app — and did nothing
+  when a key was pressed. No test could have shown it: what failed is what a platform does with a
+  keystroke.
 
 ## Evidence
 
-Thirty tests in `commands.test.ts`. Each was checked by breaking the behaviour it names — 32
+Thirty-one tests in `commands.test.ts`. Each was checked by breaking the behaviour it names — 34
 perturbations of `commands.ts`, none survived:
 
 | perturbation | caught by |
@@ -150,7 +169,7 @@ perturbations of `commands.ts`, none survived:
 | Alt not compared (AltGr matches); Shift not compared; Ctrl+Cmd accepted; primary not required; case-sensitive keys | AltGr, modifier, primary-modifier and bare-key tests |
 | Save moved to Ctrl+A; Save loses its modifier; Refresh collides with New; Refresh on F5 | "leaves text editing alone"; "no two share" |
 | a command dropped from, or listed twice in, the menus; a menu ends on a separator | placement and separator tests |
-| accelerator drops Shift; macOS label spelled as Windows; an ADR number in a label | model, label and plain-text tests |
+| the menu shortcut text drops its Shift or is spelled for the wrong platform; the model grows an accelerator field; an ADR number in a label | model, "binds none" and plain-text tests |
 
 What the tests cannot show was checked in the running app, and is recorded in
 `apps/desktop/README.md` with what was and was not seen.
@@ -158,7 +177,13 @@ What the tests cannot show was checked in the running app, and is recorded in
 ## Alternatives considered
 
 - **A menu written in Rust.** A second list. Rejected above.
-- **Both a menu and a listener, de-duplicated.** Cannot be shown right; rejected above.
+- **The menu owns the keys through registered accelerators, and the page listens only where there
+  is no menu** — this ADR's first decision. Disproved on Windows by pressing the keys: the page got
+  the keystroke and the accelerator never ran. It might work on macOS, where AppKit takes a key
+  equivalent before the view sees it, but a rule that differs by platform and has been seen on one
+  is worse than one path that has been seen on two (the browser build and the Windows window).
+- **Both, de-duplicated.** Two paths to one command, to defend against a delivery the first path
+  was never going to make on the platform where it was tried.
 - **An in-page menu bar for the browser build.** Duplicates the header; not built.
 - **Enable New character everywhere.** Makes losing an unsaved character one keystroke; waits for a
   dirty flag.

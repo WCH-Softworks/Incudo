@@ -17,7 +17,6 @@ import {
   COMMAND_IDS,
   MENUS,
   NO_WORKSPACE,
-  acceleratorOf,
   describeCommand,
   formatShortcut,
   importBlock,
@@ -326,7 +325,7 @@ test('the id a menu item fires is the id its shortcut fires', () => {
   const fromKeyboard: CommandId[] = [];
   const everything = resolveCommands(READY);
 
-  for (const menu of menuModel()) {
+  for (const menu of menuModel('other')) {
     for (const entry of menu.entries) if (entry.kind === 'command') fromMenu.push(entry.id);
   }
   for (const command of COMMANDS) {
@@ -344,25 +343,49 @@ test('the id a menu item fires is the id its shortcut fires', () => {
   for (const id of fromKeyboard) assert.ok(fromMenu.includes(id), `${id} has a shortcut and no menu item`);
 });
 
-test('the native menu model carries each command\'s label and accelerator from the list', () => {
-  const entries = menuModel().flatMap((menu) => menu.entries);
-  const byId = new Map(
-    entries.flatMap((entry) => (entry.kind === 'command' ? [[entry.id, entry] as const] : [])),
-  );
-  for (const command of COMMANDS) {
-    const entry = byId.get(command.id)!;
-    assert.equal(entry.label, command.label);
-    assert.equal(
-      entry.accelerator,
-      command.shortcut ? acceleratorOf(command.shortcut) : undefined,
-      command.id,
+test('the native menu model carries each command\'s label and the shortcut to print, per platform', () => {
+  for (const os of ['other', 'mac'] as Os[]) {
+    const entries = menuModel(os).flatMap((menu) => menu.entries);
+    const byId = new Map(
+      entries.flatMap((entry) => (entry.kind === 'command' ? [[entry.id, entry] as const] : [])),
     );
+    for (const command of COMMANDS) {
+      const entry = byId.get(command.id)!;
+      assert.equal(entry.label, command.label);
+      assert.equal(
+        entry.shortcut,
+        command.shortcut ? formatShortcut(command.shortcut, os) : undefined,
+        `${os} ${command.id}`,
+      );
+    }
+    assert.equal(entries.filter((e) => e.kind === 'separator').length, 3);
   }
-  assert.equal(byId.get('save-character')!.accelerator, 'CmdOrCtrl+S');
-  assert.equal(byId.get('refresh-library')!.accelerator, 'CmdOrCtrl+Shift+L');
-  assert.equal(byId.get('go-settings')!.accelerator, 'CmdOrCtrl+,');
-  assert.equal(byId.get('import-aurora')!.accelerator, undefined);
-  assert.equal(entries.filter((e) => e.kind === 'separator').length, 3);
+  const other = menuModel('other').flatMap((menu) => menu.entries);
+  const find = (id: CommandId) => other.find((e) => e.kind === 'command' && e.id === id);
+  assert.equal((find('save-character') as { shortcut?: string }).shortcut, 'Ctrl+S');
+  assert.equal((find('go-settings') as { shortcut?: string }).shortcut, 'Ctrl+,');
+  assert.equal((find('import-aurora') as { shortcut?: string }).shortcut, undefined);
+  const mac = menuModel('mac').flatMap((menu) => menu.entries);
+  assert.equal(
+    (mac.find((e) => e.kind === 'command' && e.id === 'refresh-library') as { shortcut?: string }).shortcut,
+    '⇧⌘L',
+  );
+});
+
+test('a menu entry prints a shortcut and binds none: the model has no accelerator to register', () => {
+  // Registering one is what failed in the Windows window (ADR 0037). Nothing in the model may
+  // look like a key binding a shell could hand to a native menu.
+  for (const os of ['other', 'mac'] as Os[]) {
+    for (const menu of menuModel(os)) {
+      for (const entry of menu.entries) {
+        assert.deepEqual(
+          Object.keys(entry).filter((k) => /accel|binding|hotkey/i.test(k)),
+          [],
+          `${menu.label}: ${JSON.stringify(entry)}`,
+        );
+      }
+    }
+  }
 });
 
 // --- labels -----------------------------------------------------------------------------------

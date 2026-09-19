@@ -49,14 +49,14 @@ export const COMMAND_IDS = [
 
 export type CommandId = (typeof COMMAND_IDS)[number];
 
-/** Only what a shortcut label and an accelerator differ on. */
+/** Only what a shortcut label differs on. */
 export type Os = 'mac' | 'other';
 
 /**
  * A key chord, described rather than spelled.
  *
  * `primary` is Ctrl on Windows and Linux and Cmd on macOS — the one modifier every desktop
- * convention agrees on and no two platforms spell the same. Labels and accelerators are derived
+ * convention agrees on and no two platforms spell the same. Labels are derived
  * from this, so there is no string per shell to fall out of step.
  */
 export interface Shortcut {
@@ -293,7 +293,7 @@ export function keyOutcome(
   return { id, claimed: true, run: !event.repeat && isEnabled(resolved, id) };
 }
 
-// --- labels and native accelerators ----------------------------------------------------------
+// --- labels and the native menu --------------------------------------------------------------
 
 /**
  * A shortcut as a person reads it: `Ctrl+Shift+L` on Windows and Linux, `⇧⌘L` on macOS.
@@ -318,25 +318,10 @@ export function describeCommand(id: CommandId, os: Os): string {
   return command.shortcut ? `${command.label} (${formatShortcut(command.shortcut, os)})` : command.label;
 }
 
-/**
- * The notation a native menu takes — `CmdOrCtrl+Shift+L` — which Tauri's menu library and
- * Electron's both read. It is data about a shortcut and is here for that reason only: this file
- * still imports nothing from either.
- */
-export function acceleratorOf(shortcut: Shortcut): string {
-  return [
-    shortcut.primary ? 'CmdOrCtrl' : '',
-    shortcut.alt ? 'Alt' : '',
-    shortcut.shift ? 'Shift' : '',
-    shortcut.key.length === 1 ? shortcut.key.toUpperCase() : shortcut.key,
-  ]
-    .filter(Boolean)
-    .join('+');
-}
-
 export type MenuEntry =
   | { kind: 'separator' }
-  | { kind: 'command'; id: CommandId; label: string; accelerator?: string };
+  /** `shortcut` is text to print beside the item (`Ctrl+N`, `⌘N`), never a key binding. */
+  | { kind: 'command'; id: CommandId; label: string; shortcut?: string };
 
 export interface MenuModel {
   label: string;
@@ -347,9 +332,14 @@ export interface MenuModel {
  * The native menu, ready to be turned into widgets one for one.
  *
  * Built here so that what the window's menu contains is testable without a window: the desktop
- * shell's only job is to map each entry to a menu widget and call `run(id)` when one fires.
+ * shell's only job is to map each entry to a menu widget and call `run(id)` when one is clicked.
+ *
+ * **An entry carries a shortcut to *show*, and no accelerator to *register*.** The first version
+ * registered one, and in the Tauri window on Windows it never ran: WebView2 gives the page the
+ * key and the host's accelerator table never sees it, so Ctrl+2 reached the page, matched nothing
+ * there and did nothing. See ADR 0037.
  */
-export function menuModel(): MenuModel[] {
+export function menuModel(os: Os): MenuModel[] {
   return MENUS.map((menu) => ({
     label: menu.label,
     entries: menu.items.map((item): MenuEntry => {
@@ -359,7 +349,7 @@ export function menuModel(): MenuModel[] {
         kind: 'command',
         id: command.id,
         label: command.label,
-        accelerator: command.shortcut ? acceleratorOf(command.shortcut) : undefined,
+        shortcut: command.shortcut ? formatShortcut(command.shortcut, os) : undefined,
       };
     }),
   }));
@@ -377,14 +367,14 @@ export interface InstalledMenu {
 }
 
 /**
- * A shell's way to show the menu, if it has one.
+ * A shell's way to show a menu, if it has one.
  *
  * `install` resolves to `null` when there is no native menu — a browser tab, a phone — or when
- * building it failed. That answer is also the answer to "who handles the keyboard?": **a shell
- * that installed a menu owns its shortcuts through the menu's accelerators, and a shell that did
- * not handles them from key events. Never both**, because the two paths would each run the
- * command once per keystroke and a native accelerator does not promise to swallow the key
- * event before the page sees it. See ADR 0037.
+ * building it failed. **A menu is for the mouse and nothing else: the page listens for the
+ * keyboard in every shell, a menu registers no key binding, and so a shortcut has one path in.**
+ * Both paths were the first design; the key reaches the page whether or not a menu also claims
+ * it, which is what made registering one pointless and, on a platform that did deliver it twice,
+ * a command that would run twice. See ADR 0037.
  */
 export interface CommandHost {
   readonly os: Os;

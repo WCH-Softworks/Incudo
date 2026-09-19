@@ -172,23 +172,28 @@ before any code, both touching a public API:
         glyph on a solid tile, and that tile's colour is a brand decision rather than something
         to infer from a stylesheet, so it is named in
         `apps/desktop/src-tauri/icons/README.md` and left for a person.
-  - [x] **Menus and keyboard shortcuts** ([ADR 0037](./docs/adr/0037-a-command-is-data-and-a-shortcut-has-one-owner.md)).
+  - [x] **Menus and keyboard shortcuts** ([ADR 0037](./docs/adr/0037-a-command-is-data-the-page-owns-the-keyboard.md)).
         Twelve commands are data in `packages/ui` — id, label, shortcut, and a rule for when each
         is available — and the Tauri window's native menu and the browser build's key handler both
-        render that one list; the mobile shell inherits it. A shell's shortcuts have one owner (the
-        menu where there is one, the key handler where there is not) rather than both, a disabled
-        command still claims its key, and no shortcut touches text editing or AltGr.
-        30 tests, each checked by breaking the behaviour it names (32 perturbations, none survived).
-        **Verified in the browser build** by pressing the keys: navigation, New character, Save from
-        inside the name field, Refresh, refusals on the wrong pane and behind a dialog, and typing
-        unaffected in the name and search fields. **Verified in the Tauri window** without a
-        keyboard: the menu exists and matches the list exactly, enabled flags follow app state
-        live, and menu items drive the app. **Not verified: the accelerators** — the machine was at
-        the lock screen, so no keystroke reached the window — nor the macOS menus (written, never
-        run), nor a chord in a real browser tab (Chromium reserves Ctrl+N). New character and Import
-        are live only on the characters screen, Save only on Build: New replaces the character being
-        edited without asking, and nothing tracks unsaved work yet. **Left out on purpose:** "Save a
-        copy…", which needs the explicit export below — no stub was added.
+        render that one list; the mobile shell inherits it. **The page owns the keyboard in every
+        build and the menu is for the mouse.** The first design gave the keys to the menu's
+        accelerators; pressing them in the Windows window showed WebView2 hands the page the key
+        and the accelerator never runs, so it was replaced the same day. A disabled command still
+        claims its key, and no shortcut touches text editing or AltGr. 31 tests, each checked by
+        breaking the behaviour it names (34 perturbations, none survived).
+        **Verified by pressing real keys, in the browser build and in the Tauri window on
+        Windows:** the five navigation chords, Refresh, Ctrl+S refused where it is off, typing
+        `n s l , 1–4` unaffected, and — in the window, where real input is possible — Ctrl+A/C/X/V/Z
+        actually editing a text field with none of those keys claimed. Also seen: the native menu
+        matches the list exactly, its enabled flags follow app state live (all twelve off on the
+        launcher), and its items drive the app. Browser build only: Ctrl+N, Save from inside the
+        name field, refusals behind a dialog. **Not verified:** the macOS menus (written, never
+        run) and how a macOS or Linux menu renders the shortcut text; a chord in a real browser tab
+        (Chromium reserves Ctrl+N); New character and Save in the Tauri window, which would have
+        written to the developer's own library. New character and Import are live only on the
+        characters screen, Save only on Build: New replaces the character being edited without
+        asking, and nothing tracks unsaved work yet. **Left out on purpose:** "Save a copy…", which
+        needs the explicit export below — no stub was added.
   - [x] **`$(...)` in a `<select supports=…>` resolves**
         ([ADR 0030](./docs/adr/0030-a-declared-block-answers-a-filter.md)), so a caster can
         choose spells — the last engine-side blocker on this phase's exit criterion.
