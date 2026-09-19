@@ -330,10 +330,13 @@ before any code, both touching a public API:
       imported Fighter 12 read Constitution 19 where Aurora computes 20, and `aurora verify` cannot
       see it. In the running app a level 4 Fighter takes the improvement, picks Strength twice and
       reads 12; raising the level to 8 opens the level 6 and 8 improvements beside it.
-  - [ ] **The feat half is generated and unreachable.** It is gated on
-        `ID_INTERNAL_OPTION_ALLOW_FEATS`, and switching that on is the `multiple: true` item
-        below. **Eight of the nine sample characters took a feat at level 4**, so this is the
-        next thing a real player will hit rather than an edge.
+  - [x] **The feat half was generated and unreachable; now it is reachable.** It is gated on
+        `ID_INTERNAL_OPTION_ALLOW_FEATS`, and switching that on is the campaign options step
+        below. **Eight of the nine sample characters took a feat at level 4.** With feats on, a
+        level 4 Fighter's improvement offers 2 options where it offered 1, and taking the feat
+        opens a real feat choice (`tools/incudo/src/campaign-options.test.ts`). Not measured
+        here: every feat's own prerequisites and what each grants — that is content's, read by
+        the engine as it reads everything else, and nothing in this change touches it.
 - [x] **Character sheet.** `SheetPane` renders whatever the kind's own `sheet` declares: stats,
       per-block sections such as a spellcaster's save DC (through the shared
       `renderSheetSection`, which the CLI uses too), and the elements a section lists by type —
@@ -390,17 +393,31 @@ before any code, both touching a public API:
       `candidatesFor` and `remaining` were already right for a multi-element `Choice`, proved by
       a same-render three-cantrip test that predates all of them. Every bug was in the pane and
       in what the engine chose to publish once a pool closed or a slot filled.
-  - [ ] **`multiple: true` on a build step — campaign options — is still unbuilt.** Genuinely
-        separate from the bug above: a system-format change
-        (`schemas/system.schema.json`, plus the `required`-and-`multiple` validation rejection)
-        that makes a build step publish a decision answered by zero or more of its candidates,
-        never blocking. The mechanism is entirely content's already — 294 `<select …
+  - [x] **`multiple: true` on a build step — campaign options.**
+        ([ADR 0032](./docs/adr/0032-a-build-step-may-offer-a-set.md).) A system-format change
+        (`schemas/system.schema.json`, plus the `required`-and-`multiple` validation rejection;
+        `formatVersion` did not move) that makes a build step publish a decision answered by
+        zero or more of its candidates, never blocking, skippable, and recorded under
+        `build/<stepId>`. The mechanism was entirely content's already — 294 `<select …
         requirements="ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI">` across the corpus, each paired with
-        the fixed `<stat>` it replaces — and `aurora-import` has always written the six
-        `type="Option"` elements to `build/options`. So an imported Aurora character keeps its
-        options and one built in Incudo cannot have any, purely because no build step offers a
-        set. Tasha's customized ability scores, languages and proficiencies all arrive together,
-        and so does the Human Variant, which no race list the app has ever drawn included.
+        the fixed `<stat>` it replaces — and `aurora-import` has always written a save's options
+        to `build/options`, which is why an imported character kept its options while one built
+        in Incudo could not have any: no build step offered a set. `systems/dnd5e/system.json`
+        now declares one, over `Option`, which offers all **8** (the six real ones and the two
+        the overlay supplies) with no id named anywhere. Measured against the corpus: a Dwarf's
+        Constitution reads 12 with Customized Ability Score Increases off and 10 on, and a
+        6-candidate choice takes the fixed bonus's place; the Human Variant is offered with
+        feats on and not off (10 → 11 for a Human); a level 4 Fighter's improvement goes from 1
+        option to 2. `aurora verify` is byte-identical on all nine saves, as the ADR predicted,
+        and proves nothing but that nothing regressed.
+        **Found while doing it:** the Human Variant is a `Race Variant` that a Human offers
+        through its own select, not something a Race list ever drew — the ADR's sentence about
+        "every race list" was wrong about where it lives, right about why it was missing.
+        **Open, and left visible:** the overlay's `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is an
+        `Option`, so it is offered, and **nothing reads it** — 0 of 740 files, and the class
+        control is deliberately not gated on it (ADR 0036). Ticking it does nothing, which is
+        misleading on screen. Not fixed by naming an id in the builder: either the class control
+        starts honouring it, or the overlay stops calling it an option. A decision, not a bug fix.
         Touches the system definition format, which is why it is an ADR and not a commit.
 - [x] Save/load `.incu` files; **import `.dnd5e`** (the importer was done — this was the UI
       for it). The library reads and writes `.incu` in both forms, and the desktop shell has a
@@ -591,8 +608,8 @@ before any code, both touching a public API:
 ### Where this phase actually stands
 
 **The engine half of Phase 2 is finished and everything left is a shell.** Every remaining box
-above is view-layer work — menus and shortcuts, an explicit export, the multiclass screen, and
-the campaign options ADR 0032 describes (the multiclass screen is done). Nothing in the rules engine is outstanding, though the
+above is view-layer work — menus and shortcuts, and an explicit export (the multiclass screen and
+the campaign options ADR 0032 describes are both done). Nothing in the rules engine is outstanding, though the
 first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
 and not by any test, which is worth keeping in mind before believing that sentence.
 
@@ -665,9 +682,10 @@ answered pick can be changed, and raising the level opens hit points, a subclass
 ability score improvement in the same list, with a +2 landing as +2. A class can now be chosen
 at each level: a Fighter 4 / Rogue 1 / Wizard 3 built in the running app is offered the Rogue's
 multiclass skill, the Wizard's cantrips and spellbook, Arcane Tradition and hit points on each
-level's own die. What is left is one system-format item: feats, which need the campaign options
-of ADR 0032 (`multiple: true`) before a character built here can take one at all — so the
-Rogue/Wizard-with-feats sentence above is met except for the feats.
+level's own die. Feats were the last item and are reachable now: the campaign options of ADR 0032
+(`multiple: true`) switch them on, and a level 4 Fighter takes one — so the Rogue/Wizard-with-feats
+sentence above is met on the engine side. What it has not had is that exact character built end
+to end in the running app and compared with Aurora's output for the same choices.
 
 ---
 

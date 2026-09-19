@@ -1,6 +1,6 @@
 # 0032 — A build step may offer a set, and campaign options are the first one
 
-**Status:** Proposed · 2026-09-13 · builds on
+**Status:** Accepted, implemented · proposed 2026-09-13 · builds on
 [0017](./0017-open-decisions-not-steps.md), [0011](./0011-user-systems.md) ·
 touches the **system definition format**
 
@@ -181,8 +181,31 @@ excludes everything the character holds, so the same "add `chosen` back for that
 entries" trick used for a full pool works unchanged for a partial one, and `answeredChoices` was
 not touched.
 
-**`multiple: true` on a build step — campaign options, and the Human Variant — is still proposed
-and not built.** That is a system-format change (decisions 2 and 3, and the schema/validation
-work in "The migration is nothing"), genuinely separate from both bug fixes above, and this note
-no longer predicts they land together. Read `OpenDecision.chosen`, `AnsweredChoice` and the
-settled rendering as done; read the rest of this ADR as still describing work to do.
+**`multiple: true` is built — this ADR is implemented.** `BuildStepDef.multiple`, the schema
+property and the `required`-and-`multiple` refusal in `validateGameSystem`; a `multiple` step
+publishes an open, non-blocking decision (`OpenDecision.multiple`, with `chosen` and the
+candidates still to add) and settles what is chosen into `picks` (`SettledPick.multiple`, whose
+answers can be taken back as well as changed); and `systems/dnd5e/system.json` declares an
+`options` step over `Option`. `formatVersion` did not move. Decisions 1–3 hold as written, with
+five things the ADR did not say:
+
+- **A set is found under `build/<stepId>` only**, unlike a race, which is found by what it holds
+  (`top-level-pick.ts`). `aurora-import` writes a save's options to exactly that key, so there is no
+  second place to look, and looking by type would risk claiming a record a content `select` owns.
+- **The decision stays open while anything is left to add**, and the user closes it with Skip
+  (ADR 0033), as with any optional decision. An answer settles at once, so a chosen option is
+  always editable; the shell needs a **Remove** control for it, which is why `SettledPick` says it
+  is a set and the pane does not guess.
+- **The step is placed right after ability scores**, so a table's rules are read before the race
+  they change. That is a position in the array, not a `priority`.
+- **The Human Variant is not on a race list.** It is a `Race Variant` that a Human offers through
+  its own optional select, gated on `ID_INTERNAL_OPTION_ALLOW_FEATS`; this ADR's Context and
+  Consequences say "race list", which was wrong about where it lives and right about why it was
+  missing. Measured: 10 candidates for a Human with feats off, 11 with them on.
+- **`ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is offered and does nothing.** The overlay calls it an
+  `Option`, so a step over `Option` offers it; nothing in 740 files reads it and the class control
+  is deliberately not gated on it (ADR 0036). Ticking it changes no character. Not special-cased
+  by id, which is the move this ADR exists to avoid — the honest fixes are for the class control
+  to honour it or for the overlay to stop declaring it, and that is a decision left open.
+
+"Not decided here" stands: a `multiple` step carries no maximum.

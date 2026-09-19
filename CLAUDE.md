@@ -465,9 +465,10 @@ deliberately **not** fixed:
   a Constitution of 19 where Aurora computes 20. `aurora verify` cannot see it: it compares chosen
   elements and never an ability score, and came back byte-identical on all nine saves before and
   after — which proves nothing regressed and nothing else.
-  The feat half is generated too, gated on `ID_INTERNAL_OPTION_ALLOW_FEATS`, and unreachable in
-  a character built here until ADR 0032's `multiple: true`. **Eight of the nine sample
-  characters took a feat at level 4**, so that is the next thing a real user will meet.
+  The feat half is generated too, gated on `ID_INTERNAL_OPTION_ALLOW_FEATS`, and reachable since
+  ADR 0032's `multiple: true` (the campaign options step, below). **Eight of the nine sample
+  characters took a feat at level 4**, and with feats on a level 4 Fighter is offered two options
+  where it was offered one.
   Perturbation is the evidence and it is in the tests; running it is the rest — a level 4 Fighter
   is offered the option, taking it offers all six abilities, Strength twice reads +2 (12), and
   both picks settle as slots that each still offer Strength.
@@ -508,9 +509,14 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035 and 0036 are implemented; **0032 is proposed, and its `OpenDecision.chosen` half is now
-built** — the multi-pick bug it names is fixed, but `multiple: true` on a build step (campaign
-options) is not. Read the ADR's status note before reaching for a multi-select anywhere.
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035 and 0036 are implemented, and so is **0032**: a build step may declare `multiple: true`
+and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
+`SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
+options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
+read from its own key only, where a race is read by what it holds (`top-level-pick.ts`); the overlay's
+`ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is offered and **nothing reads it** — left visible, see the
+ADR's status note; and `aurora verify` cannot see any of it, so the evidence is
+`tools/incudo/src/campaign-options.test.ts` and perturbation.
 0033 lets a non-blocking decision be skipped (`decline`, `reconsider`) as its own recorded input;
 0034 ranks Open decisions by a step's declared `priority` rather than by a hardcoded rule. Neither
 has anything to do with 0032 despite the numbers. The element picker is also not a `<select>`
