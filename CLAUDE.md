@@ -364,6 +364,29 @@ builder's own state and keys on `character.id`. Twelve green test files cover th
 of them rebuilds a builder mid-edit, which is the whole lesson: **the tests protect the rules,
 running it protects the product.**
 
+**What the app can be told to do is one list, and the menu and the shortcuts are two renderings of
+it** (ADR 0037). `packages/ui/src/commands.ts` holds twelve commands — id, label, shortcut, and a
+rule for when each is available — under `node --test`; `apps/desktop/src/use-commands.ts` and
+`platform.ts`'s `TauriCommandHost` compute nothing. Adding a command is one entry in `COMMANDS`, one in
+`MENUS`, one rule in `ENABLED` (a `Record`, so leaving it out does not compile) and one handler in
+`App.tsx`. Things to know before touching it:
+
+- **A shell's shortcuts have exactly one owner.** A native menu, where one installed, owns them and
+  the page attaches no `keydown` listener; a shell with no menu uses the listener. Do not attach both:
+  nothing here shows what a platform does with a key a menu accelerator took, and the failure is a
+  command that runs twice.
+- **A command is enabled where its outcome can be seen**, on purpose. New character replaces the
+  character being edited without asking, so it is live only on the characters screen, where its
+  button is; Save only on Build, where "Saved to …" is printed. Enabling New everywhere wants a dirty
+  flag nothing tracks yet.
+- **A disabled command still claims its key** (Ctrl+S on the Sheet pane must not become the browser's
+  "save page"), and no shortcut may be a bare printable key, use Alt (Ctrl+Alt is AltGr on a Brazilian
+  keyboard) or take Ctrl+A/C/V/X/Z/Y. Tests hold each of these.
+- **The accelerators were never pressed.** The menu's structure, its enabled flags following app state
+  and its items driving the app were checked in the running window; a keystroke reaching it was not,
+  because the machine was at the lock screen. The macOS application and Edit menus have never run.
+  Do not describe the shortcuts as verified in the Tauri window.
+
 ### Known from running it
 
 - **~~`<select supports="$(...)">` still offers nothing.~~** Fixed (ADR 0030), and the shape

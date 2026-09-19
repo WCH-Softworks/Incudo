@@ -37,14 +37,14 @@ Background processes rather than under Apps — which is why it can look like th
 kill.
 
 `npm run desktop:app` additionally needs a Rust toolchain (`rustup`) and the platform
-prerequisites at https://v2.tauri.app/start/prerequisites/, plus an icon this repo does not
-ship — see below. No Rust is needed for application code.
+prerequisites at https://v2.tauri.app/start/prerequisites/. No Rust is needed for application
+code.
 
-## Icons — a deliberate gap
+## Icons
 
-`src-tauri/icons/` is empty and the Windows build fails because of it. That is not a broken
-checkout: Incudo never ships generated artwork, so the icon is left for a person to draw.
-`src-tauri/icons/README.md` says exactly what is needed. `npm run desktop` is unaffected.
+`src-tauri/icons/` is generated from the maintainer's logo; `src-tauri/icons/README.md` says how
+and what is still a design decision. Incudo never ships generated artwork. `npm run desktop` does
+not need any of it.
 
 ## Why Tauri rather than a web page
 
@@ -72,6 +72,61 @@ must be re-granted at launch.)
 Everything between the picker and the library folder is `importAuroraSaveIntoLibrary` in
 `packages/ui`, not here. This app supplies the `FilePicker` port and renders the report.
 
+## Menus and keyboard shortcuts
+
+What the app can be told to do is a list in `packages/ui/src/commands.ts` (ADR 0037): an id, a
+label, a shortcut, and a rule for when it is available. This app renders it and computes nothing.
+Twelve commands: go to each of the five panes (Ctrl+1 to 4, Ctrl+,), New character (Ctrl+N), Save
+to library (Ctrl+S), Refresh library (Ctrl+Shift+L), Import from Aurora, Choose library folder,
+Reload content sources, Change system. On macOS the same shortcuts read Cmd.
+
+- **The Tauri window has a native menu**, built in `platform.ts` from `menuModel()`. **The browser
+  build has no menu**, only the shortcuts; the nav and Save buttons show theirs as tooltips.
+- **A shell's shortcuts have one owner.** With a native menu, its accelerators are the shortcuts
+  and the page attaches no key listener. Without one, `use-commands.ts` is the listener. Both at
+  once would run a command twice per keystroke wherever the platform also shows the page a key
+  the menu took.
+- **A command is enabled where its outcome can be seen**: New character and Import on the
+  characters screen, Save on Build. Everything is off on the launcher and behind a dialog. A
+  disabled command still *claims* its key, so Ctrl+S on the Sheet pane does not become "save this
+  page" in a browser.
+- Adding a command is one entry in `COMMANDS`, one in `MENUS`, one availability rule and one
+  handler in `App.tsx`; a test fails if any of the first three is missing.
+- What is **not** here on purpose: an explicit export ("Save a copy…"), which needs a write
+  counterpart to `FilePicker` and is its own roadmap item. There is no stub for it in the menu.
+
+### What was and was not checked (2026-09-19)
+
+Browser build (`npm run desktop`, driven with injected key events): the five navigation chords;
+Ctrl+N from the characters screen and its refusal on Build; Ctrl+S from inside the name field,
+writing a real file through a directory handle; its refusal on Sheet; Ctrl+Shift+L picking up a
+file added behind the app's back (1 → 2); every chord refused, and none acting, while the rename
+dialog was open and working again once it closed; no chord acting on the launcher. Typing
+`n s l , 1 2 3 4` in the name field and in a search box was unaffected and no event was claimed.
+The console was clean.
+
+Two limits of that. Injected key events do not perform editing chords: with the app's handler
+blocked entirely, Ctrl+A still selected nothing, so "Ctrl+A/C/V/X/Z/Y keep working" is shown as
+*the app never claims them* (`defaultPrevented` stayed false on all seven) and not as text being
+selected. And they never pass through a browser's own shortcut layer, so which chords a real tab
+would hand to the page is untested; Chromium reserves Ctrl+N, so New character's shortcut is a
+window-only shortcut.
+
+Tauri window (`npm run desktop:app`, built in 20 s, reached through WebView2's debug port and the
+Win32 menu API): the menu exists with both submenus, and every label, accelerator, separator and
+ordering matches `menuModel()`; enabled flags follow app state live (Build enables Save and
+disables New and Import; Sheet disables Save; the launcher disables all twelve; choosing the
+system restores them); the five View items, sent as the message Windows delivers for a click,
+each moved the page; the page has no key listener there (a synthetic Ctrl+2 is unclaimed and does
+nothing).
+
+**Not verified:** the accelerators themselves. The machine was at the lock screen, which cannot
+take keyboard input, so no keystroke reached the window and nothing shows a keypress running a
+menu item, or whether WebView2 also shows the page the key. The single-owner design exists so
+that question need not be answered; it has not been. Also not run: the macOS application and
+Edit menus (written, never executed), the file-dialog items (Import, Choose folder), and New
+character and Save in the window, which would have written to the developer's own library.
+
 ## Two capabilities, opposite widths, and why
 
 `dialog` and `fs` joined `http` when the library arrived, and the filesystem scope is as narrow
@@ -88,19 +143,20 @@ An app that can read any path on the machine is not the same app as one that can
 its user chose in a dialog, and a content index is a URL somebody publishes while a library is a
 folder full of somebody's files.
 
-**None of this is verified by a build.** `cargo check` stops in `build.rs` on the missing icon
-below, so the Rust half of the library is written and unexercised. What *is* checked is that
-every permission identifier used exists in the plugins' own manifests under
-`~/.cargo/registry/.../tauri-plugin-{fs,dialog}-*/permissions/`. Treat the Tauri path as
-unproven until someone with an icon runs it.
+**The window builds and runs** (`npm run desktop:app`, checked when the menu landed), but nothing
+in this section was exercised by that run: the folder scope, `allow_library_folder` and the
+dialogs were not driven. What is checked is that every permission identifier used exists in the
+plugins' own manifests under `~/.cargo/registry/.../tauri-plugin-{fs,dialog}-*/permissions/`.
+Treat the Tauri library path as unproven until someone opens a folder in the window.
 
 ## What belongs here
 
 Windows and menus, navigation, file dialogs, keyboard shortcuts, the dense multi-pane
 layout, and the platform implementations in `src/platform.ts`.
 
-That file now carries five ports rather than two — `Fetcher`, `Storage`, `CharacterStore`,
-`FilePicker` and `ZipCodec` — and it is still the only file allowed to say the word Tauri.
+That file now carries six ports rather than two — `Fetcher`, `Storage`, `CharacterStore`,
+`FilePicker`, `ZipCodec` and `CommandHost` — and it is still the only file allowed to say the word
+Tauri.
 Three of them are worth knowing about before changing anything:
 
 - **`Storage` is IndexedDB in both builds.** It holds the content cache and the current draft:

@@ -50,3 +50,4 @@ new one that supersedes it.
 | [0034](./0034-open-decisions-rank-by-a-declared-step-priority.md) | Open decisions rank by a declared step priority, not a hardcoded rule | Accepted (amends 0017) |
 | [0035](./0035-a-repeatable-element-counts-once-per-pick.md) | A repeatable element counts once per pick, and the improvement Aurora's app generates is derived from content | Accepted (builds on 0030) |
 | [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md) | A level is spent on a class by writing two records, and the builder gates only what content declares | Accepted (builds on 0015, 0017, 0019) |
+| [0037](./0037-a-command-is-data-and-a-shortcut-has-one-owner.md) | A command is data in `packages/ui`, and a shell's shortcuts have exactly one owner | Accepted (builds on 0001) |
