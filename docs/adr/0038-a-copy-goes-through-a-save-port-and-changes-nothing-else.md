@@ -125,25 +125,29 @@ tooltip, and the command is off: the same posture as the other ports.
 
 ## Consequences
 
-- **Found by measuring, and part of this change:** the app's Save (and so a copy) packs an opened
-  character **without its portrait**. `OpenedCharacter` carried no asset bytes, so a re-save kept
-  the `assets.portrait` reference and dropped the file it points at. All nine real characters carry
-  a portrait and all nine lost it, 18 of 18 across the two routes. Fixed in the change that follows
-  this one; it is recorded here because a copy is the case where it would hurt most.
-- **A copy, like any re-save, drops elements only an import embedded.** The Aurora import passes
-  Aurora's own `<sum>` as `extraIds`; a re-save has nothing to pass. Across the nine that is one
-  element, `ID_INTERNAL_MULTICLASS_LEVEL_3`, the marker no rule reaches and no derived number depends
-  on. `save-copy.test.ts` asserts that anything a copy drops is unreached by the derivation.
+- **Found by measuring, and fixed in the change after this one:** the app's Save, and so a copy,
+  packed an opened character **without its portrait**. `OpenedCharacter` carried no asset bytes, so a
+  re-save kept the `assets.portrait` reference and dropped the file it points at, and the reader
+  reported a placeholder. All nine real characters carry a portrait and all nine lost it, 18 of 18
+  across the two routes. `OpenedCharacter.assets` now returns the container's asset files, the shell
+  holds them as `working.assets`, and both Save and a copy pass them to `packCharacter`. Seen in the
+  running app: an imported character with a 213,874-byte portrait, opened from a library folder,
+  wrote the same bytes on Save and on a copy.
+- **A copy, like any re-save, drops what only an import knew.** The Aurora import passes Aurora's own
+  `<sum>` as `extraIds`; a re-save has nothing to pass. Across the nine that is one element,
+  `ID_INTERNAL_MULTICLASS_LEVEL_3`, the marker no rule reaches and no derived number depends on, and
+  the unresolved ids only that `<sum>` named (three, in the one save looked at). `save-copy.test.ts`
+  asserts that anything a copy drops is unreached by the derivation.
 - A copy is not linked to anything. It is a file; opening it later is the library's business, and the
   library lists any `.incu` in its folder.
 - Phase 5's Markdown and PDF exports are different bytes through this same port.
 
 ## Evidence
 
-`character-copy.test.ts` (14 tests), `commands.test.ts` (6 new), and `tools/incudo/src/save-copy.test.ts`
+`character-copy.test.ts` (15 tests), `commands.test.ts` (6 new), and `tools/incudo/src/save-copy.test.ts`
 over the nine real saves, skipped where they are not installed and never committed. Each behaviour
-was checked by breaking it (22 perturbations; one survived in `packages/ui` and is caught by the
-real-saves library test instead):
+was checked by breaking it (25 perturbations; one survived at first, in `packages/ui`, and is what
+the portrait fix and its tests then closed):
 
 | perturbation | caught by |
 |---|---|
@@ -154,7 +158,8 @@ real-saves library test instead):
 | cancel reported as failure; cancel thrown | "cancelling is a result" |
 | availability ignored; result carries an entry; no filter; suggested name ignores the character | one test each |
 | the library's Save stops passing its profile / `extraIds` | "byte for byte"; the Aurora import test |
-| the library's Save stops passing `assets` | survived here; the real-saves library test ("exactly the saves with a portrait should have one") |
+| the library's Save stops passing `assets` | survived at first; caught by the real-saves library test, and by the portrait tests added with the fix |
+| `open` returns no assets; `saveCopy` or the library's Save ignores the ones it is given | the portrait tests in `character-library.test.ts` and `character-copy.test.ts`, and the real-saves test |
 
 **What the tests cannot show, and what was and was not seen** (2026-09-20):
 

@@ -178,9 +178,11 @@ test(
           await readContainer(join(libraryDir, entry.name)),
         ).container!.content.elements.map((element) => element.id);
 
-        // From its own content alone: an app with nothing loaded.
+        // From its own content alone: an app with nothing loaded. The assets are the ones the
+        // library handed back on opening, as the shell holds them.
         const alone = await saveCopy(saver, nodeZipCodec, opened.character, system, opened.elements, {
           generator: 'save-copy-test',
+          assets: opened.assets,
         });
         assert.equal(alone.status, 'saved', `${entry.name} should copy`);
         if (alone.status !== 'saved') continue;
@@ -194,7 +196,7 @@ test(
           opened.character,
           system,
           new LayeredElementIndex([opened.elements, corpus]),
-          { generator: 'save-copy-test' },
+          { generator: 'save-copy-test', assets: opened.assets },
         );
         assert.equal(layered.status, 'saved');
         if (layered.status !== 'saved') continue;
@@ -225,6 +227,19 @@ test(
             `${entry.name} (${label}) should derive identically with no sources`,
           );
           assert.equal(container.character.id, opened.character.id, 'it is the same character');
+
+          // The portrait is in the copy as real bytes, and the reader has nothing to say about
+          // an asset it cannot find. Every one of the nine has one.
+          assert.ok(opened.assets.size > 0, `${entry.name} should have an asset to keep`);
+          assert.equal(container.assets.size, opened.assets.size, `${entry.name} (${label}) lost an asset`);
+          for (const [path, bytes] of opened.assets) {
+            assert.deepEqual(container.assets.get(path), bytes, `${entry.name} (${label}) altered ${path}`);
+          }
+          assert.deepEqual(
+            problems.filter((problem) => /not in the container/.test(problem.message)),
+            [],
+            `${entry.name} (${label}) names an asset it does not hold`,
+          );
           // Nothing the character *uses* is lost. What a re-save may drop is an element only the
           // Aurora import embedded, through `extraIds` — Aurora's own `<sum>`, kept so that
           // `aurora verify` stays meaningful — which no rule reaches and no derived number
@@ -256,7 +271,26 @@ test(
       assert.deepEqual(await snapshot(libraryDir), before, 'the library folder is unchanged');
       assert.equal((await readdir(libraryDir)).length, saves.length);
 
-      // 5. The copies are real library entries: a folder of them lists, opens and is not broken.
+      // 5. Saving an opened character back into the library keeps its portrait too. This is the
+      //    other half of the same gap: the app's Save and its copy were dropping it together.
+      const resaving = new CharacterLibrary(new NodeCharacterStore(libraryDir));
+      await resaving.restore();
+      for (const entry of resaving.getState().entries) {
+        const opened = await resaving.open(entry.name);
+        assert.ok(opened);
+        const kept = entry.portrait;
+        assert.ok(kept, `${entry.name} should have a portrait to keep`);
+        const saved = await resaving.save(opened.character, system, opened.elements, {
+          entry: { name: entry.name, form: entry.form },
+          expectUpdatedAt: entry.updatedAt,
+          assets: opened.assets,
+        });
+        assert.ok(saved.ok, `${entry.name} should re-save`);
+        const after = resaving.getState().entries.find((e) => e.name === entry.name)!;
+        assert.deepEqual(after.portrait, kept, `${entry.name} lost its portrait on a re-save`);
+      }
+
+      // 6. The copies are real library entries: a folder of them lists, opens and is not broken.
       const copies = new CharacterLibrary(new NodeCharacterStore(copiesDir));
       await copies.restore();
       assert.deepEqual(copies.getState().problems, []);

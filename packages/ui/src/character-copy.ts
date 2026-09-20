@@ -40,8 +40,8 @@ export interface CopyOptions {
   profile?: readonly ConfiguredSource[];
   generator?: string;
   /**
-   * Asset bytes to embed. The desktop shell has none to give today: an opened character's
-   * portrait is not held in memory beside it, and its Save has the same gap.
+   * Asset bytes to embed — `OpenedCharacter.assets` for a character that was opened. Left out, the
+   * copy names a portrait it does not hold, which the reader reports as a placeholder.
    */
   assets?: ContainerFiles;
   /** Ids to embed beyond what the character reaches on its own, as for a library save. */

@@ -260,6 +260,39 @@ test('a portrait is real bytes, and its absence is an absence', async () => {
   assert.equal(entries.get('Vigaro')!.portrait, undefined);
 });
 
+test('opening a character hands back its portrait, and saving it with those bytes keeps the file', async () => {
+  // `Character.assets` records only where a portrait is. Before `OpenedCharacter.assets` an app
+  // that opened a character and saved it wrote a container that still named the portrait and no
+  // longer held it: every one of the nine real characters lost theirs that way.
+  const store = new FakeStore();
+  const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 9, 8, 7]);
+  const withFace = hero('Aelin');
+  withFace.assets = { portrait: 'assets/portrait.png' };
+  await store.write(
+    { name: 'aelin.incu', form: 'zip' },
+    containerFor(withFace, new Map([['assets/portrait.png', png]])),
+  );
+  const library = new CharacterLibrary(store);
+  await library.restore();
+
+  const opened = await library.open('aelin.incu');
+  assert.ok(opened);
+  assert.deepEqual([...opened.assets.get('assets/portrait.png')!], [...png]);
+
+  const saved = await library.save(opened.character, testSystem(), opened.elements, {
+    entry: { name: 'aelin.incu', form: 'zip' },
+    assets: opened.assets,
+  });
+  assert.ok(saved.ok);
+  const entry = library.getState().entries.find((e) => e.name === 'aelin.incu')!;
+  assert.deepEqual([...entry.portrait!], [...png], 'the portrait is still in the file');
+
+  // A character with none has none to hand back, and gets none invented.
+  await store.write({ name: 'vigaro.incu', form: 'zip' }, containerFor(hero('Vigaro')));
+  await library.refresh();
+  assert.equal((await library.open('vigaro.incu'))!.assets.size, 0);
+});
+
 // --- a container the app cannot read ----------------------------------------
 
 test('a container that will not read is listed with its problems, not hidden', async () => {

@@ -26,6 +26,7 @@ import {
   LayeredElementIndex,
   MapElementIndex,
   type Character,
+  type ContainerFiles,
   type ElementIndex,
   type GameSystem,
   type LibraryEntryRef,
@@ -357,6 +358,11 @@ function Shell({
     character: Character;
     /** The save's own embedded content, when this character was opened from a file. */
     embedded?: ElementIndex;
+    /**
+     * The save's asset files, when it was opened from one. Held so the next Save and any copy
+     * write the portrait back out: a character records only where it is, not what it holds.
+     */
+    assets?: ContainerFiles;
     entry?: LibraryEntryRef;
     /** What the manifest said when it was read — the conflict check compares this. */
     readAt?: string;
@@ -658,6 +664,7 @@ function Shell({
       setWorking({
         character: opened.character,
         embedded: opened.elements,
+        assets: opened.assets,
         entry: { name: entry.name, form: entry.form },
         readAt: entry.updatedAt,
         savedName: opened.character.name,
@@ -695,6 +702,7 @@ function Shell({
           entry,
           form: entry?.form ?? previousEntry?.form,
           expectUpdatedAt: entry ? working.readAt : undefined,
+          assets: working.assets,
           generator: 'incudo-desktop',
         });
       } finally {
@@ -718,7 +726,7 @@ function Shell({
       }));
       setSaveNote(`Saved to ${result.entry.name}.`);
     },
-    [library, state.character, system, elements, working.entry, working.readAt],
+    [library, state.character, system, elements, working.entry, working.readAt, working.assets],
   );
 
   /**
@@ -734,6 +742,7 @@ function Shell({
     try {
       const result = await saveCopy(platform.saver, platform.zip, state.character, system, elements, {
         profile: sources,
+        assets: working.assets,
         generator: 'incudo-desktop',
       });
       if (result.status === 'saved') setSaveNote(`Saved a copy as ${result.file.name}.`);
@@ -742,7 +751,7 @@ function Shell({
     } finally {
       setCopying(false);
     }
-  }, [state.character, system, elements, sources]);
+  }, [state.character, system, elements, sources, working.assets]);
 
   /**
    * Save, unless the character was renamed since the last save. `LibraryEntryRef.name` never

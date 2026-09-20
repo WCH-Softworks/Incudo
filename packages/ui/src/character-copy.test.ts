@@ -275,6 +275,24 @@ test('the dialog is offered the character\'s name as a .incu, with a filter for 
   assert.equal(suggestedFileName('Zoë / Ünder: "Ash"'), 'zoe-under-ash.incu');
 });
 
+test('a copy carries the assets it is given, and its portrait resolves', async () => {
+  const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 4, 5, 6]);
+  const withFace = { ...hero(), assets: { portrait: 'assets/portrait.png' } };
+  const assets = new Map([['assets/portrait.png', png]]);
+
+  const saver = new FakeSaver();
+  await saveCopy(saver, zip, withFace, testSystem(), corpus(), { assets });
+  const { container, problems } = await unpack(saver.calls[0]!.bytes);
+  assert.deepEqual([...container.assets.get('assets/portrait.png')!], [...png]);
+  assert.deepEqual(problems, [], 'nothing is referenced that the copy does not hold');
+
+  // Without them the copy names a portrait it does not hold, and the reader says so.
+  const bare = new FakeSaver();
+  await saveCopy(bare, zip, withFace, testSystem(), corpus());
+  const missing = (await unpack(bare.calls[0]!.bytes)).problems;
+  assert.ok(missing.some((problem) => /portrait/.test(problem.path ?? '') || /portrait/.test(problem.message)));
+});
+
 test('what the result names is what the user typed, not what was offered', async () => {
   const saver = new FakeSaver();
   saver.answer = { name: 'backup-before-level-3.incu' };

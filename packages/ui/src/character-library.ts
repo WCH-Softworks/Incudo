@@ -120,12 +120,22 @@ export interface LibraryState {
   busy: boolean;
 }
 
-/** What opening an entry gives back: everything needed to derive, and nothing else. */
+/** What opening an entry gives back: everything needed to derive, and to write it out again. */
 export interface OpenedCharacter {
   entry: LibraryEntry;
   character: Character;
   /** An index over the save's *own* embedded content. No sources involved. */
   elements: ElementIndex;
+  /**
+   * The container's asset files, by container path (`assets/portrait.png`), as real bytes.
+   *
+   * Not needed to derive anything, and here for the write back out: a `Character` records only
+   * *where* its portrait is, and `packCharacter` embeds only the assets it is handed. A shell that
+   * opens a character and later saves it has to pass these to `save` or `saveCopy`, or the file it
+   * writes still names a portrait it no longer holds. Every one of the nine real saves lost its
+   * portrait this way before it was returned.
+   */
+  assets: ContainerFiles;
   problems: ContainerProblem[];
 }
 
@@ -419,6 +429,7 @@ export class CharacterLibrary {
       entry: this.describe({ name: listed.name, form: listed.form }, files),
       character: container.character,
       elements: new BundleElementIndex(container.content.elements),
+      assets: container.assets,
       problems,
     };
   };

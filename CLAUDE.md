@@ -404,8 +404,13 @@ Build only, beside Save; the thirteenth command. Things to know before touching 
   the file it returns.
 - **Windows opens the dialog at the last folder used, which was the library folder.** The system's replace
   prompt is the only guard against a copy named like a library file; the app passes no starting folder.
-- **A re-save drops the elements only an import embedded** (`extraIds`): across the nine saves, one,
-  `ID_INTERNAL_MULTICLASS_LEVEL_3`. `aurora verify` is unaffected and no derived number moves.
+- **A re-save drops what only an import knew** (`extraIds`): across the nine saves one element,
+  `ID_INTERNAL_MULTICLASS_LEVEL_3`, plus any unresolved ids only Aurora's `<sum>` named. `aurora verify`
+  is unaffected and no derived number moves.
+- **A re-save keeps the portrait only because the shell hands the bytes back.** `OpenedCharacter.assets` is
+  what `library.open` returns, `working.assets` holds it, and Save and Save a copy both pass it. A
+  `Character` records only where its portrait is: before this, every re-save of an opened character
+  dropped the file and kept the reference, for all nine real ones, and no count anywhere showed it.
 - **Not verified:** Ctrl+Shift+S as real input in the Tauri window (the screen was locked; the dialog was
   driven with window messages and the chord injected as a DevTools key event), macOS and Linux, and the real
   browser save dialog. The browser round trip and the whole Windows dialog, including the replace prompt, were seen.
