@@ -632,17 +632,31 @@ before any code, both touching a public API:
       character written and reopened through the real dialogs (the port and the round trip are
       tested; the native dialog cannot be driven); and an Aurora save of exactly these choices —
       but see the next entry, which referees each half of it separately.
-  - [x] **Each half of it against Aurora, through the builder.** No save of a Rogue/Wizard exists, but
-        the nine samples include a Rogue 8 with a subclass, a Wizard 8 (Evocation), an Eldritch Knight
-        and the Paladin 2 / Warlock 18. `tools/verify/src/builder-rebuild.test.ts` rebuilds all eight
-        single-class saves through `CharacterBuilder` (class chosen, `setProgress`, every pick replayed
-        through `choose`) and each is the character its import is, with the differences against Aurora
-        it always had and **0 `stat-mismatch`, 0 `spell-missing`**; `multiclass.test.ts` does the same
-        for the multiclass one. Broken three ways on purpose (level off by one, feat picks dropped,
-        last pick of each dropped) and each fails at the first save. Nothing about the offered
-        choices: it replays picks the save holds. Nothing about ADR 0040 either: a single class has no
-        track, and the multiclass save has no chosen subclass with a gate between its class level and
-        its total.
+  - [x] **Against Aurora: every save through the builder, and the Rogue/Wizard itself.**
+        `tools/verify/src/builder-rebuild.test.ts` rebuilds *every* real save through `CharacterBuilder`
+        (class chosen, `setProgress`, `addLevel` for each level that goes to a second class, every pick
+        replayed through `choose`) and each is the character its import is, with the differences against
+        Aurora it always had and **0 `stat-mismatch`, 0 `spell-missing``**. Broken three ways on purpose
+        (a level sent to the wrong class, the Arcane pick dropped, the first class's levels off by one)
+        and each fails at the save it should. It replays picks the save holds, so it says nothing about
+        which choices the builder *offers*.
+        **Then the maintainer built the description in Aurora** (a Wizard 4 / Rogue 4, saved as a tenth
+        sample), and `rogue-wizard-aurora.test.ts` builds the same description through the builder and
+        compares it with that save. **It agrees on every number Aurora records**: both casting blocks' slot
+        rows, both save DCs, both attack bonuses, the shared caster level (5) and every spell listed. The
+        differences left are inputs and known Aurora behaviour, not rules: the Aurora multiclass marker, a
+        campaign option the description did not name (Customized Proficiencies), and a Thieves' Tools
+        expertise pair Aurora did not derive, most likely because its updater rewrote `class-rogue.xml` a
+        quarter of an hour before the save and it kept the older copy — **unconfirmed**; restarting Aurora,
+        reopening the character and saving again would settle it.
+        **It corrected the referee too** ([ADR 0041](./docs/adr/0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md)):
+        the comparison expected the shared multiclass pool in every block's slot row, and this is the first
+        save with two ordinary casting blocks. Aurora records each block's *own* table and the pool only as
+        a caster level (`<magic level="5">`), so two `stat-mismatch`es were false alarms, and the caster
+        level is now a compared row. That level also pins, for the first time, that a third-caster's levels
+        round *down* (rounding up reads 6). **The oracle stopped pinning the folder:** it pinned totals over
+        "the nine files" and asserted there were nine, so adding this save failed it; each save now has its
+        own pin keyed by a fingerprint of its bytes, and a new one is checked and reported without failing.
 - [x] **Remove the CLI (`tools/incudo`, `npm run incudo`).**
       ([ADR 0039](./docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md), written
       before the code.) The app is the product, and a command line over the same engine was a
@@ -689,8 +703,8 @@ before any code, both touching a public API:
 above is checked, the last of them removing the CLI (the multiclass screen, the campaign options
 ADR 0032 describes, the menus and shortcuts, and the explicit export are all done). The phase
 stays 🟡 because its exit criterion — one exact character, built end to end in the running app and
-compared with Aurora's output — is half met: built and checked against the book, **not yet compared with
-an Aurora save of the same choices**. Nothing in the rules engine is outstanding, though the
+compared with Aurora's output — is met on everything but one clause: built, checked against the book, and
+compared with an Aurora save of the same choices. **The clause it does not meet is "prepared spells"**. Nothing in the rules engine is outstanding, though the
 first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
 and not by any test, which is worth keeping in mind before believing that sentence.
 
@@ -766,14 +780,15 @@ multiclass skill, the Wizard's cantrips and spellbook, Arcane Tradition and hit 
 level's own die. Feats were the last item and are reachable now: the campaign options of ADR 0032
 (`multiple: true`) switch them on, and a level 4 Fighter takes one — so the Rogue/Wizard-with-feats
 sentence above is met on the engine side. That exact character has since been built end to end in the
-running app (see the entry above), which found and fixed a real multiclass defect. The builder path is
-refereed by Aurora for every save the maintainer has, single-class and multiclass (see the entry
-above). **What no Aurora save can referee is the combination this criterion is really about**: a
-multiclass character with a chosen subclass whose gates fall between its class level and its total —
-the case ADR 0040 is about. That is checked against the Player's Handbook, by hand, which is the
-standard `hp` and `ac` are held to. A save of a Rogue/Wizard made in Aurora would close it, and only
-Aurora can write one; whether the criterion should be read as met without it is the maintainer's
-call, not something this file decides.
+running app (see the entry above), which found and fixed a real multiclass defect. Every part of it that Aurora
+records has been compared with Aurora: the builder path on every sample save, and the Rogue/Wizard on a save
+of the same description (see the entry above). **What remains is "prepared spells", and it is a gap and not a
+formality**: nothing in the builder or the engine models preparation (a wizard's prepared list is Intelligence
+modifier plus level, chosen from the spellbook), and the comparison does not read the `prepared` flags Aurora
+records. A build can hold a spellbook and cannot say which spells are prepared. Modelling it is a decision about
+the system format (a step, a count, a sheet section), so it wants an ADR before code. `hp` stays unverifiable,
+as it always was: the save's rolls differ from the description's averages, and Aurora records rolls and never a
+total.
 
 ---
 

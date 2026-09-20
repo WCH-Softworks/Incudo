@@ -33,8 +33,8 @@ exists on this machine and works **entirely offline**, so with nothing configure
 
 ```bash
 node --test --experimental-strip-types tools/verify/src/corpus.test.ts         # ~1.5s
-# 740 files, 14,316 elements (+229 generated), 0 errors, 1 unresolved, 23 unmeetable, 57 warnings
-node --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts  # ~2s, the nine saves
+# 740 files, 14,320 elements on this machine's install (see below), 0 errors, 1 unresolved, 23 unmeetable, 57 warnings
+node --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts  # ~2s, every save
 ```
 
 Both print their numbers as `ℹ` lines. Where the corpus is comes from `INCUDO_*` environment
@@ -56,9 +56,19 @@ variables, listed in `tools/verify/README.md`; CI sets them in `ci.yml`.
   green, so once `INCUDO_AURORA_INDEX` or `INCUDO_AURORA_SAVES` is set, a missing path fails. A
   checkout that did not happen loads nothing, and nothing has no unresolved references.
 
-Nine real Aurora saves sit beside it as `*.dnd5e`. They stay **local and out of the repo**:
-read them for verification, never commit them or their contents. `aurora-oracle.test.ts` names them
-by position and asserts on counts and kinds; keep it that way. `INCUDO_ORACLE_DETAIL=1` adds every
+Real Aurora saves sit beside it as `*.dnd5e` (ten, at the time of writing). They stay **local and out of
+the repo**: read them for verification, never commit them or their contents. `aurora-oracle.test.ts`
+labels each by a fingerprint of its bytes, and the other real-save tests by position; assert on counts
+and kinds and keep it that way.
+
+**A test never asserts how many saves there are, or where one sorts.** It said `saves: 9` and totals
+over the folder, so adding a character failed it and said nothing about the character. The oracle now
+pins **each save's own table, keyed by its fingerprint**, so a rename, a reorder or a new neighbour
+changes nothing; a save with no pin is held to the invariants (imports, 0 `stat-mismatch`, 0
+`spell-missing`), reported as NOT PINNED, and pinned when its differences are understood. A pinned
+save that has gone fails and names the pin. The other tests check *relations* (one entry per save, one
+copy per entry) and "at least one save", never a size. `builder-rebuild.test.ts` and
+`rogue-wizard-aurora.test.ts` find a save by what it is, a class split, not by name. `INCUDO_ORACLE_DETAIL=1` adds every
 difference message to its report, and those name content (elements, spells, stats), never a
 character.
 
@@ -173,7 +183,12 @@ is not redundant — a corpus that failed to check out loads nothing, and nothin
 references.
 
 A second test in the same file pins the **exact** figures in the bullets above against this
-machine's frozen install, and does not run in CI, whose corpus is upstream's `HEAD` and moves. It
+machine's install, and does not run in CI, whose corpus is upstream's `HEAD` and moves. **The install is
+not frozen: Aurora's own updater rewrites it while the app is open.** Seven content files changed on
+2026-09-20 and the element total went from 14,316 to 14,320 with the same 740 files and every other
+figure identical (`ci.yml`'s budget still says 14,316, which judges upstream and not this machine). A
+failure on `elements` and `size` alone is that; check the modification times under
+`custom/AuroraLegacy` before suspecting Incudo. It
 exists because a budget only catches "worse": renaming the ids `parseRules` mints for inline lists
 leaves every budget green and takes that test from 2,258 to 0. Its unresolved list names the
 `VULNERAILITY` id, so the day upstream fixes the spelling it fails, and the edit that follows is
@@ -208,9 +223,22 @@ a rule for it would be the guess ADR 0005 rules out.
 
 `compareWithAurora` in `packages/aurora-import` classifies all of them (frozen, ADR 0008; it was
 never in the CLI); see docs/AURORA-SAVE-FORMAT.md. `aurora-oracle.test.ts` pins the whole table
-above, plus 1 problem in one derivation and 8 spellcasting blocks.
+above, plus 1 problem in one derivation and 8 spellcasting blocks, **per save** and not in total; those
+figures are what the nine original saves sum to.
 
-**It also pins how many rows were compared: 8 slot rows, 8 save DC rows, 8 attack rows.**
+**A tenth save, the Wizard 4 / Rogue 4 of ROADMAP Phase 2, is pinned on its own:** 1 element-missing
+(`ID_INTERNAL_MULTICLASS_LEVEL_5`, the same Aurora marker as the Paladin/Warlock's `_3`, named for the
+character level the second class began at), 2 element-extra (the Thieves' Tools expertise pair, which
+Aurora never derived here or in the Rogue 8; Aurora's updater rewrote `class-rogue.xml` a quarter of an
+hour before the save, so it may have run on the older copy in memory — **unconfirmed**), 1
+not-modelled, **0 stat-mismatch, 0 spell-missing**, two blocks and every row compared. It is the only
+save with two ordinary casting blocks, and it is what showed that Aurora records each block's *own*
+slot table and the shared pool only as a caster level ([ADR 0041](docs/adr/0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md)):
+the comparison used to expect the pool in every block and reported two false `stat-mismatch`es.
+
+**It also pins how many rows were compared: 8 slot rows, 8 save DC rows, 8 attack rows** across the
+nine, and since ADR 0041 a fourth family, the shared caster level (1 in the Paladin/Warlock, 1 in the
+Wizard/Rogue).
 `AuroraComparison` cannot report that — a row that agrees leaves no trace, and neither does one
 that was skipped — so the test measures it: every published stat of one family is shifted by one
 and the comparison re-run, and the extra `stat-mismatch` differences are the rows that were
@@ -317,11 +345,15 @@ computes nothing. Things to know before touching it:
   and `tools/verify/src/rogue-wizard.test.ts`, a Wizard 4 / Rogue 4 built through the builder and
   worked by hand against the Player's Handbook. Found by building it in the running app, not by any
   test — the ninth save had no oath and a patron whose gates all sit below its class level.
-- **The Rogue/Wizard has no Aurora referee, but each half does.** `builder-rebuild.test.ts` rebuilds the
-  eight single-class saves through the builder (a Rogue 8, a Wizard 8, an Eldritch Knight among them)
-  and each matches its import and Aurora (0 stat-mismatch, 0 spell-missing), as `multiclass.test.ts`
-  does for the Paladin/Warlock. What no save covers is a multiclass character with a chosen subclass
-  whose gates sit between class level and total: that is checked against the book, by hand.
+- **The Rogue/Wizard now has an Aurora referee.** The maintainer built the description in
+  `rogue-wizard-build.ts` in Aurora, and `rogue-wizard-aurora.test.ts` builds it through the builder and
+  compares it with that save: 0 stat-mismatch, 0 spell-missing, both slot rows, both DCs, both attack
+  bonuses and the caster level compared and agreeing. What it cannot referee is `hp` (Aurora records
+  rolls and never a total; the save's rolls differ from the description's averages), and **prepared
+  spells**: nothing in the builder or the engine models preparation, and the comparison does not read
+  the `prepared` flags the save records, so that clause of Phase 2's exit criterion is unmet.
+  `builder-rebuild.test.ts` rebuilds *every* save through the builder, single-class and multiclass, from
+  its own picks, and each matches its import and Aurora.
 
 **A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
 `packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool
@@ -641,7 +673,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036 and 0040 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040 and 0041 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
