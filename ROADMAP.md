@@ -40,6 +40,8 @@ discontinued. Incudo aims to be:
 
 *Goal: a monorepo that builds, and a data model that can express D&D 5e without mentioning it.*
 
+*The `incudo` CLI several items below name was removed in Phase 2 ([ADR 0039](./docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)); each thing it measured is a test in `tools/verify`.*
+
 - [x] Monorepo scaffolding, workspaces, TypeScript project references
 - [x] `ROADMAP.md`, `docs/ARCHITECTURE.md`, ADR process
 - [x] `@incudo/core`: element/rule/stat model, requirements parser, stat resolver
@@ -87,7 +89,7 @@ this is it.
       to be generated too, not the upstream typos this file used to call them — they are in
       all 8 saves' `<sum>`. Reading `<equipment>` later found a third family of 3, the
       inventory proxies — and finding them needed a *bag*, not a reading of the format.
-- [x] **Differential verification**: `incudo aurora verify` re-derives each imported character
+- [x] **Differential verification**: `incudo aurora verify` (now `tools/verify/src/aurora-oracle.test.ts`) re-derives each imported character
       and diffs against the `<sum>` / `<magic>` Aurora itself wrote.
 - [x] Mark `packages/aurora-import` 🔒 **DONE** — bugfix-only from here
 
@@ -609,43 +611,53 @@ before any code, both touching a public API:
       importer: an imported save records Race, Class and Background under Aurora's keys, so it
       opened with all three listed as unanswered. A top-level pick is now answered by any recorded
       choice holding an element of its step's types (`packages/ui/src/top-level-pick.ts`).
-- [ ] **Remove the CLI (`tools/incudo`, `npm run incudo`).** The app is the product, and a command
-      line over the same engine is a second surface to keep in step with it for people the
-      project does not have — a player builds a character in the app, not in a terminal. It was
-      the engine's first consumer, before any UI existed (Phase 0), and that job is done. **It is
-      not a folder to delete**, because three different things live in it and only one of them
-      goes:
-      - **Goes:** `cli.ts`, `aurora-commands.ts`, the command half of `character-commands.ts`
-        (`validate | types | inspect | system | content | character | aurora`), the `incudo`
-        script and the `bin` entry, and every place that tells a reader or an agent to type one
-        of them — README, CONTRIBUTING, AGENTS, `systems/README.md`, and the Commands section of
-        CLAUDE.md. `renderSheetSection` is shared with `SheetPane` and stays where it is.
-      - **Stays, and has to move first:** the regression suite. CLAUDE.md's baselines — 740
-        files, 14,316 elements, 1 unresolved, 57 warnings, and all nine saves through
-        `aurora verify` with 0 stat-mismatch — are *measured by* CLI commands today, and CI's
-        `aurora-corpus` job runs `incudo validate` with budgets. Deleting the command deletes the
-        measurement. Both become a test or a script that is not a command line, with the same
-        budgets in the same `ci.yml`, **and the numbers reproduce exactly before a line is
-        removed** — that is the exit test for this item, not "it compiles".
-      - **Stays, and is not a CLI:** the 11 `tools/incudo/src/*.test.ts` files (self-containment
-        against the real corpus, the multiclass and armour-class oracles, the library over the
-        nine saves, schemas), and the Node adapters they stand on — `NodeFetcher`,
-        `LocalMirrorFetcher`, `node-zip`, `NodeStorage`, the `node:fs` `CharacterStore`,
-        `rebuild-fixtures.ts`. They need a home that says what they are; `tools/incudo` and
-        `@incudo/cli` stop being the name once there is no CLI.
-      Phase 7's `incudo system validate` and `incudo system new` go with it: validation is
-      already in the app (`UserSystemStore`, through the same `validateGameSystem`), and
-      scaffolding a system belongs in the app's system flow, not a terminal. Wants an ADR before
-      the code — it changes what CI runs and what CLAUDE.md tells the next agent to type — and it
-      is deliberately sequenced *after* the other Phase 2 items, which are all done now, because
-      those are what a player was waiting for.
+- [x] **Remove the CLI (`tools/incudo`, `npm run incudo`).**
+      ([ADR 0039](./docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md), written
+      before the code.) The app is the product, and a command line over the same engine was a
+      second surface to keep in step with it for people the project does not have. It was not a
+      folder to delete, because three different things lived in it, and they went in this order:
+      - **Moved first: the regression suite.** `corpus.test.ts` is `incudo validate` with its
+        budgets, configured by `INCUDO_*` environment and with the same four numbers in the same
+        `ci.yml`; `aurora-oracle.test.ts` is `incudo aurora verify` over the nine saves, pinned as
+        a table. **Both were run against the CLI's own output before a line was removed, and the
+        numbers reproduce exactly:** 740 files, 14,316 elements (+229 generated), 0 errors, 1
+        unresolved, 23 unmeetable, 57 warnings, 2,258 from inline text; `validate --json` identical
+        on both layouts; all nine saves' `aurora verify --json` identical, difference for
+        difference. Perturbed on purpose so a green run means something (ten breakages, in the
+        ADR). The classification was never in the CLI — `compareWithAurora` is in the frozen
+        `aurora-import` package — so nothing there moved.
+      - **Went:** `cli.ts`, `aurora-commands.ts`, `character-commands.ts`, the `incudo` script and
+        `bin`, `accountedFor` and its tests (its only caller was `character verify`), and every
+        instruction to type one: README, CONTRIBUTING, AGENTS, `systems/README.md`, CLAUDE.md's
+        Commands section, and the comments that described it. `renderSheetSection` stays in core
+        for `SheetPane`. Phase 7's `incudo system validate` and `system new` went with it.
+      - **Stayed, and renamed:** the tests and the Node adapters became `tools/verify`
+        (`@incudo/verify`), in its own commit, with a README that says what the folder is.
+        `summarize()`, the definition of derived output four test files share, moved to
+        `derived-summary.ts` unchanged.
+
+      **Found doing it:** the CLI never reported how many slot, save DC and attack rows were
+      *compared*, so "8, 8 and 8" was a claim in prose; the oracle now measures it by shifting each
+      family of published stat and counting what notices, and silently disabling the DC comparison
+      leaves `stat-mismatch` at 0 and fails only that measure. A test that skips when its corpus is
+      absent passes on a failed checkout (`node --test` reports a skip as green), so a configured
+      corpus that is missing **fails**. `.gitattributes` and `.gitignore` both named the folder by
+      path — the golden fixture's LF rule among them — and neither shows up in a search of source.
+      **Not verified:** the GitHub Actions run itself (nothing was pushed); the `repository` layout
+      against a real checkout (none is on this machine, so it was exercised on one rebuilt from the
+      install); `npm ci` from a clean tree; macOS and Linux. **Not covered, and was not before:** a
+      reachability bug that leaves every count alone. Tests went 662 → 667: eleven corpus tests and
+      one oracle test in, seven `accountedFor` tests out. **A loss, named:** nobody can now validate
+      a third-party index, look up one element or bundle a corpus from a terminal without writing
+      code; the in-app equivalents are Phases 7 and 8.
 
 ### Where this phase actually stands
 
 **The engine half of Phase 2 is finished, and so is the shell work that was listed.** Every box
-above is checked except removing the CLI, which is deliberate sequencing and not view-layer work
-(the multiclass screen, the campaign options ADR 0032 describes, the menus and shortcuts, and the
-explicit export are all done). Nothing in the rules engine is outstanding, though the
+above is checked, the last of them removing the CLI (the multiclass screen, the campaign options
+ADR 0032 describes, the menus and shortcuts, and the explicit export are all done). The phase
+stays 🟡 because its exit criterion — one exact character, built end to end in the running app and
+compared with Aurora's output — has not been met. Nothing in the rules engine is outstanding, though the
 first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
 and not by any test, which is worth keeping in mind before believing that sentence.
 

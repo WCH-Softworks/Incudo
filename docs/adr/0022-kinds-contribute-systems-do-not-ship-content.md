@@ -34,8 +34,8 @@ Two facts, both checked rather than remembered.
 about it, because without it ADR 0012 quietly breaks. So any element the kind names ends up
 inside `content.json`, frozen at the moment the file was written.
 
-**The system definition is the one thing a save does not embed.** `loadSystemForCharacter` says
-so in as many words. A `.incu` records `systemId` and the installed system supplies the rest.
+**The system definition is the one thing a save does not embed.** `loadShippedSystem` (`tools/verify`, formerly
+`loadSystemForCharacter`) says so in as many words. A `.incu` records `systemId` and the installed system supplies the rest.
 
 Put together, those two give the project a rule it has been following without stating:
 **identity is embedded, mechanics are not.** It is why the overlay's doctrine — markers carry
