@@ -107,14 +107,15 @@ stays frozen (ADR 0008).
 
 Everything in item 3 of the context moves under one name that says what it is: the package that
 checks the engine against the real world (the corpus, the nine saves, files on disk) and holds the
-Node-side adapters that checking stands on. It ships nothing, imports nothing that ships, and is
+Node-side adapters that checking stands on. It ships nothing, nothing imports it, and it is
 `"private": true` like every package. It stays under `tools/` so the workspace glob, the `npm test`
 glob, `tsconfig.base.json`'s relative path and `repoRoot()`'s three-levels-up all stay true; the
 rename is its own commit because it touches workspaces, tsconfig references, imports, CI and the
 lockfile, and a commit that does that and something else is one that cannot be reverted cleanly.
 
-`tools/verify/README.md` states the two rules that make the folder make sense: what is here may read
-a disk and a network, and nothing outside it may import from it.
+`tools/verify/README.md` says what the folder is for, how the corpus tests are pointed at a corpus,
+and the rules that keep it honest: nothing personal is printed, a check that can pass by loading
+nothing must also assert that something loaded, and no command line is added.
 
 ### 4. What goes, and what stands in for each command
 
@@ -202,3 +203,77 @@ corrected, because a comment is read as a description of now.
 - **Make the corpus test unconditional.** It would fail on every machine without the corpus,
   including CI's `build` job. Skip-when-unconfigured, fail-when-configured is the smallest rule that
   does not let a failed checkout go green.
+
+## Evidence
+
+The exit test for the roadmap item was that the numbers reproduce **exactly, before a line of the CLI
+is removed**. Both mechanisms existed side by side at `66d2dcd`, on the maintainer's Aurora install
+(740 files, nine saves), and were compared then. The CLI cannot be re-run from a later commit;
+`e102915^` is the last one that has it.
+
+| | CLI | tests |
+|---|---|---|
+| files | 740 | 740 |
+| elements | 14,316 | 14,316 |
+| generated (83 overlay + 146 improvement options) | 229 | 229 |
+| errors | 0 | 0 |
+| warnings | 57 | 57 |
+| unresolved references | 1 | 1 |
+| requirements that can never be met | 23 | 23 |
+| synthesized from inline text | not printed; counted by a scratch script: 2,258 | 2,258 |
+| library size (`types` TOTAL) | 14,541 | 14,541 |
+| `validate --json`, `aurora-folder` layout | | identical, key for key |
+| `validate --json`, `repository` layout | | identical, key for key |
+| `aurora verify --json`, nine saves | | 9 of 9 identical: every difference, message, expected and actual value, `mismatches` and `agrees` |
+| nine saves, by kind, summed | 1 element-missing, 55 element-extra, 0 spell-missing, 0 stat-mismatch, 13 content-missing, 3 not-modelled | the same |
+| problems in a derivation; spellcasting blocks | 1; 8 | 1; 8 |
+| rows compared: slot / save DC / attack | never printed | 8 / 8 / 8 |
+
+Two things about that table are not what they look like:
+
+- **The `repository` layout was reproduced on a rebuilt checkout, not a real one.** The install is
+  not laid out as a checkout (both mechanisms report the same 498 errors when pointed at it as one),
+  no checkout is on this machine, and fetching one was not part of the task. So a checkout layout was
+  reconstructed from the install: each of 799 files written at the path its index URL maps to. On
+  that, the CLI with CI's exact flags exits 0, the new loader is identical to it, and CI's step
+  (its command and its environment, relative paths included) passes locally. Whether the GitHub
+  Actions job passes has not been seen, because nothing was pushed.
+- **The rows-compared line has no "before".** The CLI never reported it, so 8 / 8 / 8 is a number
+  the tests measured for the first time. It agrees with what CLAUDE.md and ADRs 0018 and 0020 claimed,
+  which is the most that can be said.
+
+### Perturbed, so that a green run means something
+
+Each of these was broken on purpose, the failure read, and the break reverted.
+
+| broken | result |
+|---|---|
+| `INCUDO_MAX_UNRESOLVED` 1 → 0 | fails: "1 unresolved references, budget 0. 1 more than expected." |
+| `INCUDO_MAX_WARNINGS` 57 → 56 | fails: "57 warnings, budget 56." |
+| `INCUDO_EXPECT_FILES` / `_ELEMENTS` one above the truth | fails, naming both |
+| `INCUDO_AURORA_INDEX` pointing at nothing | **fails**, and does not skip |
+| one corpus file removed from the checkout | fails: an error naming the URL refused and the mirror path, and 133 unresolved references |
+| oracle pin for `element-extra` 55 → 54 | fails, listing the kinds by save |
+| the save DC base moved 8 → 9 in `systems/dnd5e/system.json` | 8 `stat-mismatch` lines, one per DC row, before any pin is compared |
+| the DC family's pattern made to match nothing | fails: rows compared, `dc: 0`, expected 8 |
+| **the DC comparison silently disabled in `verify-character.ts`** | `stat-mismatch` stays **0**, the kind table passes, and only rows-compared fails (`dc: 0`) |
+| the ids `parseRules` mints for inline lists renamed | the budget test stays **green**; only the exact-figures test fails |
+
+The last two are the reason those tests exist: a count pinned at zero, or a budget, cannot see a
+comparison that stopped happening or an importer that stopped reading something. The budget checks
+are also kept as unit tests on inputs written in the test, so they run in every CI job and not only
+where a corpus is present.
+
+### What was not verified
+
+- The GitHub Actions run (see above). The YAML was edited and its command run locally; the
+  workflow itself has not executed.
+- `npm ci` from a clean checkout. The lockfile was edited by hand after `npm install` left the old
+  workspace behind as extraneous, and re-checked with `npm install --package-lock-only`, which does
+  not put it back.
+- macOS and Linux, for anything in `tools/verify`.
+- That no other document names a removed command. `grep` for the command forms found the ones
+  rewritten here; dated evidence in ADRs 0019, 0025, 0038 and in `docs/INVENTORY-AND-AC-PLAN.md`
+  still says what was run at the time, on purpose, and the table in decision 4 translates it.
+- A reachability bug that leaves every count alone, such as the cache that dropped `<append>` blocks.
+  Neither the CLI nor these tests would see that one; `compose.test.ts` holds that line.
