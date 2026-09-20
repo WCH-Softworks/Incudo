@@ -37,13 +37,15 @@ jobs:
           repository: AuroraLegacy/elements
           path: .corpus
       # The numbers are the baseline in CLAUDE.md, spelled out so a change to any of them is a
-      # deliberate edit to this file rather than a silent drift.
+      # deliberate edit to this file rather than a silent drift. `corpus.test.ts` reads them from
+      # the environment, falls back to the same four when a variable is absent, and fails if this
+      # file and its fallbacks ever disagree (ADR 0039).
       #
       #   1 unresolved reference — one upstream typo, "VULNERAILITY". A *grant* to an id
       #     nothing declares, which means a character silently loses something. It used to be
       #     57; the Aurora overlay in @incudo/aurora-import supplies the 83 elements Aurora's
-      #     app materializes, and separating requirement targets out (below) accounts for the
-      #     rest. This number should be 0 the day AuroraLegacy fixes the spelling.
+      #     app materializes, and separating requirement targets out accounts for the rest. This
+      #     number should be 0 the day AuroraLegacy fixes the spelling.
       #
       #   57 warnings — 56 <grant> elements with no id, and 1 id defined in two files.
       #
@@ -51,18 +53,23 @@ jobs:
       # requirement naming an id nothing declares is a test that reads false, and `!ID_X`
       # against an id that will never exist is ordinary content. There are 23.
       #
-      # --expect-* is not redundant with the budgets above it: a corpus that failed to check
-      # out loads nothing, and nothing has no unresolved references.
+      # The EXPECT pair is not redundant with the budgets above it: a corpus that failed to
+      # check out loads nothing, and nothing has no unresolved references. For the same reason
+      # INCUDO_AURORA_INDEX being set makes a missing index a failure and not a skip — `node
+      # --test` reports a skip as green.
       #
-      # --offline makes "no network" enforced rather than assumed. Without it a file missing
-      # from the mirror is silently fetched from GitHub, so the job could pass by accident and
-      # this whole step would depend on raw.githubusercontent.com being up.
-      #
-      # If this fails with "refused to fetch … and the mirror has no …", the mapping from the
-      # index's hard-coded URLs to .corpus paths is wrong for that file — the message names it.
-      # That is worth fixing, not worth papering over by dropping the flag.
+      # The check is always offline. A file missing from the mirror is a named error giving both
+      # the URL refused and the path checked, never a fetch, so this step cannot pass by accident
+      # or depend on raw.githubusercontent.com being up. If it fails with "refused to fetch … and
+      # the mirror has no …", the mapping from the index's hard-coded URLs to .corpus paths is
+      # wrong for that file, and that is worth fixing rather than papering over.
       - name: Import and validate
-        run: |
-          npm run incudo -- validate .corpus/AuroraLegacy.index --local --root .corpus --offline \
-            --expect-files 740 --expect-elements 14316 \
-            --max-unresolved 1 --max-warnings 57
+        env:
+          INCUDO_AURORA_INDEX: .corpus/AuroraLegacy.index
+          INCUDO_CORPUS_LAYOUT: repository
+          INCUDO_CORPUS_ROOT: .corpus
+          INCUDO_MAX_UNRESOLVED: 1
+          INCUDO_MAX_WARNINGS: 57
+          INCUDO_EXPECT_FILES: 740
+          INCUDO_EXPECT_ELEMENTS: 14316
+        run: node --test --experimental-strip-types tools/incudo/src/corpus.test.ts
