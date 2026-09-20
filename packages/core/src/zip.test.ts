@@ -10,7 +10,7 @@ import { crc32, createZipCodec, readZip, writeZip, type ZipCompressor } from './
  * everything in zip.ts except the two calls out to this interface is framing. An
  * implementation that returns its input unchanged is never smaller, so every entry is stored,
  * which exercises the store path end to end. The deflate path is covered where a real
- * compressor lives, in `tools/incudo/src/node-zip.test.ts`.
+ * compressor lives, in `tools/verify/src/node-zip.test.ts`.
  */
 const identity: ZipCompressor = {
   deflateRaw: (data) => data,

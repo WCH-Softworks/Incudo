@@ -1,9 +1,9 @@
 # The golden container fixtures are compared byte-for-byte against what the container
-# writer emits (tools/incudo/src/self-contained.test.ts — "the committed golden container
+# writer emits (tools/verify/src/self-contained.test.ts — "the committed golden container
 # still matches what the code writes"). The writer emits LF, so git must not translate
 # these on checkout: with core.autocrlf=true, the default on Windows, they arrive as CRLF
 # and that comparison fails on every fresh clone. CI runs on Linux and never saw it.
-tools/incudo/fixtures/** text eol=lf
+tools/verify/fixtures/** text eol=lf
 
 # Same reasoning, ahead of the need: the schemas and system definitions are compared and
 # hashed rather than only read, and there is no version of this project where a CRLF copy

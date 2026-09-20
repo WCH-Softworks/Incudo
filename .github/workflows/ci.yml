@@ -72,4 +72,4 @@ jobs:
           INCUDO_MAX_WARNINGS: 57
           INCUDO_EXPECT_FILES: 740
           INCUDO_EXPECT_ELEMENTS: 14316
-        run: node --test --experimental-strip-types tools/incudo/src/corpus.test.ts
+        run: node --test --experimental-strip-types tools/verify/src/corpus.test.ts

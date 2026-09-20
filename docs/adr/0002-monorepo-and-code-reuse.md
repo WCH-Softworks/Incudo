@@ -25,6 +25,9 @@ systems/<id>             game system definitions (data)
 tools/incudo                 CLI — validates the engine with no UI
 ```
 
+> **Note (ADR 0039):** `tools/incudo` was a CLI and is now `tools/verify`, which holds the tests that
+> check the engine against the real corpus and saves. There is no CLI; the layers above are unchanged.
+
 Import rules are in `docs/CODE-REUSE-POLICY.md` and enforced by TypeScript project references
 plus ESLint `no-restricted-imports`.
 

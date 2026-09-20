@@ -23,7 +23,7 @@ npm run incudo -- character show <file.incu>   # derives from the save alone —
 npm run incudo -- aurora inspect <file.dnd5e>  # what a save contains, without importing
 npm run incudo -- aurora import <file.dnd5e> <out.incu> --index <index>
 npm run incudo -- aurora verify <file.dnd5e> --index <index>   # diff against Aurora's own maths
-npm run fixtures:rebuild   # regenerate tools/incudo/fixtures/aelin/ after a format change
+npm run fixtures:rebuild   # regenerate tools/verify/fixtures/aelin/ after a format change
 ```
 
 The real regression suite is the CLI against the full Aurora corpus. A complete Aurora install
@@ -552,7 +552,7 @@ built ADR 0022's `contributions` and spent it on `ac` and on ADR 0023's attuneme
   records an armour class, so `aurora verify` gains no comparison and never will — a green run
   after changing the formula means nothing about the formula. Never describe `ac` as verified.
   The nine sample saves read 18, 18, 17, 18, 18, 13, 16, 20, 16; the evidence for those is the
-  Player's Handbook worked by hand plus perturbation in `tools/incudo/src/armour-class.test.ts`.
+  Player's Handbook worked by hand plus perturbation in `tools/verify/src/armour-class.test.ts`.
 - **It is six conditional rows, not the four the plan predicted.** A cap cannot express the
   Player's Handbook sentence that heavy armour *also does not penalise* a negative Dexterity
   modifier, so the term has a floor too. Both plate wearers in the nine have a Dexterity modifier

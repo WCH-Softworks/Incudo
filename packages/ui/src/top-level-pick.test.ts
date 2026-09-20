@@ -6,7 +6,7 @@
  * frozen, so a builder that only looked under `build/<stepId>` reported all three picks open and
  * blocking on a character that had them, and choosing a race added a second Race beside the
  * imported one. Measured on the level 20 Paladin 2 / Warlock 18 oracle; the real save is checked
- * in `tools/incudo/src/multiclass.test.ts`, and this file holds the shape with no game in it.
+ * in `tools/verify/src/multiclass.test.ts`, and this file holds the shape with no game in it.
  *
  * Each test was written to fail if the behaviour it names is removed, and was checked by removing
  * it — the perturbation is named beside the assertion that catches it.

@@ -103,7 +103,7 @@ export interface OpenDecision {
    * Without `pick` a required build step reported itself `complete` from the first render with
    * nothing chosen, and there was no way to choose a class at all — found by running the desktop
    * shell against the real corpus. The recording convention is not new: a top-level pick has
-   * always been keyed `build/<stepId>` (`tools/incudo/fixtures/aelin` records `"build/kin"`, and
+   * always been keyed `build/<stepId>` (`tools/verify/fixtures/aelin` records `"build/kin"`, and
    * `aurora-import` says so above `OPTIONS_RULE_KEY`). This publishes what the rest of the
    * project was already writing by hand.
    */

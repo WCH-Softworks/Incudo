@@ -18,7 +18,7 @@
     "typecheck": "tsc --build --force",
     "clean": "tsc --build --clean",
     "test": "node --test --experimental-strip-types packages/*/src/**/*.test.ts tools/*/src/**/*.test.ts",
-    "fixtures:rebuild": "node --experimental-strip-types tools/incudo/src/rebuild-fixtures.ts",
+    "fixtures:rebuild": "node --experimental-strip-types tools/verify/src/rebuild-fixtures.ts",
     "lint": "eslint .",
     "desktop": "npm run dev -w @incudo/desktop",
     "desktop:app": "npm run tauri:dev -w @incudo/desktop",

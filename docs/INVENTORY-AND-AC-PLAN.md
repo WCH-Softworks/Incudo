@@ -404,13 +404,13 @@ and `over-attuned` reported at error level. None of the nine sample saves is ove
 corpus baseline is untouched (nothing here is content-side), `aurora verify` is byte-identical
 across all nine saves, and all nine still open with zero sources — and a byte-identical verify
 run would have been byte-identical if every one of those nine numbers were wrong. The evidence
-is perturbation, in `tools/incudo/src/armour-class.test.ts`; see ADR 0026 for which branches the
+is perturbation, in `tools/verify/src/armour-class.test.ts`; see ADR 0026 for which branches the
 nine saves cannot reach and why.
 
 Two things predicted here that did not happen, worth recording:
 
 - **`npm run fixtures:rebuild` produced no diff.** `ac` is in `summarize()`, but the golden save
-  is built in `tools/incudo/fixtures/system.json`, which declares no `ac` and no
+  is built in `tools/verify/fixtures/system.json`, which declares no `ac` and no
   `contributions`, so there was nothing new for it to print.
 - **`collectCharacterContent` needed no change.** The worry was that a contribution's
   `requirements` naming an element id would break ADR 0012, since `system.json` is not embedded.

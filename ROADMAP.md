@@ -250,7 +250,7 @@ before any code, both touching a public API:
       System Access API, and `node:fs` in a test).
       **Listing and opening need zero sources**, which is asserted twice: against a fake store
       in `packages/ui`, and against the nine real `.dnd5e` saves in
-      `tools/incudo/src/library.test.ts`. The `.dnd5e` **import** landed with the line below,
+      `tools/verify/src/library.test.ts`. The `.dnd5e` **import** landed with the line below,
       and that same test now drives it. Still to do: renaming a file, and
       the refresh that would move a recorded source version. (The explicit export landed later.)
 - [x] **Content manager: add an index by URL, enable/disable sources, stream or download**
@@ -353,7 +353,7 @@ before any code, both touching a public API:
         `ID_INTERNAL_OPTION_ALLOW_FEATS`, and switching that on is the campaign options step
         below. **Eight of the nine sample characters took a feat at level 4.** With feats on, a
         level 4 Fighter's improvement offers 2 options where it offered 1, and taking the feat
-        opens a real feat choice (`tools/incudo/src/campaign-options.test.ts`). Not measured
+        opens a real feat choice (`tools/verify/src/campaign-options.test.ts`). Not measured
         here: every feat's own prerequisites and what each grants — that is content's, read by
         the engine as it reads everything else, and nothing in this change touches it.
 - [x] **Character sheet.** `SheetPane` renders whatever the kind's own `sheet` declares: stats,
@@ -444,7 +444,7 @@ before any code, both touching a public API:
       and Node's `zlib` share one implementation. **Import from Aurora…** picks one or more
       `.dnd5e` files and writes each into the library; the sequence between the picker and the
       folder is `importAuroraSaveIntoLibrary` in `packages/ui`, so the mobile shell inherits it
-      and `tools/incudo/src/library.test.ts` drives the identical function over the nine real
+      and `tools/verify/src/library.test.ts` drives the identical function over the nine real
       saves. Reading a file from outside the library is a fifth port, `FilePicker` — deliberately
       not a method on `CharacterStore`, whose every method means "inside the folder the user
       chose". Importing is the one library operation that needs a content source, because a
@@ -520,7 +520,7 @@ before any code, both touching a public API:
         save records an armour class, `aurora verify` is byte-identical on all nine, and it would
         be byte-identical if every number were wrong. `ac` is `hp`'s position (ADR 0019) and must
         never be called verified. The evidence is perturbation, in
-        `tools/incudo/src/armour-class.test.ts`. `attunement:max` reads 3; none of the nine is
+        `tools/verify/src/armour-class.test.ts`. `attunement:max` reads 3; none of the nine is
         over it.
 - [x] **Fill in the 5e system definition's remaining numbers.** Said here to be three things
       the differential verification could check the moment they existed. Reading the engine
@@ -583,7 +583,7 @@ before any code, both touching a public API:
         and by perturbing slots in a test. Do not let its position in this list imply otherwise.
 - [x] **Verify self-containment:** a save built with the full corpus loaded opens correctly in a
       profile with zero sources configured. This is a test, not a hope. Ticked late — it was
-      already met in Phase 0 and duplicated here, and `tools/incudo/src/self-contained.test.ts`
+      already met in Phase 0 and duplicated here, and `tools/verify/src/self-contained.test.ts`
       has been proving it against the real 12,058-element corpus since. A bag does not weaken
       it: all nine imported saves still re-derive identically with no sources configured.
 - [x] **Multiclassing** — the model half was [ADR 0015](./docs/adr/0015-class-levels.md) and the

@@ -308,7 +308,7 @@ function toChoices(
  * Not an `<element>/select:<name>` key, because no element declares a select for these —
  * they are the settings a table agreed on: feats, multiclassing, Tasha's customized ability
  * scores. Keying a choice by a build step rather than by a rule is already how a top-level
- * pick is recorded (see `tools/incudo/fixtures/aelin`, `"ruleKey": "build/kin"`).
+ * pick is recorded (see `tools/verify/fixtures/aelin`, `"ruleKey": "build/kin"`).
  *
  * A campaign setting is arguably not the character's to hold at all — Aurora stores it per
  * character because Aurora has no concept of a campaign, and neither does Incudo yet. When

@@ -7,7 +7,7 @@
  *
  * Each test was written to fail if the behaviour it names is removed, and the perturbation that
  * catches it is named beside the assertion. The real corpus is measured in
- * `tools/incudo/src/campaign-options.test.ts`.
+ * `tools/verify/src/campaign-options.test.ts`.
  */
 
 import { test } from 'node:test';

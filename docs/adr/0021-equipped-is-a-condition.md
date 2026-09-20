@@ -83,7 +83,7 @@ question about.
 `Rule.equipped` is a `packages/core` model change, not a save-format change. `schemas/` does
 not mention `equipped` at all — the three schema documents cover `system.json`,
 `character.json` and `manifest.json`, and an `Element` inside `content.json` is not schema'd.
-Regenerating `tools/incudo/fixtures/aelin` with `npm run fixtures:rebuild` is the whole of the
+Regenerating `tools/verify/fixtures/aelin` with `npm run fixtures:rebuild` is the whole of the
 migration, and it only *removes* keys.
 
 ## Why this is a bugfix, under the freeze

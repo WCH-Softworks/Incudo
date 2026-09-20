@@ -1,8 +1,8 @@
 {
-  "name": "@incudo/cli",
+  "name": "@incudo/verify",
   "version": "0.0.1",
   "private": true,
-  "description": "incudo — import, validate and inspect content without a UI. The engine's first consumer.",
+  "description": "Checks the engine against the real world — the Aurora corpus, real saves, files on disk — and holds the Node adapters that checking stands on. Ships nothing.",
   "license": "MIT",
   "type": "module",
   "scripts": { "build": "tsc --build" },

@@ -149,7 +149,7 @@ tooltip, and the command is off: the same posture as the other ports.
 
 ## Evidence
 
-`character-copy.test.ts` (15 tests), `commands.test.ts` (6 new), and `tools/incudo/src/save-copy.test.ts`
+`character-copy.test.ts` (15 tests), `commands.test.ts` (6 new), and `tools/verify/src/save-copy.test.ts`
 over the nine real saves, skipped where they are not installed and never committed. Each behaviour
 was checked by breaking it (25 perturbations; one survived at first, in `packages/ui`, and is what
 the portrait fix and its tests then closed):

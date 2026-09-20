@@ -2,7 +2,7 @@
  * The ADR 0027 tests, and one of them is the ADR 0012 test wearing a library's clothes.
  *
  * ADR 0012's property — *a save opens with zero content sources* — has been tested since
- * Phase 0 against the real corpus (`tools/incudo/src/self-contained.test.ts`). What has never
+ * Phase 0 against the real corpus (`tools/verify/src/self-contained.test.ts`). What has never
  * been tested is the thing the library screen makes load-bearing: that **listing and opening
  * a character needs no source, no index, no network and no content load at all**. Nothing in
  * this file constructs a `ContentLibrary`, a `ContentSource` or a `Fetcher`, and nothing may

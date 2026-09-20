@@ -22,11 +22,11 @@ apps/mobile/ios/
 *.incu
 fixtures/local/
 
-# The one exception: tools/incudo/fixtures/ holds a save the tests generate, not a real
+# The one exception: tools/verify/fixtures/ holds a save the tests generate, not a real
 # one. Today it is committed in the unpacked folder form (plain .json, reviewable in a
 # diff — the reason ADR 0012 keeps that form at all), so nothing here is ignored anyway.
 # The rule exists so adding a packed golden .incu later does not need this argued again.
-!tools/incudo/fixtures/**/*.incu
+!tools/verify/fixtures/**/*.incu
 
 # Local content cache / scratch
 .incudo-cache/

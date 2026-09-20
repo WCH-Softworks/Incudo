@@ -7,7 +7,7 @@
  * and came back byte-identical on all nine saves before and after the fix. The evidence is
  * perturbation, here: delete the six stats from `systems/dnd5e/system.json` and this fails.
  *
- * Lives in `tools/incudo` because every noun in it is 5e's.
+ * Lives in `tools/verify` because every noun in it is 5e's.
  */
 
 import { test } from 'node:test';

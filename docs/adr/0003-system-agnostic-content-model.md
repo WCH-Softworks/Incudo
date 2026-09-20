@@ -58,6 +58,7 @@ not ship JavaScript.
 ## How this gets kept honest
 
 1. `tools/incudo` exercises the engine with no UI, so no UI assumption can hide in it.
+   *(Note, ADR 0039: that job now belongs to the tests in `tools/verify`; the CLI is gone.)*
 2. `systems/cairn` — a deliberately tiny, classless, non-D&D system — is added early. Small
    enough to maintain as a side-effect, different enough that 5e-shaped assumptions break it.
 3. Roadmap Phase 5 is a real second system, and it is explicitly flagged as the phase that must

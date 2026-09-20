@@ -6,7 +6,7 @@
  * corpus has, measured on the real files: a class element with a `multiclass` block whose id is
  * an element of its own, a full proficiency set gated on `!<that id>`, and a marker the
  * multiclass element grants. The real corpus is exercised against the real oracle in
- * `tools/incudo/src/multiclass.test.ts`.
+ * `tools/verify/src/multiclass.test.ts`.
  *
  * Every test here was written to fail if the behaviour it names is removed, and the ones that
  * matter were checked by removing it — a green run on a change whose tests could not have failed

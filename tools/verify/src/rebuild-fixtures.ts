@@ -1,5 +1,5 @@
 /**
- * Regenerate the committed golden container under `tools/incudo/fixtures/aelin/`.
+ * Regenerate the committed golden container under `tools/verify/fixtures/aelin/`.
  *
  *   npm run fixtures:rebuild
  *

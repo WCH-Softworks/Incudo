@@ -2,7 +2,7 @@
  * An Aurora `.dnd5e` save, into the character library — ADR 0008's importer meeting ADR
  * 0027's folder.
  *
- * The sequence here is not new: `tools/incudo/src/library.test.ts` has been doing it
+ * The sequence here is not new: `tools/verify/src/library.test.ts` has been doing it
  * headlessly since the library landed, and `incudo aurora import` since Phase 1. What is new
  * is that it is written down **once**, in the layer both shells read, rather than a third
  * time inside a button handler (CODE-REUSE-POLICY rule 2). Nothing below knows what a screen
