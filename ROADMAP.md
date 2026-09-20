@@ -630,8 +630,19 @@ before any code, both touching a public API:
       Trickster's any-school spell has to be taken *before* the enchantment/illusion ones or that
       slot is gone — documented behaviour, easy to trip over. **Not verified:** a save of this
       character written and reopened through the real dialogs (the port and the round trip are
-      tested; the native dialog cannot be driven); and, decisively, **an Aurora save of the same
-      choices**, which needs Aurora and so the maintainer — see the exit criteria below.
+      tested; the native dialog cannot be driven); and an Aurora save of exactly these choices —
+      but see the next entry, which referees each half of it separately.
+  - [x] **Each half of it against Aurora, through the builder.** No save of a Rogue/Wizard exists, but
+        the nine samples include a Rogue 8 with a subclass, a Wizard 8 (Evocation), an Eldritch Knight
+        and the Paladin 2 / Warlock 18. `tools/verify/src/builder-rebuild.test.ts` rebuilds all eight
+        single-class saves through `CharacterBuilder` (class chosen, `setProgress`, every pick replayed
+        through `choose`) and each is the character its import is, with the differences against Aurora
+        it always had and **0 `stat-mismatch`, 0 `spell-missing`**; `multiclass.test.ts` does the same
+        for the multiclass one. Broken three ways on purpose (level off by one, feat picks dropped,
+        last pick of each dropped) and each fails at the first save. Nothing about the offered
+        choices: it replays picks the save holds. Nothing about ADR 0040 either: a single class has no
+        track, and the multiclass save has no chosen subclass with a gate between its class level and
+        its total.
 - [x] **Remove the CLI (`tools/incudo`, `npm run incudo`).**
       ([ADR 0039](./docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md), written
       before the code.) The app is the product, and a command line over the same engine was a
@@ -755,11 +766,14 @@ multiclass skill, the Wizard's cantrips and spellbook, Arcane Tradition and hit 
 level's own die. Feats were the last item and are reachable now: the campaign options of ADR 0032
 (`multiple: true`) switch them on, and a level 4 Fighter takes one — so the Rogue/Wizard-with-feats
 sentence above is met on the engine side. That exact character has since been built end to end in the
-running app (see the entry above), which found and fixed a real multiclass defect. **What remains is
-the comparison the criterion names: an Aurora save of a Rogue/Wizard made with the same choices, run
-through `compareWithAurora` as `multiclass.test.ts` does for the Paladin/Warlock.** Only Aurora can
-write that save, so it is the maintainer's to make; until then the character is checked against the
-Player's Handbook and nothing else, which is the standard `hp` and `ac` are held to.
+running app (see the entry above), which found and fixed a real multiclass defect. The builder path is
+refereed by Aurora for every save the maintainer has, single-class and multiclass (see the entry
+above). **What no Aurora save can referee is the combination this criterion is really about**: a
+multiclass character with a chosen subclass whose gates fall between its class level and its total —
+the case ADR 0040 is about. That is checked against the Player's Handbook, by hand, which is the
+standard `hp` and `ac` are held to. A save of a Rogue/Wizard made in Aurora would close it, and only
+Aurora can write one; whether the criterion should be read as met without it is the maintainer's
+call, not something this file decides.
 
 ---
 

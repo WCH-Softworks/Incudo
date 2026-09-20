@@ -317,9 +317,11 @@ computes nothing. Things to know before touching it:
   and `tools/verify/src/rogue-wizard.test.ts`, a Wizard 4 / Rogue 4 built through the builder and
   worked by hand against the Player's Handbook. Found by building it in the running app, not by any
   test — the ninth save had no oath and a patron whose gates all sit below its class level.
-- **The Rogue/Wizard has no Aurora referee.** It matches the book, not an Aurora save of the same
-  character, so ROADMAP Phase 2's exit criterion is met on the engine and in the app and still owes
-  that comparison. Making one needs Aurora, which only the maintainer can run.
+- **The Rogue/Wizard has no Aurora referee, but each half does.** `builder-rebuild.test.ts` rebuilds the
+  eight single-class saves through the builder (a Rogue 8, a Wizard 8, an Eldritch Knight among them)
+  and each matches its import and Aurora (0 stat-mismatch, 0 spell-missing), as `multiclass.test.ts`
+  does for the Paladin/Warlock. What no save covers is a multiclass character with a chosen subclass
+  whose gates sit between class level and total: that is checked against the book, by hand.
 
 **A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
 `packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool
