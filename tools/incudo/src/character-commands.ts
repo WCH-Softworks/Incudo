@@ -39,6 +39,7 @@ import {
   type GameSystem,
   type ResolvedCharacterKind,
 } from '@incudo/core';
+import { summarize, type DerivedSummary } from './derived-summary.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { loadSystem, loadSystemForCharacter } from './node-system.ts';
 
@@ -408,49 +409,6 @@ async function writeCharacter(
   const content = collectCharacterContent(character, elements, { kind });
   const files = packCharacterContainer(character, content, { generator: 'incudo-cli' });
   await writeContainer(path, files);
-}
-
-export interface DerivedSummary {
-  character: { id: string; name: string; systemId: string; kind: string; progress: number };
-  elements: string[];
-  stats: Record<string, number | string>;
-  pendingChoices: Array<{ ruleKey: string; label: string; remaining: number }>;
-  problems: Array<{ level: string; code: string; message: string; elementId?: string }>;
-}
-
-/**
- * The comparable projection of a derivation.
- *
- * Sorted and stripped to what a character *is*, so two derivations of the same character can
- * be compared byte for byte. Candidate lists are deliberately excluded: they depend on what
- * content is loaded, which is exactly the thing that differs between the two runs, and
- * embedding every option a character could have taken is explicitly not what a save is for
- * (ADR 0012).
- */
-export function summarize(derived: DerivedCharacter): DerivedSummary {
-  const stats: Record<string, number | string> = {};
-  for (const key of [...derived.stats.keys()].sort()) {
-    const stat = derived.stats.get(key)!;
-    stats[key] = stat.text ?? stat.value;
-  }
-
-  return {
-    character: {
-      id: derived.character.id,
-      name: derived.character.name,
-      systemId: derived.character.systemId,
-      kind: derived.character.kind,
-      progress: derived.character.progress,
-    },
-    elements: derived.elements.map((e) => e.id).sort(),
-    stats,
-    pendingChoices: derived.pendingChoices
-      .map((c) => ({ ruleKey: c.ruleKey, label: c.label, remaining: c.remaining }))
-      .sort((a, b) => (a.ruleKey < b.ruleKey ? -1 : 1)),
-    problems: derived.problems
-      .map((p) => ({ level: p.level, code: p.code, message: p.message, elementId: p.elementId }))
-      .sort((a, b) => (a.message < b.message ? -1 : 1)),
-  };
 }
 
 function printSheet(derived: DerivedCharacter, embedded: number, ctx: CommandContext): void {

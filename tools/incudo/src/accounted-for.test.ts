@@ -14,7 +14,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { accountedFor, type DerivedSummary } from './character-commands.ts';
+import { accountedFor } from './character-commands.ts';
+import type { DerivedSummary } from './derived-summary.ts';
 
 function summary(patch: Partial<DerivedSummary> = {}): DerivedSummary {
   return {

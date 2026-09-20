@@ -32,7 +32,7 @@ import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { compareWithAurora, importAuroraCharacter, parseAuroraSave } from '@incudo/aurora-import';
 import { CharacterBuilder } from '@incudo/ui';
 
-import { summarize } from './character-commands.ts';
+import { summarize } from './derived-summary.ts';
 import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
 

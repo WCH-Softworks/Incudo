@@ -44,7 +44,7 @@ import {
 import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { CharacterLibrary, importAuroraSavesIntoLibrary, saveCopy } from '@incudo/ui';
 
-import { summarize } from './character-commands.ts';
+import { summarize } from './derived-summary.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { nodeZipCodec } from './node-zip.ts';
 import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';

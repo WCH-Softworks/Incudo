@@ -42,7 +42,7 @@ import {
 import { parseAuroraElements } from '@incudo/aurora-import';
 import { ContentLibrary, HttpContentSource } from '@incudo/content';
 
-import { summarize } from './character-commands.ts';
+import { summarize } from './derived-summary.ts';
 import { FIXTURES_DIR, GOLDEN_DIR, fixtureCharacter } from './fixture-character.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
