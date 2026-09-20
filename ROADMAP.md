@@ -611,6 +611,27 @@ before any code, both touching a public API:
       importer: an imported save records Race, Class and Background under Aurora's keys, so it
       opened with all three listed as unanswered. A top-level pick is now answered by any recorded
       choice holding an element of its step's types (`packages/ui/src/top-level-pick.ts`).
+- [x] **The exit criterion's character, built end to end** — a level 8 Wizard 4 / Rogue 4 (variant
+      Human, School of Evocation, Arcane Trickster, Alert and War Caster), built in the running app
+      and again through the builder in `tools/verify/src/rogue-wizard.test.ts`, every figure worked by
+      hand from the Player's Handbook. **It found a real engine bug on the first try**
+      ([ADR 0040](./docs/adr/0040-a-chosen-element-follows-the-track-of-the-element-that-offered-it.md)):
+      a subclass picked through a `select` was in no level track, so its gates read the character's
+      total. At level 8 the engine granted a Wizard 6 feature, gave the Trickster 4 first-level
+      slots for the book's 3, owed it 6 spells for 4, and — because the Trickster's third-caster
+      marker belonged to no track — read a multiclass caster level of 4 (slots 4/3/0) where it is 5
+      (4/3/2). No test, and not the multiclass oracle, could have seen it: none has a multiclassed
+      character with a chosen subclass. A recorded choice is now an edge like a grant; all nine sample
+      saves derive identically before and after, element order included.
+      **What the app run showed:** the flat decision list handled all eight levels without a dead end;
+      the Rogue's multiclass skill and Expertise, the Trickster's pool, the improvement-or-feat choice
+      and prerequisite-gated feats (Grappler withheld at Strength 8, War Caster and Ritual Caster
+      offered) all behaved. **A quirk, not fixed:** a pool's rules fill in level order, so the
+      Trickster's any-school spell has to be taken *before* the enchantment/illusion ones or that
+      slot is gone — documented behaviour, easy to trip over. **Not verified:** a save of this
+      character written and reopened through the real dialogs (the port and the round trip are
+      tested; the native dialog cannot be driven); and, decisively, **an Aurora save of the same
+      choices**, which needs Aurora and so the maintainer — see the exit criteria below.
 - [x] **Remove the CLI (`tools/incudo`, `npm run incudo`).**
       ([ADR 0039](./docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md), written
       before the code.) The app is the product, and a command line over the same engine was a
@@ -657,7 +678,8 @@ before any code, both touching a public API:
 above is checked, the last of them removing the CLI (the multiclass screen, the campaign options
 ADR 0032 describes, the menus and shortcuts, and the explicit export are all done). The phase
 stays 🟡 because its exit criterion — one exact character, built end to end in the running app and
-compared with Aurora's output — has not been met. Nothing in the rules engine is outstanding, though the
+compared with Aurora's output — is half met: built and checked against the book, **not yet compared with
+an Aurora save of the same choices**. Nothing in the rules engine is outstanding, though the
 first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
 and not by any test, which is worth keeping in mind before believing that sentence.
 
@@ -732,8 +754,12 @@ at each level: a Fighter 4 / Rogue 1 / Wizard 3 built in the running app is offe
 multiclass skill, the Wizard's cantrips and spellbook, Arcane Tradition and hit points on each
 level's own die. Feats were the last item and are reachable now: the campaign options of ADR 0032
 (`multiple: true`) switch them on, and a level 4 Fighter takes one — so the Rogue/Wizard-with-feats
-sentence above is met on the engine side. What it has not had is that exact character built end
-to end in the running app and compared with Aurora's output for the same choices.
+sentence above is met on the engine side. That exact character has since been built end to end in the
+running app (see the entry above), which found and fixed a real multiclass defect. **What remains is
+the comparison the criterion names: an Aurora save of a Rogue/Wizard made with the same choices, run
+through `compareWithAurora` as `multiclass.test.ts` does for the Paladin/Warlock.** Only Aurora can
+write that save, so it is the maintainer's to make; until then the character is checked against the
+Player's Handbook and nothing else, which is the standard `hp` and `ac` are held to.
 
 ---
 

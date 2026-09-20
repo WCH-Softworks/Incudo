@@ -1,6 +1,8 @@
 # 0015 — A character records which track each point of progression was spent on
 
-**Status:** Accepted · 2026-09-10 · amends [0006](./0006-derived-character-state.md), [0009](./0009-character-kinds.md)
+**Status:** Accepted · 2026-09-10 · amends [0006](./0006-derived-character-state.md), [0009](./0009-character-kinds.md) ·
+amended by [0040](./0040-a-chosen-element-follows-the-track-of-the-element-that-offered-it.md)
+(a track is inherited through a chosen element as well as a granted one)
 
 ## Context
 

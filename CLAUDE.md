@@ -305,6 +305,21 @@ computes nothing. Things to know before touching it:
   stat-mismatch, 0 spell-missing) — `tools/verify/src/multiclass.test.ts`, skipped where the save
   is not installed. It cannot prove hit points: the save records rolls and never a total, so that
   test checks the per-level dice and a sum worked by hand, not Aurora's number.
+- **A subclass chosen through a `select` follows the class that offered it** (ADR 0040). It used to be
+  seeded with no track, so at Wizard 4 / Rogue 4 (character level 8) the engine granted a Wizard 6
+  feature, read a multiclass caster level of 4 where the book says 5 (the Arcane Trickster's
+  third-caster marker belonged to no track) and owed a Trickster 6 spells where the table says 4.
+  A recorded choice is now an edge like a grant; a pick is expanded *after* its chooser, because
+  expanding it first makes the answer depend on the order of `character.choices`. Nothing is
+  deferred for a character with no `advancement`, and all nine saves derive identically before and
+  after (element order included) — so **the oracle could not see this and cannot vouch for it**: no
+  sample save has a multiclass character with a chosen subclass. The evidence is `engine.test.ts`
+  and `tools/verify/src/rogue-wizard.test.ts`, a Wizard 4 / Rogue 4 built through the builder and
+  worked by hand against the Player's Handbook. Found by building it in the running app, not by any
+  test — the ninth save had no oath and a patron whose gates all sit below its class level.
+- **The Rogue/Wizard has no Aurora referee.** It matches the book, not an Aurora save of the same
+  character, so ROADMAP Phase 2's exit criterion is met on the engine and in the app and still owes
+  that comparison. Making one needs Aurora, which only the maintainer can run.
 
 **A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
 `packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool
@@ -624,7 +639,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035 and 0036 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036 and 0040 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
