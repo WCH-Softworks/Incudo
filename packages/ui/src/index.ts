@@ -15,6 +15,7 @@ export * from './multiclass.ts';
 export * from './top-level-pick.ts';
 export * from './dice.ts';
 export * from './character-library.ts';
+export * from './character-copy.ts';
 export * from './aurora-import.ts';
 export * from './user-systems.ts';
 export * from './candidate-search.ts';

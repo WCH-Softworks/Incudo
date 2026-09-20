@@ -49,6 +49,7 @@ import {
   importAuroraSavesIntoLibrary,
   importBlock,
   resolveCommands,
+  saveCopy,
   type AuroraImportReport,
   type Destination,
   type LibraryEntry,
@@ -371,6 +372,8 @@ function Shell({
   const [saveNote, setSaveNote] = useState<string | null>(null);
   /** A save in flight. A second one would race the first on `working.readAt`. */
   const [saving, setSaving] = useState(false);
+  /** A copy being written: a dialog is open, or bytes are going to disk. */
+  const [copying, setCopying] = useState(false);
   /** A save whose character name no longer matches the file it would write to. */
   const [renamePrompt, setRenamePrompt] = useState<{ from: string; to: string } | null>(null);
 
@@ -719,6 +722,29 @@ function Shell({
   );
 
   /**
+   * Write the character as it is now to a file the user picks, and change nothing else.
+   *
+   * **This does not touch `working`.** `entry`, `readAt` and `savedName` are what the next Save
+   * writes to and compares against, and a copy leaves the file being edited exactly where it was —
+   * which is why there is no `setWorking` in here, and why `saveCopy` takes no library and returns no
+   * entry. The one thing it changes is the note printed beside the buttons.
+   */
+  const copyToFile = useCallback(async (): Promise<void> => {
+    setCopying(true);
+    try {
+      const result = await saveCopy(platform.saver, platform.zip, state.character, system, elements, {
+        profile: sources,
+        generator: 'incudo-desktop',
+      });
+      if (result.status === 'saved') setSaveNote(`Saved a copy as ${result.file.name}.`);
+      else if (result.status === 'failed') setSaveNote(`Could not save a copy. ${result.message}`);
+      // Cancelled: an answer. The note that was on screen stays.
+    } finally {
+      setCopying(false);
+    }
+  }, [state.character, system, elements, sources]);
+
+  /**
    * Save, unless the character was renamed since the last save. `LibraryEntryRef.name` never
    * follows `character.name` (ADR 0027) — "a character renamed to Vigaro still lives in
    * aelin.incu" — so without this a rename would save silently under the old filename, with
@@ -762,11 +788,14 @@ function Shell({
     pickerAvailable: platform.files.available,
     importing,
     saving,
+    saverAvailable: platform.saver.available,
+    copying,
   });
 
   const handlers: CommandHandlers = {
     'new-character': startNew,
     'save-character': () => void saveToLibrary(),
+    'save-copy': () => void copyToFile(),
     'import-aurora': () => void importFromAurora(),
     'choose-library-folder': () => void chooseFolder(),
     'refresh-library': () => void library.refresh(),
@@ -871,6 +900,18 @@ function Shell({
               title={describeCommand('save-character', commands.os)}
             >
               Save to library
+            </button>
+            <button
+              type="button"
+              onClick={() => void copyToFile()}
+              disabled={!platform.saver.available || copying}
+              title={
+                platform.saver.available
+                  ? describeCommand('save-copy', commands.os)
+                  : platform.saver.unavailableReason
+              }
+            >
+              Save a copy…
             </button>
             {saveNote && <span className="status">{saveNote}</span>}
           </div>

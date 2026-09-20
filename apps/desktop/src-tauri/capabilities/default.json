@@ -11,6 +11,7 @@
       "deny": [{ "url": "http://**" }]
     },
     "dialog:allow-open",
+    "dialog:allow-save",
     "fs:allow-read-dir",
     "fs:allow-read-file",
     "fs:allow-write-file",

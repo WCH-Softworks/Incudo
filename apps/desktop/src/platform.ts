@@ -6,7 +6,7 @@
  * which is also why the folder picker and the directory scan are here rather than inside a
  * component that happens to need them.
  *
- * Six ports, and two implementations of each where the two builds genuinely differ:
+ * Seven ports, and two implementations of each where the two builds genuinely differ:
  *
  * | port             | Tauri window                    | `npm run desktop` in a browser     |
  * |------------------|---------------------------------|------------------------------------|
@@ -14,6 +14,7 @@
  * | `Storage`        | IndexedDB                       | IndexedDB                          |
  * | `CharacterStore` | `dialog` + `fs` plugins         | File System Access API             |
  * | `FilePicker`     | `dialog` + `fs` plugins         | `showOpenFilePicker`               |
+ * | `FileSaver`      | `dialog` + `fs` plugins         | `showSaveFilePicker`               |
  * | `ZipCodec`       | `CompressionStream`             | `CompressionStream`                |
  * | `CommandHost`    | a native menu (mouse only)      | none                               |
  *
@@ -28,7 +29,8 @@
  * files they can see, copy and put in git (ADR 0027).
  *
  * `FilePicker` is neither. It is one file, outside both, read once and forgotten — the
- * Aurora import, and nothing else so far.
+ * Aurora import, and adding a game system. `FileSaver` is its write half: one file, wherever the
+ * user says, written once and forgotten — "Save a copy…" (ADR 0038).
  */
 
 import type {
@@ -39,8 +41,11 @@ import type {
   FetchResult,
   FilePickOptions,
   FilePicker,
+  FileSaveOptions,
+  FileSaver,
   LibraryEntryRef,
   PickedFile,
+  SavedFile,
   Storage,
   ZipCodec,
   ZipCompressor,
@@ -642,6 +647,96 @@ class UnavailableFilePicker implements FilePicker {
   }
 }
 
+// --- writing a file somewhere the user chooses -----------------------------------------------
+
+/**
+ * The save dialog, for "Save a copy…" and nothing else so far (ADR 0038).
+ *
+ * Needs one permission and no Rust. `tauri-plugin-dialog`'s `save` command calls `allow_file` on
+ * the fs scope for the path it returns, exactly as `open` does for the import, so the file the
+ * user just named is writable and no other path is (read from the plugin's source under
+ * `~/.cargo/registry`, then checked by saving through the real dialog). `fs.writeFile` creates
+ * the file and truncates one that exists, and the dialog has already asked about replacing it.
+ *
+ * `null` from `save` is a cancel, which is the port's answer for one.
+ */
+class TauriFileSaver implements FileSaver {
+  readonly available = true;
+
+  async save(bytes: Uint8Array, options: FileSaveOptions): Promise<SavedFile | null> {
+    const { save } = await import('@tauri-apps/plugin-dialog');
+    const path = await save({
+      title: options.title,
+      defaultPath: options.suggestedName,
+      filters: options.extensions?.length
+        ? [{ name: options.label ?? 'Supported files', extensions: options.extensions }]
+        : undefined,
+    });
+    if (path === null) return null;
+    const fs = await import('@tauri-apps/plugin-fs');
+    await fs.writeFile(path, bytes);
+    return { name: baseNameOf(path) };
+  }
+}
+
+/**
+ * The same in a browser, through `showSaveFilePicker`.
+ *
+ * The browser writes to a swap file and only replaces the destination when the stream closes, so
+ * a write that fails half way leaves an existing file as it was. Cancelling throws `AbortError`
+ * here and returns null under Tauri; one port, one meaning, so it comes back as null.
+ */
+class BrowserFileSaver implements FileSaver {
+  readonly available = true;
+
+  async save(bytes: Uint8Array, options: FileSaveOptions): Promise<SavedFile | null> {
+    let handle: FileSystemFileHandle;
+    try {
+      // Non-null because `createDesktopPlatform` only builds this where it exists.
+      handle = await window.showSaveFilePicker!({
+        // Its own id, so the dialog remembers where copies go apart from where imports come from.
+        id: 'incudo-copy',
+        suggestedName: options.suggestedName,
+        ...(options.extensions?.length
+          ? {
+              types: [
+                {
+                  description: options.label ?? 'Supported files',
+                  // A media type is required and none is registered for `.incu`. The extension
+                  // is what filters; this is the key it hangs on.
+                  accept: { 'application/octet-stream': options.extensions.map((e) => `.${e}`) },
+                },
+              ],
+            }
+          : {}),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return null;
+      throw error;
+    }
+    const writable = await handle.createWritable();
+    try {
+      await writable.write(bytes as BufferSource);
+      await writable.close();
+    } catch (error) {
+      await writable.abort().catch(() => undefined);
+      throw error;
+    }
+    return { name: handle.name };
+  }
+}
+
+/** No save dialog here, and it says why — the same posture as `UnavailableFilePicker`. */
+class UnavailableFileSaver implements FileSaver {
+  readonly available = false;
+  readonly unavailableReason =
+    'This browser cannot save a file to your computer, so a copy cannot be made. ' +
+    'Use the desktop app, or a Chromium-based browser.';
+  async save(): Promise<SavedFile | null> {
+    throw new Error(this.unavailableReason);
+  }
+}
+
 /** The last segment of a path, whichever separator the platform used. */
 function baseNameOf(path: string): string {
   const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
@@ -781,6 +876,8 @@ export interface DesktopPlatform {
   characters: CharacterStore;
   /** Reading one file from outside the library — the Aurora import, and nothing else yet. */
   files: FilePicker;
+  /** Writing one file somewhere the user chooses — "Save a copy…". */
+  saver: FileSaver;
   zip: ZipCodec;
   /** The menu, where there is one. See `CommandHost`. */
   commands: CommandHost;
@@ -803,12 +900,18 @@ export function createDesktopPlatform(): DesktopPlatform {
     : typeof window !== 'undefined' && typeof window.showOpenFilePicker === 'function'
       ? new BrowserFilePicker()
       : new UnavailableFilePicker();
+  const saver = tauri
+    ? new TauriFileSaver()
+    : typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function'
+      ? new BrowserFileSaver()
+      : new UnavailableFileSaver();
 
   return {
     fetcher: new DesktopFetcher(),
     storage,
     characters,
     files,
+    saver,
     zip,
     commands: tauri ? new TauriCommandHost() : new BrowserCommandHost(),
     shell: tauri ? 'tauri' : 'browser',

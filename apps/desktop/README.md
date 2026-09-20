@@ -76,9 +76,9 @@ Everything between the picker and the library folder is `importAuroraSaveIntoLib
 
 What the app can be told to do is a list in `packages/ui/src/commands.ts` (ADR 0037): an id, a
 label, a shortcut, and a rule for when it is available. This app renders it and computes nothing.
-Twelve commands: go to each of the five panes (Ctrl+1 to 4, Ctrl+,), New character (Ctrl+N), Save
-to library (Ctrl+S), Refresh library (Ctrl+Shift+L), Import from Aurora, Choose library folder,
-Reload content sources, Change system. On macOS the same shortcuts read Cmd.
+Thirteen commands: go to each of the five panes (Ctrl+1 to 4, Ctrl+,), New character (Ctrl+N), Save
+to library (Ctrl+S), Save a copy (Ctrl+Shift+S), Refresh library (Ctrl+Shift+L), Import from Aurora,
+Choose library folder, Reload content sources, Change system. On macOS the same shortcuts read Cmd.
 
 - **The Tauri window has a native menu**, built in `platform.ts` from `menuModel()`. **The browser
   build has no menu**, only the shortcuts; the nav and Save buttons show theirs as tooltips.
@@ -89,15 +89,34 @@ Reload content sources, Change system. On macOS the same shortcuts read Cmd.
   does nothing: WebView2 gives the page the key and the host's accelerator table never runs the
   item. Do not register accelerators without pressing the keys in the window afterwards.
 - **A command is enabled where its outcome can be seen**: New character and Import on the
-  characters screen, Save on Build. Everything is off on the launcher and behind a dialog. A
+  characters screen, Save and Save a copy on Build. Everything is off on the launcher and behind a dialog. A
   disabled command still *claims* its key, so Ctrl+S on the Sheet pane does not become "save this
   page" in a browser.
 - Adding a command is one entry in `COMMANDS`, one in `MENUS`, one availability rule and one
   handler in `App.tsx`; a test fails if any of the first three is missing.
-- What is **not** here on purpose: an explicit export ("Save a copy…"), which needs a write
-  counterpart to `FilePicker` and is its own roadmap item. There is no stub for it in the menu.
 
-### What was and was not checked (2026-09-19)
+## Save a copy… (ADR 0038)
+
+Writes the character on screen, unsaved edits included, to a `.incu` the user picks anywhere. It is
+**not a Save As**: the file being edited, the timestamp its next Save compares against and the name it
+was saved under are all left alone, because `saveCopy` in `packages/ui` takes no library and returns no
+entry. `copyToFile` in `App.tsx` therefore has no `setWorking` in it, and should not grow one. It needs
+no library folder, so it is live with none chosen. Its confirmation is printed in the Build pane bar
+beside Save's, which is why it is enabled there and nowhere else.
+
+The port is `FileSaver`, the write half of `FilePicker` (`platform.ts`): bytes and a suggested name in,
+a file name out, `null` for a cancel. Under Tauri it is `dialog.save` and `fs.writeFile`, and it took one
+permission (`dialog:allow-save`) and no Rust, because the dialog's own `save` command widens the fs
+scope to the file it returns, as `open` does for an import. In a browser it is `showSaveFilePicker`,
+and where that is missing the button is disabled and its tooltip says why.
+
+- Windows opens the dialog in whatever folder it last used, which was the library folder. A copy named
+  like a library file raises the system's own replace prompt, and that is the only thing between the
+  two; the app passes no starting folder.
+- A copy, like any re-save, does not carry the elements only the Aurora import embedded. Across the nine
+  real saves that is one element, an Aurora marker no rule reaches.
+
+### What was and was not checked (2026-09-19, menus and shortcuts)
 
 **By pressing real keys, in the Tauri window on Windows** (`npm run desktop:app`, reached through
 WebView2's debug port and the Win32 menu API, keystrokes sent as real input to the focused
@@ -134,16 +153,37 @@ menu-bar mode: the page stopped answering the debug port and swallowed the Ctrl+
 until Escape. That is ordinary Windows behaviour for a window with a menu bar, and it was seen
 once, through the harness.
 
+### What was and was not checked for Save a copy… (2026-09-20)
+
+**Tauri window, Windows** (`npm run desktop:app`, WebView2's debug port and the Win32 API): the native
+menu lists Save a copy… under Save to library with `Ctrl+Shift+S`, off on the Characters pane and on for
+Build. Sent as its menu message, the command opened the real Windows save dialog with the on-screen
+character's name and the filter "Incudo character (*.incu)". A scratch path typed into it and Save pressed
+wrote a file that opens in the CLI with zero sources; the page printed "Saved a copy as tauri-copy.incu.".
+Choosing that file again raised the system's "Confirm Save As"; No left it byte-identical; Cancel closed
+the dialog and re-enabled the button. The developer's own library was never written to.
+
+**The screen was locked, so no real keystroke could be sent.** The dialog was driven with window messages
+(setting the file name field and clicking its buttons) and the chord as an injected DevTools key event,
+which reached the page and opened the dialog. Ctrl+Shift+S was **not pressed as real input** in the
+window. **Browser build** (`npm run desktop`, injected key events, the dialog replaced by a handle that
+records what is written): the chord, cancel, a failing write, the chord refused on Sheet and behind the
+rename dialog, and — with a real directory handle as the library — a copy of a renamed, unsaved character
+leaving the library at one file and the next Ctrl+S still raising the rename prompt and saving without a
+conflict. The bytes the browser wrote open in the CLI. **Not verified:** macOS and Linux; the native
+browser save dialog; and a Firefox or Safari tab.
+
 ## Two capabilities, opposite widths, and why
 
-`dialog` and `fs` joined `http` when the library arrived, and the filesystem scope is as narrow
+`dialog` and `fs` joined `http` when the library arrived (and `dialog:allow-save` when a copy could be saved), and the filesystem scope is as narrow
 as the HTTP scope is wide. That asymmetry is the decision, not an inconsistency.
 
 **The fs capability grants the commands and no paths at all.** `capabilities/default.json` lists
 `fs:allow-read-dir`, `fs:allow-read-file` and so on — what the window may *do* — and the set of
 paths it may do them to starts empty. One `#[tauri::command]` in `src-tauri/src/lib.rs`,
-`allow_library_folder`, widens it to exactly the directory the picker returned. Nothing else can
-add to it, and nothing in the JS API could have done this, which is why the project's only piece
+`allow_library_folder`, widens it to exactly the directory the picker returned. The only other
+additions are the dialog plugin's own, one file at a time: the file `open` returns and the file `save`
+returns. Nothing in the JS API could have granted a folder, which is why the project's only piece
 of application-shaped Rust exists.
 
 An app that can read any path on the machine is not the same app as one that can read the folder
@@ -161,9 +201,9 @@ Treat the Tauri library path as unproven until someone opens a folder in the win
 Windows and menus, navigation, file dialogs, keyboard shortcuts, the dense multi-pane
 layout, and the platform implementations in `src/platform.ts`.
 
-That file now carries six ports rather than two — `Fetcher`, `Storage`, `CharacterStore`,
-`FilePicker`, `ZipCodec` and `CommandHost` — and it is still the only file allowed to say the word
-Tauri.
+That file now carries seven ports rather than two — `Fetcher`, `Storage`, `CharacterStore`,
+`FilePicker`, `FileSaver`, `ZipCodec` and `CommandHost` — and it is still the only file allowed to say
+the word Tauri.
 Three of them are worth knowing about before changing anything:
 
 - **`Storage` is IndexedDB in both builds.** It holds the content cache and the current draft:
@@ -179,6 +219,8 @@ Three of them are worth knowing about before changing anything:
   missing so is the rest of the File System Access API, so there would be no library for an
   import to land in: the picker says it is unavailable rather than offering a dialog whose
   only possible ending is "no library folder has been chosen".
+- **`FileSaver` is `FilePicker`'s write half**: one file, wherever the user says, written once and
+  forgotten. Same reason it is not on `CharacterStore`. Cancelling is `null`, as an empty pick is `[]`.
 
 ## What does not
 

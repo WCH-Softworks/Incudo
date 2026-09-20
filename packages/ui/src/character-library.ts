@@ -176,6 +176,71 @@ export type SaveResult =
     }
   | { ok: false; reason: 'conflict' | 'failed'; message: string };
 
+export interface PackOptions {
+  /**
+   * The configured sources, which is what turns an element's origin into the version a
+   * character records having been built against (ADR 0028). Absent reads as no sources, and
+   * every source the character embeds content from is then recorded without a version.
+   */
+  profile?: readonly ConfiguredSource[];
+  assets?: ContainerFiles;
+  generator?: string;
+  extraIds?: ElementId[];
+}
+
+export interface PackedCharacter {
+  /** The container tree: the folder form, which a `ZipCodec` turns into a `.incu`. */
+  files: ContainerFiles;
+  /** What was embedded, and what the character names that the index could not supply. */
+  content: ContentSubset;
+}
+
+/**
+ * Turn a character and the index it derives against into a self-contained container tree.
+ *
+ * **The one packing function.** The library's Save and a copy written anywhere else (ADR 0038)
+ * both call it, so what "Save a copy" puts in a file is by construction what Save puts in the
+ * library, and a rule added here — a new thing every save must embed — reaches both. It touches
+ * no store and no picker.
+ *
+ * The content subset comes from whatever index the caller derives against: the full corpus when
+ * sources are loaded, the save's own embedded content when they are not. Either way
+ * `collectCharacterContent` is given the kind, because a kind's baseline grants and its one
+ * element per point of progression are reached through the system definition rather than through
+ * a choice, and a save written without them is the ADR 0012 failure exactly.
+ */
+export function packCharacter(
+  character: Character,
+  system: GameSystem,
+  elements: ElementIndex,
+  options: PackOptions = {},
+): PackedCharacter {
+  const kind = resolveCharacterKind(system, character.kind);
+  const content = collectCharacterContent(character, elements, {
+    kind,
+    extraIds: options.extraIds,
+  });
+  // Provenance, recorded from the content this character actually embeds (ADR 0028). It only
+  // ever gains entries: a version already recorded is what the character was built against and
+  // is never re-stamped from the profile.
+  const sources = recordSourceRefs(character.sources ?? [], content.elements, options.profile ?? []);
+  const recorded =
+    sources.length === (character.sources?.length ?? 0) ? character : { ...character, sources };
+  const files = packCharacterContainer(recorded, content, {
+    assets: options.assets,
+    generator: options.generator,
+  });
+  return { files, content };
+}
+
+/**
+ * The file name a character is offered under: its name reduced to what every filesystem
+ * accepts, plus `.incu`.
+ */
+export function suggestedFileName(characterName: string): string {
+  return `${slug(characterName) || 'character'}.incu`;
+}
+
 export class CharacterLibrary {
   private readonly store: CharacterStore;
   private readonly listeners = new Set<() => void>();
@@ -359,13 +424,8 @@ export class CharacterLibrary {
   };
 
   /**
-   * Write a character into the library.
-   *
-   * The content subset comes from whatever index the caller derives against — the full corpus
-   * when sources are loaded, the save's own embedded content when they are not. Either way
-   * `collectCharacterContent` is given the kind, because a kind's baseline grants and its one
-   * element per point of progression are reached through the system definition rather than
-   * through a choice, and a save written without them is the ADR 0012 failure exactly.
+   * Write a character into the library. What is written is `packCharacter`'s: see there for what
+   * the content subset is drawn from, and why the kind is passed.
    */
   save = async (
     character: Character,
@@ -392,23 +452,14 @@ export class CharacterLibrary {
 
     let packed: ContentSubset;
     try {
-      const kind = resolveCharacterKind(system, character.kind);
-      const content = collectCharacterContent(character, elements, {
-        kind,
-        extraIds: options.extraIds,
-      });
-      // Provenance, recorded from the content this character actually embeds (ADR 0028). It
-      // only ever gains entries: a version already recorded is what the character was built
-      // against and is never re-stamped from the profile.
-      const sources = recordSourceRefs(character.sources ?? [], content.elements, this.profile);
-      const recorded =
-        sources.length === (character.sources?.length ?? 0) ? character : { ...character, sources };
-      const files = packCharacterContainer(recorded, content, {
+      const result = packCharacter(character, system, elements, {
+        profile: this.profile,
         assets: options.assets,
         generator: options.generator,
+        extraIds: options.extraIds,
       });
-      await this.store.write(target, files);
-      packed = content;
+      await this.store.write(target, result.files);
+      packed = result.content;
     } catch (error) {
       return { ok: false, reason: 'failed', message: messageOf(error) };
     }

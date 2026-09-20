@@ -11,8 +11,8 @@
  *
  * Three decisions that are easy to undo by accident:
  *
- *  - **A command is enabled where its outcome can be seen.** New character, Import and Save are
- *    live on the screen that shows what they did, and greyed elsewhere. That is a deliberate
+ *  - **A command is enabled where its outcome can be seen.** New character, Import, Save and
+ *    Save a copy are live on the screen that shows what they did, and greyed elsewhere. That is a deliberate
  *    narrowing, not an oversight: "New character" replaces the character being edited without
  *    asking (the draft is autosaved, the file is not), so a shortcut must not make that easier
  *    to do by accident than the button it stands for.
@@ -40,6 +40,7 @@ export const COMMAND_IDS = [
   'go-settings',
   'new-character',
   'save-character',
+  'save-copy',
   'import-aurora',
   'choose-library-folder',
   'refresh-library',
@@ -92,6 +93,10 @@ export const COMMANDS: readonly CommandDef[] = [
   { id: 'go-settings', label: 'Settings', shortcut: { key: ',', primary: true }, destination: 'settings' },
   { id: 'new-character', label: 'New character', shortcut: { key: 'n', primary: true } },
   { id: 'save-character', label: 'Save to library', shortcut: { key: 's', primary: true } },
+  // Ctrl+Shift+S is where every desktop application puts Save As, and it is not one of the chords
+  // Chromium keeps from a page (those are Ctrl+N, T, W and their Shift forms). It is *not* Save As
+  // here: a copy leaves the file being edited where it is (ADR 0038).
+  { id: 'save-copy', label: 'Save a copy…', shortcut: { key: 's', primary: true, shift: true } },
   // No shortcut: Ctrl+I is italic in every text field and Ctrl+Shift+I is developer tools.
   { id: 'import-aurora', label: 'Import from Aurora…' },
   { id: 'choose-library-folder', label: 'Choose library folder…' },
@@ -116,6 +121,7 @@ export const MENUS: MenuLayout = [
     items: [
       'new-character',
       'save-character',
+      'save-copy',
       null,
       'import-aurora',
       null,
@@ -153,6 +159,10 @@ export interface CommandContext {
   pickerAvailable: boolean;
   importing: boolean;
   saving: boolean;
+  /** The platform can show a save dialog. Independent of the library: a copy needs no folder. */
+  saverAvailable: boolean;
+  /** A copy is being written. */
+  copying: boolean;
 }
 
 /** The launcher, or the moment before anything has loaded: every command is unavailable. */
@@ -168,6 +178,8 @@ export const NO_WORKSPACE: CommandContext = {
   pickerAvailable: false,
   importing: false,
   saving: false,
+  saverAvailable: false,
+  copying: false,
 };
 
 /**
@@ -205,7 +217,10 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   // The button lives on the library screen, only when there is a library to put one in.
   'new-character': (c) => c.pane === 'library' && libraryListed(c),
   // The pane bar's button, and the only place its outcome ("Saved to …") is printed.
-  'save-character': (c) => c.pane === 'build' && c.library === 'ready' && !c.saving,
+  'save-character': (c) => c.pane === 'build' && c.library === 'ready' && !c.saving && !c.copying,
+  // Beside Save, and for the same reason: "Saved a copy as …" is printed there. It needs no
+  // library at all — the file goes wherever the user says — so it is live with none chosen.
+  'save-copy': (c) => c.pane === 'build' && c.saverAvailable && !c.saving && !c.copying,
   // Its report is printed on the library screen, so that is where it can be started.
   'import-aurora': (c) => c.pane === 'library' && !c.importing && importBlock(c) === undefined,
   // Settings holds this one, but the first-run dialog and the library screen do too.

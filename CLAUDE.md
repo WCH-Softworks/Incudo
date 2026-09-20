@@ -191,7 +191,7 @@ the inventory work — a bag, slots, `equipped=`, attunement and a derived armou
 **the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR
 0027), manages content sources (ADR 0028/0029), builds a character, **sets its ability scores by
 all four of 5e's methods**, renders the sheet, reads and writes real `.incu` files into a folder
-the user picks, and **imports Aurora `.dnd5e` saves into it**, and **multiclasses**: a level can
+the user picks, **saves a copy anywhere** (ADR 0038), and **imports Aurora `.dnd5e` saves into it**, and **multiclasses**: a level can
 be spent on any class the character qualifies for (ADR 0036).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
@@ -365,7 +365,7 @@ of them rebuilds a builder mid-edit, which is the whole lesson: **the tests prot
 running it protects the product.**
 
 **What the app can be told to do is one list, and the menu and the shortcuts are two renderings of
-it** ([ADR 0037](docs/adr/0037-a-command-is-data-the-page-owns-the-keyboard.md)). `packages/ui/src/commands.ts` holds twelve commands — id, label, shortcut, and a
+it** ([ADR 0037](docs/adr/0037-a-command-is-data-the-page-owns-the-keyboard.md)). `packages/ui/src/commands.ts` holds thirteen commands — id, label, shortcut, and a
 rule for when each is available — under `node --test`; `apps/desktop/src/use-commands.ts` and
 `platform.ts`'s `TauriCommandHost` compute nothing. Adding a command is one entry in `COMMANDS`, one in
 `MENUS`, one rule in `ENABLED` (a `Record`, so leaving it out does not compile) and one handler in
@@ -387,6 +387,28 @@ rule for when each is available — under `node --test`; `apps/desktop/src/use-c
   Refresh, and Ctrl+A/C/X/V/Z in a text field all behave; the macOS application and Edit menus were
   written and have never run, and how a macOS or GTK menu renders the tab-separated shortcut text
   was not seen. `platform.ts` `TauriCommandHost` on those platforms is unverified.
+
+**"Save a copy…" writes the character on screen to a file the user picks, and changes nothing else**
+([ADR 0038](docs/adr/0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md)). Ctrl+Shift+S,
+Build only, beside Save; the thirteenth command. Things to know before touching it:
+
+- **`packCharacter` (`packages/ui/src/character-library.ts`) is the one packing function.** The library's
+  Save and a copy both call it, so a copy is the file Save would write. Do not write a second serializer.
+- **A copy is not a Save As, and that is structural.** `saveCopy` (`character-copy.ts`) takes no library and
+  returns no entry, so `working.entry`, `working.readAt` and `working.savedName` cannot move, and
+  `copyToFile` in `App.tsx` has no `setWorking` in it. Do not give it one. Seen in the running app: after a
+  copy of a renamed, unsaved character, Ctrl+S still raised the rename prompt and saved without a conflict.
+- **The port is `FileSaver`, `FilePicker`'s write half** (`core/platform.ts`): bytes and a suggested name in,
+  a name out, `null` for a cancel. It needs no library, so the command is gated on `saverAvailable`, not on
+  the library. Tauri needed `dialog:allow-save` and no Rust: the dialog's own `save` widens the fs scope to
+  the file it returns.
+- **Windows opens the dialog at the last folder used, which was the library folder.** The system's replace
+  prompt is the only guard against a copy named like a library file; the app passes no starting folder.
+- **A re-save drops the elements only an import embedded** (`extraIds`): across the nine saves, one,
+  `ID_INTERNAL_MULTICLASS_LEVEL_3`. `aurora verify` is unaffected and no derived number moves.
+- **Not verified:** Ctrl+Shift+S as real input in the Tauri window (the screen was locked; the dialog was
+  driven with window messages and the chord injected as a DevTools key event), macOS and Linux, and the real
+  browser save dialog. The browser round trip and the whole Windows dialog, including the replace prompt, were seen.
 
 ### Known from running it
 
@@ -419,7 +441,7 @@ rule for when each is available — under `node --test`; `apps/desktop/src/use-c
   reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
   the cache answers.
 
-Eleven things the shell has surfaced, four of them since fixed and struck through. The rest are
+Eleven things the shell has surfaced, five of them since fixed and struck through. The rest are
 deliberately **not** fixed:
 
 - **~~An answered `pick` cannot be changed.~~** Fixed. It was predicted here to be "a real screen
@@ -524,8 +546,8 @@ deliberately **not** fixed:
   on any of the 14,316 elements~~ — a tag on the six `ID_INTERNAL_ASI_*` elements the overlay
   supplies, which is what those 15 filters select. The shell shows "No candidate in the loaded
   content matches this choice" for the two above, which is honest but not the whole truth.
-- **There is no export.** Saving writes into the library folder; "save a copy somewhere else"
-  needs a write counterpart to `FilePicker` and does not exist.
+- **~~There is no export.~~** Fixed (ADR 0038): "Save a copy…" writes the character on screen to a
+  file the user picks. See the paragraph after the commands list above.
 - **An NPC or legendary creature has no way to set ability scores.** Both kinds declare a
   required `abilities` step with `"types": []` and **no `budget`** — the inert shape ADR 0017
   names, which matches no pending choice and reports itself complete. The editor is a budget

@@ -47,6 +47,8 @@ const READY: CommandContext = {
   pickerAvailable: true,
   importing: false,
   saving: false,
+  saverAvailable: true,
+  copying: false,
 };
 
 function enabledIn(context: CommandContext): Set<CommandId> {
@@ -118,6 +120,66 @@ test('mid-edit on the build pane: save is live, and new character and import are
 test('a save in flight cannot be started again', () => {
   // Two saves racing on one `readAt` is how the second reports a conflict with the first.
   assert.ok(!enabledIn({ ...READY, pane: 'build', saving: true }).has('save-character'));
+});
+
+// --- save a copy ---------------------------------------------------------------------------------
+
+test('a copy is live on the build pane and nowhere else', () => {
+  // "Saved a copy as …" is printed on Build, beside Save, so that is where it can be started.
+  assert.ok(enabledIn({ ...READY, pane: 'build' }).has('save-copy'));
+  for (const pane of ['library', 'sheet', 'sources', 'settings'] as Destination[]) {
+    assert.ok(!enabledIn({ ...READY, pane }).has('save-copy'), pane);
+  }
+});
+
+test('a copy needs no library: it is live with none chosen, and where the library is unavailable', () => {
+  // This is what separates it from Save, and it is the reason for a second command at all.
+  for (const library of ['no-location', 'unavailable', 'scanning'] as const) {
+    const on = enabledIn({ ...READY, pane: 'build', library });
+    assert.ok(on.has('save-copy'), library);
+    assert.ok(!on.has('save-character'), `save with the library ${library}`);
+  }
+});
+
+test('a copy needs a save dialog to exist', () => {
+  assert.ok(!enabledIn({ ...READY, pane: 'build', saverAvailable: false }).has('save-copy'));
+  // ...and does not need the file picker that importing uses, which is a different capability.
+  assert.ok(enabledIn({ ...READY, pane: 'build', pickerAvailable: false }).has('save-copy'));
+});
+
+test('a copy in flight blocks another copy and a save, and a save in flight blocks a copy', () => {
+  // Two dialogs on one keystroke, and two "Saved …" notes racing for the same line.
+  const copying = enabledIn({ ...READY, pane: 'build', copying: true });
+  assert.ok(!copying.has('save-copy'));
+  assert.ok(!copying.has('save-character'));
+  assert.ok(!enabledIn({ ...READY, pane: 'build', saving: true }).has('save-copy'));
+});
+
+test('a copy is unavailable behind a dialog, and still claims its key', () => {
+  assert.ok(!enabledIn({ ...READY, pane: 'build', modal: true }).has('save-copy'));
+  // Ctrl+Shift+S on the Sheet pane must not fall through to the browser.
+  const outcome = keyOutcome(
+    key('S', { ctrlKey: true, shiftKey: true }),
+    'other',
+    resolveCommands({ ...READY, pane: 'sheet' }),
+  );
+  assert.deepEqual(outcome, { id: 'save-copy', claimed: true, run: false });
+  assert.equal(
+    keyOutcome(key('S', { ctrlKey: true, shiftKey: true }), 'other', resolveCommands({ ...READY, pane: 'build' }))
+      ?.run,
+    true,
+  );
+});
+
+test('a copy sits beside Save in the File menu, labelled as a question, with its own shortcut', () => {
+  const file = MENUS.find((menu) => menu.label === 'File')!;
+  assert.equal(file.items.indexOf('save-copy'), file.items.indexOf('save-character') + 1);
+  const entry = menuModel('other')
+    .flatMap((menu) => menu.entries)
+    .find((e) => e.kind === 'command' && e.id === 'save-copy') as { label: string; shortcut?: string };
+  assert.equal(entry.label, 'Save a copy…');
+  assert.equal(entry.shortcut, 'Ctrl+Shift+S');
+  assert.equal(describeCommand('save-copy', 'mac'), 'Save a copy… (⇧⌘S)');
 });
 
 test('while the library scans: new character stays, refresh and save do not', () => {
@@ -220,8 +282,12 @@ test('the primary modifier is Ctrl on Windows and Linux and Cmd on macOS, never 
 });
 
 test('modifiers are compared exactly, and case does not matter', () => {
-  assert.equal(matchShortcut(key('S', { ctrlKey: true, shiftKey: true }), 'other'), undefined);
+  // Ctrl+S and Ctrl+Shift+S are two commands, and neither may answer for the other.
+  assert.equal(matchShortcut(key('S', { ctrlKey: true, shiftKey: true }), 'other'), 'save-copy');
+  assert.equal(matchShortcut(key('s', { ctrlKey: true, shiftKey: true }), 'other'), 'save-copy');
   assert.equal(matchShortcut(key('S', { ctrlKey: true }), 'other'), 'save-character', 'caps lock');
+  assert.equal(matchShortcut(key('s', { metaKey: true, shiftKey: true }), 'mac'), 'save-copy');
+  assert.equal(matchShortcut(key('s', { ctrlKey: true, shiftKey: true, altKey: true }), 'other'), undefined);
   assert.equal(matchShortcut(key('L', { ctrlKey: true, shiftKey: true }), 'other'), 'refresh-library');
   assert.equal(matchShortcut(key('l', { ctrlKey: true }), 'other'), undefined, 'without shift it is no shortcut');
   assert.equal(matchShortcut(key(',', { ctrlKey: true }), 'other'), 'go-settings');

@@ -44,6 +44,7 @@ interface DirectoryPickerOptions {
 interface Window {
   showDirectoryPicker?(options?: DirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
   showOpenFilePicker?(options?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
+  showSaveFilePicker?(options?: SaveFilePickerOptions): Promise<FileSystemFileHandle>;
 }
 
 /**
@@ -60,6 +61,19 @@ interface FilePickerAcceptType {
 interface OpenFilePickerOptions {
   id?: string;
   multiple?: boolean;
+  excludeAcceptAllOption?: boolean;
+  startIn?: FileSystemHandle | string;
+  types?: FilePickerAcceptType[];
+}
+
+/**
+ * Choosing where a file goes, which is how "Save a copy…" reaches the disk in a browser. Same
+ * story again: Chromium-only, and `createDesktopPlatform` hands back a saver that says it is
+ * unavailable where this is missing.
+ */
+interface SaveFilePickerOptions {
+  id?: string;
+  suggestedName?: string;
   excludeAcceptAllOption?: boolean;
   startIn?: FileSystemHandle | string;
   types?: FilePickerAcceptType[];

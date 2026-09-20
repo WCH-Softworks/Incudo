@@ -173,7 +173,7 @@ before any code, both touching a public API:
         to infer from a stylesheet, so it is named in
         `apps/desktop/src-tauri/icons/README.md` and left for a person.
   - [x] **Menus and keyboard shortcuts** ([ADR 0037](./docs/adr/0037-a-command-is-data-the-page-owns-the-keyboard.md)).
-        Twelve commands are data in `packages/ui` — id, label, shortcut, and a rule for when each
+        Twelve commands (a thirteenth, Save a copy…, arrived with the export below) are data in `packages/ui` — id, label, shortcut, and a rule for when each
         is available — and the Tauri window's native menu and the browser build's key handler both
         render that one list; the mobile shell inherits it. **The page owns the keyboard in every
         build and the menu is for the mouse.** The first design gave the keys to the menu's
@@ -192,8 +192,8 @@ before any code, both touching a public API:
         (Chromium reserves Ctrl+N); New character and Save in the Tauri window, which would have
         written to the developer's own library. New character and Import are live only on the
         characters screen, Save only on Build: New replaces the character being edited without
-        asking, and nothing tracks unsaved work yet. **Left out on purpose:** "Save a copy…", which
-        needs the explicit export below — no stub was added.
+        asking, and nothing tracks unsaved work yet. **"Save a copy…" was left out on purpose** and
+        arrived with the explicit export below, as the thirteenth command.
   - [x] **`$(...)` in a `<select supports=…>` resolves**
         ([ADR 0030](./docs/adr/0030-a-declared-block-answers-a-filter.md)), so a caster can
         choose spells — the last engine-side blocker on this phase's exit criterion.
@@ -251,8 +251,8 @@ before any code, both touching a public API:
       **Listing and opening need zero sources**, which is asserted twice: against a fake store
       in `packages/ui`, and against the nine real `.dnd5e` saves in
       `tools/incudo/src/library.test.ts`. The `.dnd5e` **import** landed with the line below,
-      and that same test now drives it. Still to do: renaming a file, an explicit export, and
-      the refresh that would move a recorded source version.
+      and that same test now drives it. Still to do: renaming a file, and
+      the refresh that would move a recorded source version. (The explicit export landed later.)
 - [x] **Content manager: add an index by URL, enable/disable sources, stream or download**
       ([ADR 0028](./docs/adr/0028-sources-are-a-profile-characters-carry-an-allowlist.md),
       [ADR 0029](./docs/adr/0029-a-cache-is-keyed-by-source-and-evicted-by-version.md)). Add,
@@ -450,8 +450,23 @@ before any code, both touching a public API:
       chose". Importing is the one library operation that needs a content source, because a
       `.dnd5e` records Aurora's element ids and nothing about what they mean; the app says so
       rather than writing a character full of ids nothing can resolve.
-  - [ ] An **explicit export** is still missing. Saving writes into the library folder; there is
-        no "save a copy somewhere else", which needs the write half of the port above.
+  - [x] **An explicit export: "Save a copy…"** ([ADR 0038](./docs/adr/0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md)).
+        Writes the character on screen, unsaved edits included, to a `.incu` the user picks
+        anywhere. The write half of the port is `FileSaver`, a sibling of `FilePicker` (bytes in,
+        a file name out, `null` for a cancel); the packing is `packCharacter`, the function the
+        library's Save now calls too, so a copy is by construction the file Save would write.
+        **A copy is not a Save As:** it takes no library and returns no entry, so the file being
+        edited, its conflict timestamp and its saved name are untouched — held by a test with a
+        store that records every call, and seen in the app (the next Save still raised the rename
+        prompt and still saved without a conflict). Ctrl+Shift+S, Build only, beside Save; it needs
+        no library folder. Tauri needed one permission (`dialog:allow-save`) and no Rust: the
+        dialog's own `save` command widens the fs scope to the file it returns. **Round-tripped
+        over the nine real saves:** each copy opens with zero sources and derives identically.
+        **Found doing it, and fixed straight after:** the app's Save had been dropping every opened
+        character's portrait bytes (9 of 9). **Not verified:** the chord as real input in the
+        Tauri window (the screen was locked; the dialog was driven with window messages and the
+        chord injected), macOS and Linux, and the real browser save dialog (native; replaced by a
+        recording handle).
 - [x] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
       attunement, and magic items attached to other items. Planned in
       [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which
@@ -621,14 +636,15 @@ before any code, both touching a public API:
       already in the app (`UserSystemStore`, through the same `validateGameSystem`), and
       scaffolding a system belongs in the app's system flow, not a terminal. Wants an ADR before
       the code — it changes what CI runs and what CLAUDE.md tells the next agent to type — and it
-      is deliberately sequenced *after* the Phase 2 items above that are still open, because
-      those are what a player is waiting for.
+      is deliberately sequenced *after* the other Phase 2 items, which are all done now, because
+      those are what a player was waiting for.
 
 ### Where this phase actually stands
 
-**The engine half of Phase 2 is finished and everything left is a shell.** Every remaining box
-above is view-layer work — menus and shortcuts, and an explicit export (the multiclass screen and
-the campaign options ADR 0032 describes are both done). Nothing in the rules engine is outstanding, though the
+**The engine half of Phase 2 is finished, and so is the shell work that was listed.** Every box
+above is checked except removing the CLI, which is deliberate sequencing and not view-layer work
+(the multiclass screen, the campaign options ADR 0032 describes, the menus and shortcuts, and the
+explicit export are all done). Nothing in the rules engine is outstanding, though the
 first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
 and not by any test, which is worth keeping in mind before believing that sentence.
 

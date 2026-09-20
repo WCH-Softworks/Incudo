@@ -141,6 +141,64 @@ export interface FilePicker {
   pick(options?: FilePickOptions): Promise<PickedFile[]>;
 }
 
+/** What the user chose to write to. */
+export interface SavedFile {
+  /**
+   * The name the file was written under, with its extension — what the user typed, which may
+   * differ from the name offered. Never a path, never absolute, like {@link PickedFile}.
+   *
+   * A platform that cannot say where a share went (a share sheet reports the app the user picked
+   * and rarely the name) returns the name it offered instead.
+   */
+  name: string;
+}
+
+export interface FileSaveOptions {
+  /** The name to offer, with its extension: `nyx.incu`. */
+  suggestedName: string;
+  /** Dialog title, where the platform shows one. */
+  title?: string;
+  /** Extensions without the dot: `['incu']`. Absent or empty offers every file. */
+  extensions?: string[];
+  /** What to call that set in the dialog's filter — "Incudo character". */
+  label?: string;
+}
+
+/**
+ * One file the user chose a place for: the write half of {@link FilePicker} (ADR 0038).
+ *
+ * A sibling port rather than a method on `FilePicker` or on `CharacterStore`. `FilePicker` reads
+ * and forgets; this hands bytes to the user and forgets, and an implementation that can do one
+ * (a phone can share a file and cannot pick one from a path) is not obliged to do the other.
+ * `CharacterStore` is out for the reason `FilePicker` gave: every method there means "inside the
+ * folder the user chose", and this is the one write that deliberately goes somewhere else.
+ *
+ * It takes **bytes, not a character**. What is inside a `.incu` is the packing function's
+ * business and a platform needs no opinion on it. It is also what a share sheet wants: a file to
+ * offer, and no path to promise.
+ *
+ * Choosing where to write is part of the call and cannot be separated from it, on purpose. A
+ * `pickDestination()` that returned a handle would leave a grant open between two calls; here the
+ * destination exists only while the bytes are going into it.
+ *
+ * **Replacing a file is the platform's own dialog's question.** Every implementation goes through
+ * a save dialog or a share sheet that already asks, and none may write to a path it built itself.
+ */
+export interface FileSaver {
+  /** False where this platform cannot show the user a save dialog at all. */
+  readonly available: boolean;
+  /** Why, when `available` is false. Shown verbatim, so write it for the user. */
+  readonly unavailableReason?: string;
+  /**
+   * Ask where, and write `bytes` there. **Null when the user cancels — which is an answer, not a
+   * failure**, and nothing has been written. It is the same answer `FilePicker.pick` gives as an
+   * empty list and `CharacterStore.choose` gives as null, and an implementation whose platform
+   * reports a cancel by throwing (a browser's `AbortError`) turns it into this. Throws when the
+   * write itself fails.
+   */
+  save(bytes: Uint8Array, options: FileSaveOptions): Promise<SavedFile | null>;
+}
+
 /** An in-memory Storage. Useful for tests and for a "don't persist" mode. */
 export class MemoryStorage implements Storage {
   private readonly map = new Map<string, string>();
