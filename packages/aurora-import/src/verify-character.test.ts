@@ -103,6 +103,8 @@ function saveXml(body: {
   /** Worn or wielded: in the bag and seeding the derivation (inventory plan, step 3). */
   equipped?: string[];
   magic?: string;
+  /** Attributes of the `<magic>` container itself: ` multiclass="true" level="5"`. */
+  magicAttrs?: string;
 }): string {
   const items =
     (body.equipment ?? []).map((id) => `<item identifier="c-${id}" name="i" id="${id}" />`).join('') +
@@ -121,7 +123,7 @@ function saveXml(body: {
     <sum element-count="${body.sum.length}">
       ${body.sum.map((id) => `<element type="Thing" id="${id}" />`).join('')}
     </sum>
-    <magic>${body.magic ?? ''}</magic>
+    <magic${body.magicAttrs ?? ''}>${body.magic ?? ''}</magic>
   </build></character>`;
 }
 
@@ -463,18 +465,104 @@ test('a class table that disagrees is a real mismatch, and says which pool it re
   assert.ok(difference!.message.includes('its own class table'), difference!.message);
 });
 
-test('a caster level moves the comparison to the shared pool', () => {
+test("a block's row is its own table even when a shared pool exists — ADR 0041", () => {
+  // ADR 0018 read this the other way round and this test said so. The first save with two
+  // ordinary casting blocks records each block's own table: a Wizard 4 / Arcane Trickster 4 has 4/3
+  // on one and 3 on the other, where the pool is 4/3/2.
   const system = slotSystem({
     'warlock:spellcasting:slots:1': 2,
     'spellcasting:slots:1': 4,
     'spellcasting:slots:2': 3,
   });
   const result = compareWithAurora(
+    casterSave('<slots s1="2" />'),
+    deriveWith(system, casterIndex()),
+    { index: casterIndex() },
+  );
+  assert.deepEqual(result.differences, [], "the block's own table is what Aurora recorded");
+
+  const shared = compareWithAurora(
     casterSave('<slots s1="4" s2="3" />'),
     deriveWith(system, casterIndex()),
     { index: casterIndex() },
   );
-  assert.deepEqual(result.differences, [], 'the shared pool is what Aurora recorded');
+  assert.equal(shared.mismatches, 1, 'and the pool is not what a block records');
+  assert.ok(shared.differences[0]!.message.includes('its own class table'));
+});
+
+test('a system that declares only the shared pool is compared against it', () => {
+  // The fallback: nothing to read a block's own table from.
+  const system = slotSystem({ 'spellcasting:slots:1': 4, 'spellcasting:slots:2': 3 });
+  const agrees = compareWithAurora(
+    casterSave('<slots s1="4" s2="3" />'),
+    deriveWith(system, casterIndex()),
+    { index: casterIndex() },
+  );
+  assert.deepEqual(agrees.differences, []);
+});
+
+// --- the shared caster level (ADR 0041) ------------------------------------
+
+function multiclassSave(attrs: string): ReturnType<typeof parseAuroraSave> {
+  return parseAuroraSave(
+    saveXml({
+      sum: ['ID_PICKED'],
+      magicAttrs: attrs,
+      magic: '<spellcasting name="Warlock" ability="Wisdom" source="ID_CASTER"><slots s1="2" /></spellcasting>',
+    }),
+  );
+}
+
+test('the shared caster level is read from <magic level>, and only on a multiclass save', () => {
+  assert.equal(multiclassSave(' multiclass="true" level="5"').magicLevel, 5);
+  assert.equal(multiclassSave(' multiclass="false" level="5"').magicLevel, undefined);
+  assert.equal(multiclassSave('').magicLevel, undefined);
+  assert.equal(multiclassSave(' multiclass="true"').magicLevel, undefined);
+});
+
+test('the shared caster level is compared against the stat the system publishes', () => {
+  const system = slotSystem({
+    'warlock:spellcasting:slots:1': 2,
+    'multiclass:spellcasting:level': 5,
+  });
+  const agrees = compareWithAurora(multiclassSave(' multiclass="true" level="5"'), deriveWith(system, casterIndex()), {
+    index: casterIndex(),
+  });
+  assert.deepEqual(agrees.differences, []);
+
+  // Rounding a third up instead of down reads 6 where Aurora wrote 5.
+  const off = compareWithAurora(multiclassSave(' multiclass="true" level="6"'), deriveWith(system, casterIndex()), {
+    index: casterIndex(),
+  });
+  assert.equal(off.mismatches, 1);
+  const [difference] = off.differences;
+  assert.equal(difference!.kind, 'stat-mismatch');
+  assert.equal(difference!.expected, '6');
+  assert.equal(difference!.actual, '5');
+});
+
+test('a single-source save has no caster level to compare, whatever the system publishes', () => {
+  const system = slotSystem({ 'warlock:spellcasting:slots:1': 2, 'multiclass:spellcasting:level': 5 });
+  const result = compareWithAurora(multiclassSave(''), deriveWith(system, casterIndex()), { index: casterIndex() });
+  assert.deepEqual(result.differences, []);
+});
+
+test('the shared caster level stays a note when no loaded system declares one', () => {
+  const system = slotSystem({ 'warlock:spellcasting:slots:1': 2 });
+  const result = compareWithAurora(multiclassSave(' multiclass="true" level="5"'), deriveWith(system, casterIndex()), {
+    index: casterIndex(),
+  });
+  assert.equal(result.mismatches, 0);
+  assert.equal(summarizeDifferences(result).get('not-modelled'), 1);
+});
+
+test('the stat that holds the caster level is configuration too', () => {
+  const system = slotSystem({ 'warlock:spellcasting:slots:1': 2, 'pool/level': 5 });
+  const result = compareWithAurora(multiclassSave(' multiclass="true" level="5"'), deriveWith(system, casterIndex()), {
+    index: casterIndex(),
+    stats: { slots: { level: () => 'pool/level' } },
+  });
+  assert.deepEqual(result.differences, []);
 });
 
 test('a solo caster keeps its own table however large the shared pool is', () => {

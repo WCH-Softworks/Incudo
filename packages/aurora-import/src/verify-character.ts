@@ -109,6 +109,8 @@ export interface CompareOptions {
       shared?: (level: number) => string;
       own?: (blockName: string, level: number) => string;
       solo?: (blockName: string) => string;
+      /** The shared caster level Aurora records on `<magic level="N">` — ADR 0041. */
+      level?: () => string;
     };
   };
   /**
@@ -128,6 +130,7 @@ const DEFAULT_STATS = {
     own: (blockName: string, level: number) =>
       `${blockName.trim().toLowerCase()}:spellcasting:slots:${level}`,
     solo: (blockName: string) => `${blockName.trim().toLowerCase()}:spellcasting:solo`,
+    level: () => 'multiclass:spellcasting:level',
   },
 };
 
@@ -160,6 +163,7 @@ export function compareWithAurora(
   for (const block of save.magic) {
     compareSpellcasting(block, derived, byId, stats, differences);
   }
+  compareCasterLevel(save, derived, stats, differences);
 
   // Only genuine disagreements count. `not-modelled` and `content-missing` are facts about
   // the model and the source list, and a check whose exit code can never be zero is a check
@@ -361,17 +365,20 @@ function compareElements(
 // --- <magic> ---------------------------------------------------------------
 
 /**
- * Aurora's nine-number slot row, against the stats the system publishes — ADR 0018.
+ * Aurora's nine-number slot row, against the stats the system publishes — ADR 0018, corrected by
+ * ADR 0041.
  *
- * Two pools and one flag to choose between them. A source that keeps its own slots — pact
- * magic — is compared against its own table however multiclassed the character is; anything
- * else joins the shared pool the moment that pool exists, because that is what having a
- * caster level *means*. When neither pool is declared the row goes back to being a note,
- * which is what every system that is not 5e will see.
+ * **A block's row is that source's own table.** ADR 0018 read it as the shared multiclass pool for
+ * any source that was not pact magic, on the argument that a caster level is what makes a
+ * multiclassed character's slots. No sample save could contradict it: every one had a single casting
+ * block or a warlock. The first save with two ordinary ones did. A Wizard 4 / Arcane Trickster 4
+ * records 4/3 on the Wizard and 3 on the Trickster, each exactly its own class's table, where the
+ * shared pool is 4/3/2. The pool is in the file too, but as one number: `<magic level="5">`, which
+ * `compareCasterLevel` reads.
  *
- * The two pools cannot simply be added or maxed: a Paladin 17 / Sorcerer 1 has a caster level
- * of 9 and *fewer* 4th-level slots than the paladin alone would, which is a real quirk of the
- * published rule and the reason this picks rather than combines.
+ * Own is preferred whenever the system declares it, and the shared table is the fallback for a system
+ * that declares only that. When neither is declared the row goes back to being a note, which is what
+ * every system that is not 5e will see.
  */
 function compareSlots(
   block: AuroraSpellcasting,
@@ -399,13 +406,12 @@ function compareSlots(
     return;
   }
 
-  const usesShared = !solo && sharedDeclared && shared.some((value) => (value ?? 0) > 0);
-  const source = usesShared
-    ? 'the multiclass table'
-    : solo
+  const source = ownDeclared
+    ? solo
       ? 'its own track, outside the multiclass table'
-      : 'its own class table';
-  const actual = (usesShared ? shared : own).map((value) => value ?? 0);
+      : 'its own class table'
+    : 'the multiclass table';
+  const actual = (ownDeclared ? own : shared).map((value) => value ?? 0);
 
   if (actual.join('/') === block.slots.join('/')) return;
   differences.push({
@@ -414,6 +420,40 @@ function compareSlots(
     message: `${where}: Aurora recorded spell slots ${block.slots.join('/')}; Incudo derives ${actual.join('/')} from ${source}.`,
     expected: block.slots.join('/'),
     actual: actual.join('/'),
+  });
+}
+
+/**
+ * The shared caster level, which is the one thing Aurora records about the multiclass pool
+ * (`<magic multiclass="true" level="N">`) — ADR 0041.
+ *
+ * Absent on a single-source character, which has no pool to have a level. Two saves have it: a
+ * Paladin 2 / Warlock 18 (level 1, a half-caster's two levels rounded down; pact magic is not in the
+ * pool) and a Wizard 4 / Arcane Trickster 4 (level 5, a third-caster's four levels rounded down to
+ * one). The second is what pins rounding down for a third: rounding up reads 6.
+ */
+function compareCasterLevel(
+  save: AuroraSave,
+  derived: DerivedCharacter,
+  stats: typeof DEFAULT_STATS,
+  differences: AuroraDifference[],
+): void {
+  if (save.magicLevel === undefined) return;
+  const actual = derived.stats.get(stats.slots.level().toLowerCase())?.value;
+  if (actual === undefined) {
+    differences.push({
+      kind: 'not-modelled',
+      message: `The shared caster level: Aurora recorded ${save.magicLevel}. No loaded system declares one, so this is not compared.`,
+      expected: String(save.magicLevel),
+    });
+    return;
+  }
+  if (actual === save.magicLevel) return;
+  differences.push({
+    kind: 'stat-mismatch',
+    message: `The shared caster level: Aurora recorded ${save.magicLevel}; Incudo derives ${actual}.`,
+    expected: String(save.magicLevel),
+    actual: String(actual),
   });
 }
 

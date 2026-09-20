@@ -250,6 +250,15 @@ pact magic being outside the multiclass table, and a half-caster's contribution 
 are both pinned by the ninth save. Rounding *down* rather than up is not — `floor(2/2)` and
 `ceil(2/2)` are both 1, and no sample save has two classes with the Spellcasting feature.
 
+**Corrected by [ADR 0041](./adr/0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md),
+when a save with two ordinary casting blocks arrived.** The paragraph above and ADR 0018 read each
+`<spellcasting>` block's slot row as the shared multiclass pool. It is that source's **own** table: a Wizard 4 /
+Arcane Trickster 4 records `s1="4" s2="3"` on one block and `s1="3"` on the other, where the pool is 4/3/2. The
+pool is recorded once, on the container — `<magic multiclass="true" level="5">` — as a caster level, and only
+on a multiclass save (`level="1"` for the Paladin 2 / Warlock 18). A third-caster's levels round down: rounding
+four Rogue levels up reads 6, and Aurora wrote 5. A half-caster's still are not pinned (two levels read 1 either
+way).
+
 The **spell save DC and attack bonus** joined them with
 [ADR 0020](./adr/0020-stats-keyed-on-declared-blocks.md), and that one changed what the check
 means rather than adding to it. Before, this file's own `saveDcBase: 8` rebuilt the DC and

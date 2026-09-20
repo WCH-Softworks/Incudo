@@ -200,6 +200,14 @@ export interface AuroraSave {
   /** `<magic>`: slots, DC and attack bonus Aurora computed. The other half of the oracle. */
   magic: AuroraSpellcasting[];
   /**
+   * `<magic multiclass="true" level="N">`: the *shared* caster level Aurora computed, on a character
+   * with more than one casting source and nowhere else. It is the only place the file records the
+   * multiclass pool: each `<spellcasting>` block's own `<slots>` is that source's own table (a Wizard 4's
+   * 4/3 and an Arcane Trickster 4's 3 sit side by side in one save), and the pool's slot counts are
+   * derived from this number and never written down. ADR 0041.
+   */
+  magicLevel?: number;
+  /**
    * `<sources><restricted>` — what the user turned OFF. Read so it can be inverted; never
    * stored. See `import-character.ts`, and the note in docs/AURORA-SAVE-FORMAT.md about
    * why a blocklist is the wrong thing to keep.
@@ -266,6 +274,7 @@ export function parseAuroraSave(xml: string): AuroraSave {
     sum: readSum(firstChild(build, 'sum')),
     sumCount: numberOrUndefined(firstChild(build, 'sum')?.attrs['element-count']),
     magic: readMagic(firstChild(build, 'magic')),
+    ...readMagicLevel(firstChild(build, 'magic')),
     ...readRestricted(firstChild(root, 'sources')),
     diagnostics,
   };
@@ -460,6 +469,13 @@ function readSum(node: XmlNode | undefined): string[] {
     if (id) ids.push(id);
   }
   return ids;
+}
+
+/** `{ magicLevel }` when the save records a shared caster level, and nothing when it does not. */
+function readMagicLevel(node: XmlNode | undefined): { magicLevel?: number } {
+  if (node?.attrs['multiclass'] !== 'true') return {};
+  const level = numberOrUndefined(node.attrs['level']);
+  return level === undefined ? {} : { magicLevel: level };
 }
 
 function readMagic(node: XmlNode | undefined): AuroraSpellcasting[] {

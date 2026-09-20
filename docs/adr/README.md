@@ -54,3 +54,4 @@ new one that supersedes it.
 | [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md) | A copy is written through a save port, from the one packing function, and changes nothing else | Accepted (builds on 0012, 0027, 0037) |
 | [0039](./0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md) | The CLI is removed, and what it measured becomes tests | Accepted (amends 0011; builds on 0005, 0008, 0012) |
 | [0040](./0040-a-chosen-element-follows-the-track-of-the-element-that-offered-it.md) | A chosen element follows the track of the element that offered it | Accepted (amends 0015; touches 0018) |
+| [0041](./0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md) | Aurora records a slot row per block and the shared caster level once | Accepted (corrects 0018; touches 0008) |

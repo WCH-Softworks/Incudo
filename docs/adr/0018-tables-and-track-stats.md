@@ -1,6 +1,8 @@
 # 0018 — A stat may be read from a table, and a track may contribute one
 
-**Status:** Accepted · 2026-09-10 · builds on [0015](./0015-class-levels.md), [0016](./0016-stat-bounds-are-expressions.md)
+**Status:** Accepted · 2026-09-10 · builds on [0015](./0015-class-levels.md), [0016](./0016-stat-bounds-are-expressions.md) ·
+corrected by [0041](./0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md) (what the
+differential check's slot row means: a block's own table, with the shared pool recorded once as a caster level)
 
 ## Context
 

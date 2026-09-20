@@ -113,6 +113,8 @@ const FAMILIES = {
   slots: /spellcasting:slots:[1-9]$/,
   dc: /:spellcasting:dc$/,
   attack: /:spellcasting:attack$/,
+  /** The shared caster level, which only a multiclass save records (ADR 0041). */
+  casterLevel: /^multiclass:spellcasting:level$/,
 };
 
 export type RowFamily = keyof typeof FAMILIES;
@@ -133,7 +135,7 @@ export type RowFamily = keyof typeof FAMILIES;
  */
 export function rowsCompared(run: OracleRun): Record<RowFamily, number> {
   const before = mismatches(run.comparison);
-  const rows = { slots: 0, dc: 0, attack: 0 };
+  const rows = { slots: 0, dc: 0, attack: 0, casterLevel: 0 };
   for (const family of Object.keys(FAMILIES) as RowFamily[]) {
     const shifted = shift(run.derived, FAMILIES[family]);
     const after = mismatches(compareWithAurora(run.save, shifted, { index: run.elements }));
