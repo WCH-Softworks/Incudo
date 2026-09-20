@@ -252,6 +252,25 @@ export function deriveCharacter(
   }
   for (const id of equippedElementIds(character)) chosenIds.add(id);
 
+  // What each recorded choice holds, by the key the pool is recorded under, and which of those
+  // elements only a choice put there. Nothing is deferred without a track to inherit: a character
+  // with no `advancement` derives exactly as it always did, in the order it always did.
+  const recordedChoices = new Map<string, ElementId[]>();
+  for (const choice of character.choices) {
+    if (!recordedChoices.has(choice.ruleKey)) recordedChoices.set(choice.ruleKey, choice.elementIds);
+  }
+  const picks = new Set<ElementId>();
+  if (trackLevels.size) {
+    const otherSeeds = new Set<ElementId>([
+      ...baselineIds,
+      ...advancementElementIds(character),
+      ...equippedElementIds(character),
+    ]);
+    for (const choice of character.choices) {
+      for (const id of choice.elementIds) if (!otherSeeds.has(id)) picks.add(id);
+    }
+  }
+
   let active = new Map<ElementId, Element>();
   let stats = new Map<StatKey, ResolvedStat>();
   // Element -> the track root it belongs to. Rebuilt each pass alongside `active`, and kept
@@ -285,23 +304,54 @@ export function deriveCharacter(
       nextMembers.set(id, new Set([id]));
     }
 
-    // Fixed-point expansion of grants.
-    let frontier = [...next.values()];
-    const seen = new Set(next.keys());
-    while (frontier.length) {
-      const nextFrontier: Element[] = [];
-      for (const element of frontier) {
+    // Fixed-point expansion of grants — and, when there are tracks, of recorded choices.
+    //
+    // A choice is an edge exactly as a grant is (ADR 0040): what a class's `select` was answered
+    // with belongs to that class, so it gates on that class's level and counts for that class's
+    // markers. Without the edge a subclass picked at Rogue 3 gates on the character's total.
+    //
+    // A pick is a seed, so it is in `next` from the start, but it is *expanded* only once
+    // something has reached it. Expanding it first — as every seed used to be — reads its own
+    // level gates before its chooser has passed the track on, and the answer would then depend
+    // on which of the two a character's list happens to name first. Whatever nothing reaches (a
+    // pick whose chooser has gone, ADR 0015's carried gap) is expanded last, on no track.
+    const expanded = new Set<ElementId>();
+    const queue: Element[] = [];
+    const reach = (id: ElementId): void => {
+      if (expanded.has(id)) return;
+      const reached = next.get(id);
+      if (!reached) return;
+      expanded.add(id);
+      queue.push(reached);
+    };
+    const attempted = new Set(next.keys());
+    for (const id of next.keys()) if (!picks.has(id)) reach(id);
+    do {
+      // `queue` grows as it is read, which is the order the frontier used to be walked in.
+      for (let at = 0; at < queue.length; at++) {
+        const element = queue[at]!;
         for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
           if (rule.kind !== 'grant') continue;
           inheritTrack(nextTracks, nextMembers, element.id, rule.id, index.get(rule.id), problems);
-          if (seen.has(rule.id)) continue;
-          const granted = addElement(next, index, rule.id, problems, element.id);
-          seen.add(rule.id);
-          if (granted) nextFrontier.push(granted);
+          // Once per id, resolved or not: an id nothing declares is reported by the first
+          // element to grant it, not by every one.
+          if (!attempted.has(rule.id)) {
+            attempted.add(rule.id);
+            addElement(next, index, rule.id, problems, element.id);
+          }
+          reach(rule.id);
+        }
+        if (!picks.size) continue;
+        for (const ruleKey of selectPools(element, character, kind, ctx, levelFor, equipment).keys()) {
+          for (const id of recordedChoices.get(ruleKey) ?? []) {
+            inheritTrack(nextTracks, nextMembers, element.id, id, index.get(id), problems);
+            reach(id);
+          }
         }
       }
-      frontier = nextFrontier;
-    }
+      queue.length = 0;
+      for (const id of next.keys()) reach(id);
+    } while (queue.length);
 
     const nextStats = computeStats(
       next,

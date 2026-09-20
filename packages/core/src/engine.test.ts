@@ -1229,3 +1229,105 @@ test('a full pool of one repeatable answer twice is answered, and still says wha
   assert.deepEqual([...answered!.candidates].sort(), ['BUMP_A', 'BUMP_B', 'BUMP_FIXED']);
   assert.deepEqual([...answered!.repeatable].sort(), ['BUMP_A', 'BUMP_B']);
 });
+
+// --- a chosen element follows the track of the element that offered it (ADR 0040) ----------------
+
+/**
+ * Alpha offers a choice from its level 3 and Beta offers nothing. SUB, the thing chosen, carries
+ * everything a 5e subclass does: grants gated on level, a marker the track stats read, and a pool
+ * of its own that widens with level. Nothing here is a class; the engine cannot tell.
+ */
+function chosenIndex(): MapElementIndex {
+  return indexWith(
+    element('Alpha', 'Widget', [{ kind: 'grant', key: 'g1', type: 'Gadget', id: 'PICKER' }]),
+    element('Beta', 'Widget', []),
+    element('PICKER', 'Gadget', [
+      { kind: 'select', key: 'select:Sub', type: 'Gadget', name: 'Sub', number: 1, level: 3 },
+    ]),
+    element('SUB', 'Gadget', [
+      { kind: 'grant', key: 'g1', type: 'Gadget', id: 'SUB_EARLY', level: 3 },
+      { kind: 'grant', key: 'g2', type: 'Gadget', id: 'SUB_LATE', level: 6 },
+      { kind: 'grant', key: 'g3', type: 'Gadget', id: 'MARK_HALF' },
+      { kind: 'select', key: 'select:Extra', type: 'Gadget', name: 'Extra', number: 1, level: 3 },
+      { kind: 'select', key: 'select:Extra', type: 'Gadget', name: 'Extra', number: 1, level: 6 },
+    ]),
+    element('X', 'Gadget', [{ kind: 'grant', key: 'g1', type: 'Gadget', id: 'X_LATE', level: 6 }]),
+    element('SUB_EARLY', 'Gadget'),
+    element('SUB_LATE', 'Gadget'),
+    element('X_LATE', 'Gadget'),
+    element('MARK_HALF', 'Gadget'),
+  );
+}
+
+const CHOSE_SUB = { ruleKey: 'PICKER/select:Sub', elementIds: ['SUB'] };
+const CHOSE_X = { ruleKey: 'SUB/select:Extra', elementIds: ['X'] };
+
+function choosing(alpha: number, beta: number, ...choices: Character['choices']): Character {
+  const character = twoTracks(alpha, beta);
+  character.choices = choices;
+  return character;
+}
+
+test('a chosen element gates on the level of the track that offered it, not the total', () => {
+  // Alpha 4, Beta 4: the character is level 8, and SUB's level 6 grant is Alpha's level 6.
+  const derived = deriveCharacter(choosing(4, 4, CHOSE_SUB), trackedSystem(), chosenIndex());
+  assert.equal(derived.elementIds.has('SUB'), true);
+  assert.equal(derived.elementIds.has('SUB_EARLY'), true, 'Alpha level 4 has reached 3');
+  assert.equal(derived.elementIds.has('SUB_LATE'), false, 'and has not reached 6, whatever the total');
+
+  const later = deriveCharacter(choosing(6, 2, CHOSE_SUB), trackedSystem(), chosenIndex());
+  assert.equal(later.elementIds.has('SUB_LATE'), true, 'Alpha level 6 has');
+});
+
+test('a chosen element\'s own pool is sized by that track too', () => {
+  const owed = (alpha: number, beta: number): number | undefined =>
+    deriveCharacter(choosing(alpha, beta, CHOSE_SUB), trackedSystem(), chosenIndex()).pendingChoices.find(
+      (p) => p.ruleKey === 'SUB/select:Extra',
+    )?.number;
+  assert.equal(owed(4, 4), 1, 'level 3 widens it once; level 6 is not Alpha\'s yet');
+  assert.equal(owed(6, 2), 2);
+});
+
+test('a chosen element is in the track, so a marker it grants counts for that track', () => {
+  // The Arcane Trickster shape: the third-caster marker arrives through a chosen subclass, and
+  // a track stat reading the marker counts it once per track that contains it.
+  const system = markedSystem([
+    { stat: 'reach', when: 'MARK_HALF', value: HALF_OF_TRACK },
+  ]);
+  assert.equal(deriveCharacter(choosing(4, 4, CHOSE_SUB), system, chosenIndex()).stats.get('reach')?.value, 2);
+  assert.equal(deriveCharacter(choosing(7, 1, CHOSE_SUB), system, chosenIndex()).stats.get('reach')?.value, 3);
+});
+
+test('a pick chosen from a pick is in the same track', () => {
+  const derived = deriveCharacter(choosing(4, 4, CHOSE_SUB, CHOSE_X), trackedSystem(), chosenIndex());
+  assert.equal(derived.elementIds.has('X'), true);
+  assert.equal(derived.elementIds.has('X_LATE'), false, 'X\'s level 6 is Alpha\'s level 6');
+  assert.equal(
+    deriveCharacter(choosing(6, 2, CHOSE_SUB, CHOSE_X), trackedSystem(), chosenIndex()).elementIds.has('X_LATE'),
+    true,
+  );
+});
+
+test('the order choices were recorded in does not change the answer', () => {
+  // A choice is a seed, and a seed is expanded before the element that offered it has been reached.
+  // The track it inherits must not depend on which of the two the character's list names first.
+  const ids = (character: Character): string[] =>
+    [...deriveCharacter(character, trackedSystem(), chosenIndex()).elementIds].sort();
+  assert.deepEqual(ids(choosing(4, 4, CHOSE_SUB, CHOSE_X)), ids(choosing(4, 4, CHOSE_X, CHOSE_SUB)));
+  assert.equal(ids(choosing(4, 4, CHOSE_X, CHOSE_SUB)).includes('X_LATE'), false);
+});
+
+test('a pick nothing offers still seeds the derivation, on the total, as it always did', () => {
+  // ADR 0015's known gap, kept: nothing prunes a pick whose chooser has gone. Beta-only, so no
+  // element offers 'Sub' at all, and SUB is in no track.
+  const derived = deriveCharacter(choosing(0, 8, CHOSE_SUB), trackedSystem(), chosenIndex());
+  assert.equal(derived.elementIds.has('SUB'), true);
+  assert.equal(derived.elementIds.has('SUB_LATE'), true, 'no track to read, so the total: 8 >= 6');
+});
+
+test('a character with no advancement is unchanged: a chosen element gates on the total', () => {
+  const character = { ...createCharacter('test', 'levelled'), progress: 8 };
+  character.choices = [{ ruleKey: 'seed', elementIds: ['Alpha'] }, CHOSE_SUB];
+  const derived = deriveCharacter(character, trackedSystem(), chosenIndex());
+  assert.equal(derived.elementIds.has('SUB_LATE'), true);
+});
