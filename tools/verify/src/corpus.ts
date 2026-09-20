@@ -209,9 +209,6 @@ export const RECORDED_BUDGET: CorpusBudget = {
   expectElements: 14316,
 };
 
-export const DEFAULT_AURORA_INDEX =
-  'C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index';
-
 type Environment = Record<string, string | undefined>;
 
 const LAYOUTS: readonly string[] = ['aurora-folder', 'repository'];
@@ -219,13 +216,16 @@ const LAYOUTS: readonly string[] = ['aurora-folder', 'repository'];
 /**
  * Where the corpus is, and whether anyone said so.
  *
+ * There is no default location, because a default is a path on somebody's machine and a test that
+ * reads it runs there and nowhere else. `location` is `undefined` until `INCUDO_AURORA_INDEX` names one.
+ *
  * `configured` is the difference between a machine that has no Aurora install (skip, as every
  * other real-corpus test does) and a CI job that was pointed at a checkout that did not happen
  * (fail). `node --test` reports a skip as green, so a check that skips on nothing passes on
  * nothing — the same argument as `expectFiles`.
  */
 export function corpusFromEnvironment(env: Environment): {
-  location: CorpusLocation;
+  location: CorpusLocation | undefined;
   configured: boolean;
 } {
   const layout = env['INCUDO_CORPUS_LAYOUT'] ?? 'aurora-folder';
@@ -239,13 +239,13 @@ export function corpusFromEnvironment(env: Environment): {
         'resolves files by name and has no root to give.',
     );
   }
+  const index = env['INCUDO_AURORA_INDEX'];
   return {
-    location: {
-      index: env['INCUDO_AURORA_INDEX'] ?? DEFAULT_AURORA_INDEX,
-      layout: layout as CorpusLayout,
-      ...(root === undefined ? {} : { root }),
-    },
-    configured: env['INCUDO_AURORA_INDEX'] !== undefined,
+    location:
+      index === undefined
+        ? undefined
+        : { index, layout: layout as CorpusLayout, ...(root === undefined ? {} : { root }) },
+    configured: index !== undefined,
   };
 }
 

@@ -36,13 +36,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
-import { dirname, extname, join } from 'node:path';
+import { extname, join } from 'node:path';
 
 import type { DifferenceKind } from '@incudo/aurora-import';
 
-import { corpusFromEnvironment, loadCorpus } from './corpus.ts';
 import {
   countKinds,
   rowsCompared,
@@ -51,6 +49,7 @@ import {
   type RowFamily,
 } from './aurora-oracle.ts';
 import { unnamed } from './private-saves.ts';
+import { realElements, requireCorpus, requireSaves, savesSkip } from './real-data.ts';
 
 /** One save's recorded table. Every kind not named is zero. */
 interface Pin {
@@ -104,12 +103,6 @@ const KINDS: DifferenceKind[] = [
   'not-modelled',
 ];
 
-const { location, configured: indexConfigured } = corpusFromEnvironment(process.env);
-const savesConfigured = process.env['INCUDO_AURORA_SAVES'] !== undefined;
-const savesDir = process.env['INCUDO_AURORA_SAVES'] ?? dirname(dirname(location.index));
-const configured = indexConfigured || savesConfigured;
-const present = existsSync(location.index) && existsSync(savesDir);
-
 interface Measured {
   /** The first eight characters of a hash of the file: what a save is, whatever it is called. */
   id: string;
@@ -135,19 +128,15 @@ const describeTable = (pin: Pin): string =>
 
 test(
   'every real save agrees with Aurora on everything both sides model',
-  { skip: !configured && !present ? `no Aurora install with saves at ${savesDir}` : false },
+  { skip: savesSkip },
   async (t) => {
-    assert.ok(
-      present,
-      `INCUDO_AURORA_INDEX / INCUDO_AURORA_SAVES point at ${location.index} and ${savesDir}, and one ` +
-        `of them does not exist. Failing rather than skipping: a skipped test is a green one.`,
-    );
+    const location = requireCorpus();
+    const savesDir = requireSaves();
 
     const names = (await readdir(savesDir)).filter((name) => extname(name).toLowerCase() === '.dnd5e');
     assert.ok(names.length > 0, 'there is at least one .dnd5e save to check');
 
-    const { library } = await loadCorpus(location);
-    const corpus = library.elements;
+    const corpus = await realElements();
 
     const measured: Measured[] = [];
     for (const name of names) {

@@ -22,6 +22,10 @@ apps/mobile/ios/
 *.incu
 fixtures/local/
 
+# Where the real Aurora data is on one machine. Local configuration, read by `npm test`, and never
+# committed: a path or a username in version control stays there for good. See .env.example.
+.env.local
+
 # The one exception: tools/verify/fixtures/ holds a save the tests generate, not a real
 # one. Today it is committed in the unpacked folder form (plain .json, reviewable in a
 # diff — the reason ADR 0012 keeps that form at all), so nothing here is ignored anyway.

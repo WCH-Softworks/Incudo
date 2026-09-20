@@ -56,7 +56,12 @@ function exportTargets(exports: unknown, into: string[] = []): string[] {
 
 test('no package entry point requires a build step', async () => {
   const packages = await workspacePackages();
-  assert.ok(packages.length >= 4, 'expected core, content, aurora-import, ui and the tools package');
+  // The packages the rest of the project imports, by name. Not "at least N": a folder count says
+  // nothing about which ones are there, and adding a package must not touch this test.
+  const names = packages.map(({ pkg }) => pkg.name);
+  for (const name of ['@incudo/core', '@incudo/content', '@incudo/aurora-import', '@incudo/ui', '@incudo/verify']) {
+    assert.ok(names.includes(name), `${name} is not a workspace package`);
+  }
 
   for (const { dir, pkg } of packages) {
     const targets = [pkg.main, pkg.types, ...exportTargets(pkg.exports)].filter(
@@ -96,5 +101,57 @@ test('the mobile app stays out of the workspaces, and apps are listed by name', 
   assert.ok(
     !workspaces.some((entry) => entry.startsWith('apps/') && entry.includes('*')),
     'apps are listed individually, so adding one is a deliberate edit',
+  );
+});
+
+// --- nothing committed names a person's machine ---------------------------------------------
+
+/**
+ * A third invariant, for the same reason as the other two: a path on somebody's computer in a committed
+ * file is in version control for good, and one already got in. Where real data lives is configuration
+ * (`INCUDO_AURORA_INDEX`, an untracked `.env.local`), never a default written into a file.
+ *
+ * It looks for the *shape* of a home folder rather than any one person's, so it names nobody and works
+ * for any contributor. What it reports is a file and a line, never the text it matched, so a failure
+ * does not copy the path into a log.
+ */
+const HOME_PATH = new RegExp(
+  [
+    '[A-Za-z]:[\\\\/]+' + 'Users' + '[\\\\/]+[^\\\\/\\s"\']+', // a Windows profile
+    '(?<![A-Za-z0-9_.-])/' + 'Users' + '/[^/\\s"\']+/', //         a macOS home
+    '(?<![A-Za-z0-9_.-])/' + 'home' + '/(?!runner/)[^/\\s"\']+/', // a Linux home (not CI's own)
+  ].join('|'),
+);
+
+const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', 'dist-types', 'target', 'gen', '.git', '.corpus']);
+const TEXT_EXTENSIONS = /\.(ts|tsx|js|mjs|cjs|json|md|yml|yaml|toml|rs|html|css|txt|example)$/i;
+
+async function committedTextFiles(dir: string, into: string[] = []): Promise<string[]> {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (!SKIPPED_DIRECTORIES.has(entry.name)) await committedTextFiles(join(dir, entry.name), into);
+    } else if (TEXT_EXTENSIONS.test(entry.name)) {
+      into.push(join(dir, entry.name));
+    }
+  }
+  return into;
+}
+
+test('no committed file names a path on anyone\'s machine', async () => {
+  const root = repoRoot();
+  const offenders: string[] = [];
+  for (const file of await committedTextFiles(root)) {
+    // `.env.local` is the one place a real path belongs, and it is not committed.
+    if (file.endsWith('.env.local')) continue;
+    const lines = (await readFile(file, 'utf8')).split(/\r?\n/);
+    lines.forEach((line, i) => {
+      if (HOME_PATH.test(line)) offenders.push(`${file.slice(root.length + 1).split('\\').join('/')}:${i + 1}`);
+    });
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'a home-folder path is committed at the places above. Read it from the environment instead ' +
+      '(tools/verify/src/real-data.ts): history is permanent.',
   );
 });

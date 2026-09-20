@@ -21,7 +21,6 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,20 +34,13 @@ import {
   type ElementIndex,
   type GameSystem,
 } from '@incudo/core';
-import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { compareWithAurora, importAuroraCharacter, parseAuroraSave } from '@incudo/aurora-import';
 import { CharacterBuilder } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
-import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
 import { saveLabel, unnamed } from './private-saves.ts';
-
-const AURORA_INDEX =
-  process.env['INCUDO_AURORA_INDEX'] ??
-  'C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index';
-const SAVES_DIR = process.env['INCUDO_AURORA_SAVES'] ?? dirname(dirname(AURORA_INDEX));
-const available = existsSync(AURORA_INDEX) && existsSync(SAVES_DIR);
+import { SAVES_DIR, realElements, requireSaves, savesSkip } from './real-data.ts';
 
 async function shippedSystem(): Promise<GameSystem> {
   const path = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'systems', 'dnd5e', 'system.json');
@@ -57,25 +49,13 @@ async function shippedSystem(): Promise<GameSystem> {
   return result.value!;
 }
 
-async function auroraCorpus(): Promise<ElementIndex> {
-  const library = new ContentLibrary();
-  await library.loadSource(
-    new HttpContentSource({
-      id: AURORA_INDEX,
-      fetcher: new LocalMirrorFetcher(AURORA_INDEX.replace(/\.index$/i, ''), new NodeFetcher()),
-      resolveByName: true,
-    }),
-    AURORA_INDEX,
-  );
-  return library.elements;
-}
-
 test(
   'each real save, rebuilt through the builder, is the character its import is',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  { skip: savesSkip },
   async () => {
+    requireSaves();
     const system = await shippedSystem();
-    const corpus = await auroraCorpus();
+    const corpus = await realElements();
     const files = (await readdir(SAVES_DIR))
       .filter((name) => extname(name).toLowerCase() === '.dnd5e')
       .sort();

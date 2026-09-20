@@ -41,7 +41,6 @@ import {
   type PickedFile,
   type SavedFile,
 } from '@incudo/core';
-import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { CharacterLibrary, importAuroraSavesIntoLibrary, saveCopy } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
@@ -54,16 +53,8 @@ import {
 } from './private-saves.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { nodeZipCodec } from './node-zip.ts';
-import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
-
-const AURORA_INDEX =
-  process.env['INCUDO_AURORA_INDEX'] ??
-  'C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index';
-
-const SAVES_DIR = process.env['INCUDO_AURORA_SAVES'] ?? dirname(dirname(AURORA_INDEX));
-
-const available = existsSync(AURORA_INDEX) && existsSync(SAVES_DIR);
+import { AURORA_INDEX, SAVES_DIR, realElements, requireSaves, savesSkip } from './real-data.ts';
 
 /** A `CharacterStore` over a real directory; the same dozen lines `library.test.ts` carries. */
 class NodeCharacterStore implements CharacterStore {
@@ -138,10 +129,11 @@ async function snapshot(root: string): Promise<Map<string, string>> {
 
 test(
   'a copy of each real save opens with zero sources and derives identically',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  { skip: savesSkip },
   async () => {
+    requireSaves();
     const system = await shippedSystem();
-    const corpus = await auroraCorpus();
+    const corpus = await realElements();
     assert.ok(corpus.size > 10000, 'expected the full corpus');
 
     // Sorted, so that "save 3/9" in a failure is the same save every time and in every test
@@ -363,15 +355,3 @@ async function shippedSystem(): Promise<GameSystem> {
   return result.value!;
 }
 
-async function auroraCorpus(): Promise<ElementIndex & { size: number }> {
-  const library = new ContentLibrary();
-  await library.loadSource(
-    new HttpContentSource({
-      id: AURORA_INDEX,
-      fetcher: new LocalMirrorFetcher(AURORA_INDEX.replace(/\.index$/i, ''), new NodeFetcher()),
-      resolveByName: true,
-    }),
-    AURORA_INDEX,
-  );
-  return library.elements as ElementIndex & { size: number };
-}

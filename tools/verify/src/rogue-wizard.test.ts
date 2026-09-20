@@ -23,7 +23,6 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,18 +36,12 @@ import {
   type ElementIndex,
   type GameSystem,
 } from '@incudo/core';
-import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { CharacterBuilder, packCharacter } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
-import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
 import { buildRogueWizard } from './rogue-wizard-build.ts';
-
-const AURORA_INDEX =
-  process.env['INCUDO_AURORA_INDEX'] ??
-  'C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index';
-const available = existsSync(AURORA_INDEX);
+import { corpusSkip, realElements } from './real-data.ts';
 
 async function shippedSystem(): Promise<GameSystem> {
   const path = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'systems', 'dnd5e', 'system.json');
@@ -57,25 +50,12 @@ async function shippedSystem(): Promise<GameSystem> {
   return result.value!;
 }
 
-async function auroraCorpus(): Promise<ElementIndex> {
-  const library = new ContentLibrary();
-  await library.loadSource(
-    new HttpContentSource({
-      id: AURORA_INDEX,
-      fetcher: new LocalMirrorFetcher(AURORA_INDEX.replace(/\.index$/i, ''), new NodeFetcher()),
-      resolveByName: true,
-    }),
-    AURORA_INDEX,
-  );
-  return library.elements;
-}
-
 test(
   'a level 8 Wizard 4 / Rogue 4 with an Arcane Trickster, built through the builder, reads as the book says',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  { skip: corpusSkip },
   async () => {
     const system = await shippedSystem();
-    const elements = await auroraCorpus();
+    const elements = await realElements();
     const builder = new CharacterBuilder(
       createCharacter('dnd5e', 'pc', { progress: 1, name: 'Wizard 4 Rogue 4' }),
       system,

@@ -20,7 +20,6 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -41,6 +40,7 @@ import {
   type LoadedCorpus,
 } from './corpus.ts';
 import { repoRoot } from './node-system.ts';
+import { corpusSkip, requireCorpus } from './real-data.ts';
 
 // --- 1. the budget, and the environment ------------------------------------
 
@@ -126,9 +126,10 @@ test('budgets come from the environment, fall back to the recorded ones, and ref
 });
 
 test('the corpus location is configured only when someone said where it is', () => {
+  // Nothing says where it is, so nothing is assumed: there is no default path to a machine.
   const unset = corpusFromEnvironment({});
   assert.equal(unset.configured, false);
-  assert.equal(unset.location.layout, 'aurora-folder');
+  assert.equal(unset.location, undefined);
 
   const ci = corpusFromEnvironment({
     INCUDO_AURORA_INDEX: '.corpus/AuroraLegacy.index',
@@ -275,99 +276,34 @@ test('a file the mirror does not have is an error naming both places, never a fe
 
 // --- 3. the real corpus ----------------------------------------------------
 
-const { location, configured } = corpusFromEnvironment(process.env);
-const present = existsSync(location.index);
-const missing =
-  `INCUDO_AURORA_INDEX is set to ${location.index}, which does not exist. A corpus that did not ` +
-  `check out loads nothing, and nothing has no unresolved references — so this fails instead of skipping.`;
+/**
+ * The overlay is a fixed table in the importer, and CLAUDE.md counts it. It is a property of the code
+ * and reads no corpus, so it is asserted here where anyone can run it.
+ */
+test('the overlay is the 83 elements Aurora materializes at runtime', () => {
+  assert.equal(auroraGeneratedElements().length, 83);
+});
 
-let loaded: Promise<LoadedCorpus> | undefined;
-const corpus = (): Promise<LoadedCorpus> => (loaded ??= loadCorpus(location));
-
+/**
+ * The budgets against whatever corpus the environment names, which in CI is a checkout of the content
+ * repository and on a maintainer's machine is their own install. There are no exact figures here on
+ * purpose: an earlier version pinned the element total of one person's Aurora install, and Aurora's own
+ * updater rewrote that install while it was open. What that test guarded (that the loader still
+ * finds inline lists, and still mints the ids it used to) is held by unit tests that read no corpus,
+ * which fail when the id shape changes and when the items stop being read.
+ */
 test(
   'the Aurora corpus stays within its budget',
-  { skip: !configured && !present ? `no Aurora install at ${location.index}` : false },
+  { skip: corpusSkip },
   async (t) => {
-    assert.ok(present, missing);
+    const location = requireCorpus();
     const budget = budgetFromEnvironment(process.env);
 
-    const loadedCorpus = await corpus();
+    const loadedCorpus = await loadCorpus(location);
     const found = analyseCorpus(loadedCorpus);
     for (const line of describeCorpus(found, loadedCorpus.elapsedMs)) t.diagnostic(line);
 
     const failures = checkBudget(found, budget);
     assert.deepEqual(failures, [], `Baseline not met:\n  ${failures.join('\n  ')}`);
-  },
-);
-
-/**
- * The exact figures, for the one corpus this project can hold still for a while.
- *
- * A budget only catches "worse". CLAUDE.md's baselines are also a statement about what the loader
- * *finds*: 2,258 elements from inline text, 229 generated, 23 requirements nothing can meet. CI
- * reads upstream's HEAD, which moves, so CI gets budgets and only budgets; the maintainer's install
- * is a snapshot, and against it any change at all is a change in Incudo. The unresolved id
- * is named on purpose: the day upstream fixes the spelling this fails, and the edit that follows
- * is the one CLAUDE.md says should happen.
- *
- * **The snapshot is not frozen, because Aurora rewrites it.** Its own content updater replaced seven
- * files while the maintainer had the app open (the Rogue and 2024 class files, `internal.xml` and one
- * supplement), and the element total went from 14,316 to 14,320 with the same 740 files and every
- * other figure here unchanged. So a failure on `elements` and `size` alone is almost certainly
- * that, not Incudo: look at the modification times under `custom/AuroraLegacy` first, and re-record
- * the two numbers once nothing else has moved.
- */
-const EXACT = {
-  files: 740,
-  elements: 14320,
-  size: 14545,
-  overlay: 83,
-  improvementOptions: 146,
-  synthesizedFromText: 2258,
-  errors: 0,
-  warnings: 57,
-  unresolved: ['ID_INTERNAL_CONDITION_DAMAGE_VULNERAILITY_BLUDGEONING'],
-  unmetRequirements: 23,
-};
-
-test(
-  "the maintainer's Aurora install reads exactly the recorded baseline",
-  {
-    skip: configured
-      ? "exact figures belong to the maintainer's frozen install; a configured corpus is judged by budget"
-      : !present
-        ? `no Aurora install at ${location.index}`
-        : location.layout !== 'aurora-folder',
-  },
-  async () => {
-    const found = analyseCorpus(await corpus());
-
-    assert.deepEqual(
-      {
-        files: found.files,
-        elements: found.elements,
-        size: found.size,
-        generated: found.generated,
-        synthesizedFromText: found.synthesizedFromText,
-        errors: found.errors.length,
-        warnings: found.warnings.length,
-        unresolved: found.unresolved,
-        unmetRequirements: found.unmetRequirements.length,
-      },
-      {
-        files: EXACT.files,
-        elements: EXACT.elements,
-        size: EXACT.size,
-        generated: EXACT.overlay + EXACT.improvementOptions,
-        synthesizedFromText: EXACT.synthesizedFromText,
-        errors: EXACT.errors,
-        warnings: EXACT.warnings,
-        unresolved: EXACT.unresolved,
-        unmetRequirements: EXACT.unmetRequirements,
-      },
-    );
-    // The two halves of "generated" move for different reasons: the overlay is a fixed table in
-    // the importer, the improvement options depend on what is loaded.
-    assert.equal(auroraGeneratedElements().length, EXACT.overlay);
   },
 );

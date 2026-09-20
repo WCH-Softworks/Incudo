@@ -46,16 +46,8 @@ import { CharacterBuilder, CharacterLibrary, importAuroraSavesIntoLibrary } from
 import { summarize } from './derived-summary.ts';
 import { assertNoneReported, assertSameSummary, saveLabel, unnamed } from './private-saves.ts';
 import { readContainer, writeContainer } from './node-save.ts';
-import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
-
-const AURORA_INDEX =
-  process.env['INCUDO_AURORA_INDEX'] ??
-  'C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index';
-
-const SAVES_DIR = process.env['INCUDO_AURORA_SAVES'] ?? dirname(dirname(AURORA_INDEX));
-
-const available = existsSync(AURORA_INDEX) && existsSync(SAVES_DIR);
+import { AURORA_INDEX, SAVES_DIR, corpusSkip, realElements, requireSaves, savesSkip } from './real-data.ts';
 
 /**
  * A `CharacterStore` over a real directory.
@@ -106,10 +98,11 @@ class NodeCharacterStore implements CharacterStore {
 
 test(
   'the real saves list and open from a library with zero sources configured',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  { skip: savesSkip },
   async () => {
+    requireSaves();
     const system = await shippedSystem();
-    const corpus = await auroraCorpus();
+    const corpus = await realElements();
     assert.ok(corpus.size > 10000, 'expected the full corpus');
 
     // Sorted, so that "save 3/9" in a failure is the same save every time and in every test
@@ -233,7 +226,7 @@ test(
 
 test(
   'a character built in the app keeps its ability scores with zero sources configured',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  { skip: corpusSkip },
   async () => {
     // The other half of ADR 0012 for the ability score editor: not "an imported character
     // survives" but "one built here does". Every write goes through `CharacterBuilder`, which
@@ -241,7 +234,7 @@ test(
     // path rather than a hand-made character. Doing this by hand in the app is what turned up
     // the two shell bugs in `use-builder.ts`; this is the part of it that stays checked.
     const system = await shippedSystem();
-    const corpus = await auroraCorpus();
+    const corpus = await realElements();
 
     const dir = await mkdtemp(join(tmpdir(), 'incudo-abilities-'));
     try {
@@ -301,10 +294,11 @@ test(
  */
 test(
   'D&D saves viewed as another system are counted, not hidden',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  { skip: savesSkip },
   async () => {
+    requireSaves();
     const system = await shippedSystem();
-    const corpus = await auroraCorpus();
+    const corpus = await realElements();
     const saves = (await readdir(SAVES_DIR))
       .filter((name) => extname(name).toLowerCase() === '.dnd5e')
       .map((name) => join(SAVES_DIR, name));
@@ -368,15 +362,3 @@ async function shippedSystem(): Promise<GameSystem> {
   return result.value!;
 }
 
-async function auroraCorpus(): Promise<ElementIndex & { size: number }> {
-  const library = new ContentLibrary();
-  await library.loadSource(
-    new HttpContentSource({
-      id: AURORA_INDEX,
-      fetcher: new LocalMirrorFetcher(AURORA_INDEX.replace(/\.index$/i, ''), new NodeFetcher()),
-      resolveByName: true,
-    }),
-    AURORA_INDEX,
-  );
-  return library.elements as ElementIndex & { size: number };
-}

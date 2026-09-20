@@ -28,25 +28,30 @@ write a test. When an older ADR or note says to type `incudo …`, the table in 
 replaced it. This file and the ADRs still call the nine-save differential check **`aurora verify`**,
 after the command that ran it; it is `aurora-oracle.test.ts` now.
 
-The real regression suite is two test files in `tools/verify`. A complete Aurora install already
-exists on this machine and works **entirely offline**, so with nothing configured they read it:
+**No test names a machine, a path or a person.** The real regression suite reads real Aurora data,
+and *where that is* is configuration: `INCUDO_AURORA_INDEX` (and `INCUDO_AURORA_SAVES` for saves) in
+the environment, as CI sets them in `ci.yml`, or once in an untracked `.env.local` that `npm test`
+reads (copy `.env.example`). Unset, those tests skip; set to a path that is not there, they **fail**.
+Never put a path, a username or a character name in a committed file or a commit message: history is
+permanent, and one such path already got in and stayed. `tools/verify/src/real-data.ts` is the one
+place that reads the variables.
 
 ```bash
-node --test --experimental-strip-types tools/verify/src/corpus.test.ts         # ~1.5s
-# 740 files, 14,320 elements on this machine's install (see below), 0 errors, 1 unresolved, 23 unmeetable, 57 warnings
-node --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts  # ~2s, every save
+# with INCUDO_AURORA_INDEX / INCUDO_AURORA_SAVES set, in the environment or in .env.local:
+node --env-file-if-exists=.env.local --test --experimental-strip-types tools/verify/src/corpus.test.ts
+node --env-file-if-exists=.env.local --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts
 ```
 
-Both print their numbers as `ℹ` lines. Where the corpus is comes from `INCUDO_*` environment
-variables, listed in `tools/verify/README.md`; CI sets them in `ci.yml`.
+Both print their numbers as `ℹ` lines; the variables are listed in `tools/verify/README.md`. What the
+pipeline runs and what it cannot is the next section's subject.
 
 - **Two layouts, as before.** `aurora-folder` (the default) resolves files the way Aurora's
   downloader stores them (a folder per index, files by `name`); `repository`, with
   `INCUDO_CORPUS_ROOT`, resolves them by repository path, for a git checkout. They are different
-  layouts — see docs/AURORA-FORMAT.md. Do not use one for the other. This machine's install is not
-  laid out as a checkout, so CI's `repository` path was exercised against a checkout layout rebuilt
-  from the install (each file written at the path its index URL maps to); it has never run against a
-  real checkout on this machine.
+  layouts — see docs/AURORA-FORMAT.md. Do not use one for the other. An Aurora install is not laid
+  out as a checkout, so CI's `repository` path was exercised against a checkout layout rebuilt from an
+  install (each file written at the path its index URL maps to), and has never been seen to run
+  against a real checkout.
 - **Always offline.** `LocalMirrorFetcher` falls through to the network when a file is not in the
   mirror, which is right for a partial mirror and quietly wrong everywhere else: an "offline" run
   that silently fetches proves nothing. `corpus.ts` gives it `OfflineFetcher` as the fallback, so a
@@ -182,17 +187,14 @@ fallbacks, which a guard test compares against `ci.yml` so the two cannot drift.
 is not redundant — a corpus that failed to check out loads nothing, and nothing has no unresolved
 references.
 
-A second test in the same file pins the **exact** figures in the bullets above against this
-machine's install, and does not run in CI, whose corpus is upstream's `HEAD` and moves. **The install is
-not frozen: Aurora's own updater rewrites it while the app is open.** Seven content files changed on
-2026-09-20 and the element total went from 14,316 to 14,320 with the same 740 files and every other
-figure identical (`ci.yml`'s budget still says 14,316, which judges upstream and not this machine). A
-failure on `elements` and `size` alone is that; check the modification times under
-`custom/AuroraLegacy` before suspecting Incudo. It
-exists because a budget only catches "worse": renaming the ids `parseRules` mints for inline lists
-leaves every budget green and takes that test from 2,258 to 0. Its unresolved list names the
-`VULNERAILITY` id, so the day upstream fixes the spelling it fails, and the edit that follows is
-the one the first bullet already says should happen.
+**There is no test of exact corpus totals, on purpose.** One existed, pinning the element count of one
+person's Aurora install as "frozen", and it was machine-specific by definition: Aurora's own updater
+rewrote that install while the app was open (seven files, 14,316 to 14,320 elements, everything else
+identical). What it guarded is that a budget only catches "worse", so renaming the ids `parseRules`
+mints for inline lists would leave every budget green. That is held by unit tests that read no
+corpus, and it was checked by perturbation: changing the minted id's shape, and stopping inline
+lists producing elements, each fail three of them. The overlay's size (83) is asserted on its own
+in `corpus.test.ts`. The figures in the bullets above are the record of a moment, not a pin.
 
 Aurora saves: **all 9 import; 1 element-missing, 0 spell-missing, 0 stat-mismatch**, and
 **55 element-extra**, with **3 not-modelled** and **13 content-missing** reported and not

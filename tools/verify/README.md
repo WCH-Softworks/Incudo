@@ -25,23 +25,31 @@ where there is one.
 
 ## Pointing the corpus tests somewhere
 
-Nothing is set on the maintainer's machine. CI sets all of these in `.github/workflows/ci.yml`, and
-that file is where a budget moves.
+**No test names a machine.** Where the real data lives is configuration and there is no default: with
+nothing set, the tests that need it skip. CI sets these in `.github/workflows/ci.yml`, and that file is
+where a budget moves. Locally, put them in an untracked `.env.local` at the repository root, which
+`npm test` reads (copy `.env.example`), or set them in your shell. Never commit a real path: it names a
+person's machine, and version-control history is permanent.
+
+A test that needs your saves cannot run in CI, because saves are personal data. Those tests say so in
+their headers and are checks you run, not regression tests the pipeline can run for you.
 
 | variable | meaning |
 |---|---|
-| `INCUDO_AURORA_INDEX` | The `AuroraLegacy.index` to read. **Once set, a missing file fails** instead of skipping, because a skipped test is a green one. |
+| `INCUDO_AURORA_INDEX` | The `AuroraLegacy.index` to read. **No default. Once set, a missing file fails** instead of skipping, because a skipped test is a green one. |
 | `INCUDO_CORPUS_LAYOUT` | `aurora-folder` (default; an Aurora install, files resolved by name) or `repository` (a git checkout, files resolved by URL path). They are different layouts. |
 | `INCUDO_CORPUS_ROOT` | `repository` only: the checkout's root. |
 | `INCUDO_MAX_UNRESOLVED`, `INCUDO_MAX_WARNINGS` | Budgets: fail if the corpus has more. |
 | `INCUDO_EXPECT_FILES`, `INCUDO_EXPECT_ELEMENTS` | Fail if fewer loaded — a corpus that did not check out loads nothing. |
-| `INCUDO_AURORA_SAVES` | The folder of `.dnd5e` saves (default: the folder above the install's `custom`). |
+| `INCUDO_AURORA_SAVES` | The folder of `.dnd5e` saves. Defaults, for an `aurora-folder` index, to the folder above `custom/`; a `repository` checkout has none. **Once set or inferred, a missing folder fails.** |
 | `INCUDO_ORACLE_DETAIL=1` | Print every difference message the oracle finds, for chasing an `element-extra`. |
 
 ## Rules for this folder
 
-- Nothing personal is printed. Saves are identified by position and asserted on by counts and
-  kinds, never by name or content.
+- Nothing personal is printed, and nothing personal is committed. Saves are identified by a fingerprint
+  of their bytes (the oracle) or by position, asserted on by counts and kinds, never by name or content;
+  a test that needs one particular save finds it by what it is (a class split), not by what it is called.
+- A test never asserts how many files a folder holds or where one sorts.
 - A check that can be satisfied by loading nothing is a check that must also assert something was
   loaded.
 - Do not add a command line. If a question needs asking often, it is a test.

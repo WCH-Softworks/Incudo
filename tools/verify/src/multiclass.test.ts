@@ -13,9 +13,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { readFile, readdir } from 'node:fs/promises';
+import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -28,20 +27,13 @@ import {
   type ElementIndex,
   type GameSystem,
 } from '@incudo/core';
-import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { compareWithAurora, importAuroraCharacter, parseAuroraSave } from '@incudo/aurora-import';
 import { CharacterBuilder } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
-import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
-
-const AURORA_INDEX =
-  process.env['INCUDO_AURORA_INDEX'] ??
-  'C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index';
-const SAVES_DIR = process.env['INCUDO_AURORA_SAVES'] ?? dirname(dirname(AURORA_INDEX));
-const ORACLE_FILE = join(SAVES_DIR, 'Hexadin.dnd5e');
-const available = existsSync(AURORA_INDEX) && existsSync(ORACLE_FILE);
+import { unnamed } from './private-saves.ts';
+import { SAVES_DIR, realElements, requireSaves, savesSkip } from './real-data.ts';
 
 async function fiveE(): Promise<GameSystem> {
   const path = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'systems', 'dnd5e', 'system.json');
@@ -52,27 +44,36 @@ async function fiveE(): Promise<GameSystem> {
 
 // --- the oracle -----------------------------------------------------------------------------
 
-async function auroraCorpus(): Promise<ElementIndex> {
-  const library = new ContentLibrary();
-  await library.loadSource(
-    new HttpContentSource({
-      id: AURORA_INDEX,
-      fetcher: new LocalMirrorFetcher(AURORA_INDEX.replace(/\.index$/i, ''), new NodeFetcher()),
-      resolveByName: true,
-    }),
-    AURORA_INDEX,
-  );
-  return library.elements;
+const SPLIT = [...Array<string>(2).fill('Paladin'), ...Array<string>(18).fill('Warlock')].join(',');
+
+/**
+ * The save whose twenty levels went two to a Paladin and eighteen to a Warlock, found by that and not
+ * by what the file is called. This is the one multiclass save the project was given a referee for.
+ */
+async function findOracle(corpus: ElementIndex): Promise<string | undefined> {
+  for (const name of (await readdir(SAVES_DIR)).sort()) {
+    if (extname(name).toLowerCase() !== '.dnd5e') continue;
+    const xml = await unnamed('reading a save', () => readFile(join(SAVES_DIR, name), 'utf8'));
+    const imported = importAuroraCharacter(parseAuroraSave(xml), { index: corpus, systemId: 'dnd5e' });
+    const split = imported.character.advancement?.map((entry) => corpus.get(entry.elementId)?.name).join(',');
+    if (split === SPLIT) return xml;
+  }
+  return undefined;
 }
 
 test(
   'the Paladin 2 / Warlock 18 oracle, rebuilt through the builder, is the character Aurora wrote',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
-  async () => {
+  { skip: savesSkip },
+  async (t) => {
+    requireSaves();
     const system = await fiveE();
-    const corpus = await auroraCorpus();
-
-    const save = parseAuroraSave(await readFile(ORACLE_FILE, 'utf8'));
+    const corpus = await realElements();
+    const xml = await findOracle(corpus);
+    if (xml === undefined) {
+      t.skip('no save of a Paladin 2 / Warlock 18 is installed');
+      return;
+    }
+    const save = parseAuroraSave(xml);
     const imported = importAuroraCharacter(save, { index: corpus, systemId: 'dnd5e' });
     const elements = new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus]);
     const reference = imported.character;
@@ -199,8 +200,9 @@ test(
 
 test(
   'hit points through the builder read each level\'s own die, worked by hand',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
-  async () => {
+  { skip: savesSkip },
+  async (t) => {
+    requireSaves();
     // Nothing checks a hit point total against Aurora — the save records the rolls and never the
     // sum (ADR 0019) — so this proves less than it might sound and says so. What it CAN show:
     // that the builder hands level 1 and 2 the Paladin's d10 and levels 3–20 the Warlock's d8, and
@@ -208,8 +210,13 @@ test(
     // What it cannot: that Aurora agrees, or that 5e's hit point rule is the one the system
     // definition declares — that is read from the book, and this test is the reading.
     const system = await fiveE();
-    const corpus = await auroraCorpus();
-    const save = parseAuroraSave(await readFile(ORACLE_FILE, 'utf8'));
+    const corpus = await realElements();
+    const xml = await findOracle(corpus);
+    if (xml === undefined) {
+      t.skip('no save of a Paladin 2 / Warlock 18 is installed');
+      return;
+    }
+    const save = parseAuroraSave(xml);
     const imported = importAuroraCharacter(save, { index: corpus, systemId: 'dnd5e' });
     const elements = new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus]);
     const paladin = imported.character.advancement![0]!.elementId;
@@ -254,15 +261,21 @@ test(
 
 test(
   'an imported character has its race, class and background answered, and changing one replaces it',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
-  async () => {
+  { skip: savesSkip },
+  async (t) => {
+    requireSaves();
     // The import records the three under Aurora's own keys (`ID_LEVEL_1/select:Race`, ...) and is
     // frozen, so the builder used to look under `build/<stepId>` only: all three read as open and
     // blocking, and choosing a race added a second beside the imported one. Counts and shapes
     // only — no name or prose from the save.
     const system = await fiveE();
-    const corpus = await auroraCorpus();
-    const save = parseAuroraSave(await readFile(ORACLE_FILE, 'utf8'));
+    const corpus = await realElements();
+    const xml = await findOracle(corpus);
+    if (xml === undefined) {
+      t.skip('no save of a Paladin 2 / Warlock 18 is installed');
+      return;
+    }
+    const save = parseAuroraSave(xml);
     const imported = importAuroraCharacter(save, { index: corpus, systemId: 'dnd5e' });
     const elements = new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus]);
     const reference = imported.character;

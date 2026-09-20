@@ -8,7 +8,7 @@
  * is **identical** — every element, every stat, every pending choice, every problem.
  *
  * It runs twice. Once against a committed fixture corpus, so it runs everywhere including
- * CI. Once against the real 12,058-element AuroraLegacy install, when one is on the machine —
+ * CI. Once against the real AuroraLegacy corpus, when the environment names one —
  * skipped rather than failed when it is not, because the corpus is 740 files of licensed
  * content that will never live in this repository.
  */
@@ -16,7 +16,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,19 +39,12 @@ import {
   type GameSystem,
 } from '@incudo/core';
 import { parseAuroraElements } from '@incudo/aurora-import';
-import { ContentLibrary, HttpContentSource } from '@incudo/content';
 
 import { summarize } from './derived-summary.ts';
 import { FIXTURES_DIR, GOLDEN_DIR, fixtureCharacter } from './fixture-character.ts';
 import { readContainer, writeContainer } from './node-save.ts';
-import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
-
-
-/** Set INCUDO_AURORA_INDEX to point the corpus half of this test somewhere else. */
-const AURORA_INDEX =
-  process.env['INCUDO_AURORA_INDEX'] ??
-  'C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index';
+import { corpusSkip, realElements } from './real-data.ts';
 
 async function fixtureSystem(): Promise<GameSystem> {
   const raw = JSON.parse(await readFile(join(FIXTURES_DIR, 'system.json'), 'utf8')) as unknown;
@@ -286,17 +278,15 @@ test('a beast is a character too, and the engine never says which is which', asy
 // ---------------------------------------------------------------------------
 // The same property, against the real thing.
 
-const auroraAvailable = existsSync(AURORA_INDEX);
-
 test(
-  'the real corpus: a 5e character built from 12,058 elements opens with zero sources',
-  { skip: auroraAvailable ? false : `no Aurora install at ${AURORA_INDEX}` },
+  'the real corpus: a 5e character built from the whole corpus opens with zero sources',
+  { skip: corpusSkip },
   async () => {
     const system = await loadShippedSystem('dnd5e');
-    const corpus = await loadAuroraCorpus();
+    const corpus = await realElements();
     assert.ok(corpus.size > 10000, 'expected the full corpus');
 
-    let character = createCharacter('dnd5e', 'pc', { name: 'Vigaro', progress: 3 });
+    let character = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
     character = setChoice(character, 'build/race', ['ID_RACE_HALFELF']);
     character = setChoice(character, 'build/class', ['ID_WOTC_PHB_CLASS_ROGUE']);
     character = setChoice(character, 'build/background', ['ID_BACKGROUND_CRIMINAL']);
@@ -305,7 +295,7 @@ test(
     assert.ok(withCorpus.elements.length > 30);
 
     await withTempDir(async (dir) => {
-      const path = join(dir, 'vigaro.incu');
+      const path = join(dir, 'vesper.incu');
       const content = collectCharacterContent(character, corpus, {
         kind: resolveCharacterKind(system, character.kind),
       });
@@ -330,15 +320,3 @@ async function loadShippedSystem(id: string): Promise<GameSystem> {
   return result.value!;
 }
 
-async function loadAuroraCorpus(): Promise<ElementIndex & { size: number }> {
-  const library = new ContentLibrary();
-  await library.loadSource(
-    new HttpContentSource({
-      id: AURORA_INDEX,
-      fetcher: new LocalMirrorFetcher(AURORA_INDEX.replace(/\.index$/i, ''), new NodeFetcher()),
-      resolveByName: true,
-    }),
-    AURORA_INDEX,
-  );
-  return library.elements as ElementIndex & { size: number };
-}

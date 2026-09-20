@@ -10,7 +10,7 @@
  *
  * The save is found by what it is, a character whose levels went four to the Wizard and then four to
  * the Rogue, and not by its name, its position or how many other saves sit beside it. Where there is
- * none, this skips: it is an artefact of the maintainer's machine, like every other real save.
+ * none, this skips: it needs a save only its owner has, like every other real save.
  *
  * What is asserted is what Aurora *records*, and what the description fixes:
  *  - no `stat-mismatch` and no `spell-missing`: both blocks' slots, the save DC, the attack bonus, the
@@ -26,7 +26,6 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,21 +39,14 @@ import {
   type ElementIndex,
   type GameSystem,
 } from '@incudo/core';
-import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { compareWithAurora, importAuroraCharacter, parseAuroraSave } from '@incudo/aurora-import';
 import { CharacterBuilder } from '@incudo/ui';
 
 import { rowsCompared, type OracleRun } from './aurora-oracle.ts';
-import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
 import { ROGUE, WIZARD, buildRogueWizard } from './rogue-wizard-build.ts';
 import { unnamed } from './private-saves.ts';
-
-const AURORA_INDEX =
-  process.env['INCUDO_AURORA_INDEX'] ??
-  'C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index';
-const SAVES_DIR = process.env['INCUDO_AURORA_SAVES'] ?? dirname(dirname(AURORA_INDEX));
-const available = existsSync(AURORA_INDEX) && existsSync(SAVES_DIR);
+import { SAVES_DIR, realElements, requireSaves, savesSkip } from './real-data.ts';
 
 async function shippedSystem(): Promise<GameSystem> {
   const path = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'systems', 'dnd5e', 'system.json');
@@ -63,29 +55,17 @@ async function shippedSystem(): Promise<GameSystem> {
   return result.value!;
 }
 
-async function auroraCorpus(): Promise<ElementIndex> {
-  const library = new ContentLibrary();
-  await library.loadSource(
-    new HttpContentSource({
-      id: AURORA_INDEX,
-      fetcher: new LocalMirrorFetcher(AURORA_INDEX.replace(/\.index$/i, ''), new NodeFetcher()),
-      resolveByName: true,
-    }),
-    AURORA_INDEX,
-  );
-  return library.elements;
-}
-
 const SPLIT = [...Array<string>(4).fill(WIZARD), ...Array<string>(4).fill(ROGUE)].join(',');
 
 test(
   'the described Wizard 4 / Rogue 4, built through the builder, agrees with the Aurora save of it',
-  { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
+  { skip: savesSkip },
   async (t) => {
+    requireSaves();
     const system = await shippedSystem();
-    const corpus = await auroraCorpus();
+    const corpus = await realElements();
 
-    for (const name of (await readdir(SAVES_DIR)).filter((n) => extname(n).toLowerCase() === '.dnd5e')) {
+    for (const name of (await readdir(SAVES_DIR)).sort().filter((n) => extname(n).toLowerCase() === '.dnd5e')) {
       const xml = await unnamed('reading a save', () => readFile(join(SAVES_DIR, name), 'utf8'));
       const save = parseAuroraSave(xml);
       const imported = importAuroraCharacter(save, { index: corpus, systemId: 'dnd5e' });

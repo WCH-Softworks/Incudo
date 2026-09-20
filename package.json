@@ -11,13 +11,13 @@
     "apps/desktop"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22.9"
   },
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --build --force",
     "clean": "tsc --build --clean",
-    "test": "node --test --experimental-strip-types packages/*/src/**/*.test.ts tools/*/src/**/*.test.ts",
+    "test": "node --env-file-if-exists=.env.local --test --experimental-strip-types \"packages/*/src/**/*.test.ts\" \"tools/*/src/**/*.test.ts\"",
     "fixtures:rebuild": "node --experimental-strip-types tools/verify/src/rebuild-fixtures.ts",
     "lint": "eslint .",
     "desktop": "npm run dev -w @incudo/desktop",
