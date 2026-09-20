@@ -15,43 +15,58 @@ npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, st
                        # Opens on the character library; pick a folder to see anything in it.
 npm run desktop:app    # the real Tauri window — needs Rust. Builds now; the icon arrived.
 npm run typecheck      # tsc --build --force
-npm test               # node --test, no build step
-npm run incudo -- --help   # the CLI: validate | types | inspect | system | content | character
-npm run incudo -- validate <index-url-or-local-path> [--strict] [--json]
-npm run incudo -- system validate systems/dnd5e/system.json
-npm run incudo -- character show <file.incu>   # derives from the save alone — ADR 0012
-npm run incudo -- aurora inspect <file.dnd5e>  # what a save contains, without importing
-npm run incudo -- aurora import <file.dnd5e> <out.incu> --index <index>
-npm run incudo -- aurora verify <file.dnd5e> --index <index>   # diff against Aurora's own maths
+npm test               # node --test, no build step. Includes the regression suite below wherever an
+                       # Aurora install is on the machine, which it is on this one.
 npm run fixtures:rebuild   # regenerate tools/verify/fixtures/aelin/ after a format change
 ```
 
-The real regression suite is the CLI against the full Aurora corpus. A complete Aurora install
-already exists on this machine and works **entirely offline**:
+**There is no CLI, and none should be added**
+([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
+`tools/incudo` and `npm run incudo` are gone. The folder is `tools/verify` (`@incudo/verify`): tests
+and the Node adapters they stand on, none of it shipped. If you want to ask the engine a question,
+write a test. When an older ADR or note says to type `incudo …`, the table in ADR 0039 says what
+replaced it. This file and the ADRs still call the nine-save differential check **`aurora verify`**,
+after the command that ran it; it is `aurora-oracle.test.ts` now.
+
+The real regression suite is two test files in `tools/verify`. A complete Aurora install already
+exists on this machine and works **entirely offline**, so with nothing configured they read it:
 
 ```bash
-npm run incudo -- validate \
-  "C:/Users/gcorn/Documents/5e Character Builder/custom/AuroraLegacy.index" --aurora-folder
-# 740 files, 14,316 elements (+83 generated), 0 errors, 1 unresolved, ~1.5s
+node --test --experimental-strip-types tools/verify/src/corpus.test.ts         # ~1.5s
+# 740 files, 14,316 elements (+229 generated), 0 errors, 1 unresolved, 23 unmeetable, 57 warnings
+node --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts  # ~2s, the nine saves
 ```
 
-`--aurora-folder` resolves files the way Aurora's downloader stores them (a folder per index,
-files by `name`); `--local [--root DIR]` resolves them by repository path, for a git checkout.
-They are different layouts — see docs/AURORA-FORMAT.md. Do not use one for the other.
+Both print their numbers as `ℹ` lines. Where the corpus is comes from `INCUDO_*` environment
+variables, listed in `tools/verify/README.md`; CI sets them in `ci.yml`.
 
-Add `--offline` to make that enforceable. `LocalMirrorFetcher` falls through to the network
-when a file is not in the mirror, which is right for a partial mirror and quietly wrong
-everywhere else: an "offline" run that silently fetches proves nothing. With `--offline` a
-miss is a named error giving both the URL refused and the mirror path checked. The command
-above passes all 740 files with `--offline`, so that corpus really is complete.
+- **Two layouts, as before.** `aurora-folder` (the default) resolves files the way Aurora's
+  downloader stores them (a folder per index, files by `name`); `repository`, with
+  `INCUDO_CORPUS_ROOT`, resolves them by repository path, for a git checkout. They are different
+  layouts — see docs/AURORA-FORMAT.md. Do not use one for the other. This machine's install is not
+  laid out as a checkout, so CI's `repository` path was exercised against a checkout layout rebuilt
+  from the install (each file written at the path its index URL maps to); it has never run against a
+  real checkout on this machine.
+- **Always offline.** `LocalMirrorFetcher` falls through to the network when a file is not in the
+  mirror, which is right for a partial mirror and quietly wrong everywhere else: an "offline" run
+  that silently fetches proves nothing. `corpus.ts` gives it `OfflineFetcher` as the fallback, so a
+  miss is a named error giving both the URL refused and the mirror path checked. The corpus above
+  passes all 740 files that way, so it really is complete.
+- **Skip when nothing is configured; fail when something is.** `node --test` reports a skip as
+  green, so once `INCUDO_AURORA_INDEX` or `INCUDO_AURORA_SAVES` is set, a missing path fails. A
+  checkout that did not happen loads nothing, and nothing has no unresolved references.
+
 Nine real Aurora saves sit beside it as `*.dnd5e`. They stay **local and out of the repo**:
-read them for verification, never commit them or their contents.
+read them for verification, never commit them or their contents. `aurora-oracle.test.ts` names them
+by position and asserts on counts and kinds; keep it that way. `INCUDO_ORACLE_DETAIL=1` adds every
+difference message to its report, and those name content (elements, spells, stats), never a
+character.
 
 ## Hard constraints
 
 **No TypeScript syntax Node cannot strip.** No parameter properties
 (`constructor(private readonly x: T)`), no `enum`, no `namespace`, no decorators. Write the
-field and assign it. This is why tests and the CLI run with zero build step — do not trade it
+field and assign it. This is why the tests run with zero build step — do not trade it
 away. Relative imports use the `.ts` extension; `tsc` rewrites them on emit.
 
 **Layering** (`docs/CODE-REUSE-POLICY.md`) — enforced, not aspirational:
@@ -142,11 +157,19 @@ of that changed: the overlay resolved 51 of them, and splitting grant references
 requirement references separated one real breakage from twenty-three deliberate ones. The
 coincidence is gone; do not go looking for it.
 
-CI enforces this as a **budget, not a target**: `validate` takes `--max-unresolved`,
-`--max-warnings`, `--expect-files` and `--expect-elements`, and the numbers live in
-`.github/workflows/ci.yml`. Moving one is a deliberate edit to that file. The `--expect-*`
-pair is not redundant — a corpus that failed to check out loads nothing, and nothing has no
-unresolved references.
+CI enforces this as a **budget, not a target**: `corpus.test.ts` reads `INCUDO_MAX_UNRESOLVED`,
+`INCUDO_MAX_WARNINGS`, `INCUDO_EXPECT_FILES` and `INCUDO_EXPECT_ELEMENTS`, and the numbers live in
+`.github/workflows/ci.yml`. Moving one is a deliberate edit to that file, and to the test's own
+fallbacks, which a guard test compares against `ci.yml` so the two cannot drift. The `EXPECT` pair
+is not redundant — a corpus that failed to check out loads nothing, and nothing has no unresolved
+references.
+
+A second test in the same file pins the **exact** figures in the bullets above against this
+machine's frozen install, and does not run in CI, whose corpus is upstream's `HEAD` and moves. It
+exists because a budget only catches "worse": renaming the ids `parseRules` mints for inline lists
+leaves every budget green and takes that test from 2,258 to 0. Its unresolved list names the
+`VULNERAILITY` id, so the day upstream fixes the spelling it fails, and the edit that follows is
+the one the first bullet already says should happen.
 
 Aurora saves: **all 9 import; 1 element-missing, 0 spell-missing, 0 stat-mismatch**, and
 **55 element-extra**, with **3 not-modelled** and **13 content-missing** reported and not
@@ -175,12 +198,25 @@ darkvision grant that post-dates it, and the single **element-missing** —
 files and carrying no rules. That one is honestly unmodelled rather than budgeted; inventing
 a rule for it would be the guess ADR 0005 rules out.
 
-`incudo aurora verify` classifies all of them; see docs/AURORA-SAVE-FORMAT.md. Those files
-are personal data and never enter the repo — and neither do screenshots of them.
+`compareWithAurora` in `packages/aurora-import` classifies all of them (frozen, ADR 0008; it was
+never in the CLI); see docs/AURORA-SAVE-FORMAT.md. `aurora-oracle.test.ts` pins the whole table
+above, plus 1 problem in one derivation and 8 spellcasting blocks.
+
+**It also pins how many rows were compared: 8 slot rows, 8 save DC rows, 8 attack rows.**
+`AuroraComparison` cannot report that — a row that agrees leaves no trace, and neither does one
+that was skipped — so the test measures it: every published stat of one family is shifted by one
+and the comparison re-run, and the extra `stat-mismatch` differences are the rows that were
+compared. Checked by breaking things: the DC base moved from 8 to 9 gives 8 mismatches; the DC
+comparison silently disabled leaves `stat-mismatch` at 0 and is caught only by this measure.
+The CLI never printed these numbers; they were established once by hand and are now asserted.
+
+**CI cannot run the oracle and never could.** The saves are personal data and stay on this
+machine, so `aurora-corpus` in CI checks the corpus and nothing about the saves. Those files are
+personal data and never enter the repo — and neither do screenshots of them.
 
 ## State of play
 
-Working: core engine, Aurora content **and save** importer, content sources, CLI, two system
+Working: core engine, Aurora content **and save** importer, content sources, two system
 definitions, the `.incu` container, the JSON Schemas and the validator behind them, the whole of
 the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class —
 **spell selection, filtered by list, school and slot level** (ADR 0030), and
@@ -189,6 +225,26 @@ the inventory work — a bag, slots, `equipped=`, attunement and a derived armou
 all four of 5e's methods**, renders the sheet, reads and writes real `.incu` files into a folder
 the user picks, and **imports Aurora `.dnd5e` saves into it**.
 Not started: the mobile shell (only its `platform.ts` contract exists).
+
+**The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
+Things to know before touching `tools/verify`:
+
+- **The numbers were reproduced against the CLI's own output before a line was removed**, and that
+  is the evidence: `validate --json` identical key for key on both layouts, and all nine saves'
+  `aurora verify --json` identical (every difference, message and expected/actual). Both
+  mechanisms are described in the ADR's evidence table. It cannot be redone — the CLI is in git
+  history at `e102915^` if a future doubt needs it.
+- **What was not verified:** the GitHub Actions job itself (never pushed; the step's command and
+  environment were run locally against a reconstructed checkout layout, relative paths and all),
+  and macOS or Linux for anything here.
+- **`summarize()` is `tools/verify/src/derived-summary.ts`** and means what it did: sorted
+  elements, stats, pending choices and problems, and never candidate lists. `accountedFor` went
+  with `character verify`, its only caller.
+- **`node-system.ts` has one loader, `loadShippedSystem(id)`**, which throws. There is no
+  `--system` shorthand, error callback or "install it elsewhere" hint left in it.
+- **Not covered, and was not before:** a reachability bug that leaves every count alone. The
+  cache dropping `<append>` blocks was exactly that, and no budget here would have seen it.
+  `compose.test.ts` is what holds that line.
 
 **A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
 `packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool
@@ -359,13 +415,14 @@ deliberately **not** fixed:
   never `chosen`, so a shell has nothing to append to — the fix is a field on the view-model,
   not a patch in the pane. Do not read ADR 0030's green result as covering this: that work
   made the engine offer the right *candidates*, and this is about recording the answer.
-- **The character sheet renders no features, traits, proficiencies or languages.**
-  `SheetPane.tsx` does `if (!stats.length) return null`, and the `features` and `proficiencies`
-  sections declare `types` with no `stats`, so they are dropped whole. The CLI renders them
-  (`character-commands.ts`, `derived.elements.filter(e => section.types.includes(e.type))`), so
-  a level 1 wizard's sheet reads eight proficiencies and two class features there and six
-  ability scores and some numbers in the app. Same shape as every other divergence here: the
-  pane reimplements a slice of what the CLI already does properly.
+- **~~The character sheet renders no features, traits, proficiencies or languages.~~** Fixed.
+  `SheetPane.tsx` did `if (!stats.length) return null`, and the `features` and `proficiencies`
+  sections declare `types` with no `stats`, so they were dropped whole. It now calls the shared
+  `renderSheetSection` (`packages/core/src/system.ts`) instead of reimplementing `perBlock`
+  expansion by hand, and renders a section whenever it has non-empty `stats` *or* a non-empty
+  `derived.elements.filter(e => section.types.includes(e.type))` — the same test
+  the CLI's sheet printer used before it was removed. A level 1 wizard's app sheet now lists
+  its features, proficiencies and spells.
 - **A granted ability point is unspendable except under a points method.** `BudgetState.granted`
   reports it and the editor shows it, but only a cost table says what a point buys, so a
   standard-array or rolled character cannot spend one. Inventing "a point is +1" is the guess
@@ -408,7 +465,7 @@ is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`,
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
 `advancement`, `generation`, `inventory` and `assets`. A `.incu` is a zip of `manifest.json` + `character.json` + `content.json` + `assets/`,
-readable and writable as an unpacked folder too, and `incudo character verify` proves a save
+readable and writable as an unpacked folder too, and `self-contained.test.ts` proves a save
 re-derives identically with zero sources configured.
 
 Three things Phase 1 changed that are easy to trip over:
@@ -628,9 +685,9 @@ Two things that follow from the format work, for anyone changing this code:
 
 - **The system format is now a public API in practice.** Breaking it again is expensive.
   `schemas/system.schema.json` is the contract; `packages/core/src/json-schema.ts` is the *one*
-  validator the CLI and the app share. Do not write a second one.
-- **`summarize()` in the CLI is the definition of "derived output".** The self-containment test
-  compares it, so anything added to a derivation that depends on *what content is loaded* rather
+  validator the app and the tests share. Do not write a second one.
+- **`summarize()` in `tools/verify/src/derived-summary.ts` is the definition of "derived output".**
+  The self-containment test compares it, so anything added to a derivation that depends on *what content is loaded* rather
   than on the character must stay out of it — candidate lists are the example.
 
 ## Conventions

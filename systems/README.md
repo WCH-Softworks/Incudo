@@ -45,17 +45,14 @@ not distribute them. They load through exactly the same code path
    `"progression": { "kind": "none" }` — not a special case, just another progression.
    A second kind that is *mostly* the first one uses `"extends"` and states only its
    differences; see how `legendary` sits on top of `npc` in `dnd5e/`.
-5. Validate it:
-
-   ```bash
-   npm run incudo -- system validate path/to/system.json
-   ```
-
-   This is the same validator the app runs on load, so a system that passes here loads there.
-   It checks structure against the schema *and* that every reference resolves — element types
-   your kinds name, stats your sheets show, kinds your `extends` points at.
-6. Confirm your content matches: `npm run incudo -- types <your-index>` lists every type the
-   content actually uses, which should be a subset of what you declared.
+5. Validate it: choose **Add a system…** in the app and pick your `system.json`. It runs the same
+   validator the shipped systems go through, so a system the app accepts is one it can build in.
+   The validator checks structure against the schema *and* that every reference resolves —
+   element types your kinds name, stats your sheets show, kinds your `extends` points at — and
+   names the path of whatever it refuses. For a definition kept in this repository,
+   `tools/verify/src/schemas.test.ts` validates every `systems/*/system.json` on `npm test`.
+6. Confirm your content matches: every element type your content uses should be one you
+   declared. The app lists what a source contributes in its Sources view.
 
 If you find yourself needing engine changes to express your system, that is a bug report
 worth filing — the vocabulary is allowed to grow, but only when real content forces it.

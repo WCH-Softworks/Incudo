@@ -158,6 +158,11 @@ once, through the harness.
 
 ### What was and was not checked for Save a copy… (2026-09-20)
 
+*"Opens in the CLI" below means `incudo character show`, which was removed afterwards
+([ADR 0039](../../docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)). The same
+property — a copy opens with zero sources and derives identically — is what
+`tools/verify/src/save-copy.test.ts` asserts.*
+
 **Tauri window, Windows** (`npm run desktop:app`, WebView2's debug port and the Win32 API): the native
 menu lists Save a copy… under Save to library with `Ctrl+Shift+D`, off on the Characters pane and on for
 Build. Sent as its menu message, the command opened the real Windows save dialog with the on-screen

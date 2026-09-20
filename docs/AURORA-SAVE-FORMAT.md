@@ -183,7 +183,7 @@ recorded next to them — that path points at a file on someone else's machine.
 
 ## Differential verification — the results
 
-`incudo aurora verify <file.dnd5e> --index <index>` imports a save, re-derives it, and diffs
+`tools/verify/src/aurora-oracle.test.ts` imports each save, re-derives it, and diffs
 against the `<sum>` and `<magic>` blocks Aurora wrote. This was the point of building the save
 importer at all ([ADR 0008](./adr/0008-aurora-compatibility-frozen.md)): Aurora already did the
 maths for every character anyone ever built, and those answers were checked for ten years by

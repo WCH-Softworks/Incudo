@@ -82,7 +82,7 @@ D&D 5e is `systems/dnd5e`. Nothing in `@incudo/core` imports it. Phase 5 of the 
 exists specifically to prove this by shipping a second one.
 
 > **Reality check:** 5e will be the only serious test for a long time, so the engine *will*
-> drift 5e-shaped. The mitigations are (a) the CLI, which exercises the engine with no UI
+> drift 5e-shaped. The mitigations are (a) `tools/verify`, whose tests exercise the engine with no UI
 > assumptions, and (b) `systems/cairn`, a deliberately tiny non-D&D system added early enough
 > that violations hurt immediately.
 
@@ -124,7 +124,7 @@ interface ZipCodec       { zip(files): Promise<Uint8Array>; unzip(bytes): Promis
 interface CharacterStore { location(); choose(); list(); read(entry); write(entry, files); ... }
 ```
 
-| | desktop | mobile | CLI / tests |
+| | desktop | mobile | tests |
 |---|---|---|---|
 | `Fetcher` | Tauri HTTP plugin | `fetch` | `fetch` |
 | `Storage` | IndexedDB | `expo-file-system` | node `fs` |

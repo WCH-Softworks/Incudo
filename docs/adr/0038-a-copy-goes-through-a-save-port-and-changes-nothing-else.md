@@ -149,6 +149,11 @@ tooltip, and the command is off: the same posture as the other ports.
 
 ## Evidence
 
+> **Note (ADR 0039):** "opens in the CLI with zero sources" below records a check made with
+> `incudo character show`, which no longer exists. The same property is asserted by
+> `save-copy.test.ts`: each copy is read back with no source configured and must derive identically
+> to the save it was made from. Nothing below is re-run or rewritten.
+
 `character-copy.test.ts` (15 tests), `commands.test.ts` (6 new), and `tools/verify/src/save-copy.test.ts`
 over the nine real saves, skipped where they are not installed and never committed. Each behaviour
 was checked by breaking it (25 perturbations; one survived at first, in `packages/ui`, and is what

@@ -390,7 +390,8 @@ of the bytes.
 
 Worth reading even if you only care about *content*, for one reason: the derived snapshot in
 every save is a record of a derivation Aurora actually performed, and diffing against it is
-what found the dropped constructs above. `incudo aurora verify` is that diff.
+what found the dropped constructs above. `tools/verify/src/aurora-oracle.test.ts` is that diff (it
+was the command `incudo aurora verify` until [ADR 0039](./adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 
 ---
 
@@ -416,20 +417,21 @@ URLs under `third-party/` but land directly in the `third-party/` folder rather 
 `third-party/third-party/`. That mismatch is how the rule was found.
 
 **Why it matters:** Incudo can point at an existing Aurora install and work entirely offline —
-no network, no re-download, instant migration. `incudo validate <custom>/AuroraLegacy.index
---aurora-folder` loads the whole corpus in ~10 seconds versus ~2 minutes over the network, and
-that is what CI uses.
+no network, no re-download, instant migration. Loading the whole corpus from an install takes
+a couple of seconds (`tools/verify/src/corpus.test.ts` does it) versus ~2 minutes over the network.
+CI reads a git checkout instead, which is the second mode below.
 
 Two resolution modes therefore exist, and they are not interchangeable:
 
-| flag | layout | use |
+| `INCUDO_CORPUS_LAYOUT` | layout | use |
 |---|---|---|
-| `--aurora-folder` | Aurora's download folder (by `name`) | a user's real install |
-| `--local [--root DIR]` | the repository's own paths | a git checkout of the content |
+| `aurora-folder` (default) | Aurora's download folder (by `name`) | a user's real install |
+| `repository`, with `INCUDO_CORPUS_ROOT` | the repository's own paths | a git checkout of the content |
 
 ## Import baseline (measured)
 
-`incudo validate` run against a full local checkout of AuroraLegacy/elements, 2026-09-17:
+`corpus.test.ts` (then the command `incudo validate`) run against a full local copy of
+AuroraLegacy/elements, 2026-09-17:
 
 ```
 files:    740
@@ -497,4 +499,4 @@ A `<select type="List">`'s `<item>`s are the same move for a different reason: n
 to become a candidate — Aurora's app reads the `<item>`s itself and Incudo has to too. Same
 fix, same shape: mint a deterministic id and synthesize an element, so the format's own
 `<select>`/`Choice` machinery needs nothing new. Expect more undocumented app-side behaviour of
-this kind; the way to find it is to keep running the CLI over the whole corpus.
+this kind; the way to find it is to keep loading the whole corpus and counting what it contains.

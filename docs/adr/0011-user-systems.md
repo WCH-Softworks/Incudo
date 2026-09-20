@@ -1,6 +1,11 @@
 # 0011 — Users can fork official systems and author entirely new ones
 
-**Status:** Accepted · 2026-09-09
+**Status:** Accepted · 2026-09-09 · **amended by [ADR 0039](./0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)**
+
+> **Note (ADR 0039):** the `incudo system new` and `incudo system validate` commands named below no
+> longer exist. Validation is *Add a system…* in the app, through the same `validateGameSystem`;
+> scaffolding belongs in the app's system flow (ROADMAP Phase 7). The contract is unchanged: one
+> validator, shared.
 
 ## Context
 

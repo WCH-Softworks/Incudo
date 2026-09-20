@@ -29,8 +29,8 @@ npm run typecheck
 npm test
 ```
 
-Node 20+ (22 recommended). No build step is needed for the packages or the CLI — tests and
-the CLI run TypeScript directly via Node's type stripping.
+Node 20+ (22 recommended). No build step is needed for the packages — the tests run TypeScript
+directly via Node's type stripping.
 
 **One consequence of that:** avoid TypeScript syntax Node cannot strip — no parameter
 properties (`constructor(private readonly x: T)`), no `enum`, no `namespace`, no decorators.
@@ -52,9 +52,9 @@ short version:
 Ranked by how much they help, given nothing merges yet — the top two need no merge to be
 valuable at all:
 
-- **Anything the CLI reports.** `npm run incudo -- validate <index> --strict` against a homebrew
-  source you actually use is likely to find real bugs. An issue with the index URL and the
-  output is immediately actionable.
+- **Content that does not load.** Add a homebrew source you actually use in the app's Sources
+  view: anything it cannot read, or a character it builds wrongly, is likely a real bug. An issue
+  with the index URL and what you saw is immediately actionable.
 - **Importer edge cases.** If content in the wild breaks it, a failing test plus the offending
   XML snippet is the perfect issue — it goes straight into the corpus suite.
 - **A system definition** for a game you play (`systems/<id>/system.json`). The most valuable
@@ -65,13 +65,13 @@ valuable at all:
 ## Testing
 
 ```bash
-npm test                                    # unit tests
-npm run incudo -- validate ./path/to/core.index # the real regression suite
+npm test        # unit tests, and the real-corpus suite in tools/verify where a corpus is installed
 ```
 
-CI runs the importer over the whole AuroraLegacy corpus. A change that increases the count
-of unresolved references fails the build — the current baseline is in
-[docs/AURORA-FORMAT.md](./docs/AURORA-FORMAT.md).
+CI runs `tools/verify/src/corpus.test.ts` over the whole AuroraLegacy corpus. A change that
+increases the count of unresolved references, or of warnings, fails the build. The budgets are
+spelled out in `.github/workflows/ci.yml`, and [tools/verify/README.md](./tools/verify/README.md)
+says how to run the same check locally.
 
 ## Decisions
 
