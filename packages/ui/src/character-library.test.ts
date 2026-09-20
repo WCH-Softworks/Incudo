@@ -470,7 +470,7 @@ async function mixedLibrary(): Promise<[CharacterLibrary, FakeStore]> {
   return [library, store];
 }
 
-test('with no system set the library shows everything, which is what the CLI wants', async () => {
+test('with no system set the library shows everything, which is what a test wants', async () => {
   const [library] = await mixedLibrary();
   assert.equal(library.getState().entries.length, 3);
   assert.deepEqual(library.getState().elsewhere, []);

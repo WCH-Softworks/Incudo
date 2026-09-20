@@ -706,7 +706,7 @@ export interface SheetSectionRendering {
  * Expand a sheet section against the blocks a character's elements declare.
  *
  * The one piece of `perBlock` a shell must not reimplement: core owns the substitution so
- * that the CLI's sheet, the desktop sheet and the mobile sheet cannot disagree about what a
+ * that the desktop sheet and the mobile sheet cannot disagree about what a
  * section shows.
  */
 export function renderSheetSection(

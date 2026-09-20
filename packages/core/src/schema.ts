@@ -3,8 +3,8 @@
  *
  * The schemas under `schemas/` are the contract; this file is the one implementation that
  * checks against them (ADR 0011). `core` has no filesystem and no bundler, so the schema
- * documents are handed in: the CLI reads them off disk, an app imports them. What must not
- * happen is a second validator anywhere — a system that passes `incudo system validate` and
+ * documents are handed in: a test reads them off disk, an app imports them. What must not
+ * happen is a second validator anywhere — a system that passes one validator and
  * then fails to load is the exact failure ADR 0011 exists to prevent.
  *
  * Structural validation is the schema's job. This file adds the **referential** checks a

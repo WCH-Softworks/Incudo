@@ -397,7 +397,7 @@ function parseRules(
         // would offer all 2,258 items from every background's tables, not its own 6–8. A
         // `supports` tag scoped to (owner, select name) is what a filter is *for* — no new
         // mechanism, and it leaves `Element.type` at the plain literal the XML wrote, so
-        // `incudo types` still reports one "List" bucket rather than 346 one-off ones.
+        // the type counts still show one "List" bucket rather than 346 one-off ones.
         const scopeTag = items.length > 0 ? `${ownerId}:list:${selectName}` : undefined;
         rules.push({
           kind: 'select',

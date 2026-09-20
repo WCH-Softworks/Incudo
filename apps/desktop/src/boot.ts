@@ -2,8 +2,8 @@
  * Everything the shell needs before it can show a character: the system definition, validated.
  *
  * This is the one place the app reads the project's shared data (`systems/`, `schemas/`) rather
- * than a package. It goes through `validateGameSystem` — the *same* function the CLI calls — for
- * the reason ADR 0011 gives: a system that passes `incudo system validate` and then fails to
+ * than a package. It goes through `validateGameSystem` — the *same* function the tests call — for
+ * the reason ADR 0011 gives: a system that passes the tests and then fails to
  * load in the app would make "if it parses, the app can build in it" a lie. There is no second
  * validator here and there must never be one.
  */
@@ -63,7 +63,7 @@ export interface ShippedSystems {
  * launcher they are not: a bad Cairn file must not stop anyone building a D&D character, and
  * the launcher lists it as unavailable with its errors rather than pretending it is not there.
  *
- * Still `validateGameSystem`, the *same* function the CLI calls, for the reason ADR 0011
+ * Still `validateGameSystem`, the *same* function the tests call, for the reason ADR 0011
  * gives. There is no second validator here and there must never be one.
  */
 export function loadShippedSystems(): ShippedSystems {
@@ -134,7 +134,7 @@ export async function loadCharacter(
 /**
  * A blank character of the system's default kind.
  *
- * The same three calls `incudo character new` makes, in the same order — including
+ * The same three calls the removed `character new` command made, in the same order — including
  * `initialProgress`, because a 5e PC starts at level 1 and a monster at challenge 0, and the
  * kind's progression is the only thing that knows which.
  */

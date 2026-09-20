@@ -8,7 +8,7 @@
  * schema does not guarantee and skip the validation that is supposed to be the only gate.
  *
  * So the app receives `unknown` and has to validate before it can use anything — which is what
- * the CLI already does with the same function. It also keeps these files out of `rootDir`, so
+ * the tests already do with the same function. It also keeps these files out of `rootDir`, so
  * `tsc --build` never tries to compile the repo's data as app source.
  */
 declare module '*.json' {

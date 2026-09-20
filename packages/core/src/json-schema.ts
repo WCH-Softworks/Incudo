@@ -4,8 +4,8 @@
  * This exists because of one sentence in ADR 0011: *"if it parses, the app should be able
  * to build in it."* That promise is only worth something if "parses" has a definition, and
  * the definition is `schemas/system.schema.json`. So the validator has to be **one
- * implementation** that the CLI and the app both run — a second one in the app would mean
- * a system that passes `incudo system validate` and then fails to load, which is exactly
+ * implementation** that the tests and the app both run — a second one in the app would mean
+ * a system that passes the tests and then fails to load, which is exactly
  * the experience the ADR is trying to prevent.
  *
  * That is also why it lives in `core` and takes no dependency: `core` may import the

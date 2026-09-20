@@ -160,7 +160,7 @@ export interface SaveOptions {
    * `extraIds`.
    *
    * Here for the Aurora import, whose source of these is Aurora's own `<sum>`: every element
-   * *its* derivation ended up with. Embedding that set is what keeps `incudo aurora verify`
+   * *its* derivation ended up with. Embedding that set is what keeps the Aurora oracle
    * meaningful after the original `.dnd5e` is gone. It is a fact about the character being
    * written rather than about the packing, which is why it rides with the other save options
    * instead of forking a second packing path.
@@ -310,7 +310,7 @@ export class CharacterLibrary {
   /**
    * Show only the characters of this system — ADR 0031.
    *
-   * Passing `undefined` shows everything, which is what the CLI and the tests want: the filter
+   * Passing `undefined` shows everything, which is what the tests want: the filter
    * is a property of a shell that has asked the user which game they are playing, not of the
    * library itself. No rescan; the folder was already read.
    */

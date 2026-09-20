@@ -6,7 +6,7 @@
  * has been a public API since ADR 0007. What was missing was any way to *get one into the app*:
  * `boot.ts` imported the shipped definitions at build time and that was the whole of it. This is
  * the other half — read a `system.json` the user picked, validate it with the **same**
- * `validateGameSystem` the CLI and the shipped definitions go through, and keep it.
+ * `validateGameSystem` the tests and the shipped definitions go through, and keep it.
  *
  * It lives here rather than in the desktop shell because nothing about it is layout: the mobile
  * shell will want the identical object, and this is testable in Node against a `MemoryStorage`

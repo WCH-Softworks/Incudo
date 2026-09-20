@@ -3,7 +3,8 @@
  * 0027's folder.
  *
  * The sequence here is not new: `tools/verify/src/library.test.ts` has been doing it
- * headlessly since the library landed, and `incudo aurora import` since Phase 1. What is new
+ * headlessly since the library landed (and the `aurora import` command did, from Phase 1 until
+ * ADR 0039 removed it). What is new
  * is that it is written down **once**, in the layer both shells read, rather than a third
  * time inside a button handler (CODE-REUSE-POLICY rule 2). Nothing below knows what a screen
  * is.
@@ -24,7 +25,7 @@
  *   others. They belong to *this character*, not to anyone's content library, so they go in
  *   front of the corpus in a `LayeredElementIndex` rather than into it.
  * - **`extraIds`.** Aurora's own `<sum>`: every element its derivation ended up with.
- *   Embedding that set is what keeps `incudo aurora verify` meaningful once the original
+ *   Embedding that set is what keeps the Aurora oracle meaningful once the original
  *   `.dnd5e` is gone.
  *
  * Miss either and the container is written short, the import still reports success, and ADR
@@ -60,8 +61,8 @@ export interface AuroraImportOptions {
    */
   elements: ElementIndex;
   /**
-   * Recorded as the index this character came from, the way `incudo aurora import` records
-   * its `--index`.
+   * Recorded as the index this character came from, the way the removed `aurora import` command
+   * recorded its `--index`.
    *
    * Optional, and the desktop shell leaves it out: `recordSourceRefs` already works the
    * answer out from the `origin.sourceId` of every element the container embeds, which is
@@ -223,7 +224,7 @@ export async function importAuroraSavesIntoLibrary(
   return reports;
 }
 
-/** Deduplicated by message, first occurrence first — the shape the CLI prints, shared. */
+/** Deduplicated by message, first occurrence first — the shape the removed CLI printed, shared. */
 function tally(diagnostics: readonly SaveDiagnostic[]): AuroraImportDiagnostic[] {
   const counts = new Map<string, AuroraImportDiagnostic>();
   for (const diagnostic of diagnostics) {

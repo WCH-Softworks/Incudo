@@ -1,6 +1,6 @@
 /**
  * The few things core and content need from the outside world.
- * Every shell (Tauri, Expo, CLI, tests) provides its own implementation and injects it.
+ * Every shell (Tauri, Expo, tests) provides its own implementation and injects it.
  * See docs/CODE-REUSE-POLICY.md, rule 1.
  */
 
@@ -33,7 +33,7 @@ export interface Storage {
  * Zip encoding for the `.incu` container (ADR 0012).
  *
  * A port rather than an implementation in `core` because DEFLATE needs a compressor, and
- * every platform brings its own: `node:zlib` on the CLI and in Tauri's sidecar,
+ * every platform brings its own: `node:zlib` in tests and in Tauri's sidecar,
  * `CompressionStream` in a browser, a native module on mobile. `core` owns the container
  * *tree* (see container.ts); this turns that tree into one file and back.
  *
@@ -95,7 +95,7 @@ export interface LibraryEntryRef {
 /**
  * Zip or unpacked folder — ADR 0012's "both representations, one layout".
  *
- * Here rather than in the CLI because the library has to preserve the form an entry already
+ * Here rather than in a shell because the library has to preserve the form an entry already
  * has, so both shells need the word.
  */
 export type ContainerForm = 'zip' | 'folder';

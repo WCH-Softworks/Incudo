@@ -1264,7 +1264,7 @@ export interface ReferenceOptions {
   requirements?: boolean;
 }
 
-/** Every element id the content references. Used by the CLI to validate a source. */
+/** Every element id the content references. Used to validate a source (`tools/verify/src/corpus.ts`). */
 export function referencedElementIds(
   elements: Iterable<Element>,
   options: ReferenceOptions = {},

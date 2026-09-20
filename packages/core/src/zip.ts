@@ -9,7 +9,7 @@
  *
  * Why the split. Everything here is arithmetic over bytes and belongs in `core` with the rest of
  * the container (container.ts owns the *tree*; this turns that tree into one file). DEFLATE is
- * the one part that is genuinely platform-shaped: `node:zlib` in the CLI, `CompressionStream` in
+ * the one part that is genuinely platform-shaped: `node:zlib` in Node, `CompressionStream` in
  * a browser and in Tauri's webview, something else again on mobile. So the compressor is
  * injected, exactly like `Fetcher` and `Storage` (CODE-REUSE-POLICY rule 1), and there is one
  * zip implementation in the project rather than one per shell.

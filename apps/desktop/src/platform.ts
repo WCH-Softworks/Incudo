@@ -290,7 +290,7 @@ class TauriCharacterStore implements CharacterStore {
     }
     // Files the container no longer holds have to leave, or the next write picks a deleted
     // portrait back up. Only the names the format owns are considered, so a README somebody
-    // put beside their character survives. Same rule as the CLI's `writeFolder`.
+    // put beside their character survives. Same rule as `writeFolder` in `tools/verify/src/node-save.ts`.
     for (const relative of await walk(fs, path)) {
       if (files.has(relative) || !ownedByTheFormat(relative)) continue;
       await fs.remove(join(path, ...relative.split('/')));

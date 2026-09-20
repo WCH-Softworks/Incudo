@@ -4,7 +4,7 @@
  * The app never calls `fetch` and never touches storage directly; it hands the platform's
  * `Fetcher` and `Storage` to `@incudo/content` and reads back an `ElementIndex`
  * (CODE-REUSE-POLICY rule 1). That indirection is what lets the identical code run under Node
- * in the CLI's tests.
+ * in `tools/verify`'s tests.
  *
  * What changed here with ADR 0029: this used to build a bare `HttpContentSource` with
  * `writeThrough`, which wrote a cache **nothing ever read back** — so every reload re-fetched

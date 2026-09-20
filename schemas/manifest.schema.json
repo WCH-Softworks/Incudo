@@ -68,7 +68,7 @@
 
     "generator": {
       "type": "string",
-      "description": "What wrote this, e.g. \"incudo-cli/0.0.1\". Useful in a bug report, ignored on read."
+      "description": "What wrote this, e.g. \"incudo-desktop\". Useful in a bug report, ignored on read."
     },
     "created": { "type": "string", "minLength": 1 },
     "updated": { "type": "string" }

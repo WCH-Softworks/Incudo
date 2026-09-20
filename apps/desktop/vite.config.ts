@@ -4,7 +4,7 @@
  * Two things here are not boilerplate:
  *
  * **`@repo` reaches out of the app.** `systems/` and `schemas/` are data the whole project
- * shares — the CLI reads them off disk, the app imports them — and duplicating either into
+ * shares — the tests read them off disk, the app imports them — and duplicating either into
  * `apps/desktop/public/` would mean a system definition that is correct in one copy and stale in
  * the other. `server.fs.allow` has to be widened to match, because the files are above the app
  * root.
