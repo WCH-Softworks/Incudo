@@ -44,6 +44,7 @@ import { imageExtension } from '@incudo/aurora-import';
 import { CharacterBuilder, CharacterLibrary, importAuroraSavesIntoLibrary } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
+import { assertNoneReported, assertSameSummary, saveLabel } from './private-saves.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
@@ -110,8 +111,11 @@ test(
     const corpus = await auroraCorpus();
     assert.ok(corpus.size > 10000, 'expected the full corpus');
 
+    // Sorted, so that "save 3/9" in a failure is the same save every time and in every test
+    // that labels them this way (`private-saves.ts`).
     const saves = (await readdir(SAVES_DIR))
       .filter((name) => extname(name).toLowerCase() === '.dnd5e')
+      .sort()
       .map((name) => join(SAVES_DIR, name));
     assert.ok(saves.length >= 8, `expected the sample saves, found ${saves.length}`);
 
@@ -133,15 +137,23 @@ test(
         generator: 'library-test',
       });
 
+      // A library entry is named for its character, so it is never printed: `labelOf` says which
+      // of the nine it is by position. `report.file` and `report.message` name the file and can
+      // quote it, and a diagnostic can quote what it choked on, so none of them is printed either.
+      const labels = new Map<string, string>();
+      const labelOf = (entryName: string): string =>
+        labels.get(entryName) ?? 'an entry this import did not write';
+
       const expected = new Map<string, ReturnType<typeof summarize>>();
       let withPortrait = 0;
-      for (const report of reports) {
-        assert.ok(report.ok, `${report.file} should import: ${report.message}`);
-        assert.deepEqual(
+      for (const [i, report] of reports.entries()) {
+        const label = saveLabel(i, reports.length);
+        assert.ok(report.ok, `${label} should import`);
+        assertNoneReported(
           report.diagnostics.filter((diagnostic) => diagnostic.level === 'error'),
-          [],
-          `${report.file} should import without errors`,
+          `${label} should import without errors`,
         );
+        labels.set(report.entry!.name, label);
         expected.set(
           report.entry!.name,
           summarize(deriveCharacter(report.character!, system, report.elements!)),
@@ -156,34 +168,36 @@ test(
 
       const state = library.getState();
       assert.equal(state.status, 'ready');
-      assert.deepEqual(state.problems, [], 'nothing in the folder should be unreadable');
+      // Each problem here reads "<file name>: <error>", so the list is counted and not printed.
+      assertNoneReported(state.problems, 'nothing in the folder should be unreadable');
       assert.equal(state.entries.length, saves.length, 'every save should be listed');
 
       for (const entry of state.entries) {
-        assert.equal(entry.broken, false, `${entry.name} should not be broken`);
-        assert.ok(entry.title.length > 0, `${entry.name} should show a name`);
+        const label = labelOf(entry.name);
+        assert.equal(entry.broken, false, `${label} should not be broken`);
+        assert.ok(entry.title.length > 0, `${label} should show a name`);
         assert.equal(entry.systemId, 'dnd5e');
-        assert.ok((entry.elementCount ?? 0) > 0, `${entry.name} should embed content`);
+        assert.ok((entry.elementCount ?? 0) > 0, `${label} should embed content`);
 
         // ADR 0028: every recorded source reads `missing` against an empty profile, and that
         // is not an error. The character opens and derives regardless.
-        assert.ok(entry.sourceStatuses.length > 0, `${entry.name} should record its sources`);
+        assert.ok(entry.sourceStatuses.length > 0, `${label} should record its sources`);
         assert.ok(
           entry.sourceStatuses.every((status) => status.state === 'missing'),
-          `${entry.name} should report its sources missing, not present`,
+          `${label} should report its sources missing, not present`,
         );
 
         // 3. Open it, and derive against the save's own content and nothing else.
         const opened = await library.open(entry.name);
-        assert.ok(opened, `${entry.name} should open`);
-        assert.deepEqual(
+        assert.ok(opened, `${label} should open`);
+        assertNoneReported(
           opened.problems.filter((problem) => problem.level === 'error'),
-          [],
+          `${label} should open without errors`,
         );
-        assert.deepEqual(
+        assertSameSummary(
           summarize(deriveCharacter(opened.character, system, opened.elements)),
           expected.get(entry.name),
-          `${entry.name} should derive identically with no sources`,
+          `${label} should derive identically with no sources`,
         );
       }
 
@@ -192,18 +206,19 @@ test(
       const shown = state.entries.filter((entry) => entry.portrait !== undefined);
       assert.equal(shown.length, withPortrait, 'exactly the saves with a portrait should have one');
       for (const entry of shown) {
+        const label = labelOf(entry.name);
         const bytes = entry.portrait!;
-        assert.ok(bytes.length > 0, `${entry.name}'s portrait should not be empty`);
+        assert.ok(bytes.length > 0, `${label}'s portrait should not be empty`);
 
         // Real image bytes, and the extension the importer chose has to agree with them.
         // This assertion started out as "is it a PNG?" and one of the nine is a **JPEG** —
         // Aurora's inline base64 is whatever picture the user had. The app was building its
         // blob URLs as image/png, which this is the reason for fixing.
         const extension = imageExtension(bytes);
-        assert.ok(extension, `${entry.name}'s portrait should be a recognisable image`);
+        assert.ok(extension, `${label}'s portrait should be a recognisable image`);
         assert.ok(
           entry.portraitPath?.endsWith(`.${extension}`),
-          `${entry.name} is named ${entry.portraitPath} but its bytes are ${extension}`,
+          `${label}'s portrait is named ${entry.portraitPath} but its bytes are ${extension}`,
         );
       }
     } finally {

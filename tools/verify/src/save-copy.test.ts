@@ -45,6 +45,12 @@ import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { CharacterLibrary, importAuroraSavesIntoLibrary, saveCopy } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
+import {
+  assertNoneReported,
+  assertSameBytes,
+  assertSameSummary,
+  saveLabel,
+} from './private-saves.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { nodeZipCodec } from './node-zip.ts';
 import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
@@ -134,8 +140,11 @@ test(
     const corpus = await auroraCorpus();
     assert.ok(corpus.size > 10000, 'expected the full corpus');
 
+    // Sorted, so that "save 3/9" in a failure is the same save every time and in every test
+    // that labels them this way (`private-saves.ts`).
     const saves = (await readdir(SAVES_DIR))
       .filter((name) => extname(name).toLowerCase() === '.dnd5e')
+      .sort()
       .map((name) => join(SAVES_DIR, name));
     assert.ok(saves.length >= 8, `expected the sample saves, found ${saves.length}`);
 
@@ -153,9 +162,17 @@ test(
         sourceId: AURORA_INDEX,
         generator: 'save-copy-test',
       });
+      // A library entry is named for its character, so it is never printed: `labelOf` says which
+      // of the nine it is by position. `report.file` and `report.message` name the file and can
+      // quote it, so neither is printed either.
+      const labels = new Map<string, string>();
+      const labelOf = (entryName: string): string =>
+        labels.get(entryName) ?? 'an entry this import did not write';
+
       const expected = new Map<string, ReturnType<typeof summarize>>();
-      for (const report of reports) {
-        assert.ok(report.ok, `${report.file} should import: ${report.message}`);
+      for (const [i, report] of reports.entries()) {
+        assert.ok(report.ok, `${saveLabel(i, reports.length)} should import`);
+        labels.set(report.entry!.name, saveLabel(i, reports.length));
         expected.set(
           report.entry!.name,
           summarize(deriveCharacter(report.character!, system, report.elements!)),
@@ -171,8 +188,9 @@ test(
 
       let copied = 0;
       for (const entry of library.getState().entries) {
+        const saveName = labelOf(entry.name);
         const opened = await library.open(entry.name);
-        assert.ok(opened, `${entry.name} should open`);
+        assert.ok(opened, `${saveName} should open`);
 
         const originalIds = readCharacterContainer(
           await readContainer(join(libraryDir, entry.name)),
@@ -184,7 +202,7 @@ test(
           generator: 'save-copy-test',
           assets: opened.assets,
         });
-        assert.equal(alone.status, 'saved', `${entry.name} should copy`);
+        assert.equal(alone.status, 'saved', `${saveName} should copy`);
         if (alone.status !== 'saved') continue;
         assert.ok(alone.file.name.endsWith('.incu'));
         copied += 1;
@@ -202,20 +220,21 @@ test(
         if (layered.status !== 'saved') continue;
 
         // 3. Read each copy back from the disk and derive from nothing but itself.
-        for (const [label, name] of [
+        for (const [route, name] of [
           ['embedded only', alone.file.name],
           ['layered over the corpus', layered.file.name],
         ] as const) {
+          const label = `${saveName} (${route})`;
           const { container, problems } = readCharacterContainer(
             await readContainer(join(copiesDir, name)),
           );
-          assert.ok(container, `${entry.name} (${label}) should read as a container`);
-          assert.deepEqual(
+          assert.ok(container, `${label} should read as a container`);
+          // A problem's message can quote the text a JSON parse choked on, so it is counted.
+          assertNoneReported(
             problems.filter((problem) => problem.level === 'error'),
-            [],
-            `${entry.name} (${label}) should read without errors`,
+            `${label} should read without errors`,
           );
-          assert.deepEqual(
+          assertSameSummary(
             summarize(
               deriveCharacter(
                 container.character,
@@ -224,21 +243,20 @@ test(
               ),
             ),
             expected.get(entry.name),
-            `${entry.name} (${label}) should derive identically with no sources`,
+            `${label} should derive identically with no sources`,
           );
           assert.equal(container.character.id, opened.character.id, 'it is the same character');
 
           // The portrait is in the copy as real bytes, and the reader has nothing to say about
           // an asset it cannot find. Every one of the nine has one.
-          assert.ok(opened.assets.size > 0, `${entry.name} should have an asset to keep`);
-          assert.equal(container.assets.size, opened.assets.size, `${entry.name} (${label}) lost an asset`);
+          assert.ok(opened.assets.size > 0, `${saveName} should have an asset to keep`);
+          assert.equal(container.assets.size, opened.assets.size, `${label} lost an asset`);
           for (const [path, bytes] of opened.assets) {
-            assert.deepEqual(container.assets.get(path), bytes, `${entry.name} (${label}) altered ${path}`);
+            assertSameBytes(container.assets.get(path), bytes, `${label} altered ${path}`);
           }
-          assert.deepEqual(
+          assertNoneReported(
             problems.filter((problem) => /not in the container/.test(problem.message)),
-            [],
-            `${entry.name} (${label}) names an asset it does not hold`,
+            `${label} names an asset it does not hold`,
           );
           // Nothing the character *uses* is lost. What a re-save may drop is an element only the
           // Aurora import embedded, through `extraIds` — Aurora's own `<sum>`, kept so that
@@ -248,7 +266,7 @@ test(
           const reached = deriveCharacter(opened.character, system, opened.elements).elementIds;
           for (const id of originalIds) {
             if (!inCopy.has(id)) {
-              assert.ok(!reached.has(id), `${entry.name} (${label}) dropped an element it uses`);
+              assert.ok(!reached.has(id), `${label} dropped an element it uses`);
             }
           }
         }
@@ -262,7 +280,7 @@ test(
         assert.deepEqual(
           await idsOf(alone.file.name),
           await idsOf(layered.file.name),
-          `${entry.name}: with and without sources loaded, the copy embeds the same elements`,
+          `${saveName}: with and without sources loaded, the copy embeds the same elements`,
         );
       }
       assert.equal(copied, saves.length, 'every save was copied');
@@ -276,24 +294,25 @@ test(
       const resaving = new CharacterLibrary(new NodeCharacterStore(libraryDir));
       await resaving.restore();
       for (const entry of resaving.getState().entries) {
+        const saveName = labelOf(entry.name);
         const opened = await resaving.open(entry.name);
         assert.ok(opened);
         const kept = entry.portrait;
-        assert.ok(kept, `${entry.name} should have a portrait to keep`);
+        assert.ok(kept, `${saveName} should have a portrait to keep`);
         const saved = await resaving.save(opened.character, system, opened.elements, {
           entry: { name: entry.name, form: entry.form },
           expectUpdatedAt: entry.updatedAt,
           assets: opened.assets,
         });
-        assert.ok(saved.ok, `${entry.name} should re-save`);
+        assert.ok(saved.ok, `${saveName} should re-save`);
         const after = resaving.getState().entries.find((e) => e.name === entry.name)!;
-        assert.deepEqual(after.portrait, kept, `${entry.name} lost its portrait on a re-save`);
+        assertSameBytes(after.portrait, kept, `${saveName} lost its portrait on a re-save`);
       }
 
       // 6. The copies are real library entries: a folder of them lists, opens and is not broken.
       const copies = new CharacterLibrary(new NodeCharacterStore(copiesDir));
       await copies.restore();
-      assert.deepEqual(copies.getState().problems, []);
+      assertNoneReported(copies.getState().problems, 'no copy should be unreadable');
       assert.equal(copies.getState().entries.length, saves.length * 2);
       assert.ok(copies.getState().entries.every((entry) => !entry.broken));
     } finally {
