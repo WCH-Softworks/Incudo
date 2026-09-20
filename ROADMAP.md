@@ -822,6 +822,34 @@ and a house-rule overlay still receives upstream fixes.
 
 ## Phase 9 — 1.0 ⬜
 
+- [ ] **Release pipeline: main builds the installers and puts them on GitHub.** Does not exist
+      yet, **and is not added until the first release candidate is cut** — the commit that cuts RC1
+      adds the workflow, so nothing before it can start one. Until then `ci.yml` (typecheck, test,
+      the corpus budget) is the whole of main's pipeline. The shape, so that writing it is not a
+      design session:
+  - **Triggered by a tag, not a push.** A `vX.Y.Z-rc.N` tag on a commit reachable from `main`
+    starts it; a plain `vX.Y.Z` tag later makes a final release. A tag with `-rc` is published as
+    a GitHub **pre-release**. Deciding that RC1 exists is the maintainer's call and no rule here
+    makes it.
+  - **Gated on CI.** The tagged commit must pass the same jobs as `ci.yml` — `build` and
+    `aurora-corpus` — before any installer is built, and the tag must match the version in
+    `apps/desktop/src-tauri/tauri.conf.json` (and its `Cargo.toml`, which Tauri also reads),
+    or the run stops before it builds anything.
+  - **Builds with `tauri-action` on a Windows, macOS and Linux runner**, attaches every bundle to
+    one GitHub Release, and writes the release notes from what the run actually did. `bundle.targets`
+    is `"all"` today; **only Windows has ever been run** (see Phase 2's menus and export entries), so
+    the notes must say which platforms were exercised and which were only built. An untested
+    installer is labelled untested, not omitted and not implied.
+  - **Nothing goes to npm** (CLAUDE.md), and no rulebook content is bundled: an installer is the
+    engine and the shipped system definitions, as everything else here is.
+  - **Unsigned at RC1, and said so.** Windows SmartScreen and macOS Gatekeeper will warn on an
+    unsigned build, which is acceptable for a candidate and not for 1.0 — signing is the next
+    item and needs certificates only the maintainer can supply, stored as repository secrets.
+  - **Settle before RC1, not by the pipeline:** the app icon reads only against a dark
+    background (`apps/desktop/src-tauri/icons/README.md` names the tile colour as an open brand
+    decision), and an installer is the first place a user sees it.
+  - **Not verified when written:** nothing here has run. Ticked on a real RC tag that produced
+    installers, downloaded from the release page and installed, not on a green workflow.
 - [ ] Stable formats with a real versioning and migration policy — from here on, the system
       format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md))
 - [ ] Signed desktop installers (Windows/macOS/Linux); mobile store presence TBD

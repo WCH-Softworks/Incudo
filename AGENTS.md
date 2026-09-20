@@ -100,9 +100,13 @@ not an optimization — if a change makes a save depend on configured sources to
 
 **Nothing is ever published to npm.** Every package stays `"private": true`. The `@incudo/`
 prefix is a local workspace naming convention, not a registry claim — the app is the product,
-and the packages exist to organise it. Do not add `publishConfig`, a release workflow, changesets,
+and the packages exist to organise it. Do not add `publishConfig`, an npm publish step, changesets,
 or per-package versioning, and do not remove `private`. If someone else claims the `@incudo` npm
 scope, that is fine and changes nothing here.
+
+The one release workflow that does belong here builds the desktop installers and attaches them to a
+GitHub Release (ROADMAP Phase 9). It does not exist yet and is added by the commit that cuts the
+first release candidate, not before.
 
 That does **not** mean nothing is a public API. Two things are, and they need real versioning
 discipline: the **system definition format** (users author these — ADR 0011) and the **`.incu`
