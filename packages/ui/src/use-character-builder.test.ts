@@ -444,9 +444,9 @@ test('answering a content select afterward does not reshuffle what an earlier st
 test('setName renames the character, and nothing else', () => {
   const b = builder(indexWith());
   const before = b.getState();
-  b.setName('Vigaro');
+  b.setName('Vesper');
   const after = b.getState();
-  assert.equal(after.character.name, 'Vigaro');
+  assert.equal(after.character.name, 'Vesper');
   assert.equal(after.character.id, before.character.id, 'renaming is not a new character');
   assert.notEqual(after.character.updatedAt, before.character.updatedAt);
 });

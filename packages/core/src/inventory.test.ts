@@ -47,7 +47,7 @@ function element(id: string): Element {
 }
 
 function withBag(): Character {
-  let character = createCharacter('test', 'pc', { name: 'Vigaro', progress: 3 });
+  let character = createCharacter('test', 'pc', { name: 'Vesper', progress: 3 });
   character = setInventoryEntry(character, {
     instanceId: 'a',
     elementId: 'GREATSWORD',

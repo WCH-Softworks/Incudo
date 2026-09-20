@@ -130,24 +130,24 @@ async function statsOf(build: Build = {}): Promise<(key: string) => number> {
   return (key: string) => derived.stats.get(key)?.value ?? 0;
 }
 
-// --- the nine sample saves, worked by hand -----------------------------------
+// --- real characters' armour, worked by hand ---------------------------------
 
-test('the nine sample saves, reproduced from their armour and their Dexterity', async () => {
-  // The inputs are the ones the real saves produce (ADR 0026's table); the sums are the ones
+test('real characters, reproduced from their armour and their Dexterity', async () => {
+  // The inputs are ones real characters produce (ADR 0026's table); the sums are the ones
   // this formula produces. The saves record no armour class, so the right column is checked
   // against the Player's Handbook and against nothing else.
   const rows: [string, Build, number][] = [
-    ['Bran Brightwood — plate, Dex 10', { dexterity: 10, wearing: ['PLATE'] }, 18],
-    ['Hexadin — breastplate, Dex 14, +1 fighting style', { dexterity: 14, wearing: ['BREASTPLATE', 'CLOAK'] }, 17],
-    ['Krusk Oathfang — studded leather +1, Dex 20', { dexterity: 20, wearing: ['STUDDED', 'PLUS_ONE'] }, 18],
-    ['Merilio — half plate, Dex 14, +1 cloak', { dexterity: 14, wearing: ['HALF_PLATE', 'CLOAK'] }, 18],
-    ['Theren Liadon — studded leather, Dex 18', { dexterity: 18, wearing: ['STUDDED'] }, 16],
-    ['Paelias Amakiir — unarmoured, Dex 14, +1', { dexterity: 14, wearing: ['CLOAK'] }, 13],
-    ['arturo — unarmoured, Dex 20, +1', { dexterity: 20, wearing: ['CLOAK'] }, 16],
-    ['Vigaro Safeguard — plate +1, Dex 10, +1', { dexterity: 10, wearing: ['PLATE', 'PLUS_ONE', 'CLOAK'] }, 20],
-    // Deusinaldo the monk: Unarmoured Defence publishes a complete 18, and the armoured
+    ['plate, Dex 10', { dexterity: 10, wearing: ['PLATE'] }, 18],
+    ['breastplate, Dex 14, +1 fighting style', { dexterity: 14, wearing: ['BREASTPLATE', 'CLOAK'] }, 17],
+    ['studded leather +1, Dex 20', { dexterity: 20, wearing: ['STUDDED', 'PLUS_ONE'] }, 18],
+    ['half plate, Dex 14, +1 cloak', { dexterity: 14, wearing: ['HALF_PLATE', 'CLOAK'] }, 18],
+    ['studded leather, Dex 18', { dexterity: 18, wearing: ['STUDDED'] }, 16],
+    ['unarmoured, Dex 14, +1', { dexterity: 14, wearing: ['CLOAK'] }, 13],
+    ['unarmoured, Dex 20, +1', { dexterity: 20, wearing: ['CLOAK'] }, 16],
+    ['plate +1, Dex 10, +1', { dexterity: 10, wearing: ['PLATE', 'PLUS_ONE', 'CLOAK'] }, 20],
+    // A monk: Unarmoured Defence publishes a complete 18, and the armoured
     // branch offers 10 + 4. `max` takes the calculation, which is what "you may use" means.
-    ['Deusinaldo — monk, Dex 18, Unarmoured Defence 18', { dexterity: 18, choices: ['UD'] }, 18],
+    ['monk, Dex 18, Unarmoured Defence 18', { dexterity: 18, choices: ['UD'] }, 18],
   ];
 
   for (const [label, build, expected] of rows) {

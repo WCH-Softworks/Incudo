@@ -41,7 +41,10 @@ async function shippedSystems(): Promise<Array<[string, unknown]>> {
 test('every shipped system validates', async () => {
   const schemas = await loadSchemas();
   const systems = await shippedSystems();
-  assert.ok(systems.length >= 2, 'expected dnd5e and cairn at least');
+  // The systems this project ships, by name. Not "at least N": a folder count says nothing about
+  // which ones are there, and adding a system must not touch this test.
+  const shipped = systems.map(([id]) => id);
+  for (const id of ['dnd5e', 'cairn']) assert.ok(shipped.includes(id), `systems/${id} is not shipped`);
 
   for (const [id, raw] of systems) {
     const result = validateGameSystem(raw, schemas);
@@ -218,7 +221,7 @@ test('structural mistakes get messages a non-programmer can act on', async () =>
 
 test('a character and a manifest validate against their own schemas', async () => {
   const schemas = await loadSchemas();
-  const character = createCharacter('dnd5e', 'pc', { name: 'Vigaro', progress: 3 });
+  const character = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
   assert.deepEqual(validateCharacter(character, schemas).errors, []);
 
   // A roll is a number. Everything else about a character is a choice.
@@ -251,7 +254,7 @@ test('a character and a manifest validate against their own schemas', async () =
 
 test('an inventory validates as instances, and a duplicate instance id does not', async () => {
   const schemas = await loadSchemas();
-  const character = createCharacter('dnd5e', 'pc', { name: 'Vigaro', progress: 3 });
+  const character = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
 
   const bag = [
     {

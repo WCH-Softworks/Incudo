@@ -117,7 +117,7 @@ test('the six ability score elements are what a class improvement filters on, an
     // `Ability Score Improvement,Class` is the filter on all 15 of the corpus's improvement
     // selects that name it, and no other element in the 14,316 carries either tag.
     assert.deepEqual(element.supports, ['Ability Score Improvement', 'Class'], element.id);
-    // Vigaro Safeguard's level 12 Fighter chose Constitution twice, which is how +2 is written.
+    // A sample save's level 12 Fighter chose Constitution twice, which is how +2 is written.
     assert.equal(element.setters[REPEATABLE_SETTER]?.value, 'true', element.id);
   }
 });

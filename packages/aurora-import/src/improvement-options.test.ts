@@ -86,7 +86,7 @@ test('the shape is what the nine saves record: ids, select names and the type ea
   const asi = elements.find((e) => e.id === 'ID_INTERNAL_CLASS_FEATURE_ASI_12_FIGHTER')!;
   const feat = elements.find((e) => e.id === 'ID_INTERNAL_CLASS_FEATURE_FEAT_12_FIGHTER')!;
 
-  // Vigaro Safeguard's save: `Ability Score Increase (FIGHTER 12)` ×2 under ASI_12_FIGHTER,
+  // One sample save: `Ability Score Increase (FIGHTER 12)` ×2 under ASI_12_FIGHTER,
   // and `Feat (FIGHTER 4)` under FEAT_4_FIGHTER.
   assert.equal(asi.type, 'Class Feature');
   assert.deepEqual(asi.supports, ['Improvement Option', 'Fighter', '12']);

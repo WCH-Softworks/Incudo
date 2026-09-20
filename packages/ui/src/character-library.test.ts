@@ -179,13 +179,13 @@ async function libraryWith(...characters: Character[]): Promise<[CharacterLibrar
 // --- the property that matters ---------------------------------------------
 
 test('a library lists and opens characters with zero sources configured', async () => {
-  const [library] = await libraryWith(hero('Aelin'), hero('Vigaro'));
+  const [library] = await libraryWith(hero('Aelin'), hero('Vesper'));
 
   const state = library.getState();
   assert.equal(state.status, 'ready');
   assert.deepEqual(
     state.entries.map((entry) => entry.title).sort(),
-    ['Aelin', 'Vigaro'],
+    ['Aelin', 'Vesper'],
   );
   assert.deepEqual(state.problems, []);
 
@@ -248,7 +248,7 @@ test('a portrait is real bytes, and its absence is an absence', async () => {
     { name: 'aelin.incu', form: 'zip' },
     containerFor(withFace, new Map([['assets/portrait.png', png]])),
   );
-  await store.write({ name: 'vigaro.incu', form: 'zip' }, containerFor(hero('Vigaro')));
+  await store.write({ name: 'vesper.incu', form: 'zip' }, containerFor(hero('Vesper')));
 
   const library = new CharacterLibrary(store);
   await library.restore();
@@ -257,7 +257,7 @@ test('a portrait is real bytes, and its absence is an absence', async () => {
   assert.deepEqual([...entries.get('Aelin')!.portrait!], [...png]);
   // Undefined, not a generated stand-in. The app renders a marked gap; see the README's
   // standing commitment and ADR 0027.
-  assert.equal(entries.get('Vigaro')!.portrait, undefined);
+  assert.equal(entries.get('Vesper')!.portrait, undefined);
 });
 
 test('opening a character hands back its portrait, and saving it with those bytes keeps the file', async () => {
@@ -288,9 +288,9 @@ test('opening a character hands back its portrait, and saving it with those byte
   assert.deepEqual([...entry.portrait!], [...png], 'the portrait is still in the file');
 
   // A character with none has none to hand back, and gets none invented.
-  await store.write({ name: 'vigaro.incu', form: 'zip' }, containerFor(hero('Vigaro')));
+  await store.write({ name: 'vesper.incu', form: 'zip' }, containerFor(hero('Vesper')));
   await library.refresh();
-  assert.equal((await library.open('vigaro.incu'))!.assets.size, 0);
+  assert.equal((await library.open('vesper.incu'))!.assets.size, 0);
 });
 
 // --- a container the app cannot read ----------------------------------------
@@ -391,13 +391,13 @@ test('a write with the timestamp it read goes through', async () => {
 });
 
 test('removing an entry removes the file and rescans', async () => {
-  const [library, store] = await libraryWith(hero('Aelin'), hero('Vigaro'));
+  const [library, store] = await libraryWith(hero('Aelin'), hero('Vesper'));
   await library.remove({ name: 'aelin.incu', form: 'zip' });
 
   assert.equal(store.entries.has('aelin.incu'), false);
   assert.deepEqual(
     library.getState().entries.map((entry) => entry.title),
-    ['Vigaro'],
+    ['Vesper'],
   );
 });
 

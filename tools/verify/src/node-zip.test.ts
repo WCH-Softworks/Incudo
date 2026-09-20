@@ -45,8 +45,13 @@ test('an empty container is still a valid zip', async () => {
 });
 
 test('an entry that does not compress is stored rather than inflated', async () => {
-  // Random bytes stand in for a PNG: DEFLATE makes them bigger, so the writer stores them.
-  const random = new Uint8Array(4096).map(() => Math.floor(Math.random() * 256));
+  // Noise stands in for a PNG: DEFLATE makes it bigger, so the writer stores it. Seeded, so that a
+  // failure can be reproduced: the same bytes every run, on every machine.
+  let seed = 0x2545f491;
+  const random = new Uint8Array(4096).map(() => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed >>> 24;
+  });
   const files = new Map([['assets/noise.bin', random]]);
   const zipped = await zip(files);
   assert.ok(zipped.length < random.length + 200, `stored entry grew to ${zipped.length}`);

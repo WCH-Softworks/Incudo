@@ -67,7 +67,7 @@ function corpus(): MapElementIndex {
 }
 
 function built(): Character {
-  const character = createCharacter('test', 'pc', { name: 'Vigaro', progress: 3 });
+  const character = createCharacter('test', 'pc', { name: 'Vesper', progress: 3 });
   return setChoice(character, 'build/seed', ['CHOSEN']);
 }
 
