@@ -52,3 +52,4 @@ new one that supersedes it.
 | [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md) | A level is spent on a class by writing two records, and the builder gates only what content declares | Accepted (builds on 0015, 0017, 0019) |
 | [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md) | A command is data in `packages/ui`, the page owns the keyboard, and the menu is for the mouse | Accepted (builds on 0001) |
 | [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md) | A copy is written through a save port, from the one packing function, and changes nothing else | Accepted (builds on 0012, 0027, 0037) |
+| [0039](./0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md) | The CLI is removed, and what it measured becomes tests | Accepted (amends 0011; builds on 0005, 0008, 0012) |
