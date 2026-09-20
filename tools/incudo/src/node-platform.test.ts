@@ -4,7 +4,7 @@
  *
  * `LocalMirrorFetcher` falls through to its fallback on a miss, which is right for a partial
  * mirror on someone's laptop and quietly wrong in CI: a mirror miss became a live fetch that
- * could pass by accident, hang, or make an offline run depend on GitHub being up. `--offline`
+ * could pass by accident, hang, or make an offline run depend on GitHub being up. `OfflineFetcher`
  * is what turns the claim into a guarantee, so it gets tests.
  */
 
@@ -56,7 +56,7 @@ test('a mirror hit never reaches the fallback', async () => {
   });
 });
 
-test('a mirror miss falls through, which is the behaviour --offline exists to stop', async () => {
+test('a mirror miss falls through, which is the behaviour OfflineFetcher exists to stop', async () => {
   await withMirror({}, async (root) => {
     const spy = new SpyFetcher();
     await new LocalMirrorFetcher(root, spy).fetchText(REMOTE);
@@ -73,7 +73,7 @@ test('offline turns that silent fetch into a named error', async () => {
         // Both halves matter. The URL alone sends people to check their network, which is
         // the one thing that is not the problem; the path says what to actually go and look at.
         assert.match(error.message, /refused to fetch/);
-        assert.match(error.message, /--offline/);
+        assert.match(error.message, /this run is offline/);
         assert.match(error.message, /core[\\/]spells\.xml/);
         return true;
       },

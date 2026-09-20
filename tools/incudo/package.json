@@ -5,7 +5,6 @@
   "description": "incudo — import, validate and inspect content without a UI. The engine's first consumer.",
   "license": "MIT",
   "type": "module",
-  "bin": { "incudo": "./src/cli.ts" },
   "scripts": { "build": "tsc --build" },
   "dependencies": {
     "@incudo/core": "*",

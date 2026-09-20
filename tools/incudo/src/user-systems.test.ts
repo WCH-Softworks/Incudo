@@ -14,7 +14,7 @@ import { UserSystemStore, USER_SYSTEM_PREFIX } from '@incudo/ui';
 
 import { loadSchemas } from './node-system.ts';
 
-// The repository's real schemas, through the same loader the CLI uses. A stub would test the
+// The repository's real schemas, through the same loader the other tests use. A stub would test the
 // store's plumbing and not the thing that matters, which is that a user's file goes through
 // exactly the validation ADR 0011 promises it does.
 const schemas = await loadSchemas();

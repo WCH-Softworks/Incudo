@@ -56,7 +56,7 @@ function exportTargets(exports: unknown, into: string[] = []): string[] {
 
 test('no package entry point requires a build step', async () => {
   const packages = await workspacePackages();
-  assert.ok(packages.length >= 4, 'expected core, content, aurora-import, ui and the CLI');
+  assert.ok(packages.length >= 4, 'expected core, content, aurora-import, ui and the tools package');
 
   for (const { dir, pkg } of packages) {
     const targets = [pkg.main, pkg.types, ...exportTargets(pkg.exports)].filter(

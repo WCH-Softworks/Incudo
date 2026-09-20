@@ -27,7 +27,7 @@ export class OfflineFetcher implements Fetcher {
 
   async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
     if (/^https?:\/\//i.test(url)) {
-      throw new Error(`refused to fetch ${url} — running with --offline`);
+      throw new Error(`refused to fetch ${url} — this run is offline`);
     }
     return this.local.fetchText(url, opts);
   }
@@ -57,7 +57,7 @@ export class NodeFetcher implements Fetcher {
  * Resolves remote content URLs against a local mirror of the same repository.
  *
  * Aurora indexes hard-code absolute raw.githubusercontent.com URLs, so pointing the
- * CLI at a local checkout still hits the network for every file. This maps each URL
+ * a run at a local checkout still hits the network for every file. This maps each URL
  * back onto the mirror by taking the path after the git ref segment:
  *
  *   https://raw.githubusercontent.com/AuroraLegacy/elements/master/core/internal.xml
@@ -66,7 +66,7 @@ export class NodeFetcher implements Fetcher {
  * It is a heuristic, deliberately: if the mapped file is missing it falls through to the
  * `fallback` rather than failing, so a partial mirror still works. Pass an
  * {@link OfflineFetcher} as that fallback to turn a miss into an error instead — which is
- * what `--offline` does, and what makes "no network at all" a guarantee rather than a hope.
+ * what `corpus.ts` does, and what makes "no network at all" a guarantee rather than a hope.
  */
 export class LocalMirrorFetcher implements Fetcher {
   private readonly root: string;

@@ -31,7 +31,7 @@ import {
   type ElementIndex,
   type GameSystem,
 } from '@incudo/core';
-import { loadSystemForCharacter } from './node-system.ts';
+import { loadShippedSystem } from './node-system.ts';
 
 export interface OracleRun {
   save: AuroraSave;
@@ -46,8 +46,8 @@ export interface OracleRun {
  * Import one `.dnd5e`, derive it, and diff it against the `<sum>` and `<magic>` blocks Aurora
  * wrote itself.
  *
- * Throws where the command printed and returned 1: a save that does not parse, or a system that
- * is not installed, is not a difference to classify, it is a check that could not be made.
+ * Throws where the command printed and returned 1: a save that does not parse, or a system the
+ * repository does not ship, is not a difference to classify, it is a check that could not be made.
  */
 export async function runOracle(
   file: string,
@@ -72,9 +72,7 @@ export async function runOracle(
     ? new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus])
     : corpus;
 
-  const problems: string[] = [];
-  const system = await loadSystemForCharacter(imported.character, undefined, (text) => problems.push(text));
-  if (!system) throw new Error(problems.join('').trim() || 'no system definition for this save');
+  const system = await loadShippedSystem(imported.character.systemId);
 
   const derived = deriveCharacter(imported.character, system, elements);
   return {

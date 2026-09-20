@@ -1,10 +1,10 @@
 /**
- * Loading system definitions and the JSON Schemas, from disk.
+ * Finding the repository's schemas and shipped systems on disk.
  *
- * `@incudo/core` owns the validator and refuses to know about a filesystem, so somebody has
- * to hand it the schema documents. On the CLI that is here; in an app it is a bundler
- * import. Both then call the same `validateGameSystem` — which is the whole requirement of
- * ADR 0011: one implementation, so `incudo system validate` and the app cannot disagree.
+ * `@incudo/core` owns the validator and refuses to know about a filesystem, so somebody has to
+ * hand it the schema documents. In a test that is here; in the app it is a bundler import. Both
+ * then call the same `validateGameSystem` — the whole requirement of ADR 0011: one
+ * implementation, so a system that passes here cannot then fail to load in the app.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -13,14 +13,13 @@ import { fileURLToPath } from 'node:url';
 import {
   formatSchemaErrors,
   validateGameSystem,
-  type Character,
   type GameSystem,
   type SchemaBundle,
 } from '@incudo/core';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-/** Repository root, from `tools/incudo/src`. */
+/** Repository root, from `tools/<this package>/src`. */
 export function repoRoot(): string {
   return resolve(HERE, '..', '..', '..');
 }
@@ -48,64 +47,29 @@ export async function loadSchemas(): Promise<SchemaBundle> {
 }
 
 /**
- * Read and validate a system definition.
+ * One of the systems the repository ships, validated.
  *
- * A system that fails validation is refused rather than partly loaded (ADR 0011). The
- * errors go to the caller's stderr with paths, because the person reading them has the JSON
- * file open and needs to know where to look.
+ * A system that fails validation is refused rather than partly loaded (ADR 0011), and the error
+ * carries the schema paths, because whoever reads it has the JSON open and needs to know where
+ * to look. A save embeds its content and deliberately not its system definition (ADR 0012), so
+ * the id a save records is looked up here.
  */
-export async function loadSystem(
-  path: string,
-  err: (text: string) => void,
-): Promise<GameSystem | undefined> {
-  let raw: unknown;
+export async function loadShippedSystem(id: string): Promise<GameSystem> {
+  const path = join(systemsDirectory(), id, 'system.json');
+  let raw: Record<string, unknown>;
   try {
-    raw = await readJson(await resolveSystemPath(path));
+    raw = await readJson(path);
   } catch (error) {
-    err(`Could not read ${path}: ${(error as Error).message}\n`);
-    return undefined;
+    throw new Error(`the system "${id}" is not shipped here (${path}): ${(error as Error).message}`);
   }
 
   const result = validateGameSystem(raw, await loadSchemas());
-  if (!result.valid) {
-    err(`${path} is not a valid system definition:\n`);
-    for (const line of formatSchemaErrors(result.errors)) err(`  ${line}\n`);
-    return undefined;
+  if (!result.valid || !result.value) {
+    throw new Error(
+      `${path} is not a valid system definition:\n  ${formatSchemaErrors(result.errors).join('\n  ')}`,
+    );
   }
   return result.value;
-}
-
-/**
- * The system a character was built in.
- *
- * An explicit `--system` wins. Otherwise the id recorded in the save is looked up among the
- * shipped systems, so `incudo character show foo.incu` works with no flags — which matters,
- * because opening a save with nothing else configured is the property ADR 0012 is about. The
- * system definition is the one thing a save deliberately does *not* embed.
- */
-export async function loadSystemForCharacter(
-  character: Character,
-  explicitPath: string | undefined,
-  err: (text: string) => void,
-): Promise<GameSystem | undefined> {
-  if (explicitPath) return loadSystem(explicitPath, err);
-
-  const candidate = join(systemsDirectory(), character.systemId, 'system.json');
-  const system = await loadSystem(candidate, () => {});
-  if (system) return system;
-
-  err(
-    `This character was built in the system "${character.systemId}", which is not installed.\n` +
-      `  Point at it with --system <path/to/system.json>.\n` +
-      `  (A save embeds its content but not its system definition — ADR 0012.)\n`,
-  );
-  return undefined;
-}
-
-/** `--system dnd5e` is as good as the full path to a shipped system. */
-async function resolveSystemPath(path: string): Promise<string> {
-  if (path.endsWith('.json')) return path;
-  return join(systemsDirectory(), path, 'system.json');
 }
 
 async function readJson(path: string): Promise<Record<string, unknown>> {
