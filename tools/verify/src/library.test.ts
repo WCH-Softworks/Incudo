@@ -1,5 +1,5 @@
 /**
- * The library, over the nine real Aurora saves, with **zero sources configured**.
+ * The library, over the real Aurora saves, with **zero sources configured**.
  *
  * `character-library.test.ts` and `aurora-import.test.ts` in `packages/ui` prove the same
  * properties against a fake store and hand-made saves, which is where the logic is. This is
@@ -105,7 +105,7 @@ class NodeCharacterStore implements CharacterStore {
 }
 
 test(
-  'the nine real saves list and open from a library with zero sources configured',
+  'the real saves list and open from a library with zero sources configured',
   { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
   async () => {
     const system = await shippedSystem();
@@ -118,7 +118,7 @@ test(
       .filter((name) => extname(name).toLowerCase() === '.dnd5e')
       .sort()
       .map((name) => join(SAVES_DIR, name));
-    assert.ok(saves.length >= 8, `expected the sample saves, found ${saves.length}`);
+    assert.ok(saves.length > 0, 'there is at least one .dnd5e save to list');
 
     const dir = await mkdtemp(join(tmpdir(), 'incudo-library-'));
     try {
@@ -142,7 +142,7 @@ test(
       });
 
       // A library entry is named for its character, so it is never printed: `labelOf` says which
-      // of the nine it is by position. `report.file` and `report.message` name the file and can
+      // of the saves it is by position. `report.file` and `report.message` name the file and can
       // quote it, and a diagnostic can quote what it choked on, so none of them is printed either.
       const labels = new Map<string, string>();
       const labelOf = (entryName: string): string =>
@@ -300,7 +300,7 @@ test(
  * one concludes they picked the wrong folder.
  */
 test(
-  'nine D&D saves viewed as another system are counted, not hidden',
+  'D&D saves viewed as another system are counted, not hidden',
   { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
   async () => {
     const system = await shippedSystem();

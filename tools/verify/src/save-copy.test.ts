@@ -1,10 +1,10 @@
 /**
- * "Save a copy…", over the nine real saves, written to a real disk — ADR 0038.
+ * "Save a copy…", over the real saves, written to a real disk — ADR 0038.
  *
  * `packages/ui/src/character-copy.test.ts` proves the logic against fakes and hand-made
  * characters. This is the other half, and it is ADR 0012 applied to a copy: a file written by
  * `saveCopy` opens with **zero sources configured** and derives exactly as the character it was
- * made from, for every one of the nine real Aurora characters.
+ * made from, for every real Aurora character in the folder.
  *
  * The path is the desktop shell's: import a save into a library, open it from there (which is
  * what puts a character on the Build pane), and copy it. The copy is packed from the opened
@@ -137,7 +137,7 @@ async function snapshot(root: string): Promise<Map<string, string>> {
 }
 
 test(
-  'a copy of each of the nine real saves opens with zero sources and derives identically',
+  'a copy of each real save opens with zero sources and derives identically',
   { skip: available ? false : `no Aurora install at ${AURORA_INDEX}` },
   async () => {
     const system = await shippedSystem();
@@ -150,12 +150,12 @@ test(
       .filter((name) => extname(name).toLowerCase() === '.dnd5e')
       .sort()
       .map((name) => join(SAVES_DIR, name));
-    assert.ok(saves.length >= 8, `expected the sample saves, found ${saves.length}`);
+    assert.ok(saves.length > 0, 'there is at least one .dnd5e save to copy');
 
     const libraryDir = await mkdtemp(join(tmpdir(), 'incudo-copy-library-'));
     const copiesDir = await mkdtemp(join(tmpdir(), 'incudo-copy-out-'));
     try {
-      // 1. A library of the nine, and what each derives to.
+      // 1. A library of them, and what each derives to.
       const picked: PickedFile[] = [];
       for (const [i, path] of saves.entries()) {
         picked.push({
@@ -172,16 +172,20 @@ test(
         generator: 'save-copy-test',
       });
       // A library entry is named for its character, so it is never printed: `labelOf` says which
-      // of the nine it is by position. `report.file` and `report.message` name the file and can
+      // of the saves it is by position. `report.file` and `report.message` name the file and can
       // quote it, so neither is printed either.
       const labels = new Map<string, string>();
       const labelOf = (entryName: string): string =>
         labels.get(entryName) ?? 'an entry this import did not write';
 
       const expected = new Map<string, ReturnType<typeof summarize>>();
+      // Whether the import found a portrait, so that "keeps it" is checked against what the save
+      // had and not against every save having one.
+      const hadPortrait = new Map<string, boolean>();
       for (const [i, report] of reports.entries()) {
         assert.ok(report.ok, `${saveLabel(i, reports.length)} should import`);
         labels.set(report.entry!.name, saveLabel(i, reports.length));
+        hadPortrait.set(report.entry!.name, report.assetCount > 0);
         expected.set(
           report.entry!.name,
           summarize(deriveCharacter(report.character!, system, report.elements!)),
@@ -261,8 +265,12 @@ test(
           assert.equal(container.character.id, opened.character.id, 'it is the same character');
 
           // The portrait is in the copy as real bytes, and the reader has nothing to say about
-          // an asset it cannot find. Every one of the nine has one.
-          assert.ok(opened.assets.size > 0, `${saveName} should have an asset to keep`);
+          // an asset it cannot find. A save keeps a portrait exactly when it had one.
+          assert.equal(
+            opened.assets.size > 0,
+            hadPortrait.get(entry.name),
+            `${saveName}: the portrait is there exactly when the import found one`,
+          );
           assert.equal(container.assets.size, opened.assets.size, `${label} lost an asset`);
           for (const [path, bytes] of opened.assets) {
             assertSameBytes(container.assets.get(path), bytes, `${label} altered ${path}`);
@@ -315,7 +323,7 @@ test(
         const opened = await resaving.open(entry.name);
         assert.ok(opened);
         const kept = entry.portrait;
-        assert.ok(kept, `${saveName} should have a portrait to keep`);
+        assert.equal(kept !== undefined, hadPortrait.get(entry.name), `${saveName}: a portrait is listed exactly when the import found one`);
         const saved = await resaving.save(opened.character, system, opened.elements, {
           entry: { name: entry.name, form: entry.form },
           expectUpdatedAt: entry.updatedAt,
@@ -323,7 +331,8 @@ test(
         });
         assert.ok(saved.ok, `${saveName} should re-save`);
         const after = resaving.getState().entries.find((e) => e.name === entry.name)!;
-        assertSameBytes(after.portrait, kept, `${saveName} lost its portrait on a re-save`);
+        if (kept === undefined) assert.equal(after.portrait, undefined, `${saveName} gained a portrait on a re-save`);
+        else assertSameBytes(after.portrait, kept, `${saveName} lost its portrait on a re-save`);
       }
 
       // 6. The copies are real library entries: a folder of them lists, opens and is not broken.

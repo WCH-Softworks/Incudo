@@ -301,19 +301,26 @@ test(
 );
 
 /**
- * The exact figures, for the one corpus that cannot move.
+ * The exact figures, for the one corpus this project can hold still for a while.
  *
  * A budget only catches "worse". CLAUDE.md's baselines are also a statement about what the loader
  * *finds*: 2,258 elements from inline text, 229 generated, 23 requirements nothing can meet. CI
  * reads upstream's HEAD, which moves, so CI gets budgets and only budgets; the maintainer's install
- * is a frozen snapshot, and against it any change at all is a change in Incudo. The unresolved id
+ * is a snapshot, and against it any change at all is a change in Incudo. The unresolved id
  * is named on purpose: the day upstream fixes the spelling this fails, and the edit that follows
  * is the one CLAUDE.md says should happen.
+ *
+ * **The snapshot is not frozen, because Aurora rewrites it.** Its own content updater replaced seven
+ * files while the maintainer had the app open (the Rogue and 2024 class files, `internal.xml` and one
+ * supplement), and the element total went from 14,316 to 14,320 with the same 740 files and every
+ * other figure here unchanged. So a failure on `elements` and `size` alone is almost certainly
+ * that, not Incudo: look at the modification times under `custom/AuroraLegacy` first, and re-record
+ * the two numbers once nothing else has moved.
  */
 const EXACT = {
   files: 740,
-  elements: 14316,
-  size: 14541,
+  elements: 14320,
+  size: 14545,
   overlay: 83,
   improvementOptions: 146,
   synthesizedFromText: 2258,
