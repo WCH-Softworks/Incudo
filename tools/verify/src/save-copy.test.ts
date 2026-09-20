@@ -50,6 +50,7 @@ import {
   assertSameBytes,
   assertSameSummary,
   saveLabel,
+  unnamed,
 } from './private-saves.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { nodeZipCodec } from './node-zip.ts';
@@ -89,7 +90,8 @@ class NodeCharacterStore implements CharacterStore {
     return entries;
   }
   async read(entry: LibraryEntryRef): Promise<ContainerFiles> {
-    return readContainer(join(this.root, entry.name));
+    // `library.open` does not catch this, so a missing file would reach the reporter with its path.
+    return unnamed('reading a library entry', () => readContainer(join(this.root, entry.name)));
   }
   async write(entry: LibraryEntryRef, files: ContainerFiles): Promise<void> {
     await writeContainer(join(this.root, entry.name), files, entry.form);
@@ -125,11 +127,13 @@ class NodeFileSaver implements FileSaver {
 
 /** Every file under a directory, with its bytes, so "nothing changed" can be a comparison. */
 async function snapshot(root: string): Promise<Map<string, string>> {
-  const found = new Map<string, string>();
-  for (const name of await readdir(root)) {
-    found.set(name, Buffer.from(await readFile(join(root, name))).toString('base64'));
-  }
-  return found;
+  return unnamed('taking a folder snapshot', async () => {
+    const found = new Map<string, string>();
+    for (const name of await readdir(root)) {
+      found.set(name, Buffer.from(await readFile(join(root, name))).toString('base64'));
+    }
+    return found;
+  });
 }
 
 test(
@@ -153,7 +157,12 @@ test(
     try {
       // 1. A library of the nine, and what each derives to.
       const picked: PickedFile[] = [];
-      for (const path of saves) picked.push({ name: basename(path), bytes: await readFile(path) });
+      for (const [i, path] of saves.entries()) {
+        picked.push({
+          name: basename(path),
+          bytes: await unnamed(`reading ${saveLabel(i, saves.length)}`, () => readFile(path)),
+        });
+      }
       const importing = new CharacterLibrary(new NodeCharacterStore(libraryDir));
       await importing.restore();
       const reports = await importAuroraSavesIntoLibrary(importing, picked, {
@@ -193,7 +202,9 @@ test(
         assert.ok(opened, `${saveName} should open`);
 
         const originalIds = readCharacterContainer(
-          await readContainer(join(libraryDir, entry.name)),
+          await unnamed(`reading ${saveName} from the library`, () =>
+            readContainer(join(libraryDir, entry.name)),
+          ),
         ).container!.content.elements.map((element) => element.id);
 
         // From its own content alone: an app with nothing loaded. The assets are the ones the
@@ -226,7 +237,9 @@ test(
         ] as const) {
           const label = `${saveName} (${route})`;
           const { container, problems } = readCharacterContainer(
-            await readContainer(join(copiesDir, name)),
+            await unnamed(`reading the copy of ${label}`, () =>
+              readContainer(join(copiesDir, name)),
+            ),
           );
           assert.ok(container, `${label} should read as a container`);
           // A problem's message can quote the text a JSON parse choked on, so it is counted.
@@ -274,7 +287,11 @@ test(
         // The two routes embed the same elements: copying with sources loaded adds nothing the
         // character does not use, and copying without them loses nothing it does.
         const idsOf = async (name: string): Promise<string[]> =>
-          readCharacterContainer(await readContainer(join(copiesDir, name)))
+          readCharacterContainer(
+            await unnamed(`reading a copy of ${saveName}`, () =>
+              readContainer(join(copiesDir, name)),
+            ),
+          )
             .container!.content.elements.map((element) => element.id)
             .sort();
         assert.deepEqual(

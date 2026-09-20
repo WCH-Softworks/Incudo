@@ -44,7 +44,7 @@ import { imageExtension } from '@incudo/aurora-import';
 import { CharacterBuilder, CharacterLibrary, importAuroraSavesIntoLibrary } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
-import { assertNoneReported, assertSameSummary, saveLabel } from './private-saves.ts';
+import { assertNoneReported, assertSameSummary, saveLabel, unnamed } from './private-saves.ts';
 import { readContainer, writeContainer } from './node-save.ts';
 import { LocalMirrorFetcher, NodeFetcher } from './node-platform.ts';
 import { loadSchemas } from './node-system.ts';
@@ -93,7 +93,8 @@ class NodeCharacterStore implements CharacterStore {
     return entries;
   }
   async read(entry: LibraryEntryRef): Promise<ContainerFiles> {
-    return readContainer(join(this.root, entry.name));
+    // `library.open` does not catch this, so a missing file would reach the reporter with its path.
+    return unnamed('reading a library entry', () => readContainer(join(this.root, entry.name)));
   }
   async write(entry: LibraryEntryRef, files: ContainerFiles): Promise<void> {
     await writeContainer(join(this.root, entry.name), files, entry.form);
@@ -124,8 +125,11 @@ test(
       // 1. Import every save with the whole corpus loaded, exactly as the desktop shell's
       //    "Import from Aurora…" does — an app with 200 books, in ADR 0012's words.
       const picked: PickedFile[] = [];
-      for (const path of saves) {
-        picked.push({ name: basename(path), bytes: await readFile(path) });
+      for (const [i, path] of saves.entries()) {
+        picked.push({
+          name: basename(path),
+          bytes: await unnamed(`reading ${saveLabel(i, saves.length)}`, () => readFile(path)),
+        });
       }
 
       const importing = new CharacterLibrary(new NodeCharacterStore(dir));
@@ -308,7 +312,12 @@ test(
     const dir = await mkdtemp(join(tmpdir(), 'incudo-filter-'));
     try {
       const picked: PickedFile[] = [];
-      for (const path of saves) picked.push({ name: basename(path), bytes: await readFile(path) });
+      for (const [i, path] of saves.entries()) {
+        picked.push({
+          name: basename(path),
+          bytes: await unnamed(`reading ${saveLabel(i, saves.length)}`, () => readFile(path)),
+        });
+      }
 
       const library = new CharacterLibrary(new NodeCharacterStore(dir));
       await library.restore();

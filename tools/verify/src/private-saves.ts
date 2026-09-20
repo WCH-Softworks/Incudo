@@ -25,6 +25,26 @@ export function saveLabel(index: number, total: number): string {
   return `save ${index + 1}/${total}`;
 }
 
+/**
+ * Run a read or write that touches a save or a library file, and let it fail without its path.
+ *
+ * An `fs` error names the file in its message, in `path`, and in `stack`, and the test reporter
+ * prints all three. The file is named for its character. The error is replaced whole rather
+ * than edited, and carries no `cause`, because a scrubbed message beside an intact `path` hides
+ * nothing. What is left is what was being done and the error's `code` (`ENOENT`, `EISDIR`) or,
+ * for anything without one, its class — a zip or JSON error can quote the bytes it choked on.
+ */
+export async function unnamed<T>(what: string, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    const code = (error as { code?: unknown } | null)?.code;
+    const kind =
+      typeof code === 'string' ? code : error instanceof Error ? error.name : 'a non-Error value';
+    throw new Error(`${what} failed (${kind})`);
+  }
+}
+
 /** A list that must be empty, reported by its length. Its items are not printed. */
 export function assertNoneReported(items: readonly unknown[], message: string): void {
   assert.equal(items.length, 0, `${message} (${items.length} reported)`);
