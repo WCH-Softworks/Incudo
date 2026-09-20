@@ -458,15 +458,16 @@ before any code, both touching a public API:
         **A copy is not a Save As:** it takes no library and returns no entry, so the file being
         edited, its conflict timestamp and its saved name are untouched — held by a test with a
         store that records every call, and seen in the app (the next Save still raised the rename
-        prompt and still saved without a conflict). Ctrl+Shift+S, Build only, beside Save; it needs
+        prompt and still saved without a conflict). Ctrl+Shift+D, Build only, beside Save; it needs
         no library folder. Tauri needed one permission (`dialog:allow-save`) and no Rust: the
         dialog's own `save` command widens the fs scope to the file it returns. **Round-tripped
         over the nine real saves:** each copy opens with zero sources and derives identically.
         **Found doing it, and fixed straight after:** the app's Save had been dropping every opened
-        character's portrait bytes (9 of 9). **Not verified:** the chord as real input in the
-        Tauri window (the screen was locked; the dialog was driven with window messages and the
-        chord injected), macOS and Linux, and the real browser save dialog (native; replaced by a
-        recording handle).
+        character's portrait bytes (9 of 9). **The shortcut moved once:** it was Ctrl+Shift+S, and pressing real
+        keys in the Windows window showed WebView2 never delivers it to the page (an injected key
+        event had hidden that), so it is Ctrl+Shift+D, checked with real keys through the real
+        dialog. **Not verified:** macOS and Linux, and the real browser save dialog (native;
+        replaced by a recording handle).
 - [x] **Inventory**, which Phase 1 deferred with the gap named: items, equipped slots,
       attunement, and magic items attached to other items. Planned in
       [docs/INVENTORY-AND-AC-PLAN.md](./docs/INVENTORY-AND-AC-PLAN.md) — five steps, of which

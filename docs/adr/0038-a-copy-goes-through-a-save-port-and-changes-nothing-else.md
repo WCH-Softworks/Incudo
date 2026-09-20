@@ -85,17 +85,22 @@ mistake. The desktop shell's `copyToFile` has no `setWorking` in it: `working.en
 `character-copy.test.ts` holds this from both ends, with a store that records every call and an
 assertion on the keys of the result.
 
-### 4. The command: Ctrl+Shift+S, on Build, beside Save
+### 4. The command: Ctrl+Shift+D, on Build, beside Save
 
 `save-copy`, labelled **Save a copy…** (an ellipsis because it asks something first), in the File
 menu directly below Save to library.
 
-- **Shortcut Ctrl+Shift+S** (`⇧⌘S`). It is where every desktop application puts Save As, it is not
-  one of the chords Chromium keeps from a page (Ctrl+N, T, W and their Shift forms), and it clears
-  ADR 0037's rules: a primary modifier, no Alt, no editing key. `matchShortcut` compares Shift for
-  equality, so Ctrl+S and Ctrl+Shift+S are two commands and neither answers for the other. The name
-  will lead some people to expect Save As. They get a copy, the file they are editing stays where it
-  was, and the confirmation says "Saved a copy as …".
+- **Shortcut Ctrl+Shift+D** (`⇧⌘D`), for "duplicate". **It was Ctrl+Shift+S, the Save As chord, and
+  that does not work in the Windows window.** Pressed as real input, the page receives Control and Shift
+  and then no key-down for S, only the key-up: WebView2 takes the chord first (Edge's web capture is on
+  it). An injected DevTools key event had opened the dialog and hidden this, because injected events
+  skip that layer. The same real-key test on eleven other Ctrl+Shift chords: **S, E, U, M, G and X are
+  taken; K, O, D, H, B, Y and L arrive.** D is the mnemonic one. `commands.test.ts` now keeps the taken
+  chords out of the list, and the comment beside the entry says how they were found. It clears ADR 0037's
+  other rules (a primary modifier, no Alt, no editing key); Shift is compared for equality, so Ctrl+S and
+  Ctrl+Shift+D are two commands and Ctrl+Shift+S is bound to nothing. The command is not Save As, and the
+  confirmation says "Saved a copy as …". Chrome does not keep Ctrl+Shift+D from a page; Edge may take
+  it as it does Ctrl+Shift+S, which was not tested in a browser tab.
 - **Enabled on Build only**, the ADR 0037 principle: its confirmation, "Saved a copy as
   nyx.incu.", is printed in the pane bar beside Save's, and a copy that succeeded on the Sheet pane
   with nothing on screen is worse than a greyed item.
@@ -164,8 +169,8 @@ the portrait fix and its tests then closed):
 **What the tests cannot show, and what was and was not seen** (2026-09-20):
 
 *Browser build* (`npm run desktop`, the pane's Chromium, key events injected and the dialog replaced
-by a handle that records what is written): Ctrl+Shift+S opened the dialog with the
-character's name and the `.incu` filter and wrote a zip; cancelling wrote nothing and left the note;
+by a handle that records what is written): Ctrl+Shift+S (the first shortcut; see
+above) opened the dialog with the character's name and the `.incu` filter and wrote a zip; cancelling wrote nothing and left the note;
 a failing write printed "Could not save a copy. The disk is full."; the chord on the Sheet pane was
 claimed and did nothing; behind the rename dialog it did nothing. **With a real library folder**
 (an origin-private directory): a copy of a renamed, unsaved character offered the on-screen name,
@@ -175,16 +180,23 @@ three fields a Save As would have moved were untouched. The bytes the browser wr
 CLI with zero sources. The console was clean. Not seen: the real browser save dialog (it is native)
 and a Firefox or Safari tab.
 
-*Tauri window, Windows*: the menu lists Save a copy… under Save to library with `Ctrl+Shift+S`, off on
-the Characters pane and on for Build. Sent as its own menu message, the command opened the real
+*Tauri window, Windows, first session (screen locked)*: the menu lists Save a copy… under Save to
+library, off on the Characters pane and on for Build. Sent as its own menu message, the command opened the real
 Windows save dialog titled "Save a copy of this character", offering the on-screen character's name and
 "Incudo character (*.incu)". A scratch path typed into the dialog and Save pressed wrote a 41 KB file;
 it opened in the CLI with zero sources (148 elements embedded) and the page printed "Saved a copy as
 tauri-copy.incu.". Choosing that file again raised "Confirm Save As"; No left it untouched; Cancel
 closed the dialog; the button re-enabled and the note stayed; the developer's own library file was not
-touched. **The screen was locked, so no real keystroke could be sent:** the dialog was driven with
-window messages, and the chord as an injected DevTools key event, which reached the page and opened the
-dialog. Ctrl+Shift+S was **not pressed as real input** in the window, and macOS and Linux were not seen.
+touched. No real keystroke could be sent, so the dialog was driven with window messages and the chord
+as an injected DevTools key event. That is how Ctrl+Shift+S looked fine.
+
+*Tauri window, Windows, second session (real input, screen unlocked)*: after the discovery above, the
+menu reads `Ctrl+Shift+D`. Real Ctrl+2 moved to Build. **Real Ctrl+Shift+D opened the real save dialog;
+a scratch path typed into it and Enter wrote a 41,754-byte file** that opens in the CLI with zero
+sources, and the page printed "Saved a copy as tauri-real-keys.incu.". A second real chord followed by
+a real Esc closed the dialog and left the note and the enabled buttons as they were. Nothing was sent
+unless the window or dialog held the foreground; the developer's library file was untouched.
+macOS and Linux were not seen.
 
 ## Alternatives considered
 

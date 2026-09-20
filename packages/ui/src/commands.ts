@@ -93,10 +93,12 @@ export const COMMANDS: readonly CommandDef[] = [
   { id: 'go-settings', label: 'Settings', shortcut: { key: ',', primary: true }, destination: 'settings' },
   { id: 'new-character', label: 'New character', shortcut: { key: 'n', primary: true } },
   { id: 'save-character', label: 'Save to library', shortcut: { key: 's', primary: true } },
-  // Ctrl+Shift+S is where every desktop application puts Save As, and it is not one of the chords
-  // Chromium keeps from a page (those are Ctrl+N, T, W and their Shift forms). It is *not* Save As
-  // here: a copy leaves the file being edited where it is (ADR 0038).
-  { id: 'save-copy', label: 'Save a copy…', shortcut: { key: 's', primary: true, shift: true } },
+  // Ctrl+Shift+D, for "duplicate". Not Ctrl+Shift+S, the Save As chord, which was the first choice:
+  // pressed in the Windows window it never reaches the page (the key-down is taken by WebView2, the
+  // key-up arrives), and it is not Save As here anyway, since a copy leaves the file being edited
+  // where it is (ADR 0038). Measured by pressing real keys: S, E, U, M, G and X are taken before the
+  // page sees them; K, O, D, H, B, Y and L arrive. `commands.test.ts` keeps the taken ones out.
+  { id: 'save-copy', label: 'Save a copy…', shortcut: { key: 'd', primary: true, shift: true } },
   // No shortcut: Ctrl+I is italic in every text field and Ctrl+Shift+I is developer tools.
   { id: 'import-aurora', label: 'Import from Aurora…' },
   { id: 'choose-library-folder', label: 'Choose library folder…' },
@@ -260,7 +262,7 @@ export interface KeyLike {
 /**
  * Which command a key event is, ignoring whether it may run.
  *
- * Modifiers are compared for **equality**, not inclusion: Ctrl+Shift+S is not Ctrl+S, and Ctrl+Alt
+ * Modifiers are compared for **equality**, not inclusion: Ctrl+Shift+L is not Ctrl+L, and Ctrl+Alt
  * +anything is never a shortcut because that is how Windows reports AltGr. On macOS Ctrl is not
  * the primary modifier and is ignored as one; on the others Cmd/Windows is not either.
  */

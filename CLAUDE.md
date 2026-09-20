@@ -389,7 +389,7 @@ rule for when each is available — under `node --test`; `apps/desktop/src/use-c
   was not seen. `platform.ts` `TauriCommandHost` on those platforms is unverified.
 
 **"Save a copy…" writes the character on screen to a file the user picks, and changes nothing else**
-([ADR 0038](docs/adr/0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md)). Ctrl+Shift+S,
+([ADR 0038](docs/adr/0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md)). Ctrl+Shift+D,
 Build only, beside Save; the thirteenth command. Things to know before touching it:
 
 - **`packCharacter` (`packages/ui/src/character-library.ts`) is the one packing function.** The library's
@@ -411,9 +411,13 @@ Build only, beside Save; the thirteenth command. Things to know before touching 
   what `library.open` returns, `working.assets` holds it, and Save and Save a copy both pass it. A
   `Character` records only where its portrait is: before this, every re-save of an opened character
   dropped the file and kept the reference, for all nine real ones, and no count anywhere showed it.
-- **Not verified:** Ctrl+Shift+S as real input in the Tauri window (the screen was locked; the dialog was
-  driven with window messages and the chord injected as a DevTools key event), macOS and Linux, and the real
-  browser save dialog. The browser round trip and the whole Windows dialog, including the replace prompt, were seen.
+- **The chord is Ctrl+Shift+D because Ctrl+Shift+S never reaches the page in the Windows window.** WebView2
+  takes the key-down before the page (only the key-up arrives); S, E, U, M, G and X are taken, K, O, D, H, B,
+  Y and L arrive. An injected DevTools key event opened the dialog and hid this, so **press real keys before
+  trusting a chord**; `commands.test.ts` keeps the taken ones out.
+- **Not verified:** macOS and Linux, the real browser save dialog, and Ctrl+Shift+D in an Edge browser tab
+  (Edge may take it as it takes Ctrl+Shift+S). The browser round trip and the whole Windows dialog, driven
+  by real keys, including the replace prompt and Esc, were seen.
 
 ### Known from running it
 

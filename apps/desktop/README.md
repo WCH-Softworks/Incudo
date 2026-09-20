@@ -77,7 +77,7 @@ Everything between the picker and the library folder is `importAuroraSaveIntoLib
 What the app can be told to do is a list in `packages/ui/src/commands.ts` (ADR 0037): an id, a
 label, a shortcut, and a rule for when it is available. This app renders it and computes nothing.
 Thirteen commands: go to each of the five panes (Ctrl+1 to 4, Ctrl+,), New character (Ctrl+N), Save
-to library (Ctrl+S), Save a copy (Ctrl+Shift+S), Refresh library (Ctrl+Shift+L), Import from Aurora,
+to library (Ctrl+S), Save a copy (Ctrl+Shift+D), Refresh library (Ctrl+Shift+L), Import from Aurora,
 Choose library folder, Reload content sources, Change system. On macOS the same shortcuts read Cmd.
 
 - **The Tauri window has a native menu**, built in `platform.ts` from `menuModel()`. **The browser
@@ -159,17 +159,21 @@ once, through the harness.
 ### What was and was not checked for Save a copy… (2026-09-20)
 
 **Tauri window, Windows** (`npm run desktop:app`, WebView2's debug port and the Win32 API): the native
-menu lists Save a copy… under Save to library with `Ctrl+Shift+S`, off on the Characters pane and on for
+menu lists Save a copy… under Save to library with `Ctrl+Shift+D`, off on the Characters pane and on for
 Build. Sent as its menu message, the command opened the real Windows save dialog with the on-screen
 character's name and the filter "Incudo character (*.incu)". A scratch path typed into it and Save pressed
 wrote a file that opens in the CLI with zero sources; the page printed "Saved a copy as tauri-copy.incu.".
 Choosing that file again raised the system's "Confirm Save As"; No left it byte-identical; Cancel closed
 the dialog and re-enabled the button. The developer's own library was never written to.
 
-**The screen was locked, so no real keystroke could be sent.** The dialog was driven with window messages
-(setting the file name field and clicking its buttons) and the chord as an injected DevTools key event,
-which reached the page and opened the dialog. Ctrl+Shift+S was **not pressed as real input** in the
-window. **Browser build** (`npm run desktop`, injected key events, the dialog replaced by a handle that
+**That first session had the screen locked**, so the dialog was driven with window messages (setting the
+file name field and clicking its buttons) and the chord as an injected DevTools key event. **A second
+session with real input found that Ctrl+Shift+S never reaches the page in this window**: the key-down is
+taken by WebView2 and only the key-up arrives, which an injected event cannot show. Of eleven other
+Ctrl+Shift chords pressed for real, S, E, U, M, G and X are taken and K, O, D, H, B, Y and L arrive, so the
+command moved to Ctrl+Shift+D, and a test keeps the taken ones out. With that: real Ctrl+2, real
+Ctrl+Shift+D, a scratch path typed into the real dialog and Enter wrote a file that opens in the CLI with
+zero sources, and a real Esc cancelled cleanly. **Browser build** (`npm run desktop`, injected key events, the dialog replaced by a handle that
 records what is written): the chord, cancel, a failing write, the chord refused on Sheet and behind the
 rename dialog, and — with a real directory handle as the library — a copy of a renamed, unsaved character
 leaving the library at one file and the next Ctrl+S still raising the rename prompt and saving without a

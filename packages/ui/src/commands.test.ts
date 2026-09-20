@@ -157,15 +157,15 @@ test('a copy in flight blocks another copy and a save, and a save in flight bloc
 
 test('a copy is unavailable behind a dialog, and still claims its key', () => {
   assert.ok(!enabledIn({ ...READY, pane: 'build', modal: true }).has('save-copy'));
-  // Ctrl+Shift+S on the Sheet pane must not fall through to the browser.
+  // Ctrl+Shift+D on the Sheet pane must not fall through to the browser (bookmark all tabs).
   const outcome = keyOutcome(
-    key('S', { ctrlKey: true, shiftKey: true }),
+    key('D', { ctrlKey: true, shiftKey: true }),
     'other',
     resolveCommands({ ...READY, pane: 'sheet' }),
   );
   assert.deepEqual(outcome, { id: 'save-copy', claimed: true, run: false });
   assert.equal(
-    keyOutcome(key('S', { ctrlKey: true, shiftKey: true }), 'other', resolveCommands({ ...READY, pane: 'build' }))
+    keyOutcome(key('D', { ctrlKey: true, shiftKey: true }), 'other', resolveCommands({ ...READY, pane: 'build' }))
       ?.run,
     true,
   );
@@ -178,8 +178,8 @@ test('a copy sits beside Save in the File menu, labelled as a question, with its
     .flatMap((menu) => menu.entries)
     .find((e) => e.kind === 'command' && e.id === 'save-copy') as { label: string; shortcut?: string };
   assert.equal(entry.label, 'Save a copy…');
-  assert.equal(entry.shortcut, 'Ctrl+Shift+S');
-  assert.equal(describeCommand('save-copy', 'mac'), 'Save a copy… (⇧⌘S)');
+  assert.equal(entry.shortcut, 'Ctrl+Shift+D');
+  assert.equal(describeCommand('save-copy', 'mac'), 'Save a copy… (⇧⌘D)');
 });
 
 test('while the library scans: new character stays, refresh and save do not', () => {
@@ -264,6 +264,19 @@ test('every shortcut is a chord that leaves text editing alone', () => {
   }
 });
 
+test('no shortcut takes a chord the Windows window never delivers to the page', () => {
+  // Found by pressing real keys in the Tauri window (WebView2): for these Ctrl+Shift chords the
+  // key-down is taken before the page, and only the key-up arrives, so a command on one is a
+  // shortcut that works in a browser tab, shows in the menu, and does nothing in the window.
+  // Injected key events cannot show this: they never pass through that layer.
+  const swallowed = ['s', 'e', 'u', 'm', 'g', 'x'];
+  for (const command of COMMANDS) {
+    const s = command.shortcut;
+    if (!s?.shift) continue;
+    assert.ok(!swallowed.includes(s.key.toLowerCase()), `${command.id} is on Ctrl+Shift+${s.key}`);
+  }
+});
+
 test('the navigation commands reach every destination exactly once', () => {
   const destinations = COMMANDS.flatMap((c) => (c.destination ? [c.destination] : []));
   assert.deepEqual(destinations.sort(), ['build', 'library', 'settings', 'sheet', 'sources']);
@@ -282,12 +295,14 @@ test('the primary modifier is Ctrl on Windows and Linux and Cmd on macOS, never 
 });
 
 test('modifiers are compared exactly, and case does not matter', () => {
-  // Ctrl+S and Ctrl+Shift+S are two commands, and neither may answer for the other.
-  assert.equal(matchShortcut(key('S', { ctrlKey: true, shiftKey: true }), 'other'), 'save-copy');
-  assert.equal(matchShortcut(key('s', { ctrlKey: true, shiftKey: true }), 'other'), 'save-copy');
+  // Ctrl+S is Save and Ctrl+Shift+D is a copy: Shift is compared, so neither answers for the other.
+  assert.equal(matchShortcut(key('D', { ctrlKey: true, shiftKey: true }), 'other'), 'save-copy');
+  assert.equal(matchShortcut(key('d', { ctrlKey: true, shiftKey: true }), 'other'), 'save-copy');
+  assert.equal(matchShortcut(key('d', { ctrlKey: true }), 'other'), undefined, 'without shift it is no shortcut');
   assert.equal(matchShortcut(key('S', { ctrlKey: true }), 'other'), 'save-character', 'caps lock');
-  assert.equal(matchShortcut(key('s', { metaKey: true, shiftKey: true }), 'mac'), 'save-copy');
-  assert.equal(matchShortcut(key('s', { ctrlKey: true, shiftKey: true, altKey: true }), 'other'), undefined);
+  assert.equal(matchShortcut(key('S', { ctrlKey: true, shiftKey: true }), 'other'), undefined, 'not a Save As');
+  assert.equal(matchShortcut(key('d', { metaKey: true, shiftKey: true }), 'mac'), 'save-copy');
+  assert.equal(matchShortcut(key('d', { ctrlKey: true, shiftKey: true, altKey: true }), 'other'), undefined);
   assert.equal(matchShortcut(key('L', { ctrlKey: true, shiftKey: true }), 'other'), 'refresh-library');
   assert.equal(matchShortcut(key('l', { ctrlKey: true }), 'other'), undefined, 'without shift it is no shortcut');
   assert.equal(matchShortcut(key(',', { ctrlKey: true }), 'other'), 'go-settings');
