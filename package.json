@@ -19,6 +19,7 @@
     "clean": "tsc --build --clean",
     "test": "node --env-file-if-exists=.env.local --test --experimental-strip-types \"packages/*/src/**/*.test.ts\" \"tools/*/src/**/*.test.ts\"",
     "fixtures:rebuild": "node --experimental-strip-types tools/verify/src/rebuild-fixtures.ts",
+    "corpus:sync": "node --experimental-strip-types tools/verify/src/corpus-sync.ts",
     "lint": "eslint .",
     "desktop": "npm run dev -w @incudo/desktop",
     "desktop:app": "npm run tauri:dev -w @incudo/desktop",

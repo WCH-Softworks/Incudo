@@ -55,3 +55,4 @@ new one that supersedes it.
 | [0039](./0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md) | The CLI is removed, and what it measured becomes tests | Accepted (amends 0011; builds on 0005, 0008, 0012) |
 | [0040](./0040-a-chosen-element-follows-the-track-of-the-element-that-offered-it.md) | A chosen element follows the track of the element that offered it | Accepted (amends 0015; touches 0018) |
 | [0041](./0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md) | Aurora records a slot row per block and the shared caster level once | Accepted (corrects 0018; touches 0008) |
+| [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md) | The tests read the current official corpus, and a moving corpus fails only what must hold against any corpus | Accepted (amends 0039; builds on 0005, 0008, 0012, 0041) |

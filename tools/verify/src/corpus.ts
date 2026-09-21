@@ -216,8 +216,9 @@ const LAYOUTS: readonly string[] = ['aurora-folder', 'repository'];
 /**
  * Where the corpus is, and whether anyone said so.
  *
- * There is no default location, because a default is a path on somebody's machine and a test that
- * reads it runs there and nowhere else. `location` is `undefined` until `INCUDO_AURORA_INDEX` names one.
+ * The environment alone has no default location, because a default absolute path is a path on
+ * somebody's machine. `location` is `undefined` until `INCUDO_AURORA_INDEX` names one; the repository's
+ * own `.corpus/` checkout is the default a run falls back to, and that is `resolveCorpus`.
  *
  * `configured` is the difference between a machine that has no Aurora install (skip, as every
  * other real-corpus test does) and a CI job that was pointed at a checkout that did not happen
@@ -247,6 +248,24 @@ export function corpusFromEnvironment(env: Environment): {
         : { index, layout: layout as CorpusLayout, ...(root === undefined ? {} : { root }) },
     configured: index !== undefined,
   };
+}
+
+/**
+ * Which corpus a run reads: the one the environment names, else the checkout `npm run corpus:sync`
+ * made, else none (and the tests that need one skip, saying how to get it).
+ *
+ * `configured` is true only when the *environment* named it, because that is the case where a missing
+ * index has to fail: a path somebody typed wrongly must not turn a check into a pass. A checkout that
+ * is simply not there yet is the ordinary state of a fresh clone, and skips.
+ */
+export function resolveCorpus(
+  env: Environment,
+  checkout: CorpusLocation | undefined,
+): { location: CorpusLocation | undefined; configured: boolean; source: 'environment' | 'checkout' | 'none' } {
+  const named = corpusFromEnvironment(env);
+  if (named.location) return { location: named.location, configured: true, source: 'environment' };
+  if (checkout) return { location: checkout, configured: false, source: 'checkout' };
+  return { location: undefined, configured: false, source: 'none' };
 }
 
 const BUDGET_VARIABLES: ReadonlyArray<readonly [keyof CorpusBudget, string]> = [

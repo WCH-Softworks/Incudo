@@ -15,8 +15,9 @@ npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, st
                        # Opens on the character library; pick a folder to see anything in it.
 npm run desktop:app    # the real Tauri window — needs Rust. Builds now; the icon arrived.
 npm run typecheck      # tsc --build --force
-npm test               # node --test, no build step. Includes the regression suite below wherever an
-                       # Aurora install is on the machine, which it is on this one.
+npm run corpus:sync    # fetch/fast-forward the official AuroraLegacy/elements into .corpus/ (gitignored)
+npm test               # node --test, no build step. Includes the real-content suite below once
+                       # `.corpus/` exists; without it those tests skip and say to run corpus:sync.
 npm run fixtures:rebuild   # regenerate tools/verify/fixtures/aelin/ after a format change
 ```
 
@@ -28,30 +29,37 @@ write a test. When an older ADR or note says to type `incudo …`, the table in 
 replaced it. This file and the ADRs still call the nine-save differential check **`aurora verify`**,
 after the command that ran it; it is `aurora-oracle.test.ts` now.
 
-**No test names a machine, a path or a person.** The real regression suite reads real Aurora data,
-and *where that is* is configuration: `INCUDO_AURORA_INDEX` (and `INCUDO_AURORA_SAVES` for saves) in
-the environment, as CI sets them in `ci.yml`, or once in an untracked `.env.local` that `npm test`
-reads (copy `.env.example`). Unset, those tests skip; set to a path that is not there, they **fail**.
-Never put a path, a username or a character name in a committed file or a commit message: history is
-permanent, and one such path already got in and stayed. `tools/verify/src/real-data.ts` is the one
-place that reads the variables.
+**No test names a machine, a path or a person.** The real-content tests read **the current official
+repository**, AuroraLegacy/elements, from `.corpus/` at the repository root: `npm run corpus:sync`
+fetches it, CI checks the same repository out into the same place with no `ref:` so it is always its
+head, and a daily schedule catches an upstream change while this repository is quiet
+([ADR 0042](docs/adr/0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md)).
+A green run means "works with today's official content". Nothing depends on anyone's Aurora install,
+which updates itself while it is open and is read by nobody else. With no `.corpus/` the tests that need
+it skip and say to run `corpus:sync`; **an environment variable that names something that is not there
+fails.** `INCUDO_AURORA_INDEX` (with `INCUDO_CORPUS_LAYOUT` and `INCUDO_CORPUS_ROOT`) still points a run
+somewhere else, and CI sets it so that a missing checkout is a failure and not a skip; put a value in an
+untracked `.env.local` that `npm test` reads (copy `.env.example`), never in a committed file. Never put
+a path, a username or a character name in a committed file or a commit message: history is permanent,
+and one such path already got in and stayed. `tools/verify/src/real-data.ts` is the one place that
+reads the variables.
 
 ```bash
-# with INCUDO_AURORA_INDEX / INCUDO_AURORA_SAVES set, in the environment or in .env.local:
-node --env-file-if-exists=.env.local --test --experimental-strip-types tools/verify/src/corpus.test.ts
-node --env-file-if-exists=.env.local --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts
+npm run corpus:sync    # once, and again whenever you want today's content; prints the commit it ends at
+node --test --experimental-strip-types tools/verify/src/corpus.test.ts
+node --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts   # needs saves, below
 ```
 
-Both print their numbers as `ℹ` lines; the variables are listed in `tools/verify/README.md`. What the
-pipeline runs and what it cannot is the next section's subject.
+Both print their numbers as `ℹ` lines, beginning with the corpus commit; the variables are listed in
+`tools/verify/README.md`. What the pipeline runs and what it cannot is the next section's subject.
 
-- **Two layouts, as before.** `aurora-folder` (the default) resolves files the way Aurora's
-  downloader stores them (a folder per index, files by `name`); `repository`, with
-  `INCUDO_CORPUS_ROOT`, resolves them by repository path, for a git checkout. They are different
-  layouts — see docs/AURORA-FORMAT.md. Do not use one for the other. An Aurora install is not laid
-  out as a checkout, so CI's `repository` path was exercised against a checkout layout rebuilt from an
-  install (each file written at the path its index URL maps to), and has never been seen to run
-  against a real checkout.
+- **Two layouts.** `repository` (what a `.corpus/` checkout is, and what CI and a default run read)
+  resolves files by repository path, from the URL path after the ref. `aurora-folder` resolves them the
+  way Aurora's downloader stores them (a folder per index, files by `name`) and is now only the way to
+  point a run at an Aurora install: nothing committed runs it against a real one, so a small test builds
+  one in a temp folder. They are different layouts — see docs/AURORA-FORMAT.md. Do not use one for the
+  other. **The `repository` layout was first run against a real clone on 2026-09-21** (AuroraLegacy/elements
+  at c28ce6c): it loads it with no change to the loader.
 - **Always offline.** `LocalMirrorFetcher` falls through to the network when a file is not in the
   mirror, which is right for a partial mirror and quietly wrong everywhere else: an "offline" run
   that silently fetches proves nothing. `corpus.ts` gives it `OfflineFetcher` as the fallback, so a
@@ -59,23 +67,33 @@ pipeline runs and what it cannot is the next section's subject.
   passes all 740 files that way, so it really is complete.
 - **Skip when nothing is configured; fail when something is.** `node --test` reports a skip as
   green, so once `INCUDO_AURORA_INDEX` or `INCUDO_AURORA_SAVES` is set, a missing path fails. A
-  checkout that did not happen loads nothing, and nothing has no unresolved references.
+  checkout that did not happen loads nothing, and nothing has no unresolved references. The saves have
+  the same guard: `INCUDO_REQUIRE_SAVES=1` (which CI sets once the samples are committed) turns an empty
+  saves folder from a skip into a failure.
 
-Real Aurora saves sit beside it as `*.dnd5e` (ten, at the time of writing). They stay **local and out of
-the repo**: read them for verification, never commit them or their contents. `aurora-oracle.test.ts`
+**The saves are `tools/verify/fixtures/saves/`** (`*.dnd5e`, in the repository once
+docs/SAMPLE-SAVES.md's generic samples are in it; until then those tests skip). Real Aurora saves of the
+maintainer's own (ten, at the time of writing) stay **local and out of the repo**: read them for
+verification through `INCUDO_AURORA_SAVES`, never commit them or their contents. `aurora-oracle.test.ts`
 labels each by a fingerprint of its bytes, and the other real-save tests by position; assert on counts
 and kinds and keep it that way.
 
 **A test never asserts how many saves there are, or where one sorts.** It said `saves: 9` and totals
-over the folder, so adding a character failed it and said nothing about the character. The oracle now
-pins **each save's own table, keyed by its fingerprint**, so a rename, a reorder or a new neighbour
-changes nothing; a save with no pin is held to the invariants (imports, 0 `stat-mismatch`, 0
-`spell-missing`), reported as NOT PINNED, and pinned when its differences are understood. A pinned
-save that has gone fails and names the pin. The other tests check *relations* (one entry per save, one
-copy per entry) and "at least one save", never a size. `builder-rebuild.test.ts` and
-`rogue-wizard-aurora.test.ts` find a save by what it is, a class split, not by name. `INCUDO_ORACLE_DETAIL=1` adds every
-difference message to its report, and those name content (elements, spells, stats), never a
-character.
+over the folder, so adding a character failed it and said nothing about the character.
+
+**A moving corpus fails only what must hold against any corpus** (ADR 0042). The saves are frozen and the
+corpus is today's, so the table of differences moves whenever upstream does, and a pinned count teaches
+everyone to update pins. What fails, per save, is `oracleViolations`: it imports, 0 `stat-mismatch`,
+0 `spell-missing`, every `element-missing` is an Aurora-app marker (`ID_INTERNAL_MULTICLASS_LEVEL_N`, the
+whole allowlist), and no recorded spellcasting row went uncompared. Everything else (`element-extra`,
+`content-missing`, `not-modelled`) is printed per save beside the table recorded when it was last
+understood, as a `MOVED` line, and fails nothing. **What that loses:** an engine change that over-grants a
+few elements no longer fails a pin. `INCUDO_ORACLE_SNAPSHOT=<file>` writes a run's differences and
+`INCUDO_ORACLE_BASELINE=<file>` fails on any difference from one: snapshot on the base, baseline on your
+change, same checkout, and only an engine change can move it. `builder-rebuild.test.ts` and
+`rogue-wizard-aurora.test.ts` find a save by what it is, a class split, not by name.
+`INCUDO_ORACLE_DETAIL=1` adds every difference message to the report, and those name content (elements,
+spells, stats), never a character.
 
 ## Hard constraints
 
@@ -144,25 +162,27 @@ what was supplied.
 
 ## Baselines that must not regress
 
-Content corpus: **740 files · 14,316 elements (+229 generated) · 0 errors · 1 unresolved
-reference · 23 unmeetable requirements · 57 warnings.**
+Content corpus: **740 files · 14,320 elements (+229 generated) · 0 errors · 1 unresolved
+reference · 23 unmeetable requirements · 57 warnings.** Measured on AuroraLegacy/elements at
+`c28ce6c` (2026-09-19), the first real clone the `repository` layout was run against. The corpus is
+today's and moves; these are the record of a moment (below).
 
 - **1 unresolved reference** — one upstream typo, `…VULNERAILITY…`. This is a *grant* to an
   id nothing declares, which means a character silently loses something. It is the only one
-  left in 14,316 elements, and it should be 0 the day AuroraLegacy fixes the spelling.
+  left in 14,320 elements, and it should be 0 the day AuroraLegacy fixes the spelling.
 - **23 requirements that can never be met** — reported, deliberately **not** budgeted. A
   requirement naming an id nothing declares is a membership test that reads false, and
   `!ID_X` against an id that will never exist is how the corpus says "unless the 2024
   replacement is in play". Five of the six `KNOWN_UPSTREAM_TYPOS` live here.
 - **229 generated elements** — what Aurora's app materializes at runtime, not counted in the
-  14,316 because they do not come from a file. 83 are the fixed overlay in
+  14,320 because they do not come from a file. 83 are the fixed overlay in
   `packages/aurora-import/src/generated-elements.ts` (it was 80 until the importer started
   reading `<equipment>` and found three more that only a *bag* names, ADR 0024's step 2), and
   **146 are the ability score improvement options**, derived from whatever content is loaded by
   `improvement-options.ts` (73 class-and-level pairs, an ASI option and a feat option each —
   ADR 0035). The second kind depends on what is loaded, so the total is a property of the corpus
   and not of the code.
-- **2,258 of the 14,316 are synthesized from inline text, not from an `<element id="ID_…">`
+- **2,258 of the 14,320 are synthesized from inline text, not from an `<element id="ID_…">`
   tag** — a background's suggested Personality Trait, Ideal, Bond and Flaw, and a handful of
   similarly-shaped tables (Trinket, Specialty, …). Aurora writes these as a `<select
   type="List">` whose candidates are `<item id="1">…text…</item>` children carrying small
@@ -180,7 +200,12 @@ of that changed: the overlay resolved 51 of them, and splitting grant references
 requirement references separated one real breakage from twenty-three deliberate ones. The
 coincidence is gone; do not go looking for it.
 
-CI enforces this as a **budget, not a target**: `corpus.test.ts` reads `INCUDO_MAX_UNRESOLVED`,
+CI enforces this as a **budget, not a target**, and against a corpus that moves: the job can go red
+because *upstream* changed (a new dangling grant, a new warning) with nothing here touched, which is the
+signal, and the response is a look at what changed and then an edit to the numbers (ADR 0042). The
+floors, 740 files and 14,316 elements, are below what the corpus holds today (14,320) on purpose: they
+guard "the checkout loaded nothing", and a floor at the exact count would fail on any upstream removal.
+`corpus.test.ts` reads `INCUDO_MAX_UNRESOLVED`,
 `INCUDO_MAX_WARNINGS`, `INCUDO_EXPECT_FILES` and `INCUDO_EXPECT_ELEMENTS`, and the numbers live in
 `.github/workflows/ci.yml`. Moving one is a deliberate edit to that file, and to the test's own
 fallbacks, which a guard test compares against `ci.yml` so the two cannot drift. The `EXPECT` pair
@@ -224,11 +249,13 @@ files and carrying no rules. That one is honestly unmodelled rather than budgete
 a rule for it would be the guess ADR 0005 rules out.
 
 `compareWithAurora` in `packages/aurora-import` classifies all of them (frozen, ADR 0008; it was
-never in the CLI); see docs/AURORA-SAVE-FORMAT.md. `aurora-oracle.test.ts` pins the whole table
-above, plus 1 problem in one derivation and 8 spellcasting blocks, **per save** and not in total; those
-figures are what the nine original saves sum to.
+never in the CLI); see docs/AURORA-SAVE-FORMAT.md. `aurora-oracle.test.ts` *records* the whole table
+above, plus 1 problem in one derivation and 8 spellcasting blocks, **per save** and not in total (those
+figures are what the nine original saves sum to), and since ADR 0042 reports a change from it as a
+`MOVED` line and fails only the invariants. All ten tables were confirmed unchanged against the fresh
+clone at `c28ce6c`.
 
-**A tenth save, the Wizard 4 / Rogue 4 of ROADMAP Phase 2, is pinned on its own:** 1 element-missing
+**A tenth save, the Wizard 4 / Rogue 4 of ROADMAP Phase 2, is recorded on its own:** 1 element-missing
 (`ID_INTERNAL_MULTICLASS_LEVEL_5`, the same Aurora marker as the Paladin/Warlock's `_3`, named for the
 character level the second class began at), 2 element-extra (the Thieves' Tools expertise pair, which
 Aurora never derived here or in the Rogue 8; Aurora's updater rewrote `class-rogue.xml` a quarter of an
@@ -238,7 +265,7 @@ save with two ordinary casting blocks, and it is what showed that Aurora records
 slot table and the shared pool only as a caster level ([ADR 0041](docs/adr/0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md)):
 the comparison used to expect the pool in every block and reported two false `stat-mismatch`es.
 
-**It also pins how many rows were compared: 8 slot rows, 8 save DC rows, 8 attack rows** across the
+**It also measures how many rows were compared: 8 slot rows, 8 save DC rows, 8 attack rows** across the
 nine, and since ADR 0041 a fourth family, the shared caster level (1 in the Paladin/Warlock, 1 in the
 Wizard/Rogue).
 `AuroraComparison` cannot report that — a row that agrees leaves no trace, and neither does one
@@ -246,11 +273,14 @@ that was skipped — so the test measures it: every published stat of one family
 and the comparison re-run, and the extra `stat-mismatch` differences are the rows that were
 compared. Checked by breaking things: the DC base moved from 8 to 9 gives 8 mismatches; the DC
 comparison silently disabled leaves `stat-mismatch` at 0 and is caught only by this measure.
-The CLI never printed these numbers; they were established once by hand and are now asserted.
+The CLI never printed these numbers; they were established once by hand and are now measured, and
+since ADR 0042 the *relation* is what fails: every recorded spellcasting block has all three rows
+compared (and the caster level exactly when the save records one), whatever the corpus is doing.
 
-**CI cannot run the oracle and never could.** The saves are personal data and stay on this
-machine, so `aurora-corpus` in CI checks the corpus and nothing about the saves. Those files are
-personal data and never enter the repo — and neither do screenshots of them.
+**CI cannot run the oracle yet.** The maintainer's saves are personal data and stay on their machine, so
+`aurora-corpus` in CI runs the whole real-content suite except the tests that need a save, which skip.
+Those files are personal data and never enter the repo — and neither do screenshots of them. The generic
+samples of docs/SAMPLE-SAVES.md are what will let CI run it.
 
 ## State of play
 

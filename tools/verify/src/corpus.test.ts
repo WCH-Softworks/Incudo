@@ -1,7 +1,7 @@
 /**
  * The corpus regression suite (ADR 0039).
  *
- * CLAUDE.md's baselines — 740 files, 14,316 elements, 1 unresolved reference, 57 warnings — used
+ * CLAUDE.md's baselines — 740 files, 14,320 elements at the time of writing, 1 unresolved reference, 57 warnings — used
  * to be read off `incudo validate`, and CI's `aurora-corpus` job ran that command with budgets.
  * This file is both. It has three layers, and only the last needs a corpus:
  *
@@ -10,17 +10,17 @@
  *  2. A small corpus written to a temp folder and loaded through the same loader, so "a grant to
  *     nothing is counted, a requirement to nothing is reported and not budgeted, and a miss in
  *     the mirror is an error rather than a fetch" are each asserted, not remembered.
- *  3. The real thing: the budgets against a real AuroraLegacy, and exact figures against the
- *     maintainer's frozen install.
+ *  3. The real thing: the budgets against the current AuroraLegacy/elements (ADR 0042).
  *
- * Where the corpus is comes from the environment (see `corpusFromEnvironment`). Left unset, a
- * machine without an Aurora install skips the third layer. Set, a missing index **fails**: a
- * skipped test is a green one, and a checkout that did not happen loads nothing.
+ * Where the corpus is comes from `resolveCorpus`: the environment if it names one, else the checkout
+ * `npm run corpus:sync` made in `.corpus/`, else nothing, and the third layer skips and says how to get
+ * one. A corpus the environment names that is not there **fails**: a skipped test is a green one, and a
+ * checkout that did not happen loads nothing.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -35,12 +35,15 @@ import {
   corpusFromEnvironment,
   describeCorpus,
   loadCorpus,
+  resolveCorpus,
   type CorpusAnalysis,
   type CorpusBudget,
+  type CorpusLocation,
   type LoadedCorpus,
 } from './corpus.ts';
+import { CORPUS_REPOSITORY } from './corpus-checkout.ts';
 import { repoRoot } from './node-system.ts';
-import { corpusSkip, requireCorpus } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
 
 // --- 1. the budget, and the environment ------------------------------------
 
@@ -148,7 +151,7 @@ test('the corpus location is configured only when someone said where it is', () 
   assert.throws(() => corpusFromEnvironment({ INCUDO_CORPUS_ROOT: '.corpus' }), /repository/);
 });
 
-test('ci.yml states the same budgets this file falls back to, and runs this file', async () => {
+test('ci.yml states the same budgets this file falls back to', async () => {
   // Two copies of a number drift. CI's copy is the one that decides whether a build passes, and
   // this one is what `npm test` measures locally; they may not disagree.
   const workflow = await readFile(join(repoRoot(), '.github', 'workflows', 'ci.yml'), 'utf8');
@@ -168,8 +171,48 @@ test('ci.yml states the same budgets this file falls back to, and runs this file
 
   assert.match(workflow, /^\s*INCUDO_AURORA_INDEX:\s*\S+/m, 'ci.yml points the check at the checkout');
   assert.match(workflow, /^\s*INCUDO_CORPUS_LAYOUT:\s*repository\s*$/m);
-  assert.match(workflow, /corpus\.test\.ts/, 'ci.yml no longer runs the corpus check');
   assert.doesNotMatch(workflow, /npm run incudo/, 'the CLI is gone (ADR 0039)');
+});
+
+test('the corpus job reads the current official repository, always, and runs the whole suite', async () => {
+  const workflow = await readFile(join(repoRoot(), '.github', 'workflows', 'ci.yml'), 'utf8');
+  const job = workflow.slice(workflow.indexOf('\n  aurora-corpus:'));
+  assert.ok(job.length > 0, 'ci.yml has an aurora-corpus job');
+
+  // The same repository the local sync script fetches: two copies of a name drift.
+  assert.match(job, new RegExp(`^\\s*repository:\\s*${CORPUS_REPOSITORY}\\s*$`, 'm'));
+  // No pin. A `ref:` here would make the job reproducible and stop it noticing upstream (ADR 0042).
+  assert.doesNotMatch(
+    job.split('\n').filter((line) => !line.trim().startsWith('#')).join('\n'),
+    /^\s*ref:/m,
+    'the corpus checkout must not name a ref',
+  );
+  assert.match(job, /^\s*path:\s*\.corpus\s*$/m, 'the checkout goes where the local sync puts it');
+  // Every real-content test, not only the budget file.
+  assert.match(job, /^\s*run:\s*npm test\s*$/m, 'the job runs the whole suite');
+  // A schedule, so upstream changes are noticed while this repository is quiet.
+  assert.match(workflow, /^\s*schedule:\s*$/m);
+  assert.match(workflow, /^\s*-\s*cron:\s*'[^']+'\s*$/m);
+});
+
+test('a run reads the environment first, the repository checkout second, and otherwise nothing', () => {
+  const checkout: CorpusLocation = { index: '/x/.corpus/AuroraLegacy.index', layout: 'repository', root: '/x/.corpus' };
+
+  // Nothing named and nothing synced: no corpus, and not a "configured" one, so it skips.
+  assert.deepEqual(resolveCorpus({}, undefined), { location: undefined, configured: false, source: 'none' });
+
+  // The checkout is the default. It is not "configured": an absent one skips, it does not fail.
+  assert.deepEqual(resolveCorpus({}, checkout), { location: checkout, configured: false, source: 'checkout' });
+
+  // A named index wins over the checkout, and is configured, so that a missing one fails.
+  const named = resolveCorpus({ INCUDO_AURORA_INDEX: 'somewhere/AuroraLegacy.index' }, checkout);
+  assert.equal(named.source, 'environment');
+  assert.equal(named.configured, true);
+  assert.equal(named.location?.index, 'somewhere/AuroraLegacy.index');
+  assert.equal(named.location?.layout, 'aurora-folder', 'an environment-named index keeps the layout rules');
+
+  // A bad layout is still refused with a checkout present.
+  assert.throws(() => resolveCorpus({ INCUDO_CORPUS_LAYOUT: 'mirror' }, checkout), /one of/);
 });
 
 // --- 2. a small corpus, through the real loader ----------------------------
@@ -274,6 +317,42 @@ test('a file the mirror does not have is an error naming both places, never a fe
   });
 });
 
+test('an Aurora download folder is read by name, and is not the same layout as a checkout', async () => {
+  // Nothing committed runs the `aurora-folder` layout against a real install any more: CI and a default
+  // local run read the repository checkout. It stays the way to point a run at an install (ADR 0042),
+  // so it is exercised here, on a folder written the way Aurora's downloader writes one: each index
+  // gets a folder named after it and its files sit inside by `name`.
+  const dir = await mkdtemp(join(tmpdir(), 'incudo-corpus-'));
+  try {
+    await mkdir(join(dir, 'Mini'));
+    await writeFile(
+      join(dir, 'Mini.index'),
+      `<index><info><name>Mini</name><update version="1.0.0" /></info><files>` +
+        `<file name="a.xml" url="${RAW}/somewhere/else/a.xml" /></files></index>`,
+    );
+    await writeFile(
+      join(dir, 'Mini', 'a.xml'),
+      `<elements><info><name>A</name><update version="1" /></info>
+        <element name="One" type="Thing" source="Mini" id="ID_ONE" /></elements>`,
+    );
+    const index = join(dir, 'Mini.index');
+
+    const byName = analyseCorpus(await loadCorpus({ index, layout: 'aurora-folder' }));
+    assert.equal(byName.files, 1);
+    assert.equal(byName.elements, 1);
+    assert.deepEqual(byName.errors, []);
+
+    // The same folder read as a checkout looks for `a.xml` at the URL's path and does not find it: the
+    // two layouts are not interchangeable, and mixing them is an error and never a fetch.
+    const asCheckout = analyseCorpus(await loadCorpus({ index, layout: 'repository', root: dir }));
+    assert.equal(asCheckout.files, 0);
+    assert.equal(asCheckout.errors.length, 1);
+    assert.match(asCheckout.errors[0]!.message, /refused to fetch/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 // --- 3. the real corpus ----------------------------------------------------
 
 /**
@@ -301,6 +380,7 @@ test(
 
     const loadedCorpus = await loadCorpus(location);
     const found = analyseCorpus(loadedCorpus);
+    t.diagnostic(corpusProvenance());
     for (const line of describeCorpus(found, loadedCorpus.elapsedMs)) t.diagnostic(line);
 
     const failures = checkBudget(found, budget);

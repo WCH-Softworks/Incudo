@@ -15,8 +15,9 @@ npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, st
                        # Opens on the character library; pick a folder to see anything in it.
 npm run desktop:app    # the real Tauri window — needs Rust. Builds now; the icon arrived.
 npm run typecheck      # tsc --build --force
-npm test               # node --test, no build step. Includes the regression suite below wherever an
-                       # Aurora install is on the machine, which it is on this one.
+npm run corpus:sync    # fetch/fast-forward the official AuroraLegacy/elements into .corpus/ (gitignored)
+npm test               # node --test, no build step. Includes the real-content suite below once
+                       # `.corpus/` exists; without it those tests skip and say to run corpus:sync.
 npm run fixtures:rebuild   # regenerate tools/verify/fixtures/aelin/ after a format change
 ```
 
@@ -28,39 +29,43 @@ write a test. When an older ADR or note says to type `incudo …`, the table in 
 replaced it. This file and the ADRs still call the nine-save differential check **`aurora verify`**,
 after the command that ran it; it is `aurora-oracle.test.ts` now.
 
-The real regression suite is two test files in `tools/verify`. A complete Aurora install already
-exists on this machine and works **entirely offline**, so with nothing configured they read it:
+The real-content tests read **the current official repository**, AuroraLegacy/elements, from
+`.corpus/` at the repository root. `npm run corpus:sync` fetches it, CI checks the same repository out
+into the same place with no `ref:` (so always its head) and runs the whole suite, and a daily schedule
+catches an upstream change while this repository is quiet
+([ADR 0042](docs/adr/0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md)).
+Nothing depends on anyone's Aurora install. With no `.corpus/` those tests skip and say so; an
+environment variable that names something that is not there **fails**.
 
 ```bash
-node --test --experimental-strip-types tools/verify/src/corpus.test.ts         # ~1.5s
-# 740 files, 14,316 elements (+229 generated), 0 errors, 1 unresolved, 23 unmeetable, 57 warnings
-node --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts  # ~2s, the nine saves
+npm run corpus:sync
+node --test --experimental-strip-types tools/verify/src/corpus.test.ts
+node --test --experimental-strip-types tools/verify/src/aurora-oracle.test.ts   # needs saves, below
 ```
 
-Both print their numbers as `ℹ` lines. Where the corpus is comes from `INCUDO_*` environment
-variables, listed in `tools/verify/README.md`; CI sets them in `ci.yml`.
+Both print their numbers as `ℹ` lines, beginning with the corpus commit. `INCUDO_*` environment variables
+(listed in `tools/verify/README.md`) point a run somewhere else; CI sets them in `ci.yml`.
 
-- **Two layouts, as before.** `aurora-folder` (the default) resolves files the way Aurora's
-  downloader stores them (a folder per index, files by `name`); `repository`, with
-  `INCUDO_CORPUS_ROOT`, resolves them by repository path, for a git checkout. They are different
-  layouts — see docs/AURORA-FORMAT.md. Do not use one for the other. This machine's install is not
-  laid out as a checkout, so CI's `repository` path was exercised against a checkout layout rebuilt
-  from the install (each file written at the path its index URL maps to); it has never run against a
-  real checkout on this machine.
+- **Two layouts.** `repository` (a `.corpus/` checkout; what CI and a default run read) resolves files by
+  repository path. `aurora-folder` resolves them the way Aurora's downloader stores them (a folder per
+  index, files by `name`) and is now only the way to point a run at an Aurora install. They are different
+  layouts — see docs/AURORA-FORMAT.md. Do not use one for the other. The `repository` layout was first
+  run against a real clone on 2026-09-21 (AuroraLegacy/elements at c28ce6c) and loads it unchanged.
 - **Always offline.** `LocalMirrorFetcher` falls through to the network when a file is not in the
   mirror, which is right for a partial mirror and quietly wrong everywhere else: an "offline" run
   that silently fetches proves nothing. `corpus.ts` gives it `OfflineFetcher` as the fallback, so a
-  miss is a named error giving both the URL refused and the mirror path checked. The corpus above
-  passes all 740 files that way, so it really is complete.
+  miss is a named error giving both the URL refused and the mirror path checked.
 - **Skip when nothing is configured; fail when something is.** `node --test` reports a skip as
   green, so once `INCUDO_AURORA_INDEX` or `INCUDO_AURORA_SAVES` is set, a missing path fails. A
   checkout that did not happen loads nothing, and nothing has no unresolved references.
 
-Nine real Aurora saves sit beside it as `*.dnd5e`. They stay **local and out of the repo**:
-read them for verification, never commit them or their contents. `aurora-oracle.test.ts` names them
-by position and asserts on counts and kinds; keep it that way. `INCUDO_ORACLE_DETAIL=1` adds every
-difference message to its report, and those name content (elements, spells, stats), never a
-character.
+The saves are `tools/verify/fixtures/saves/` (`*.dnd5e`; the generic samples of docs/SAMPLE-SAVES.md once
+they are in it, and until then those tests skip). The maintainer's own real saves stay **local and out
+of the repo**: read them for verification through `INCUDO_AURORA_SAVES`, never commit them or their
+contents. `aurora-oracle.test.ts` labels each by a fingerprint of its bytes and asserts on counts and
+kinds; keep it that way. What fails there is the set of invariants that hold against any corpus, and every
+other number is reported (ADR 0042). `INCUDO_ORACLE_DETAIL=1` adds every difference message to its report,
+and those name content (elements, spells, stats), never a character.
 
 ## Hard constraints
 

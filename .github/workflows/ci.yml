@@ -4,9 +4,17 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # The official content moves whether or not this repository does, and a green run means "works
+    # with today's official content" (ADR 0042). A daily run of `aurora-corpus` is what notices an
+    # upstream change while nothing here is happening. Scheduled runs only ever use the default branch.
+    - cron: '23 6 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
+    # Nothing new to learn on a schedule: this job reads no upstream content.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -21,8 +29,8 @@ jobs:
         run: npm test
 
   aurora-corpus:
-    # The real regression suite: import every element in the AuroraLegacy repo
-    # and fail if anything newly fails to resolve. See ADR 0005.
+    # The real-content suite: every test that needs the official Aurora content or a real save, run
+    # against the current head of AuroraLegacy/elements. See ADR 0005 and ADR 0042.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -36,6 +44,13 @@ jobs:
         with:
           repository: AuroraLegacy/elements
           path: .corpus
+          # No `ref:` on purpose. This is the default branch's current head, every run. Pinning it
+          # would make the job reproducible and would stop it doing the one thing it is for.
+      - name: Which corpus commit is this run reading
+        run: |
+          sha=$(git -C .corpus rev-parse HEAD)
+          echo "AuroraLegacy/elements at $sha"
+          echo "Corpus: AuroraLegacy/elements at \`$sha\`" >> "$GITHUB_STEP_SUMMARY"
       # The numbers are the baseline in CLAUDE.md, spelled out so a change to any of them is a
       # deliberate edit to this file rather than a silent drift. `corpus.test.ts` reads them from
       # the environment, falls back to the same four when a variable is absent, and fails if this
@@ -53,17 +68,21 @@ jobs:
       # requirement naming an id nothing declares is a test that reads false, and `!ID_X`
       # against an id that will never exist is ordinary content. There are 23.
       #
+      # The budgets are ceilings and floors against a moving corpus, so this job can go red because
+      # *upstream* changed, with nothing here touched: a new dangling grant, a new warning. That is
+      # the signal, and the response is a look at what changed and then an edit to these numbers
+      # (ADR 0042 says what counts as a regression here and what is churn).
+      #
       # The EXPECT pair is not redundant with the budgets above it: a corpus that failed to
       # check out loads nothing, and nothing has no unresolved references. For the same reason
-      # INCUDO_AURORA_INDEX being set makes a missing index a failure and not a skip — `node
-      # --test` reports a skip as green.
+      # INCUDO_AURORA_INDEX is *set* here even though the checkout above is where a run looks by
+      # default: with it set a missing index is a failure and not a skip, and `node --test`
+      # reports a skip as green.
       #
-      # The check is always offline. A file missing from the mirror is a named error giving both
-      # the URL refused and the path checked, never a fetch, so this step cannot pass by accident
-      # or depend on raw.githubusercontent.com being up. If it fails with "refused to fetch … and
-      # the mirror has no …", the mapping from the index's hard-coded URLs to .corpus paths is
-      # wrong for that file, and that is worth fixing rather than papering over.
-      - name: Import and validate
+      # The whole suite runs against the checkout, offline: a file missing from it is a named error
+      # giving both the URL refused and the path checked, never a fetch, so nothing here can pass by
+      # accident or depend on raw.githubusercontent.com being up.
+      - name: Real-content tests
         env:
           INCUDO_AURORA_INDEX: .corpus/AuroraLegacy.index
           INCUDO_CORPUS_LAYOUT: repository
@@ -72,4 +91,4 @@ jobs:
           INCUDO_MAX_WARNINGS: 57
           INCUDO_EXPECT_FILES: 740
           INCUDO_EXPECT_ELEMENTS: 14316
-        run: node --test --experimental-strip-types tools/verify/src/corpus.test.ts
+        run: npm test
