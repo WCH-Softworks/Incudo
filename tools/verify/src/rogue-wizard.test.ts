@@ -10,7 +10,7 @@
  * **There is no Aurora oracle for this character.** Every number is worked by hand from the
  * Player's Handbook and written out beside the assertion, so a failure says which sentence of the
  * book the engine disagrees with. That is the standard `hp` and `ac` are held to (ADRs 0019, 0026),
- * and it is weaker than the nine saves. A save of this exact character made in Aurora would be
+ * and it is weaker than a set of real saves. A save of this exact character made in Aurora would be
  * the referee, and `multiclass.test.ts` shows what that looks like for the Paladin/Warlock.
  *
  * It found a real defect the first time it was built, in the running app: a subclass picked through

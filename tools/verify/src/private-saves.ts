@@ -1,5 +1,5 @@
 /**
- * How a test talks about the nine real Aurora saves without naming one.
+ * How a test talks about a set of real Aurora saves without naming one.
  *
  * `library.test.ts` and `save-copy.test.ts` run over personal data, and their headers promise that
  * a failure says what broke without putting anyone's character into a log. `assert` breaks that

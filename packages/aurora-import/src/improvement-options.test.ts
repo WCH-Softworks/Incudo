@@ -81,7 +81,7 @@ test('an option is generated for every class and level that asks for one and not
   );
 });
 
-test('the shape is what the nine saves record: ids, select names and the type each offers', () => {
+test('the shape is what a set of real saves record: ids, select names and the type each offers', () => {
   const { elements } = improvementOptionElements([classFeature('Fighter', [12])]);
   const asi = elements.find((e) => e.id === 'ID_INTERNAL_CLASS_FEATURE_ASI_12_FIGHTER')!;
   const feat = elements.find((e) => e.id === 'ID_INTERNAL_CLASS_FEATURE_FEAT_12_FIGHTER')!;

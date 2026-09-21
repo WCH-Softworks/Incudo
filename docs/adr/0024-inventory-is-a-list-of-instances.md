@@ -5,7 +5,7 @@
 Step 1 of [docs/INVENTORY-AND-AC-PLAN.md](../INVENTORY-AND-AC-PLAN.md). It is written before the
 code because it changes `character.json`, which is a public API: it is the user's own saved work.
 
-Every number below was measured against the nine sample saves and the 740-file corpus. The saves
+Every number below was measured against a set of real saves and the 740-file corpus. The saves
 are personal data and stay out of this repository; the counts and the content ids are not.
 
 ## Context
@@ -21,7 +21,7 @@ questions in it had plausible answers on both sides.
 
 ## What was measured
 
-45 item instances across the nine saves — 26 equipped, 12 attuned, 15 adorners.
+45 item instances across a set of real saves — 26 equipped, 12 attuned, 15 adorners.
 
 ```xml
 <item identifier="42462837-…" name="Half Plate" id="ID_WOTC_ARMOR_MEDIUM_HALF_PLATE">
@@ -60,7 +60,7 @@ questions in it had plausible answers on both sides.
 ]
 ```
 
-Keyed by `instanceId`, because one of the nine saves carries **two greatswords with different
+Keyed by `instanceId`, because one of a set of real saves carries **two greatswords with different
 enchantments** — a Vorpal Sword on the carried one, a Frost Brand on the equipped one. A model
 keyed by element id loses that on the first real character, and it is not a contrived case: it is
 one bag in nine. Aurora's `identifier` is a GUID and is distinct on all 45 items, so the importer
@@ -101,7 +101,7 @@ data migration, and ADR 0023 is already likely to want somewhere to hang a per-a
 ### 4. `slot` is an override, and is absent unless the user disagreed with the element
 
 Every element that can be worn declares where it goes — 1,070 of them carry a `slot` setter, 23
-of the 26 equipped items across the nine saves among them, the other 3 being Aurora's non-item
+of the 26 equipped items across a set of real saves among them, the other 3 being Aurora's non-item
 proxies. And where the save *does* record a `location`, it agrees with that setter **15 times out
 of 15**. Even the one case where a real choice existed goes the same way: a quarterstaff is
 `slot="onehand"` with `versatile="1d8"`, and all three staves in the saves are at `Primary Hand`,

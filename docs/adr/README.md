@@ -8,6 +8,14 @@ otherwise be tempted to silently undo.
 
 **Don't write one for:** anything a code comment covers.
 
+**Evidence comes from committed generic fixtures or from public content, never from a person's own files.**
+A measurement of a personal save cannot be re-checked by anyone else, and quoting it puts that person's data
+into a permanent record. Attribute one to "a real Aurora save" and describe it by what it holds ("a level 12
+Fighter save"), never by who made it or what it is called. ADRs written before this rule were scrubbed of
+identities and still cite figures measured on personal saves; those figures are to be re-derived from the
+generic sample saves (docs/SAMPLE-SAVES.md) once they are committed, and the ADR corrected where they differ.
+An accepted ADR's decision is never edited to do it: a corrected figure is a note beside it.
+
 Format: Context → Decision → Consequences → Alternatives considered. Status is
 `Proposed` | `Accepted` | `Superseded by NNNN`. Never edit an accepted ADR's decision — write a
 new one that supersedes it.

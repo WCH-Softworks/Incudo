@@ -130,7 +130,7 @@ must round-trip. If a campaign ever arrives, `build/options` is the single place
 
 **`aurora verify` cannot check any of this**, for [ADR 0030](./0030-a-declared-block-answers-a-filter.md)'s
 reason: it compares the elements a character *chose*, and this changes what is *offered*. All
-nine sample saves will be byte-identical before and after. The evidence has to be measurement
+a set of real saves will be byte-identical before and after. The evidence has to be measurement
 and perturbation — the number of candidates a race offers with the option on and off, and a
 level-1 wizard whose spellbook actually reaches six.
 

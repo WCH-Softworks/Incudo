@@ -7,7 +7,7 @@
  * code that has never seen Incudo's engine.
  *
  * The format is at `version="1.0.3"` and will not change again (ADR 0008), so this is a
- * closed problem. Everything below is present in all eight sample saves unless a comment
+ * closed problem. Everything below is present in every save in the original set of real saves unless a comment
  * says otherwise; see docs/AURORA-SAVE-FORMAT.md for what each block is for.
  *
  * Two shapes of `<element>` live in the build tree, and telling them apart is the whole job:

@@ -8,7 +8,7 @@ differential check's slot row means: a block's own table, with the shared pool r
 
 The multiclass spell slot table is the last of ROADMAP Phase 2's three "remaining numbers", and
 the only one whose oracle arrived with the ninth save. `aurora verify` reports it on seven of
-the nine saves as:
+a set of real saves as:
 
 ```
 note  spellcasting "Wizard": Aurora recorded spell slots 4/3/3/2/0/0/0/0/0.
@@ -33,7 +33,7 @@ stat contributions:
 Cumulative, so paladin 2 is 2, paladin 3 is 3, paladin 5 is 4. Those rules sit on the class's
 Spellcasting feature, which [ADR 0015](./0015-class-levels.md) puts in that class's track — so
 they already produce the right number today, for every single-classed character, with no code
-at all. Checked against the Hexadin: `paladin:spellcasting:slots:1` is **2**, which is exactly
+at all. Checked against the Paladin 2 / Warlock 18 save: `paladin:spellcasting:slots:1` is **2**, which is exactly
 what Aurora's `<magic>` block records.
 
 What content does *not* declare is the part Aurora computes in its app:
@@ -161,7 +161,7 @@ and this is the third additive change to it in a row; the next breaking one cost
 This has to be said precisely, because it is easy to overclaim and the whole point of the
 differential check is that it does not.
 
-The Hexadin's two `<magic>` rows are Paladin `2/0/0/0/0/0/0/0/0` and Warlock
+The Paladin 2 / Warlock 18 save's two `<magic>` rows are Paladin `2/0/0/0/0/0/0/0/0` and Warlock
 `0/0/0/0/4/0/0/0/0`. Against the model above:
 
 - **Pact magic is outside the table: proved.** If the warlock's 18 levels joined the caster

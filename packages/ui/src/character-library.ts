@@ -69,7 +69,7 @@ export interface LibraryEntry {
    * Where those bytes sit in the container — `assets/portrait.png`, or `.jpg`, or nothing.
    *
    * Carried because the extension *is* the media type, and a view needs one to build a blob
-   * URL. Aurora's saves are not all PNGs: one of the nine real sample saves holds a JPEG,
+   * URL. Aurora's saves are not all PNGs: one of a set of real saves holds a JPEG,
    * which the importer sniffed and named correctly and which a card assuming PNG would hand
    * to the browser under the wrong type. Found by running this against the real saves.
    */
@@ -132,7 +132,7 @@ export interface OpenedCharacter {
    * Not needed to derive anything, and here for the write back out: a `Character` records only
    * *where* its portrait is, and `packCharacter` embeds only the assets it is handed. A shell that
    * opens a character and later saves it has to pass these to `save` or `saveCopy`, or the file it
-   * writes still names a portrait it no longer holds. Every one of the nine real saves lost its
+   * writes still names a portrait it no longer holds. Every one of a set of real saves lost its
    * portrait this way before it was returned.
    */
   assets: ContainerFiles;

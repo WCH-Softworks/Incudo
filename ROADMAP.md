@@ -251,7 +251,7 @@ before any code, both touching a public API:
       scan are a `CharacterStore` port with three implementations (Tauri, the browser's File
       System Access API, and `node:fs` in a test).
       **Listing and opening need zero sources**, which is asserted twice: against a fake store
-      in `packages/ui`, and against the nine real `.dnd5e` saves in
+      in `packages/ui`, and against a set of real `.dnd5e` saves in
       `tools/verify/src/library.test.ts`. The `.dnd5e` **import** landed with the line below,
       and that same test now drives it. Still to do: renaming a file, and
       the refresh that would move a recorded source version. (The explicit export landed later.)
@@ -353,7 +353,7 @@ before any code, both touching a public API:
       reads 12; raising the level to 8 opens the level 6 and 8 improvements beside it.
   - [x] **The feat half was generated and unreachable; now it is reachable.** It is gated on
         `ID_INTERNAL_OPTION_ALLOW_FEATS`, and switching that on is the campaign options step
-        below. **Eight of the nine sample characters took a feat at level 4.** With feats on, a
+        below. **Eight of the nine characters in a set of real saves took a feat at level 4.** With feats on, a
         level 4 Fighter's improvement offers 2 options where it offered 1, and taking the feat
         opens a real feat choice (`tools/verify/src/campaign-options.test.ts`). Not measured
         here: every feat's own prerequisites and what each grants — that is content's, read by
@@ -446,8 +446,7 @@ before any code, both touching a public API:
       and Node's `zlib` share one implementation. **Import from Aurora…** picks one or more
       `.dnd5e` files and writes each into the library; the sequence between the picker and the
       folder is `importAuroraSaveIntoLibrary` in `packages/ui`, so the mobile shell inherits it
-      and `tools/verify/src/library.test.ts` drives the identical function over the nine real
-      saves. Reading a file from outside the library is a fifth port, `FilePicker` — deliberately
+      and `tools/verify/src/library.test.ts` drives the identical function over a set of real saves. Reading a file from outside the library is a fifth port, `FilePicker` — deliberately
       not a method on `CharacterStore`, whose every method means "inside the folder the user
       chose". Importing is the one library operation that needs a content source, because a
       `.dnd5e` records Aurora's element ids and nothing about what they mean; the app says so
@@ -463,7 +462,7 @@ before any code, both touching a public API:
         prompt and still saved without a conflict). Ctrl+Shift+D, Build only, beside Save; it needs
         no library folder. Tauri needed one permission (`dialog:allow-save`) and no Rust: the
         dialog's own `save` command widens the fs scope to the file it returns. **Round-tripped
-        over the nine real saves:** each copy opens with zero sources and derives identically.
+        over a set of real saves:** each copy opens with zero sources and derives identically.
         **Found doing it, and fixed straight after:** the app's Save had been dropping every opened
         character's portrait bytes (9 of 9). **The shortcut moved once:** it was Ctrl+Shift+S, and pressing real
         keys in the Windows window showed WebView2 never delivers it to the page (an injected key
@@ -483,7 +482,7 @@ before any code, both touching a public API:
         derives from it yet, and no baseline moved — which is the test that step 1 was step 1.
   - [x] **Step 2 — the importer fills it**, plus the 3 inventory proxies into
         `generated-elements.ts` (80 overlay elements became 83). All 45 item instances across
-        the nine saves come across, and every one of ADR 0024's measurements held on the real
+        a set of real saves come across, and every one of ADR 0024's measurements held on the real
         files — including its falsifiable one: `slot` was written **zero** times.
         No `aurora verify` count moved, which is what makes step 3's diff readable.
   - [x] **Step 3 — the engine seeds equipped items.** The step the oracle checked, and the
@@ -491,7 +490,7 @@ before any code, both touching a public API:
         agree, so `not-modelled` fell 51 → 3 with `stat-mismatch` still 0. `element-extra`
         rose 53 → 55, and those two are a finding rather than overhead: a **Mithral Armor**
         adornment suppresses its host armour's stealth-disadvantage grant in Aurora's app and
-        in no content file, with Vigaro's mithral-less plate as the control case.
+        in no content file, with a real save's mithral-less plate as the control case.
         The 48th note was the wizard's save DC below, which now agrees at 18 — and the
         arithmetic behind it, with the two steps the save cannot see, is written out in
         [AURORA-SAVE-FORMAT.md](./docs/AURORA-SAVE-FORMAT.md).
@@ -514,8 +513,7 @@ before any code, both touching a public API:
         mechanism built and spent on two users, one conditional and one not: 5e's armour class
         and ADR 0023's attunement limit, whose base of 3 had nowhere else to live.
         **Six conditional rows, not four.** A cap cannot say that heavy armour also does not
-        *penalise* a negative Dexterity modifier, so the term got a floor as well — and the nine
-        saves cannot tell the two readings apart, because both plate wearers have a Dexterity
+        *penalise* a negative Dexterity modifier, so the term got a floor as well — and a set of real saves cannot tell the two readings apart, because both plate wearers have a Dexterity
         modifier of exactly 0. Same for the medium cap: both medium-armoured saves sit at exactly
         +2, where `min(2, 2)` and no cap at all agree.
         The nine now read 18, 18, 17, 18, 18, 13, 16, 20, 16 and **nothing checked them** — no
@@ -550,7 +548,7 @@ before any code, both touching a public API:
         touched `character.rolls`, so the per-level results the importer writes and the `.incu`
         round-trips were consumed by nothing. A `rolls` expression sums them over the
         progression, and `hp` is that plus `constitution:modifier × level`. Every 5e character
-        used to have 0 hit points; the Hexadin now has 207.
+        used to have 0 hit points; the Paladin 2 / Warlock 18 save now has 207.
         **Not verified against Aurora, and it cannot be** — the save format records the rolls
         and never the total, so there is no `<sum>`, no `<magic>` and no stat block to diff.
         This is the first Phase 2 number settled by reading the rules rather than by the
@@ -664,7 +662,7 @@ before any code, both touching a public API:
       folder to delete, because three different things lived in it, and they went in this order:
       - **Moved first: the regression suite.** `corpus.test.ts` is `incudo validate` with its
         budgets, configured by `INCUDO_*` environment and with the same four numbers in the same
-        `ci.yml`; `aurora-oracle.test.ts` is `incudo aurora verify` over the nine saves, pinned as
+        `ci.yml`; `aurora-oracle.test.ts` is `incudo aurora verify` over a set of real saves, pinned as
         a table. **Both were run against the CLI's own output before a line was removed, and the
         numbers reproduce exactly:** 740 files, 14,316 elements (+229 generated), 0 errors, 1
         unresolved, 23 unmeetable, 57 warnings, 2,258 from inline text; `validate --json` identical
@@ -743,7 +741,7 @@ so that finding one again is recognition rather than discovery.
   recorded against the wrong rule is accepted in silence. Wants a builder before it matters.
 - **One grant cannot cancel another.** A Mithral Armor adornment suppresses its host armour's
   `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE`, and no content file expresses that — it is Aurora
-  app behaviour. It is 2 of the 55 `element-extra`, and the nine saves carry the control case:
+  app behaviour. It is 2 of the 55 `element-extra`, and a set of real saves carry the control case:
   plate with no mithral does keep the marker. Not invented (ADR 0005).
 - **`ID_INTERNAL_MULTICLASS_LEVEL_3`** — the single `element-missing`, an Aurora-app marker
   nothing in the 740 files references and that carries no rules. Honestly unmodelled.
@@ -772,7 +770,7 @@ spells is buildable end to end and matches Aurora's output for the same choices.
 
 The engine side of that is met: an Arcane Trickster in the running app is offered its
 school-restricted spell list, a bard's pool widens from 54 to 161 between levels 1 and 5, and
-`aurora verify` still reports 0 `spell-missing` across the nine saves. Levelling works — an
+`aurora verify` still reports 0 `spell-missing` across a set of real saves. Levelling works — an
 answered pick can be changed, and raising the level opens hit points, a subclass and each
 ability score improvement in the same list, with a +2 landing as +2. A class can now be chosen
 at each level: a Fighter 4 / Rogue 1 / Wizard 3 built in the running app is offered the Rogue's

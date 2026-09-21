@@ -15,7 +15,7 @@ $ grep -n rolls packages/core/src/engine.ts
 ```
 
 **`deriveCharacter` has never read `character.rolls`.** The field is written by the save
-importer — the Hexadin carries `hp:level:1` through `hp:level:20`, `10, 7, 8, 3, 3, 8, …` —
+importer — a real Paladin 2 / Warlock 18 save carries `hp:level:1` through `hp:level:20`, `10, 7, 8, 3, 3, 8, …` —
 declared an input by [ADR 0007](./0007-native-formats.md), round-tripped faithfully through
 the `.incu` container, and consumed by nothing. It is the only one of `Character`'s six
 inputs that no derivation can see. `baseStats` lands in the stat table, `advancement` seeds
@@ -43,11 +43,11 @@ not a stat and nothing reads it.
 ### There is no oracle for this one, and that has to be said out loud
 
 Aurora's save format records the **rolls** and never the total. `<defenses>` is empty; the
-only `<attributes>` block in the Hexadin belongs to its companion and is all tens. There is no
-derived hit point value anywhere in any of the nine saves.
+only `<attributes>` block in that save belongs to its companion and is all tens. There is no
+derived hit point value anywhere in any of a set of real saves.
 
 So unlike the ability score maximum, the slot table and the spell save DC, this number cannot
-be checked against Aurora. `incudo aurora verify` will not gain a comparison, the nine saves
+be checked against Aurora. `incudo aurora verify` will not gain a comparison, a set of real saves
 will not confirm it, and a passing test suite means only that the code does what this document
 says — not that what this document says is right. Every other number in Phase 2 has been
 settled by a differential check. This one is settled by reading the Player's Handbook, and it

@@ -9,7 +9,7 @@ step 4. This is the plan's D2.
 ## Context
 
 5e says an item requiring attunement confers its benefits only to a creature attuned to it.
-Whether Incudo should enforce that is the question, and **the nine saves cannot answer it**:
+Whether Incudo should enforce that is the question, and **a set of real saves cannot answer it**:
 all 12 attunement-requiring equipped items across them are attuned, so there is no
 counter-example in either direction. Like hit points ([ADR 0019](./0019-recorded-rolls-are-readable.md))
 and like armour class, this is settled by reading the published rule.
@@ -126,7 +126,7 @@ Stated plainly, because the project has been caught once already by a check that
 was proving something ([ADR 0020](./0020-stats-keyed-on-declared-blocks.md)).
 
 - **The gate is unverified and unverifiable against Aurora.** All 12 attunement-requiring
-  equipped items in the nine saves are attuned. `aurora verify` will gain no comparison, and a
+  equipped items in a set of real saves are attuned. `aurora verify` will gain no comparison, and a
   green run after this lands means only that nothing regressed.
 - **The limit is partly verifiable.** `attunement:max` is a stat both sides can hold, but no
   save records a derived value for it, so it is in the same position: the arithmetic is

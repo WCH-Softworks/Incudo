@@ -262,7 +262,7 @@ test('a carried item contributes nothing, and Aurora leaves it out too', () => {
     element('ID_ITEM', 'Item', [grant('ID_ITEM_EFFECT')]),
     element('ID_ITEM_EFFECT', 'Thing'),
   ]);
-  // Aurora's own `<sum>` excludes 18 of the 19 carried items across the nine sample saves,
+  // Aurora's own `<sum>` excludes 18 of the 19 carried items across a set of real saves,
   // so the two engines agree by leaving the same thing out rather than by excusing it.
   const save = parseAuroraSave(saveXml({ sum: ['ID_PICKED'], equipment: ['ID_ITEM'] }));
 

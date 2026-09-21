@@ -32,7 +32,7 @@ are this one protocol**: 73 `Improvement Option,<class>,<level>` and 15
 proficiency lists — the three unread operands `CLAUDE.md` names, minus `Class`, which was never an
 operand problem.
 
-**Aurora's app generates them.** The nine sample saves record, per level, a registered element
+**Aurora's app generates them.** A set of real saves record, per level, a registered element
 whose id no file declares, together with the names and types of the selects under it:
 
 ```
@@ -60,14 +60,14 @@ carries a tag naming its select, as `ID_PHB_FEAT_ASI_*` carries `Feat, Athlete`)
 ### A second finding, and it was data loss
 
 Offering the six abilities is not enough, because **the most common improvement is +2 to one
-score, and that is the same element chosen twice.** Vigaro Safeguard's level 12 Fighter records
+score, and that is the same element chosen twice.** A real level 12 Fighter save records
 `ID_INTERNAL_ASI_CONSTITUTION` under both `number="1"` and `number="2"` of one select, and Aurora's
 own `<sum>` lists it twice. Incudo could express neither half:
 
 - a select excluded everything it already held, so the second slot could never offer Constitution;
 - the derivation seeds from a `Set` and an element is applied once, so two picks were one +1;
 - and the importer **deliberately dropped the second pick** ("recorded twice; keeping one"), so
-  Vigaro imported with a Constitution of 19 where Aurora computes 20. `aurora verify` cannot see it
+  that Fighter imported with a Constitution of 19 where Aurora computes 20. `aurora verify` cannot see it
   — it compares chosen elements, and never an ability score.
 
 Content already says which elements may be picked again. 48 `<set name="allow duplicate">true</set>`
@@ -143,7 +143,7 @@ and it reads the list rather than guessing.
   named test.
 - **`aurora verify` is byte-identical on all nine saves**, diffed as text — which proves nothing
   broke and nothing else. It compares chosen elements, and a filter that offered everything would
-  move no count anywhere (ADR 0030 says the same). Vigaro's Constitution moving 19 → 20 is the
+  move no count anywhere (ADR 0030 says the same). That Fighter's Constitution moving 19 → 20 is the
   importer fix, and the only oracle for it is that Aurora's `<sum>` lists the id twice.
 - Corpus baselines unchanged: **740 files, 14,316 elements, 0 errors, 1 unresolved, 23 unmeetable
   requirements, 57 warnings.**
@@ -187,7 +187,7 @@ until the option can be held.
 homebrew class, and it would say `Fighter` in code that has no business knowing one.
 
 **Count multiplicity for every element.** Simpler, and wrong: a proficiency granted through a race
-and a class would double, and Hexadin's `<sum>` alone lists some sixty of them twice. The setter is
+and a class would double, and the Paladin 2 / Warlock 18 save's `<sum>` alone lists some sixty of them twice. The setter is
 content's own statement of which elements repeat.
 
 **Hard-code `allow duplicate` in core.** Ten lines, and the end of ADR 0003 for a string one format

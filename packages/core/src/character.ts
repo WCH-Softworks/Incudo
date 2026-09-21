@@ -66,7 +66,7 @@ export interface Adornment {
 /**
  * One thing in the bag — an **instance**, not a reference to an element (ADR 0024).
  *
- * That distinction is measured, not assumed: one of the nine sample saves carries two
+ * That distinction is measured, not assumed: one of a set of real saves carries two
  * greatswords with different enchantments, so anything keyed by element id loses a real
  * character's real items.
  */
@@ -168,7 +168,7 @@ export interface Character {
   /** Free text the rules never touch: notes, appearance, backstory. */
   freeform: Record<string, string>;
   /**
-   * Relative paths into the save's `assets/` folder: `{ portrait: "assets/vigaro.png" }`.
+   * Relative paths into the save's `assets/` folder: `{ portrait: "assets/portrait.png" }`.
    * Never base64 — the bytes live beside the JSON in the container (ADR 0007, ADR 0012).
    */
   assets?: Record<string, string>;
@@ -414,7 +414,7 @@ export function inventoryElementIds(character: Character): ElementId[] {
  *
  * The derivation's half of the asymmetry `inventoryElementIds` documents: the container
  * embeds the whole bag, and only what is worn or wielded joins the derivation. That is
- * measured, not assumed — all 26 equipped items across the nine sample saves are in Aurora's
+ * measured, not assumed — all 26 equipped items across a set of real saves are in Aurora's
  * own `<sum>` and 18 of 19 carried ones are not, the apparent exception being a second
  * instance of an element id that is equipped elsewhere.
  *

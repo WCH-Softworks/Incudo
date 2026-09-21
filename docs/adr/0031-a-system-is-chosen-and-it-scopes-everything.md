@@ -147,7 +147,7 @@ using it, which is the pattern CLAUDE.md keeps recording.
 
 Two things are checked rather than eyeballed: the partition and the collision rule in
 `packages/ui/src/character-library.test.ts`, and — because a filter's real failure mode is
-looking empty — the nine real Aurora saves in `tools/verify/src/library.test.ts`, imported into
+looking empty — a set of real Aurora saves in `tools/verify/src/library.test.ts`, imported into
 a folder and then viewed as Cairn, which must report `[{ systemId: 'dnd5e', count: 9 }]` and
 still open one the moment the system is switched back.
 

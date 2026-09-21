@@ -102,7 +102,7 @@
 
     "inventory": {
       "type": "array",
-      "description": "What the character carries and wears, as INSTANCES rather than references to elements (ADR 0024). An instance because one of the nine sample saves carries two greatswords with different enchantments — a Vorpal Sword on the carried one, a Frost Brand on the equipped one — so a model keyed by element id loses a real character's real items. An INPUT in the same sense as rolls, baseStats and advancement: the user put it there and no formula produces it. Every entry's element is embedded in the container, CARRIED ONES INCLUDED, or the bag cannot be read without sources and ADR 0012 breaks.",
+      "description": "What the character carries and wears, as INSTANCES rather than references to elements (ADR 0024). An instance because one of a set of real saves carries two greatswords with different enchantments — a Vorpal Sword on the carried one, a Frost Brand on the equipped one — so a model keyed by element id loses a real character's real items. An INPUT in the same sense as rolls, baseStats and advancement: the user put it there and no formula produces it. Every entry's element is embedded in the container, CARRIED ONES INCLUDED, or the bag cannot be read without sources and ADR 0012 breaks.",
       "items": {
         "type": "object",
         "required": ["instanceId", "elementId"],
@@ -121,7 +121,7 @@
           },
           "equipped": {
             "type": "boolean",
-            "description": "Worn or wielded. Absent means carried, which is a different thing: all 26 equipped items across the nine saves are in Aurora's own derivation and 18 of 19 carried ones are not."
+            "description": "Worn or wielded. Absent means carried, which is a different thing: all 26 equipped items across a set of real saves are in Aurora's own derivation and 18 of 19 carried ones are not."
           },
           "slot": {
             "type": "string",
@@ -161,7 +161,7 @@
 
     "assets": {
       "type": "object",
-      "description": "Relative paths into the container's assets/ folder: {\"portrait\": \"assets/vigaro.png\"}. Never base64 — the bytes live beside the JSON (ADR 0007).",
+      "description": "Relative paths into the container's assets/ folder: {\"portrait\": \"assets/portrait.png\"}. Never base64 — the bytes live beside the JSON (ADR 0007).",
       "additionalProperties": {
         "type": "string",
         "pattern": "^assets/[^/\\\\]+$",

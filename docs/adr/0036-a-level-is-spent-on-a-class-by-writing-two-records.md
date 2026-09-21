@@ -45,7 +45,7 @@ Measured against the 740 files, not read from the format:
   `||ID_INTERNAL_GRANTS_MULTICLASS_UNLOCKER`, an item that bypasses the whole block.
 - `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` and `ID_INTERNAL_GRANTS_MULTICLASSING_PREREQUISITE`
   — the two names ROADMAP pointed at — are referenced by **0 of the 740 files**. Only saves name
-  them. All nine sample saves have the option on, so there is no save that shows what switching
+  them. Every save in a set of real saves has the option on, so there is no save that shows what switching
   it off does.
 - Nothing in content states the Player's Handbook's other half: that the class you are *leaving*
   must also meet its own prerequisite. A block is written as the entry gate into its own class.

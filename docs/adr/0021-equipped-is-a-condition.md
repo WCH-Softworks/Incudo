@@ -54,7 +54,7 @@ This is the part that was a decision rather than a bugfix, and it was measured b
 made. Evaluating `equipped` in `activeRules` today moves **no `aurora verify` count** —
 1 `element-missing`, 0 `spell-missing`, 0 `stat-mismatch`, 53 `element-extra`,
 51 `not-modelled`, 13 `content-missing`, all unchanged. It does change four derived stats
-across three of the nine saves, and **every one of those changes is wrong rather than merely
+across three of a set of real saves, and **every one of those changes is wrong rather than merely
 unknown**:
 
 | save | stat lost | the rule |
@@ -122,7 +122,7 @@ the frozen layer.
 ## Alternatives considered
 
 **Parse and evaluate in one change**, accepting the movement. Measured above and rejected on
-the measurement: it makes four numbers wrong on three of the nine saves and would have had me
+the measurement: it makes four numbers wrong on three of a set of real saves and would have had me
 record a baseline I believe is incorrect. The `aurora verify` counts staying identical is not
 an argument for it — it is a reminder that the differential check does not compare `ac`.
 

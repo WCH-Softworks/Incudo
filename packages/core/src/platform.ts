@@ -86,7 +86,7 @@ export interface LibraryEntryRef {
   /**
    * The entry's name inside the library folder: `aelin.incu` for the zip form, `borin` for
    * the unpacked one. Never a path, never absolute, and never the character's own name — a
-   * character renamed to Vigaro still lives in `aelin.incu` (ADR 0027).
+   * character renamed to something else still lives in `aelin.incu` (ADR 0027).
    */
   name: string;
   form: ContainerForm;

@@ -41,7 +41,7 @@ Every one carries `formatVersion` as its first field.
 **Images are never inlined.** A character references assets by relative path:
 
 ```json
-"assets": { "portrait": "assets/vigaro-portrait.png" }
+"assets": { "portrait": "assets/portrait.png" }
 ```
 
 A bare `.incu` file is text and stays small. When one portable file is wanted — sending a

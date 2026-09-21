@@ -9,7 +9,7 @@ package's *comparison*, not in what it imports) · **no system-format change**
 [ADR 0018](./0018-tables-and-track-stats.md) taught the differential check to compare the spell slots
 Aurora records in `<magic>`. Each `<spellcasting>` block carries a nine-number row, and the ADR read it
 one way: for any source that was not pact magic, the row is the **shared multiclass pool**, "because that
-is what having a caster level *means*". All eight rows across the nine sample saves agreed with that
+is what having a caster level *means*". All eight rows across a set of real saves agreed with that
 reading, and the ADR said what they did and did not prove: pact magic outside the table, and a
 half-caster's halving, were pinned by the one multiclass save; rounding down rather than up was not, and
 "no sample save has two classes with the Spellcasting feature".

@@ -3,13 +3,13 @@
  *
  * Two properties are worth more than the rest of this file put together, and both were
  * measured against real saves rather than reasoned about. **An entry is an instance**, so two
- * copies of the same element can differ (one of the nine sample saves carries two greatswords
+ * copies of the same element can differ (one of a set of real saves carries two greatswords
  * with different enchantments). And **the container embeds every entry, carried included**,
  * because a save whose bag cannot be read without sources is a broken save under ADR 0012.
  *
  * Step 3 of docs/INVENTORY-AND-AC-PLAN.md added a third, and it is the same asymmetry seen
  * from the engine rather than the container: **equipped derives, carried does not**. Measured
- * too — 26 of 26 equipped items across the nine sample saves are in Aurora's own `<sum>` and
+ * too — 26 of 26 equipped items across a set of real saves are in Aurora's own `<sum>` and
  * 18 of 19 carried ones are not.
  */
 

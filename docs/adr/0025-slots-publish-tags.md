@@ -6,7 +6,7 @@ Step 4 of [docs/INVENTORY-AND-AC-PLAN.md](../INVENTORY-AND-AC-PLAN.md). Written 
 because it adds to `schemas/system.schema.json`, which users author against
 ([ADR 0011](./0011-user-systems.md)).
 
-Every number below was measured against the 740-file corpus and the nine sample saves. The saves
+Every number below was measured against the 740-file corpus and a set of real saves. The saves
 are personal data and stay out of this repository; the counts and the content ids are not.
 
 ## Context
@@ -87,12 +87,12 @@ reads the `armor` setter as a tag has to survive those 102.
 ### What the nine bags put where
 
 ```
-armor=none    arturo · Deusinaldo · Paelias Amakiir
-armor=light   Krusk Oathfang · Theren Liadon        (studded leather)
-armor=medium  Hexadin (breastplate) · Merilio (half plate)
-armor=heavy   Bran Brightwood · Vigaro Safeguard    (plate)
+armor=none    three saves
+armor=light   two saves                          (studded leather)
+armor=medium  two saves                          (a breastplate, a half plate)
+armor=heavy   two saves                          (plate)
 shield        nobody, on any save
-primary       a weapon on every save but Merilio, Hexadin and Vigaro, who are two-handed
+primary       a weapon on every save but three, which are two-handed
 ```
 
 And **eight rules across the nine characters carry an `equipped=` condition at all**: a monk's
@@ -142,7 +142,7 @@ holds any number of things.
 That last clause is deliberate and is the honest answer to the plan's open question about
 capacity. 5e has no rule limiting how many cloaks you may wear — attunement is the limiter — so
 declaring `shoulders` as holding one would be **me** deciding a rule rather than the system
-declaring one. The nine saves contain a live case: Merilio wears a Cloak of Displacement *and* a
+declaring one. A set of real saves contains a live case: one wears a Cloak of Displacement *and* a
 Cloak of Protection, both equipped, both in Aurora's own `<sum>`. Incudo says nothing about it,
 and says nothing on purpose.
 
@@ -175,7 +175,7 @@ The name is always a tag and needs no flag to turn on — an item's name is not 
 noun, and `[primary:double-bladed scimitar]` is the corpus asking for it.
 
 **Adorners occupy nothing and contribute no tags.** A Mithral Armor has `slot="body"` of its own,
-and 15 of the 15 adornments in the nine saves would have fought their hosts for a slot. It is
+and 15 of the 15 adornments in a set of real saves would have fought their hosts for a slot. It is
 also what keeps the two meanings of the `armor` setter apart in practice: the 102 non-Armor
 elements carrying both setters are adorners, so their requirement-expression `armor` value never
 becomes a tag. If a user equips one as a top-level item anyway, the tag is a harmless nonsense
@@ -226,7 +226,7 @@ The plan flagged the dependency and left the call open. Taking the gate now and 
 because the limit cannot be computed correctly yet: ADR 0023 puts the base of **3** in a kind's
 `contributions`, which is [ADR 0022](./0022-kinds-contribute-systems-do-not-ship-content.md)'s
 mechanism and is not built. Without it `attunement:max` reads 0 for everyone except an Artificer,
-and **every one of the nine saves would be reported over the limit** — the exact "a warning nobody
+and **every one of a set of real saves would be reported over the limit** — the exact "a warning nobody
 can act on" failure ADR 0023's reporting clause exists to avoid. `attunement:current` alone would
 be a number with nothing to compare against.
 
@@ -258,7 +258,7 @@ occupancy depends on the character and its content and never on the derivation.
   the user's answer, not the engine's.
 
 An item with **no** slot setter occupies nothing and reports nothing. That is not an edge case:
-Aurora's three inventory proxies have no slot, and two of the nine saves equip one.
+Aurora's three inventory proxies have no slot, and two of a set of real saves equip one.
 
 ### 11. `formatVersion` stays at 1
 
@@ -271,10 +271,10 @@ and a kind without it behaves exactly as before. This is the fifth additive chan
 
 ## What the oracle proves, and what it does not
 
-**Prediction, recorded before the run: not one derived stat changes on any of the nine saves.**
-Every gate resolves in favour of what is already applying — Deusinaldo is unarmoured and
-shieldless so `[armor:none],[shield:none]` holds; Hexadin and Vigaro are armoured so `[armor:any]`
-holds. And all 12 attunement-requiring equipped items across the nine are attuned, so gate 7
+**Prediction, recorded before the run: not one derived stat changes on any of a set of real saves.**
+Every gate resolves in favour of what is already applying — the Monk is unarmoured and
+shieldless so `[armor:none],[shield:none]` holds; the Paladin 2 / Warlock 18 and the Fighter 12 are
+armoured so `[armor:any]` holds. And all 12 attunement-requiring equipped items across the nine are attuned, so gate 7
 fires zero times.
 
 That prediction is *cheap*, and saying why matters more than the green run. Before this change,

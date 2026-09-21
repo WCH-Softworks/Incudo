@@ -227,7 +227,7 @@ function synthesizeGenerated(
  * Whether an element declares that it may be picked more than once — ADR 0035.
  *
  * Needs the element, and so the loaded content: with no index there is no way to know, and the
- * second pick is dropped with a warning exactly as before. Vigaro Safeguard's level 12 Fighter
+ * second pick is dropped with a warning exactly as before. A real level 12 Fighter save
  * records `ID_INTERNAL_ASI_CONSTITUTION` under both numbers of one select, and Aurora's own
  * `<sum>` lists it twice — the two picks are a +2, and losing one makes a Constitution of 19
  * out of 20.
@@ -445,7 +445,7 @@ function multiclassOwners(index: ElementIndex): Map<string, ElementId> {
 /**
  * Aurora's three `<equipped location=…>` strings, against the vocabulary content uses.
  *
- * These are the *only* three values in the nine sample saves: everything else — a cloak, a
+ * These are the *only* three values in a set of real saves: everything else — a cloak, a
  * ring, boots — is equipped with no location at all and takes its slot from the element.
  * An unrecognised location is reported rather than written through: Aurora's words and
  * content's words are two vocabularies, and copying one into a field that holds the other
@@ -466,7 +466,7 @@ const LOCATION_SLOTS: Record<string, string> = {
  *
  * Four of the mappings are decisions rather than transcription, all settled by ADR 0024:
  *
- * - **`instanceId` is Aurora's `identifier`.** All 45 items in the nine saves have one and
+ * - **`instanceId` is Aurora's `identifier`.** All 45 items in a set of real saves have one and
  *   all 45 are distinct, so nothing is minted — minting would make an import
  *   non-deterministic and the golden fixtures would move on every run. The fallback below
  *   is derived from the file too, for the same reason.

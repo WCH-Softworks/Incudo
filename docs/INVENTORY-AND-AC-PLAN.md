@@ -35,7 +35,7 @@ and never will.**
 
 ## What was measured
 
-Every number below came from the 740-file corpus or the nine sample saves. Nothing here is
+Every number below came from the 740-file corpus or a set of real saves. Nothing here is
 recalled; the probes are cheap to re-run and the commands are in this repo's history.
 
 ### Content already declares the item
@@ -124,7 +124,7 @@ That is the entire surface. Two things fall out of it:
 
 ### The save records instances, and equipped means derived
 
-45 item instances across the nine saves — 26 equipped, 12 attuned, 15 adorners.
+45 item instances across a set of real saves — 26 equipped, 12 attuned, 15 adorners.
 
 ```xml
 <item identifier="42462837-…" name="Half Plate" id="ID_WOTC_ARMOR_MEDIUM_HALF_PLATE">
@@ -138,14 +138,14 @@ That is the entire surface. Two things fall out of it:
 Three findings, each from counting rather than reading:
 
 - **Equipped ⇒ derived. Carried ⇒ not.** All **26** equipped items are in Aurora's `<sum>`;
-  **18 of 19** carried ones are not. The exception is not one: Vigaro carries *two* greatswords,
+  **18 of 19** carried ones are not. The exception is not one: one save carries *two* greatswords,
   one equipped, so the element id is in `<sum>` on the other instance's account. Adorners
   follow their host — 13 of 15 in `<sum>`, and the 2 outside both hang off carried items.
-- **An item is an instance, not a reference.** Vigaro's two greatswords carry different
+- **An item is an instance, not a reference.** That save's two greatswords carry different
   enchantments: a Vorpal Sword on the carried one and a Frost Brand on the equipped one. Any
   model that keys the bag by element id loses that on the first real character.
 - **`location` is set only for the hand and body slots** — `Primary Hand`, `Armor`,
-  `Two-Handed` are the only three values in the nine saves. A cloak, boots or a ring is
+  `Two-Handed` are the only three values in a set of real saves. A cloak, boots or a ring is
   equipped with no location at all, and its slot comes from the item's own `slot` setter.
 
 The bag also carries things that are not items. `ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE`
@@ -155,12 +155,12 @@ are **the only 3 ids in all nine bags that neither the 740 files nor the 80-elem
 declare** — a third family of Aurora-app-materialized elements, the same shape as the two
 already handled. *(Step 2 added them; the overlay is now 83. The ASI proxy is not the Tome of
 Clear Thought, as this paragraph originally said — the Tome is an ordinary corpus element
-carrying its own `+2`, and the proxy grants the overlay's separate `+1`. Both are in arturo's
+carrying its own `+2`, and the proxy grants the overlay's separate `+1`. Both are in one save's
 bag, which is what made them easy to conflate.)*
 
 ### The oracle is strong for inventory and absent for AC
 
-**47 of the 51 `not-modelled` notes across the nine saves are "comes from the character's
+**47 of the 51 `not-modelled` notes across a set of real saves are "comes from the character's
 inventory"**, plus the one spell save DC that a Tome of Clear Thought moves — 48 of 51. Step 3
 below converts all of them into compared numbers, in both directions: an item that fails to
 contribute becomes `element-missing`, one that contributes when it should not becomes
@@ -172,7 +172,7 @@ format, so `aurora verify` will never gain a comparison for it. This is exactly 
 position (ADR 0019): settled by reading the published rule, and by nothing else.
 
 One more thing the oracle cannot settle: **whether attunement gates a contribution.** All 12
-equipped items in the nine saves that require attunement *are* attuned, so there is no
+equipped items in a set of real saves that require attunement *are* attuned, so there is no
 counter-example in either direction. 5e says an unattuned item gives nothing; the saves neither
 confirm nor deny it.
 
@@ -234,10 +234,10 @@ both hidden from the sheet, both carrying the one rule they exist for — so a p
 on it is the established shape and not a new one. It does make these the first overlay
 elements to reference content outside the overlay.
 
-**What the real files said.** All 45 instances across the nine saves came across — 26 equipped,
+**What the real files said.** All 45 instances across a set of real saves came across — 26 equipped,
 12 attuned, 15 adorners, 4 stacked rows, 1 user-given name, 0 notes — and every ADR 0024
 measurement held, including the falsifiable one: **`slot` was written zero times**. Both of
-Vigaro's greatswords survive with their different enchantments. All 60 element references the
+that save's greatswords survive with their different enchantments. All 60 element references the
 bags make are embedded in `content.json`. `aurora verify` moved no count in either direction;
 the only visible change is three `not-modelled` messages losing a `(via "…PROXY…")` clause,
 because the proxies' grants now resolve in the index instead of through the save's own tree.
@@ -271,7 +271,7 @@ elements and everything else would hold. It did, with two findings and one numbe
   the 48th was the one save DC the bag moved.
 - **The two new `element-extra` are one Aurora app behaviour**: a **Mithral Armor** adornment
   suppresses its host armour's `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE` grant, which no content
-  file expresses. The nine saves contain the control case — Vigaro's plate has no mithral and
+  file expresses. A set of real saves contains the control case — one save's plate has no mithral and
   *does* carry the marker — so it is measured rather than assumed. Left unmodelled and visible,
   per [ADR 0005](./adr/0005-aurora-import.md).
 - **The eighth spell save DC is now compared and agrees**, which is the number the old
@@ -323,7 +323,7 @@ down as tests:
 | the monk, put into plate | loses exactly `ac:calculation` 18 and `innate speed:misc` 10 |
 | the fighter, breastplate removed | loses exactly the Defense fighting style's `ac:misc` 1 |
 | the monk, handed a shield | `shield` reads `Shield`, `[shield:none]` is false for the first time, Unarmoured Defence drops |
-| arturo, nothing attuned | loses the Ring of Protection's +1 AC and +1 to all six saves, with three warnings naming the items |
+| a save with nothing attuned | loses the Ring of Protection's +1 AC and +1 to all six saves, with three warnings naming the items |
 
 Four smaller findings worth keeping:
 
@@ -332,7 +332,7 @@ Four smaller findings worth keeping:
   Blade asks `[primary:double-bladed scimitar]`, and Dual Wielder's `[secondary:any]` would
   otherwise pay a greatsword user.
 - **Slot capacity needed no decision.** A slot's `stats` list *is* its capacity, so a slot that
-  publishes nothing holds any number of things — which is what 5e says about cloaks, and Merilio
+  publishes nothing holds any number of things — which is what 5e says about cloaks, and one save
   wears two.
 - **`slot="armor"` is an upstream typo**, on Spiked Armor alone among 1,070 slot setters. It is
   now a `slot-unknown` warning rather than a character silently unarmoured.
@@ -340,7 +340,7 @@ Four smaller findings worth keeping:
   upstream.
 
 Attunement's gate landed here and its **limit did not** — ADR 0023's base of 3 needs ADR 0022's
-`contributions`, and without it every one of the nine saves would report over the limit.
+`contributions`, and without it every one of a set of real saves would report over the limit.
 
 ### Step 5 — the `ac` derivation · **done**, [ADR 0026](./adr/0026-armour-class-is-derived-and-checked-by-nobody.md)
 
@@ -396,7 +396,7 @@ uncapped rather than Dexterity-less.
 
 The attunement limit landed with it, exactly as written: a seventh contribution, unconditional,
 `attunement:max` 3 in the `base` bucket, with `attunement:current` counted per attuned **entry**
-and `over-attuned` reported at error level. None of the nine sample saves is over — 1, 0, 1, 0,
+and `over-attuned` reported at error level. None of a set of real saves is over — 1, 0, 1, 0,
 3, 2, 1, 1, 3 — which was checked rather than assumed.
 
 **The nine armour classes, and the fact that nothing checked them.** 18, 18, 17, 18, 18, 13, 16,
@@ -509,12 +509,12 @@ Two smaller notes that follow:
 - **Attunement gating**, per D2 — and step 4 confirmed it: the gate fired zero times on the
   nine saves, because all 12 attunement-requiring equipped items are attuned.
 - **Slot capacity rules** — that a two-handed weapon occupies both hands, that only one body
-  slot exists. The nine saves show `Primary Hand`, `Armor` and `Two-Handed` and never a second
+  slot exists. A set of real saves show `Primary Hand`, `Armor` and `Two-Handed` and never a second
   hand, a shield or a ring slot, so the interesting conflicts have no oracle either.
   *(Step 4 took two of these off the list by a different route: the corpus's own rules settle
   what a two-handed weapon occupies, and capacity turned out to be "how many stats does this
   slot publish" rather than a number anyone had to guess.)*
-- **Every negative `equipped=` case.** Step 4 evaluates 78 conditions and the nine saves
+- **Every negative `equipped=` case.** Step 4 evaluates 78 conditions and a set of real saves
   exercise eight of them, all of which come out true. `[shield:any]` has never been true on a
   real save, because nobody carries a shield. Perturbation is what covers this, and it is not
   the same kind of evidence as a differential run.

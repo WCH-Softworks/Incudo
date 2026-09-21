@@ -113,7 +113,7 @@ and where that is missing the button is disabled and its tooltip says why.
 - Windows opens the dialog in whatever folder it last used, which was the library folder. A copy named
   like a library file raises the system's own replace prompt, and that is the only thing between the
   two; the app passes no starting folder.
-- A copy, like any re-save, does not carry what only the Aurora import knew: across the nine real saves
+- A copy, like any re-save, does not carry what only the Aurora import knew: across a set of real saves
   one element, an Aurora marker no rule reaches, and any unresolved ids only Aurora's own list named.
 - A character opened from the library brings its asset files with it (`OpenedCharacter.assets`, held as
   `working.assets`), and Save and Save a copy both write them back. Before that, every re-save dropped the

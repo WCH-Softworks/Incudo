@@ -14,7 +14,7 @@ schema is a contract rather than documentation: *if it validates, the app can bu
 
 | folder | what it is | why it is here |
 |---|---|---|
-| `dnd5e/` | D&D 5th edition. | The first definition and the one Incudo is actually tested against — the corpus, the nine sample saves and every `aurora verify` number are 5e. |
+| `dnd5e/` | D&D 5th edition. | The first definition and the one Incudo is actually tested against — the corpus, a set of real saves and every `aurora verify` number are 5e. |
 | `cairn/` | A small, classless, level-less game by Yochai Gal. | It exists to break 5e-shaped assumptions in the engine while they are still cheap to fix. A structural sketch, not a licensed implementation — replace the content before shipping it. |
 
 **A definition's own `description` is not the place for any of the column on the right.** The

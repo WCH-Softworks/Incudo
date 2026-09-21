@@ -17,7 +17,7 @@
  * **It is not missing content, it is the app.** The only classes whose options are written out
  * are the two Artificers, under a comment reading "v1.19.3XX workaround" (`ID_WOTC_ERLW_CLASS_
  * FEATURE_ABILITY_4` and its siblings), which is the one place the *shape* is written down. The
- * nine sample saves say the rest. They record, per level, a registered element with an id
+ * a set of real saves say the rest. They record, per level, a registered element with an id
  * nobody declares —
  *
  * ```
@@ -44,7 +44,7 @@
  * **The feat half is gated, not offered.** It carries `requirements="ID_INTERNAL_OPTION_ALLOW_FEATS"`,
  * exactly as all three Artificer workarounds do, so a campaign that does not use feats is never
  * offered one. Nothing here builds the way to switch that option on — that is ADR 0032's
- * `multiple: true` — but the element is what eight of the nine sample characters actually took
+ * `multiple: true` — but the element is what eight of the nine characters in a set of real saves actually took
  * at level 4, so leaving it out would make their imports less faithful for no saving.
  *
  * **What is inferred, and from what.** `Ability Score Improvement,Class` is the one filter

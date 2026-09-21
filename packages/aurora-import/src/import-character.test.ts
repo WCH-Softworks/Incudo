@@ -261,7 +261,7 @@ test('the bag comes across one row per item, and a save that has one is format 2
 });
 
 test('two instances of one element stay two rows, with their own enchantments', () => {
-  // The measured case: one of the nine sample saves carries two greatswords, a Vorpal Sword
+  // The measured case: one of a set of real saves carries two greatswords, a Vorpal Sword
   // on the carried one and a Frost Brand on the equipped one. Keying the bag by element id
   // loses that on the first real character.
   const blades = imported().character.inventory!.filter((e) => e.elementId === 'ID_ITEM_BLADE');

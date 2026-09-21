@@ -17,7 +17,7 @@ if (gated && rule.level !== undefined && character.progress < rule.level) return
 ```
 
 For every character built or imported so far that has been right, because every one of them is
-single-classed — all eight original sample saves have exactly one `type="Class" registered=`
+single-classed — every save in the original set of real saves has exactly one `type="Class" registered=`
 node, and none passes level 12. The moment a character has two classes it is wrong in three ways
 at once:
 
@@ -75,7 +75,7 @@ second class grants; the class element is the one that owns the levels.
 advancement?: Array<{ at: number; elementId: ElementId }>;
 ```
 
-For the Hexadin: `{at:1, …PALADIN}`, `{at:2, …PALADIN}`, `{at:3, …WARLOCK}` … `{at:20, …WARLOCK}`.
+For the Paladin 2 / Warlock 18 save: `{at:1, …PALADIN}`, `{at:2, …PALADIN}`, `{at:3, …WARLOCK}` … `{at:20, …WARLOCK}`.
 
 It is an input in the same sense as `rolls` and `baseStats` (ADR 0014): nothing derives which
 class you took at level 7. The field is optional, and a character without it behaves exactly as
@@ -141,7 +141,7 @@ degraded one. This is the last comfortable moment for that argument to hold.
 - Three Phase 2 numbers stop being blocked on a guess: hit points need the hit die of the class
   taken at each level, the multiclass spell slot table needs each class's level, and level
   gating needs both.
-- A real oracle now covers multiclassing. The Hexadin's `<magic>` block records Paladin slots
+- A real oracle now covers multiclassing. The Paladin 2 / Warlock 18 save's `<magic>` block records Paladin slots
   `2/0/0/…` and Warlock slots `0/0/0/0/4/0/…`, which between them pin down the two rules that are
   easiest to get wrong: a half-caster rounds its contribution down, and pact magic is not part of
   the multiclass table at all.

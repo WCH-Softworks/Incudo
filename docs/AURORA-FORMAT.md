@@ -226,8 +226,7 @@ that widens it — not as one rule whose `number` goes up:
 So the pool's identity is **(owning element, select name)**, which is exactly the key Incudo
 uses for a `Choice`: `<owner>/select:<name>`. The engine used to check each rule's own
 `number` against the whole recorded list, which made a correctly-built warlock report
-`"Cantrip (Warlock)" allows 2 choice(s) but 4 are recorded` — 26 such errors across the nine
-sample saves, on 8 of the 9, and on non-casters too (a rogue's Expertise is the same shape).
+`"Cantrip (Warlock)" allows 2 choice(s) but 4 are recorded` — 26 such errors across a set of real saves, on 8 of the 9, and on non-casters too (a rogue's Expertise is the same shape).
 It now sums the allowance over the rules the character has actually reached.
 
 2,553 select groups in the corpus, of which **89 have more than one rule** — up to 20, for a
@@ -454,7 +453,7 @@ It was 57 unresolved references when this document was first written. Two things
 declares the 80 elements Aurora's app materializes — damage resistances, sizes, the six
 ability bumps, twenty levels, the 5e baseline grants. That resolved 51 of the 57. The
 `ID_SIZE_*` family was listed above as "genuine upstream typos" and that was **wrong**: every
-one of the eight sample saves has `ID_SIZE_MEDIUM` in its `<sum>` block, which is Aurora's own
+one of a set of real saves has `ID_SIZE_MEDIUM` in its `<sum>` block, which is Aurora's own
 record of a derivation it performed. They are generated, not missing.
 
 **Grant references and requirement references are now counted separately**, because they fail
@@ -467,7 +466,7 @@ the first kind is budgeted in CI.
 **A sixth thing the app generates, and this one is derived rather than listed** — ADR 0035. Every
 class's `Ability Score Improvement` feature declares a `<select supports="Improvement
 Option,Fighter,4">` per level and no file declares what it offers: 73 (class, level) pairs across
-14 classes, and the Artificers are the only ones written out. The nine saves record what the app
+14 classes, and the Artificers are the only ones written out. A set of real saves record what the app
 generated for them (`ID_INTERNAL_CLASS_FEATURE_{ASI|FEAT}_{level}_{CLASS}`), so
 `improvement-options.ts` derives the same two elements per pair from whatever content is loaded.
 That is 146 of the 229. The count above was 83 until that landed; nothing that comes from a file

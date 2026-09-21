@@ -248,7 +248,7 @@ const MAX_ANCESTRY = 32;
  * as a real difference.
  *
  * Until step 3 of the inventory plan this also excused anything the bag brought, which was
- * 47 of the 51 notes across the nine saves. The bag derives now, so an element it should
+ * 47 of the 51 notes across a set of real saves. The bag derives now, so an element it should
  * have brought and did not is exactly what this check exists to surface.
  */
 function explainAbsence(
@@ -276,7 +276,7 @@ function explainAbsence(
 }
 
 /**
- * The big check: 951 element ids across the eight sample saves.
+ * The big check: 951 element ids across a set of real saves.
  *
  * Both directions matter and they fail differently. An element Aurora had and Incudo does not
  * is a grant that did not fire — a requirement read wrong, a level gate off by one, a select
@@ -469,7 +469,7 @@ function compareCasterLevel(
  *
  * Until step 3 of the inventory plan this compared nothing when the bag touched the ability
  * the block is built from, because Incudo had nowhere to put the item and the two numbers
- * were honestly answering different questions. One of the nine saves is that case — a Wizard
+ * were honestly answering different questions. One of a set of real saves is that case — a Wizard
  * 12 with a Tome of Clear Thought equipped — and it now agrees. See docs/AURORA-SAVE-FORMAT.md
  * for what that does and does not prove.
  */

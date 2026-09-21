@@ -1,7 +1,7 @@
 /**
  * The `.dnd5e` reader, against a save written by hand.
  *
- * Every construct below is one the eight real sample saves use, transcribed by shape rather
+ * Every construct below is one that a set of real saves use, transcribed by shape rather
  * than by content. The real files are somebody's characters and stay off disk here: a
  * fixture carrying a real name, backstory or portrait would be the same leak as committing
  * the file (see CLAUDE.md).

@@ -234,10 +234,10 @@ comparisons now and all 48 agree — including the eighth DC pair, the Tome of C
 wizard, whose Intelligence comes out 22 for a DC of 18 and an attack of 10. The two new extras
 are one finding: a **Mithral Armor** adornment suppresses its host armour's
 `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE` grant inside Aurora's app and in no content file, with
-Vigaro's mithral-less plate as the control case that proves it is suppression rather than
+a real save's mithral-less plate as the control case that proves it is suppression rather than
 absence. Left visible rather than guessed at. Do not re-derive the old 51/53 from a stale doc.
 
-Of the other 53 extras, the eight original saves are single-classed and contribute 52, all one
+Of the other 53 extras, the original set of real saves are single-classed and contribute 52, all one
 species — content AuroraLegacy added *after* those saves were written, confirmed against
 upstream commit dates.
 
@@ -251,7 +251,7 @@ a rule for it would be the guess ADR 0005 rules out.
 `compareWithAurora` in `packages/aurora-import` classifies all of them (frozen, ADR 0008; it was
 never in the CLI); see docs/AURORA-SAVE-FORMAT.md. `aurora-oracle.test.ts` *records* the whole table
 above, plus 1 problem in one derivation and 8 spellcasting blocks, **per save** and not in total (those
-figures are what the nine original saves sum to), and since ADR 0042 reports a change from it as a
+figures are what the original set of real saves sum to), and since ADR 0042 reports a change from it as a
 `MOVED` line and fails only the invariants. All ten tables were confirmed unchanged against the fresh
 clone at `c28ce6c`.
 
@@ -405,7 +405,7 @@ spend 28 points" is fixable in a package. Four things decided rather than fallen
   *mode*, not the number: point buy and the standard array start clean because they are
   authorities on their own values, and free entry keeps what it is given. The case that forced it
   is the common one — every imported Aurora character has six real scores and **no recorded
-  method**, so a blanket clear would have destroyed all nine sample characters' scores the moment
+  method**, so a blanket clear would have destroyed the scores of every real character in the set the moment
   someone touched "enter manually".
 - **Rolling is in `packages/ui/src/dice.ts`, above the engine and below the shell.** ADR 0019
   forbids core learning to roll (a derivation runs on every keystroke, so a roller it could reach
@@ -455,8 +455,7 @@ having picked the wrong folder. `CharacterLibrary` (`packages/ui`) is the view-m
 (`core/platform.ts`) is the port, with three implementations: Tauri's dialog and fs plugins,
 the browser's File System Access API, and a `node:fs` one that exists only in a test. **Listing
 and opening reach for no source, no index and no fetcher**, which is ADR 0012 being used rather
-than merely proved; two tests hold that line, one with a fake store and one over the nine real
-saves. If either starts needing content loaded, the feature is wrong.
+than merely proved; two tests hold that line, one with a fake store and one over a set of real saves. If either starts needing content loaded, the feature is wrong.
 
 **Importing is the one library operation that does need content, and that is not a contradiction.**
 A `.dnd5e` records Aurora's element ids and nothing about what they mean, so an import resolves
@@ -545,7 +544,7 @@ Build only, beside Save; the thirteenth command. Things to know before touching 
   the file it returns.
 - **Windows opens the dialog at the last folder used, which was the library folder.** The system's replace
   prompt is the only guard against a copy named like a library file; the app passes no starting folder.
-- **A re-save drops what only an import knew** (`extraIds`): across the nine saves one element,
+- **A re-save drops what only an import knew** (`extraIds`): across a set of real saves one element,
   `ID_INTERNAL_MULTICLASS_LEVEL_3`, plus any unresolved ids only Aurora's `<sum>` named. `aurora verify`
   is unaffected and no derived number moves.
 - **A re-save keeps the portrait only because the shell hands the bytes back.** `OpenedCharacter.assets` is
@@ -648,16 +647,16 @@ deliberately **not** fixed:
   Reproduced first, the decision published `candidates: []` **and** `unresolved: []`: the
   filter was well-formed and nothing carried the tags, because Aurora's app generates the
   options (`ID_INTERNAL_CLASS_FEATURE_{ASI|FEAT}_{level}_{CLASS}`) and only the two Artificers'
-  are written in a file. The nine saves record the generated ids and select names; 88 of the 123
+  are written in a file. A set of real saves record the generated ids and select names; 88 of the 123
   empty select filters in the corpus were this one protocol, and the 35 left are exactly `!`
   negation, `Ritual` and two proficiency lists. `improvement-options.ts` derives the options
   from what is loaded and `ContentLibrary` runs it after every source.
   Two more things had to be true for a +2 to land, and the second was **data loss found by
   measuring rather than by a test**. A +2 to one score is the same +1 element picked twice —
-  Aurora's `<sum>` lists `ID_INTERNAL_ASI_CONSTITUTION` twice for Vigaro's Fighter 12 — so a
+  Aurora's `<sum>` lists `ID_INTERNAL_ASI_CONSTITUTION` twice for a real level 12 Fighter save — so a
   kind may declare `repeatableSetter` (5e: `allow duplicate`): an element carrying it is offered
   again by a pool that holds it and its stat rules apply once per pick, counted across every
-  choice. And the importer used to drop the second pick ("keeping one"), so Vigaro imported with
+  choice. And the importer used to drop the second pick ("keeping one"), so that Fighter imported with
   a Constitution of 19 where Aurora computes 20. `aurora verify` cannot see it: it compares chosen
   elements and never an ability score, and came back byte-identical on all nine saves before and
   after — which proves nothing regressed and nothing else.
@@ -682,8 +681,7 @@ deliberately **not** fixed:
   and the "refresh this character against the newer source" flow it points at does not exist,
   so a character says a source has moved until someone builds that.
 - **Importing N saves rescans the library N times.** `CharacterLibrary.save` refreshes after
-  every write, because the collision suffix reads the current listing — so importing the nine
-  real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
+  every write, because the collision suffix reads the current listing — so importing a set of real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
   above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the
   summary cache ADR 0027 names.
 - **Two `supports` operands are still unread, and are reported rather than guessed at**
@@ -819,7 +817,7 @@ The corpus carries 79 `equipped=` attributes and **78 reach the engine** — the
 
 **Nothing moved when this landed, and that is worth almost nothing.** Before it, all 78 rules
 applied unconditionally, so evaluating can only ever *remove* a contribution. Only eight
-conditions exist across the nine saves (a monk's Unarmored Defence and its five movement modes,
+conditions exist across a set of real saves (a monk's Unarmored Defence and its five movement modes,
 the Defense fighting style twice) and all eight are true; nobody in the corpus of saves carries a
 shield, so `[shield:any]` has never been true. **Perturbation is the evidence**, and it lives in
 `packages/core/src/equipment.test.ts` and the engine tests. Do not cite the green `aurora verify`
@@ -838,7 +836,7 @@ from every entry **including the carried ones** — that asymmetry is deliberate
 neither step 1 nor step 2 moved a baseline.
 
 **The importer fills the bag, and `slot` is written zero times** (step 2). All 45 instances
-across the nine saves come across — 26 equipped, 12 attuned, 15 adorners, 4 stacked rows, 1
+across a set of real saves come across — 26 equipped, 12 attuned, 15 adorners, 4 stacked rows, 1
 user-given name — and every ADR 0024 measurement held on the real files, including the one it
 offered as falsifiable: no recorded `location` ever disagreed with the element's own `slot`, so
 the override is never written. `instanceId` is Aurora's `identifier` GUID, and an item without
@@ -867,7 +865,7 @@ built ADR 0022's `contributions` and spent it on `ac` and on ADR 0023's attuneme
 - **`ac` is derived and checked by nobody**, exactly like `hp` (ADR 0019). No `.dnd5e` save
   records an armour class, so `aurora verify` gains no comparison and never will — a green run
   after changing the formula means nothing about the formula. Never describe `ac` as verified.
-  The nine sample saves read 18, 18, 17, 18, 18, 13, 16, 20, 16; the evidence for those is the
+  A set of real saves read 18, 18, 17, 18, 18, 13, 16, 20, 16; the evidence for those is the
   Player's Handbook worked by hand plus perturbation in `tools/verify/src/armour-class.test.ts`.
 - **It is six conditional rows, not the four the plan predicted.** A cap cannot express the
   Player's Handbook sentence that heavy armour *also does not penalise* a negative Dexterity
@@ -885,7 +883,7 @@ built ADR 0022's `contributions` and spent it on `ac` and on ADR 0023's attuneme
 
 **An unattuned item contributes nothing, and says so** (ADR 0023). The gate landed at step 4 and
 the **limit** at step 5, once `contributions` existed to hold the base of 3. All 12
-attunement-requiring equipped items across the nine saves are attuned and none of the nine is
+attunement-requiring equipped items across a set of real saves are attuned and none of the nine is
 over the limit (1, 0, 1, 0, 3, 2, 1, 1, 3), so both halves fire zero times there — there is no
 oracle and there cannot be one; do not describe either as verified. Three things the corpus
 settled that are easy to miss: adorners are separate elements, so gating one gates the magical
@@ -955,3 +953,9 @@ Two things that follow from the format work, for anyone changing this code:
 - Small, focused commits. Explain what you tried that didn't work — often the useful part.
 - Diagnostics over guessing: when content is ambiguous, report it, don't silently pick.
 - When a decision would be expensive to reverse, write an ADR before writing the code.
+- **ADR evidence comes from committed generic fixtures or from public content, never from a person's own
+  files.** A measurement of a personal save cannot be re-checked by anyone else, and quoting it puts that
+  person's data into a permanent record. Attribute one to "a real Aurora save" and describe it by what it
+  holds ("a level 12 Fighter save"), never by who made it or what it is called. Older ADRs were scrubbed of
+  identities and still cite figures measured on personal saves: **re-derive those figures from the generic
+  sample saves (docs/SAMPLE-SAVES.md) once they are committed**, and correct the ADR where they differ.

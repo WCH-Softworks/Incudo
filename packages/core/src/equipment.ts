@@ -99,9 +99,9 @@ export interface ResolveEquipmentOptions {
  * first item to reach a stat keeps it. Two things deliberately occupy nothing:
  *
  *  - **an item with no slot setter** — Aurora's three inventory proxies have none, and two of
- *    the nine sample saves equip one, so this is a normal case and reports nothing;
+ *    a set of real saves equip one, so this is a normal case and reports nothing;
  *  - **an adornment** — a Mithral Armor carries `slot="body"` of its own, and all 15 adornments
- *    across the nine saves would otherwise have fought their hosts for a slot.
+ *    across a set of real saves would otherwise have fought their hosts for a slot.
  */
 export function resolveEquipment(
   character: Character,
@@ -144,7 +144,7 @@ export function resolveEquipment(
     }
 
     // A slot that publishes nothing holds any number of things. That is not a shrug: 5e has no
-    // rule about how many cloaks you may wear, and one of the nine sample saves wears two.
+    // rule about how many cloaks you may wear, and one of a set of real saves wears two.
     const candidates = (slot.stats ?? []).map((s) => s.toLowerCase());
     if (!candidates.length) continue;
 

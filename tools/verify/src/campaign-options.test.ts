@@ -12,7 +12,7 @@
  * them); they are here to show what the step now makes reachable, and are expected to pass without
  * it because they write `build/options` themselves.
  *
- * Skips where no Aurora install is present, and names no character from the nine saves.
+ * Skips where no Aurora install is present, and names no character from a set of real saves.
  */
 
 import { test } from 'node:test';
@@ -93,7 +93,7 @@ test('feats on: the Human Variant is offered, and a level 4 improvement offers a
     'and it is the only thing that switch adds to a Human',
   );
 
-  // Eight of the nine sample characters took a feat at level 4.
+  // Eight of the nine characters in a set of real saves took a feat at level 4.
   const improvement = (options: string[]) => {
     const b = build(system, elements, 4, options, fighter);
     return { b, decision: b.getState().decisions.find((d) => /Improvement Option \(Fighter 4\)/i.test(d.label))! };

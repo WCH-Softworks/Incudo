@@ -100,7 +100,7 @@ interface Character {
   choices: Choice[];                // the entire build, as element ids
   rolls: Record<string, number>;    // recorded random results — INPUTS, not derivations
   freeform: Record<string, string>; // notes, appearance, backstory
-  assets?: Record<string, string>;  // relative paths: { portrait: "assets/vigaro.png" }
+  assets?: Record<string, string>;  // relative paths: { portrait: "assets/portrait.png" }
   overrides?: Record<string, number | string>;  // manual escape hatch
 }
 

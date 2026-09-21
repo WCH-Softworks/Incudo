@@ -992,7 +992,7 @@ test('changing method clears the assignment and keeps the rolls', () => {
 });
 
 test('a character with scores and no recorded method keeps them under free entry', () => {
-  // Every one of the nine real Aurora saves is this: six scores and no method, because Aurora
+  // Every one of a set of real Aurora saves is this: six scores and no method, because Aurora
   // records none. Found by opening one in the running app — the editor had nothing to show and
   // picking a method to see the scores was how a user would have lost them.
   const character = createCharacter('test', 'pc', { progress: 1 });

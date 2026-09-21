@@ -231,7 +231,7 @@ export function deriveCharacter(
   //
   // A *carried* entry seeds nothing, and that asymmetry against `collectCharacterContent`,
   // which embeds the whole bag, is deliberate (ADR 0024 decision 7). It is also the one
-  // half of this Aurora can referee: 26 of 26 equipped items across the nine sample saves
+  // half of this Aurora can referee: 26 of 26 equipped items across a set of real saves
   // are in its own `<sum>` and 18 of 19 carried ones are not.
   //
   // What each slot holds is resolved here, once, and not inside the loop below: occupancy is a

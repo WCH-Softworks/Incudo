@@ -21,7 +21,7 @@ It is not a folder to delete, because three different things live in it:
    `aurora verify`. CI's `aurora-corpus` job is `incudo validate` with budgets. Deleting the
    command deletes the measurement, and nothing would say so.
 3. **Test infrastructure.** Eleven test files (self-containment against the real corpus, the
-   multiclass and armour-class oracles, the library and save-copy round trips over the nine saves,
+   multiclass and armour-class oracles, the library and save-copy round trips over a set of real saves,
    the schemas) and the Node adapters they stand on: `NodeFetcher`, `LocalMirrorFetcher`,
    `NodeStorage`, `node-zip`, the `node:fs` container reader, the golden fixture and its
    regenerator. None of it is a command, and all of it needs a place that says what it is.
@@ -106,7 +106,7 @@ stays frozen (ADR 0008).
 ### 3. The home is `tools/verify`, and it is `@incudo/verify`
 
 Everything in item 3 of the context moves under one name that says what it is: the package that
-checks the engine against the real world (the corpus, the nine saves, files on disk) and holds the
+checks the engine against the real world (the corpus, a set of real saves, files on disk) and holds the
 Node-side adapters that checking stands on. It ships nothing, nothing imports it, and it is
 `"private": true` like every package. It stays under `tools/` so the workspace glob, the `npm test`
 glob, `tsconfig.base.json`'s relative path and `repoRoot()`'s three-levels-up all stay true; the
@@ -127,7 +127,7 @@ nothing must also assert that something loaded, and no command line is added.
 | `character show <file>` | open the file in the app; `summarize` (below) is what tests print and compare |
 | `character new / choose / set` | the app; `CharacterBuilder` in tests |
 | `character pack / unpack` | any zip tool: a `.incu` is a plain zip (ADR 0012), and the library scan still reads the unpacked folder form |
-| `aurora import` | *Import from Aurora…* in the app, and `importAuroraSavesIntoLibrary`, which `library.test.ts` drives over the nine saves |
+| `aurora import` | *Import from Aurora…* in the app, and `importAuroraSavesIntoLibrary`, which `library.test.ts` drives over a set of real saves |
 | `aurora inspect` | nothing. It counted the parts of one save and no test or document depended on it |
 | `system validate` | *Add a system…* in the app, through `UserSystemStore` and the same `validateGameSystem`; `schemas.test.ts` and `user-systems.test.ts` |
 | `types`, `inspect <id>`, `content bundle`, `content show` | nothing. Read a corpus in a test if you need to look. `packContentBundle` and `readContentBundle` stay in core, unchanged |

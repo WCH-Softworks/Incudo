@@ -64,7 +64,7 @@ Three things in the mechanism are decisions rather than plumbing.
    of the two a character's `choices` list names first. Picks are now queued only when an edge
    reaches them; whatever nothing reaches is expanded last, on no track.
 2. **Only where there are tracks.** A character with no `advancement` defers nothing and derives in
-   the order it always did. Measured, not argued: all nine sample saves were derived with the
+   the order it always did. Measured, not argued: every save in a set of real saves was derived with the
    engine before and after, and the whole output (element order, every stat, pending and answered
    choices, problems) is identical on every one, the multiclass Paladin 2 / Warlock 18 included.
    It has no chosen subclass with a gate between its class level and its total, which is the

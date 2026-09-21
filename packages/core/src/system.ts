@@ -351,7 +351,7 @@ export function contributionCondition(def: ContributionDef): RequirementExpr | u
  * and an item takes the first one that is free — so `["armor"]` is one suit of armour and
  * `["primary", "secondary"]` is two hands. A slot with no `stats` publishes nothing and
  * holds any number of things, which is the honest answer for a slot whose system declares no
- * limit: 5e has no rule about how many cloaks you may wear, and one of the nine sample saves
+ * limit: 5e has no rule about how many cloaks you may wear, and one of a set of real saves
  * wears two.
  */
 export interface SlotDef {

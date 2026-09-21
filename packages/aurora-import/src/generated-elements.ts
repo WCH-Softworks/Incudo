@@ -11,7 +11,7 @@
  *    references in the AuroraLegacy baseline.
  *  - **29 only real saves name.** Twenty levels, two campaign options, and the seven
  *    baseline grants every 5e character carries. No content file mentions them; every one
- *    appears in the `<sum>` block of all eight sample saves, which is Aurora's own record of
+ *    appears in the `<sum>` block of every save in the original set of real saves, which is Aurora's own record of
  *    a derivation it performed. `ID_SIZE_MEDIUM` is in all eight too.
  *  - **3 only real *bags* name** — `ITEM_PROXIES` below. Aurora lets a user put a bare
  *    language or ability bump in the inventory, and materializes an `Item` to hold it.
@@ -373,8 +373,8 @@ export function auroraGeneratedElements(options: GeneratedElementOptions = {}): 
         // What a class's improvement level filters on — `Ability Score Improvement,Class`, 15
         // uses in the corpus and a tag nothing else carries — and the setter that lets one
         // ability be picked twice. Both are inferred, and improvement-options.ts says from what:
-        // the saves record these six ids being chosen for exactly that select, and Vigaro
-        // Safeguard's level 12 Fighter chose Constitution twice, which is how "+2" is written.
+        // the saves record these six ids being chosen for exactly that select, and a real
+        // level 12 Fighter save chose Constitution twice, which is how "+2" is written.
         supports: ['Ability Score Improvement', 'Class'],
         setters: { [REPEATABLE_SETTER]: { value: 'true' } },
       }),

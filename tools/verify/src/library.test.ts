@@ -284,7 +284,7 @@ test(
 );
 
 /**
- * The system filter, over the nine real saves — ADR 0031.
+ * The system filter, over a set of real saves — ADR 0031.
  *
  * The unit tests in `packages/ui` prove the partition against a fake store. This proves the
  * thing that actually worries me about a filter: that a folder holding nine perfectly good

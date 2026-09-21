@@ -55,8 +55,8 @@ A cap alone cannot say it, because the statement is a floor and not a cap. So th
 gets both bounds — which is the vocabulary [ADR 0016](./0016-stat-bounds-are-expressions.md)
 already uses for a stat, applied here to one term of a sum.
 
-**The nine sample saves cannot tell the two readings apart.** Both characters in heavy armour,
-Bran Brightwood and Vigaro Safeguard, have a Dexterity modifier of exactly **0**, where
+**A set of real saves cannot tell the two readings apart.** Both characters in heavy armour
+have a Dexterity modifier of exactly **0**, where
 `min(0, 0)` and `max(0, min(0, 0))` agree. Recorded here in the spirit of ADR 0018's rounding
 note: a formula that agrees with a character it cannot disagree with has proved nothing.
 
@@ -153,7 +153,7 @@ Exceeding the limit is a problem code of its own, **`over-attuned`**, at error l
 `over-selected` belongs to, per ADR 0023. Not a refusal: the derivation completes and says what
 is wrong.
 
-**None of the nine sample saves is over.** Counted rather than assumed, because if one had been,
+**None of a set of real saves is over.** Counted rather than assumed, because if one had been,
 the report would be right and this paragraph would have to say so: 1, 0, 1, 0, 3, 2, 1, 1, 3.
 
 ### 4. A kind with no bag keeps the number it has
@@ -181,17 +181,17 @@ The arithmetic, character by character, from the stats each save's items already
 `dex` is the Dexterity modifier, and every row is
 `max(calc, armor + applied + enh) + shield + misc`.
 
-| character | armour | `calc` | `armor` | dex | cap | applied | `enh` | `misc` | **ac** |
+| save | armour | `calc` | `armor` | dex | cap | applied | `enh` | `misc` | **ac** |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Bran Brightwood | plate (heavy) | — | 18 | 0 | 0 | 0 | — | — | **18** |
-| Deusinaldo | none (monk) | 18 | 10 | +4 | 99 | +4 | — | — | **18** |
-| Hexadin | breastplate (medium) | — | 14 | +2 | 2 | +2 | — | 1 | **17** |
-| Krusk Oathfang | studded leather (light) | — | 12 | +5 | 99 | +5 | 1 | — | **18** |
-| Merilio | half plate (medium) | — | 15 | +2 | 2 | +2 | — | 1 | **18** |
-| Paelias Amakiir | none | — | 10 | +2 | 99 | +2 | — | 1 | **13** |
-| Theren Liadon | studded leather (light) | — | 12 | +4 | 99 | +4 | — | — | **16** |
-| Vigaro Safeguard | plate (heavy) | — | 18 | 0 | 0 | 0 | 1 | 1 | **20** |
-| arturo | none | — | 10 | +5 | 99 | +5 | — | 1 | **16** |
+| A | none | — | 10 | +2 | 99 | +2 | — | 1 | **13** |
+| B | none | — | 10 | +5 | 99 | +5 | — | 1 | **16** |
+| C | studded leather (light) | — | 12 | +4 | 99 | +4 | — | — | **16** |
+| D | breastplate (medium) | — | 14 | +2 | 2 | +2 | — | 1 | **17** |
+| E | half plate (medium) | — | 15 | +2 | 2 | +2 | — | 1 | **18** |
+| F | none (monk) | 18 | 10 | +4 | 99 | +4 | — | — | **18** |
+| G | plate (heavy) | — | 18 | 0 | 0 | 0 | — | — | **18** |
+| H | studded leather (light) | — | 12 | +5 | 99 | +5 | 1 | — | **18** |
+| I | plate (heavy) | — | 18 | 0 | 0 | 0 | 1 | 1 | **20** |
 
 Every one of those agrees with the Player's Handbook worked by hand: plate is 18 and ignores
 Dexterity; studded leather is 12 plus all of it; breastplate and half plate are 14 and 15 plus at
@@ -213,7 +213,7 @@ What stands in for an oracle, and what each piece is actually worth:
   `ac:shield` is 0 on every row above and the `+ ac:shield` term has never once been exercised by
   a real character. Nobody has a negative Dexterity modifier in heavy armour, so the floor never
   bites. Both live in tests that force the slot, which is the same fallback ADR 0025 had to use.
-- **The medium-armour cap is the weakest row.** Hexadin and Merilio both have a Dexterity
+- **The medium-armour cap is the weakest row.** The two medium-armour wearers both have a Dexterity
   modifier of exactly **+2**, so `min(2, 2)` agrees with `min(2, 99)` and with no cap at all.
   Two characters at precisely the boundary is not evidence that the cap works; the test that
   forces a +4 Dexterity into half plate is.
@@ -250,7 +250,7 @@ What stands in for an oracle, and what each piece is actually worth:
 ## Alternatives considered
 
 **Keep the plan's four rows and let heavy armour cap Dexterity at 0.** Half a row shorter and
-wrong for every character with a Dexterity below 10 in plate. The nine saves cannot tell, which
+wrong for every character with a Dexterity below 10 in plate. A set of real saves cannot tell, which
 is exactly why it would have shipped.
 
 **Multiply the dexterity term by a 0/1 flag** — `min(dex, cap) * (1 - ac:armored:dexterity:ignored)`,

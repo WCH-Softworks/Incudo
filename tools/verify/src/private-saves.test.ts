@@ -1,7 +1,7 @@
 /**
  * The helpers `library.test.ts` and `save-copy.test.ts` use to fail without naming a character.
  *
- * Those two tests only run where the nine real saves are installed, so nothing in CI would notice
+ * Those two tests only run where a set of real saves are installed, so nothing in CI would notice
  * a helper that had started printing what it exists to hide. This runs everywhere, on a made-up
  * name. Each case first checks that the *plain* call does print the sentinel, so a pass cannot
  * mean the sentinel never reached the reporter in the first place.

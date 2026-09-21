@@ -7,7 +7,7 @@
  * therefore the arithmetic worked by hand against the Player's Handbook, and — more
  * usefully — **perturbation**: force a slot and watch the base, the cap and the floor change.
  * A formula that agrees with a character it cannot disagree with has proved nothing, and the
- * nine sample saves are full of those: both characters in heavy armour have a Dexterity
+ * a set of real saves are full of those: both characters in heavy armour have a Dexterity
  * modifier of exactly 0, and both in medium armour have exactly +2.
  *
  * It lives here rather than in `packages/core` because every noun in it is 5e's. Core's half
@@ -227,7 +227,7 @@ test('heavy armour does not penalise a negative Dexterity modifier', async () =>
 });
 
 test('a shield adds to whichever calculation won, and nobody in the nine carries one', async () => {
-  // `ac:shield` is 0 on all nine sample saves, so this term has never been exercised by a real
+  // `ac:shield` is 0 on every save in a set of real saves, so this term has never been exercised by a real
   // character. Forcing it is the only evidence there is.
   assert.equal(await ac({ dexterity: 14, wearing: ['PLATE'] }), 18);
   assert.equal(await ac({ dexterity: 14, wearing: ['PLATE', 'SHIELD'] }), 20);

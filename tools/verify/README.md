@@ -25,6 +25,7 @@ the same repository out into the same place, always at its head, and runs the wh
 | `self-contained.test.ts`, `library.test.ts`, `save-copy.test.ts` | ADR 0012 and ADR 0027/0038 over real content and real saves: a save opens with zero sources. |
 | `multiclass.test.ts`, `armour-class.test.ts`, `campaign-options.test.ts`, `ability-names.test.ts` | Oracles and perturbation for the 5e rules, which live here because every noun in them is 5e's. |
 | `schemas.test.ts`, `user-systems.test.ts`, `workspace.test.ts` | The public formats, and the workspace invariants CLAUDE.md states. |
+| `forbidden-names.test.ts` | No file may name a real person's character. Checked by salted fingerprints of words, so the names are not in the repository, and a failure prints a file and line, never the word. |
 | `node-platform.ts`, `node-save.ts`, `node-system.ts`, `node-zip.ts` | Fetchers, storage, container reading and writing, schema and system loading — `node:fs` and `node:zlib` behind the ports the shells implement. |
 | `fixtures/`, `fixture-character.ts`, `rebuild-fixtures.ts` | A small committed corpus and a golden `.incu`. `npm run fixtures:rebuild` regenerates the golden one after a format change. |
 

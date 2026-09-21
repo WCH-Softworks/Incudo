@@ -160,8 +160,8 @@ writes pact magic as `+count` at one level and `-count` at the next, so a warloc
 exactly **one** positive slot stat. The two real warlock saves confirm what that means:
 
 ```
-Hexadin  block "Warlock"  slots=[0,0,0,0,4,0,0,0,0]  spells: L1:3 L2:2 L3:3 L4:2 L5:4 L6:1 L7:1 L8:1 L9:1
-Merilio  block "Warlock"  slots=[0,0,0,0,3,0,0,0,0]  spells: L1:3 L2:2 L3:2 L4:2 L5:2 L6:1
+Paladin 2 / Warlock 18 save  block "Warlock"  slots=[0,0,0,0,4,0,0,0,0]  spells: L1:3 L2:2 L3:3 L4:2 L5:4 L6:1 L7:1 L8:1 L9:1
+Warlock 12 save  block "Warlock"  slots=[0,0,0,0,3,0,0,0,0]  spells: L1:3 L2:2 L3:2 L4:2 L5:2 L6:1
 ```
 
 Levels 6 through 9 come from Mystic Arcanum, whose selects hardcode their level
@@ -223,7 +223,7 @@ The evidence for the filtering is measurement and perturbation:
 
 `ac` and `hp` are still checked by nobody ([ADR 0026](./0026-armour-class-is-derived-and-checked-by-nobody.md),
 [ADR 0019](./0019-recorded-rolls-are-readable.md)). Candidate lists now join them, with one
-difference worth stating: the nine saves *are* an oracle for which spells a character ends up
+difference worth stating: a set of real saves *are* an oracle for which spells a character ends up
 with, and they agree.
 
 ## Consequences

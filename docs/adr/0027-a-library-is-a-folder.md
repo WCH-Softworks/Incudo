@@ -33,7 +33,7 @@ Flat, and not recursive:
 ```
 <library>/
 ├── aelin.incu          a character, zip form
-├── vigaro.incu
+├── second-character.incu
 └── borin/              a character, unpacked form — it has a manifest.json
     ├── manifest.json
     ├── character.json
@@ -64,7 +64,7 @@ converts between the two — the same instinct as never silently changing someon
 
 A new character's filename is its name, slugified, with a numeric suffix if that is taken.
 **After that the filename is the character's identity in the library and the app never renames
-it.** Renaming a character to "Vigaro" does not move `aelin.incu`.
+it.** Renaming a character to something else does not move `aelin.incu`.
 
 That looks like a wart and it is the deliberate half of the decision: this is a folder the user
 chose, very possibly one they keep in git or in a sync folder, and an app that quietly moves
@@ -135,7 +135,7 @@ nothing. A library backed by localStorage would be a different product wearing t
 
 - **Scanning reads every container.** There is no manifest-only fast path: the zip codec here
   inflates the whole archive, so a library of 200 characters reads 200 archives on open. Measured
-  on the nine real saves it is not noticeable; the mitigation when it becomes one is a thumbnail
+  on a set of real saves it is not noticeable; the mitigation when it becomes one is a thumbnail
   and summary cache keyed by path and mtime, and it is deliberately not built yet.
 - **Portrait bytes are held in memory for the grid.** Aurora's portraits are real photographs;
   a hundred of them is real memory. Same mitigation, same reason for not pre-building it.

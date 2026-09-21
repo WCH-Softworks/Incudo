@@ -368,7 +368,7 @@ function Shell({
     readAt?: string;
     /**
      * `character.name` as of the last successful save (or the open that gave us `entry`).
-     * `LibraryEntryRef.name` is never derived from this — a character renamed to Vigaro still
+     * `LibraryEntryRef.name` is never derived from this — a character renamed to something else still
      * lives in `aelin.incu` (ADR 0027) — so this is the one place that remembers what the name
      * *was*, which is what lets the next save notice it changed and ask about the file too.
      * Always set together with `entry`; undefined exactly when `entry` is.
@@ -755,7 +755,7 @@ function Shell({
 
   /**
    * Save, unless the character was renamed since the last save. `LibraryEntryRef.name` never
-   * follows `character.name` (ADR 0027) — "a character renamed to Vigaro still lives in
+   * follows `character.name` (ADR 0027) — "a character renamed to something else still lives in
    * aelin.incu" — so without this a rename would save silently under the old filename, with
    * nothing on screen to say the two had drifted apart.
    */

@@ -22,7 +22,7 @@ Saves are XML. The extension is the system id: `.dnd5e`.
   <information>            <!-- group, generationOption -->
   <display-properties>     <!-- DENORMALIZED CACHE: name, race, class, level, portrait -->
     <portrait>
-      <local>C:\...\portraits\shardmind male 2.png</local>
+      <local>C:\...\portraits\portrait.png</local>
       <base64><![CDATA[ iVBORw0K... ]]></base64>     <!-- the whole PNG, inline -->
   <build>
     <input>                <!-- freeform: name, gender, player, xp, manual attacks,
@@ -66,8 +66,7 @@ The only part that is genuinely input. Two kinds of node:
 
 ### The equipment block
 
-The second genuinely-input part, and the only other one. 45 `<item>` instances across the nine
-sample saves — 26 equipped, 12 attuned, 15 adorned, 4 stacked.
+The second genuinely-input part, and the only other one. 45 `<item>` instances across a set of real saves — 26 equipped, 12 attuned, 15 adorned, 4 stacked.
 
 ```xml
 <item identifier="42462837-…" name="Half Plate" id="ID_WOTC_ARMOR_MEDIUM_HALF_PLATE" sidebar="true">
@@ -105,15 +104,15 @@ a bare grant in the inventory, and they are supplied by `generated-elements.ts`.
 
 ## What the files actually contain
 
-| file | size | base64 | `<sources>` | real decisions |
-|---|---:|---:|---:|---:|
-| Vigaro Safeguard | 318 KB | 278 KB (88%) | 0 KB | 42 |
-| Deusinaldo | 2.9 MB | 300 KB | ~2.6 MB | 23 |
-| arturo | 3.1 MB | 45 KB | **3.1 MB** | 57 |
-| Merilio | 3.1 MB | 45 KB | ~3.0 MB | 52 |
-| Theren Liadon | 7.3 MB | 4.6 MB | ~2.7 MB | 49 |
-| Krusk Oathfang | 7.8 MB | 5.1 MB | ~2.6 MB | 28 |
-| Bran Brightwood | 7.9 MB | 5.2 MB | 2.7 MB | 34 |
+| size | base64 | `<sources>` | real decisions |
+|---:|---:|---:|---:|
+| 318 KB | 278 KB (88%) | 0 KB | 42 |
+| 2.9 MB | 300 KB | ~2.6 MB | 23 |
+| 3.1 MB | 45 KB | **3.1 MB** | 57 |
+| 3.1 MB | 45 KB | ~3.0 MB | 52 |
+| 7.3 MB | 4.6 MB | ~2.7 MB | 49 |
+| 7.8 MB | 5.1 MB | ~2.6 MB | 28 |
+| 7.9 MB | 5.2 MB | 2.7 MB | 34 |
 
 **A 3.1 MB file records 57 decisions.** Everything else is a portrait, a derived snapshot, or
 an exclusion list.
@@ -206,10 +205,10 @@ adornments started seeding the derivation. `not-modelled` fell from **51 to 3**:
 were "this came from the bag" and one was "the bag moves this DC", and all 48 became comparisons
 instead. `element-extra` rose from **53 to 55**, and the two are one finding rather than
 overhead. `content-missing` is unchanged at 13. Incudo's own element total went from 1,151 to
-1,200; Aurora's stayed at 1,158, because it is the same nine files.
+1,200; Aurora's stayed at 1,158, because it is the same set of files.
 
 The three counts that did **not** move are the ones worth reading first. No `stat-mismatch`
-appeared, no spell went missing, and no new pending decision opened on any of the nine saves —
+appeared, no spell went missing, and no new pending decision opened on any of a set of real saves —
 which is the prediction the plan made in advance, on the grounds that no bag element in any of
 them opens a `<select>`. Nothing new is reported as an engine problem either.
 
@@ -226,7 +225,7 @@ attunement-requiring equipped items are attuned. This is a file about what Auror
 and step 4 is a thing it cannot.
 
 **Step 5 moved nothing either, and it could not have.** `ac` is derived since
-[ADR 0026](./adr/0026-armour-class-is-derived-and-checked-by-nobody.md) — the nine saves now read
+[ADR 0026](./adr/0026-armour-class-is-derived-and-checked-by-nobody.md) — a set of real saves now read
 18, 18, 17, 18, 18, 13, 16, 20, 16 — and **no `.dnd5e` save records an armour class**. The
 `<defenses>` block holds an empty `<conditional>` and the only `<attributes>` block in the format
 belongs to the companion, so there is nothing to diff and there never will be. A byte-identical
@@ -265,7 +264,7 @@ means rather than adding to it. Before, this file's own `saveDcBase: 8` rebuilt 
 compared it against Aurora's identically-computed one — which confirmed the ability modifier
 and the proficiency bonus, and nothing about whether Incudo could show a DC, because no stat
 held one. Both numbers are now published per casting source by the system definition, and it
-is those that are compared: **8 DC rows and 8 attack rows** across the nine saves. The eighth
+is those that are compared: **8 DC rows and 8 attack rows** across a set of real saves. The eighth
 pair used to be carved out — it belongs to a wizard with a Tome of Clear Thought equipped — and
 it is the subject of the next section, because it is the one number the bag was hiding.
 
@@ -334,14 +333,14 @@ The corpus does not express that anywhere — the mithral grants
 application behaviour, the same family as the ability score maximum, the slot table, hit points,
 the save DC and armour class.
 
-The nine saves happen to contain the control case, which is what makes this a measurement rather
+A set of real saves happen to contain the control case, which is what makes this a measurement rather
 than a story:
 
-| save | equipped | mithral | `…GRANTS_STEALTH_DISADVANTAGE` in `<sum>` |
-|---|---|---|---|
-| Bran | Plate | yes | no |
-| Merilio | Half Plate | yes | no |
-| Vigaro | Plate | **no** | **yes** |
+| equipped | mithral | `…GRANTS_STEALTH_DISADVANTAGE` in `<sum>` |
+|---|---|---|
+| Plate | yes | no |
+| Half Plate | yes | no |
+| Plate | **no** | **yes** |
 
 So it is not that Aurora never emits the marker; it is that the mithral suppresses it. Left
 unmodelled and visible rather than guessed at, per [ADR 0005](./adr/0005-aurora-import.md) —

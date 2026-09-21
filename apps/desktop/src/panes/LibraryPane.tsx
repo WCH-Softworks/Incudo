@@ -455,7 +455,7 @@ function Portrait({ entry }: { entry: LibraryEntry }): React.JSX.Element {
  * The media type, from the name the importer gave the file.
  *
  * Not always PNG: the importer sniffs five formats and names the asset accordingly, and one
- * of the nine real sample saves carries a JPEG. Assuming PNG here handed the browser a blob
+ * of a set of real saves carries a JPEG. Assuming PNG here handed the browser a blob
  * under the wrong type — found by running the library against those saves, which no unit test
  * had caught because every fixture portrait was a PNG.
  */
