@@ -229,6 +229,17 @@ is removed**. Both mechanisms existed side by side at `66d2dcd`, on the maintain
 | problems in a derivation; spellcasting blocks | 1; 8 | 1; 8 |
 | rows compared: slot / save DC / attack | never printed | 8 / 8 / 8 |
 
+> **Note, 2026-09-23 — the saves row re-run over the thirty samples.** `66d2dcd` was checked out again,
+> where the CLI and the oracle module both exist, and `incudo aurora verify --json` was run on each sample
+> against the same corpus checkout (`c28ce6c`, offline, `repository` layout) and compared with the oracle
+> module's differences: **30 of 30 identical**, kind and message for every difference, which reproduces the
+> "9 of 9" row on the samples. At that commit the samples' differences sum to 10 element-missing, 101
+> element-extra, 0 spell-missing, 11 stat-mismatch, 101 content-missing and 19 not-modelled (before ADRs 0040
+> and 0041 and the case fold), so the "1 / 55 / 0 / 0 / 13 / 3" row cannot be compared with them; it is the
+> original nine's. The corpus rows (740, 14,316, 229, 57, …) are not save figures and were not re-run. The
+> "8 / 8 / 8" rows are not re-derivable (the CLI never printed them and the nine are gone). The sentence "It
+> cannot run in CI, and never could" describes the original saves; the samples do run in CI (ADR 0042).
+
 Two things about that table are not what they look like:
 
 - **The `repository` layout was reproduced on a rebuilt checkout, not a real one.** The install is

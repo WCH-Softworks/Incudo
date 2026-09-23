@@ -69,6 +69,23 @@ Three things in the mechanism are decisions rather than plumbing.
    choices, problems) is identical on every one, the multiclass Paladin 2 / Warlock 18 included.
    It has no chosen subclass with a gate between its class level and its total, which is the
    reason it never saw this.
+
+   > **Note, 2026-09-23 — re-derived from the thirty sample saves, and the claim splits.** The same engine
+   > before and after (`0f6bdfb^` against `0f6bdfb`, one script at both, corpus at `c28ce6c`), diffing every
+   > element and its order, every stat, the pending choices, the problems and each difference against
+   > Aurora: **the 22 single-class samples are identical**, which is "only where there are tracks". **The
+   > 8 multiclass samples are not**, all of them, so "identical on every one" does not hold of them. Each loses
+   > elements it should not have had (1 to 9 each, none gained), Aurora's `element-extra` falls from **101 to
+   > 73** over the 30, and the derived caster level moves onto the recorded one: Wizard 4 / Paladin 3 /
+   > Fighter 3 from 5 to 6, Wizard 3 / Rogue 3 / Warlock 3 from 3 to 4, and the interleaved Rogue / Wizard from
+   > 4 to 5, where Aurora wrote 6, 4 and 5. So the change is visible to the oracle on the samples, unlike the
+   > original nine, and it was a correction, not a no-op. `stat-mismatch` reads **11 before and 13 after**,
+   > two more on two samples, and those are the slot rows ADR 0041 later showed had been compared with the
+   > wrong table; with that fix, ADR 0041, the same samples read 0. Two statements elsewhere in this ADR
+   > therefore hold of the original nine only: "`aurora verify` could not see it … no sample save has a
+   > subclass caster beside a full one" (three samples now do: an Arcane Trickster or an Eldritch Knight beside
+   > a Wizard) and "the Aurora oracle … proves only that nothing regressed". Not re-derivable: the Paladin 2 /
+   > Warlock 18, which is not among the samples.
 3. **A pick whose chooser is gone still seeds, on the total.** ADR 0015's carried gap, "nothing
    prunes the picks of a class whose levels went away", is kept exactly. Inheriting a track is not
    a reason to start pruning; that wants a decision about every pick, not about levels.

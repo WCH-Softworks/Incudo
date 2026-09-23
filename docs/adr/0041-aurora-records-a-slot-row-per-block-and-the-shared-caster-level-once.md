@@ -93,6 +93,14 @@ declared in `systems/dnd5e/system.json`, and is held by the hand-worked rows in
 > ordinary block, an Arcane Trickster and pact magic; both compare clean. (4) The 29 blocks' slot, DC and
 > attack rows all agree and the seven caster levels do. Not re-derivable: "the other eight saves' figures did
 > not move", which is a comparison of two runs over saves that are not committed.
+>
+> **Addendum, same day: the claim about the ADR's own change was re-run as a before/after on the samples**
+> (`a3c515d^` against `a3c515d`, one script at both). **24 of 30 are identical** in every derived element,
+> order, stat, pending choice, problem and difference against Aurora, and **6 differ in exactly one way**:
+> their `stat-mismatch` differences go away, **13 in all** (2, 2, 3, 2, 2, 2), on the Paladin 3 / Sorcerer 3
+> in both editions, the Wizard 4 / Artificer 3, the Wizard 4 / Paladin 3 / Fighter 3, the Wizard 3 / Rogue 3 /
+> Warlock 3 and the interleaved Rogue / Wizard. No derived value moves. The ADR's premise, that
+> the comparison was wrong and the derivation was not, is what this shows on the samples.
 - **Bugfix, not new import support.** Nothing about what `packages/aurora-import` reads into a character
   changed. The frozen package gained one optional field on a parsed save and corrected how a recorded
   number is judged, which is what a check that reported a false `stat-mismatch` on real data needed.

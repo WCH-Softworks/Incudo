@@ -94,6 +94,12 @@ reason in a commit; reading a `MOVED` line is the point of printing it.
 | `content-missing` | | an element removed or renamed upstream | reported |
 | `not-modelled` | | Aurora-app behaviour Incudo does not model | reported |
 
+> **Note, 2026-09-23:** "52 of the 55 across the first nine saves" is the original set's. On the thirty samples
+> (`c28ce6c`) `element-extra` is 73, and it is not mostly content added after the saves were written: 42 are
+> one pair of internal multiclass grants that Aurora's `<sum>` omits, 22 are firearm proficiencies, 8 the
+> Thieves' Tools expertise pair and 1 a 2024 weapon mastery grant (docs/AURORA-SAVE-FORMAT.md has the detail).
+> Reporting the count rather than asserting it is unaffected.
+
 `element-missing` outside the allowlist fails even though upstream can cause it, and that is a judgement,
 not a derivation. `compareWithAurora` already sends an element upstream *removed* to `content-missing` by
 walking the save's own tree to an absent ancestor, so what is left is an element that exists and was not

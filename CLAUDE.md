@@ -313,8 +313,8 @@ Defences and a magic-armour, three-attunement build, and `aurora-oracle.test.ts`
 17**, for reasons that are Incudo's: the average-HP option, a second class's own dice, and an item that
 sets an ability score. Both are in ROADMAP Phase 2 and are reported, not asserted.
 
-> **Note, 2026-09-23 — the counts re-measured differently.** `aurora-oracle.test.ts` reports speed
-> differing on **7** samples (10, 11, 12, 13, 19, 21, 27 — a Ranger, a Barbarian, a Druid, two Rogues, a
+> **Note, 2026-09-23 — the counts re-measured differently.** `aurora-oracle.test.ts` reported speed
+> differing (before ADR 0043) on **7** samples (10, 11, 12, 13, 19, 21, 27 — a Ranger, a Barbarian, a Druid, two Rogues, a
 > Barbarian / Monk and a 2024 Monk), not 9, and hit points on **18**, not 17. The reasons named are unchanged.
 
 > **Update, 2026-09-23 — speed now agrees on all 30 and is held to the readout** ([ADR 0043](docs/adr/0043-speed-is-the-race-base-plus-what-content-adds-to-it.md)):
@@ -403,6 +403,9 @@ computes nothing. Things to know before touching it:
   those names, so every one read false for every character — all 28 gates for a Charisma 20
   character, and 24 feats never offered. `systems/dnd5e/system.json` now declares them as refs,
   no format change. `aurora verify` is byte-identical before and after and *cannot* see this.
+  *(Note, 2026-09-23, re-run as a before/after over the thirty samples: still no difference against Aurora and
+  no derived element moves, but one existing stat does, the plate-wearing Fighter's `speed`, 20 to 30, which is
+  right and was wrong since the bag step seeded plate. ADR 0036's note.)*
 - **Moving a level between classes with different dice clears that level's hit point roll**, and
   it reopens as a decision. A level that comes into being keeps any roll already recorded for it:
   the oracle's own rolls include a 10 on a d8, so a value above the die is something real saves
@@ -429,6 +432,10 @@ computes nothing. Things to know before touching it:
   and `tools/verify/src/rogue-wizard.test.ts`, a Wizard 4 / Rogue 4 built through the builder and
   worked by hand against the Player's Handbook. Found by building it in the running app, not by any
   test — the ninth save had no oath and a patron whose gates all sit below its class level.
+  *(Note, 2026-09-23: on the thirty samples the oracle **can** see it. All 8 multiclass samples change with this
+  commit, `element-extra` falls 101 to 73 and the caster level moves onto Aurora's in the three subclass-caster
+  samples; the 22 single-class ones are identical. ADR 0040's note. "All nine derive identically" is the
+  original nine's.)*
 - **The Rogue/Wizard has an Aurora referee, and it is a sample.** `rogue-wizard-aurora.test.ts` builds the
   description in `rogue-wizard-interleaved-build.ts` through the builder, one level at a time (Rogue, Wizard,
   Rogue, Wizard, ...), and compares it with sample 06, the same description saved from Aurora: 0
@@ -718,6 +725,9 @@ deliberately **not** fixed:
   a Constitution of 19 where Aurora computes 20. `aurora verify` cannot see it: it compares chosen
   elements and never an ability score, and came back byte-identical on all nine saves before and
   after — which proves nothing regressed and nothing else.
+  *(Note, 2026-09-23: on the thirty samples that run is not byte-identical: 12 change, `stat-mismatch` falls
+  25 to 11 because 14 save DC and attack rows were wrong by the dropped second pick, so the spellcasting rows
+  did see it. ADR 0035's note.)*
   The feat half is generated too, gated on `ID_INTERNAL_OPTION_ALLOW_FEATS`, and reachable since
   ADR 0032's `multiple: true` (the campaign options step, below). **Eight of the nine sample
   characters took a feat at level 4**, and with feats on a level 4 Fighter is offered two options
