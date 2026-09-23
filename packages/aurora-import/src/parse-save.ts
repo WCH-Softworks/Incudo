@@ -72,6 +72,11 @@ export interface AuroraLevel {
   multiclass?: boolean;
   /** `starting="true"`: the level at which that class was first taken. */
   starting?: boolean;
+  /**
+   * `rndhp=`, present only on the level a class began at: **that class's own** hit point dice,
+   * indexed by the class's level and not the character's (ADR 0044). One list per class.
+   */
+  rndhp?: number[];
 }
 
 /** One `id=` node: something Aurora granted. Derivable, and re-derived rather than trusted. */
@@ -346,9 +351,11 @@ function readElementsTree(node: XmlNode, diagnostics: SaveDiagnostic[]): Element
         if (type === 'Level') {
           const at = numberOrUndefined(name) ?? 0;
           tree.levelCount = Math.max(tree.levelCount, at);
-          const rndhp = child.attrs['rndhp'];
-          // Aurora writes the whole 20-entry roll list once, on the level it was rolled at.
-          if (rndhp && !tree.rndhp.length) tree.rndhp = parseRndhp(rndhp, diagnostics);
+          const rawRndhp = child.attrs['rndhp'];
+          const ownRndhp = rawRndhp ? parseRndhp(rawRndhp, diagnostics) : undefined;
+          // Aurora writes a 20-entry list on the level each class began at; `save.rndhp` stays the
+          // first of them, as it always was, and each level keeps its own for the importer.
+          if (ownRndhp && !tree.rndhp.length) tree.rndhp = ownRndhp;
           // Which class this level was taken in — the only record of a multiclass split in
           // the whole save, and read by nothing until ADR 0015.
           if (at > 0) {
@@ -357,6 +364,7 @@ function readElementsTree(node: XmlNode, diagnostics: SaveDiagnostic[]): Element
               classRef: child.attrs['class'] || undefined,
               multiclass: child.attrs['multiclass'] === 'true' ? true : undefined,
               starting: child.attrs['starting'] === 'true' ? true : undefined,
+              rndhp: ownRndhp,
             });
           }
         }

@@ -828,6 +828,11 @@ bypasses every rule; it is for a caller that has no budget, not for an editor.
 per-level rolls and never the total, so `aurora verify` has nothing to diff. Do not describe
 `hp` as verified; it is derived from the published rule and from the rolls, and that is all.
 
+> **Update, 2026-09-23 — hit points are being fixed against the readout, one step at a time** ([ADR 0044](docs/adr/0044-hit-points-follow-the-method-the-character-uses.md)):
+> the importer now files a multiclass save's per-class dice under the character levels that class was taken at (a
+> bugfix to the frozen package, the one exception), an item that sets a score is a lower bound on it, and a
+> single-class character publishes `level:<class>`. 11 samples still differ, all with the average option on.
+
 Two things ADR 0018 added that are easy to reach for wrongly:
 
 - **A `table` expression, and `trackStats` on a character kind.** `trackStats` is the piece

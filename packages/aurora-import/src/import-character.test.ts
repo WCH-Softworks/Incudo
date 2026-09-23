@@ -439,3 +439,50 @@ test('with no content loaded there is no way to know, so the second pick is drop
   assert.deepEqual(character.choices.find((c) => c.ruleKey === BUMP_KEY)!.elementIds, ['ID_BUMP']);
   assert.ok(diagnostics.some((d) => d.message.includes('"ID_BUMP" is recorded twice')));
 });
+
+// --- hit point dice of a class of its own (ADR 0044) --------------------------------------
+
+/** A Rogue / Wizard taken level by level, each class carrying its own list on the level it began at. */
+const INTERLEAVED = `<character version="1.0.3">
+  <display-properties><name>Split</name></display-properties>
+  <build>
+    <abilities><strength>10</strength><dexterity>10</dexterity><constitution>10</constitution>
+      <intelligence>10</intelligence><wisdom>10</wisdom><charisma>10</charisma></abilities>
+    <elements level-count="4">
+      <element type="Level" name="1" id="ID_LEVEL_1" rndhp="8,5,6,7,1,1,1,1">
+        <element type="Class" name="Class" requiredLevel="1" checksum="b" registered="ID_CLASS_ROGUE" />
+      </element>
+      <element type="Level" name="2" id="ID_LEVEL_2" multiclass="true" starting="true" rndhp="3,4,2,1,9,9,9,9" class="ID_MC_WIZARD" />
+      <element type="Level" name="3" id="ID_LEVEL_3" />
+      <element type="Level" name="4" id="ID_LEVEL_4" multiclass="true" class="ID_MC_WIZARD" />
+    </elements>
+  </build>
+</character>`;
+
+function interleaved() {
+  const wizard = { ...element('ID_CLASS_WIZARD', 'Class'), multiclass: { id: 'ID_MC_WIZARD' } };
+  return importAuroraCharacter(parseAuroraSave(INTERLEAVED), {
+    index: index(element('ID_CLASS_ROGUE', 'Class'), wizard as Element),
+    id: 'fixed',
+    now: '2026-01-01T00:00:00.000Z',
+  }).character;
+}
+
+test('each class of a multiclass save keeps its own dice, filed under the character levels it was taken at', () => {
+  const character = interleaved();
+  assert.deepEqual(character.advancement?.map((e) => e.elementId), [
+    'ID_CLASS_ROGUE',
+    'ID_CLASS_WIZARD',
+    'ID_CLASS_ROGUE',
+    'ID_CLASS_WIZARD',
+  ]);
+  // Rogue levels are character levels 1 and 3 and read the Rogue's first two entries; Wizard levels
+  // are 2 and 4 and read the Wizard's own list, not the entries the Rogue's list holds at those
+  // positions. Read by position (the old behaviour), level 2 would be 5 and level 4 would be 7.
+  assert.deepEqual(character.rolls, {
+    'hp:level:1': 8,
+    'hp:level:2': 3,
+    'hp:level:3': 5,
+    'hp:level:4': 4,
+  });
+});

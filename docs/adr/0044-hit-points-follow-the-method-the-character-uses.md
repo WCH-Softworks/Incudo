@@ -142,6 +142,23 @@ samples leave the hit point disagreement list (18 disagreeing samples became 16)
 every oracle table is byte-identical to before (snapshot/baseline run), and
 `tools/verify/src/ability-score-set.test.ts` fails 3 of its 4 cases with the bounds removed.
 
+**Done (step 2), and its proof.** `progression.trackType` (5e: `Class`) names the type; the single element of it a
+character with no advancement holds is an implicit track that publishes `level:<name>` and takes part in
+track stats, and is not handed to the gates. Oracle tables are identical to the pre-change snapshot over all
+30 samples. `single-class-track.test.ts` holds it on the 22 single-class samples and fails without the declared
+type; `engine.test.ts` has the perturbation and the two refusals (two candidates, and a recorded advancement).
+The 2024 Sorcerer's hit points now include the +3 and read 26 against the 23 shown, until step 4 replaces the
+stale dice with averages.
+
+**Done (step 3), and its proof.** `parse-save` keeps each Level's own list; `toRolls` files each class's list
+under the character levels that class was taken at, found from the advancement the importer already builds
+(the list sits on the level the class began at, so that level's advancement entry names the class). A
+save with no resolvable advancement keeps the old by-position behaviour. Samples 02 to 06, the five multiclass
+samples without the option, now read what Aurora showed (were 1 to 18 off), held by
+`multiclass-hit-dice.test.ts`, which fails on the old importer, and by a hand-written interleaved save in
+`import-character.test.ts` that gets the old numbers back when the two source files are reverted. Oracle
+tables unchanged.
+
 ### 5. A single class gets a track that is published and does not gate
 
 The engine gives a character with no `advancement` an implicit track: the single element of the kind's

@@ -134,9 +134,9 @@ export function importAuroraCharacter(
 
   character.choices = toChoices(save, options.index, known, diagnostics);
   character.baseStats = { ...save.abilities };
-  character.rolls = toRolls(save);
   const advancement = toAdvancement(save, options.index, diagnostics);
   if (advancement) character.advancement = advancement;
+  character.rolls = toRolls(save, advancement);
   const inventory = toInventory(save, options.index, known, diagnostics);
   if (inventory) character.inventory = inventory;
   character.freeform = toFreeform(save);
@@ -634,8 +634,29 @@ function slotOverride(item: AuroraItem, index: ElementIndex | undefined): string
  * hit die at level 1 and never rolls, so `hp:level:1` sits there unused; dropping it here would
  * be this file deciding a rule it has no business knowing.
  */
-function toRolls(save: AuroraSave): Record<string, number> {
+function toRolls(save: AuroraSave, advancement: AdvancementEntry[] | undefined): Record<string, number> {
   const rolls: Record<string, number> = {};
+  if (advancement) {
+    // A multiclass save carries one list per class, on the level that class began at, indexed by
+    // the class's own level (ADR 0044). Each one lands on the character levels that class was
+    // taken at. Entries past a class's last level belong to no character level yet, so they are
+    // not copied: unlike the single-class tail below, there is no level to file them under.
+    const filed = new Set<string>();
+    for (const level of save.levels) {
+      if (!level.rndhp) continue;
+      const owner = advancement.find((entry) => entry.at === level.at)?.elementId;
+      if (owner === undefined || filed.has(owner)) continue;
+      filed.add(owner);
+      advancement
+        .filter((entry) => entry.elementId === owner)
+        .sort((a, b) => a.at - b.at)
+        .forEach((entry, k) => {
+          const value = level.rndhp![k];
+          if (value !== undefined) rolls[`hp:level:${entry.at}`] = value;
+        });
+    }
+    return rolls;
+  }
   save.rndhp.forEach((value, i) => {
     rolls[`hp:level:${i + 1}`] = value;
   });
