@@ -204,6 +204,17 @@ pattern without exactly one `*`, and a duplicate key.
 That is real: it says the precedence change, the grouping and the setter operands did not break
 a single one of the 951 compared element ids.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves**, as a before/after over the three commits
+> that changed the `supports` language and resolved `$(…)` (`f1eef6f^` against `0487b9e`, one script at both,
+> corpus at `c28ce6c`). **All 30 are identical**: every derived element and its order, every stat, the pending
+> choices, the problems and every difference against Aurora, so the "byte-identical" claim reproduces, on
+> 3,433 compared element ids in place of 951. `spell-missing` is **0** across the 30, and the samples' 29
+> casting blocks list spells that all derive, so "a set of real saves *are* an oracle for which spells a
+> character ends up with, and they agree" holds. The candidate counts in the bullets below (161, 205, 171,
+> 23, the Eldritch Knight's 6 and 20) are measured on hypothetical characters against the corpus and are
+> not save figures; they were not re-run here and the corpus has moved since. The 13 `!` uses, 17 `Ritual`
+> uses and nine empty selects are corpus counts and are likewise not re-derived.
+
 **It says nothing about whether the candidate lists are right.** `aurora verify` compares the
 elements a character *chose*; a filter that resolved to everything would move no count anywhere.
 The evidence for the filtering is measurement and perturbation:

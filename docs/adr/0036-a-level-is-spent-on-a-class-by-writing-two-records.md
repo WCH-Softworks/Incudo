@@ -61,6 +61,22 @@ Aurora's app publishes the short names in application code, as it does the multi
 `aurora verify` could not see it: it compares the elements a character *chose*, and came back
 byte-identical on all nine saves before and after the fix.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves**, as a before/after over the commit that
+> published the six short names (`c5e90cf^` against `c5e90cf`, one script at both, corpus at `c28ce6c`).
+> **"`aurora verify` could not see it" reproduces:** elements, their order, pending choices, problems and every
+> difference against Aurora are identical on all 30. The stats are not: the six names appear on every sample
+> (`cha`, `con`, `dex`, `int`, `str`, `wis`), and **one existing stat moves**, the plate-wearing Fighter's
+> `speed`, from **20 to 30**. Plate's speed penalty is gated on `[str:15]` and that Fighter has Strength 17,
+> so the penalty was being applied because the name read 0. Aurora's screen shows 30 (the `manifest.json`
+> readout), so the fix is right, and the same bug had been *introduced* one step earlier by ADR 0024's bag
+> step (see the note in `docs/AURORA-SAVE-FORMAT.md`), which no count saw. **Two figures differ.** The option
+> `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is on in **9 of 30** samples (all 8 multiclass ones and one more),
+> not "every save", so 21 samples do show it off, although none of them is multiclass and so none shows what
+> the option changes. And "the oracle's own recorded rolls include a 10 at a level whose die is a d8" was
+> not re-derived: every sample carries a 20-value `rndhp` list, most of it padding for levels never taken, and
+> the values were not compared level by level with each class's die. The 72 / 36 / 24 / 6 reads and the 28
+> blocks are corpus figures and were not re-run.
+
 ## Decision
 
 ### 1. Six declared stats, and nothing else about stats

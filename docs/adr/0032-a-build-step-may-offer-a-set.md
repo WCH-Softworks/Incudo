@@ -134,6 +134,12 @@ a set of real saves will be byte-identical before and after. The evidence has to
 and perturbation — the number of candidates a race offers with the option on and off, and a
 level-1 wizard whose spellbook actually reaches six.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** "Byte-identical before and after" was run
+> over the commit that added `multiple: true` and the campaign options step (`268a5e2^` against `268a5e2`,
+> one script at both, corpus at `c28ce6c`): **30 of 30 identical**, on every derived element and its order,
+> stat, pending choice, problem and difference against Aurora. The candidate-count evidence the ADR says it
+> relies on instead is not a save figure and was not re-run.
+
 **The migration is nothing.** One optional boolean, ignored where absent, plus one build step in
 `systems/dnd5e/system.json`. `schemas/system.schema.json` gains a property and
 `validateGameSystem` gains the `required`-and-`multiple` rejection.

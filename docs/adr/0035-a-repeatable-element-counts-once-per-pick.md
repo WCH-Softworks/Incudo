@@ -180,6 +180,20 @@ and it reads the list rather than guessing.
 > referee, since the oracle compares chosen elements and not scores). *New:* the 2024 samples record a
 > different family for their background improvement,
 > `ID_INTERNAL_ABILITY_SCORE_IMPROVEMENT_COMBINATION_*`, which this ADR does not describe.
+>
+> **Addendum, same day: "byte-identical on all nine saves" was re-run as a before/after and does not
+> reproduce on the samples.** Over the ADR's commits (`56bdba2^` against `3e667f4`, one script at both, corpus
+> at `c28ce6c`), **12 of 30 samples change** and 18 are identical. What changes is ability scores, where the
+> second pick of a repeated ASI now counts: a Fighter's Strength 17 becomes 20, a level 20 Fighter's
+> Strength 17 to 20 and Constitution 16 to 19, a level 20 Cleric's Wisdom 17 to 20, and the derived numbers
+> that follow (modifiers, hit points 203 to 223 and 163 to 183, spell save DCs and attack bonuses, initiative
+> and armour class). Against Aurora, `stat-mismatch` falls from **25 to 11** over the 30: **14** save DC and
+> attack bonus mismatches, on five samples, were the dropped second pick, and Aurora's own numbers had been
+> saying so. So the ADR's "`aurora verify` cannot see it" is true of the original nine and false of the
+> samples, where the spellcasting rows were the referee; the 11 that remain are the per-block table
+> mismatches ADR 0041 later removed. The ADR's own words, that the byte-identical run "proves nothing broke and
+> nothing else", still stand for what it says about that run. Elements, their order and the problems do not
+> move on any sample; two 2024 samples lose a pending "Ability Score Improvement Feat" choice.
 - Class names with a space have never been exercised: no class in AuroraLegacy has one, so the
   id substitution (non-alphanumerics become `_`) is untested against a save.
 - ADR 0022 says a rule on a generated element is frozen into every save that embeds it. The 146

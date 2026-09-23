@@ -229,6 +229,13 @@ uses for a `Choice`: `<owner>/select:<name>`. The engine used to check each rule
 `"Cantrip (Warlock)" allows 2 choice(s) but 4 are recorded` — 26 such errors across a set of real saves, on 8 of the 9, and on non-casters too (a rogue's Expertise is the same shape).
 It now sums the allowance over the rules the character has actually reached.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves**, as a before/after over the commit that
+> made a select pool one allowance (`9616da8^` against `9616da8`, one script at both, corpus at `c28ce6c`).
+> Before it, the samples report **50** `over-selected` errors on **16** of the 30 (casters and non-casters alike, a
+> rogue's Expertise being the same shape), where the text has 26 on 8 of 9; after it, **0**, and the only other
+> problem in the 30, one unresolved element, does not move. The mechanism reproduces at a larger size. The
+> 2,553 groups and 89 multi-rule groups are corpus counts and were not re-run.
+
 2,553 select groups in the corpus, of which **89 have more than one rule** — up to 20, for a
 wizard's spellbook. Their rules are not interchangeable: 32 groups differ in `requirements`,
 18 in `supports`, 7 in `type`. A wizard's first six spellbook entries are 1st-level spells
@@ -455,6 +462,10 @@ ability bumps, twenty levels, the 5e baseline grants. That resolved 51 of the 57
 `ID_SIZE_*` family was listed above as "genuine upstream typos" and that was **wrong**: every
 one of a set of real saves has `ID_SIZE_MEDIUM` in its `<sum>` block, which is Aurora's own
 record of a derivation it performed. They are generated, not missing.
+
+> **Note, 2026-09-23:** re-derived from the samples, every one of the 30 has a size in its `<sum>` (28
+> `ID_SIZE_MEDIUM`, 2 `ID_SIZE_SMALL`), so "every one … has `ID_SIZE_MEDIUM`" is 28 of 30 and the rest are
+> Small; the conclusion, that Aurora derives them, is unchanged.
 
 **Grant references and requirement references are now counted separately**, because they fail
 differently. A `<grant>` to an id nothing declares is broken content: a character silently
