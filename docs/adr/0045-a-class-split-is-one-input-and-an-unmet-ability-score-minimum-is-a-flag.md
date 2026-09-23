@@ -82,7 +82,8 @@ This amends ADR 0036 decision 4, which offered a class only when its whole gate 
 class's own `requirements` plus its multiclass block's. The gate is split by *term*, not by class:
 
 - **Ability score terms (`atLeast`, `[cha:13]`) are soft.** If they are the only reason the gate is false,
-  the class is takeable and carries a flag. `planLevelClass`, `planProgress` and the split write accept it.
+  the class is takeable and carries a flag. `ClassOption.eligible` therefore keeps meaning "may be taken"
+  (every builder write already checks it) and a new `flag` says which scores are short. `planLevelClass`, `planProgress` and the split write accept it.
 - **Every other term stays hard**, exactly as ADR 0036 has it: a held or absent element (`has`, the
   2014/2024 pair's `!(ID_…_CLASS_X||ID_…_MULTICLASS_X)`, which reports `excluded` with `excludedBy`), an
   `equals`, a `flag`. A class refused for one of those is refused as it is today, whatever the scores say. A
@@ -121,6 +122,17 @@ All in `packages/ui/src/multiclass.ts` under `node --test`, with the shell compu
 ADR 0036): `planSplit(character, segments, config, elements)`, `ClassOption.flag`, and one
 `CharacterBuilder.applySplit(segments)`. The desktop control is a rendering of `ClassLevelState`: a segment
 list (class, levels, up/down), an Apply button, and flags beside each class.
+
+**Done (step 1), and its proof.** `ClassOption.flag` (`ScoreShortfall[][]`, alternatives of terms) and the
+soft/hard split are in `packages/ui/src/multiclass.ts`. A minimum under a `not` is read for real, since reading
+it as met would turn a negation into a refusal that is not about scores. A class already held shows its flag
+too, from its multiclass block alone: its own `requirements` read "not multiclass" and are false for exactly the
+character that took it second. Evidence: `multiclass.test.ts` (a short score is taken and flagged, clears when
+raised; either/both shapes; the other edition and a missing block still refuse at any score) and
+`tools/verify/src/multiclass-flag.test.ts` against the official corpus: the refused set is identical at
+score 3 and score 30, every flag names a score below its minimum, and at 30 nothing is flagged. Making
+`atLeast` hard again fails 7 tests. The control does not show the flag yet (step 4), so a short score is
+currently silent on screen.
 
 ## Consequences
 

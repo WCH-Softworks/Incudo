@@ -132,6 +132,17 @@ function corpus(): MapElementIndex {
       requirements: '[vigour:13],!(RANGER||MC_RANGER)',
       prerequisite: 'Vigour 13',
     }),
+    // Two shapes of minimum the corpus writes: either of two scores, and both of two.
+    ...widgetClass('ROGUE', 'Rogue', 'd8', {
+      id: 'MC_ROGUE',
+      requirements: '([vigour:15]||[grit:15])',
+      prerequisite: 'Vigour 15 or Grit 15',
+    }),
+    ...widgetClass('PALADIN', 'Paladin', 'd10', {
+      id: 'MC_PALADIN',
+      requirements: '([vigour:15],[grit:15])',
+      prerequisite: 'Vigour 15 and Grit 15',
+    }),
     // One class that declares no way to be taken second — the UA Mystic's shape.
     ...widgetClass('LONER', 'Loner', 'd8'),
     element('TRICK_A', 'Gadget'),
@@ -249,15 +260,17 @@ test('a single-class character has one class on every level and carries no advan
 
 // --- eligibility -------------------------------------------------------------------------
 
-test('a class is offered when its own block is met, and says why when it is not', () => {
+test('a class is offered when its block is met, and flags the scores when they are short', () => {
   const met = fighter(3, { grit: 14 }).classLevelsFor('levels')!.options;
   const mage = met.find((o) => o.id === 'MAGE')!;
   assert.equal(mage.eligible, true);
   assert.equal(mage.taken, false);
 
   const unmet = fighter(3, { grit: 12 }).classLevelsFor('levels')!.options.find((o) => o.id === 'MAGE')!;
-  assert.equal(unmet.eligible, false);
-  assert.equal(unmet.unavailable, 'prerequisite');
+  // ADR 0045: a short ability score does not stop the class being taken, it is reported.
+  assert.equal(unmet.eligible, true);
+  assert.equal(unmet.unavailable, undefined);
+  assert.deepEqual(unmet.flag, [[{ stat: 'grit', needs: 13, has: 12 }]]);
   assert.equal(unmet.prerequisite, 'Grit 13', 'the block\'s own words, for the shell to quote');
 });
 
@@ -302,8 +315,71 @@ test('an edition exclusion says so, instead of blaming an ability score the char
 
   // And a shortfall stays a shortfall: no exclusion is invented where nothing is held.
   const short = fighter(3, { vigour: 14, grit: 8 }).classLevelsFor('levels')!.options.find((o) => o.id === 'MAGE')!;
-  assert.equal(short.unavailable, 'prerequisite');
+  assert.equal(short.unavailable, undefined);
   assert.equal(short.excludedBy, undefined);
+  assert.deepEqual(short.flag, [[{ stat: 'grit', needs: 13, has: 8 }]]);
+});
+
+test('a short score is taken and flagged, and the flag clears when the score rises (ADR 0045)', () => {
+  const b = fighter(4, { grit: 12 });
+  const mage = () => b.classLevelsFor('levels')!.options.find((o) => o.id === 'MAGE')!;
+
+  assert.equal(b.setLevelClass('levels', 3, 'MAGE'), true, 'Grit 12 is short of 13, and the level is spent anyway');
+  assert.equal(mage().taken, true);
+  assert.deepEqual(mage().flag, [[{ stat: 'grit', needs: 13, has: 12 }]], 'a class already held still shows it');
+  assert.deepEqual(multiclassRecords(b).length, 1, 'both records are written, as for any second class');
+
+  b.setBaseStat('grit', 13);
+  assert.equal(mage().flag, undefined, 'nothing is stored, so it clears the moment the score is met');
+  b.setBaseStat('grit', 9);
+  assert.deepEqual(mage().flag, [[{ stat: 'grit', needs: 13, has: 9 }]]);
+});
+
+test('the first class is never flagged', () => {
+  const b = fighter(3, { vigour: 6 });
+  assert.equal(b.classLevelsFor('levels')!.options.find((o) => o.id === 'FIGHTER')!.flag, undefined);
+});
+
+test('an "either" minimum reports the closest alternative, and every one that ties', () => {
+  const at = (scores: { vigour: number; grit: number }) =>
+    fighter(3, scores).classLevelsFor('levels')!.options.find((o) => o.id === 'ROGUE')!;
+
+  assert.deepEqual(at({ vigour: 12, grit: 14 }).flag, [[{ stat: 'grit', needs: 15, has: 14 }]], 'one short beats three short');
+  assert.deepEqual(at({ vigour: 13, grit: 13 }).flag, [
+    [{ stat: 'vigour', needs: 15, has: 13 }],
+    [{ stat: 'grit', needs: 15, has: 13 }],
+  ]);
+  assert.equal(at({ vigour: 15, grit: 8 }).flag, undefined, 'either one meets it');
+  assert.equal(at({ vigour: 13, grit: 13 }).eligible, true);
+});
+
+test('a "both" minimum reports every score that is short, and only those', () => {
+  const at = (scores: { vigour: number; grit: number }) =>
+    fighter(3, scores).classLevelsFor('levels')!.options.find((o) => o.id === 'PALADIN')!;
+
+  assert.deepEqual(at({ vigour: 16, grit: 12 }).flag, [[{ stat: 'grit', needs: 15, has: 12 }]]);
+  assert.deepEqual(at({ vigour: 12, grit: 12 }).flag, [
+    [
+      { stat: 'vigour', needs: 15, has: 12 },
+      { stat: 'grit', needs: 15, has: 12 },
+    ],
+  ]);
+  assert.equal(at({ vigour: 15, grit: 15 }).flag, undefined);
+});
+
+test('only ability scores are soft: a non-score term still refuses, at any score', () => {
+  // Perturbation of the rule itself. The other edition is refused for a held element, and no
+  // amount of Vigour changes that; a short score beside it is not what is reported.
+  const b = fighter(3, { vigour: 20 });
+  b.setLevelClass('levels', 2, 'RANGER');
+  const now = b.classLevelsFor('levels')!.options.find((o) => o.id === 'RANGER_NEW')!;
+  assert.equal(now.eligible, false);
+  assert.equal(now.unavailable, 'excluded');
+  assert.equal(now.flag, undefined);
+
+  const loner = fighter(3, { vigour: 20, grit: 20 }).classLevelsFor('levels')!.options.find((o) => o.id === 'LONER')!;
+  assert.equal(loner.eligible, false);
+  assert.equal(loner.unavailable, 'no-multiclass-rules');
 });
 
 // --- writing a level ---------------------------------------------------------------------
@@ -355,7 +431,6 @@ test('the requests a state does not support are refused, and refusing writes not
   assert.equal(b.setLevelClass('levels', 5, 'RANGER'), false, 'past the progression');
   assert.equal(b.setLevelClass('levels', 0, 'RANGER'), false);
   assert.equal(b.setLevelClass('levels', 2.5, 'RANGER'), false);
-  assert.equal(b.setLevelClass('levels', 3, 'MAGE'), false, 'Grit 12 does not meet Mage');
   assert.equal(b.setLevelClass('levels', 3, 'LONER'), false, 'no multiclass block');
   assert.equal(b.setLevelClass('levels', 3, 'TRICK_A'), false, 'not a class at all');
   assert.equal(b.setLevelClass('levels', 3, 'NOWHERE'), false);
@@ -451,15 +526,22 @@ test('addLevel in the first class of a single-class character writes no advancem
   assert.equal(b.getState().character.advancement, undefined);
 });
 
-test('addLevel is refused at the top of the progression and for an ineligible class', () => {
+test('addLevel is refused at the top of the progression and for a class with no multiclass rules', () => {
   const top = fighter(20);
   assert.equal(top.classLevelsFor('levels')!.canAddLevel, false);
   assert.equal(top.addLevel('levels', 'FIGHTER'), false);
   assert.equal(top.getState().character.progress, 20);
 
   const b = fighter(3, { grit: 10 });
-  assert.equal(b.addLevel('levels', 'MAGE'), false);
+  assert.equal(b.addLevel('levels', 'LONER'), false);
   assert.equal(b.getState().character.progress, 3, 'a refused level does not grow the character');
+
+  // A short score is not a refusal (ADR 0045): the level is spent and the class carries the flag.
+  assert.equal(b.addLevel('levels', 'MAGE'), true);
+  assert.deepEqual(
+    b.classLevelsFor('levels')!.options.find((o) => o.id === 'MAGE')!.flag,
+    [[{ stat: 'grit', needs: 13, has: 10 }]],
+  );
 });
 
 // --- setProgress keeps advancement in step -----------------------------------------------

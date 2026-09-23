@@ -22,6 +22,7 @@
 import {
   evaluateRequirements,
   requirementContextFor,
+  type RequirementContext,
   setAdvancement,
   setChoice,
   setRoll,
@@ -93,7 +94,19 @@ export interface ClassOption {
   id: ElementId;
   /** The character already has a level in it — another one is not a multiclass and is never gated. */
   taken: boolean;
+  /**
+   * The class may be taken. Ability score minimums do not decide this — ADR 0045: a class whose
+   * only unmet terms are scores is eligible and carries a `flag`. Every other unmet term still
+   * makes it ineligible, with `unavailable` saying which kind.
+   */
   eligible: boolean;
+  /**
+   * The ability score minimums the character does not meet, as data (ADR 0045). Alternatives,
+   * because a block may say `[str:13]||[dex:13]`: each is the set of scores that would satisfy the
+   * block by itself, and only the closest are kept. Absent when the scores are met. Derived on every
+   * read and never stored, so it clears when a score rises.
+   */
+  flag?: ScoreShortfall[][];
   /**
    * `no-multiclass-rules`: the class declares no way to be taken second (one Unearthed Arcana
    * class in the corpus). `excluded`: something the character holds is one of the things the
@@ -106,6 +119,13 @@ export interface ClassOption {
   excludedBy?: ElementId;
   /** The block's own words for what it needs — "Strength 13 and Charisma 13" — when it has any. */
   prerequisite?: string;
+}
+
+/** One ability score short of a minimum: content's own stat name, what it asks and what the character has. */
+export interface ScoreShortfall {
+  stat: string;
+  needs: number;
+  has: number;
 }
 
 export interface ClassLevelState {
@@ -387,6 +407,92 @@ function dieSides(element: Element | undefined, dieSetter: string): number | und
   return parsed.ok ? parsed.spec.sides : undefined;
 }
 
+// --- ability score minimums are the one soft term — ADR 0045 --------------------------
+
+/**
+ * A requirement with every ability score minimum read as met. What is false after that is a held
+ * or absent element, a tag or a flag: nothing a score can change, so it stays a gate.
+ *
+ * A minimum under a `not` is read for real, because "met" there would flip to a refusal that has
+ * nothing to do with being short of a score.
+ */
+function evaluateSoft(
+  expr: RequirementExpr | undefined,
+  ctx: RequirementContext,
+  negated = false,
+): boolean {
+  if (!expr) return true;
+  switch (expr.kind) {
+    case 'atLeast':
+      return negated ? evaluateRequirements(expr, ctx) : true;
+    case 'and':
+      return expr.children.every((child) => evaluateSoft(child, ctx, negated));
+    case 'or':
+      return expr.children.some((child) => evaluateSoft(child, ctx, negated));
+    case 'not':
+      return !evaluateSoft(expr.child, ctx, !negated);
+    default:
+      return evaluateRequirements(expr, ctx);
+  }
+}
+
+const shortBy = (terms: ScoreShortfall[]): number =>
+  terms.reduce((sum, term) => sum + (term.needs - term.has), 0);
+
+/**
+ * The alternatives by which an expression's ability score minimums would be met, or undefined when
+ * they already are. Only meaningful for an expression whose non-score terms hold (`evaluateSoft`).
+ * An `or` keeps the alternatives that can still be satisfied and, of those, the smallest shortfall.
+ */
+function shortfalls(expr: RequirementExpr, ctx: RequirementContext): ScoreShortfall[][] | undefined {
+  if (evaluateRequirements(expr, ctx)) return undefined;
+  switch (expr.kind) {
+    case 'atLeast':
+      return [[{ stat: expr.stat, needs: expr.value, has: ctx.statNumber(expr.stat) }]];
+    case 'and': {
+      let alternatives: ScoreShortfall[][] = [[]];
+      for (const child of expr.children) {
+        const short = shortfalls(child, ctx);
+        if (!short) continue;
+        alternatives = alternatives.flatMap((have) => short.map((add) => [...have, ...add]));
+      }
+      return alternatives;
+    }
+    case 'or': {
+      const alternatives = expr.children
+        .filter((child) => evaluateSoft(child, ctx))
+        .flatMap((child) => shortfalls(child, ctx) ?? []);
+      return alternatives.length ? closest(alternatives) : undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+function closest(alternatives: ScoreShortfall[][]): ScoreShortfall[][] {
+  const least = Math.min(...alternatives.map(shortBy));
+  return alternatives.filter((terms) => shortBy(terms) === least);
+}
+
+function scoreFlag(
+  expr: RequirementExpr | undefined,
+  ctx: RequirementContext,
+): ScoreShortfall[][] | undefined {
+  if (!expr || !evaluateSoft(expr, ctx)) return undefined;
+  const short = shortfalls(expr, ctx);
+  return short?.length ? short : undefined;
+}
+
+/** Two independent gates both short: every way of satisfying one together with one of the other. */
+function mergeFlags(
+  a: ScoreShortfall[][] | undefined,
+  b: ScoreShortfall[][] | undefined,
+): ScoreShortfall[][] | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return closest(a.flatMap((left) => b.map((right) => [...left, ...right])));
+}
+
 // --- what a view reads ---------------------------------------------------------------
 
 /**
@@ -415,7 +521,12 @@ export function computeClassLevelState(
     for (const element of elements.byType(config.classType)) {
       const taken = counts.has(element.id) || element.id === firstClassId;
       if (taken) {
-        options.push({ id: element.id, taken, eligible: true });
+        // The first class was never gated. A later one is still held to its block's scores, so the
+        // flag shows for a class already taken — and only the block: the class's own requirements
+        // read "not multiclass" and are false for exactly the character that took it second.
+        const flag =
+          element.id === firstClassId ? undefined : scoreFlag(element.multiclass?.requirements, context);
+        options.push({ id: element.id, taken, eligible: true, ...(flag ? { flag } : {}) });
         continue;
       }
       const block = element.multiclass;
@@ -423,9 +534,13 @@ export function computeClassLevelState(
         options.push({ id: element.id, taken, eligible: false, unavailable: 'no-multiclass-rules' });
         continue;
       }
+      // Ability scores are the one soft term (ADR 0045): read them as met, and what is still false
+      // is something no score can change.
       const met =
-        evaluateRequirements(element.requirements, context) &&
-        evaluateRequirements(block.requirements, context);
+        evaluateSoft(element.requirements, context) && evaluateSoft(block.requirements, context);
+      const flag = met
+        ? mergeFlags(scoreFlag(element.requirements, context), scoreFlag(block.requirements, context))
+        : undefined;
       const excludedBy = met
         ? undefined
         : (forbiddenBy(element.requirements, derived.elementIds) ??
@@ -434,6 +549,7 @@ export function computeClassLevelState(
         id: element.id,
         taken,
         eligible: met,
+        ...(flag ? { flag } : {}),
         ...(met ? {} : { unavailable: excludedBy ? ('excluded' as const) : ('prerequisite' as const) }),
         ...(excludedBy ? { excludedBy } : {}),
         ...(block.prerequisite ? { prerequisite: block.prerequisite } : {}),

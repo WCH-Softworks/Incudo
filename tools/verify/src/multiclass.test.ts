@@ -106,21 +106,23 @@ test(
     builder.setProgress(3);
     assert.equal(builder.getState().character.advancement, undefined, 'Paladin 3 is still one class');
 
-    // The Sorcerer is refused until the gate says otherwise — measured, not assumed. With the
-    // scores unset a Charisma 13 minimum reads false, which is what the gate is for.
+    // With the scores unset a Charisma 13 minimum is not met. ADR 0045: that is a flag, not a refusal.
     const bare = new CharacterBuilder(
       { ...createCharacter('dnd5e', 'pc', { progress: 3 }), choices: [{ ruleKey: 'build/class', elementIds: [paladin] }] },
       system,
       elements,
     );
     const bareOption = bare.classLevelsFor('levels')!.options.find((o) => o.id === sorcerer)!;
-    assert.equal(bareOption.eligible, false, 'default scores do not meet Charisma 13');
-    assert.equal(bare.addLevel('levels', sorcerer), false);
-    assert.equal(bare.getState().character.progress, 3, 'a refused level does not grow the character');
+    assert.equal(bareOption.eligible, true, 'a short score does not stop the class being taken');
+    assert.ok(
+      bareOption.flag?.some((terms) => terms.some((s) => s.stat === 'cha' && s.needs === 13 && s.has < 13)),
+      'default scores do not meet Charisma 13, and the shortfall says so',
+    );
 
     const option = builder.classLevelsFor('levels')!.options.find((o) => o.id === sorcerer)!;
     assert.equal(option.eligible, true, 'the sample\'s Charisma meets the Sorcerer\'s block');
     assert.equal(option.taken, false);
+    assert.equal(option.flag, undefined, 'and nothing is flagged');
 
     for (let level = 4; level <= 6; level += 1) {
       assert.equal(builder.addLevel('levels', sorcerer), true, `level ${level} is the Sorcerer's`);
