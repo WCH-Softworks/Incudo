@@ -708,7 +708,7 @@ before any code, both touching a public API:
       (`advancement`, ADR 0015, is a per-level record, and Wizard 4 / Rogue 4 read differently
       from Rogue 4 / Wizard 4, so a split needs either an order or an explicit "which levels went
       where"), and how a flagged character is written to `.incu`, which must still open with zero
-      sources (ADR 0012). Not started, and not scheduled.
+      sources (ADR 0012). **Proposed: [ADR 0045](./docs/adr/0045-a-class-split-is-one-input-and-an-unmet-multiclass-prerequisite-is-a-flag.md); no code yet.**
 - [x] **Speed, from every source that changes it.** The 5e definition declares `speed` with a default
       of 30 and nothing feeds it, so every character reads 30. Content writes speed under other names
       (a race's `innate speed`, and class features, items and feats that add to it), and none of that is

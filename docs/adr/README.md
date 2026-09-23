@@ -66,3 +66,4 @@ new one that supersedes it.
 | [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md) | The tests read the current official corpus, and a moving corpus fails only what must hold against any corpus | Accepted (amends 0039; builds on 0005, 0008, 0012, 0041) |
 | [0043](./0043-speed-is-the-race-base-plus-what-content-adds-to-it.md) | Speed is the race's base plus what content adds to it | Accepted (touches 0022) |
 | [0044](./0044-hit-points-follow-the-method-the-character-uses.md) | Hit points follow the method the character uses, and each class keeps its own dice | Accepted (amends 0019; touches 0008; builds on 0015, 0016, 0018, 0022, 0036) |
+| [0045](./0045-a-class-split-is-one-input-and-an-unmet-multiclass-prerequisite-is-a-flag.md) | A class split is one input, and an unmet multiclass prerequisite is a flag, not a gate | Proposed (amends 0036; builds on 0012, 0015, 0017) |
