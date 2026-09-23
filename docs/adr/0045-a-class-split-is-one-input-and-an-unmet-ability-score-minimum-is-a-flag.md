@@ -1,4 +1,4 @@
-# 0045 — A class split is one input, and an unmet multiclass prerequisite is a flag, not a gate
+# 0045 — A class split is one input, and an unmet ability score minimum is a flag, not a gate
 
 **Status:** Proposed · 2026-09-23 · builds on [0012](./0012-self-contained-saves.md),
 [0015](./0015-class-levels.md), [0017](./0017-open-decisions-not-steps.md),
@@ -16,6 +16,9 @@ long-standing annoyance with that, and asks for two things:
    decision that split owes at once, in the flat list ([ADR 0017](./0017-open-decisions-not-steps.md));
 2. multiclass ability minimums are **flagged, not enforced**: the character is allowed to exist, the builder
    shows which gate is unmet and by how much, and clears the flag when the score rises.
+
+The maintainer narrowed the second point when reviewing this ADR: **the ability score minimum is the only thing
+that is relaxed.** Nothing else in a prerequisite becomes optional (below).
 
 What already exists ([ADR 0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md)): a per-level
 record (`advancement`), the second class's multiclass element written beside it, `planProgress`,
@@ -73,34 +76,35 @@ by nothing else. Perturbation and a Fighter 12 / Wizard 5 built from a split, co
 built one level at a time, are the proof (both must have the same `advancement`, the same choices and
 derivation).
 
-### 3. An unmet multiclass prerequisite is a flag: derived, per class, never stored
+### 3. An unmet ability score minimum is a flag; every other condition stays a gate
 
-This amends ADR 0036 decision 4, which offered a class only when its gate held.
+This amends ADR 0036 decision 4, which offered a class only when its whole gate held. A class's gate is the
+class's own `requirements` plus its multiclass block's. The gate is split by *term*, not by class:
 
-- **Every class with a multiclass block is takeable.** `ClassOption.eligible` stops being a gate on the write
-  (`planLevelClass`, `planProgress` and the new split write) and becomes what it always described: whether the
-  requirement holds *now*.
-- **A class the character has, and whose block's requirement does not hold, carries a flag.** The flag is
-  computed on every read from the derivation, exactly as `unavailable: 'prerequisite'` is today, and lists the
-  failed terms as data: `{ stat: 'cha', needs: 13, has: 10 }` for a plain `atLeast`, and for an `or` the
-  alternatives that are closest, not all of them. The shell words it ("Charisma 13 needed, you have 10, 3
+- **Ability score terms (`atLeast`, `[cha:13]`) are soft.** If they are the only reason the gate is false,
+  the class is takeable and carries a flag. `planLevelClass`, `planProgress` and the split write accept it.
+- **Every other term stays hard**, exactly as ADR 0036 has it: a held or absent element (`has`, the
+  2014/2024 pair's `!(ID_…_CLASS_X||ID_…_MULTICLASS_X)`, which reports `excluded` with `excludedBy`), an
+  `equals`, a `flag`. A class refused for one of those is refused as it is today, whatever the scores say. A
+  class with no multiclass block is still unavailable (`no-multiclass-rules`): its multiclass element, which
+  ADR 0036 says must be written, does not exist, and writing `advancement` alone is measured wrong.
+- **How the line is drawn.** Evaluate the requirement with every `atLeast` term read as met. If that is false,
+  something hard fails, and the class is refused for it. If it is true and the real evaluation is false, only
+  ability scores are short and the class is flagged. Because this evaluates the tree as written, an item that
+  bypasses the block in an `or` (`ID_INTERNAL_GRANTS_MULTICLASS_UNLOCKER`) still makes the whole gate true and
+  no flag appears. No new rule about content is written down: the split is one substitution over the tree
+  `forbiddenBy` already walks.
+- **The flag is derived, per class, never stored.** It lists the failed score terms as data:
+  `{ stat: 'cha', needs: 13, has: 10 }` for a plain `atLeast`, and for an `or` of scores the alternative with
+  the smallest shortfall (all of them when they tie). The shell words it ("Charisma 13 needed, you have 10, 3
   short"); package code never writes a sentence.
-- **The flag clears itself.** Nothing is stored. Raising the score (a feat, an improvement, an item that sets
-  it, ADR 0044's minimum) changes the derivation, and the next read reports no flag. There is no
-  "acknowledged" state and none is needed.
-- **`excluded` is a flag too, of a different kind.** The 2014/2024 pair of one class (`!(ID_…_CLASS_X||
-  ID_…_MULTICLASS_X)`) is not fixable by a score, so it is reported as `excluded` with `excludedBy`, and it does
-  not clear. It is still not *refused*: a person building a house-ruled character may want both, and Incudo
-  reports rather than forbids ([ADR 0005](./0005-aurora-import.md)).
-- **The one thing still unavailable is a class with no multiclass block** (`no-multiclass-rules`, the one
-  Unearthed Arcana class in the corpus). Not because it is illegal, but because the multiclass element ADR
-  0036 says must be written does not exist, and writing `advancement` alone is measured wrong.
+- **The flag clears itself.** Raising the score (a feat, an improvement, an item that sets it, ADR 0044's
+  minimum) changes the derivation, and the next read reports none. There is no "acknowledged" state.
 - The three deliberate omissions of ADR 0036 stay: the current class's own prerequisite (content is silent),
-  *when* a score was met, and the campaign option. A flag is honest about that with one sentence in the
-  control ("prerequisites shown are the ones the content states").
+  *when* a score was met, and the campaign option. The control says so in one sentence.
 
 The flag is a *report*, like `over-attuned` ([ADR 0023](./0023-attunement-gates-and-reports.md)): Incudo says
-what the rules say and lets the character exist.
+what the rules say about the scores and lets the character exist.
 
 ### 4. How a flagged character is written to `.incu`, and why ADR 0012 holds
 
@@ -128,13 +132,12 @@ list (class, levels, up/down), an Apply button, and flags beside each class.
 - No format change; imported and built multiclass characters keep one representation.
 
 **Bad / accepted**
-- **The builder is permissive by design now.** A character can be built that the Player's Handbook forbids.
-  It is flagged and never hidden, which is the point of the change, and it reverses ADR 0036's "never offers
-  what it refuses".
+- **The builder is permissive about one thing.** A character can be built whose ability scores fall short of a
+  multiclass minimum. It is flagged and never hidden. Everything else ADR 0036 refuses is still refused.
 - **A split loses interleaving** if applied over a hand-built order. The action is explicit and says so.
 - **The current class's own prerequisite is still not checked** (content is silent).
-- Flag wording for `or` requirements is a judgement (which alternative to show). Chosen: the alternative
-  with the smallest total shortfall, and all of them when they tie.
+- Flag wording for an `or` of scores is a judgement (which alternative to show). Chosen: the smallest
+  shortfall, and all of them when they tie.
 
 ## Alternatives considered
 
@@ -149,15 +152,20 @@ the user's behalf, and the choice is observable. Ordering by what was typed is t
 moment a score changes ([ADR 0006](./0006-derived-character-state.md)), and an acknowledgement is one more
 input with no formula behind it for a warning that costs nothing to keep showing.
 
+**Relax every part of the gate** (edition exclusions, missing blocks included). Rejected by the maintainer: only
+the ability score minimum needs to be breakable, and the rest are facts about the content, not about the
+character's numbers.
+
 **Keep gating and add a "force" switch.** Two modes to describe, test and explain, where one report does the
-job, and the gate is the thing the maintainer asked to be rid of.
+job, and the score minimum is the thing the maintainer asked to be rid of.
 
 ## Order of work, each step provable alone
 
-1. **The flag.** `ClassOption.flag` from the requirement tree, shortfall as data. Proof: the 28 blocks against
-   characters with scores just under and just over each minimum; `or` and `and` shapes from the corpus.
-   `planLevelClass` stops refusing on eligibility. Perturbation: a score below a minimum reads the flag, raised
-   reads none.
+1. **The flag.** `ClassOption.flag` from the requirement tree, shortfall as data, and the soft/hard split.
+   Proof: the 28 blocks against characters with scores just under and just over each minimum; `or` and `and`
+   shapes from the corpus; a class refused for a non-score term (the other edition) is still refused at any
+   score. `planLevelClass` accepts a score-only shortfall. Perturbation: a score below a minimum reads the
+   flag, raised reads none.
 2. **`planSplit`.** Proof: Fighter 12 / Wizard 5 from a split equals the same character built level by level
    (advancement, choices, derivation); Rogue 4 / Wizard 4 and Wizard 4 / Rogue 4 differ in exactly the first
    level's maximum die and starting proficiencies; a die change clears only the rolls it should.
