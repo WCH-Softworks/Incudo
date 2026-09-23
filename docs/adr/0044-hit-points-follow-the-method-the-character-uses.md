@@ -133,6 +133,14 @@ armour class, saves, attack rolls and every other reader of the score as well as
 **To check while doing it, not decided here:** the 2024 giant-strength belts write `strength:score:set` in a
 second, differently named bucket (`might of giants`), and buckets sum. Two belts in different buckets
 must not read as the sum of both.
+**Done (step 1), and the bound needed one more half than the sketch above.** A set score may exceed the usual
+20 (the 2014 Belt of Hill Giant Strength sets 21, and nothing raises `strength:max`), so a `min` alone would have
+been clamped back to 20 by the `max`. The maximum is now `max(20 + <ability>:max, <ability>:score:set)`. The
+2024 giant-strength belts write small deltas in a `might of giants` bucket beside a base value, and buckets
+sum by design, so no change was needed for them; that check is closed. Evidence: the two Amulet of Health
+samples leave the hit point disagreement list (18 disagreeing samples became 16), every other sample and
+every oracle table is byte-identical to before (snapshot/baseline run), and
+`tools/verify/src/ability-score-set.test.ts` fails 3 of its 4 cases with the bounds removed.
 
 ### 5. A single class gets a track that is published and does not gate
 

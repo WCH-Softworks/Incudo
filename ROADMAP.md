@@ -744,7 +744,7 @@ before any code, both touching a public API:
       cheap to calculate. Copy only what has no formula (rolled hit points, chosen scores). Where
       Incudo's number disagrees with Aurora's recorded one, **tell the user, and keep Incudo's.**
       `packages/aurora-import` is frozen (ADR 0008), so most of this belongs in the derivation and in the
-      builder rather than the importer, and a change there wants an ADR. Not started.
+      builder rather than the importer, and a change there wants an ADR. **In progress: [ADR 0044](./docs/adr/0044-hit-points-follow-the-method-the-character-uses.md) (proposed) plans it in five steps. Step 1, an item that sets an ability score, is done: the two Amulet of Health samples now agree (16 of 30 still differ). Steps 2 to 5 are not started.**
 
 ### Where this phase actually stands
 
