@@ -351,6 +351,57 @@ export function planLevelClass(
   return next;
 }
 
+/** One run of a class split: this many levels, in this class, taken in the order the runs are listed. */
+export interface ClassSegment {
+  classId: ElementId;
+  levels: number;
+}
+
+/**
+ * Write a whole class split in one go — ADR 0045 decision 1. `[{ Fighter, 12 }, { Wizard, 5 }]` means
+ * levels 1 to 12 went to the Fighter and 13 to 17 to the Wizard; the first segment is the first
+ * class, and `progress` becomes the sum. The same records a level-by-level build writes, so the two
+ * are the same character.
+ *
+ * A class may appear in more than one segment (Rogue 2, Wizard 2, Rogue 2), which is how an
+ * interleaved build is one input too. Undefined when the request is not a split of this
+ * character's to write: no segment, a count that is not a positive whole number, something that is
+ * not a class, or a total past the progression. Whether each class may be taken is the builder's
+ * check, against `ClassLevelState.options`, as for `planLevelClass`.
+ *
+ * Applying a split replaces every per-level assignment the character had. A hit point roll survives
+ * unless its level now belongs to a class with a different die (ADR 0036 decision 5).
+ */
+export function planSplit(
+  character: Character,
+  segments: ClassSegment[],
+  config: MulticlassConfig,
+  elements: ElementIndex,
+): Character | undefined {
+  if (!segments.length) return undefined;
+  const levels: ElementId[] = [];
+  for (const segment of segments) {
+    if (!Number.isInteger(segment.levels) || segment.levels < 1) return undefined;
+    if (elements.get(segment.classId)?.type !== config.classType) return undefined;
+    for (let n = 0; n < segment.levels; n += 1) levels.push(segment.classId);
+  }
+  const progress = config.min + levels.length - 1;
+  if (config.max !== undefined && progress > config.max) return undefined;
+
+  const before = levelClasses(character, config, elements);
+  let next = writeClassLevels({ ...character, progress }, config, elements, levels, levels[0]);
+  levels.forEach((classId, index) => {
+    const level = config.min + index;
+    const key = hitPointRollKey(config.levelRoll.pattern, level);
+    const from = dieSides(elements.get(before[index] ?? ''), config.levelRoll.dieSetter);
+    const to = dieSides(elements.get(classId), config.levelRoll.dieSetter);
+    if (next.rolls[key] !== undefined && from !== undefined && to !== undefined && from !== to) {
+      next = setRoll(next, key, undefined);
+    }
+  });
+  return next;
+}
+
 /**
  * A different first class, after the pick has been written: every level the old one held goes to
  * the new one — ADR 0036 decision 6. Rehoming is what "change my class to Cleric" means on a

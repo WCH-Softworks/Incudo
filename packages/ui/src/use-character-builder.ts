@@ -61,7 +61,9 @@ import {
   planFirstClass,
   planLevelClass,
   planProgress,
+  planSplit,
   type ClassLevelState,
+  type ClassSegment,
   type MulticlassConfig,
 } from './multiclass.ts';
 
@@ -438,6 +440,59 @@ export class CharacterBuilder {
       this.character = next;
       this.invalidate();
     }
+    return true;
+  };
+
+  /**
+   * Say the whole split at once — `[{ Fighter, 12 }, { Wizard, 5 }]` — ADR 0045. The first segment is
+   * the class the character started as, the sum is its level, and the decisions the split owes arrive
+   * in the same flat list as always.
+   *
+   * Refused, writing nothing, for anything `planSplit` refuses and for a class the state lists as
+   * ineligible (a short ability score is a flag and does not refuse). The first class is written
+   * through the class step's own pick, so an import's record is replaced in place and a
+   * different first class re-homes the levels it held. Replaces every per-level assignment.
+   */
+  applySplit = (stepId: string, segments: ClassSegment[]): boolean => {
+    const multiclass = this.multiclass;
+    const first = segments[0]?.classId;
+    if (!multiclass || multiclass.stepId !== stepId || first === undefined) return false;
+    if (this.elements.get(first)?.type !== multiclass.config.classType) return false;
+    if (!multiclass.classStepId) return false;
+
+    // Work on a copy of the state so a refusal leaves the builder exactly as it was.
+    const saved = this.character;
+    if (firstClassOf(this.character, multiclass.config, this.elements) !== first) {
+      this.choose(`build/${multiclass.classStepId}`, [first]);
+    }
+    const next = planSplit(this.character, segments, multiclass.config, this.elements);
+    // Each other class is judged as if it were the last one added: against the character with every
+    // *other* class of the split already held. Judging them all against the character as it stands
+    // would pass the 2014 and the 2024 edition of one class in the same split, each innocent alone.
+    const refused =
+      !next ||
+      [...new Set(segments.map((segment) => segment.classId))].some((classId) => {
+        if (classId === first) return false;
+        const without = planSplit(
+          this.character,
+          segments.map((s) => (s.classId === classId ? { ...s, classId: first } : s)),
+          multiclass.config,
+          this.elements,
+        );
+        if (!without) return true;
+        const derived = deriveCharacter(without, this.system, this.elements, { kind: this.kind });
+        const options = computeClassLevelState(without, derived, multiclass.config, this.elements).options;
+        return !options.find((option) => option.id === classId)?.eligible;
+      });
+    if (refused || !next) {
+      if (this.character !== saved) {
+        this.character = saved;
+        this.invalidate();
+      }
+      return false;
+    }
+    this.character = next;
+    this.invalidate();
     return true;
   };
 

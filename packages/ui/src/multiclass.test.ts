@@ -775,3 +775,121 @@ test('the character the builder writes derives with no problem the character did
     [],
   );
 });
+
+// --- a whole split at once (ADR 0045) ----------------------------------------------------
+
+const segment = (classId: string, levels: number) => ({ classId, levels });
+const summary = (b: CharacterBuilder) => {
+  const c = b.getState().character;
+  return {
+    progress: c.progress,
+    advancement: advancementOf(b),
+    records: multiclassRecords(b),
+    elements: [...ids(b)].sort(),
+  };
+};
+
+test('a split is the same character as the same levels taken one at a time', () => {
+  const byLevel = fighter(1);
+  byLevel.addLevel('levels', 'FIGHTER');
+  byLevel.addLevel('levels', 'MAGE');
+  byLevel.addLevel('levels', 'MAGE');
+
+  const bySplit = fighter(1);
+  assert.equal(bySplit.applySplit('levels', [segment('FIGHTER', 2), segment('MAGE', 2)]), true);
+
+  assert.deepEqual(summary(bySplit), summary(byLevel));
+  assert.deepEqual(advancementOf(bySplit), ['1:FIGHTER', '2:FIGHTER', '3:MAGE', '4:MAGE']);
+  assert.equal(multiclassRecords(bySplit).length, 1);
+  assert.equal(bySplit.getState().derived.stats.get('level:mage')?.value, 2);
+});
+
+test('a split opens every decision it owes, in the same list', () => {
+  const b = fighter(1);
+  b.applySplit('levels', [segment('FIGHTER', 1), segment('MAGE', 3)]);
+  // The Mage's trick opens at the class's own level 2, and the split reached it without a level-up.
+  assert.equal(b.getState().decisions.some((d) => d.label === 'Trick'), true);
+});
+
+test('the order of the segments is the order the levels were taken, and a class may repeat', () => {
+  const b = fighter(1);
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 1), segment('MAGE', 1), segment('FIGHTER', 1), segment('MAGE', 1)]), true);
+  assert.deepEqual(advancementOf(b), ['1:FIGHTER', '2:MAGE', '3:FIGHTER', '4:MAGE']);
+  assert.deepEqual(b.classLevelsFor('levels')!.classes, [
+    { id: 'FIGHTER', levels: 2 },
+    { id: 'MAGE', levels: 2 },
+  ]);
+
+  // Mage first is a different character: it is the class the character started as, and gets no record.
+  const mageFirst = fighter(1);
+  assert.equal(mageFirst.applySplit('levels', [segment('MAGE', 2), segment('FIGHTER', 2)]), true);
+  assert.deepEqual(advancementOf(mageFirst), ['1:MAGE', '2:MAGE', '3:FIGHTER', '4:FIGHTER']);
+  assert.equal(mageFirst.classLevelsFor('levels')!.firstClassId, 'MAGE');
+  assert.deepEqual(multiclassRecords(mageFirst), ['LVL_3/select:Multiclass (Level 3)=MC_FIGHTER']);
+  assert.equal(ids(mageFirst).has('MULTI_FIGHTER'), true);
+  assert.equal(ids(mageFirst).has('MULTI_MAGE'), false, 'the first class is never taken as a second');
+});
+
+test('one class in one segment is a single-class character with no advancement', () => {
+  const b = fighter(4);
+  b.applySplit('levels', [segment('FIGHTER', 2), segment('MAGE', 2)]);
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 6)]), true);
+  assert.equal(b.getState().character.progress, 6);
+  assert.equal(b.getState().character.advancement, undefined);
+  assert.deepEqual(multiclassRecords(b), []);
+});
+
+test('a short ability score does not refuse a split; it is flagged', () => {
+  const b = fighter(1, { grit: 10 });
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 2), segment('MAGE', 2)]), true);
+  assert.deepEqual(
+    b.classLevelsFor('levels')!.options.find((o) => o.id === 'MAGE')!.flag,
+    [[{ stat: 'grit', needs: 13, has: 10 }]],
+  );
+});
+
+test('a split that cannot be written is refused and changes nothing', () => {
+  const b = fighter(3);
+  const before = b.getState().character;
+
+  assert.equal(b.applySplit('levels', []), false);
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 0)]), false);
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 1.5)]), false);
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 15), segment('MAGE', 6)]), false, 'past level 20');
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 2), segment('LONER', 1)]), false, 'no multiclass block');
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 2), segment('TRICK_A', 1)]), false, 'not a class');
+  assert.equal(b.applySplit('kit', [segment('FIGHTER', 2)]), false, 'not the step that publishes levels');
+  assert.equal(b.getState().character, before, 'the very same character object');
+
+  // The other edition of a class held is a refusal at any score, exactly as for one level.
+  assert.equal(b.applySplit('levels', [segment('FIGHTER', 1), segment('RANGER', 1), segment('RANGER_NEW', 1)]), false);
+  assert.equal(b.getState().character, before);
+});
+
+test('a roll survives a split unless its level moved to a class with a different die', () => {
+  const b = fighter(3);
+  b.recordHitPoints('levels', 1, 'average');
+  b.recordHitPoints('levels', 2, 'average'); // d10 -> 6
+  b.recordHitPoints('levels', 3, 'average'); // d10 -> 6
+
+  // Level 3 to a Ranger keeps its roll (d10 either way); level 3 to a Mage (d6) does not.
+  b.applySplit('levels', [segment('FIGHTER', 2), segment('RANGER', 1)]);
+  assert.equal(b.getState().character.rolls['hp:level:3'], 6);
+  b.applySplit('levels', [segment('FIGHTER', 2), segment('MAGE', 1)]);
+  assert.equal(b.getState().character.rolls['hp:level:3'], undefined);
+  assert.equal(b.getState().character.rolls['hp:level:2'], 6, 'the levels that did not change class are untouched');
+  assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), true, 'and the cleared one reopens');
+});
+
+test('a split starts a character that has no class yet, and replaces a different first class', () => {
+  const empty = new CharacterBuilder(createCharacter('test', 'pc', { progress: 1 }), system(), corpus());
+  assert.equal(empty.applySplit('levels', [segment('FIGHTER', 3), segment('MAGE', 2)]), true);
+  assert.equal(empty.getState().character.progress, 5);
+  assert.equal(empty.classLevelsFor('levels')!.firstClassId, 'FIGHTER');
+
+  const b = fighter(2);
+  assert.equal(b.applySplit('levels', [segment('MAGE', 3)]), true);
+  assert.equal(b.classLevelsFor('levels')!.firstClassId, 'MAGE');
+  assert.equal(b.getState().character.advancement, undefined);
+  assert.deepEqual(multiclassRecords(b), []);
+});
