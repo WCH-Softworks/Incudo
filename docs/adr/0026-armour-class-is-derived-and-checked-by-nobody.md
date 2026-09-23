@@ -156,6 +156,12 @@ is wrong.
 **None of a set of real saves is over.** Counted rather than assumed, because if one had been,
 the report would be right and this paragraph would have to say so: 1, 0, 1, 0, 3, 2, 1, 1, 3.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** Attuned items per save are 0 in 28 samples,
+> 3 in one and **4 in one**, so one sample *is* over the limit of 3 and the derivation reports it, as this
+> paragraph said it should (one `over-attuned`; nothing else in the 30). The original set's list
+> (1, 0, 1, 0, 3, 2, 1, 1, 3) is not reproduced: those saves are not committed, and no sample has an attuned
+> count of 1 or 2.
+
 ### 4. A kind with no bag keeps the number it has
 
 `npc` and `legendary` show `ac` on their sheets, declare no `inventory`, and are therefore the
@@ -219,6 +225,47 @@ What stands in for an oracle, and what each piece is actually worth:
   forces a +4 Dexterity into half plate is.
 - **The attunement limit fires zero times**, as ADR 0023 said in advance, because no sample save
   is over it.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves, and this section's central claim has moved.**
+> The nine-row table above is a measurement of the original set and is not reproduced (those saves are not
+> committed). The samples give a second table, and unlike the first it has a referee: the maintainer read the
+> armour class off Aurora's own screen for every sample (`manifest.json`, `readout`), and
+> `aurora-oracle.test.ts` holds the derivation to it. **It agrees on all 30** (corpus at `c28ce6c`). It is a
+> human transcription, and it is the only referee `ac` has; Aurora's file still records no armour class, so
+> the sentence "no `.dnd5e` save records an armour class" is unchanged. The rows that use armour or a shield
+> (same formula, `max(calc, armor + applied + enh) + shield + misc`):
+>
+> | sample | armour | `armor` | dex | cap | applied | `enh` | `misc` | shield | derived | read off Aurora |
+> |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+> | 09 | plate (heavy) | 18 | −1 | 0 | 0 | — | 1 | 2 | **21** | 21 |
+> | 10 | half plate (medium) | 15 | +3 | 2 | +2 | — | — | — | **17** | 17 |
+> | 20 | chain shirt (medium) | 13 | +3 | 2 | +2 | — | 1 | 2 | **18** | 18 |
+> | 13 | studded leather (light), Armor, +1 | 12 | +4 | 99 | +4 | 1 | 2 | — | **19** | 19 |
+> | 21 | studded leather (light), Armor, +1 | 12 | +4 | 99 | +4 | 1 | 2 | — | **19** | 19 |
+> | 15 (2024) | studded leather (light) | 12 | +4 | 99 | +4 | — | — | — | **16** | 16 |
+> | 11 | barbarian, no armour, shield | calc 13 | +1 | — | — | — | — | 2 | **15** | 15 |
+> | 14 | no armour, shield | 10 | +2 | 99 | +2 | — | — | 2 | **14** | 14 |
+>
+> The other 22 samples wear no armour and no shield (the monks' and the other barbarians' unarmoured
+> defences among them) and agree too. Four things this changes in the paragraphs above:
+>
+> - **The floor is now exercised.** Sample 09 wears plate with a Dexterity modifier of **−1**, and the
+>   readout is 21. With the floor (heavy armour ignores a negative modifier) it is 18 + 2 + 1 = 21; the
+>   four-row table, where heavy armour only caps Dexterity at 0, would apply −1 and give 20. So the six-row
+>   reading is supported by a referee, where the original set (both plate wearers at exactly 0) could not
+>   separate them.
+> - **The medium cap is now exercised too.** Samples 10 and 20 have a modifier of **+3**, not +2: capped at 2
+>   they read 17 and 18, and with no cap they would read 18 and 19, which is not what Aurora showed.
+> - **A shield is worn by four samples** (09, 11, 14, 20), so the `+ ac:shield` term, "0 on every row above",
+>   has real characters behind it, all agreeing.
+> - **The attunement limit fires once**, not zero times (see the note beside "None of a set of real saves is
+>   over" above).
+>
+> What is unchanged: `ac` is derived from a published rule and the referee is a person reading a screen, so
+> "verified" still overstates it; and the negative cases the samples do not contain (a monk in armour, a
+> medium-armour wearer with Medium Armor Master's cap of 3, a heavy wearer with a shield and a −2 modifier)
+> are still covered by perturbation only. The ADR's title and its "checked by nobody" wording are the
+> original decision and are left as written.
 
 ## Consequences
 

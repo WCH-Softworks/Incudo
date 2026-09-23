@@ -126,6 +126,10 @@ That is the entire surface. Two things fall out of it:
 
 45 item instances across a set of real saves — 26 equipped, 12 attuned, 15 adorners.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves:** 24 instances in 8 saves, of which 22 are
+> equipped, 7 attuned and 2 are adorned hosts. The figure comparison is in
+> [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md)'s note; this plan is left as written.
+
 ```xml
 <item identifier="42462837-…" name="Half Plate" id="ID_WOTC_ARMOR_MEDIUM_HALF_PLATE">
   <equipped location="Armor">true</equipped>
@@ -158,6 +162,10 @@ Clear Thought, as this paragraph originally said — the Tome is an ordinary cor
 carrying its own `+2`, and the proxy grants the overlay's separate `+1`. Both are in one save's
 bag, which is what made them easy to conflate.)*
 
+> **Note, 2026-09-23:** no sample save contains an `ITEM_PROXY` or `PROXY_` id, so "the only 3 ids in all
+> nine bags" cannot be re-derived from the samples; `location` takes four values there, not three (a shield
+> records `Secondary Hand`).
+
 ### The oracle is strong for inventory and absent for AC
 
 **47 of the 51 `not-modelled` notes across a set of real saves are "comes from the character's
@@ -175,6 +183,13 @@ One more thing the oracle cannot settle: **whether attunement gates a contributi
 equipped items in a set of real saves that require attunement *are* attuned, so there is no
 counter-example in either direction. 5e says an unattuned item gives nothing; the saves neither
 confirm nor deny it.
+
+> **Note, 2026-09-23:** two paragraphs above have moved on the samples. (1) "No save records an armour
+> class, so nothing settles it but reading the rule": the file still records none, but the maintainer read
+> the value off Aurora's screen for all 30 samples (`manifest.json`, `readout`) and the derivation agrees on
+> **30 of 30**, including heavy armour at a Dexterity modifier of −1 and medium armour at +3. See ADR 0026's
+> note. (2) Attunement: **7 of 7** attunement-requiring equipped items are attuned, so the gate is still
+> untested against a counter-example, but one sample carries four attuned items and the limit reports it.
 
 ---
 
@@ -406,6 +421,10 @@ across all nine saves, and all nine still open with zero sources — and a byte-
 run would have been byte-identical if every one of those nine numbers were wrong. The evidence
 is perturbation, in `tools/verify/src/armour-class.test.ts`; see ADR 0026 for which branches the
 nine saves cannot reach and why.
+
+> **Note, 2026-09-23:** "None … is over" and "nothing checked them" are the original set's. In the samples one
+> save is over the limit (4 attuned against 3) and armour class agrees with a hand-read screen value on all
+> 30; both are in ADR 0026's and ADR 0023's notes.
 
 Two things predicted here that did not happen, worth recording:
 

@@ -46,6 +46,36 @@ questions in it had plausible answers on both sides.
 | `<details><name>` set by the user | 1 of 45; `<details><notes>` 0 of 45 |
 | item `name=` attribute stale against the element | 1 of 42 (`"Crossbow, Hand"` vs `"Hand Crossbow"`) |
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves** (`tools/verify/fixtures/saves/`, corpus at
+> `c28ce6c`, by a throwaway script over the imported characters and the raw `<item>` tags; nothing committed).
+> The figures above stay as measured on the original set; these are the samples' own.
+>
+> | probe | original set | the 30 samples |
+> |---|---|---|
+> | item instances | 45 | **24**, in **8** saves (22 saves carry no bag); all 24 come across the importer |
+> | equipped / attuned / adorned hosts | 26 / 12 / 15 | **22 / 7 / 2** |
+> | adorners per item | 15 hosts, max 1, none nested | 2 hosts, max 1, none nested |
+> | `amount` > 1 | 4 items (2, 5, 5, 10) | **0** |
+> | a bag with a repeated element id | 1 of 9 | **0** of 8 |
+> | adorner ids also carried as a top-level item | 0 of 13 distinct | 0 of 2 distinct |
+> | adorner `name=` identical to the element's | 15 of 15 | 2 of 2 |
+> | adorned hosts carrying `<attunement>` | 7 of 15 | **0** of 2 |
+> | equipped items whose element declares a `slot` | 23 of 26 (3 proxies) | 22 of 22 (no proxy equipped) |
+> | recorded `location` agreeing with that `slot` | 15 of 15 | 15 of 15; importer writes `slot` on **0** |
+> | equipped with no `location` | 11 of 26 | 7 of 22 |
+> | `<details><name>` / `<notes>` set by the user | 1 of 45 / 0 | **0** of 24 / 0 |
+> | item `name=` stale against the element | 1 of 42 | 0 of 24 |
+> | `sidebar` / `hidden` | 22 / 3 of 45 | 9 / 0 of 24 |
+>
+> **What could not be re-derived.** The two-greatswords bag (same element, two enchantments), the stacks
+> that are never equipped, attuned or adorned, the stale `"Crossbow, Hand"` name, the user-named item and
+> the equipped Aurora proxies are properties only the original set had: no sample repeats an element id in a
+> bag, stacks anything, names an item or equips a proxy, so decisions 1, 2 and 6 rest on the original
+> measurement and the samples neither confirm nor contradict them. What the samples do add: `location` takes
+> **four** values (`Armor`, `Primary Hand`, `Secondary Hand`, `Two-Handed`), and each maps to a single slot
+> setter (`Secondary Hand` to `onehand,secondary`, from a shield). The one attunement-requiring adorner
+> case (decision 5) is absent as well, so it is unconfirmed here.
+
 ## Decision
 
 ### 1. An entry is an instance, not a reference

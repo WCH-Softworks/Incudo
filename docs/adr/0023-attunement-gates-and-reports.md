@@ -128,6 +128,15 @@ was proving something ([ADR 0020](./0020-stats-keyed-on-declared-blocks.md)).
 - **The gate is unverified and unverifiable against Aurora.** All 12 attunement-requiring
   equipped items in a set of real saves are attuned. `aurora verify` will gain no comparison, and a
   green run after this lands means only that nothing regressed.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** "All 12 attunement-requiring equipped
+> items are attuned" reads **7 of 7** in the samples (two saves carry any: one with three attuned items
+> and one built to exceed the limit, with four), so there is still no counter-example to the gate on real data. What the
+> samples add is the limit: the four-item save is over it (`attunement:current` 4 against `attunement:max` 3)
+> and its derivation reports exactly one `over-attuned` problem, the one time the check fires on a real save;
+> the other 29 report none. Both are Incudo's own arithmetic and nothing in the file is a referee for either.
+> The 976 / 968 / 578 / 390 / 336 content counts above are corpus figures, not save figures, and are not
+> re-derived here.
 - **The limit is partly verifiable.** `attunement:max` is a stat both sides can hold, but no
   save records a derived value for it, so it is in the same position: the arithmetic is
   checkable by inspection and not by diffing.

@@ -95,6 +95,16 @@ shield        nobody, on any save
 primary       a weapon on every save but three, which are two-handed
 ```
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves** (corpus at `c28ce6c`; throwaway script, nothing
+> committed). Of the 30 samples, 8 carry a bag. Their equipped body armour is: heavy **1** (plate), medium **2**
+> (a half plate, a chain shirt), light **3** (studded leather, in one of them adorned with an Armor, +1), and
+> **none in the other 2 bags**; the 22 saves with no bag wear nothing, so `armor=none` holds for 24 of 30. A
+> **shield is equipped in 4** (three fighters and a barbarian), where the original set had nobody, so
+> `[shield:any]` is now true on real characters. Not re-derived: the `primary` line (a count of two-handed
+> weapons per save the samples were not tallied for) and the "eight conditioned rules" count below. Not
+> re-derivable: the Cloak of Displacement worn beside a Cloak of Protection (no sample wears two cloaks) and
+> the two equipped Aurora proxies (none is equipped in a sample).
+
 And **eight rules across the nine characters carry an `equipped=` condition at all**: a monk's
 Unarmored Defence and the five movement modes of its Unarmored Movement
 (`[armor:none],[shield:none]`), and the Defense fighting style twice (`[armor:any]`).
@@ -292,6 +302,16 @@ So, stated as plainly as ADR 0018 stated its rounding and ADR 0020 stated its `8
 - **The attunement gate is unverifiable against Aurora**, as ADR 0023 said in advance.
 - **The slot-to-stat mapping is unverified.** Aurora records a `location` and never a derived
   consequence of it.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** One claim above does not hold on
+> the samples and one is unchanged. (1) "Nobody carries a shield": four samples equip one, so `[shield:any]`
+> and the shield's armour class term are exercised by real characters, and armour class agrees with the
+> maintainer's readout on all four (ADR 0026's note has the table). (2) "All 12 attunement-requiring equipped
+> items are attuned": **7 of 7** in the samples, so the gate still has no counter-example among them; the
+> counter-example the note "unverifiable" describes would need a save with an item equipped and not attuned,
+> and none exists. (3) The prediction that no derived stat moves is not re-run here; a fresh
+> `aurora-oracle.test.ts` run shows **0 `stat-mismatch`** on all 30. "Eight conditioned rules across the nine
+> characters" is not re-derived (the samples were not tallied by rule).
 
 What is verified is done by **perturbation**, and it has to be, because a green differential run
 here proves only that nothing broke. Forcing a slot's tags and watching the right rules drop is
