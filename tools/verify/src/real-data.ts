@@ -7,14 +7,16 @@
  * (ADR 0042). A green run therefore means "works with today's official content", and nothing depends on
  * anyone's Aurora install, which updates itself while it is open and is read by nobody else.
  *
- * **The saves are a folder in the repository**, `tools/verify/fixtures/saves/`. Until the sample saves
- * of docs/SAMPLE-SAVES.md are in it, a test that needs a save skips, and says so.
+ * **The saves are a folder in the repository**, `tools/verify/fixtures/saves/`: the generic samples of
+ * docs/SAMPLE-SAVES.md. A checkout without them skips the tests that need one and says so, unless
+ * `INCUDO_REQUIRE_SAVES=1` (CI sets it), which makes an empty folder a failure.
  *
  * `INCUDO_AURORA_INDEX` still points a run somewhere else (and `INCUDO_CORPUS_LAYOUT`,
- * `INCUDO_CORPUS_ROOT` say how to read it), and `INCUDO_AURORA_SAVES` still points at another folder of
- * saves until the samples replace it. The rule for both is the one `corpus.test.ts` already held:
- * **nothing named means the default, or a skip; something named and wrong means fail.** A path that was
- * typed wrongly must not turn a check into a silent pass, and `node --test` reports a skip as green.
+ * `INCUDO_CORPUS_ROOT` say how to read it). The saves have no such variable any more: they are the
+ * committed samples, and a test that wanted a person's own saves would be a test that runs on one machine.
+ * The rule for the corpus is the one `corpus.test.ts` already held: **nothing named means the default, or
+ * a skip; something named and wrong means fail.** A path that was typed wrongly must not turn a check into
+ * a silent pass, and `node --test` reports a skip as green.
  * Never put a real value in a committed file: a path names a person's machine and history is permanent.
  * They go in an untracked `.env.local` (see `.env.example`).
  */
@@ -30,19 +32,17 @@ import { loadCorpus, resolveCorpus, type CorpusLocation } from './corpus.ts';
 import { repoRoot } from './node-system.ts';
 
 const { location, configured, source } = resolveCorpus(process.env, checkoutLocation());
-const namedSaves = process.env['INCUDO_AURORA_SAVES'];
 
 /**
- * CI sets this once the sample saves are committed. Without it an empty saves folder skips its tests, and a
- * checkout that lost the folder (an ignore rule, a bad merge) would go green on nothing. With it, an empty
- * folder is a failure that says so.
+ * CI sets this. Without it an empty saves folder skips its tests, and a checkout that lost the folder (an
+ * ignore rule, a bad merge) would go green on nothing. With it, an empty folder is a failure that says so.
  */
 const savesRequired = process.env['INCUDO_REQUIRE_SAVES'] === '1';
 
 /** The committed folder the sample saves live in. */
 export const DEFAULT_SAVES_DIR: string = join(repoRoot(), 'tools', 'verify', 'fixtures', 'saves');
 
-const savesFolder = namedSaves ?? DEFAULT_SAVES_DIR;
+const savesFolder = DEFAULT_SAVES_DIR;
 const savesPresent =
   existsSync(savesFolder) && readdirSync(savesFolder).some((name) => extname(name).toLowerCase() === '.dnd5e');
 
@@ -50,7 +50,7 @@ const savesPresent =
 export const AURORA_INDEX: string = location?.index ?? '';
 
 /** The saves folder, or `''` when it holds no save (and then every test that reads it is skipped). */
-export const SAVES_DIR: string = savesPresent || namedSaves !== undefined || savesRequired ? savesFolder : '';
+export const SAVES_DIR: string = savesPresent || savesRequired ? savesFolder : '';
 
 /** Why a test that needs the corpus is not running, or `false` when it should. */
 export const corpusSkip: string | false = location
@@ -61,9 +61,9 @@ export const corpusSkip: string | false = location
 /** Why a test that needs the corpus *and* the saves is not running, or `false` when it should. */
 export const savesSkip: string | false =
   corpusSkip ||
-  (savesPresent || namedSaves !== undefined || savesRequired
+  (savesPresent || savesRequired
     ? false
-    : 'no .dnd5e saves in tools/verify/fixtures/saves/ yet (docs/SAMPLE-SAVES.md)');
+    : 'no .dnd5e saves in tools/verify/fixtures/saves/ (docs/SAMPLE-SAVES.md)');
 
 /** The corpus location. Fails, rather than skipping, when it was named and is not there. */
 export function requireCorpus(): CorpusLocation {

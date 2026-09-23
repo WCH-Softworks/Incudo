@@ -25,21 +25,23 @@
  * differences to a file, and `INCUDO_ORACLE_BASELINE=<file>` compares this run with one written earlier
  * and **fails on any difference**. Snapshot on the base, baseline on the change, same checkout.
  *
- * It cannot run in CI until saves are committed, and until then it skips wherever they are not
- * (`tools/verify/fixtures/saves/`, or a folder `INCUDO_AURORA_SAVES` names; once that is set a missing
- * path fails).
+ * The saves are the committed generic samples of docs/SAMPLE-SAVES.md, `tools/verify/fixtures/saves/`,
+ * so this runs in CI. Each is labelled `Sample NN`, the messages behind a failure name content
+ * (elements, spells, stats), and `INCUDO_ORACLE_DETAIL=1` adds every difference message to the report,
+ * for chasing one.
  *
- * Nothing here prints a character's name or any of its contents. A save is labelled by the first
- * characters of its fingerprint, which says nothing about the character, every assertion is on counts
- * and kinds, and the messages behind a failure name content (elements, spells, stats) and never the
- * character. `INCUDO_ORACLE_DETAIL=1` adds every difference message to the report, for chasing one.
+ * **Armour class is the one number here checked against a person.** Aurora's file records no armour
+ * class, but its screen shows one, and the maintainer typed what it showed for every sample into the
+ * manifest (`readout`). It is a human transcription, and it agrees with the derivation on all 30, so
+ * armour class is now held to it. Hit points and speed are reported against it and fail nothing: they
+ * disagree on some samples for reasons that are Incudo's (ROADMAP Phase 2), and a test that failed on a
+ * known gap would only be edited.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFile, readdir, writeFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import type { DifferenceKind } from '@incudo/aurora-import';
 
@@ -55,7 +57,7 @@ import {
   type OracleRun,
   type RowFamily,
 } from './aurora-oracle.ts';
-import { unnamed } from './private-saves.ts';
+import { readManifest, sampleFileNames, SAMPLES_DIR } from './sample-saves.ts';
 import { corpusCommit, corpusProvenance, realElements, requireCorpus, requireSaves, savesSkip } from './real-data.ts';
 
 /** One save's recorded table. Every kind not named is zero. */
@@ -67,41 +69,6 @@ interface Recorded {
   blocks: number;
 }
 
-/** The corpus commit the tables below were last confirmed against. Recorded, never asserted. */
-const RECORDED_AT = 'c28ce6cd77ff';
-
-/**
- * The saves the maintainer has, each with the table it had when it was last understood. A `MOVED` line
- * is not a failure and updating one is not a decision: every `element-extra` is content AuroraLegacy
- * added after the save was written, or the Mithral finding, or the Thieves' Tools expertise pair below;
- * every `element-missing` is an Aurora-app marker nothing in the corpus names.
- *
- * Summed, the first nine are the baseline CLAUDE.md records: 1 element-missing, 55 element-extra,
- * 13 content-missing, 3 not-modelled, 8 blocks. The tenth is the Wizard 4 / Rogue 4 built from the
- * description in ROADMAP Phase 2, and it is the only save with two ordinary casting blocks, which is
- * how ADR 0041 came about.
- */
-const RECORDED: Record<string, Recorded> = {
-  a6e7af83ffc5: { kinds: { 'element-extra': 4, 'not-modelled': 1 }, problems: 0, blocks: 1 },
-  '2a42b19e161c': { kinds: { 'element-extra': 2 }, problems: 0, blocks: 0 },
-  // The multiclass Paladin 2 / Warlock 18. Its one element-missing is `ID_INTERNAL_MULTICLASS_LEVEL_3`.
-  f5a37e331281: { kinds: { 'element-missing': 1, 'element-extra': 1, 'content-missing': 3, 'not-modelled': 2 }, problems: 0, blocks: 2 },
-  b875c2550bcf: { kinds: { 'element-extra': 7 }, problems: 0, blocks: 0 },
-  e0f195948e29: { kinds: { 'element-extra': 14, 'content-missing': 3 }, problems: 0, blocks: 1 },
-  '4fbf1af53fcb': { kinds: { 'element-extra': 4 }, problems: 0, blocks: 1 },
-  '9ecc6a221900': { kinds: { 'element-extra': 6, 'content-missing': 4 }, problems: 1, blocks: 1 },
-  '5fc63055c196': { kinds: { 'element-extra': 14, 'content-missing': 3 }, problems: 0, blocks: 1 },
-  '01b3f35cda2e': { kinds: { 'element-extra': 3 }, problems: 0, blocks: 1 },
-  // The Wizard 4 / Arcane Trickster 4. Its element-missing is `ID_INTERNAL_MULTICLASS_LEVEL_5`, the
-  // same marker as the Paladin/Warlock's, named for the character level the second class began at.
-  // Its two extras are the Thieves' Tools expertise elements Aurora never derived, in this save and in
-  // the Rogue 8's alike. Aurora's updater rewrote `class-rogue.xml` a quarter of an hour before this
-  // save was written, so it may have been running on the older copy it had already loaded, which is
-  // the ordinary "content added after the save" species. Unconfirmed: restart Aurora, reopen the
-  // character and save it again, and if the pair goes the save has a new fingerprint and a new record.
-  b8acec08a7fe: { kinds: { 'element-missing': 1, 'element-extra': 2, 'not-modelled': 1 }, problems: 0, blocks: 2 },
-};
-
 const KINDS: DifferenceKind[] = [
   'element-missing',
   'element-extra',
@@ -112,7 +79,7 @@ const KINDS: DifferenceKind[] = [
 ];
 
 interface Measured {
-  /** The first twelve characters of a hash of the file: what a save is, whatever it is called. */
+  /** `Sample NN`: the character's name inside the file, which is what a sample is. */
   id: string;
   run: OracleRun;
   rows: Record<RowFamily, number>;
@@ -167,38 +134,38 @@ test(
   { skip: savesSkip },
   async (t) => {
     const location = requireCorpus();
-    const savesDir = requireSaves();
+    requireSaves();
 
-    const names = (await readdir(savesDir)).filter((name) => extname(name).toLowerCase() === '.dnd5e');
+    const names = sampleFileNames();
     assert.ok(names.length > 0, 'there is at least one .dnd5e save to check');
+    const manifest = readManifest();
+    const recordedAt = manifest.recordedAt?.slice(0, 12) ?? 'no commit';
+    const byId = new Map(manifest.samples.map((sample) => [sample.id, sample]));
 
     const corpus = await realElements();
     t.diagnostic(corpusProvenance());
 
     const measured: Measured[] = [];
     for (const name of names) {
-      const path = join(savesDir, name);
-      const bytes = await unnamed('reading a save', () => readFile(path));
-      const id = createHash('sha256').update(bytes).digest('hex').slice(0, 12);
-      const run = await runOracle(path, corpus, location.index);
-      measured.push({ id, run, rows: rowsCompared(run) });
+      const run = await runOracle(join(SAMPLES_DIR, name), corpus, location.index);
+      measured.push({ id: run.imported.character.name, run, rows: rowsCompared(run) });
     }
-    // Sorted by fingerprint so the report reads the same whatever the folder holds or calls things.
+    // Sorted by id so the report reads the same whatever order the folder lists things in.
     measured.sort((a, b) => (a.id < b.id ? -1 : 1));
 
     // 1. The report. Every number, per save, and where it moved from the recorded table.
     const detail = process.env['INCUDO_ORACLE_DETAIL'] === '1';
     for (const { id, run, rows } of measured) {
       const table = tableOf(run);
-      const recorded = RECORDED[id];
+      const recorded = byId.get(id)?.recorded as Recorded | undefined;
       t.diagnostic(
-        `save ${id.slice(0, 8)} (${recorded ? 'recorded' : 'NOT RECORDED'}): Aurora derived ` +
+        `${id} (${recorded ? 'recorded' : 'NOT RECORDED'}): Aurora derived ` +
           `${run.comparison.auroraElements} elements, Incudo ${run.comparison.incudoElements}; ` +
           `${describeTable(table)}; rows ${JSON.stringify(rows)}`,
       );
       if (recorded && JSON.stringify(recorded) !== JSON.stringify(table)) {
         t.diagnostic(
-          `save ${id.slice(0, 8)} MOVED since it was recorded at ${RECORDED_AT}: ` +
+          `${id} MOVED since it was recorded at ${recordedAt}: ` +
             `was ${describeTable(recorded)}, now ${describeTable(table)}`,
         );
       }
@@ -207,29 +174,39 @@ test(
       }
     }
     const commit = corpusCommit();
-    if (commit && !commit.sha.startsWith(RECORDED_AT)) {
-      t.diagnostic(`the recorded tables were confirmed at ${RECORDED_AT}; this corpus is at ${commit.sha.slice(0, 12)}`);
+    if (commit && !commit.sha.startsWith(recordedAt)) {
+      t.diagnostic(`the recorded tables were confirmed at ${recordedAt}; this corpus is at ${commit.sha.slice(0, 12)}`);
     }
 
     // 2. The invariants, for every save, recorded or not: the only failures upstream can neither cause
     //    nor excuse. A new character is held to exactly these the day it is saved.
     const broken = measured.flatMap(({ id, run, rows }) =>
-      oracleViolations(run, rows).map((line) => `save ${id.slice(0, 8)}  ${line}`),
+      oracleViolations(run, rows).map((line) => `${id}  ${line}`),
     );
     assert.deepEqual(broken, [], `An invariant does not hold:\n  ${broken.join('\n  ')}`);
 
-    // 3. A recorded table whose save has gone is a referee lost, and it says which one rather than
-    //    letting a smaller folder pass. (This is about the folder, not the corpus.)
-    const present = new Set(measured.map((m) => m.id));
-    for (const id of Object.keys(RECORDED)) {
-      assert.ok(present.has(id), `the save recorded as ${id.slice(0, 8)} is not in the saves folder`);
+    // 3. Armour class against what Aurora's screen showed, held; hit points and speed, reported. A sample
+    //    with no readout is held to the invariants only.
+    const disagree: string[] = [];
+    for (const { id, run } of measured) {
+      const read = byId.get(id)?.readout;
+      if (!read) continue;
+      const stat = (name: string) => run.derived.stats.get(name)?.value;
+      if (stat('ac') !== read.ac) disagree.push(`${id}: armour class reads ${read.ac} on Aurora's screen and ${stat('ac')} here`);
+      if (stat('hp') !== read.hp) t.diagnostic(`${id}: hit points read ${read.hp} on Aurora's screen (${read.hpMethod}), Incudo derives ${stat('hp')}`);
+      if (stat('speed') !== read.speed) t.diagnostic(`${id}: speed read ${read.speed} on Aurora's screen, Incudo derives ${stat('speed')}`);
     }
+    assert.deepEqual(disagree, [], 'Incudo disagrees with what Aurora showed for armour class');
+
+    // A manifest entry whose save has gone is a referee lost, and it says which one.
+    const present = new Set(measured.map((m) => m.id));
+    for (const id of byId.keys()) assert.ok(present.has(id), `${id} is in the manifest and not in the saves folder`);
 
     // 4. The engine-versus-upstream check, opt in. Two runs on the same checkout, one per version of the
     //    engine, are the only thing that separates a change here from a change there.
     const snapshot = Object.fromEntries(
       measured.map(({ id, run, rows }) => [
-        id.slice(0, 12),
+        id,
         { differences: differenceLines(run), problems: run.derived.problems.length, rows },
       ]),
     );
@@ -241,17 +218,17 @@ test(
         const before = baseline[id];
         const after = snapshot[id];
         if (!before || !after) {
-          moved.push(`save ${id.slice(0, 8)} is ${before ? 'gone from' : 'new in'} this run`);
+          moved.push(`${id} is ${before ? 'gone from' : 'new in'} this run`);
           continue;
         }
         const delta = lineDelta(before.differences, after.differences);
-        for (const line of delta.removed) moved.push(`save ${id.slice(0, 8)}  no longer: ${line}`);
-        for (const line of delta.added) moved.push(`save ${id.slice(0, 8)}  now: ${line}`);
+        for (const line of delta.removed) moved.push(`${id}  no longer: ${line}`);
+        for (const line of delta.added) moved.push(`${id}  now: ${line}`);
         if (before.problems !== after.problems) {
-          moved.push(`save ${id.slice(0, 8)}  problems ${before.problems} -> ${after.problems}`);
+          moved.push(`${id}  problems ${before.problems} -> ${after.problems}`);
         }
         if (JSON.stringify(before.rows) !== JSON.stringify(after.rows)) {
-          moved.push(`save ${id.slice(0, 8)}  rows compared ${JSON.stringify(before.rows)} -> ${JSON.stringify(after.rows)}`);
+          moved.push(`${id}  rows compared ${JSON.stringify(before.rows)} -> ${JSON.stringify(after.rows)}`);
         }
       }
       assert.deepEqual(moved, [], `This run differs from the baseline it was told to match:\n  ${moved.join('\n  ')}`);

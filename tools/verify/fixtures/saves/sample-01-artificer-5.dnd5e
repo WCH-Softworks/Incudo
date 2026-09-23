@@ -1,0 +1,450 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<character version="1.0.3" preview="false">
+	<!-- Aurora - https://www.aurorabuilder.com -->
+	<!-- information -->
+	<information>
+		<group>Characters</group>
+		<generationOption>2</generationOption>
+	</information>
+	<!-- display data -->
+	<display-properties favorite="false">
+		<name>Sample 01</name>
+		<race>Human</race>
+		<class>Artificer</class>
+		<archetype>
+		</archetype>
+		<background>Sage</background>
+		<level>5</level>
+		<portrait>
+			<companion></companion>
+			<local></local>
+			<base64></base64>
+		</portrait>
+	</display-properties>
+	<!-- build data -->
+	<build>
+		<input>
+			<name>Sample 01</name>
+			<gender></gender>
+			<player-name></player-name>
+			<experience>6500</experience>
+			<attacks>
+				<description><![CDATA[]]></description>
+			</attacks>
+			<backstory><![CDATA[You spent years learning the lore of the multiverse. You scoured manuscripts, studied scrolls, and listened to the greatest experts on the subjects that interest you. Your efforts have made you a master in your fields of study.]]></backstory>
+			<background-trinket>
+			</background-trinket>
+			<background-traits>I’m willing to listen to every side of an argument before I make my own judgment.
+I’m used to helping out those who aren’t as smart as I am, and I patiently explain anything and everything to others.</background-traits>
+			<background-ideals>Logic. Emotions must not cloud our logical thinking. (Lawful)</background-ideals>
+			<background-bonds>I have an ancient text that holds terrible secrets that must not fall into the wrong hands.</background-bonds>
+			<background-flaws>Unlocking an ancient mystery is worth the price of a civilization.</background-flaws>
+			<background>
+				<feature name="Researcher">
+					<description><![CDATA[When you attempt to learn or recall a piece of lore, if you do not know that information, you often know where and from whom you can obtain it. Usually, this information comes from a library, scriptorium, university, or a sage or other learned person or creature. Your DM might rule that the knowledge you seek is secreted away in an almost inaccessible place, or that it simply cannot be found. Unearthing the deepest secrets of the multiverse can require an adventure or even a whole campaign]]></description>
+				</feature>
+			</background>
+			<organization>
+				<name>
+				</name>
+				<symbol>
+				</symbol>
+				<allies><![CDATA[]]></allies>
+			</organization>
+			<additional-features><![CDATA[]]></additional-features>
+			<currency>
+				<copper>0</copper>
+				<silver>0</silver>
+				<electrum>0</electrum>
+				<gold>0</gold>
+				<platinum>0</platinum>
+				<equipment><![CDATA[]]></equipment>
+				<treasure><![CDATA[]]></treasure>
+			</currency>
+			<notes>
+				<note column="left">
+				</note>
+				<note column="right">
+				</note>
+			</notes>
+			<quest>
+			</quest>
+		</input>
+		<appearance>
+			<portrait></portrait>
+			<age></age>
+			<height></height>
+			<weight></weight>
+			<eyes></eyes>
+			<skin></skin>
+			<hair></hair>
+		</appearance>
+		<abilities available-points="0">
+			<strength>8</strength>
+			<dexterity>13</dexterity>
+			<constitution>14</constitution>
+			<intelligence>15</intelligence>
+			<wisdom>12</wisdom>
+			<charisma>10</charisma>
+		</abilities>
+		<elements level-count="5" registered-count="29">
+			<element type="Option" name="Feats" id="ID_INTERNAL_OPTION_ALLOW_FEATS" />
+			<element type="Option" name="Multiclassing" id="ID_INTERNAL_OPTION_ALLOW_MULTICLASSING">
+				<element type="Grants" name="Multiclass Spellcasting" id="ID_INTERNAL_GRANTS_MULTICLASS_SPELLCASTING" />
+			</element>
+			<element type="Option" name="Customized Proficiencies" id="ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY" />
+			<element type="Level" name="1" id="ID_LEVEL_1" rndhp="8,5,5,5,5,6,5,5,2,3,3,8,5,3,2,1,8,2,7,8">
+				<element type="Race" name="Race" requiredLevel="1" checksum="1597ef76" registered="ID_RACE_HUMAN">
+					<element type="Language" name="Language (Human)" requiredLevel="1" checksum="a9176f2d" registered="ID_LANGUAGE_ELVISH" />
+					<element type="Race Variant" name="Human Variant" requiredLevel="1" checksum="492ee2bb" registered="" />
+					<element type="Size" name="Medium" id="ID_SIZE_MEDIUM" />
+					<element type="Language" name="Common" id="ID_LANGUAGE_COMMON" />
+					<element type="Grants" name="Race Human" id="ID_INTERNAL_GRANT_RACE_HUMAN" />
+				</element>
+				<element type="Class" name="Class" requiredLevel="1" checksum="33a7b15b" registered="ID_WOTC_TCOE_CLASS_ARTIFICER">
+					<element type="Proficiency" name="Artisan Tool, Artificer" requiredLevel="1" checksum="72498818" registered="ID_PROFICIENCY_TOOL_PROFICIENCY_BREWERS_SUPPLIES" />
+					<element type="Proficiency" name="Skill Proficiency, Artificer" requiredLevel="1" number="1" checksum="cea2fb4d" registered="ID_PROFICIENCY_SKILL_INVESTIGATION" />
+					<element type="Proficiency" name="Skill Proficiency, Artificer" requiredLevel="1" number="2" checksum="57abaaf7" registered="ID_PROFICIENCY_SKILL_PERCEPTION" />
+					<element type="Proficiency" name="Armor Proficiency (Light Armor)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_LIGHT_ARMOR">
+						<element type="Proficiency" name="Armor Proficiency (Padded)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_PADDED" />
+						<element type="Proficiency" name="Armor Proficiency (Leather)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_LEATHER" />
+						<element type="Proficiency" name="Armor Proficiency (Studded Leather)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_STUDDED_LEATHER" />
+					</element>
+					<element type="Proficiency" name="Armor Proficiency (Medium Armor)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_MEDIUM_ARMOR">
+						<element type="Proficiency" name="Armor Proficiency (Hide)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_HIDE" />
+						<element type="Proficiency" name="Armor Proficiency (Chain Shirt)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_CHAIN_SHIRT" />
+						<element type="Proficiency" name="Armor Proficiency (Scale Mail)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_SCALE_MAIL" />
+						<element type="Proficiency" name="Armor Proficiency (Breastplate)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_BREASTPLATE" />
+						<element type="Proficiency" name="Armor Proficiency (Half Plate)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_HALF_PLATE" />
+						<element type="Proficiency" name="Armor Proficiency (Spiked Armor)" id="ID_SCAG_PROFICIENCY_ARMOR_PROFICIENCY_SPIKED_ARMOR" />
+					</element>
+					<element type="Proficiency" name="Armor Proficiency (Shields)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_SHIELDS">
+						<element type="Proficiency" name="Armor Proficiency (Shield)" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_SHIELD" />
+					</element>
+					<element type="Proficiency" name="Weapon Proficiency (Simple Weapons)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_WEAPONS">
+						<element type="Proficiency" name="Weapon Proficiency (Simple Melee Weapons)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_MELEE_WEAPONS">
+							<element type="Proficiency" name="Weapon Proficiency (Club)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CLUB" />
+							<element type="Proficiency" name="Weapon Proficiency (Dagger)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_DAGGER" />
+							<element type="Proficiency" name="Weapon Proficiency (Greatclub)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_GREATCLUB" />
+							<element type="Proficiency" name="Weapon Proficiency (Handaxe)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_HANDAXE" />
+							<element type="Proficiency" name="Weapon Proficiency (Javelin)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_JAVELIN" />
+							<element type="Proficiency" name="Weapon Proficiency (Light Hammer)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_LIGHT_HAMMER" />
+							<element type="Proficiency" name="Weapon Proficiency (Mace)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_MACE" />
+							<element type="Proficiency" name="Weapon Proficiency (Quarterstaff)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_QUARTERSTAFF" />
+							<element type="Proficiency" name="Weapon Proficiency (Sickle)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SICKLE" />
+							<element type="Proficiency" name="Weapon Proficiency (Spear)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SPEAR" />
+							<element type="Proficiency" name="Weapon Proficiency (Unarmed Strike)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_UNARMED_STRIKE" />
+						</element>
+						<element type="Proficiency" name="Weapon Proficiency (Simple Ranged Weapons)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_RANGED_WEAPONS">
+							<element type="Proficiency" name="Weapon Proficiency (Light Crossbow)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CROSSBOW_LIGHT" />
+							<element type="Proficiency" name="Weapon Proficiency (Dart)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_DART" />
+							<element type="Proficiency" name="Weapon Proficiency (Shortbow)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SHORTBOW" />
+							<element type="Proficiency" name="Weapon Proficiency (Sling)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SLING" />
+						</element>
+					</element>
+					<element type="Proficiency" name="Tool Proficiency (Thieves’ tools)" id="ID_PROFICIENCY_TOOL_PROFICIENCY_THIEVES_TOOLS" />
+					<element type="Proficiency" name="Tool Proficiency (Tinker’s tools)" id="ID_PROFICIENCY_TOOL_PROFICIENCY_TINKERS_TOOLS" />
+					<element type="Proficiency" name="Saving Throw Proficiency (Constitution)" id="ID_PROFICIENCY_SAVINGTHROW_CONSTITUTION" />
+					<element type="Proficiency" name="Saving Throw Proficiency (Intelligence)" id="ID_PROFICIENCY_SAVINGTHROW_INTELLIGENCE" />
+					<element type="Class Feature" name="Magical Tinkering" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_MAGICAL_TINKERING" />
+					<element type="Class Feature" name="Spellcasting" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_SPELLCASTING">
+						<element type="Spell" name="Cantrip, Artificer" requiredLevel="1" number="1" checksum="e105788d" registered="ID_PHB_SPELL_GUIDANCE" />
+						<element type="Spell" name="Cantrip, Artificer" requiredLevel="1" number="2" checksum="b91bd1a5" registered="ID_PHB_SPELL_MENDING" />
+					</element>
+					<element type="Grants" name="Multiclassing Prerequisite" id="ID_INTERNAL_GRANTS_MULTICLASSING_PREREQUISITE" />
+					<element type="Class Feature" name="Infuse Item" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSE_ITEM">
+						<element type="Class Feature" name="Artificer Infusion (Level 2)" requiredLevel="2" number="1" checksum="87961b72" registered="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSION_ENHANCED_DEFENSE" />
+						<element type="Class Feature" name="Artificer Infusion (Level 2)" requiredLevel="2" number="2" checksum="1e9f4ac8" registered="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSION_ENHANCED_WEAPON" />
+						<element type="Class Feature" name="Artificer Infusion (Level 2)" requiredLevel="2" number="3" checksum="69987a5e" registered="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSION_REPLICATE_MAGIC_ITEM" />
+						<element type="Class Feature" name="Artificer Infusion (Level 2)" requiredLevel="2" number="4" checksum="f7fceffd" registered="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSION_HOMUNCULUS_SERVANT">
+							<element type="Companion" name="Homunculus Servant" requiredLevel="1" checksum="ea29af6d" registered="" />
+						</element>
+						<element type="Class Feature" name="Artificer Infusion, Replicate Magic Item" requiredLevel="1" checksum="4198803d" registered="ID_WOTC_ERLW_CLASS_FEATURE_ARTIFICER_INFUSION_REPLICATE_MAGIC_ITEM_OPTION_BAG_OF_HOLDING" />
+					</element>
+					<element type="Class Feature" name="Artificer Specialist" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_ARTIFICER_SPECIALIST">
+						<element type="Archetype" name="Artificer Specialist" requiredLevel="1" checksum="99c67c3b" registered="ID_WOTC_TCOE_ARCHETYPE_ARTIFICER_ALCHEMIST">
+							<element type="Archetype Feature" name="Tool Proficiency" id="ID_WOTC_TCOE_ARCHETYPE_FEATURE_ALCHEMIST_TOOL_PROFICIENCY">
+								<element type="Proficiency" name="Tool Proficiency (Alchemist)" requiredLevel="1" checksum="7d2c899f" registered="ID_PROFICIENCY_TOOL_PROFICIENCY_ALCHEMISTS_SUPPLIES" />
+							</element>
+							<element type="Archetype Feature" name="Alchemist Spells" id="ID_WOTC_TCOE_ARCHETYPE_FEATURE_ALCHEMIST_ALCHEMIST_SPELLS">
+								<element type="Spell" name="Healing Word" id="ID_PHB_SPELL_HEALING_WORD" />
+								<element type="Spell" name="Ray of Sickness" id="ID_PHB_SPELL_RAY_OF_SICKNESS" />
+								<element type="Spell" name="Flaming Sphere" id="ID_PHB_SPELL_FLAMING_SPHERE" />
+								<element type="Spell" name="Melf’s Acid Arrow" id="ID_PHB_SPELL_MELFS_ACID_ARROW" />
+							</element>
+							<element type="Archetype Feature" name="Experimental Elixir" id="ID_WOTC_TCOE_ARCHETYPE_FEATURE_ALCHEMIST_EXPERIMENTAL_ELIXIR" />
+							<element type="Archetype Feature" name="Alchemical Savant" id="ID_WOTC_TCOE_ARCHETYPE_FEATURE_ALCHEMIST_ALCHEMICAL_SAVANT" />
+						</element>
+					</element>
+					<element type="Class Feature" name="The Right Tool for the Job" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_THE_RIGHT_TOOL_FOR_THE_JOB" />
+					<element type="Class Feature" name="Ability Score Improvement" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_ABILITY_SCORE_IMPROVEMENT">
+						<element type="Class Feature" name="Ability Score Improvement" requiredLevel="4" checksum="556a8946" registered="ID_WOTC_TCOE_CLASS_FEATURE_ABILITY_4">
+							<element type="Ability Score Improvement" name="Ability Score Increase (Level 4)" requiredLevel="1" number="1" checksum="aa59d21c" registered="ID_INTERNAL_ASI_INTELLIGENCE" />
+							<element type="Ability Score Improvement" name="Ability Score Increase (Level 4)" requiredLevel="1" number="2" checksum="335083a6" registered="ID_INTERNAL_ASI_INTELLIGENCE" />
+						</element>
+					</element>
+				</element>
+				<element type="Background" name="Background" requiredLevel="1" checksum="6a621392" registered="ID_BACKGROUND_SAGE">
+					<element type="Language" name="Language (Sage)" requiredLevel="1" number="1" checksum="4dc2b349" registered="ID_LANGUAGE_DWARVISH" />
+					<element type="Language" name="Language (Sage)" requiredLevel="1" number="2" checksum="d4cbe2f3" registered="ID_LANGUAGE_GNOMISH" />
+					<element type="Background Feature" name="Variant Feature" requiredLevel="1" checksum="6e545b5b" registered="" />
+					<element type="List" name="Specialty" requiredLevel="1" checksum="eebb0f66" isList="true" registered="1">Alchemist</element>
+					<element type="List" name="Personality Trait" requiredLevel="1" number="1" checksum="fcf64b3d" isList="true" registered="5">I’m willing to listen to every side of an argument before I make my own judgment.</element>
+					<element type="List" name="Personality Trait" requiredLevel="1" number="2" checksum="65ff1a87" isList="true" registered="3">I’m used to helping out those who aren’t as smart as I am, and I patiently explain anything and everything to others.</element>
+					<element type="List" name="Ideal" requiredLevel="1" checksum="aa578c7b" isList="true" registered="3">Logic. Emotions must not cloud our logical thinking. (Lawful)</element>
+					<element type="List" name="Bond" requiredLevel="1" checksum="9e25bdde" isList="true" registered="2">I have an ancient text that holds terrible secrets that must not fall into the wrong hands.</element>
+					<element type="List" name="Flaw" requiredLevel="1" checksum="2155b59e" isList="true" registered="3">Unlocking an ancient mystery is worth the price of a civilization.</element>
+					<element type="Proficiency" name="Arcana" id="ID_PROFICIENCY_SKILL_ARCANA" />
+					<element type="Proficiency" name="History" id="ID_PROFICIENCY_SKILL_HISTORY" />
+					<element type="Background Feature" name="Feature: Researcher" id="ID_BACKGROUND_FEATURE_RESEARCHER" />
+				</element>
+				<element type="Alignment" name="Alignment" requiredLevel="1" checksum="c9ac49d5" registered="" />
+				<element type="Deity" name="Deity" requiredLevel="1" checksum="989cce4c" registered="" />
+				<element type="Grants" name="Base" id="ID_INTERNAL_GRANTS_CHARACTER_BASE">
+					<element type="Grants" name="Ability Score Maximum Over 20" id="ID_INTERNAL_GRANTS_ABILITY_SCORE_MAXIMUM_OVER_20" />
+				</element>
+				<element type="Grants" name="Spellcasting Base" id="ID_INTERNAL_GRANTS_SPELLCASTING_BASE" />
+				<element type="Grants" name="Base Armor Class" id="ID_INTERNAL_GRANTS_ARMOR_CLASS_BASE" />
+				<element type="Grants" name="Dexterity Modifier" id="ID_INTERNAL_GRANTS_ARMOR_CLASS_DEXTERITY_MODIFIER" />
+				<element type="Grants" name="Constitution Modifier" id="ID_INTERNAL_GRANTS_HP_CONSTITUTION_MODIFIER" />
+			</element>
+			<element type="Level" name="2" id="ID_LEVEL_2" />
+			<element type="Level" name="3" id="ID_LEVEL_3" />
+			<element type="Level" name="4" id="ID_LEVEL_4" />
+			<element type="Level" name="5" id="ID_LEVEL_5" />
+		</elements>
+		<defenses>
+			<conditional>
+			</conditional>
+		</defenses>
+		<companion name="Owl">
+			<attributes>
+				<strength>10</strength>
+				<dexterity>10</dexterity>
+				<constitution>10</constitution>
+				<intelligence>10</intelligence>
+				<wisdom>10</wisdom>
+				<charisma>10</charisma>
+			</attributes>
+			<saves>
+				<save ability="strength">0</save>
+				<save ability="dexterity">0</save>
+				<save ability="constitution">0</save>
+				<save ability="intelligence">0</save>
+				<save ability="wisdom">0</save>
+				<save ability="charisma">0</save>
+			</saves>
+			<skills>
+				<skill name="Acrobatics">0</skill>
+				<skill name="Animal Handling">0</skill>
+				<skill name="Arcana">0</skill>
+				<skill name="Athletics">0</skill>
+				<skill name="Deception">0</skill>
+				<skill name="History">0</skill>
+				<skill name="Insight">0</skill>
+				<skill name="Intimidation">0</skill>
+				<skill name="Investigation">0</skill>
+				<skill name="Medicine">0</skill>
+				<skill name="Nature">0</skill>
+				<skill name="Perception">0</skill>
+				<skill name="Performance">0</skill>
+				<skill name="Persuasion">0</skill>
+				<skill name="Religion">0</skill>
+				<skill name="Sleight of Hand">0</skill>
+				<skill name="Stealth">0</skill>
+				<skill name="Survival">0</skill>
+			</skills>
+			<portrait location="local"></portrait>
+		</companion>
+		<equipment>
+			<storage name="#1" />
+			<storage name="#2" />
+		</equipment>
+		<sum element-count="92">
+			<element type="Option" id="ID_INTERNAL_OPTION_ALLOW_FEATS" />
+			<element type="Option" id="ID_INTERNAL_OPTION_ALLOW_MULTICLASSING" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_MULTICLASS_SPELLCASTING" />
+			<element type="Option" id="ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY" />
+			<element type="Level" id="ID_LEVEL_1" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_CHARACTER_BASE" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_ABILITY_SCORE_MAXIMUM_OVER_20" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_SPELLCASTING_BASE" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_ARMOR_CLASS_BASE" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_ARMOR_CLASS_DEXTERITY_MODIFIER" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_HP_CONSTITUTION_MODIFIER" />
+			<element type="Race" id="ID_RACE_HUMAN" />
+			<element type="Size" id="ID_SIZE_MEDIUM" />
+			<element type="Language" id="ID_LANGUAGE_COMMON" />
+			<element type="Grants" id="ID_INTERNAL_GRANT_RACE_HUMAN" />
+			<element type="Language" id="ID_LANGUAGE_ELVISH" />
+			<element type="Proficiency" id="ID_PROFICIENCY_TOOL_PROFICIENCY_BREWERS_SUPPLIES" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_INVESTIGATION" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_PERCEPTION" />
+			<element type="Spell" id="ID_PHB_SPELL_GUIDANCE" />
+			<element type="Spell" id="ID_PHB_SPELL_MENDING" />
+			<element type="Background" id="ID_BACKGROUND_SAGE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_ARCANA" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_HISTORY" />
+			<element type="Background Feature" id="ID_BACKGROUND_FEATURE_RESEARCHER" />
+			<element type="Language" id="ID_LANGUAGE_DWARVISH" />
+			<element type="Language" id="ID_LANGUAGE_GNOMISH" />
+			<element type="Level" id="ID_LEVEL_2" />
+			<element type="Level" id="ID_LEVEL_3" />
+			<element type="Proficiency" id="ID_PROFICIENCY_TOOL_PROFICIENCY_ALCHEMISTS_SUPPLIES" />
+			<element type="Level" id="ID_LEVEL_4" />
+			<element type="Ability Score Improvement" id="ID_INTERNAL_ASI_INTELLIGENCE" />
+			<element type="Ability Score Improvement" id="ID_INTERNAL_ASI_INTELLIGENCE" />
+			<element type="Level" id="ID_LEVEL_5" />
+			<element type="Class" id="ID_WOTC_TCOE_CLASS_ARTIFICER" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_LIGHT_ARMOR" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_PADDED" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_LEATHER" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_STUDDED_LEATHER" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_MEDIUM_ARMOR" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_HIDE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_CHAIN_SHIRT" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_SCALE_MAIL" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_BREASTPLATE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_HALF_PLATE" />
+			<element type="Proficiency" id="ID_SCAG_PROFICIENCY_ARMOR_PROFICIENCY_SPIKED_ARMOR" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_SHIELDS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_SHIELD" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_WEAPONS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_MELEE_WEAPONS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CLUB" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_DAGGER" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_GREATCLUB" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_HANDAXE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_JAVELIN" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_LIGHT_HAMMER" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_MACE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_QUARTERSTAFF" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SICKLE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SPEAR" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_UNARMED_STRIKE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_RANGED_WEAPONS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CROSSBOW_LIGHT" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_DART" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SHORTBOW" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SLING" />
+			<element type="Proficiency" id="ID_PROFICIENCY_TOOL_PROFICIENCY_THIEVES_TOOLS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_TOOL_PROFICIENCY_TINKERS_TOOLS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SAVINGTHROW_CONSTITUTION" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SAVINGTHROW_INTELLIGENCE" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_MAGICAL_TINKERING" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_SPELLCASTING" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_MULTICLASSING_PREREQUISITE" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSE_ITEM" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_ARTIFICER_SPECIALIST" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_THE_RIGHT_TOOL_FOR_THE_JOB" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_ABILITY_SCORE_IMPROVEMENT" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSION_ENHANCED_DEFENSE" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSION_ENHANCED_WEAPON" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSION_REPLICATE_MAGIC_ITEM" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_INFUSION_HOMUNCULUS_SERVANT" />
+			<element type="Class Feature" id="ID_WOTC_ERLW_CLASS_FEATURE_ARTIFICER_INFUSION_REPLICATE_MAGIC_ITEM_OPTION_BAG_OF_HOLDING" />
+			<element type="Archetype" id="ID_WOTC_TCOE_ARCHETYPE_ARTIFICER_ALCHEMIST" />
+			<element type="Archetype Feature" id="ID_WOTC_TCOE_ARCHETYPE_FEATURE_ALCHEMIST_TOOL_PROFICIENCY" />
+			<element type="Archetype Feature" id="ID_WOTC_TCOE_ARCHETYPE_FEATURE_ALCHEMIST_ALCHEMIST_SPELLS" />
+			<element type="Spell" id="ID_PHB_SPELL_HEALING_WORD" />
+			<element type="Spell" id="ID_PHB_SPELL_RAY_OF_SICKNESS" />
+			<element type="Spell" id="ID_PHB_SPELL_FLAMING_SPHERE" />
+			<element type="Spell" id="ID_PHB_SPELL_MELFS_ACID_ARROW" />
+			<element type="Archetype Feature" id="ID_WOTC_TCOE_ARCHETYPE_FEATURE_ALCHEMIST_EXPERIMENTAL_ELIXIR" />
+			<element type="Archetype Feature" id="ID_WOTC_TCOE_ARCHETYPE_FEATURE_ALCHEMIST_ALCHEMICAL_SAVANT" />
+			<element type="Class Feature" id="ID_WOTC_TCOE_CLASS_FEATURE_ABILITY_4" />
+		</sum>
+		<magic>
+			<spellcasting name="Artificer" ability="Intelligence" attack="7" dc="15" source="ID_WOTC_TCOE_CLASS_FEATURE_ARTIFICER_SPELLCASTING">
+				<slots s1="4" s2="2" s3="0" s4="0" s5="0" s6="0" s7="0" s8="0" s9="0" />
+				<cantrips>
+					<spell name="Guidance" level="0" id="ID_PHB_SPELL_GUIDANCE" />
+					<spell name="Mending" level="0" id="ID_PHB_SPELL_MENDING" />
+				</cantrips>
+				<spells>
+					<spell name="Cure Wounds" level="1" id="ID_PHB_SPELL_CURE_WOUNDS" prepared="true" />
+					<spell name="Detect Magic" level="1" id="ID_PHB_SPELL_DETECT_MAGIC" prepared="true" />
+					<spell name="Faerie Fire" level="1" id="ID_PHB_SPELL_FAERIE_FIRE" prepared="true" />
+					<spell name="Healing Word" level="1" id="ID_PHB_SPELL_HEALING_WORD" prepared="true" always-prepared="true" known="true" />
+					<spell name="Ray of Sickness" level="1" id="ID_PHB_SPELL_RAY_OF_SICKNESS" prepared="true" always-prepared="true" known="true" />
+					<spell name="Tasha’s Caustic Brew" level="1" id="ID_WOTC_TCOE_SPELL_TASHAS_CAUSTIC_BREW" prepared="true" />
+					<spell name="Flaming Sphere" level="2" id="ID_PHB_SPELL_FLAMING_SPHERE" prepared="true" always-prepared="true" known="true" />
+					<spell name="Lesser Restoration" level="2" id="ID_PHB_SPELL_LESSER_RESTORATION" prepared="true" />
+					<spell name="Levitate" level="2" id="ID_PHB_SPELL_LEVITATE" prepared="true" />
+					<spell name="Melf’s Acid Arrow" level="2" id="ID_PHB_SPELL_MELFS_ACID_ARROW" prepared="true" always-prepared="true" known="true" />
+					<spell name="Absorb Elements" level="1" id="ID_XGTE_SPELL_ABSORB_ELEMENTS" />
+					<spell name="Alarm" level="1" id="ID_PHB_SPELL_ALARM" />
+					<spell name="Alarm" level="1" id="ID_WOTC_PHB24_SPELL_ALARM" />
+					<spell name="Catapult" level="1" id="ID_XGTE_SPELL_CATAPULT" />
+					<spell name="Cure Wounds" level="1" id="ID_WOTC_PHB24_SPELL_CURE_WOUNDS" />
+					<spell name="Detect Magic" level="1" id="ID_WOTC_PHB24_SPELL_DETECT_MAGIC" />
+					<spell name="Disguise Self" level="1" id="ID_PHB_SPELL_DISGUISE_SELF" />
+					<spell name="Disguise Self" level="1" id="ID_WOTC_PHB24_SPELL_DISGUISE_SELF" />
+					<spell name="Expeditious Retreat" level="1" id="ID_PHB_SPELL_EXPEDITIOUS_RETREAT" />
+					<spell name="Expeditious Retreat" level="1" id="ID_WOTC_PHB24_SPELL_EXPEDITIOUS_RETREAT" />
+					<spell name="Faerie Fire" level="1" id="ID_WOTC_PHB24_SPELL_FAERIE_FIRE" />
+					<spell name="False Life" level="1" id="ID_PHB_SPELL_FALSE_LIFE" />
+					<spell name="False Life" level="1" id="ID_WOTC_PHB24_SPELL_FALSE_LIFE" />
+					<spell name="Feather Fall" level="1" id="ID_PHB_SPELL_FEATHER_FALL" />
+					<spell name="Feather Fall" level="1" id="ID_WOTC_PHB24_SPELL_FEATHER_FALL" />
+					<spell name="Grease" level="1" id="ID_PHB_SPELL_GREASE" />
+					<spell name="Grease" level="1" id="ID_WOTC_PHB24_SPELL_GREASE" />
+					<spell name="Identify" level="1" id="ID_PHB_SPELL_IDENTIFY" />
+					<spell name="Identify" level="1" id="ID_WOTC_PHB24_SPELL_IDENTIFY" />
+					<spell name="Jump" level="1" id="ID_PHB_SPELL_JUMP" />
+					<spell name="Jump" level="1" id="ID_WOTC_PHB24_SPELL_JUMP" />
+					<spell name="Longstrider" level="1" id="ID_PHB_SPELL_LONGSTRIDER" />
+					<spell name="Longstrider" level="1" id="ID_WOTC_PHB24_SPELL_LONGSTRIDER" />
+					<spell name="Purify Food and Drink" level="1" id="ID_PHB_SPELL_PURIFY_FOOD_AND_DRINK" />
+					<spell name="Purify Food and Drink" level="1" id="ID_WOTC_PHB24_SPELL_PURIFY_FOOD_AND_DRINK" />
+					<spell name="Sanctuary" level="1" id="ID_PHB_SPELL_SANCTUARY" />
+					<spell name="Sanctuary" level="1" id="ID_WOTC_PHB24_SPELL_SANCTUARY" />
+					<spell name="Snare" level="1" id="ID_XGTE_SPELL_SNARE" />
+					<spell name="Aid" level="2" id="ID_PHB_SPELL_AID" />
+					<spell name="Aid" level="2" id="ID_WOTC_PHB24_SPELL_AID" />
+					<spell name="Air Bubble" level="2" id="ID_WOTC_AAG_SPELL_AIR_BUBBLE" />
+					<spell name="Alter Self" level="2" id="ID_PHB_SPELL_ALTER_SELF" />
+					<spell name="Alter Self" level="2" id="ID_WOTC_PHB24_SPELL_ALTER_SELF" />
+					<spell name="Arcane Lock" level="2" id="ID_PHB_SPELL_ARCANE_LOCK" />
+					<spell name="Arcane Lock" level="2" id="ID_WOTC_PHB24_SPELL_ARCANE_LOCK" />
+					<spell name="Blur" level="2" id="ID_PHB_SPELL_BLUR" />
+					<spell name="Blur" level="2" id="ID_WOTC_PHB24_SPELL_BLUR" />
+					<spell name="Continual Flame" level="2" id="ID_PHB_SPELL_CONTINUAL_FLAME" />
+					<spell name="Continual Flame" level="2" id="ID_WOTC_PHB24_SPELL_CONTINUAL_FLAME" />
+					<spell name="Darkvision" level="2" id="ID_PHB_SPELL_DARKVISION" />
+					<spell name="Darkvision" level="2" id="ID_WOTC_PHB24_SPELL_DARKVISION" />
+					<spell name="Enhance Ability" level="2" id="ID_PHB_SPELL_ENHANCE_ABILITY" />
+					<spell name="Enhance Ability" level="2" id="ID_WOTC_PHB24_SPELL_ENHANCE_ABILITY" />
+					<spell name="Enlarge/Reduce" level="2" id="ID_PHB_SPELL_ENLARGE_REDUCE" />
+					<spell name="Enlarge/Reduce" level="2" id="ID_WOTC_PHB24_SPELL_ENLARGE_REDUCE" />
+					<spell name="Heat Metal" level="2" id="ID_PHB_SPELL_HEAT_METAL" />
+					<spell name="Heat Metal" level="2" id="ID_WOTC_PHB24_SPELL_HEAT_METAL" />
+					<spell name="Invisibility" level="2" id="ID_PHB_SPELL_INVISIBILITY" />
+					<spell name="Invisibility" level="2" id="ID_WOTC_PHB24_SPELL_INVISIBILITY" />
+					<spell name="Lesser Restoration" level="2" id="ID_WOTC_PHB24_SPELL_LESSER_RESTORATION" />
+					<spell name="Levitate" level="2" id="ID_WOTC_PHB24_SPELL_LEVITATE" />
+					<spell name="Magic Mouth" level="2" id="ID_PHB_SPELL_MAGIC_MOUTH" />
+					<spell name="Magic Mouth" level="2" id="ID_WOTC_PHB24_SPELL_MAGIC_MOUTH" />
+					<spell name="Magic Weapon" level="2" id="ID_PHB_SPELL_MAGIC_WEAPON" />
+					<spell name="Magic Weapon" level="2" id="ID_WOTC_PHB24_SPELL_MAGIC_WEAPON" />
+					<spell name="Protection from Poison" level="2" id="ID_PHB_SPELL_PROTECTION_FROM_POISON" />
+					<spell name="Protection from Poison" level="2" id="ID_WOTC_PHB24_SPELL_PROTECTION_FROM_POISON" />
+					<spell name="Pyrotechnics" level="2" id="ID_XGTE_SPELL_PYROTECHNICS" />
+					<spell name="Rope Trick" level="2" id="ID_PHB_SPELL_ROPE_TRICK" />
+					<spell name="Rope Trick" level="2" id="ID_WOTC_PHB24_SPELL_ROPE_TRICK" />
+					<spell name="See Invisibility" level="2" id="ID_PHB_SPELL_SEE_INVISIBILITY" />
+					<spell name="See Invisibility" level="2" id="ID_WOTC_PHB24_SPELL_SEE_INVISIBILITY" />
+					<spell name="Skywrite" level="2" id="ID_XGTE_SPELL_SKYWRITE" />
+					<spell name="Spider Climb" level="2" id="ID_PHB_SPELL_SPIDER_CLIMB" />
+					<spell name="Spider Climb" level="2" id="ID_WOTC_PHB24_SPELL_SPIDER_CLIMB" />
+					<spell name="Web" level="2" id="ID_PHB_SPELL_WEB" />
+					<spell name="Web" level="2" id="ID_WOTC_PHB24_SPELL_WEB" />
+				</spells>
+			</spellcasting>
+		</magic>
+	</build>
+	<!-- restricted sources -->
+	<sources>
+		<restricted></restricted>
+	</sources>
+</character>

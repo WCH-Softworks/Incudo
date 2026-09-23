@@ -1,14 +1,13 @@
 /**
- * Multiclassing against the project's own oracle, through the builder — ADR 0036.
+ * Multiclassing against a real Aurora save, through the builder — ADR 0036.
  *
- * The level 20 Paladin 2 / Warlock 18 was made in Aurora precisely so multiclassing would have a
- * referee. This rebuilds it with `CharacterBuilder` — a fresh character, its picks replayed, the
- * Warlock levels spent one `addLevel` at a time, each through the same eligibility gate a click goes
- * through — and compares what comes out against the import of the real save.
+ * A Paladin 3 / Sorcerer 3 was made in Aurora (a generic sample, docs/SAMPLE-SAVES.md) so that
+ * multiclassing would have a referee. This rebuilds it with `CharacterBuilder` — a fresh character, its
+ * picks replayed, the Sorcerer levels spent one `addLevel` at a time, each through the same eligibility
+ * gate a click goes through — and compares what comes out against the import of the save.
  *
- * The save is personal data and stays out of the repo, like the other eight; this file skips
- * where it is not installed and asserts on counts, ids and shapes — never a name or a piece of
- * prose from the character.
+ * The save is found by its class split and not by what it is called, and this file skips where no
+ * such save is present.
  */
 
 import { test } from 'node:test';
@@ -44,11 +43,11 @@ async function fiveE(): Promise<GameSystem> {
 
 // --- the oracle -----------------------------------------------------------------------------
 
-const SPLIT = [...Array<string>(2).fill('Paladin'), ...Array<string>(18).fill('Warlock')].join(',');
+const SPLIT = [...Array<string>(3).fill('Paladin'), ...Array<string>(3).fill('Sorcerer')].join(',');
 
 /**
- * The save whose twenty levels went two to a Paladin and eighteen to a Warlock, found by that and not
- * by what the file is called. This is the one multiclass save the project was given a referee for.
+ * The save whose six levels went three to a Paladin and three to a Sorcerer, found by that and not
+ * by what the file is called. Paladin 3 is the odd half-caster level that tells rounding down from up.
  */
 async function findOracle(corpus: ElementIndex): Promise<string | undefined> {
   for (const name of (await readdir(SAVES_DIR)).sort()) {
@@ -62,7 +61,7 @@ async function findOracle(corpus: ElementIndex): Promise<string | undefined> {
 }
 
 test(
-  'the Paladin 2 / Warlock 18 oracle, rebuilt through the builder, is the character Aurora wrote',
+  'the Paladin 3 / Sorcerer 3 sample, rebuilt through the builder, is the character Aurora wrote',
   { skip: savesSkip },
   async (t) => {
     requireSaves();
@@ -70,7 +69,7 @@ test(
     const corpus = await realElements();
     const xml = await findOracle(corpus);
     if (xml === undefined) {
-      t.skip('no save of a Paladin 2 / Warlock 18 is installed');
+      t.skip('no save of a Paladin 3 / Sorcerer 3 is present');
       return;
     }
     const save = parseAuroraSave(xml);
@@ -79,15 +78,15 @@ test(
     const reference = imported.character;
 
     // What the import holds about the split — the thing the builder has to reproduce.
-    assert.equal(reference.progress, 20);
+    assert.equal(reference.progress, 6);
     const importedAdvancement = reference.advancement!;
-    assert.equal(importedAdvancement.length, 20);
+    assert.equal(importedAdvancement.length, 6);
     const paladin = importedAdvancement[0]!.elementId;
-    const warlock = importedAdvancement[19]!.elementId;
-    assert.notEqual(paladin, warlock);
+    const sorcerer = importedAdvancement[5]!.elementId;
+    assert.notEqual(paladin, sorcerer);
     assert.deepEqual(
-      importedAdvancement.map((entry) => (entry.elementId === paladin ? 'P' : 'W')).join(''),
-      `PP${'W'.repeat(18)}`,
+      importedAdvancement.map((entry) => (entry.elementId === paladin ? 'P' : 'S')).join(''),
+      'PPPSSS',
     );
     const isMulticlassRecord = (ruleKey: string): boolean => ruleKey.includes('select:Multiclass');
     const importedRecords = reference.choices.filter((c) => isMulticlassRecord(c.ruleKey));
@@ -104,41 +103,33 @@ test(
     for (const [stat, value] of Object.entries(reference.baseStats ?? {})) builder.setBaseStat(stat, value);
 
     builder.choose('build/class', [paladin]);
-    builder.setProgress(2);
-    assert.equal(builder.getState().character.advancement, undefined, 'Paladin 2 is still one class');
+    builder.setProgress(3);
+    assert.equal(builder.getState().character.advancement, undefined, 'Paladin 3 is still one class');
 
-    // The Warlock is refused until the gate says otherwise — measured, not assumed. With the
+    // The Sorcerer is refused until the gate says otherwise — measured, not assumed. With the
     // scores unset a Charisma 13 minimum reads false, which is what the gate is for.
     const bare = new CharacterBuilder(
-      { ...createCharacter('dnd5e', 'pc', { progress: 2 }), choices: [{ ruleKey: 'build/class', elementIds: [paladin] }] },
+      { ...createCharacter('dnd5e', 'pc', { progress: 3 }), choices: [{ ruleKey: 'build/class', elementIds: [paladin] }] },
       system,
       elements,
     );
-    const bareOption = bare.classLevelsFor('levels')!.options.find((o) => o.id === warlock)!;
+    const bareOption = bare.classLevelsFor('levels')!.options.find((o) => o.id === sorcerer)!;
     assert.equal(bareOption.eligible, false, 'default scores do not meet Charisma 13');
-    assert.equal(bare.addLevel('levels', warlock), false);
-    assert.equal(bare.getState().character.progress, 2, 'a refused level does not grow the character');
+    assert.equal(bare.addLevel('levels', sorcerer), false);
+    assert.equal(bare.getState().character.progress, 3, 'a refused level does not grow the character');
 
-    const option = builder.classLevelsFor('levels')!.options.find((o) => o.id === warlock)!;
-    assert.equal(option.eligible, true, 'the oracle\'s Charisma meets the Warlock\'s block');
+    const option = builder.classLevelsFor('levels')!.options.find((o) => o.id === sorcerer)!;
+    assert.equal(option.eligible, true, 'the sample\'s Charisma meets the Sorcerer\'s block');
     assert.equal(option.taken, false);
 
-    for (let level = 3; level <= 20; level += 1) {
-      assert.equal(builder.addLevel('levels', warlock), true, `level ${level} is the Warlock's`);
-
-      if (level === 6) {
-        // Decisions a level opens keep arriving in the one flat list, tagged with the level in
-        // their own track: this is character level 6 and Warlock level 4.
-        const improvement = builder
-          .getState()
-          .decisions.find((d) => /Improvement Option \(Warlock 4\)/i.test(d.label));
-        assert.ok(improvement, 'the Warlock\'s level 4 improvement is outstanding');
-        assert.equal(improvement.openedAt, 4, 'Warlock 4, though the character is level 6');
-        assert.equal(builder.getState().derived.stats.get('level:warlock')?.value, 4);
-        assert.equal(builder.getState().derived.stats.get('level')?.value, 6);
-      }
+    for (let level = 4; level <= 6; level += 1) {
+      assert.equal(builder.addLevel('levels', sorcerer), true, `level ${level} is the Sorcerer's`);
+      // A level's track is its class's: after the second Sorcerer level the class reads 2, whatever
+      // the character's total is.
+      assert.equal(builder.getState().derived.stats.get('level:sorcerer')?.value, level - 3);
+      assert.equal(builder.getState().derived.stats.get('level')?.value, level);
     }
-    assert.equal(builder.getState().character.progress, 20);
+    assert.equal(builder.getState().character.progress, 6);
 
     // The same records an import writes, from the builder's own hands.
     assert.deepEqual(builder.getState().character.advancement, importedAdvancement);
@@ -169,23 +160,23 @@ test(
 
     // Not just each other: the numbers the differential check exists for.
     const stat = (name: string) => built.stats.get(name)?.value;
-    assert.equal(stat('level'), 20);
-    assert.equal(stat('level:paladin'), 2);
-    assert.equal(stat('level:warlock'), 18);
-    assert.equal(stat('multiclass:spellcasting:level'), 1, 'a half-caster rounds down: floor(2 / 2)');
+    assert.equal(stat('level'), 6);
+    assert.equal(stat('level:paladin'), 3);
+    assert.equal(stat('level:sorcerer'), 3);
+    // Worked from the Player's Handbook: Paladin 3 is one half-caster level rounded down (1, and 2 if it
+    // were rounded up), plus three Sorcerer levels. A caster level of 4 is 4 first-level and 3
+    // second-level slots; a 5 would add three third-level ones.
+    assert.equal(stat('multiclass:spellcasting:level'), 4, 'a half-caster rounds down: floor(3 / 2) + 3');
     assert.deepEqual(
       [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => stat(`spellcasting:slots:${n}`)),
-      [2, 0, 0, 0, 0, 0, 0, 0, 0],
-      'the Paladin\'s two first-level slots, and pact magic is not in the shared table',
+      [4, 3, 0, 0, 0, 0, 0, 0, 0],
+      'the shared pool of a caster level of 4',
     );
-    assert.equal(stat('warlock:spellcasting:slots:count'), 4);
-    assert.equal(stat('warlock:spellcasting:slots:5'), 4, 'four pact slots, all fifth level');
 
     // Against Aurora itself: the differences the built character has with the save are exactly
-    // the ones the import has — the one known `element-missing`, the darkvision that post-dates
-    // the save, the three `content-missing` — and nothing new. Zero `stat-mismatch` and zero
-    // `spell-missing` are the numbers CLAUDE.md holds; this is those numbers for a character
-    // nobody imported.
+    // the ones the import has and nothing new. Zero `stat-mismatch` and zero `spell-missing` are the
+    // numbers CLAUDE.md holds; this is those numbers for a character nobody imported. The one
+    // `element-missing` is the Aurora-app marker for the level the second class began at.
     const fingerprint = (d: ReturnType<typeof deriveCharacter>) =>
       compareWithAurora(save, d, { index: elements }).differences
         .map((difference) => `${difference.kind}:${difference.elementId ?? ''}`)
@@ -205,7 +196,7 @@ test(
     requireSaves();
     // Nothing checks a hit point total against Aurora — the save records the rolls and never the
     // sum (ADR 0019) — so this proves less than it might sound and says so. What it CAN show:
-    // that the builder hands level 1 and 2 the Paladin's d10 and levels 3–20 the Warlock's d8, and
+    // that the builder hands levels 1 to 3 the Paladin's d10 and levels 4 to 6 the Sorcerer's d6, and
     // that recording them through it sums to the number the Player's Handbook gives by hand.
     // What it cannot: that Aurora agrees, or that 5e's hit point rule is the one the system
     // definition declares — that is read from the book, and this test is the reading.
@@ -213,14 +204,14 @@ test(
     const corpus = await realElements();
     const xml = await findOracle(corpus);
     if (xml === undefined) {
-      t.skip('no save of a Paladin 2 / Warlock 18 is installed');
+      t.skip('no save of a Paladin 3 / Sorcerer 3 is present');
       return;
     }
     const save = parseAuroraSave(xml);
     const imported = importAuroraCharacter(save, { index: corpus, systemId: 'dnd5e' });
     const elements = new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus]);
     const paladin = imported.character.advancement![0]!.elementId;
-    const warlock = imported.character.advancement![19]!.elementId;
+    const sorcerer = imported.character.advancement![5]!.elementId;
 
     let seed = createCharacter('dnd5e', 'pc', { progress: 1 });
     for (const [stat, value] of Object.entries(imported.character.baseStats ?? {})) {
@@ -228,34 +219,34 @@ test(
     }
     const builder = new CharacterBuilder(seed, system, elements);
     builder.choose('build/class', [paladin]);
-    builder.setProgress(2);
-    for (let level = 3; level <= 20; level += 1) assert.equal(builder.addLevel('levels', warlock), true);
+    builder.setProgress(3);
+    for (let level = 4; level <= 6; level += 1) assert.equal(builder.addLevel('levels', sorcerer), true);
 
     const hp = builder.hitPointsFor('levels')!;
     assert.deepEqual(
       hp.levels.map((l) => l.dieSides),
-      [10, 10, ...Array<number>(18).fill(8)],
+      [10, 10, 10, 6, 6, 6],
       'the level-by-level dice are what `advancement` says governs each level',
     );
 
-    for (let level = 1; level <= 20; level += 1) builder.recordHitPoints('levels', level, 'average');
+    for (let level = 1; level <= 6; level += 1) builder.recordHitPoints('levels', level, 'average');
     const rolls = builder.getState().character.rolls;
     const total = Object.entries(rolls)
       .filter(([key]) => key.startsWith('hp:level:'))
       .reduce((sum, [, value]) => sum + value, 0);
-    // Level 1 is the maximum of its die (10); level 2 is a d10's average (6); eighteen levels of
-    // a d8's average (5). Not a sum the test lets the code produce: 10 + 6 + 18 × 5.
-    assert.equal(total, 10 + 6 + 18 * 5);
+    // Level 1 is the maximum of its die (10); levels 2 and 3 are a d10's average (6); three levels of
+    // a d6's average (4). Not a sum the test lets the code produce: 10 + 2 × 6 + 3 × 4.
+    assert.equal(total, 10 + 2 * 6 + 3 * 4);
 
     const derived = builder.getState().derived;
     const constitutionModifier = derived.stats.get('constitution:modifier')!.value;
-    assert.equal(derived.stats.get('hp')?.value, total + constitutionModifier * 20);
+    assert.equal(derived.stats.get('hp')?.value, total + constitutionModifier * 6);
 
-    // The control: had the Warlock's levels been left on the Paladin, the same twenty averages
-    // would be a d10's, and the sheet would read 18 hit points more than the character has.
-    const wrong = 10 + 6 * 19;
+    // The control: had the Sorcerer's levels been left on the Paladin, the same six averages would be
+    // a d10's, and the sheet would read 6 hit points more than the character has.
+    const wrong = 10 + 6 * 5;
     assert.notEqual(total, wrong);
-    assert.equal(wrong - total, 18);
+    assert.equal(wrong - total, 6);
   },
 );
 
@@ -272,7 +263,7 @@ test(
     const corpus = await realElements();
     const xml = await findOracle(corpus);
     if (xml === undefined) {
-      t.skip('no save of a Paladin 2 / Warlock 18 is installed');
+      t.skip('no save of a Paladin 3 / Sorcerer 3 is present');
       return;
     }
     const save = parseAuroraSave(xml);
@@ -323,20 +314,20 @@ test(
     assert.deepEqual(after.decisions.filter((d) => d.kind === 'pick' && !d.multiple), []);
 
     // Changing the class re-homes what the old first class held, exactly as it does for a
-    // character the builder wrote: the Paladin's two levels go to the new class, the Warlock's
-    // eighteen stay, and the class records do not multiply.
+    // character the builder wrote: the Paladin's three levels go to the new class, the Sorcerer's
+    // three stay, and the class records do not multiply.
     const cls = settled.get('class')!;
     const advancement = reference.advancement!;
     const paladin = advancement[0]!.elementId;
     assert.equal(cls.chosen[0], paladin);
     const other = cls.candidates.find(
-      (id) => id !== paladin && id !== advancement[19]!.elementId,
+      (id) => id !== paladin && id !== advancement[5]!.elementId,
     )!;
     builder.choose(cls.ruleKey, [other]);
     const rehomed = builder.getState().character;
     assert.equal(
       rehomed.advancement?.filter((entry) => entry.elementId === other).length,
-      2,
+      3,
       'both of the old first class\'s levels moved',
     );
     assert.equal(rehomed.advancement?.some((entry) => entry.elementId === paladin), false);

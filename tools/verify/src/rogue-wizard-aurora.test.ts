@@ -1,7 +1,7 @@
 /**
  * ROADMAP Phase 2's exit criterion against Aurora: the Wizard 4 / Rogue 4 described in
  * `rogue-wizard-build.ts`, built through the builder, compared with the save the maintainer made of the
- * same description in Aurora.
+ * same description in Aurora, once such a save is a committed sample.
  *
  * The description is what was handed over; the save is what came back, so the two were made by
  * different hands, and Aurora's `<sum>` and `<magic>` are a referee that had no part in either. This is
@@ -10,7 +10,9 @@
  *
  * The save is found by what it is, a character whose levels went four to the Wizard and then four to
  * the Rogue, and not by its name, its position or how many other saves sit beside it. Where there is
- * none, this skips: it needs a save only its owner has, like every other real save.
+ * none, this skips. **No committed sample is this description yet** (the sample saves of
+ * docs/SAMPLE-SAVES.md are other characters), so until one is added this comparison does not run; it is
+ * the only place a builder-made character is compared with Aurora's answer for the same choices.
  *
  * What is asserted is what Aurora *records*, and what the description fixes:
  *  - no `stat-mismatch` and no `spell-missing`: both blocks' slots, the save DC, the attack bonus, the

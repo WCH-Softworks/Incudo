@@ -1,0 +1,1055 @@
+{
+  "formatVersion": 1,
+  "recordedAt": "c28ce6cd77ff92f7e0c99c5617a76cbe8371e35d",
+  "samples": [
+    {
+      "id": "Sample 01",
+      "file": "sample-01-artificer-5.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Artificer",
+          "levels": 5
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 38,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          6
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 11,
+          "not-modelled": 1
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 02",
+      "file": "sample-02-paladin-3-sorcerer-3.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Paladin",
+          "levels": 3
+        },
+        {
+          "class": "Sorcerer",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY"
+      ],
+      "readout": {
+        "ac": 13,
+        "hp": 49,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          3,
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-missing": 1,
+          "content-missing": 3,
+          "not-modelled": 2
+        },
+        "problems": 0,
+        "blocks": 2
+      }
+    },
+    {
+      "id": "Sample 03",
+      "file": "sample-03-wizard-4-artificer-3.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Wizard",
+          "levels": 4
+        },
+        {
+          "class": "Artificer",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 47,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          8,
+          5
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-missing": 1,
+          "element-extra": 11,
+          "not-modelled": 2
+        },
+        "problems": 0,
+        "blocks": 2
+      }
+    },
+    {
+      "id": "Sample 04",
+      "file": "sample-04-wizard-4-paladin-3-fighter-3.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Wizard",
+          "levels": 4
+        },
+        {
+          "class": "Paladin",
+          "levels": 3
+        },
+        {
+          "class": "Fighter",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY"
+      ],
+      "readout": {
+        "ac": 10,
+        "hp": 56,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          8,
+          3,
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-missing": 2,
+          "content-missing": 3,
+          "not-modelled": 3
+        },
+        "problems": 0,
+        "blocks": 3
+      }
+    },
+    {
+      "id": "Sample 05",
+      "file": "sample-05-wizard-3-rogue-3-warlock-3.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Wizard",
+          "levels": 3
+        },
+        {
+          "class": "Rogue",
+          "levels": 3
+        },
+        {
+          "class": "Warlock",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 53,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          6,
+          0,
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-missing": 2,
+          "element-extra": 2,
+          "not-modelled": 2
+        },
+        "problems": 0,
+        "blocks": 3
+      }
+    },
+    {
+      "id": "Sample 06",
+      "file": "sample-06-rogue-4-wizard-4-interleaved.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Rogue",
+          "levels": 1
+        },
+        {
+          "class": "Wizard",
+          "levels": 1
+        },
+        {
+          "class": "Rogue",
+          "levels": 1
+        },
+        {
+          "class": "Wizard",
+          "levels": 1
+        },
+        {
+          "class": "Rogue",
+          "levels": 1
+        },
+        {
+          "class": "Wizard",
+          "levels": 1
+        },
+        {
+          "class": "Rogue",
+          "levels": 1
+        },
+        {
+          "class": "Wizard",
+          "levels": 1
+        }
+      ],
+      "interleaved": true,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY"
+      ],
+      "readout": {
+        "ac": 14,
+        "hp": 55,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          6,
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-missing": 1,
+          "element-extra": 2,
+          "not-modelled": 1
+        },
+        "problems": 0,
+        "blocks": 2
+      }
+    },
+    {
+      "id": "Sample 07",
+      "file": "sample-07-cleric-20-war.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Cleric",
+          "levels": 20
+        }
+      ],
+      "interleaved": false,
+      "options": [],
+      "readout": {
+        "ac": 10,
+        "hp": 183,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          25
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "content-missing": 62,
+          "not-modelled": 1
+        },
+        "problems": 1,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 08",
+      "file": "sample-08-wizard-1-high-elf.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Wizard",
+          "levels": 1
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS"
+      ],
+      "readout": {
+        "ac": 13,
+        "hp": 7,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          4
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 09",
+      "file": "sample-09-fighter-5-plate-shield.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Fighter",
+          "levels": 5
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS"
+      ],
+      "readout": {
+        "ac": 21,
+        "hp": 44,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "content-missing": 3
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 10",
+      "file": "sample-10-ranger-5-half-plate.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Ranger",
+          "levels": 5
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS"
+      ],
+      "readout": {
+        "ac": 17,
+        "hp": 41,
+        "hpMethod": "average",
+        "speed": 35,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "content-missing": 3
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 11",
+      "file": "sample-11-barbarian-5-custom-lineage.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Barbarian",
+          "levels": 5
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_LANGUAGE"
+      ],
+      "readout": {
+        "ac": 15,
+        "hp": 60,
+        "hpMethod": "average",
+        "speed": 40,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "content-missing": 3
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 12",
+      "file": "sample-12-druid-6-moon-customized.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Druid",
+          "levels": 6
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_LANGUAGE",
+        "ID_WOTC_TCOE_OPTION_CUSTOMIZED_PROFICIENCY"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 63,
+        "hpMethod": "average",
+        "speed": 25,
+        "prepared": [
+          11
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "not-modelled": 1
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 13",
+      "file": "sample-13-rogue-5-magic-armour.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Rogue",
+          "levels": 5
+        }
+      ],
+      "interleaved": false,
+      "options": [],
+      "readout": {
+        "ac": 19,
+        "hp": 48,
+        "hpMethod": "average",
+        "speed": 25,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 4
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 14",
+      "file": "sample-14-fighter-7-eldritch-knight.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Fighter",
+          "levels": 7
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 14,
+        "hp": 60,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "content-missing": 3
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 15",
+      "file": "sample-15-2024-ranger-5.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Ranger",
+          "levels": 5
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 16,
+        "hp": 39,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 3,
+          "content-missing": 3
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 16",
+      "file": "sample-16-2024-wizard-5.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Wizard",
+          "levels": 5
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 32,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          9
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 17",
+      "file": "sample-17-2024-paladin-3-sorcerer-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Paladin",
+          "levels": 3
+        },
+        {
+          "class": "Sorcerer",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP",
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 61,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0,
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-missing": 1,
+          "content-missing": 3,
+          "not-modelled": 1
+        },
+        "problems": 0,
+        "blocks": 2
+      }
+    },
+    {
+      "id": "Sample 18",
+      "file": "sample-18-paladin-3-ranger-3.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Paladin",
+          "levels": 3
+        },
+        {
+          "class": "Ranger",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP",
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 40,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          3,
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-missing": 1,
+          "content-missing": 3,
+          "not-modelled": 2
+        },
+        "problems": 0,
+        "blocks": 2
+      }
+    },
+    {
+      "id": "Sample 19",
+      "file": "sample-19-barbarian-3-monk-3.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Barbarian",
+          "levels": 3
+        },
+        {
+          "class": "Monk",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP",
+        "ID_INTERNAL_OPTION_ALLOW_FEATS",
+        "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING"
+      ],
+      "readout": {
+        "ac": 14,
+        "hp": 47,
+        "hpMethod": "average",
+        "speed": 40,
+        "prepared": [
+          0,
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-missing": 1,
+          "content-missing": 3,
+          "not-modelled": 1
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 20",
+      "file": "sample-20-fighter-20-champion.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Fighter",
+          "levels": 20
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_FEATS"
+      ],
+      "readout": {
+        "ac": 18,
+        "hp": 223,
+        "hpMethod": "rolled",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "content-missing": 3
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 21",
+      "file": "sample-21-attunement-over-limit.dnd5e",
+      "edition": "2014",
+      "split": [
+        {
+          "class": "Rogue",
+          "levels": 5
+        }
+      ],
+      "interleaved": false,
+      "options": [],
+      "readout": {
+        "ac": 19,
+        "hp": 48,
+        "hpMethod": "average",
+        "speed": 25,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 4
+        },
+        "problems": 1,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 22",
+      "file": "sample-22-2024-barbarian-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Barbarian",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 13,
+        "hp": 38,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "content-missing": 3
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 23",
+      "file": "sample-23-2024-bard-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Bard",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 21,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 24",
+      "file": "sample-24-2024-cleric-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Cleric",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 10,
+        "hp": 24,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          6
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "not-modelled": 1
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 25",
+      "file": "sample-25-2024-druid-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Druid",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 10,
+        "hp": 30,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          6
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "not-modelled": 1
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 26",
+      "file": "sample-26-2024-fighter-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Fighter",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 12,
+        "hp": 34,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2,
+          "content-missing": 3
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 27",
+      "file": "sample-27-2024-monk-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Monk",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 15,
+        "hp": 21,
+        "hpMethod": "average",
+        "speed": 40,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 28",
+      "file": "sample-28-2024-rogue-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Rogue",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 13,
+        "hp": 24,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2
+        },
+        "problems": 0,
+        "blocks": 0
+      }
+    },
+    {
+      "id": "Sample 29",
+      "file": "sample-29-2024-sorcerer-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Sorcerer",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 13,
+        "hp": 23,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    },
+    {
+      "id": "Sample 30",
+      "file": "sample-30-2024-warlock-3.dnd5e",
+      "edition": "2024",
+      "split": [
+        {
+          "class": "Warlock",
+          "levels": 3
+        }
+      ],
+      "interleaved": false,
+      "options": [
+        "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP"
+      ],
+      "readout": {
+        "ac": 10,
+        "hp": 21,
+        "hpMethod": "average",
+        "speed": 30,
+        "prepared": [
+          0
+        ]
+      },
+      "recorded": {
+        "kinds": {
+          "element-extra": 2
+        },
+        "problems": 0,
+        "blocks": 1
+      }
+    }
+  ]
+}

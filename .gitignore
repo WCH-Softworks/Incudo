@@ -22,6 +22,10 @@ apps/mobile/ios/
 *.incu
 fixtures/local/
 
+# The exception: the generic sample saves of docs/SAMPLE-SAVES.md. A file in that folder is committed, so
+# `sample-saves.test.ts` checks each one for a portrait, a path, a name and an exclusion list first.
+!tools/verify/fixtures/saves/*.dnd5e
+
 # The official content repository, fetched by `npm run corpus:sync` and read by the real-content
 # tests (ADR 0042). A cache of somebody else's repository, never ours to commit.
 .corpus/

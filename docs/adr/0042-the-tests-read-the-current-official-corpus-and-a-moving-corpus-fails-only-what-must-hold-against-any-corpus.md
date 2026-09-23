@@ -202,3 +202,19 @@ by `npm run corpus:sync` (about 27 s, 159 MB on disk).
 - **A corpus that moved.** One commit was measured. What upstream churn does to the tables is the reasoning
   of the decision above plus the four-element drift CLAUDE.md records, not a series of observations.
 - **`npm ci` from a clean checkout**, and the maintainer's own install through a `.env.local` after this change.
+
+## Update, 2026-09-23: the samples landed
+
+The decision above stands. What it named as transitional is done: the thirty generic sample saves are
+committed in `tools/verify/fixtures/saves/` with a `manifest.json`, `INCUDO_AURORA_SAVES` is gone, CI sets
+`INCUDO_REQUIRE_SAVES=1`, and `*.dnd5e` is ignored everywhere but that folder. The oracle's recorded tables
+are keyed by the sample's id (`Sample NN`) and live in the manifest, and the per-save fingerprints of the
+maintainer's own saves are gone. Two things this ADR did not say:
+
+- **A sample needs cleaning before it is committed.** As delivered, all thirty carried a portrait, a path
+  with the account name in it, a player name and a 3 to 5 MB exclusion list (about 150 MB in all). They were
+  sanitized outside the repository, and the result is proved neutral: oracle differences, rows compared,
+  derived output and imported inputs are identical before and after on all thirty. `sample-saves.test.ts`
+  now fails on each of those things, and it caught a path the first cleaning missed (in fifteen files).
+- **Armour class is held to what a person read off Aurora's screen**, since it agrees on all thirty. Hit
+  points and speed are reported against the same readout and fail nothing (ROADMAP Phase 2).

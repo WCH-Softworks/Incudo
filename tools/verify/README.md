@@ -25,6 +25,7 @@ the same repository out into the same place, always at its head, and runs the wh
 | `self-contained.test.ts`, `library.test.ts`, `save-copy.test.ts` | ADR 0012 and ADR 0027/0038 over real content and real saves: a save opens with zero sources. |
 | `multiclass.test.ts`, `armour-class.test.ts`, `campaign-options.test.ts`, `ability-names.test.ts` | Oracles and perturbation for the 5e rules, which live here because every noun in them is 5e's. |
 | `schemas.test.ts`, `user-systems.test.ts`, `workspace.test.ts` | The public formats, and the workspace invariants CLAUDE.md states. |
+| `sample-saves.ts`, `sample-saves.test.ts` | The sample saves and their manifest, and the guard that each is generic (no portrait, path, player name or exclusion list) and is what the manifest says. |
 | `forbidden-names.test.ts` | No file may name a real person's character. Checked by salted fingerprints of words, so the names are not in the repository, and a failure prints a file and line, never the word. |
 | `node-platform.ts`, `node-save.ts`, `node-system.ts`, `node-zip.ts` | Fetchers, storage, container reading and writing, schema and system loading — `node:fs` and `node:zlib` behind the ports the shells implement. |
 | `fixtures/`, `fixture-character.ts`, `rebuild-fixtures.ts` | A small committed corpus and a golden `.incu`. `npm run fixtures:rebuild` regenerates the golden one after a format change. |
@@ -35,8 +36,8 @@ the same repository out into the same place, always at its head, and runs the wh
 test whose data is not there skips and says how to get it:
 
 - **The corpus:** `.corpus/`, made by `npm run corpus:sync`. `repository` layout, always offline.
-- **The saves:** `tools/verify/fixtures/saves/`. Until the generic samples of docs/SAMPLE-SAVES.md are in it,
-  the tests that need a save skip.
+- **The saves:** `tools/verify/fixtures/saves/`, the thirty generic samples of docs/SAMPLE-SAVES.md and their
+  `manifest.json`. `sample-saves.ts` finds one by what it is.
 
 Configuration is for pointing somewhere else, and belongs in an untracked `.env.local` at the repository
 root, which `npm test` reads (copy `.env.example`), or in your shell. CI sets some of it in
@@ -51,8 +52,7 @@ names a person's machine, and version-control history is permanent.
 | `INCUDO_CORPUS_ROOT` | `repository` only: the checkout's root. |
 | `INCUDO_MAX_UNRESOLVED`, `INCUDO_MAX_WARNINGS` | Budgets: fail if the corpus has more. |
 | `INCUDO_EXPECT_FILES`, `INCUDO_EXPECT_ELEMENTS` | Fail if fewer loaded — a corpus that did not check out loads nothing. |
-| `INCUDO_AURORA_SAVES` | A folder of `.dnd5e` saves instead of `tools/verify/fixtures/saves/`. Transitional: it goes when the samples land. **Once set, a missing folder fails.** |
-| `INCUDO_REQUIRE_SAVES=1` | An empty saves folder fails instead of skipping. CI sets it once the samples are committed. |
+| `INCUDO_REQUIRE_SAVES=1` | An empty saves folder fails instead of skipping. CI sets it. |
 | `INCUDO_ORACLE_DETAIL=1` | Print every difference message the oracle finds, for chasing an `element-extra`. |
 | `INCUDO_ORACLE_SNAPSHOT=<file>` | Write every save's differences to a file. |
 | `INCUDO_ORACLE_BASELINE=<file>` | **Fail on any difference** from a snapshot written earlier. Snapshot on the base, baseline on your change, same `.corpus/` commit: only an engine change can move it. |

@@ -66,17 +66,20 @@ Both print their numbers as `ℹ` lines, beginning with the corpus commit; the v
   miss is a named error giving both the URL refused and the mirror path checked. The corpus above
   passes all 740 files that way, so it really is complete.
 - **Skip when nothing is configured; fail when something is.** `node --test` reports a skip as
-  green, so once `INCUDO_AURORA_INDEX` or `INCUDO_AURORA_SAVES` is set, a missing path fails. A
-  checkout that did not happen loads nothing, and nothing has no unresolved references. The saves have
-  the same guard: `INCUDO_REQUIRE_SAVES=1` (which CI sets once the samples are committed) turns an empty
-  saves folder from a skip into a failure.
+  green, so once `INCUDO_AURORA_INDEX` is set, a missing path fails. A checkout that did not happen loads
+  nothing, and nothing has no unresolved references. The saves have the same guard:
+  `INCUDO_REQUIRE_SAVES=1`, which CI sets, turns an empty saves folder from a skip into a failure.
 
-**The saves are `tools/verify/fixtures/saves/`** (`*.dnd5e`, in the repository once
-docs/SAMPLE-SAVES.md's generic samples are in it; until then those tests skip). Real Aurora saves of the
-maintainer's own (ten, at the time of writing) stay **local and out of the repo**: read them for
-verification through `INCUDO_AURORA_SAVES`, never commit them or their contents. `aurora-oracle.test.ts`
-labels each by a fingerprint of its bytes, and the other real-save tests by position; assert on counts
-and kinds and keep it that way.
+**The saves are `tools/verify/fixtures/saves/`**: thirty generic sample characters built in Aurora to
+docs/SAMPLE-SAVES.md's plan, committed, and read by every real-save test, in CI too. They are anonymous by
+construction (`sample-saves.test.ts` fails on a portrait, a path, a player name, an exclusion list or a
+name that is not `Sample NN`), and `manifest.json` says what each one *is*: its class split, edition,
+campaign options, and what the maintainer read off Aurora's screen for it. **A test finds a sample by what
+it is (`samplesWhere`), never by file name, position or count.** A person's own saves stay local and out
+of the repo, and there is no variable to point a test at them: a test that read one would run on one
+machine. Aurora writes a portrait, a path with the account name in it and a megabytes-long list of
+disabled sources into every save, so **a new sample needs the same cleaning the first thirty got** before
+it is committed.
 
 **A test never asserts how many saves there are, or where one sorts.** It said `saves: 9` and totals
 over the folder, so adding a character failed it and said nothing about the character.
@@ -277,10 +280,29 @@ The CLI never printed these numbers; they were established once by hand and are 
 since ADR 0042 the *relation* is what fails: every recorded spellcasting block has all three rows
 compared (and the caster level exactly when the save records one), whatever the corpus is doing.
 
-**CI cannot run the oracle yet.** The maintainer's saves are personal data and stay on their machine, so
-`aurora-corpus` in CI runs the whole real-content suite except the tests that need a save, which skip.
-Those files are personal data and never enter the repo — and neither do screenshots of them. The generic
-samples of docs/SAMPLE-SAVES.md are what will let CI run it.
+**The oracle runs in CI over the samples, and this is what it found** (30 samples, 8 of them
+multiclass, 12 of them 2024, against AuroraLegacy/elements at `c28ce6c`): **0 stat-mismatch, 0
+spell-missing**; 10 element-missing, every one an `ID_INTERNAL_MULTICLASS_LEVEL_N` marker; 73
+element-extra, 19 not-modelled, 101 content-missing (62 of them one save: see below); 29 spellcasting
+blocks and every slot row, save DC and attack bonus of them compared, and the caster level in all 8
+multiclass saves. That covers what the first ten saves could not: three ordinary casting blocks, two
+beside pact magic with a third-caster, the Artificer's round-up, Paladin and Ranger at odd levels beside
+a full caster, and the 2024 half-casters (which start casting at level 1). Everything the corpus moves is
+reported, not asserted (ADR 0042).
+
+**Armour class now has a referee, and hit points and speed have one that disagrees.** The maintainer read
+armour class, hit points and speed off Aurora's screen for every sample. **Armour class agrees on all 30**,
+including plate with a negative Dexterity modifier, half plate above the medium cap, both Unarmoured
+Defences and a magic-armour, three-attunement build, and `aurora-oracle.test.ts` holds it to that.
+**Speed differs on 9** (nothing feeds the declared stat, so every character reads 30) and **hit points on
+17**, for reasons that are Incudo's: the average-HP option, a second class's own dice, and an item that
+sets an ability score. Both are in ROADMAP Phase 2 and are reported, not asserted.
+
+**Two findings that no count sees.** An id can be spelled with different case in a save and in the corpus
+(`…_War_DOMAIN` against `…_WAR_DOMAIN`): Aurora matches ids ignoring case and Incudo does not, so that
+save imports **without its whole domain**, 62 elements, and the only trace is a report-only
+`content-missing` and one derivation problem. And a save can record a fourth attuned item: Aurora allows
+it and Incudo reports `over-attuned`, as ADR 0023 designed.
 
 ## State of play
 

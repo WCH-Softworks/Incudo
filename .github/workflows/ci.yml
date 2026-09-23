@@ -91,4 +91,7 @@ jobs:
           INCUDO_MAX_WARNINGS: 57
           INCUDO_EXPECT_FILES: 740
           INCUDO_EXPECT_ELEMENTS: 14316
+          # The committed sample saves are part of what this job checks. Without this an empty folder skips
+          # every test that needs a save, and a job that lost the folder would go green on nothing.
+          INCUDO_REQUIRE_SAVES: 1
         run: npm test

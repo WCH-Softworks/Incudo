@@ -190,6 +190,8 @@ test('the corpus job reads the current official repository, always, and runs the
   assert.match(job, /^\s*path:\s*\.corpus\s*$/m, 'the checkout goes where the local sync puts it');
   // Every real-content test, not only the budget file.
   assert.match(job, /^\s*run:\s*npm test\s*$/m, 'the job runs the whole suite');
+  // And it requires the samples, so an empty saves folder is a failure and not a skip.
+  assert.match(job, /^\s*INCUDO_REQUIRE_SAVES:\s*1\s*$/m, 'the job requires the sample saves');
   // A schedule, so upstream changes are noticed while this repository is quiet.
   assert.match(workflow, /^\s*schedule:\s*$/m);
   assert.match(workflow, /^\s*-\s*cron:\s*'[^']+'\s*$/m);

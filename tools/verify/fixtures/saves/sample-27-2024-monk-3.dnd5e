@@ -1,0 +1,315 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<character version="1.0.3" preview="false">
+	<!-- Aurora - https://www.aurorabuilder.com -->
+	<!-- information -->
+	<information>
+		<group>Characters</group>
+		<generationOption>2</generationOption>
+	</information>
+	<!-- display data -->
+	<display-properties favorite="false">
+		<name>Sample 27</name>
+		<race>Human</race>
+		<class>Monk</class>
+		<archetype>
+		</archetype>
+		<background>Wayfarer</background>
+		<level>3</level>
+		<portrait>
+			<companion>
+			</companion>
+			<local></local>
+			<base64></base64>
+		</portrait>
+	</display-properties>
+	<!-- build data -->
+	<build>
+		<input>
+			<name>Sample 27</name>
+			<gender></gender>
+			<player-name></player-name>
+			<experience>900</experience>
+			<attacks>
+				<description><![CDATA[]]></description>
+			</attacks>
+			<backstory><![CDATA[]]></backstory>
+			<background-trinket>
+			</background-trinket>
+			<background-traits>
+			</background-traits>
+			<background-ideals>
+			</background-ideals>
+			<background-bonds>
+			</background-bonds>
+			<background-flaws>
+			</background-flaws>
+			<background>
+				<feature name="">
+					<description><![CDATA[]]></description>
+				</feature>
+			</background>
+			<organization>
+				<name>
+				</name>
+				<symbol>
+				</symbol>
+				<allies><![CDATA[]]></allies>
+			</organization>
+			<additional-features><![CDATA[]]></additional-features>
+			<currency>
+				<copper>0</copper>
+				<silver>0</silver>
+				<electrum>0</electrum>
+				<gold>0</gold>
+				<platinum>0</platinum>
+				<equipment><![CDATA[]]></equipment>
+				<treasure><![CDATA[]]></treasure>
+			</currency>
+			<notes>
+				<note column="left">
+				</note>
+				<note column="right">
+				</note>
+			</notes>
+			<quest>
+			</quest>
+		</input>
+		<appearance>
+			<portrait></portrait>
+			<age></age>
+			<height></height>
+			<weight></weight>
+			<eyes></eyes>
+			<skin></skin>
+			<hair></hair>
+		</appearance>
+		<abilities available-points="15">
+			<strength>12</strength>
+			<dexterity>15</dexterity>
+			<constitution>13</constitution>
+			<intelligence>8</intelligence>
+			<wisdom>14</wisdom>
+			<charisma>10</charisma>
+		</abilities>
+		<elements level-count="3" registered-count="22">
+			<element type="Option" name="Average Hit Points" id="ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" />
+			<element type="Level" name="1" id="ID_LEVEL_1" rndhp="8,8,3,4,3,1,7,6,7,2,8,4,5,4,3,8,3,7,2,7">
+				<element type="Race" name="Race" requiredLevel="1" checksum="1597ef76" registered="ID_WOTC_PHB24_RACE_HUMAN">
+					<element type="Racial Trait" name="Size (Human)" requiredLevel="1" checksum="1fde7c96" registered="ID_INTERNAL_RACIAL_TRAIT_MEDIUM">
+						<element type="Size" name="Medium" id="ID_SIZE_MEDIUM" />
+					</element>
+					<element type="Language" name="Language (Human)" requiredLevel="1" number="1" checksum="bdb1f572" registered="ID_LANGUAGE_DWARVISH" />
+					<element type="Language" name="Language (Human)" requiredLevel="1" number="2" checksum="24b8a4c8" registered="ID_LANGUAGE_GNOMISH" />
+					<element type="Grants" name="Race Human" id="ID_INTERNAL_GRANT_RACE_HUMAN" />
+					<element type="Language" name="Common" id="ID_LANGUAGE_COMMON" />
+					<element type="Racial Trait" name="Resourceful" id="ID_WOTC_PHB24_RACIAL_TRAIT_HUMAN_RESOURCEFUL" />
+					<element type="Racial Trait" name="Skillful" id="ID_WOTC_PHB24_RACIAL_TRAIT_HUMAN_SKILLFUL">
+						<element type="Proficiency" name="Skill Proficiency (Skillful)" requiredLevel="1" checksum="91fefbc9" registered="ID_PROFICIENCY_SKILL_ACROBATICS" />
+					</element>
+					<element type="Racial Trait" name="Versatile" id="ID_WOTC_PHB24_RACIAL_TRAIT_HUMAN_VERSATILE">
+						<element type="Feat" name="Feat (Versatile)" requiredLevel="1" checksum="09fcb10a" registered="ID_WOTC_PHB24_FEAT_TAVERN_BRAWLER">
+							<element type="Proficiency" name="Weapon Proficiency (Improvised Weapons)" id="ID_ALE_PROFICIENCY_WEAPON_PROFICIENCY_IMPROVISED_WEAPONS" />
+						</element>
+					</element>
+				</element>
+				<element type="Class" name="Class" requiredLevel="1" checksum="33a7b15b" registered="ID_WOTC_PHB24_CLASS_MONK">
+					<element type="Proficiency" name="Tool Proficiency (Monk)" requiredLevel="1" checksum="dbc16809" registered="ID_PROFICIENCY_TOOL_PROFICIENCY_FLUTE" />
+					<element type="Proficiency" name="Skill Proficiency (Monk)" requiredLevel="1" number="1" checksum="6756764d" registered="ID_PROFICIENCY_SKILL_HISTORY" />
+					<element type="Proficiency" name="Skill Proficiency (Monk)" requiredLevel="1" number="2" checksum="fe5f27f7" registered="ID_PROFICIENCY_SKILL_RELIGION" />
+					<element type="Proficiency" name="Weapon Proficiency (Simple Weapons)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_WEAPONS">
+						<element type="Proficiency" name="Weapon Proficiency (Simple Melee Weapons)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_MELEE_WEAPONS">
+							<element type="Proficiency" name="Weapon Proficiency (Club)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CLUB" />
+							<element type="Proficiency" name="Weapon Proficiency (Dagger)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_DAGGER" />
+							<element type="Proficiency" name="Weapon Proficiency (Greatclub)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_GREATCLUB" />
+							<element type="Proficiency" name="Weapon Proficiency (Handaxe)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_HANDAXE" />
+							<element type="Proficiency" name="Weapon Proficiency (Javelin)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_JAVELIN" />
+							<element type="Proficiency" name="Weapon Proficiency (Light Hammer)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_LIGHT_HAMMER" />
+							<element type="Proficiency" name="Weapon Proficiency (Mace)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_MACE" />
+							<element type="Proficiency" name="Weapon Proficiency (Quarterstaff)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_QUARTERSTAFF" />
+							<element type="Proficiency" name="Weapon Proficiency (Sickle)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SICKLE" />
+							<element type="Proficiency" name="Weapon Proficiency (Spear)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SPEAR" />
+							<element type="Proficiency" name="Weapon Proficiency (Unarmed Strike)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_UNARMED_STRIKE" />
+						</element>
+						<element type="Proficiency" name="Weapon Proficiency (Simple Ranged Weapons)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_RANGED_WEAPONS">
+							<element type="Proficiency" name="Weapon Proficiency (Light Crossbow)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CROSSBOW_LIGHT" />
+							<element type="Proficiency" name="Weapon Proficiency (Dart)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_DART" />
+							<element type="Proficiency" name="Weapon Proficiency (Shortbow)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SHORTBOW" />
+							<element type="Proficiency" name="Weapon Proficiency (Sling)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SLING" />
+						</element>
+					</element>
+					<element type="Proficiency" name="Weapon Proficiency (Hand Crossbow)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CROSSBOW_HAND" />
+					<element type="Proficiency" name="Weapon Proficiency (Shortsword)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SHORTSWORD" />
+					<element type="Proficiency" name="Weapon Proficiency (Scimitar)" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SCIMITAR" />
+					<element type="Proficiency" name="Saving Throw Proficiency (Strength)" id="ID_PROFICIENCY_SAVINGTHROW_STRENGTH" />
+					<element type="Proficiency" name="Saving Throw Proficiency (Dexterity)" id="ID_PROFICIENCY_SAVINGTHROW_DEXTERITY" />
+					<element type="Class Feature" name="Level 1: Martial Arts" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_MARTIAL_ARTS" />
+					<element type="Class Feature" name="Level 1: Unarmored Defense" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_UNARMORED_DEFENSE" />
+					<element type="Class Feature" name="Level 2: Monk's Focus" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_MONKS_FOCUS">
+						<element type="Class Feature" name="Flurry of Blows" requiredLevel="1" checksum="eee0943e" registered="ID_WOTC_PHB24_CLASS_FEATURE_MONK_FOCUS_FLURRY_OF_BLOWS" />
+						<element type="Class Feature" name="Patient Defense" requiredLevel="1" checksum="783262e1" registered="ID_WOTC_PHB24_CLASS_FEATURE_MONK_FOCUS_PATIENT_DEFENSE" />
+						<element type="Class Feature" name="Step of the Wind" requiredLevel="1" checksum="c1464aba" registered="ID_WOTC_PHB24_CLASS_FEATURE_MONK_FOCUS_STEP_OF_THE_WIND" />
+					</element>
+					<element type="Class Feature" name="Level 2: Unarmored Movement" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_UNARMORED_MOVEMENT" />
+					<element type="Class Feature" name="Level 2: Uncanny Metabolism" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_UNCANNY_METABOLISM" />
+					<element type="Class Feature" name="Level 3: Deflect Attacks" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_DEFLECT_ATTACKS" />
+					<element type="Class Feature" name="Level 3: Monk Subclass" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_MONK_SUBCLASS">
+						<element type="Archetype" name="Monk Subclass" requiredLevel="1" checksum="cf329f11" registered="ID_WOTC_PHB24_ARCHETYPE_MONK_WARRIOR_OF_THE_OPEN_HAND">
+							<element type="Archetype Feature" name="Level 3: Open Hand Technique" id="ID_WOTC_PHB24_ARCHETYPE_FEATURE_MONK_OPEN_HAND_OPEN_HAND_TECHNIQUE" />
+						</element>
+					</element>
+				</element>
+				<element type="Background" name="Background" requiredLevel="1" checksum="6a621392" registered="ID_WOTC_PHB24_BACKGROUND_WAYFARER">
+					<element type="Ability Score Improvement" name="Dexterity, Wisdom, Charisma" id="ID_INTERNAL_ABILITY_SCORE_IMPROVEMENT_COMBINATION_DEX_WIS_CHA">
+						<element type="Ability Score Improvement" name="Ability Score Improvement Option" requiredLevel="1" checksum="5ad67870" registered="ID_INTERNAL_ABILITY_SCORE_IMPROVEMENT_COMBINATION_DEX_WIS_CHA_1">
+							<element type="Ability Score Improvement" name="Background Ability Score Improvement +2" requiredLevel="1" checksum="f2eafa86" registered="ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI_DEXTERITY_INCREASE_2" />
+							<element type="Ability Score Improvement" name="Background Ability Score Improvement +1" requiredLevel="1" checksum="f034fda1" registered="ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI_WISDOM_INCREASE_1" />
+						</element>
+					</element>
+					<element type="Feat" name="Lucky" id="ID_WOTC_PHB24_FEAT_LUCKY" />
+					<element type="Proficiency" name="Insight" id="ID_PROFICIENCY_SKILL_INSIGHT" />
+					<element type="Proficiency" name="Stealth" id="ID_PROFICIENCY_SKILL_STEALTH" />
+					<element type="Grants" name="Background Ability Score Improvement" id="ID_INTERNAL_GRANTS_BACKGROUND_ASI" />
+					<element type="Proficiency" name="Tool Proficiency (Thieves’ tools)" id="ID_PROFICIENCY_TOOL_PROFICIENCY_THIEVES_TOOLS" />
+				</element>
+				<element type="Alignment" name="Alignment" requiredLevel="1" checksum="c9ac49d5" registered="" />
+				<element type="Deity" name="Deity" requiredLevel="1" checksum="989cce4c" registered="" />
+				<element type="Grants" name="Base" id="ID_INTERNAL_GRANTS_CHARACTER_BASE">
+					<element type="Grants" name="Ability Score Maximum Over 20" id="ID_INTERNAL_GRANTS_ABILITY_SCORE_MAXIMUM_OVER_20" />
+				</element>
+				<element type="Grants" name="Spellcasting Base" id="ID_INTERNAL_GRANTS_SPELLCASTING_BASE" />
+				<element type="Grants" name="Base Armor Class" id="ID_INTERNAL_GRANTS_ARMOR_CLASS_BASE" />
+				<element type="Grants" name="Dexterity Modifier" id="ID_INTERNAL_GRANTS_ARMOR_CLASS_DEXTERITY_MODIFIER" />
+				<element type="Grants" name="Constitution Modifier" id="ID_INTERNAL_GRANTS_HP_CONSTITUTION_MODIFIER" />
+			</element>
+			<element type="Level" name="2" id="ID_LEVEL_2" />
+			<element type="Level" name="3" id="ID_LEVEL_3" />
+		</elements>
+		<defenses>
+			<conditional>
+			</conditional>
+		</defenses>
+		<companion name="">
+			<attributes>
+				<strength>10</strength>
+				<dexterity>10</dexterity>
+				<constitution>10</constitution>
+				<intelligence>10</intelligence>
+				<wisdom>10</wisdom>
+				<charisma>10</charisma>
+			</attributes>
+			<saves>
+				<save ability="strength">0</save>
+				<save ability="dexterity">0</save>
+				<save ability="constitution">0</save>
+				<save ability="intelligence">0</save>
+				<save ability="wisdom">0</save>
+				<save ability="charisma">0</save>
+			</saves>
+			<skills>
+				<skill name="Acrobatics">0</skill>
+				<skill name="Animal Handling">0</skill>
+				<skill name="Arcana">0</skill>
+				<skill name="Athletics">0</skill>
+				<skill name="Deception">0</skill>
+				<skill name="History">0</skill>
+				<skill name="Insight">0</skill>
+				<skill name="Intimidation">0</skill>
+				<skill name="Investigation">0</skill>
+				<skill name="Medicine">0</skill>
+				<skill name="Nature">0</skill>
+				<skill name="Perception">0</skill>
+				<skill name="Performance">0</skill>
+				<skill name="Persuasion">0</skill>
+				<skill name="Religion">0</skill>
+				<skill name="Sleight of Hand">0</skill>
+				<skill name="Stealth">0</skill>
+				<skill name="Survival">0</skill>
+			</skills>
+			<portrait location="local">
+			</portrait>
+		</companion>
+		<equipment>
+			<storage name="#1" />
+			<storage name="#2" />
+		</equipment>
+		<sum element-count="72">
+			<element type="Level" id="ID_LEVEL_1" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_CHARACTER_BASE" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_ABILITY_SCORE_MAXIMUM_OVER_20" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_SPELLCASTING_BASE" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_ARMOR_CLASS_BASE" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_ARMOR_CLASS_DEXTERITY_MODIFIER" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_HP_CONSTITUTION_MODIFIER" />
+			<element type="Option" id="ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" />
+			<element type="Level" id="ID_LEVEL_2" />
+			<element type="Level" id="ID_LEVEL_3" />
+			<element type="Race" id="ID_WOTC_PHB24_RACE_HUMAN" />
+			<element type="Grants" id="ID_INTERNAL_GRANT_RACE_HUMAN" />
+			<element type="Language" id="ID_LANGUAGE_COMMON" />
+			<element type="Racial Trait" id="ID_WOTC_PHB24_RACIAL_TRAIT_HUMAN_RESOURCEFUL" />
+			<element type="Racial Trait" id="ID_WOTC_PHB24_RACIAL_TRAIT_HUMAN_SKILLFUL" />
+			<element type="Racial Trait" id="ID_WOTC_PHB24_RACIAL_TRAIT_HUMAN_VERSATILE" />
+			<element type="Racial Trait" id="ID_INTERNAL_RACIAL_TRAIT_MEDIUM" />
+			<element type="Size" id="ID_SIZE_MEDIUM" />
+			<element type="Background" id="ID_WOTC_PHB24_BACKGROUND_WAYFARER" />
+			<element type="Ability Score Improvement" id="ID_INTERNAL_ABILITY_SCORE_IMPROVEMENT_COMBINATION_DEX_WIS_CHA" />
+			<element type="Feat" id="ID_WOTC_PHB24_FEAT_LUCKY" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_INSIGHT" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_STEALTH" />
+			<element type="Grants" id="ID_INTERNAL_GRANTS_BACKGROUND_ASI" />
+			<element type="Proficiency" id="ID_PROFICIENCY_TOOL_PROFICIENCY_THIEVES_TOOLS" />
+			<element type="Ability Score Improvement" id="ID_INTERNAL_ABILITY_SCORE_IMPROVEMENT_COMBINATION_DEX_WIS_CHA_1" />
+			<element type="Ability Score Improvement" id="ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI_DEXTERITY_INCREASE_2" />
+			<element type="Ability Score Improvement" id="ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI_WISDOM_INCREASE_1" />
+			<element type="Language" id="ID_LANGUAGE_DWARVISH" />
+			<element type="Language" id="ID_LANGUAGE_GNOMISH" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_ACROBATICS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_TOOL_PROFICIENCY_FLUTE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_HISTORY" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SKILL_RELIGION" />
+			<element type="Feat" id="ID_WOTC_PHB24_FEAT_TAVERN_BRAWLER" />
+			<element type="Proficiency" id="ID_ALE_PROFICIENCY_WEAPON_PROFICIENCY_IMPROVISED_WEAPONS" />
+			<element type="Class" id="ID_WOTC_PHB24_CLASS_MONK" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_WEAPONS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_MELEE_WEAPONS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CLUB" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_DAGGER" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_GREATCLUB" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_HANDAXE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_JAVELIN" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_LIGHT_HAMMER" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_MACE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_QUARTERSTAFF" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SICKLE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SPEAR" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_UNARMED_STRIKE" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_RANGED_WEAPONS" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CROSSBOW_LIGHT" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_DART" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SHORTBOW" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SLING" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_CROSSBOW_HAND" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SHORTSWORD" />
+			<element type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SCIMITAR" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SAVINGTHROW_STRENGTH" />
+			<element type="Proficiency" id="ID_PROFICIENCY_SAVINGTHROW_DEXTERITY" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_MARTIAL_ARTS" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_UNARMORED_DEFENSE" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_MONKS_FOCUS" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_UNARMORED_MOVEMENT" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_UNCANNY_METABOLISM" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_DEFLECT_ATTACKS" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_MONK_SUBCLASS" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_FOCUS_FLURRY_OF_BLOWS" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_FOCUS_PATIENT_DEFENSE" />
+			<element type="Class Feature" id="ID_WOTC_PHB24_CLASS_FEATURE_MONK_FOCUS_STEP_OF_THE_WIND" />
+			<element type="Archetype" id="ID_WOTC_PHB24_ARCHETYPE_MONK_WARRIOR_OF_THE_OPEN_HAND" />
+			<element type="Archetype Feature" id="ID_WOTC_PHB24_ARCHETYPE_FEATURE_MONK_OPEN_HAND_OPEN_HAND_TECHNIQUE" />
+		</sum>
+		<magic />
+	</build>
+	<!-- restricted sources -->
+	<sources>
+		<restricted></restricted>
+	</sources>
+</character>

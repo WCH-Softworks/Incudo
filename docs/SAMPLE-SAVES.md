@@ -656,3 +656,22 @@ they all pass, and the check is kept as a test so a later sample cannot bring a 
 
 The saves are then read by every real-save test, found by **what they are** (class split, options), never by
 name, position or count, and the figures the ADRs cite are re-derived from them.
+
+## Received, 2026-09-23
+
+All thirty arrived (the plan's 21 and the nine 2024 ones), and are committed with a `manifest.json`.
+
+- **They were cleaned before committing.** As saved, every file carried the portrait as inline image data,
+  a path to it with the account name in it, a player name, and a 3 to 5 MB list of disabled sources (about
+  150 MB in all). The originals were kept outside the repository and the committed copies have those
+  fields empty and the name set to `Sample NN`. Oracle differences, rows compared, derived output and
+  imported inputs are identical before and after on all thirty. `sample-saves.test.ts` fails on each of
+  those things, so the next sample is checked for them.
+- **Differences from the plan, all harmless to what they test:** samples 01 to 06 have Feats, Multiclassing
+  and Customized Proficiencies on where the plan said none or Multiclassing; sample 08 has Feats on; samples
+  14 to 19 and 22 to 30 have the average-hit-points option on. The manifest records what each save actually
+  has. Sample 21 shows Aurora allows a fourth attuned item; sample 17's prepared count reads 0 because
+  Aurora shows nothing for the 2024 Paladin's fixed table.
+- **Not built:** the Wizard 4 / Rogue 4 of `tools/verify/src/rogue-wizard-build.ts` is not among them, so
+  `rogue-wizard-aurora.test.ts` skips. Adding it as `sample-31-…` (the description was built in Aurora
+  before) restores that comparison.

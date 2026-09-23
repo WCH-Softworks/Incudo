@@ -56,16 +56,19 @@ Both print their numbers as `ℹ` lines, beginning with the corpus commit. `INCU
   that silently fetches proves nothing. `corpus.ts` gives it `OfflineFetcher` as the fallback, so a
   miss is a named error giving both the URL refused and the mirror path checked.
 - **Skip when nothing is configured; fail when something is.** `node --test` reports a skip as
-  green, so once `INCUDO_AURORA_INDEX` or `INCUDO_AURORA_SAVES` is set, a missing path fails. A
-  checkout that did not happen loads nothing, and nothing has no unresolved references.
+  green, so once `INCUDO_AURORA_INDEX` is set, a missing path fails. A checkout that did not happen loads
+  nothing, and nothing has no unresolved references. The saves have the same guard:
+  `INCUDO_REQUIRE_SAVES=1`, which CI sets, turns an empty saves folder from a skip into a failure.
 
-The saves are `tools/verify/fixtures/saves/` (`*.dnd5e`; the generic samples of docs/SAMPLE-SAVES.md once
-they are in it, and until then those tests skip). The maintainer's own real saves stay **local and out
-of the repo**: read them for verification through `INCUDO_AURORA_SAVES`, never commit them or their
-contents. `aurora-oracle.test.ts` labels each by a fingerprint of its bytes and asserts on counts and
-kinds; keep it that way. What fails there is the set of invariants that hold against any corpus, and every
-other number is reported (ADR 0042). `INCUDO_ORACLE_DETAIL=1` adds every difference message to its report,
-and those name content (elements, spells, stats), never a character.
+The saves are `tools/verify/fixtures/saves/`: thirty generic samples built in Aurora to docs/SAMPLE-SAVES.md's
+plan, committed, and read by the real-save tests in CI. A test finds a sample by what it is (`samplesWhere`,
+from `manifest.json`), never by file name, position or count. A person's own saves stay local and out of the
+repo, and no variable points a test at them. Aurora writes a portrait, a path with the account name in it and
+a huge list of disabled sources into every save, so a new sample needs cleaning before it is committed
+(`sample-saves.test.ts` checks it). `aurora-oracle.test.ts` fails the invariants that hold against any corpus,
+holds armour class to what the maintainer read off Aurora's screen, and reports every other number (ADR 0042).
+`INCUDO_ORACLE_DETAIL=1` adds every difference message to its report, and those name content (elements,
+spells, stats), never a character.
 
 ## Hard constraints
 
