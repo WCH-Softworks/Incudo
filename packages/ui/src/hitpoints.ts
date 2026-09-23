@@ -47,6 +47,12 @@ export interface HitPointLevel {
   average?: number;
   /** The progression's first level. Always the die's maximum; never rolled, never averaged. */
   isFirst: boolean;
+  /**
+   * The die this level adds to the total, when it is not a recorded roll: the maximum for the
+   * first level and the average for every other, while the step's `fixedWhen` element is in the
+   * character (ADR 0044 decision 6). Undefined otherwise, and while the die is unknown.
+   */
+  fixedValue?: number;
 }
 
 export interface HitPointState {
@@ -63,6 +69,11 @@ export interface HitPointState {
    * they are done.
    */
   reviewing: boolean;
+  /**
+   * The character has the step's `fixedWhen` element, so every level is fixed and nothing is
+   * offered to roll. Recorded rolls stay on the character and are not read (ADR 0044).
+   */
+  fixed: boolean;
 }
 
 /** The key one level's roll is recorded under: `hitPointRollKey("hp:level:{n}", 3)` is `"hp:level:3"`. */
@@ -95,6 +106,9 @@ export function computeHitPointState(
   // itself uses for an element reached by no track (ADR 0015) — untracked means "the whole
   // progression", not "unknown".
   const fallback = derived.elements.find((element) => element.type === config.classType);
+
+  const fixed =
+    config.fixedWhen !== undefined && derived.elements.some((element) => element.id === config.fixedWhen);
 
   const min = progressionMin(progression);
   const levels: HitPointLevel[] = [];
@@ -130,14 +144,18 @@ export function computeHitPointState(
       recorded: character.rolls[key],
       average: dieSides !== undefined ? Math.floor(dieSides / 2) + 1 : undefined,
       isFirst: level === min,
+      fixedValue:
+        fixed && dieSides !== undefined ? (level === min ? dieSides : Math.floor(dieSides / 2) + 1) : undefined,
     });
   }
 
   return {
     pattern: config.pattern,
     levels,
-    pending: levels.filter((l) => l.dieSides !== undefined && l.recorded === undefined),
-    reviewing,
+    // Nothing is outstanding while the levels are fixed: there is no die to roll.
+    pending: fixed ? [] : levels.filter((l) => l.dieSides !== undefined && l.recorded === undefined),
+    reviewing: fixed ? false : reviewing,
+    fixed,
   };
 }
 

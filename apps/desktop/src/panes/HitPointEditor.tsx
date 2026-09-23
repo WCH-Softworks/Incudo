@@ -46,15 +46,22 @@ export function CompactHitPoints({
         {state.levels.map((level) => (
           <div key={level.level}>
             <dt>{state.levels.length > 1 ? `Level ${level.level}` : 'Hit points'}</dt>
-            <dd>{level.recorded ?? '—'} hp</dd>
+            <dd>{(state.fixed ? level.fixedValue : level.recorded) ?? '—'} hp</dd>
           </div>
         ))}
       </dl>
-      <div className="decision-head">
-        <button type="button" className="link" onClick={() => setEditing(true)}>
-          Edit
-        </button>
-      </div>
+      {state.fixed ? (
+        <p className="hint">
+          The average hit points option is on, so each level adds its die's average (the first level
+          adds the maximum). Turn the option off to roll instead.
+        </p>
+      ) : (
+        <div className="decision-head">
+          <button type="button" className="link" onClick={() => setEditing(true)}>
+            Edit
+          </button>
+        </div>
+      )}
     </div>
   );
 }

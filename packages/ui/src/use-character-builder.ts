@@ -645,7 +645,7 @@ export class CharacterBuilder {
   recordHitPoints = (stepId: string, level: number, method: HitPointMethod): void => {
     const state = this.hitPointsFor(stepId);
     const entry = state?.levels.find((l) => l.level === level);
-    if (!state || !entry) return;
+    if (!state || !entry || state.fixed) return;
     const plan = planHitPointRecord(state.pattern, entry, method, this.random);
     if (!plan) return;
     this.writeHitPoints(stepId, entry, plan);
@@ -663,7 +663,7 @@ export class CharacterBuilder {
   changeHitPoints = (stepId: string, level: number, change: HitPointChange): number | undefined => {
     const state = this.hitPointsFor(stepId);
     const entry = state?.levels.find((l) => l.level === level);
-    if (!state || !entry) return undefined;
+    if (!state || !entry || state.fixed) return undefined;
     const plan = planHitPointChange(state.pattern, entry, change, this.random);
     if (!plan) return undefined;
     this.writeHitPoints(stepId, entry, plan);

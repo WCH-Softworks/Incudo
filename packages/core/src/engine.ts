@@ -44,12 +44,14 @@ import {
   contributionCondition,
   sumRecordedRolls,
   TRACK_PROGRESS_STAT,
+  TRACK_FIRST_STAT,
 } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import { EMPTY_EQUIPMENT, resolveEquipment, type EquipmentState } from './equipment.ts';
 import {
   evaluateExpr,
   evaluateExprAsString,
+  readsSetter,
   type ExpressionContext,
   type StatExpr,
 } from './expression.ts';
@@ -159,6 +161,8 @@ export interface Problem {
     | 'cycle-limit'
     | 'ambiguous-track'
     | 'unresolved-interpolation'
+    // A `setter` expression outside a per-track value — ADR 0044.
+    | 'setter-outside-track'
     // The bag, read through the kind's inventory declaration — ADR 0025, ADR 0023.
     | 'slot-unknown'
     | 'slot-full'
@@ -714,6 +718,21 @@ function computeStats(
   // elements are reached, or in what order, changes (ADR 0044 decision 5).
   const publishedTracks = trackLevels.size ? trackLevels : implicitTrack(active, character, kind);
 
+  // A setter read only means something inside a track; anywhere else it reads 0 (ADR 0044).
+  const misplaced = [
+    ...kind.stats.flatMap((def) => (def.derive ? [{ stat: def.name, expr: def.derive }] : [])),
+    ...kind.contributions.map((def) => ({ stat: def.stat, expr: def.value })),
+    ...kind.blockStats.map((def) => ({ stat: def.stat, expr: def.value })),
+  ];
+  for (const { stat, expr } of misplaced) {
+    if (!readsSetter(expr)) continue;
+    problems.push({
+      level: 'warning',
+      code: 'setter-outside-track',
+      message: `The "${stat}" stat reads a setter outside a per-track value, where there is no track to read it from. It reads 0.`,
+    });
+  }
+
   const result = new Map<StatKey, ResolvedStat>();
 
   // Declared defaults first, so a stat exists even with no contributions. A kind's stat
@@ -782,13 +801,23 @@ function computeStats(
   // land here, after content's and before the derivations that read them. The kind cannot
   // name the tracks (content ships its own), so it says "for every track that contains this
   // element, add this much", and `track:progress` inside the expression is that track's count.
+  // `track:first` is 1 for the track that holds the character's first point of progression: the
+  // one the earliest advancement entry names, or the only track there is when nothing is recorded.
+  const firstRoot = trackLevels.size ? firstAdvancementElement(character) : undefined;
   for (const [rootId, count] of publishedTracks) {
     const root = active.get(rootId);
     if (!root) continue;
+    const isFirst = firstRoot === undefined || firstRoot === rootId ? 1 : 0;
     const trackCtx: ExpressionContext = {
-      statNumber: (s) => (s.toLowerCase() === TRACK_PROGRESS_STAT ? count : ctx.statNumber(s)),
+      statNumber: (s) => {
+        const lower = s.toLowerCase();
+        if (lower === TRACK_PROGRESS_STAT) return count;
+        if (lower === TRACK_FIRST_STAT) return isFirst;
+        return ctx.statNumber(s);
+      },
       statString: ctx.statString,
       rollSum: ctx.rollSum,
+      trackSetter: (name) => root.setters[name]?.value,
     };
     for (const def of kind.trackStats) {
       if (def.when !== undefined && !trackMembers.get(def.when)?.has(rootId)) continue;
@@ -1374,6 +1403,16 @@ function sameStats(a: Map<StatKey, ResolvedStat>, b: Map<StatKey, ResolvedStat>)
     if (!other || other.value !== value.value || other.text !== value.text) return false;
   }
   return true;
+}
+
+/** The element the character's earliest recorded point of progression went to, if any. */
+function firstAdvancementElement(character: Character): ElementId | undefined {
+  let first: { at: number; elementId: ElementId } | undefined;
+  for (const entry of character.advancement ?? []) {
+    if (entry.at > character.progress) continue;
+    if (first === undefined || entry.at < first.at) first = entry;
+  }
+  return first?.elementId;
 }
 
 /**

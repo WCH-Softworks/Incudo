@@ -502,3 +502,27 @@ test('a step may offer a set, and a set cannot also be required', async () => {
   });
   assert.equal((await errorsFor(notBoolean)).length, 1);
 });
+
+test('a track expression may read a setter, and a level roll may be fixed by an element (ADR 0044)', async () => {
+  const withStat = (expr: unknown) =>
+    broken((s) => {
+      s.characterKinds[0]!.trackStats = [{ stat: 'dice', value: expr as never }];
+    });
+
+  assert.deepEqual(await errorsFor(withStat({ kind: 'setter', name: 'hd', as: 'dieSides' })), []);
+  // Perturbation: an unknown reading, a missing name and a stray field are each refused.
+  assert.notDeepEqual(await errorsFor(withStat({ kind: 'setter', name: 'hd', as: 'text' })), []);
+  assert.notDeepEqual(await errorsFor(withStat({ kind: 'setter', as: 'dieSides' })), []);
+  assert.notDeepEqual(await errorsFor(withStat({ kind: 'setter', name: 'hd', as: 'dieSides', extra: 1 })), []);
+
+  const withRoll = (roll: Record<string, unknown>) =>
+    broken((s) => {
+      s.characterKinds[0]!.buildSteps = [
+        { id: 'levels', label: 'Levels', types: [], perLevel: true, levelRoll: roll as never },
+      ];
+    });
+  const base = { pattern: 'hp:level:{n}', dieSetter: 'hd', classType: 'Class' };
+  assert.deepEqual(await errorsFor(withRoll({ ...base, fixedWhen: 'ID_OPTION' })), []);
+  assert.deepEqual(await errorsFor(withRoll(base)), []);
+  assert.notDeepEqual(await errorsFor(withRoll({ ...base, fixedWhen: 3 })), []);
+});

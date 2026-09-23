@@ -210,6 +210,17 @@
             "kind": { "const": "rolls" },
             "pattern": { "type": "string", "minLength": 1 }
           }
+        },
+        {
+          "type": "object",
+          "description": "A setter read off the root element of the track being evaluated, as a number (ADR 0044). \"dieSides\" takes the face count of a dN value (d8 is 8) and is the one parsing rule; any other value reads 0. Only meaningful inside a trackStats value, which is the one place a track is known; anywhere else it reads 0 and the derivation reports a warning. The setter is named by the system (5e's hd), so the engine names no game noun.",
+          "required": ["kind", "name", "as"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "setter" },
+            "name": { "type": "string", "minLength": 1 },
+            "as": { "const": "dieSides" }
+          }
         }
       ]
     },
@@ -590,6 +601,11 @@
           "type": "string",
           "minLength": 1,
           "description": "The element type whose single instance on the character governs a level's die, absent a recorded advancement entry for that level."
+        },
+        "fixedWhen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An element id (5e's use-average-hit-points campaign option, ADR 0044). While the character has it every level's value is fixed at the die's average instead of rolled: the builder publishes it and opens no decision, and rolls already recorded stay recorded and unread."
         }
       }
     },

@@ -1706,3 +1706,44 @@ test('a kind that names no repeatable setter publishes none, and offers nothing 
   assert.deepEqual(state.decisions.find((d) => d.label === 'Bumps')!.candidates, ['ONCE']);
   assert.deepEqual(state.picks.find((p) => p.ruleKey === open.id)!.repeatable, []);
 });
+
+test('fixedWhen fixes every level and opens no hit point decision, and reads no recorded roll', () => {
+  const sys = systemWithLevelRoll();
+  sys.characterKinds[0]!.buildSteps!.find((s) => s.id === 'levels')!.levelRoll!.fixedWhen = 'AVG';
+  const index = indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } }), element('AVG', 'Gadget'));
+  const make = (withOption: boolean): CharacterBuilder => {
+    const character = createCharacter('test', 'pc', { progress: 3 });
+    character.rolls = { 'hp:level:1': 8, 'hp:level:2': 2, 'hp:level:3': 2 };
+    character.choices = [{ ruleKey: 'build/kit', elementIds: ['CLASSY'] }];
+    if (withOption) character.choices.push({ ruleKey: 'build/options', elementIds: ['AVG'] });
+    return new CharacterBuilder(character, sys, index);
+  };
+
+  const fixed = make(true);
+  const state = fixed.hitPointsFor('levels')!;
+  assert.equal(state.fixed, true);
+  assert.deepEqual(state.levels.map((l) => l.fixedValue), [8, 5, 5], 'maximum first, then the average');
+  assert.equal(state.pending.length, 0);
+  assert.equal(fixed.getState().decisions.some((d) => d.kind === 'hitpoints'), false);
+
+  // Recorded rolls stay recorded and are not written over.
+  const rolls = { ...fixed.getState().character.rolls };
+  fixed.recordHitPoints('levels', 2, 'roll');
+  fixed.changeHitPoints('levels', 2, { value: 7 });
+  assert.deepEqual(fixed.getState().character.rolls, rolls);
+
+  // Perturbation: with the option off the same character reads its rolls and nothing is fixed.
+  const rolled = make(false).hitPointsFor('levels')!;
+  assert.equal(rolled.fixed, false);
+  assert.deepEqual(rolled.levels.map((l) => l.fixedValue), [undefined, undefined, undefined]);
+  assert.deepEqual(rolled.levels.map((l) => l.recorded), [8, 2, 2]);
+});
+
+test('with fixedWhen declared and the option off, the builder still asks for a roll', () => {
+  const sys = systemWithLevelRoll();
+  sys.characterKinds[0]!.buildSteps!.find((s) => s.id === 'levels')!.levelRoll!.fixedWhen = 'AVG';
+  const b = builder(indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } }), element('AVG', 'Gadget')), sys);
+  b.choose('build/kit', ['CLASSY']);
+  assert.equal(b.hitPointsFor('levels')!.pending.length, 1);
+  assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), true);
+});

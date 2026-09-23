@@ -35,7 +35,16 @@ export type StatExpr =
    * A roll is an input because it has no formula (ADR 0007), and an engine that could
    * produce one could silently reroll it.
    */
-  | { kind: 'rolls'; pattern: string };
+  | { kind: 'rolls'; pattern: string }
+  /**
+   * A setter read off the root element of the track being evaluated, as a number — ADR 0044.
+   *
+   * `as: "dieSides"` takes the face count of a `dN` value (`d8` is 8), the one parsing rule;
+   * any other value, or none, reads 0. Only meaningful inside a `trackStats` value, where the
+   * context knows a track; anywhere else it reads 0 and the engine reports a warning. Core names
+   * no setter: a system says which one (5e's `hd`).
+   */
+  | { kind: 'setter'; name: string; as: 'dieSides' };
 
 export interface ExpressionContext {
   statNumber(stat: string): number;
@@ -47,6 +56,28 @@ export interface ExpressionContext {
    * nothing.
    */
   rollSum?(pattern: string): number;
+  /**
+   * The text of a setter on the element rooting the track being evaluated (ADR 0044). Only a
+   * per-track context has one; everywhere else it is absent and a `setter` expression reads 0.
+   */
+  trackSetter?(name: string): string | undefined;
+}
+
+/** The face count of a `dN` die value, or 0 when the text is not one. */
+export function dieSides(text: string | undefined): number {
+  const match = /^d(\d+)$/i.exec((text ?? '').trim());
+  return match ? Number(match[1]) : 0;
+}
+
+/** Whether an expression reads a setter — the one kind only a per-track context can answer. */
+export function readsSetter(expr: StatExpr): boolean {
+  switch (expr.kind) {
+    case 'setter': return true;
+    case 'binary': return readsSetter(expr.left) || readsSetter(expr.right);
+    case 'call': return expr.args.some(readsSetter);
+    case 'table': return readsSetter(expr.index);
+    default: return false;
+  }
 }
 
 /**
@@ -111,6 +142,8 @@ export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {
     // eslint-disable-next-line no-fallthrough
     case 'rolls':
       return ctx.rollSum?.(expr.pattern) ?? 0;
+    case 'setter':
+      return dieSides(ctx.trackSetter?.(expr.name));
     case 'table': {
       if (!expr.values.length) return 0;
       const raw = Math.floor(evaluateExpr(expr.index, ctx));

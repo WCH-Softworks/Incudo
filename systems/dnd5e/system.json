@@ -132,9 +132,7 @@
       "stats": [
         { "name": "level", "label": "Level", "default": 1 },
         { "name": "hp", "label": "Hit Points", "default": 0,
-          "derive": { "kind": "binary", "op": "+",
-            "left": { "kind": "rolls", "pattern": "hp:level:{n}" },
-            "right": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "constitution:modifier" }, "right": { "kind": "ref", "stat": "level" } } } },
+          "derive": { "kind": "binary", "op": "+", "left": { "kind": "binary", "op": "+", "left": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "hp:average" }, "right": { "kind": "ref", "stat": "hp:average:dice" } }, "right": { "kind": "binary", "op": "*", "left": { "kind": "binary", "op": "-", "left": { "kind": "number", "value": 1 }, "right": { "kind": "ref", "stat": "hp:average" } }, "right": { "kind": "rolls", "pattern": "hp:level:{n}" } } }, "right": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "constitution:modifier" }, "right": { "kind": "ref", "stat": "level" } } } },
 
         {
           "name": "ac", "label": "Armor Class",
@@ -195,6 +193,7 @@
       ],
 
       "trackStats": [
+        { "stat": "hp:average:dice", "value": { "kind": "binary", "op": "+", "left": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "track:progress" }, "right": { "kind": "binary", "op": "+", "left": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "setter", "name": "hd", "as": "dieSides" }, "right": { "kind": "number", "value": 2 } } ] }, "right": { "kind": "number", "value": 1 } } }, "right": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "track:first" }, "right": { "kind": "binary", "op": "-", "left": { "kind": "setter", "name": "hd", "as": "dieSides" }, "right": { "kind": "binary", "op": "+", "left": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "setter", "name": "hd", "as": "dieSides" }, "right": { "kind": "number", "value": 2 } } ] }, "right": { "kind": "number", "value": 1 } } } } } },
         { "stat": "multiclass:spellcasting:level", "when": "ID_INTERNAL_GRANT_MULTICLASS_SPELLCASTING_SLOTS_FULL", "value": { "kind": "ref", "stat": "track:progress" } },
         { "stat": "multiclass:spellcasting:level", "when": "ID_INTERNAL_GRANT_MULTICLASS_SPELLCASTING_SLOTS_HALF", "value": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "ref", "stat": "track:progress" }, "right": { "kind": "number", "value": 2 } }] } },
         { "stat": "multiclass:spellcasting:level", "when": "ID_INTERNAL_GRANT_MULTICLASS_SPELLCASTING_SLOTS_THIRD", "value": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "ref", "stat": "track:progress" }, "right": { "kind": "number", "value": 3 } }] } },
@@ -224,6 +223,8 @@
       ],
 
       "contributions": [
+        { "stat": "hp:average", "value": { "kind": "number", "value": 1 }, "requirements": "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" },
+
         { "stat": "ac:armored:armor", "value": { "kind": "number", "value": 10 }, "requirements": "[armor:none]" },
 
         { "stat": "ac:armored:dexterity:cap", "value": { "kind": "number", "value": 99 }, "bonus": "base", "requirements": "![armor:medium],![armor:heavy]" },
@@ -289,7 +290,7 @@
         { "id": "race", "label": "Race", "types": ["Race"], "required": true },
         { "id": "class", "label": "Class", "types": ["Class"], "required": true },
         { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true, "requires": ["class"], "priority": 2.5,
-          "levelRoll": { "pattern": "hp:level:{n}", "dieSetter": "hd", "classType": "Class" } },
+          "levelRoll": { "pattern": "hp:level:{n}", "dieSetter": "hd", "classType": "Class", "fixedWhen": "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" } },
         { "id": "languages", "label": "Languages", "types": ["Language"], "priority": 2.9 },
         { "id": "background", "label": "Background", "types": ["Background"], "required": true, "priority": 3 },
         { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency"], "priority": 3.5 },

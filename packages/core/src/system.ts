@@ -66,6 +66,12 @@ export interface StatDef {
  */
 export const TRACK_PROGRESS_STAT = 'track:progress';
 
+/**
+ * The reserved stat reference that reads 1 when the track being evaluated holds the character's
+ * first point of progression, and 0 otherwise — ADR 0044. Same scope as {@link TRACK_PROGRESS_STAT}.
+ */
+export const TRACK_FIRST_STAT = 'track:first';
+
 /** The placeholder `trackStatPattern` and {@link TrackStatDef.stat} substitute. */
 const TRACK_NAME_PLACEHOLDER = '{name}';
 
@@ -611,6 +617,13 @@ export interface LevelRollDef {
    * uses for an element in no track.
    */
   classType: ElementType;
+  /**
+   * An element that, while the character has it, makes every level's value fixed rather than
+   * rolled — 5e's "use average hit points" campaign option (ADR 0044 decision 6). The builder
+   * then publishes each level's average and opens no decision for it; rolls already recorded
+   * stay recorded and are not read.
+   */
+  fixedWhen?: ElementId;
 }
 
 /**

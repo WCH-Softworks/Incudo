@@ -1387,3 +1387,119 @@ test('a character with no advancement is unchanged: a chosen element gates on th
   const derived = deriveCharacter(character, trackedSystem(), chosenIndex());
   assert.equal(derived.elementIds.has('SUB_LATE'), true);
 });
+
+// --- a track reads its root's setter, and knows whether it holds the first level (ADR 0044) ------
+
+function diced(id: string, die: string | undefined, rules: Rule[] = []): Element {
+  const e = element(id, 'Widget', rules);
+  if (die !== undefined) e.setters.hd = { value: die };
+  return e;
+}
+
+const SIDES: StatExpr = { kind: 'setter', name: 'hd', as: 'dieSides' };
+const num = (value: number): StatExpr => ({ kind: 'number', value });
+const ref = (stat: string): StatExpr => ({ kind: 'ref', stat });
+const bin = (op: '+' | '-' | '*', left: StatExpr, right: StatExpr): StatExpr => ({ kind: 'binary', op, left, right });
+
+function dicedSystem(): GameSystem {
+  const base = trackedSystem();
+  const pc = base.characterKinds[0]!;
+  if (pc.progression?.kind === 'level') pc.progression = { ...pc.progression, trackType: 'Widget' };
+  // every level the average, the character's first level the maximum, plus what rolls were recorded
+  const average = bin('+', { kind: 'call', fn: 'floor', args: [bin('*', SIDES, { kind: 'number', value: 0.5 })] }, num(1));
+  pc.trackStats = [
+    {
+      stat: 'dice',
+      value: bin('+', bin('*', ref('track:progress'), average), bin('*', ref('track:first'), bin('-', SIDES, average))),
+    },
+    { stat: 'firsts', value: ref('track:first') },
+    { stat: 'faces', value: SIDES },
+  ];
+  pc.contributions = [
+    { stat: 'flag', value: num(1), requirements: 'OPTION' },
+  ];
+  pc.stats = [
+    ...(pc.stats ?? []),
+    {
+      name: 'total',
+      derive: bin('+',
+        bin('*', ref('flag'), ref('dice')),
+        bin('*', bin('-', num(1), ref('flag')), { kind: 'rolls', pattern: 'r:{n}' })),
+    },
+  ];
+  return base;
+}
+
+function dicedIndex(): MapElementIndex {
+  return indexWith(diced('Alpha', 'd10'), diced('Beta', 'd6'), element('OPTION', 'Gadget'));
+}
+
+test('a setter reads the face count of the track root, and only the first track holds the first level', () => {
+  const derived = deriveCharacter(twoTracks(3, 4), dicedSystem(), dicedIndex());
+  assert.equal(derived.stats.get('faces')?.value, 16, 'd10 and d6, one reading per track');
+  assert.equal(derived.stats.get('firsts')?.value, 1, 'Alpha holds level 1; Beta does not');
+  // Alpha 3 levels (6 average each) with the first at 10: 10 + 6 + 6 = 22, Beta 4 levels of 4 = 16.
+  assert.equal(derived.stats.get('dice')?.value, 22 + 16);
+
+  // Taking Beta first moves the maximum to it: Beta 4*4 + (6-4) = 18, Alpha 3*6 = 18.
+  const swapped = twoTracks(3, 4);
+  swapped.advancement = [...swapped.advancement!].reverse().map((entry, i) => ({ ...entry, at: i + 1 }));
+  assert.equal(deriveCharacter(swapped, dicedSystem(), dicedIndex()).stats.get('dice')?.value, 36);
+});
+
+test('a single class with no advancement holds the first level', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 3;
+  character.choices = [{ ruleKey: 'seed', elementIds: ['Alpha'] }];
+  const derived = deriveCharacter(character, dicedSystem(), dicedIndex());
+  assert.equal(derived.stats.get('firsts')?.value, 1);
+  assert.equal(derived.stats.get('dice')?.value, 10 + 6 + 6);
+});
+
+test('an unreadable die reads 0 faces rather than a guess', () => {
+  const dieOf = (die: string | undefined): number | undefined => {
+    const character = createCharacter('test', 'levelled');
+    character.progress = 1;
+    character.choices = [{ ruleKey: 'seed', elementIds: ['Odd'] }];
+    return deriveCharacter(character, dicedSystem(), indexWith(diced('Odd', die))).stats.get('faces')?.value;
+  };
+  assert.equal(dieOf('d8'), 8);
+  assert.equal(dieOf('D12'), 12);
+  assert.equal(dieOf('2d6'), 0);
+  assert.equal(dieOf('big'), 0);
+  assert.equal(dieOf(undefined), 0);
+});
+
+test('the flag chooses where the dice come from, and neither source leaks into the other', () => {
+  const character = twoTracks(3, 4);
+  character.rolls = { 'r:1': 9, 'r:2': 9, 'r:3': 9, 'r:4': 9, 'r:5': 9, 'r:6': 9, 'r:7': 9 };
+
+  const off = deriveCharacter(character, dicedSystem(), dicedIndex());
+  assert.equal(off.stats.get('flag'), undefined);
+  assert.equal(off.stats.get('total')?.value, 63, 'the recorded rolls');
+
+  character.choices = [{ ruleKey: 'opt', elementIds: ['OPTION'] }];
+  const on = deriveCharacter(character, dicedSystem(), dicedIndex());
+  assert.equal(on.stats.get('flag')?.value, 1);
+  assert.equal(on.stats.get('total')?.value, 38, 'the class dice, with the stale rolls ignored');
+
+  // Rolls are only kept, never consumed: with no rolls at all the flagged number is the same.
+  assert.equal(deriveCharacter({ ...character, rolls: {} }, dicedSystem(), dicedIndex()).stats.get('total')?.value, 38);
+});
+
+test('a setter outside a track value reads 0 and says so', () => {
+  const system = dicedSystem();
+  const pc = system.characterKinds[0]!;
+  pc.stats = [...(pc.stats ?? []), { name: 'stray', derive: SIDES }];
+  const character = createCharacter('test', 'levelled');
+  character.progress = 1;
+  character.choices = [{ ruleKey: 'seed', elementIds: ['Alpha'] }];
+  const derived = deriveCharacter(character, system, dicedIndex());
+  assert.equal(derived.stats.get('stray')?.value ?? 0, 0);
+  assert.ok(derived.problems.some((p) => p.code === 'setter-outside-track' && p.message.includes('"stray"')));
+  assert.equal(
+    deriveCharacter(character, dicedSystem(), dicedIndex()).problems.some((p) => p.code === 'setter-outside-track'),
+    false,
+    'inside trackStats it is not reported',
+  );
+});
