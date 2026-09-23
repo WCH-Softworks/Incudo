@@ -251,6 +251,15 @@ darkvision grant that post-dates it, and the single **element-missing** —
 files and carrying no rules. That one is honestly unmodelled rather than budgeted; inventing
 a rule for it would be the guess ADR 0005 rules out.
 
+> **Note, 2026-09-23 — the figures in the paragraphs above (55, 52, 53, 3, 13, "all one species") are the
+> original set's and cannot be reproduced: those saves are not committed.** The samples' own figures are the
+> "oracle runs in CI over the samples" paragraph below, re-measured today: 10 / 0 / 0 / 73 element-missing /
+> spell-missing / stat-mismatch / element-extra, 19 not-modelled and **42** content-missing. Their extras are
+> not "one species": 42 of the 73 are two Incudo-only internal multiclass grants on 21 of the 22 single-class
+> samples, 22 are firearm proficiencies on the two Artificer samples, 8 the Thieves' Tools pair on four
+> samples and 1 a 2024 weapon mastery grant (detail in docs/AURORA-SAVE-FORMAT.md's note). Whether that
+> internal pair is an Aurora omission or an over-grant is not settled.
+
 `compareWithAurora` in `packages/aurora-import` classifies all of them (frozen, ADR 0008; it was
 never in the CLI); see docs/AURORA-SAVE-FORMAT.md. `aurora-oracle.test.ts` *records* the whole table
 above, plus 1 problem in one derivation and 8 spellcasting blocks, **per save** and not in total (those
@@ -290,6 +299,12 @@ beside pact magic with a third-caster, the Artificer's round-up, Paladin and Ran
 a full caster, and the 2024 half-casters (which start casting at level 1). Everything the corpus moves is
 reported, not asserted (ADR 0042).
 
+> **Note, 2026-09-23 — two numbers in that paragraph re-measured differently.** `content-missing` is **42**,
+> not 101: the 101 was taken before `canonicalizeSaveIds` respelled the save whose ids differ only by case (62
+> of them), and it was left in this file. The caster level is recorded and compared in **7** of the 8
+> multiclass samples, not all 8: the Barbarian 3 / Monk 3 has no casting block and records none. The block
+> and row counts (29 blocks in 20 saves; 29 slot, DC and attack rows) hold.
+
 **Armour class now has a referee, and hit points and speed have one that disagrees.** The maintainer read
 armour class, hit points and speed off Aurora's screen for every sample. **Armour class agrees on all 30**,
 including plate with a negative Dexterity modifier, half plate above the medium cap, both Unarmoured
@@ -297,6 +312,10 @@ Defences and a magic-armour, three-attunement build, and `aurora-oracle.test.ts`
 **Speed differs on 9** (nothing feeds the declared stat, so every character reads 30) and **hit points on
 17**, for reasons that are Incudo's: the average-HP option, a second class's own dice, and an item that
 sets an ability score. Both are in ROADMAP Phase 2 and are reported, not asserted.
+
+> **Note, 2026-09-23 — the counts re-measured differently.** `aurora-oracle.test.ts` reports speed
+> differing on **7** samples (10, 11, 12, 13, 19, 21, 27 — a Ranger, a Barbarian, a Druid, two Rogues, a
+> Barbarian / Monk and a 2024 Monk), not 9, and hit points on **18**, not 17. The reasons named are unchanged.
 
 **Two findings that no count sees.** An id can be spelled with different case in a save and in the corpus
 (`…_War_DOMAIN` against `…_WAR_DOMAIN`): Aurora matches ids ignoring case and Incudo does not, so that
@@ -699,6 +718,9 @@ deliberately **not** fixed:
   ADR 0032's `multiple: true` (the campaign options step, below). **Eight of the nine sample
   characters took a feat at level 4**, and with feats on a level 4 Fighter is offered two options
   where it was offered one.
+  *(Note, 2026-09-23: in the thirty samples it is **3 of 12** with a level-4 improvement, 10 of the 13 level-4
+  options being ability score increases. The feat half is still generated, on its other grounds. ADR 0035's
+  note has the rest.)*
   Perturbation is the evidence and it is in the tests; running it is the rest — a level 4 Fighter
   is offered the option, taking it offers all six abilities, Strength twice reads +2 (12), and
   both picks settle as slots that each still offer Strength.
@@ -858,6 +880,13 @@ shield, so `[shield:any]` has never been true. **Perturbation is the evidence**,
 `packages/core/src/equipment.test.ts` and the engine tests. Do not cite the green `aurora verify`
 run as proof the gating is right.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** "Nobody carries a shield" does not hold
+> of the samples: **four** equip one (three Fighters and a Barbarian), so `[shield:any]` and the shield's
+> armour class term are true on real characters, and armour class agrees with the hand-read screen value on all
+> four. On attunement the samples give **7 of 7** attuned and **one save over the limit** (4 against 3, one
+> `over-attuned`), not "none over". The "eight conditions" are not re-derived. See the notes in ADRs 0023, 0025
+> and 0026.
+
 **A bag is a list of instances, and the container embeds all of it** (ADR 0024). `Character`
 gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
 after `baseStats`, `advancement` and `generation` each stayed at 1. Readers accept both. Three
@@ -878,6 +907,14 @@ the override is never written. `instanceId` is Aurora's `identifier` GUID, and a
 one is numbered by its position rather than given a minted id, because minting would make
 an import non-deterministic. An unrecognised `location` is reported and never written
 through: Aurora's three location strings and content's 18 slot values are two vocabularies.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** The bag census is **24 instances in 8
+> saves — 22 equipped, 7 attuned, 2 adorned hosts, 0 stacked, 0 named** — where this paragraph has 45 / 26 / 12 /
+> 15 / 4 / 1. Held on the samples: every instance comes across, `slot` is written **0** times, and the
+> recorded `location` agrees with the element's `slot` setter **15 of 15**. Changed: Aurora writes **four**
+> location strings in the samples, not three (a shield records `Secondary Hand`). Not re-derivable from the
+> samples: the two-greatswords bag, any stack, a user-given name, an equipped Aurora proxy. ADR 0024's note
+> has every probe.
 
 **Equipped derives, carried does not, and the bag is now a compared thing** (step 3).
 `deriveCharacter` seeds from `equippedElementIds` next to the choices and the advancement — an
@@ -908,6 +945,13 @@ built ADR 0022's `contributions` and spent it on `ac` and on ADR 0023's attuneme
   of exactly 0 and both medium-armour wearers exactly +2, so **the saves cannot tell the six-row
   table from the four-row one, or the medium cap from no cap at all.** Do not read their
   agreement as evidence.
+
+  > **Note, 2026-09-23 — this no longer holds of the samples.** The plate wearer has a Dexterity modifier of
+  > **−1** (armour class 21, read off Aurora's screen; a cap alone would give 20) and two medium-armour
+  > wearers have **+3** (17 and 18; no cap would give 18 and 19), so a referee now separates the six-row
+  > table from the four-row one and the cap from no cap. The bullet above stands for the original nine.
+  > "Checked by nobody" and "never describe `ac` as verified" are the original decision; with the readout,
+  > armour class has a referee (a person reading a screen) and agrees on 30 of 30. ADR 0026's note has the table.
 - **A contribution joins content's bonus buckets, it does not land after them.** That is the
   whole reason the field exists: 5e writes `ac:armored:dexterity:cap` 2 in `base` and Medium
   Armor Master writes 3, and the answer is 3. Summed afterwards it reads 5.

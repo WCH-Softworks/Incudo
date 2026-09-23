@@ -164,6 +164,22 @@ and it reads the list rather than guessing.
   anyway because **eight of the nine samples took a feat at level 4** — a real player's first
   improvement is usually a feat, so ADR 0032 is what they will meet next — and their imports are
   more faithful with it, and because it changes nothing until that option is held.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves; two figures differ and the reasoning built on
+> one of them is weakened.** *The id family:* **12** samples record generated `ID_INTERNAL_CLASS_FEATURE_{ASI|FEAT}_{level}_{CLASS}`
+> options (24 `Improvement Option (Class N)` elements, every one matching the pattern), across the **same seven classes** the ADR
+> names (Barbarian, Cleric, Druid, Fighter, Ranger, Rogue, Wizard) — the claim "seven classes" reproduces. No
+> class name contains a space, so that gap is still open. *The +2 shape:* in **9 samples** an option lists
+> the same `ID_INTERNAL_ASI_*` id twice (18 such options), so a +2 as the same +1 picked twice is
+> everywhere the samples have an ASI. *The feat figure:* of the 12 samples with a level-4 improvement, **3**
+> took the feat (the interleaved Rogue / Wizard, a Fighter, a Ranger) and 10 of the 13 level-4 options were ability
+> score increases, so the samples do **not** say "eight of the nine took a feat at level 4". The choice to generate the
+> feat half anyway still stands on its other reasons (fidelity, and it changes nothing until options are on),
+> but not on "a real player's first improvement is usually a feat". *Not re-derivable:* the level-12 Fighter
+> whose Constitution moved 19 to 20 (no sample is a level-12 Fighter; the Fighter 20's derived scores have no
+> referee, since the oracle compares chosen elements and not scores). *New:* the 2024 samples record a
+> different family for their background improvement,
+> `ID_INTERNAL_ABILITY_SCORE_IMPROVEMENT_COMBINATION_*`, which this ADR does not describe.
 - Class names with a space have never been exercised: no class in AuroraLegacy has one, so the
   id substitution (non-alphanumerics become `_`) is untested against a save.
 - ADR 0022 says a rule on a generated element is frozen into every save that embeds it. The 146
