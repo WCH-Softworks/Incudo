@@ -406,11 +406,17 @@ computes nothing. Things to know before touching it:
   and `tools/verify/src/rogue-wizard.test.ts`, a Wizard 4 / Rogue 4 built through the builder and
   worked by hand against the Player's Handbook. Found by building it in the running app, not by any
   test — the ninth save had no oath and a patron whose gates all sit below its class level.
-- **The Rogue/Wizard now has an Aurora referee.** The maintainer built the description in
-  `rogue-wizard-build.ts` in Aurora, and `rogue-wizard-aurora.test.ts` builds it through the builder and
-  compares it with that save: 0 stat-mismatch, 0 spell-missing, both slot rows, both DCs, both attack
-  bonuses and the caster level compared and agreeing. What it cannot referee is `hp` (Aurora records
-  rolls and never a total; the save's rolls differ from the description's averages), and **prepared
+- **The Rogue/Wizard has an Aurora referee, and it is a sample.** `rogue-wizard-aurora.test.ts` builds the
+  description in `rogue-wizard-interleaved-build.ts` through the builder, one level at a time (Rogue, Wizard,
+  Rogue, Wizard, ...), and compares it with sample 06, the same description saved from Aurora: 0
+  stat-mismatch, 0 spell-missing, both slot rows, both DCs, both attack bonuses and the caster level
+  compared and agreeing, and every level in the class the save put it in. It is the one test that shows the
+  builder *offers* the right choices, since `builder-rebuild.test.ts` replays the picks a save holds. Two
+  things it found: the Ritual Caster feat's two spells cannot be offered because the `Ritual` support filter is
+  unread (named in the test as the one expected missing pair, so it fails the day that is fixed), and
+  Aurora records a Thieves' Tools expertise without the two internal elements it grants, in a build made
+  after its content was updated, so the older "stale content" explanation for that pair is wrong. What it
+  cannot referee is `hp` (see ROADMAP Phase 2), and **prepared
   spells**: nothing in the builder or the engine models preparation, and the comparison does not read
   the `prepared` flags the save records, so that clause of Phase 2's exit criterion is unmet.
   `builder-rebuild.test.ts` rebuilds *every* save through the builder, single-class and multiclass, from

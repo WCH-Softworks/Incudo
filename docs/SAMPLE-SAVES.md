@@ -672,6 +672,6 @@ All thirty arrived (the plan's 21 and the nine 2024 ones), and are committed wit
   14 to 19 and 22 to 30 have the average-hit-points option on. The manifest records what each save actually
   has. Sample 21 shows Aurora allows a fourth attuned item; sample 17's prepared count reads 0 because
   Aurora shows nothing for the 2024 Paladin's fixed table.
-- **Not built:** the Wizard 4 / Rogue 4 of `tools/verify/src/rogue-wizard-build.ts` is not among them, so
-  `rogue-wizard-aurora.test.ts` skips. Adding it as `sample-31-…` (the description was built in Aurora
-  before) restores that comparison.
+- **Reused:** a save serves every test that can use it. Sample 06 is what `rogue-wizard-aurora.test.ts`
+  compares a step-by-step builder run with (`rogue-wizard-interleaved-build.ts`), as well as being rebuilt
+  from its own picks by `builder-rebuild.test.ts`, so no separate sample of that description is needed.
