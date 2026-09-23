@@ -452,6 +452,15 @@ computes nothing. Things to know before touching it:
   `builder-rebuild.test.ts` rebuilds *every* save through the builder, single-class and multiclass, from
   its own picks, and each matches its import and Aurora.
 
+**A class split is one input, and only the ability score minimum is soft** ([ADR 0045](docs/adr/0045-a-class-split-is-one-input-and-an-unmet-ability-score-minimum-is-a-flag.md),
+amending ADR 0036 decision 4). `CharacterBuilder.applySplit` takes `[{ classId, levels }, …]` in the order the
+levels were taken, writes the same `advancement` and multiclass records as level-by-level, and is judged class by
+class against the rest of the split already held. A class short only of ability scores is `eligible` and carries
+`ClassOption.flag` (derived on every read, never stored, clears when the score rises); every other unmet term still
+refuses. Things to know: `eligible` means "may be taken", not "requirements hold"; a minimum under a `not` is read
+for real; a class already held is flagged from its multiclass block only, since its own requirements read "not
+multiclass"; and the flag survives a save and reopen with zero sources.
+
 **A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
 `packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool
 covers it, which of six values is still unplaced, what a swap should move, what a change of

@@ -29,7 +29,7 @@ import {
   type Setter,
 } from '@incudo/core';
 import { CharacterBuilder } from './use-character-builder.ts';
-import { multiclassRuleKey, type MulticlassConfig } from './multiclass.ts';
+import { multiclassRuleKey, scoreLabel, type MulticlassConfig } from './multiclass.ts';
 
 // --- fixture ----------------------------------------------------------------------------
 
@@ -892,4 +892,22 @@ test('a split starts a character that has no class yet, and replaces a different
   assert.equal(b.classLevelsFor('levels')!.firstClassId, 'MAGE');
   assert.equal(b.getState().character.advancement, undefined);
   assert.deepEqual(multiclassRecords(b), []);
+});
+
+test('a flag names a score the way the system labels it, and interleaving is reported', () => {
+  const stats = [
+    { name: 'charisma', label: 'Charisma' },
+    { name: 'cha', derive: { kind: 'ref' as const, stat: 'charisma' } },
+  ];
+  assert.equal(scoreLabel(stats, 'cha'), 'Charisma');
+  assert.equal(scoreLabel(stats, 'CHARISMA'), 'Charisma');
+  assert.equal(scoreLabel(stats, 'grit'), 'grit', 'a name nothing declares reads as itself');
+
+  const b = fighter(1);
+  b.applySplit('levels', [segment('FIGHTER', 2), segment('MAGE', 2)]);
+  assert.equal(b.classLevelsFor('levels')!.interleaved, false);
+  assert.equal(b.classLevelsFor('levels')!.maxLevel, 20);
+  b.applySplit('levels', [segment('FIGHTER', 1), segment('MAGE', 1), segment('FIGHTER', 1)]);
+  assert.equal(b.classLevelsFor('levels')!.interleaved, true);
+  assert.equal(fighter(3).classLevelsFor('levels')!.interleaved, false);
 });

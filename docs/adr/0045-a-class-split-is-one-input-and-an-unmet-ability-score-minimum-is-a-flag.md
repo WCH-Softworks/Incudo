@@ -1,6 +1,6 @@
 # 0045 — A class split is one input, and an unmet ability score minimum is a flag, not a gate
 
-**Status:** Proposed · 2026-09-23 · builds on [0012](./0012-self-contained-saves.md),
+**Status:** Accepted · 2026-09-23 · builds on [0012](./0012-self-contained-saves.md),
 [0015](./0015-class-levels.md), [0017](./0017-open-decisions-not-steps.md),
 [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md) ·
 amends [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md) (decision 4) ·
@@ -54,9 +54,9 @@ the reading a person means by "Fighter 12 / Wizard 5", it needs no new concept, 
 
 Consequences of choosing the simplest order rather than asking for more:
 
-- **Interleaving is not expressible in a split, and stays what the per-level control is for.** A player who
-  wants Rogue, Wizard, Rogue, Wizard writes the split (Rogue 4 / Wizard 4) and then reassigns levels one at
-  a time, as today. The split is the fast path to a valid character, not a second model of levels.
+- **A class may appear in more than one segment**, so an interleaved build (Rogue 1, Wizard 1, Rogue 1,
+  Wizard 1) is one input as well. That fell out of the write being a list of levels and was kept: it costs
+  nothing and the per-level control stays the way to fix one level afterwards.
 - **The order matters and the control says so**: the segments are an ordered list a person can reorder, the
   first row is labelled as the class the character started as, and the hint under it says what that changes.
 - **Re-entering a split replaces per-level assignments.** Applying a split rewrites `advancement` from the
@@ -133,6 +133,24 @@ raised; either/both shapes; the other edition and a missing block still refuse a
 score 3 and score 30, every flag names a score below its minimum, and at 30 nothing is flagged. Making
 `atLeast` hard again fails 7 tests. The control does not show the flag yet (step 4), so a short score is
 currently silent on screen.
+
+**Done (steps 2 to 4), and their proof.**
+- **Step 2**, `planSplit` and `CharacterBuilder.applySplit` in `packages/ui`. Every other class is judged
+  as the last one added: against the character with the rest of the split already held. Judging each against
+  the character as it stands passed the 2014 and the 2024 edition of one class in the same split, each innocent
+  alone (found by a test, not foreseen). On the official corpus a Fighter 12 / Wizard 5 said as a split has the
+  same advancement, multiclass record and derived summary as the same levels taken one at a time, and Rogue-first
+  differs from Wizard-first (`tools/verify/src/multiclass-split.test.ts`).
+- **Step 3**, a flagged split (Intelligence 8, a Wizard) is packed, read back and derived against nothing but
+  its own embedded content: identical derivation, the same flag, and the flag clears when Intelligence is raised
+  on the reopened character. ADR 0012's assumption held; the class's multiclass block and its requirements are
+  already in `content.json`.
+- **Step 4**, the control (`apps/desktop/src/panes/ClassLevels.tsx`): a flag beside a class that can be added
+  and a note for a class already held, and a "Set the split" section with rows (class, levels, up, down,
+  remove), the total, and Apply. **Driven in the running app** against the official content in a browser:
+  Fighter 12 / Wizard 5 applies in one click, the summary reads "Fighter 12 / Wizard 5", the flag reads
+  "Intelligence 13 (you have 10)", and 16 decisions open at once. **Not verified:** the Tauri window, a
+  screenshot of the layout (the preview could not draw one), the narrow single-column layout, and keyboard use.
 
 ## Consequences
 

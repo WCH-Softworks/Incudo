@@ -38,6 +38,7 @@ import {
   type LevelRollDef,
   type Progression,
   type RequirementExpr,
+  type StatDef,
 } from '@incudo/core';
 
 import { parseDice } from './dice.ts';
@@ -141,6 +142,25 @@ export interface ClassLevelState {
   options: ClassOption[];
   /** Whether the progression has room for another level. */
   canAddLevel: boolean;
+  /** The highest level the progression allows, when it has one — what a split's total may not pass. */
+  maxLevel?: number;
+  /**
+   * More than one run of any class: the levels were not taken as one block per class. Applying a
+   * split replaces that order, so a control may want to say so first.
+   */
+  interleaved: boolean;
+}
+
+/**
+ * What a system calls a stat a flag names. Content spells abilities `int`, `cha`, and the system
+ * declares those as references to the full stat, which carries the label: `int` reads "Intelligence".
+ * A name nothing declares reads as itself, so a flag is never blank.
+ */
+export function scoreLabel(stats: ReadonlyArray<StatDef>, name: string): string {
+  const declared = stats.find((stat) => stat.name.toLowerCase() === name.toLowerCase());
+  if (declared?.label) return declared.label;
+  if (declared?.derive?.kind === 'ref') return scoreLabel(stats.filter((s) => s !== declared), declared.derive.stat);
+  return name;
 }
 
 // --- reading the character -----------------------------------------------------------
@@ -616,5 +636,7 @@ export function computeClassLevelState(
     unassigned: levels.filter((row) => row.classId === undefined).map((row) => row.level),
     options,
     canAddLevel: config.max === undefined || character.progress < config.max,
+    ...(config.max !== undefined ? { maxLevel: config.max } : {}),
+    interleaved: levels.filter((row, index) => row.classId !== undefined && row.classId !== levels[index - 1]?.classId).length > counts.size,
   };
 }

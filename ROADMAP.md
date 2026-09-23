@@ -694,7 +694,7 @@ before any code, both touching a public API:
       one oracle test in, seven `accountedFor` tests out. **A loss, named:** nobody can now validate
       a third-party index, look up one element or bundle a corpus from a terminal without writing
       code; the in-app equivalents are Phases 7 and 8.
-- [ ] **Start a character as a multiclass from the outset.** Raised by the maintainer, from a
+- [x] **Start a character as a multiclass from the outset.** Raised by the maintainer, from a
       long-standing annoyance with Aurora: to make a level 17 character in two classes you cannot
       say so up front. You build the full level in one class, then level up one at a time the rest
       of the way. The builder should let a character be declared multiclass from the start, with
@@ -708,7 +708,14 @@ before any code, both touching a public API:
       (`advancement`, ADR 0015, is a per-level record, and Wizard 4 / Rogue 4 read differently
       from Rogue 4 / Wizard 4, so a split needs either an order or an explicit "which levels went
       where"), and how a flagged character is written to `.incu`, which must still open with zero
-      sources (ADR 0012). **Proposed: [ADR 0045](./docs/adr/0045-a-class-split-is-one-input-and-an-unmet-ability-score-minimum-is-a-flag.md); no code yet.**
+      sources (ADR 0012). **Done: [ADR 0045](./docs/adr/0045-a-class-split-is-one-input-and-an-unmet-ability-score-minimum-is-a-flag.md).**
+      The split is an ordered list of (class, levels), written as the ordinary `advancement` plus the second
+      class's multiclass element (no format change). Only the ability score minimum is soft: a short score is
+      flagged with the shortfall and never refuses a class; the other edition of a class and a class with no
+      multiclass block still refuse. Proved on the official corpus (a split equals the same levels taken one at a
+      time; the refused set is the same at score 3 and 30), through a save-and-reopen with zero sources, and by
+      using it in the running app (Fighter 12 / Wizard 5 in one click). **Not verified:** the Tauri window, the
+      layout by eye, and macOS or Linux.
 - [x] **Speed, from every source that changes it.** The 5e definition declares `speed` with a default
       of 30 and nothing feeds it, so every character reads 30. Content writes speed under other names
       (a race's `innate speed`, and class features, items and feats that add to it), and none of that is

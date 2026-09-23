@@ -1009,6 +1009,44 @@ table.budget-rows input[type='number'] {
   min-width: 0;
 }
 
+.class-flag {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.class-split {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.class-split-row {
+  display: grid;
+  grid-template-columns: 1fr 5em;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.class-split-row select,
+.class-split-row input {
+  min-width: 0;
+  width: 100%;
+}
+
+.class-split-buttons {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 12px;
+}
+
+.class-split-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
 .class-level-rows {
   display: flex;
   flex-direction: column;

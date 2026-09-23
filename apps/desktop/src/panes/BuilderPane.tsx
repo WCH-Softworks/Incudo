@@ -257,6 +257,7 @@ export function BuilderPane({
                 builder={builder}
                 nameOf={nameOf}
                 candidateLabel={candidateLabel}
+                stats={kind.stats}
               />
             </section>
           )}
