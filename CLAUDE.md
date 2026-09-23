@@ -319,7 +319,7 @@ sets an ability score. Both are in ROADMAP Phase 2 and are reported, not asserte
 
 > **Update, 2026-09-23 — speed now agrees on all 30 and is held to the readout** ([ADR 0043](docs/adr/0043-speed-is-the-race-base-plus-what-content-adds-to-it.md)):
 > the player character kind derives it as `innate speed + innate speed:misc + speed:misc`, a system-definition
-> change with no engine one. Hit points are the one number still reported and not asserted.
+> change with no engine one. Hit points followed the same day (ADR 0044): all 30 agree and are held too.
 
 **Two findings that no count sees.** An id can be spelled with different case in a save and in the corpus
 (`…_War_DOMAIN` against `…_WAR_DOMAIN`): Aurora matches ids ignoring case and Incudo does not, so that
@@ -824,14 +824,22 @@ A budget is written through `setBudgetStat`, `adjustBudgetStat`, `rollBudget`, `
 and `setGenerationMethod` — all validated, all on the builder. `setBaseStat` still exists and
 bypasses every rule; it is for a caller that has no budget, not for an editor.
 
-**Hit points are the one number no oracle checks** (ADR 0019). Aurora's saves record the
-per-level rolls and never the total, so `aurora verify` has nothing to diff. Do not describe
-`hp` as verified; it is derived from the published rule and from the rolls, and that is all.
+**Hit points have no oracle in the save file, and a referee on the screen** (ADR 0019, ADR 0044). Aurora's
+saves record the per-level rolls and never the total, so `aurora verify` has nothing to diff; the referee is
+the maintainer's readout, and `aurora-oracle.test.ts` holds `hp` to it on all 30 samples. Say "agrees with a
+person's reading of Aurora's screen", never "verified" beyond that.
 
-> **Update, 2026-09-23 — hit points are being fixed against the readout, one step at a time** ([ADR 0044](docs/adr/0044-hit-points-follow-the-method-the-character-uses.md)):
-> the importer now files a multiclass save's per-class dice under the character levels that class was taken at (a
-> bugfix to the frozen package, the one exception), an item that sets a score is a lower bound on it, and a
-> single-class character publishes `level:<class>`. 11 samples still differ, all with the average option on.
+> **Update, 2026-09-23 — hit points agree with the readout on all 30 samples and are held to it** ([ADR 0044](docs/adr/0044-hit-points-follow-the-method-the-character-uses.md)):
+> the importer files a multiclass save's per-class dice under the character levels that class was taken at (a
+> bugfix to the frozen package, the one exception), an item that sets a score is a lower bound on it, a
+> single-class character publishes `level:<class>`, and `ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP` decides where the
+> dice come from for the whole character. With it on, `hp` is each class's die average per level (the character's
+> first level the maximum), read off the class's `hd` by a per-track `setter` expression and `track:first`, and
+> the recorded rolls are kept and not read; with it off the recorded rolls are read as before. A build step's
+> `levelRoll.fixedWhen` names that option, and while it is on the builder opens no hit points decision. Things to
+> know: the flag is a kind `contribution` gated on the option, not a mode of the engine; the maximum for the first
+> level belongs to whichever class the advancement's earliest entry names, and a second class's first level is an
+> average; and a rolled character switched to the option loses no roll, it stops being read.
 
 Two things ADR 0018 added that are easy to reach for wrongly:
 

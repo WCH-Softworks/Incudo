@@ -1,6 +1,6 @@
 # 0044 — Hit points follow the method the character uses, and each class keeps its own dice
 
-**Status:** Proposed · 2026-09-23 · builds on [0007](./0007-native-formats.md), [0015](./0015-class-levels.md),
+**Status:** Accepted · 2026-09-23 · builds on [0007](./0007-native-formats.md), [0015](./0015-class-levels.md),
 [0016](./0016-stat-bounds-are-expressions.md), [0018](./0018-tables-and-track-stats.md),
 [0019](./0019-recorded-rolls-are-readable.md), [0022](./0022-kinds-contribute-systems-do-not-ship-content.md),
 [0032](./0032-a-build-step-may-offer-a-set.md), [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md) ·
@@ -181,6 +181,21 @@ element is in the character, `computeHitPointState` publishes each level's avera
 hit points decision. The rolls a user already recorded stay recorded and unread. With the option off,
 the builder is unchanged, and it already keys a roll by character level, so a second class's first level
 is offered as a roll, not as the maximum: `isFirst` is the progression's first level only.
+
+**Done (step 4), and its proof.** Built as decided, with two amendments. (1) The first level is the die's
+maximum in the builder's published value too, not "each level's average" as decision 6 was worded:
+`HitPointLevel.fixedValue` is the maximum at the progression's first level and the average after, because that is
+what the derivation sums and the two must agree. (2) The kind contribution and the per-class sum are stats
+(`hp:average`, `hp:average:dice`) in `systems/dnd5e/system.json`; core gained a `setter` expression, the reserved
+`track:first`, and a `setter-outside-track` warning for a `setter` outside `trackStats`. The 11 samples that still
+differed (14, 15, 16, 18, 19, 22, 23, 24, 25, 27, 29) now agree, so **all 30 do**. Perturbation: ignoring the option
+fails exactly those 11; dropping the `track:first` term or the `track:progress` term fails 15; reading the option as
+always on fails samples 04, 10 and 20, whose recorded dice are not the averages; dropping the rolls branch fails the 15
+option-off samples. Oracle tables are identical to the snapshot taken before the change.
+`engine.test.ts`, `use-character-builder.test.ts` and `schemas.test.ts` carry corpus-free tests of the expression,
+`track:first`, the flag, `fixedWhen` and the schema.
+
+**Done (step 5).** `aurora-oracle.test.ts` holds hit points to the readout, as it holds armour class and speed.
 
 ## Consequences
 

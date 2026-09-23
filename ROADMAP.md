@@ -724,7 +724,7 @@ before any code, both touching a public API:
       Perturbation: dropping the `innate speed:misc` term fails the Barbarian, Barbarian / Monk and Monk.
       **Not verified:** the armour Strength penalty, Armorer's cancellation and the 2024 armour rule (no sample
       wears armour that costs speed), and the other movement modes. A raceless character now reads 0, not 30.
-- [ ] **Hit points from the method Aurora used, not from every die a save records.** `hp` sums the
+- [x] **Hit points from the method Aurora used, not from every die a save records.** `hp` sums the
       recorded per-level dice and adds the Constitution modifier, and three separate things make that
       disagree with Aurora's screen (17 of the 30 samples, checked by hand by the maintainer):
       - **The average option.** A campaign option, `ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP`, is on in 15 of
@@ -744,7 +744,18 @@ before any code, both touching a public API:
       cheap to calculate. Copy only what has no formula (rolled hit points, chosen scores). Where
       Incudo's number disagrees with Aurora's recorded one, **tell the user, and keep Incudo's.**
       `packages/aurora-import` is frozen (ADR 0008), so most of this belongs in the derivation and in the
-      builder rather than the importer, and a change there wants an ADR. **In progress: [ADR 0044](./docs/adr/0044-hit-points-follow-the-method-the-character-uses.md) (proposed) plans it in five steps. Steps 1 to 3 are done (an item that sets an ability score, the single-class track, the importer filing each class's own dice); 11 of 30 samples still differ, all with the average option on. Steps 4 and 5 are not started.**
+      builder rather than the importer, and a change there wants an ADR. **Done: [ADR 0044](./docs/adr/0044-hit-points-follow-the-method-the-character-uses.md).**
+      An item's set score is a lower bound, a single class publishes `level:<class>`, the importer files each
+      class's own dice under the levels it was taken at, and the average option chooses where the dice come from
+      (per-class averages, the character's first level the maximum, read off `hd` by a per-track setter
+      expression and `track:first`; the builder's `levelRoll.fixedWhen` stops asking for rolls). **All 30
+      samples agree with the maintainer's readout and `aurora-oracle.test.ts` holds hit points to it**, as it
+      holds armour class and speed. Perturbation: ignoring the option fails 11 samples (14, 15, 16, 18, 19, 22, 23,
+      24, 25, 27, 29); dropping the first-level term or the progress term fails 15 each; reading the option as always
+      on fails the three option-off samples whose recorded dice are not the averages (04, 10, 20); dropping the rolls branch fails the 15
+      option-off samples. Oracle tables are identical to the snapshot before the change. **Not verified:** the readout
+      is a person's transcription; prepared spells are still not modelled; the builder's fixed-value screen
+      was covered by tests and not driven in the running app; and nothing was run on macOS or Linux.
 
 ### Where this phase actually stands
 
@@ -799,9 +810,11 @@ so that finding one again is recognition rather than discovery.
 - **One unresolved reference upstream** — the `…VULNERAILITY…` typo. It is a *grant* to an id
   nothing declares, so a character silently loses something. Zero the day AuroraLegacy fixes
   the spelling; not Incudo's to fix.
-- **`hp` and `ac` are unverifiable against Aurora, permanently.** The save format records the
+- **`hp` and `ac` are unverifiable against Aurora's file, permanently.** The save format records the
   per-level rolls and never the total, and records no armour class at all. Both are derived
-  from published rules and checked by perturbation. Do not describe either as verified.
+  from published rules and checked by perturbation, and both agree with what the maintainer read off
+  Aurora's screen for all 30 samples (ADR 0026's note, ADR 0044). Do not describe either as verified
+  beyond that.
 - **A granted ability point is only spendable under a method that prices values.** ADR 0017's
   headline case — "a class gave you one more attribute point" — works for point buy, where the
   cost table says what a point buys. Under the standard array or a rolled set there is no cost

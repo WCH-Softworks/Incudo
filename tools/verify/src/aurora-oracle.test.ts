@@ -30,12 +30,11 @@
  * (elements, spells, stats), and `INCUDO_ORACLE_DETAIL=1` adds every difference message to the report,
  * for chasing one.
  *
- * **Armour class is the one number here checked against a person.** Aurora's file records no armour
- * class, but its screen shows one, and the maintainer typed what it showed for every sample into the
- * manifest (`readout`). It is a human transcription, and it agrees with the derivation on all 30, so
- * armour class is now held to it, and so is speed (ADR 0043). Hit points are reported against it and fail nothing: they
- * disagree on some samples for reasons that are Incudo's (ROADMAP Phase 2), and a test that failed on a
- * known gap would only be edited.
+ * **Armour class, speed and hit points are the numbers here checked against a person.** Aurora's file
+ * records no armour class and no speed, and never a hit point total, but its screen shows all three, and
+ * the maintainer typed what it showed for every sample into the manifest (`readout`). It is a human
+ * transcription, and it agrees with the derivation on all 30 for each, so each is held to it (speed: ADR
+ * 0043; hit points: ADR 0044).
  */
 
 import { test } from 'node:test';
@@ -185,18 +184,18 @@ test(
     );
     assert.deepEqual(broken, [], `An invariant does not hold:\n  ${broken.join('\n  ')}`);
 
-    // 3. Armour class and speed against what Aurora's screen showed, held; hit points, reported. A sample
-    //    with no readout is held to the invariants only.
+    // 3. Armour class, speed and hit points against what Aurora's screen showed, all held. A sample with no
+    //    readout is held to the invariants only.
     const disagree: string[] = [];
     for (const { id, run } of measured) {
       const read = byId.get(id)?.readout;
       if (!read) continue;
       const stat = (name: string) => run.derived.stats.get(name)?.value;
       if (stat('ac') !== read.ac) disagree.push(`${id}: armour class reads ${read.ac} on Aurora's screen and ${stat('ac')} here`);
-      if (stat('hp') !== read.hp) t.diagnostic(`${id}: hit points read ${read.hp} on Aurora's screen (${read.hpMethod}), Incudo derives ${stat('hp')}`);
+      if (stat('hp') !== read.hp) disagree.push(`${id}: hit points read ${read.hp} on Aurora's screen (${read.hpMethod}) and ${stat('hp')} here`);
       if (stat('speed') !== read.speed) disagree.push(`${id}: speed reads ${read.speed} on Aurora's screen and ${stat('speed')} here`);
     }
-    assert.deepEqual(disagree, [], 'Incudo disagrees with what Aurora showed for armour class or speed');
+    assert.deepEqual(disagree, [], 'Incudo disagrees with what Aurora showed for armour class, speed or hit points');
 
     // A manifest entry whose save has gone is a referee lost, and it says which one.
     const present = new Set(measured.map((m) => m.id));
