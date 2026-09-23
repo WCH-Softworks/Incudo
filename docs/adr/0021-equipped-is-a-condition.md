@@ -70,6 +70,18 @@ reads **false** — against a character wearing nothing, which is the opposite o
 `[armor:any]` reads false as well, against a character in plate. Meanwhile `![armor:heavy]`
 reads **true**, because negating a false is a true.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves**, by running one script over the samples at
+> two commits and diffing every derived element, its order, every stat, the pending choices, the problems and
+> the differences against Aurora (corpus at `c28ce6c`). **"Nothing moves when it is parsed":** the commit that
+> read `equipped=` in all 79 places (`cea9664^` against `cea9664`) leaves **30 of 30** identical, so that half
+> reproduces. **The four wrong stats:** not re-derivable. The state they were measured in, evaluation with no
+> inventory model, never existed as a commit, and none of the monk, paladin/warlock or breastplate saves are
+> among the samples. What the samples can show is the finished design (ADR 0025's commit, `da6a937^` against
+> `da6a937`): elements, order and every difference against Aurora are identical, and the only pre-existing stat
+> that moves is `ac:misc` 1 to gone on **three** samples (Paladin 3 / Sorcerer 3, Wizard 4 / Paladin 3 /
+> Fighter 3, Paladin 3 / Ranger 3), none of which wears armour, which is the Defense fighting style's
+> `[armor:any]` being false, as it should be. The plate-wearing fighter keeps its `ac:misc`.
+
 So evaluating today is not "unknown, so nothing applies". It drops all 41 positive checks and
 keeps all 38 negations, which is a combination no real character is ever in: the monk is
 simultaneously not-unarmoured (loses Unarmoured Defence) and not-in-heavy-armour (keeps the

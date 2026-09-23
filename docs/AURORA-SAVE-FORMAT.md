@@ -126,6 +126,14 @@ a bare grant in the inventory, and they are supplied by `generated-elements.ts`.
 **A 3.1 MB file records 57 decisions.** Everything else is a portrait, a derived snapshot, or
 an exclusion list.
 
+> **Note, 2026-09-23:** this table, the 88% portrait, the 37,235-id exclusion list and the "8 real files"
+> above are properties of the original private saves and **cannot be re-derived from the samples**: those were
+> cleaned before being committed (`sample-saves.test.ts` enforces it), so each has an empty `<base64>`, a
+> `<restricted>` element with nothing in it and no portrait path. The 30 samples run **19 to 66 KB, 34 KB on
+> average**, which is what the format weighs once the three things below are removed. The status paragraph at
+> the top of this file (8 files, "personal data … gitignored") predates the samples and is also the original
+> set's.
+
 ## The three things that make saves enormous
 
 1. **Base64 portraits inline** — up to 5.2 MB of PNG in the XML, *and* the original path is
@@ -240,6 +248,18 @@ The three counts that did **not** move are the ones worth reading first. No `sta
 appeared, no spell went missing, and no new pending decision opened on any of a set of real saves —
 which is the prediction the plan made in advance, on the grounds that no bag element in any of
 them opens a `<select>`. Nothing new is reported as an engine problem either.
+
+> **Note, 2026-09-23 — step 3 re-run over the thirty samples** (`0f878e2^` against `0f878e2`, the same script
+> at both, corpus at `c28ce6c`). The 8 saves with a bag change and the other 22 are identical. Over the 8:
+> Incudo derives **26** more elements (3,407 to 3,433 over the 30), `not-modelled`
+> falls from **45 to 19** (26 notes become comparisons and every one agrees), and `element-extra` (101),
+> `element-missing` (10) and `stat-mismatch` (25 at that commit, before ADRs 0035, 0040 and 0041) do not move.
+> So the shape reproduces: the bag turns "comes from the bag" notes into agreeing comparisons and adds no new
+> difference. It does not reproduce "53 to 55": the samples' extras do not rise. The two extras the original
+> set gained came from a Mithral Armor adornment, which no sample carries. One thing the samples show that
+> the text above does not: in that commit the plate wearer's `speed` falls from 30 to **20**, because the armour
+> now seeds and its Strength requirement read the undeclared short ability name as 0 (see ADR 0036's note); it
+> is fixed by the six-name commit (the rule is `[str:15]` on Plate, in the corpus).
 
 **Step 4 moved nothing at all**, and the table above is unchanged by it. Slots publish tags and
 `equipped=` is evaluated since [ADR 0025](./adr/0025-slots-publish-tags.md), and the output of

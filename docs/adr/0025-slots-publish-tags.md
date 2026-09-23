@@ -312,6 +312,16 @@ So, stated as plainly as ADR 0018 stated its rounding and ADR 0020 stated its `8
 > and none exists. (3) The prediction that no derived stat moves is not re-run here; a fresh
 > `aurora-oracle.test.ts` run shows **0 `stat-mismatch`** on all 30. "Eight conditioned rules across the nine
 > characters" is not re-derived (the samples were not tallied by rule).
+>
+> **Addendum, same day: the prediction "not one derived stat changes" was run as a before/after** on the
+> commit that started evaluating `equipped=` (`da6a937^` against `da6a937`), over all 30 samples with the same
+> script at both. Elements, their order, the pending choices, the problems and every difference against Aurora
+> are identical. Stats: the slots' own new stats appear (`armor`, `primary`, `secondary`, `shield`, holding
+> the name of what is worn, or `none`; `armor` is `none` on the 24 samples with no body armour) and **one existing stat moves, on three samples**: `ac:misc` 1 to gone on
+> the Paladin 3 / Sorcerer 3, the Wizard 4 / Paladin 3 / Fighter 3 and the Paladin 3 / Ranger 3, none of which
+> wears armour, so the `[armor:any]` Defense fighting style correctly stops applying. The prediction held on the
+> original set, where the paladin wore plate; on the samples it fails by exactly those three stats, and each
+> is a correct removal. The plate wearer among the samples keeps its `ac:misc`.
 
 What is verified is done by **perturbation**, and it has to be, because a green differential run
 here proves only that nothing broke. Forcing a slot's tags and watching the right rules drop is

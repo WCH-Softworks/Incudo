@@ -58,6 +58,18 @@ the first non-zero `element-missing` in the project — and every one of them is
 of the character: Pact Magic, Eldritch Invocations, Mystic Arcanum, Pact Boon, Otherworldly
 Patron, the warlock ASI.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** Run as a before/after over the
+> importer-and-engine change that introduced class levels (`2fd7d29^` against `2fd7d29`, the same script on
+> both, corpus at `c28ce6c`). The samples are 22 single-class saves, the deepest at level 20 (so "none passes
+> level 12" is not true of them), and 8 multiclass ones. **Single-class:** all 22 derive identically before and
+> after, elements, order and every stat, which is the ADR's claim that every character then in existence was
+> unaffected. **Multiclass:** the 8 differ, and against Aurora's `<sum>` the change takes `element-missing`
+> from **89** to **10** (the 10 left are the Aurora-app markers) and `spell-missing` from **61** to **0**; the
+> smallest before-figure is 6 (Paladin 3 / Sorcerer 3) and the largest 22 (Wizard 4 / Artificer 3), where the ADR
+> reports 9 for its Paladin 2 / Warlock 18. `class=`, `multiclass="true"` and `starting="true"` are on the
+> `Level` nodes of the multiclass samples as described (`starting` on 8 samples). Not re-derivable: the Paladin
+> 2 / Warlock 18 itself and its 9, which are not among the samples.
+
 One more detail from that node: `class=` names the **multiclass** element
 (`ID_WOTC_PHB_MULTICLASS_WARLOCK`), not the class (`ID_WOTC_PHB_CLASS_WARLOCK`). The two are
 different elements and both matter — the multiclass element carries the reduced proficiencies a
