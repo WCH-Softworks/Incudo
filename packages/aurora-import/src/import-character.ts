@@ -37,6 +37,7 @@ import {
   type SourceRef,
 } from '@incudo/core';
 import { decodeBase64, imageExtension } from './base64.ts';
+import { canonicalizeSaveIds } from './canonical-ids.ts';
 import { REPEATABLE_SETTER } from './generated-elements.ts';
 import type { AuroraItem, AuroraSave, SaveDiagnostic } from './parse-save.ts';
 
@@ -101,10 +102,20 @@ export interface ImportedCharacter {
  * enumerates D&D nouns — the names come from the save.
  */
 export function importAuroraCharacter(
-  save: AuroraSave,
+  parsed: AuroraSave,
   options: ImportCharacterOptions = {},
 ): ImportedCharacter {
+  // Aurora matches ids ignoring case and the engine does not, so the save is respelled to the
+  // content's before anything reads an id from it.
+  const { save, changed } = canonicalizeSaveIds(parsed, options.index);
   const diagnostics: SaveDiagnostic[] = [...save.diagnostics];
+  if (changed) {
+    diagnostics.push({
+      level: 'warning',
+      message: `${changed} id(s) in the save are spelled with different capitals than the loaded content and were matched ignoring case, as Aurora does.`,
+      where: 'build/elements',
+    });
+  }
   const systemId = options.systemId ?? 'dnd5e';
   const kind = options.kind ?? 'pc';
 

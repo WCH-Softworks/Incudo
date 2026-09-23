@@ -45,5 +45,6 @@ export * from './generated-elements.ts';
 export * from './improvement-options.ts';
 export * from './base64.ts';
 export * from './parse-save.ts';
+export * from './canonical-ids.ts';
 export * from './import-character.ts';
 export * from './verify-character.ts';

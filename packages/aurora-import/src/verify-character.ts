@@ -27,6 +27,7 @@
 
 import type { DerivedCharacter, Element, ElementId, ElementIndex } from '@incudo/core';
 import type { AuroraSave, AuroraSpellcasting } from './parse-save.ts';
+import { canonicalizeSaveIds } from './canonical-ids.ts';
 
 export type DifferenceKind =
   /** Aurora's derivation has an element Incudo's does not. */
@@ -135,10 +136,14 @@ const DEFAULT_STATS = {
 };
 
 export function compareWithAurora(
-  save: AuroraSave,
+  recorded: AuroraSave,
   derived: DerivedCharacter,
   options: CompareOptions = {},
 ): AuroraComparison {
+  // Aurora's ids are matched ignoring case, so a save's spelling is brought to the content's
+  // before comparing; otherwise a domain spelled `War_DOMAIN` would be reported missing
+  // beside the `WAR_DOMAIN` the engine derived.
+  const { save } = canonicalizeSaveIds(recorded, options.index);
   // `slots` merges a level deeper than the rest, so a caller renaming one of the three
   // keeps the defaults for the other two.
   const stats = {

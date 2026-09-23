@@ -300,8 +300,15 @@ sets an ability score. Both are in ROADMAP Phase 2 and are reported, not asserte
 
 **Two findings that no count sees.** An id can be spelled with different case in a save and in the corpus
 (`…_War_DOMAIN` against `…_WAR_DOMAIN`): Aurora matches ids ignoring case and Incudo does not, so that
-save imports **without its whole domain**, 62 elements, and the only trace is a report-only
-`content-missing` and one derivation problem. And a save can record a fourth attuned item: Aurora allows
+save used to import **without its whole domain**, 62 elements, with only a report-only `content-missing`
+and one derivation problem to show for it. **Fixed at the importer, not in `ElementIndex`:**
+`canonicalizeSaveIds` (`packages/aurora-import/src/canonical-ids.ts`) respells a save's ids to the loaded
+content's, only when the exact id is absent and exactly one element matches ignoring case, and
+`importAuroraCharacter` and `compareWithAurora` both call it. Content is the one source of ids the engine
+sees, so the save is the only place a second spelling can come from; folding inside `get` would leave the
+character recording an id the rest of the system compares exactly. The official corpus has no two ids that
+differ only by case (12,061 declared in files); if one ever does, the fold refuses to guess. The oracle
+holds it with `caseMismatches`, an invariant on every sample, checked by perturbation. And a save can record a fourth attuned item: Aurora allows
 it and Incudo reports `over-attuned`, as ADR 0023 designed.
 
 ## State of play

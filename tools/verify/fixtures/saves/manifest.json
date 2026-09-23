@@ -294,10 +294,10 @@
       "recorded": {
         "kinds": {
           "element-extra": 2,
-          "content-missing": 62,
+          "content-missing": 3,
           "not-modelled": 1
         },
-        "problems": 1,
+        "problems": 0,
         "blocks": 1
       }
     },

@@ -186,6 +186,7 @@ export function isAuroraAppMarker(id: string): boolean {
  *  4. Nothing was silently not compared: every recorded spellcasting block has its slot row, save DC and
  *     attack bonus compared, and the shared caster level is compared exactly when the save records one.
  *     It is measured by breaking each row (`rowsCompared`), and depends on the save and the engine only.
+ *  5. No recorded id is one the content spells in another case (`caseMismatches`): the importer respells them.
  *
  * Everything else — how many `element-extra` a save has, how many `content-missing`, how many
  * `not-modelled` — moves with upstream and is reported, not asserted.
@@ -203,6 +204,7 @@ export function oracleViolations(run: OracleRun, rows: Record<RowFamily, number>
       violations.push(`element-missing that is not an Aurora-app marker  ${d.elementId ?? ''}  ${d.message}`);
     }
   }
+  violations.push(...caseMismatches(run));
   const blocks = run.save.magic.length;
   for (const family of ['slots', 'dc', 'attack'] as const) {
     if (rows[family] !== blocks) {
@@ -216,6 +218,33 @@ export function oracleViolations(run: OracleRun, rows: Record<RowFamily, number>
     );
   }
   return violations;
+}
+
+/**
+ * Ids the character records that the content does not have as written but does have in another case.
+ * Aurora matches ids ignoring case and the engine does not, so the importer respells them; one left over
+ * is a whole subclass, race or item that resolves to nothing, and no count moves when it happens.
+ */
+export function caseMismatches(run: OracleRun): string[] {
+  const recorded = new Set<string>([
+    ...run.imported.character.choices.flatMap((c) => c.elementIds),
+    ...(run.imported.character.inventory ?? []).map((e) => e.elementId),
+  ]);
+  const missing = [...recorded].filter((id) => !run.elements.get(id));
+  if (!missing.length) return [];
+  const spellings = new Map<string, Set<string>>();
+  for (const element of run.elements.all()) {
+    const key = element.id.toLowerCase();
+    const set = spellings.get(key) ?? new Set<string>();
+    set.add(element.id);
+    spellings.set(key, set);
+  }
+  return missing.flatMap((id) => {
+    const same = spellings.get(id.toLowerCase());
+    return same && same.size === 1
+      ? [`recorded "${id}", which the content spells "${[...same][0]}"`]
+      : [];
+  });
 }
 
 /**
