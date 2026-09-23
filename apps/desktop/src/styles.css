@@ -151,6 +151,11 @@ select {
      flush against the left edge and the unused width is one dead strip on the right, which is
      more obvious the wider the window gets. */
   margin: 0 auto;
+  /* `.app` is a column flex container, where auto margins turn off stretching and the pane
+     shrinks to its content: a builder that opens narrow and widens when a hover fills the
+     preview dock. Ask for the width outright and let max-width cap it. */
+  width: 100%;
+  box-sizing: border-box;
   /* Every pane scrolls itself now, rather than the page growing past `.app`'s fixed height —
      the precondition the builder's three columns need to scroll independently below, applied
      uniformly so no other pane's scrolling changes. */
