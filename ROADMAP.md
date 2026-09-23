@@ -709,6 +709,35 @@ before any code, both touching a public API:
       from Rogue 4 / Wizard 4, so a split needs either an order or an explicit "which levels went
       where"), and how a flagged character is written to `.incu`, which must still open with zero
       sources (ADR 0012). Not started, and not scheduled.
+- [ ] **Speed, from every source that changes it.** The 5e definition declares `speed` with a default
+      of 30 and nothing feeds it, so every character reads 30. Content writes speed under other names
+      (a race's `innate speed`, and class features, items and feats that add to it), and none of that is
+      read. Found by hand-reading Aurora's screen for the 30 generic sample saves
+      (`tools/verify/fixtures/saves/READOUT.md`): **nine differ, and the maintainer's readings are right**
+      (Wood Elf 35, Halfling and Dwarf 25, Barbarian and Monk 40). Probably a system-definition change
+      with no engine one, but the first step is finding which stat names content actually uses, which
+      nobody has counted. Not started.
+- [ ] **Hit points from the method Aurora used, not from every die a save records.** `hp` sums the
+      recorded per-level dice and adds the Constitution modifier, and three separate things make that
+      disagree with Aurora's screen (17 of the 30 samples, checked by hand by the maintainer):
+      - **The average option.** A campaign option, `ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP`, is on in 15 of
+        the 30 samples. With it on Aurora applies the die's average (the first level is the maximum) and
+        the dice in `rndhp` are *stale*: one sample records `8,8,8` for the levels the screen counts as
+        `8,5,5`. So the derivation must read the option and **calculate** the average, not copy dice.
+        Where the option is off and the maintainer set the average by hand, the recorded dice are the
+        applied values and must still be read: both situations have to work.
+      - **A second class's own dice.** A multiclass save carries a second `rndhp` on the level where the
+        second class began. Whether the import uses it is unchecked, and the multiclass samples without
+        the option (2 to 6) disagree by −6 to +18, unexplained.
+      - **An item that sets an ability score.** The Amulet of Health sets Constitution to 19, and the
+        derivation does not apply it: two samples read exactly 10 low, which is 2 modifier points for
+        5 levels. This is a gap in ability scores, not in hit points, and it will bite armour class and
+        saves the same way.
+      **The principle, which applies beyond hit points:** when converting a save, do not copy what is
+      cheap to calculate. Copy only what has no formula (rolled hit points, chosen scores). Where
+      Incudo's number disagrees with Aurora's recorded one, **tell the user, and keep Incudo's.**
+      `packages/aurora-import` is frozen (ADR 0008), so most of this belongs in the derivation and in the
+      builder rather than the importer, and a change there wants an ADR. Not started.
 
 ### Where this phase actually stands
 
