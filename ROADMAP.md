@@ -709,14 +709,21 @@ before any code, both touching a public API:
       from Rogue 4 / Wizard 4, so a split needs either an order or an explicit "which levels went
       where"), and how a flagged character is written to `.incu`, which must still open with zero
       sources (ADR 0012). Not started, and not scheduled.
-- [ ] **Speed, from every source that changes it.** The 5e definition declares `speed` with a default
+- [x] **Speed, from every source that changes it.** The 5e definition declares `speed` with a default
       of 30 and nothing feeds it, so every character reads 30. Content writes speed under other names
       (a race's `innate speed`, and class features, items and feats that add to it), and none of that is
       read. Found by hand-reading Aurora's screen for the 30 generic sample saves
       (`tools/verify/fixtures/saves/READOUT.md`): **nine differ, and the maintainer's readings are right**
       (Wood Elf 35, Halfling and Dwarf 25, Barbarian and Monk 40). Probably a system-definition change
-      with no engine one, but the first step is finding which stat names content actually uses, which
-      nobody has counted. Not started.
+      with no engine one, but the first step was finding which stat names content actually uses.
+      **Done ([ADR 0043](./docs/adr/0043-speed-is-the-race-base-plus-what-content-adds-to-it.md)).** Counted
+      first: a race writes `innate speed` (base), classes and feats `innate speed:misc`, a handful of things
+      `speed`/`speed:misc`, armour subtracts from `speed` (2024: `innate speed`). The pc kind now derives
+      `speed` from the first three; a system-definition change, no engine one. **All 30 samples agree with the
+      readout** (seven differed when re-measured, not nine), so `aurora-oracle.test.ts` now holds speed to it.
+      Perturbation: dropping the `innate speed:misc` term fails the Barbarian, Barbarian / Monk and Monk.
+      **Not verified:** the armour Strength penalty, Armorer's cancellation and the 2024 armour rule (no sample
+      wears armour that costs speed), and the other movement modes. A raceless character now reads 0, not 30.
 - [ ] **Hit points from the method Aurora used, not from every die a save records.** `hp` sums the
       recorded per-level dice and adds the Constitution modifier, and three separate things make that
       disagree with Aurora's screen (17 of the 30 samples, checked by hand by the maintainer):

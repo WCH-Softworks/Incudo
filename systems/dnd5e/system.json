@@ -173,6 +173,13 @@
           }
         },
 
+        { "name": "speed", "label": "Speed",
+          "derive": { "kind": "binary", "op": "+",
+            "left": { "kind": "binary", "op": "+",
+              "left": { "kind": "ref", "stat": "innate speed" },
+              "right": { "kind": "ref", "stat": "innate speed:misc" } },
+            "right": { "kind": "ref", "stat": "speed:misc" } } },
+
         { "name": "attunement:current", "label": "Attuned Items", "default": 0 },
         { "name": "attunement:max", "label": "Attunement Limit", "default": 0 }
       ],

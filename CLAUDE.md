@@ -317,6 +317,10 @@ sets an ability score. Both are in ROADMAP Phase 2 and are reported, not asserte
 > differing on **7** samples (10, 11, 12, 13, 19, 21, 27 — a Ranger, a Barbarian, a Druid, two Rogues, a
 > Barbarian / Monk and a 2024 Monk), not 9, and hit points on **18**, not 17. The reasons named are unchanged.
 
+> **Update, 2026-09-23 — speed now agrees on all 30 and is held to the readout** ([ADR 0043](docs/adr/0043-speed-is-the-race-base-plus-what-content-adds-to-it.md)):
+> the player character kind derives it as `innate speed + innate speed:misc + speed:misc`, a system-definition
+> change with no engine one. Hit points are the one number still reported and not asserted.
+
 **Two findings that no count sees.** An id can be spelled with different case in a save and in the corpus
 (`…_War_DOMAIN` against `…_WAR_DOMAIN`): Aurora matches ids ignoring case and Incudo does not, so that
 save used to import **without its whole domain**, 62 elements, with only a report-only `content-missing`
