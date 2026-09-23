@@ -77,6 +77,15 @@ The second genuinely-input part, and the only other one. 45 `<item>` instances a
 </item>
 ```
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** The counts in this section are the
+> original set's; the samples' own are **24** instances in **8** saves — 22 equipped, 7 attuned, 2 adorned
+> hosts, **0** stacked — with the full comparison in [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md)'s
+> note. Beside the bullets below: `identifier` is distinct on all 24; `<equipped location>` takes **four**
+> values in the samples (`Armor`, `Primary Hand`, `Two-Handed` and `Secondary Hand`, a shield's), 7 of the 22
+> equipped items record none where the bullet says 11 of 26, and the recorded location agrees with the
+> element's `slot` setter 15 times out of 15. The two-greatswords bag and the stacks are not in the samples
+> and cannot be re-derived from them.
+
 - **`identifier`** — a GUID, present and distinct on all 45. It is what an instance *is*: one
   save carries two greatswords under one element id with different enchantments.
 - **`amount`** — a stack. 2, 5, 5 and 10 in the corpus, and **none of the four** is equipped,
@@ -199,6 +208,26 @@ Against all 9 sample saves, 2026-09-11 — 1,158 element ids, 8 spell slot rows,
 | `element-extra` — Incudo derived it, Aurora did not | 55 |
 | `content-missing` / `not-modelled` — reported, not counted | 16 |
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves**, by running `aurora-oracle.test.ts` against
+> AuroraLegacy/elements at `c28ce6c`. The table above is the original nine and is left as recorded. Over the
+> 30 samples: Aurora's `<sum>` lists **3,433** element ids and Incudo derives 3,464; `element-missing` **10**
+> (every one an `ID_INTERNAL_MULTICLASS_LEVEL_N` marker), `spell-missing` **0**, `stat-mismatch` **0**,
+> `element-extra` **73**, `content-missing` 42 and `not-modelled` 19 (61 reported, not counted). Rows
+> compared: **29** spell slot rows, **29** save DCs, **29** attack bonuses and **7** caster levels, from 29
+> `<spellcasting>` blocks in 20 saves. Two differences from the original set are worth knowing. The extras
+> have a different make-up: of the 73, **42** are one pair of Incudo-only internal grants
+> (`ID_INTERNAL_GRANTS_MULTICLASSING_PREREQUISITE`, `ID_INTERNAL_GRANTS_MULTICLASS_SPELLCASTING`) that Incudo
+> gives 21 of the 22 single-class samples and Aurora's `<sum>` omits, 22 are eleven firearm proficiencies on
+> the two Artificer saves, 8 are the Thieves' Tools expertise pair on four saves, and 1 is a 2024 Ranger's
+> weapon mastery grant. The original set's explanation, one species' content added after the saves were
+> written, does not describe any of these, and this measurement does not say whether the internal pair is an
+> Aurora omission or an over-grant here. And `content-missing` is **42**, where CLAUDE.md recorded 101 for
+> the samples before the importer respelled ids that differ from the corpus only by case
+> (`canonicalizeSaveIds`); that older figure carried 62 elements from one save, and it was not re-measured
+> without the fold. Not re-derivable: 1,158 was the original set's
+> element-id count and 1,151 / 1,200 its Incudo totals, so there is no like-for-like figure; the per-save
+> 3,433 / 30 ≈ 114 is the samples' analogue.
+
 The last two rows moved with step 3 of
 [the inventory plan](./INVENTORY-AND-AC-PLAN.md), where an equipped item's element and its
 adornments started seeding the derivation. `not-modelled` fell from **51 to 3**: 47 of its notes
@@ -238,6 +267,15 @@ The attunement limit landed with it and is in the same position: `attunement:max
 `over-attuned` fires zero times. Aurora records the attunement flag and never a derived
 consequence of it.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** Three claims in the three paragraphs above
+> read differently on the samples. **A shield:** four samples equip one (three Fighters and a Barbarian), so
+> `[shield:*]` is exercised, and armour class agrees with the maintainer's readout on all four. **Armour
+> class:** the list "18, 18, 17, …" is the original nine and is not reproduced; on the samples the derivation
+> agrees with the hand-read screen values on **30 of 30**, which a `.dnd5e` file still cannot referee
+> (ADR 0026's note has the table). **Attunement:** 7 of 7 attunement-requiring equipped items are attuned, but
+> the limit fires **once**, not zero times: one sample carries four attuned items against a limit of 3 and
+> reports `over-attuned`, and the other 29 report none. The "eight conditioned rules" count is not re-derived.
+
 The single `element-missing` is `ID_INTERNAL_MULTICLASS_LEVEL_3` on the ninth save: an
 Aurora-app marker that nothing in the 740 files references and that carries no rules.
 Deliberately unmodelled rather than budgeted — inventing a rule for it would be the guess
@@ -248,6 +286,16 @@ Spell slots joined the compared numbers with
 pact magic being outside the multiclass table, and a half-caster's contribution being halved,
 are both pinned by the ninth save. Rounding *down* rather than up is not — `floor(2/2)` and
 `ceil(2/2)` are both 1, and no sample save has two classes with the Spellcasting feature.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** The last clause is no longer true of the
+> samples, and the "not pinned" half of it now is. Seven multiclass samples record a caster level and Incudo
+> derives the same number for all seven: Paladin 3 / Sorcerer 3 records 4 (twice, once in each edition), Paladin
+> 3 / Ranger 3 records **2**, Wizard 4 / Artificer 3 records 6, Wizard 4 / Paladin 3 / Fighter 3 records 6,
+> Wizard 3 / Rogue 3 / Warlock 3 records 4 (the pact-magic class contributes nothing) and the interleaved
+> Rogue / Wizard records 5. Paladin 3 is the odd half-caster level the ADRs said would settle it: a half-caster
+> rounds **down** (Paladin 3 / Ranger 3 is 1 + 1, where rounding up gives 4), the Artificer rounds **up**
+> (4 + 2), and a third-caster rounds down (Rogue 4 contributes 1 in the interleaved save, Fighter 3 as an Eldritch
+> Knight contributes 1).
 
 **Corrected by [ADR 0041](./adr/0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md),
 when a save with two ordinary casting blocks arrived.** The paragraph above and ADR 0018 read each

@@ -196,6 +196,17 @@ Two things worth pinning, because a passing check is easy to over-read:
   as 8, matching Aurora exactly. A solution keyed on tracks would have written
   `fighter:spellcasting:dc` and matched nothing. That is the one save in the corpus that fails
   loudly under the wrong reading, and it is why it was worth checking for one.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves** (corpus at `c28ce6c`). Save DC and attack
+> rows: **29 of each**, on 11 distinct block names, where the ADR counts 8 on 6: the ADR's six (Bard, Cleric, Eldritch Knight, Paladin,
+> Warlock, Wizard) plus Artificer, Sorcerer, Arcane Trickster, Druid and Ranger. All are compared against Incudo's published stat and all agree; the oracle's own
+> perturbation (every stat of a family shifted by one) counts 29 DC rows and 29 attack rows as compared, so
+> the "7 of 8" comparison is now 29 of 29 and nothing is carved out. The Eldritch Knight case reproduces on
+> the samples' Fighter 7 / Eldritch Knight (Intelligence, DC 12, attack +4, namespace `eldritch knight`,
+> equal to Aurora's), and it is joined by the Arcane Trickster's. **Not re-derivable:** the eighth pair, the
+> wizard with a Tome of Clear Thought: no sample carries the item, and no sample equips an item that changes
+> an ability score of a caster (the two saves with an Amulet of Health are not casters), so the
+> `not-modelled`-then-compared story around it rests on the original set alone.
 - **The comparison is live, not vacuous.** Both halves were checked by perturbation: changing
   the published `8` to a `9` produces exactly 7 DC mismatches, and swapping `proficiency` for
   `level` in the attack expression produces exactly 7 attack mismatches. A silent "no such
@@ -204,6 +215,10 @@ Two things worth pinning, because a passing check is easy to over-read:
 
 No other count moved: 1 `element-missing`, 0 `spell-missing`, 0 `stat-mismatch`,
 53 `element-extra`, 51 `not-modelled`, 13 `content-missing`, unchanged across all nine saves.
+
+> **Note, 2026-09-23:** the samples' own counts are 10 / 0 / 0 / 73 / 19 / 42 for the same six kinds, in the
+> order written (see the note in `docs/AURORA-SAVE-FORMAT.md` for what they are made of). They are not the
+> same figures moved, they are another set of characters, so no "unchanged" comparison is possible.
 
 ## Consequences
 

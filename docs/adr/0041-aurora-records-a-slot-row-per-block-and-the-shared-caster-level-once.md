@@ -78,6 +78,21 @@ declared in `systems/dnd5e/system.json`, and is held by the hand-worked rows in
 - **One earlier test asserted the wrong belief** ("a caster level moves the comparison to the shared
   pool") and now asserts the corrected one, with its reason. The other eight saves' figures did not move:
   their rows are the same whichever table is read.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves** (corpus at `c28ce6c`). (1) The attribute
+> claim holds: `<magic multiclass="true">` is on **8 of 8** multiclass samples and **0 of 22** single-class
+> ones; `level="N"` is present on 7 of the 8 (the Barbarian 3 / Monk 3 has no casting block and records none),
+> and Incudo derives the recorded value in all 7: 4 (Paladin 3 / Sorcerer 3, in both editions), 2 (Paladin 3 /
+> Ranger 3), 6 (Wizard 4 / Artificer 3), 6 (Wizard 4 / Paladin 3 / Fighter 3), 4 (Wizard 3 / Rogue 3 / Warlock
+> 3) and 5 (the interleaved Rogue / Wizard, the description of this ADR's tenth save). The ADR's Paladin 2 /
+> Warlock 18 (`level="1"`) is not among them and is not re-derived. (2) "Rounding a *half*-caster down is
+> still not [pinned]" is out of date: Paladin 3 / Ranger 3 (2) and Paladin 3 / Sorcerer 3 (4) tell floor from
+> ceil (ADR 0018's note). (3) "Still not covered: three or more ordinary casting blocks, and an ordinary block
+> beside pact magic together with a third-caster" is out of date: Wizard 4 / Paladin 3 / Fighter 3 records
+> three ordinary blocks (Wizard, Paladin, Eldritch Knight), and Wizard 3 / Rogue 3 / Warlock 3 records an
+> ordinary block, an Arcane Trickster and pact magic; both compare clean. (4) The 29 blocks' slot, DC and
+> attack rows all agree and the seven caster levels do. Not re-derivable: "the other eight saves' figures did
+> not move", which is a comparison of two runs over saves that are not committed.
 - **Bugfix, not new import support.** Nothing about what `packages/aurora-import` reads into a character
   changed. The frozen package gained one optional field on a parsed save and corrected how a recorded
   number is judged, which is what a check that reported a false `stat-mismatch` on real data needed.

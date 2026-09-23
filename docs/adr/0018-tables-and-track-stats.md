@@ -18,6 +18,13 @@ note  spellcasting "Wizard": Aurora recorded spell slots 4/3/3/2/0/0/0/0/0.
 Eight such rows across the corpus of saves, every one of them a number Aurora computed and
 Incudo declines to.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves** (corpus at `c28ce6c`,
+> `aurora-oracle.test.ts`). The samples record **29** slot rows in 29 `<spellcasting>` blocks across 20 saves,
+> not eight rows on seven of nine, and every one is compared and agrees (0 `stat-mismatch`, 0
+> `spell-missing`). The block names are Artificer ×2, Paladin ×4, Sorcerer ×3, Wizard ×6, Eldritch Knight ×2,
+> Arcane Trickster ×2, Warlock ×2, Cleric ×2, Ranger ×3, Druid ×2 and Bard ×1. The original eight rows are not
+> reproduced (those saves are not committed).
+
 ### What the corpus already does, and what it does not
 
 Reading the 740 files first changed the shape of this considerably. Content is *not* silent
@@ -181,6 +188,18 @@ The Paladin 2 / Warlock 18 save's two `<magic>` rows are Paladin `2/0/0/0/0/0/0/
 definition declares. The two unproved halves are unproved, not unsupported — and a tenth save
 would settle both: any two classes with the Spellcasting feature and an odd half-caster level,
 a Paladin 5 / Wizard 5 for instance, disagrees under every wrong reading.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** Two of the "not proved" halves are settled
+> by samples, and the ADR's own test ("any two classes with the Spellcasting feature and an odd half-caster
+> level") is met. Eight multiclass samples exist; seven record a caster level and Incudo's derived
+> `multiclass:spellcasting:level` equals it in all seven. **Rounding down:** Paladin 3 / Ranger 3 records 2, which
+> is 1 + 1 (rounding up would give 4), and Paladin 3 / Sorcerer 3 records 4 in both editions (3 + 1; rounding
+> up gives 5). A third-caster also rounds down (Wizard 4 / Rogue 4 as an Arcane Trickster records 5). The
+> Artificer is the exception the rule says: Wizard 4 / Artificer 3 records 6, which is 4 + 2, so the Artificer
+> rounds up. **The multiclass table rather than a class's own** is settled the way ADR 0041 later corrected
+> it: each block carries its own row and the pool is one caster level. What the samples cannot say: whether
+> this Paladin 2's coincidence still holds (there is no Paladin 2 sample), and Aurora's exact table for
+> caster levels above 6 (the highest recorded pool is 6).
 
 The rest of the corpus of saves is not idle, though. All eight recorded slot rows become
 compared numbers, and the first thing they caught was a real defect: `parseStatValue` read
