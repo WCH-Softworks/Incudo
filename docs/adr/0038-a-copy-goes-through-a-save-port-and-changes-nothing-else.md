@@ -143,6 +143,16 @@ tooltip, and the command is off: the same posture as the other ports.
   `ID_INTERNAL_MULTICLASS_LEVEL_3`, the marker no rule reaches and no derived number depends on, and
   the unresolved ids only that `<sum>` named (three, in the one save looked at). `save-copy.test.ts`
   asserts that anything a copy drops is unreached by the derivation.
+
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** What a re-save loses is what Aurora's
+> `<sum>` lists and Incudo does not derive, which is the oracle's `element-missing` and `content-missing`
+> together: **10** marker ids (`ID_INTERNAL_MULTICLASS_LEVEL_N`, one per extra class, across the 8
+> multiclass samples) and **42** ids the corpus does not declare, three each in 14 samples,
+> against "one element … and three, in the one save looked at". The marker is the same kind of element as the
+> ADR names and its number follows the level the second class began at. **The portrait half cannot be
+> re-derived:** the samples have none by construction, so "all nine real characters carry a portrait, 18 of 18"
+> and the 213,874-byte example have no counterpart, and the portrait tests in `character-library.test.ts` and
+> `character-copy.test.ts` are what stand for it.
 - A copy is not linked to anything. It is a file; opening it later is the library's business, and the
   library lists any `.incu` in its folder.
 - Phase 5's Markdown and PDF exports are different bytes through this same port.

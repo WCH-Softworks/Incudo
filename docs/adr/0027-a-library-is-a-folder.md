@@ -137,6 +137,11 @@ nothing. A library backed by localStorage would be a different product wearing t
   inflates the whole archive, so a library of 200 characters reads 200 archives on open. Measured
   on a set of real saves it is not noticeable; the mitigation when it becomes one is a thumbnail
   and summary cache keyed by path and mtime, and it is deliberately not built yet.
+
+  > **Note, 2026-09-23:** "Measured on a set of real saves it is not noticeable" and "Aurora's portraits are
+  > real photographs" cannot be re-derived from the samples. They carry no portrait by construction and are
+  > 19 to 66 KB each, so a scan of the 30 says nothing about a library of large containers. The 30-save
+  > library test reads them all but was not timed for this note.
 - **Portrait bytes are held in memory for the grid.** Aurora's portraits are real photographs;
   a hundred of them is real memory. Same mitigation, same reason for not pre-building it.
 - Two store implementations to keep honest instead of one.

@@ -53,6 +53,15 @@ says — not that what this document says is right. Every other number in Phase 
 settled by a differential check. This one is settled by reading the Player's Handbook, and it
 is the first number in the project where that is the whole of the evidence.
 
+> **Note, 2026-09-23 — re-derived from the thirty sample saves.** The file-format half holds: no sample
+> records a hit point total (no `hp` attribute, element or `<attributes>` field; the `<attributes>` block is
+> in all 30 and belongs to the companion), so `aurora-oracle.test.ts` still has nothing to diff. What is new is
+> not in the file: the maintainer read hit points off Aurora's screen for every sample (`manifest.json`,
+> `readout`), and the derivation **differs on 18 of 30**. "Settled by reading the Player's Handbook … the whole
+> of the evidence" therefore no longer describes the samples, and the disagreement is Incudo's (the
+> average-hit-points option, a second class's own die and an item that sets an ability score, per ROADMAP
+> Phase 2), reported and not asserted. The ADR's decision is unaffected.
+
 ## Decision
 
 ### 1. `rolls` is an expression kind

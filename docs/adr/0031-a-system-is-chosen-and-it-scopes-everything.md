@@ -151,6 +151,12 @@ looking empty — a set of real Aurora saves in `tools/verify/src/library.test.t
 a folder and then viewed as Cairn, which must report `[{ systemId: 'dnd5e', count: 9 }]` and
 still open one the moment the system is switched back.
 
+> **Note, 2026-09-23:** the test no longer names a count: `library.test.ts` asserts `elsewhere` equals the
+> number of entries it imported, which over the committed samples is **30** in place of the nine written
+> here, and it does not assert how many saves there are. The "nine saves is imperceptible" figure in the
+> Consequences, and the folder of nine characters in the paragraph above, are the original set's and were
+> not re-timed with the samples (19 to 66 KB each, no portrait).
+
 **The bug the filter nearly caused, and the reason `freeName` reads what it reads.** The library
 keeps the whole scan privately and filters only what it publishes, because `freeName` picks a
 filename nothing on disk is using. Asking the *filtered* list would have let a new D&D character

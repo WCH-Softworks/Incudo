@@ -150,6 +150,13 @@ loader, an origin filter in `collectCharacterContent` and another in `aurora ver
 would otherwise report every one of them as `element-extra` on all nine saves. Three moving
 parts to host four stat rules.
 
+> **Note, 2026-09-23:** "would otherwise report every one of them as `element-extra` on all nine saves" is a
+> prediction about a design that was never built, so no sample can re-derive it. What the samples do show is
+> the neighbouring fact it rests on: every one of the 30 lists the baseline grants in its `<sum>`
+> (`ID_INTERNAL_GRANTS_CHARACTER_BASE`, `…_ARMOR_CLASS_BASE`, `…_HP_CONSTITUTION_MODIFIER` and the rest are
+> in `extraIds` for 30 of 30), so an Incudo-only baseline id would indeed show up as an `element-extra` on all
+> of them.
+
 There is a third cost worth recording: the ids. Baseline elements need them, and they either
 collide with the overlay's (a duplicate id is already one of the 57 warnings) or they are new
 ids that no Aurora save can contain, which is the `element-extra` problem again.
