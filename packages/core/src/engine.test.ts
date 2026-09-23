@@ -358,6 +358,62 @@ test('a character with no advancement gates on the total, exactly as before', ()
   assert.equal(derived.stats.get('level:alpha'), undefined);
 });
 
+// --- an implicit track for a character with no advancement (ADR 0044 decision 5) --------------
+
+function withTrackType(type: string): GameSystem {
+  const s = trackedSystem();
+  const pc = s.characterKinds[0]!;
+  if (pc.progression?.kind === 'level') pc.progression = { ...pc.progression, trackType: type };
+  return s;
+}
+
+test('a single track with no advancement publishes its count, and still gates on the total', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 8;
+  character.choices = [{ ruleKey: 'seed', elementIds: ['Alpha', 'FEATURE'] }];
+  const index = indexWith(
+    element('Alpha', 'Widget', [{ kind: 'grant', key: 'g2', type: 'Gadget', id: 'ALPHA_LATE', level: 6 }]),
+    element('ALPHA_LATE', 'Gadget'),
+    // What a subclass does: add its class's level to a stat by reading the track's own count.
+    element('FEATURE', 'Gadget', [{ kind: 'stat', key: 's', name: 'vigour', value: { kind: 'ref', stat: 'level:alpha' } }]),
+  );
+
+  const derived = deriveCharacter(character, withTrackType('Widget'), index);
+  assert.equal(derived.stats.get('level:alpha')?.value, 8);
+  assert.equal(derived.stats.get('vigour')?.value, 18, 'the default 10 plus the class level');
+  assert.equal(derived.elementIds.has('ALPHA_LATE'), true, 'the gate is unchanged');
+
+  // Perturbation: without the declared type, nothing is published and the stat reads 0 and adds nothing.
+  const without = deriveCharacter(character, trackedSystem(), index);
+  assert.equal(without.stats.get('level:alpha'), undefined);
+  assert.equal(without.stats.get('vigour')?.value, 10);
+});
+
+test('an implicit track is not guessed when two elements of the type are held', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 4;
+  character.choices = [{ ruleKey: 'seed', elementIds: ['Alpha', 'Beta'] }];
+
+  const derived = deriveCharacter(character, withTrackType('Widget'), trackedIndex());
+  assert.equal(derived.stats.get('level:alpha'), undefined);
+  assert.equal(derived.stats.get('level:beta'), undefined);
+});
+
+test('a recorded advancement still wins over the implicit track', () => {
+  const character = createCharacter('test', 'levelled');
+  character.progress = 4;
+  character.advancement = [
+    { at: 1, elementId: 'Alpha' },
+    { at: 2, elementId: 'Alpha' },
+    { at: 3, elementId: 'Beta' },
+    { at: 4, elementId: 'Beta' },
+  ];
+
+  const derived = deriveCharacter(character, withTrackType('Widget'), trackedIndex());
+  assert.equal(derived.stats.get('level:alpha')?.value, 2);
+  assert.equal(derived.stats.get('level:beta')?.value, 2);
+});
+
 test('a system that declares no trackStatPattern publishes no track stats', () => {
   const character = createCharacter('test', 'levelled');
   character.progress = 2;

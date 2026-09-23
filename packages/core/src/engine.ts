@@ -706,6 +706,14 @@ function computeStats(
     );
   }
 
+  // A character that spent every point on one element records no `advancement` (ADR 0036), so it
+  // has no track, and every `level:<class>` a subclass or item reads was 0 for it. What it has
+  // instead is one element of the kind's declared track type, and that is an implicit track: it
+  // publishes its count and takes part in track stats below. It is not passed to the gates — a
+  // lone track gates on the whole progression already, which is right — so nothing about which
+  // elements are reached, or in what order, changes (ADR 0044 decision 5).
+  const publishedTracks = trackLevels.size ? trackLevels : implicitTrack(active, character, kind);
+
   const result = new Map<StatKey, ResolvedStat>();
 
   // Declared defaults first, so a stat exists even with no contributions. A kind's stat
@@ -774,7 +782,7 @@ function computeStats(
   // land here, after content's and before the derivations that read them. The kind cannot
   // name the tracks (content ships its own), so it says "for every track that contains this
   // element, add this much", and `track:progress` inside the expression is that track's count.
-  for (const [rootId, count] of trackLevels) {
+  for (const [rootId, count] of publishedTracks) {
     const root = active.get(rootId);
     if (!root) continue;
     const trackCtx: ExpressionContext = {
@@ -895,7 +903,7 @@ function computeStats(
   // Each track publishes its own count, so `level:rogue` exists (ADR 0015). Like the
   // progression stat above this is an input rather than a derivation — it is published here
   // because that is what puts it in front of content, not because anything computes it.
-  for (const [rootId, count] of trackLevels) {
+  for (const [rootId, count] of publishedTracks) {
     const root = active.get(rootId);
     if (!root) continue;
     const key = trackStatKey(kind.progression, root.name);
@@ -1366,4 +1374,21 @@ function sameStats(a: Map<StatKey, ResolvedStat>, b: Map<StatKey, ResolvedStat>)
     if (!other || other.value !== value.value || other.text !== value.text) return false;
   }
   return true;
+}
+
+/**
+ * The single element of the kind's track type a character with no advancement holds, counted as
+ * the whole progression. None when the kind names no type, or the character holds no such
+ * element or several (which would be a guess about a split nobody recorded).
+ */
+function implicitTrack(
+  active: Map<ElementId, Element>,
+  character: Character,
+  kind: ResolvedCharacterKind,
+): Map<ElementId, number> {
+  const progression = kind.progression;
+  const type = progression.kind === 'level' ? progression.trackType : undefined;
+  if (type === undefined) return new Map();
+  const roots = [...active.values()].filter((element) => element.type === type);
+  return roots.length === 1 ? new Map([[roots[0]!.id, character.progress]]) : new Map();
 }

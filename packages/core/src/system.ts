@@ -766,6 +766,11 @@ export type Progression =
       stat?: StatKey;
       elementIdPattern?: string;
       trackStatPattern?: string;
+      /**
+       * The element type a track is rooted on. A character with no `advancement` holds one
+       * element of it and that element is an implicit track — ADR 0044 decision 5.
+       */
+      trackType?: string;
     }
   | {
       kind: 'rating';

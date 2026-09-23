@@ -242,6 +242,11 @@
               "type": "string",
               "minLength": 1,
               "description": "The stat each track publishes its own count as, with \"{name}\" replaced by the track element name, lowercased: \"level:{name}\" on a character whose levels went to the Warlock element gives level:warlock = 18. A track is an element the character spent progression on (ADR 0015); grants inherit their granter’s track, so a class feature's level gate reads its own class's level rather than the character's total. 150-odd references in the Aurora corpus read these stats and nothing in the corpus writes them — Aurora computes them in application code. Omit it and no track stats are published."
+            },
+            "trackType": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The element type a track is rooted on (5e: \"Class\"). A character that has spent every point on one element records no advancement (ADR 0036), so it has no track to publish a count from; naming the type lets the engine treat the single element of that type it holds as an implicit track, which publishes its count and takes part in track stats and gates nothing (ADR 0044). Omit it and a single-track character publishes no track stats."
             }
           }
         },

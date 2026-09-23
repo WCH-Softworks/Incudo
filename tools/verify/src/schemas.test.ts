@@ -95,6 +95,8 @@ test('the 5e kinds are the ones ADR 0009 describes', async () => {
     // `level:rogue`, `level:warlock` — read by 150-odd references in the corpus and written
     // by none of them, because Aurora computes class levels in application code. ADR 0015.
     trackStatPattern: 'level:{name}',
+    // The element type a lone track is rooted on, for a character with no advancement. ADR 0044.
+    trackType: 'Class',
   });
   assert.equal(pc.default, true);
 
