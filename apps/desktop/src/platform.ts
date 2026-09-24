@@ -86,9 +86,13 @@ export class DesktopFetcher implements Fetcher {
     if (this.conditional) {
       // The shell's own command, over one shared client (ADR 0050): `src-tauri/src/lib.rs`.
       const { invoke } = await import('@tauri-apps/api/core');
+      // The command's `Err` arrives as a bare string, and everything above reads `.message`: left
+      // as it was, a refused connection reported itself as "undefined".
       const reply = await invoke<{ status: number; text: string; etag: string | null }>('fetch_content_text', {
         url,
         etag: opts?.etag ?? null,
+      }).catch((error: unknown) => {
+        throw error instanceof Error ? error : new Error(String(error));
       });
       if (reply.status === 304) return { url, text: '', notModified: true };
       if (reply.status < 200 || reply.status > 299) throw new Error(`HTTP ${reply.status} for ${url}`);
