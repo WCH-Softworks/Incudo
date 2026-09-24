@@ -783,8 +783,7 @@ before any code, both touching a public API:
       marker). Every other oracle table is identical to the base commit; sample 03 gains one problem, its Wizard,
       which records 10 prepared against a limit of 8 (Aurora does not enforce it). Every sample was rebuilt
       through the builder and each prepared spell had to be *offered* first.
-      **Not verified / not done:** rituals (the `Ritual` filter is read now, see the entry below; casting a
-      ritual without preparing it is not modelled); the 2024 Paladin and Ranger, whose prepared count is a book
+      **Not verified / not done:** the 2024 Paladin and Ranger, whose prepared count is a book
       table content does not carry (Aurora's screen reads 0 and so does Incudo); the Wizard's minimum of one; a
       list on the Sheet; a per-character source allowlist for the list pool (Aurora's lists are narrower than
       Incudo's because it had sources switched off); driven in the browser build and not in the Tauri window, and

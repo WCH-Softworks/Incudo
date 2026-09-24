@@ -496,10 +496,8 @@ agreed with Aurora's screen for 10 of 15 blocks. The other five were `:half`. Th
   the one new problem in the oracle's tables.
 - **The list pool is wider than Aurora's**: Aurora had sources and editions switched off, and Incudo has no
   per-character allowlist to narrow with (ADR 0028). Never narrower: 0 of Aurora's listed spells are missing.
-- **Not modelled:** casting a ritual without preparing it (the `Ritual` filter is read, ADR 0047, so the
-  spells a ritual feat or invocation offers are offered; nothing yet says a Wizard may cast one from the book
-  unprepared), the 2024 Paladin and Ranger (content declares no `prepare`; Aurora's screen
-  reads 0 and so does Incudo), the Wizard's minimum of one, and a list on the Sheet.
+- **Not modelled:** the 2024 Paladin and Ranger (content declares no `prepare`; Aurora's screen
+  reads 0 and so does Incudo), the Wizard's minimum of one, and a list on the Sheet. Rituals are not a gap: the `Ritual` filter is read (ADR 0047).
 - **Driven in the browser build only.** A Fighter 12 / Wizard 5 taking a Cleric level was built and its two lists
   prepared, over-limit and reload seen; the library save-and-reopen needs a folder dialog and was covered by the
   tests, which pack and reopen every sample that records a list with zero sources.
