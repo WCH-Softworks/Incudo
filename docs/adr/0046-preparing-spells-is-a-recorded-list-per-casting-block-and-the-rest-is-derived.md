@@ -290,7 +290,7 @@ its filter admits from the content loaded or embedded.
 - Ritual casting (above).
 - *When* a list may be changed (a long rest). A character has one list.
 - Spell **slots** being spent, and any per-day state: the builder builds a character, it does not run one.
-- A per-character source allowlist narrowing the list pool (reading 8).
+- A per-character source allowlist narrowing the list pool (reading 8). *(ADR 0049 added a per-character list of books, which narrows this pool too; an import does not fill it, so an imported character's pool is still wider than Aurora's.)*
 - A prepared list on the **Sheet**; the Build pane shows it and the sheet does not yet.
 
 ## Consequences

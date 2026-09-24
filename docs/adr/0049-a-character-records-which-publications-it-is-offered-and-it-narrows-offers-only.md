@@ -1,8 +1,9 @@
 # 0049 — A character records which publications it is offered, and that narrows offers only
 
-**Status:** Proposed · 2026-09-24 · builds on [0028](./0028-sources-are-a-profile-characters-carry-an-allowlist.md)
+**Status:** Accepted · 2026-09-24 · builds on [0028](./0028-sources-are-a-profile-characters-carry-an-allowlist.md)
 and [0012](./0012-self-contained-saves.md) · **format:** an optional `publications` on a character (`formatVersion`
-stays 2) and an optional `publication` flag on an element type in the system format (`formatVersion` stays 1)
+stays 2) and an optional `publication` flag and `requiredWhen` setter name on an element type in the system format
+(`formatVersion` stays 1)
 
 ## Context
 
@@ -37,6 +38,15 @@ Measured on AuroraLegacy/elements at its head on 2026-09-24:
 cannot switch either off in Aurora. The other two are misspellings: the first differs from its book only by case
 (`to` for `To`); the second has `'` where the book has `’`.
 
+**One book is not like the others, and running the app found it.** The first version of this ADR treated all 138
+alike. Driving it in the Tauri window put **Aurora Legacy Essentials** on the list of books to switch off, and the
+languages the builder had been offering (Dwarvish, Elvish, Abyssal) name it as their book, not the Player's
+Handbook. Measured afterwards, a Wizard offered only the 2014 Player's Handbook is offered **no skill at all**. It is
+a book AuroraLegacy added to hold what both editions refer to. It holds 155 proficiencies (every skill among them), 41 languages, the
+nine alignments and a handful of features, and it says of itself that its contents "are required for the proper
+functionality of the Aurora Legacy repository". Seven books carry a `core` setter, and it is the only one where
+it reads `true`.
+
 ## Decision
 
 ### 1. The system says which element type is a publication
@@ -50,6 +60,11 @@ The join ignores case, which is how Aurora matches ids (see CLAUDE.md on `canoni
 seven Van Richten elements back to their book. An element whose `source` names no loaded publication is **always
 offered**: `Internal` and `Core` must be, and the one straight-apostrophe element is better offered than hidden by
 a spelling. Nothing guesses at a second spelling (ADR 0005).
+
+The same type may name a **`requiredWhen`** setter, and a publication on which that setter reads `true` is offered
+to every character whatever it records: it is listed as always on, cannot be switched off and is never written into
+a character's list. 5e names `core`. It is a named setter and not a rule about books, for the reason ADR 0047 gave
+for `setterTags`: one book witnesses it, and it says so of itself.
 
 ### 2. A character records the publications it is offered, as an allowlist of names
 
@@ -88,6 +103,27 @@ The profile decides what is **loaded**, for the user, by content index. `publica
 for one character, by book. The list is not copied from the profile or into it, and it is not written into
 `Character.sources`.
 
+## What was measured after it was built
+
+- **On the official corpus** (`tools/verify/src/publications.test.ts`): 138 publications, 129 holding content, one
+  required. A level 1 wizard is offered 452 things with every book and **88** with the 2014 Player's Handbook: races
+  139 to 9 (the book's nine), spellbook 87 to 30, and still every skill and language, from the required book. Nothing
+  from another book is offered, everything that names no book still is, and the derivation is identical. Printed,
+  not pinned (ADR 0042).
+- **On the thirty samples**: each imported, then offered no book at all. **All thirty derive identically**
+  (`summarize()`), and none is offered anything from a book that is not required. An index view whose `get` also
+  filtered fails both tests; taking `requiredWhen` out of the 5e definition fails the first, on the wizard's skills.
+- **In the running app, the Tauri window on Windows**: the Wizard 4 saved in an earlier session, switched to the
+  2014 Player's Handbook with "Offer none" and one switch, was offered the book's eight Arcane Traditions, 16
+  cantrips and 62 spellbook entries (203 before), and its four remaining skills; campaign options narrowed to the
+  one that names no book. Saved with Ctrl+S, the list was in `character.json`; with every source disabled and the
+  app restarted, the character reopened with its picks and the list showed the book as not loaded; with the source
+  back, "2 of 138 books offered", the required one locked on. macOS and Linux were not driven.
+- **A defect it exposed, and fixed with it.** A settled top-level pick promised its `candidates` would include what
+  it holds, and only kept that promise because a chosen element was always among what the step offered. A
+  switched-off book breaks that, and so could an element whose own requirements stopped holding; the pick now adds
+  its answer back, as a set already did.
+
 ## What this does not do
 
 - **The Aurora importer does not fill it.** A save's `<restricted>` list could be inverted into `publications`,
@@ -102,8 +138,10 @@ for one character, by book. The list is not copied from the profile or into it, 
 ## Consequences
 
 - A table can say which books it uses, and the builder offers from those and from nothing else.
-- `packages/core` gains one optional field on `Character` and one on `ElementTypeDef`, and no behaviour. The view
+- `packages/core` gains one optional field on `Character` and two on `ElementTypeDef`, and no behaviour. The view
   and the list's view-model live in `packages/ui` under `node --test`.
+- A table that uses only one book is still offered Aurora Legacy Essentials. That is what the book is for, and it
+  is shown as always on, so the user can see why a language from no book they ticked is on offer.
 - An element held from a book the character is not offered is not flagged. That is deliberate (decision 3) and
   may deserve a quiet note on the sheet one day.
 

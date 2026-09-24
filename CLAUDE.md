@@ -494,13 +494,35 @@ agreed with Aurora's screen for 10 of 15 blocks. The other five were `:half`. Th
   always prepared in any block whose list has it (samples 18 and 24: one more than content does), so Incudo counts
   it as chosen; the set agrees and neither block is over. Sample 03's Wizard is genuinely over (10 of 8) and is
   the one new problem in the oracle's tables.
-- **The list pool is wider than Aurora's**: Aurora had sources and editions switched off, and Incudo has no
-  per-character allowlist to narrow with (ADR 0028). Never narrower: 0 of Aurora's listed spells are missing.
+- **The list pool is wider than Aurora's**: Aurora had sources and editions switched off. A character can now be
+  offered only some books (ADR 0049), but an import does not record which, so an imported character's pool is still
+  wider. Never narrower: 0 of Aurora's listed spells are missing.
 - **Not modelled:** the 2024 Paladin and Ranger (content declares no `prepare`; Aurora's screen
   reads 0 and so does Incudo), the Wizard's minimum of one, and a list on the Sheet. Rituals are not a gap: the `Ritual` filter is read (ADR 0047).
 - **Driven in the browser build only.** A Fighter 12 / Wizard 5 taking a Cleric level was built and its two lists
   prepared, over-limit and reload seen; the library save-and-reopen needs a folder dialog and was covered by the
   tests, which pack and reopen every sample that records a list with zero sources.
+
+**Which books a character is offered is one recorded list, and it narrows offers only**
+([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
+Things to know before touching it:
+
+- **The unit is the book, not the content source.** A publication is an element of a type the system marks
+  `publication: true` (5e: `Source`), and every other element names its book in `source`, joined ignoring case. An
+  element whose `source` names no loaded book (`Internal`, `Core`, two misspellings) is always offered.
+- **`Character.publications` is an allowlist of names, absent for every book**, optional, no `formatVersion` bump. A
+  recorded name nothing loaded has is kept and shown as not loaded. It is not `Character.sources`, which is provenance
+  (ADR 0028), and not the profile, which decides what is loaded.
+- **`offeredIndex` (`packages/ui/src/publications.ts`) is a view: `all`, `byType` and `bySupport` filter, `get` does
+  not.** The derivation reads only `get`, so switching a book off moves no derived number; all thirty samples derive
+  identically offered no book at all. The builder reads every index through its `elements` getter, which is that view;
+  `content` is everything loaded and only the Books list reads it. A new enumeration of the index belongs behind the
+  view, or it will offer switched-off books.
+- **A book content marks required is always offered** (`requiredWhen`, 5e's `core`). One book carries it, Aurora
+  Legacy Essentials, and it holds every skill, every common language and the alignments: without it a character
+  offered only the Player's Handbook is offered no skill. Found by running the app, not by a test.
+- **Not done:** the frozen importer does not fill the list from a save's `<restricted>`; no edition switch; no
+  per-user default for new characters.
 
 **A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
 `packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool

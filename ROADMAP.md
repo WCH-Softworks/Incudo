@@ -931,13 +931,25 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
 
 ---
 
-## Phase 3 — Content story ⬜
+## Phase 3 — Content story 🟡
 
 - [ ] Live mode hardening: HTTP caching, ETags, offline fallback, partial index loading
 - [ ] Download mode: versioned cache, update checks against the index version
 - [ ] Content browser (search across all loaded elements)
 - [ ] Conflict resolution when two sources define the same ID
-- [ ] Source enable/disable per character
+- [x] **Which books a character is offered** ([ADR 0049](./docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
+      The item was "source enable/disable per character", and a content source is the wrong unit: one index holds
+      every book. The unit is Aurora's, the book (`type="Source"`), which the system marks `publication: true`.
+      `Character.publications` is an optional allowlist of book names, absent for every book; the builder offers from
+      a view of the index that leaves other books out of every list and still answers every id, so nothing a
+      character holds moves. A book content marks required (`requiredWhen`, 5e's `core`: Aurora Legacy Essentials,
+      which holds every skill and language) is always offered. The Build pane has a Books list. A level 1 wizard
+      offered only the 2014 Player's Handbook is offered 88 things instead of 452 (races 139 to 9), and all thirty
+      samples derive identically offered no book at all. Running it found the required book, which the first design
+      would have hidden with every skill in it, and a settled pick that dropped its own answer from its alternatives.
+      Driven in the Tauri window on Windows, save and reopen with no source included. **Not done:** the Aurora importer
+      does not fill the list from a save's `<restricted>` (frozen, and the samples have none to witness it); no edition
+      switch; no per-user default for new characters; macOS and Linux not driven.
 - [ ] Import a raw Aurora `.xml` the user drops in
 
 ---
