@@ -353,9 +353,11 @@ below it. Incudo resolves both through a character kind's `blockFilters`, so the
 
 - **`!` negation inside a filter** — 13 uses (`Artificer Infusion, !TCOE Base`). Read as a
   literal tag, so those nine selects offer an empty list. Unambiguous; simply not done yet.
-- **`Ritual`** — 17 uses. A spell carries `<set name="isRitual">true</set>`, so Aurora maps a
-  true boolean setter to a tag named after it. Deriving the tag name from the setter name is a
-  guess with no second witness.
+- **~~`Ritual`~~** — 17 uses. A spell carries `<set name="isRitual">true</set>` and no element carries a
+  `Ritual` tag. **Read since ADR 0047**: a kind's `setterTags` names the pair `isRitual` / `Ritual`, for a
+  select's filter only. Two saves that pick spells through such a filter give a second witness (all four picks
+  are `isRitual` true); a general rule for every true boolean setter was not adopted, because the other setters
+  that are filter operands (`exotic`, `standard`) are also written out as explicit tags.
 - **`Class`** — 15 uses, on the level 4/8/12/16/19 ability score improvement. Not a tag on any
   of the 12,058 elements, not any setter's value, unexplained by anything in the corpus.
 

@@ -454,7 +454,7 @@ deliberately **not** fixed:
 - **Three `supports` operands are still unread, and are reported rather than guessed at**
   (ADR 0030, ADR 0005). `!` **negation** inside a filter — 13 uses, read as a literal tag, so
   `Artificer Infusion, !TCOE Base` offers an empty list; unambiguous and simply not done, and
-  the obvious next one. `Ritual` — 17 uses, where a spell carries `<set name="isRitual">true</set>`
+  the obvious next one. `Ritual` — 17 uses (read since ADR 0047, as a named `setterTags` pair), where a spell carries `<set name="isRitual">true</set>`
   and Aurora evidently maps a true boolean setter to a tag named after it; deriving the tag name
   from the setter name is a guess with no second witness. `Class` — 15 uses, on the level
   4/8/12/16/19 ability score improvement, matching no tag on any of the 14,316 elements and no

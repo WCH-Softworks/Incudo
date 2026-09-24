@@ -442,9 +442,10 @@ computes nothing. Things to know before touching it:
   stat-mismatch, 0 spell-missing, both slot rows, both DCs, both attack bonuses and the caster level
   compared and agreeing, and every level in the class the save put it in. It is the one test that shows the
   builder *offers* the right choices, since `builder-rebuild.test.ts` replays the picks a save holds. Two
-  things it found: the Ritual Caster feat's two spells cannot be offered because the `Ritual` support filter is
-  unread (named in the test as the one expected missing pair, so it fails the day that is fixed), and
-  Aurora records a Thieves' Tools expertise without the two internal elements it grants, in a build made
+  things it found: the Ritual Caster feat's two spells could not be offered because the `Ritual` support filter
+  was unread (the test named them as the one expected missing pair; **ADR 0047 read the filter and the pair is
+  gone: the build offers and accepts both, and the test asserts no element Aurora derived is missing beyond an
+  option or a marker**), and Aurora records a Thieves' Tools expertise without the two internal elements it grants, in a build made
   after its content was updated, so the older "stale content" explanation for that pair is wrong. What it
   cannot referee is `hp` (see ROADMAP Phase 2). **Prepared spells are refereed too now** (ADR 0046): its
   Wizard's limit is the count Aurora's screen showed, and preparing the spells the save prepared is offered and
@@ -495,8 +496,9 @@ agreed with Aurora's screen for 10 of 15 blocks. The other five were `:half`. Th
   the one new problem in the oracle's tables.
 - **The list pool is wider than Aurora's**: Aurora had sources and editions switched off, and Incudo has no
   per-character allowlist to narrow with (ADR 0028). Never narrower: 0 of Aurora's listed spells are missing.
-- **Not modelled:** rituals (the `Ritual` filter is its own change and still the named exception in
-  `rogue-wizard-aurora.test.ts`), the 2024 Paladin and Ranger (content declares no `prepare`; Aurora's screen
+- **Not modelled:** casting a ritual without preparing it (the `Ritual` filter is read, ADR 0047, so the
+  spells a ritual feat or invocation offers are offered; nothing yet says a Wizard may cast one from the book
+  unprepared), the 2024 Paladin and Ranger (content declares no `prepare`; Aurora's screen
   reads 0 and so does Incudo), the Wizard's minimum of one, and a list on the Sheet.
 - **Driven in the browser build only.** A Fighter 12 / Wizard 5 taking a Cleric level was built and its two lists
   prepared, over-limit and reload seen; the library save-and-reopen needs a folder dialog and was covered by the
@@ -805,16 +807,23 @@ deliberately **not** fixed:
   every write, because the collision suffix reads the current listing — so importing a set of real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
   above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the
   summary cache ADR 0027 names.
-- **Two `supports` operands are still unread, and are reported rather than guessed at**
+- **One `supports` operand is still unread, and is reported rather than guessed at**
   (ADR 0030, ADR 0005). There were three; `Class` was never an operand problem (see the
-  improvement entry above), and neither of these two is what that decision needed. `!` **negation** inside a filter — 13 uses, read as a literal tag, so
+  improvement entry above), and `Ritual` is read (ADR 0047, below). `!` **negation** inside a filter — 13 uses, read as a literal tag, so
   `Artificer Infusion, !TCOE Base` offers an empty list; unambiguous and simply not done, and
-  the obvious next one. `Ritual` — 17 uses, where a spell carries `<set name="isRitual">true</set>`
-  and Aurora evidently maps a true boolean setter to a tag named after it; deriving the tag name
-  from the setter name is a guess with no second witness. ~~`Class` — 15 uses, matching no tag
+  the obvious next one. ~~`Ritual` — 17 uses~~ — **read** (ADR 0047): a spell carries
+  `<set name="isRitual">true</set>`, and a kind's `setterTags` (`systems/dnd5e/system.json`) says that a
+  setter holding `true` is the tag `Ritual` *for a select's filter only*. It is a named pair and not a rule
+  on purpose: one setter in the corpus needs it (the other true-setter names that are filter operands,
+  `exotic` and `standard`, are also written as explicit tags, so they witness nothing), the tag is never
+  added to the element or written into a save, and a second entry would be the evidence for a general rule.
+  Second witness: two samples pick spells through a `Ritual` filter (06's Ritual Caster feat, 30's 2024
+  Pact of the Tome) and all four are `isRitual` true. `aurora verify` cannot see it; `ritual-filter.test.ts`
+  holds each of the 17 selects to a list read straight from the spells, and removing the declaration empties them all.
+  ~~`Class` — 15 uses, matching no tag
   on any of the 14,316 elements~~ — a tag on the six `ID_INTERNAL_ASI_*` elements the overlay
   supplies, which is what those 15 filters select. The shell shows "No candidate in the loaded
-  content matches this choice" for the two above, which is honest but not the whole truth.
+  content matches this choice" for the one above, which is honest but not the whole truth.
 - **~~There is no export.~~** Fixed (ADR 0038): "Save a copy…" writes the character on screen to a
   file the user picks. See the paragraph after the commands list above.
 - **An NPC or legendary creature has no way to set ability scores.** Both kinds declare a

@@ -137,6 +137,9 @@ does.
   with a single witness at best: sample 06 records the Ritual Caster feat's two spells (Comprehend Languages, Alarm)
   as `<additional>` entries whose ids are known but whose *tag* is not. It stays the one named exception in
   `rogue-wizard-aurora.test.ts` and is its own change.
+  *(Note, 2026-09-23: that change is [ADR 0047](./0047-a-filter-operand-may-name-a-true-setter-and-the-system-says-which.md).
+  The second witness was in the samples after all: sample 30's Pact of the Tome picks two more rituals. The named
+  exception is gone.)*
 - **The 2024 Paladin and Ranger.** The player's book prepares from a fixed table; the corpus declares no `prepare`,
   and Aurora's screen reads 0 (the maintainer noted it). Incudo agrees with Aurora's screen and says so; it does not
   invent a table content does not carry (ADR 0005).

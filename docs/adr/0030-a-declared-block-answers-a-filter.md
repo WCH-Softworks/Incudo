@@ -266,6 +266,8 @@ with, and they agree.
   - **`Ritual`** — 17 uses. A spell carries `<set name="isRitual">true</set>`, so Aurora maps a
     true boolean setter to a tag named after it. Deriving the tag name from the setter name
     (strip `is`, strip `has`?) is a guess with no second witness in the corpus.
+  - **`Ritual`** *(note, 2026-09-23: read since [ADR 0047](./0047-a-filter-operand-may-name-a-true-setter-and-the-system-says-which.md),
+    as a named `setterTags` pair and not a naming rule)*.
   - **`Class`** — 15 uses, on the level 4/8/12/16/19 ability score improvement. Not a tag on any
     of the 12,058 elements, not any setter's value, and nothing in the corpus explains it.
 - A kind now has four things a declared block feeds: `blockStats`, a `perBlock` sheet section,

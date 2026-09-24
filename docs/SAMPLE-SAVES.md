@@ -290,7 +290,7 @@ Tome's ritual picks.
 **Tests will assert.** Three blocks; caster level **4**; own rows Wizard 3: 4/2, Trickster 3: 2, pact: 2
 slots of 2nd level; three DCs, three attack bonuses. The pact row stays out of the pool and the shared
 level does not count the Warlock. The recorded ritual picks come back as chosen; whether the builder
-*offers* them waits on the `Ritual` filter being read. **No test can referee** hit points.
+*offers* them is held since ADR 0047 read the `Ritual` filter (`rogue-wizard-aurora.test.ts`). **No test can referee** hit points.
 
 ### 06 · `sample-06-rogue-4-wizard-4-interleaved` · Rogue 4 / Wizard 4, levels alternating
 

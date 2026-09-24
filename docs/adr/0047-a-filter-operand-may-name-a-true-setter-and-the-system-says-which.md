@@ -1,6 +1,6 @@
 # 0047 — A filter operand may name a setter that is true, and the system says which
 
-**Status:** Proposed · 2026-09-23 · completes [0030](./0030-a-declared-block-answers-a-filter.md)'s
+**Status:** Accepted · 2026-09-23 · completes [0030](./0030-a-declared-block-answers-a-filter.md)'s
 list of unread operands (`Ritual`) · applies [0005](./0005-aurora-import.md)'s rule about guessing ·
 **format:** an optional `setterTags` on a character kind in the system format (`formatVersion` stays 1)
 
@@ -96,6 +96,31 @@ exist: this fails silently as an empty picker.
 chose, and a character imported from a save already holds them. The evidence is what the builder *offers*:
 `rogue-wizard-aurora.test.ts` builds the Rogue 4 / Wizard 4 one level at a time, and its named exception
 (Comprehend Languages and Alarm not offered) goes, replaced by the two being offered and accepted.
+
+## What was measured after it was built, and what cannot be
+
+Against the official corpus at `c28ce6c` and the thirty samples:
+
+- **What each select offers**, for a fresh character seeded with the owner of the rule: the six class-specific
+  Ritual Caster feats offer 13 (Bard), 8 (Cleric), 10 (Druid), 4 (Sorcerer), 8 (Warlock) and 17 (Wizard)
+  first-level rituals; Book of Ancient Secrets, Pact of the Tome, Quicksmithing and the 2024 feat's first two slots
+  offer 25, which is every first-level ritual with no class named. Nothing here is a pinned count: the test compares each list with one
+  read straight from the spells (`isRitual` true, level 1, the class tag where the filter names one), by code that
+  shares nothing with the engine's, and asserts nothing about how many selects or rituals there are.
+- **Perturbation.** With the `setterTags` declaration removed every one of those lists is empty
+  (`ritual-filter.test.ts`), and `rogue-wizard-aurora.test.ts` fails at the build step with
+  `"1st-level Spell (Ritual Caster)" offers 0 of "Comprehend Languages"`. Unit tests in `engine.test.ts` cover a
+  value of `true` with spaces or capitals, `false`, empty and absent, the setter name compared without case,
+  the tag not being written onto the element, and a setter tag beside a `$(…)` in one filter;
+  `schemas.test.ts` covers the two ways a declaration can be refused.
+- **The oracle.** `INCUDO_ORACLE_SNAPSHOT` on the base commit and `INCUDO_ORACLE_BASELINE` on the change, same
+  checkout: every table for all thirty samples is identical, and a baseline with one difference removed fails, so the
+  comparison was live. That is a statement that no imported character moved (a save already holds its spells),
+  and nothing more.
+- **Not verified.** `aurora verify` cannot see a candidate list, so no Aurora number vouches for the lists above;
+  they are as right as the reading that isRitual means ritual. The six 2024 Ritual Caster slots from the third on
+  are gated on proficiency and were not open for the test's character, so their lists are unmeasured. The builder
+  screen was not driven in the running app. macOS and Linux were not touched by anything here.
 
 ## Consequences
 

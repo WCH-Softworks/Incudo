@@ -783,12 +783,28 @@ before any code, both touching a public API:
       marker). Every other oracle table is identical to the base commit; sample 03 gains one problem, its Wizard,
       which records 10 prepared against a limit of 8 (Aurora does not enforce it). Every sample was rebuilt
       through the builder and each prepared spell had to be *offered* first.
-      **Not verified / not done:** rituals (the `Ritual` filter is its own change, and still the one named
-      exception in `rogue-wizard-aurora.test.ts`); the 2024 Paladin and Ranger, whose prepared count is a book
+      **Not verified / not done:** rituals (the `Ritual` filter is read now, see the entry below; casting a
+      ritual without preparing it is not modelled); the 2024 Paladin and Ranger, whose prepared count is a book
       table content does not carry (Aurora's screen reads 0 and so does Incudo); the Wizard's minimum of one; a
       list on the Sheet; a per-character source allowlist for the list pool (Aurora's lists are narrower than
       Incudo's because it had sources switched off); driven in the browser build and not in the Tauri window, and
       the folder dialog that saves and reopens a character could not be answered by a script.
+- [x] **The `Ritual` filter operand is read** ([ADR 0047](./docs/adr/0047-a-filter-operand-may-name-a-true-setter-and-the-system-says-which.md)).
+      One of ADR 0030's three unread operands, 17 uses in the official corpus, all on spell selects: the Ritual
+      Caster feat (2014 and 2024), Pact of the Tome, Book of Ancient Secrets, Quicksmithing. Measured first: 69 of
+      1,079 spells carry `isRitual` true, no element carries a `Ritual` tag, and two samples (06 and 30) pick four
+      spells through such a filter, all of them ritual, which is the second witness ADR 0030 wanted. The general rule
+      ("a true boolean setter is a tag") was **not** adopted: the only other setters that are filter operands
+      (`exotic`, `standard`) are also written as tags and so witness nothing, so the fix is one named pair,
+      `setterTags` on a character kind, and a second entry would be the case for a rule. Nothing in core names a game.
+      `rogue-wizard-aurora.test.ts` lost its one named exception: the builder now offers Comprehend Languages and
+      Alarm and accepts them. `ritual-filter.test.ts` seeds every Ritual select in the corpus and compares what it
+      offers with a list read straight from the spells, and removing the declaration empties every one. Every table
+      in `aurora-oracle.test.ts` is identical to the base commit (`INCUDO_ORACLE_SNAPSHOT` on it, `INCUDO_ORACLE_BASELINE`
+      on the change, and a deliberately altered baseline fails). **Not verified:** `aurora verify` cannot see a
+      candidate list, so the evidence is the corpus-read expectation and perturbation; not driven in the running app;
+      six of the eight 2024 Ritual Caster slots (the 3rd to the 8th) are gated on proficiency and were not open for the
+      test's fresh character; macOS and Linux untouched.
 
 ### Where this phase actually stands
 
