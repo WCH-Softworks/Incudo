@@ -35,6 +35,10 @@
  * the maintainer typed what it showed for every sample into the manifest (`readout`). It is a human
  * transcription, and it agrees with the derivation on all 30 for each, so each is held to it (speed: ADR
  * 0043; hit points: ADR 0044).
+ *
+ * **So are prepared lists** (ADR 0046): the maintainer read the preparable count of every class off the
+ * screen, and the save records which spells are prepared and which spells a block lists. Both are held for
+ * all 30 (`preparationViolations`); the always-prepared count is reported and not asserted.
  */
 
 import { test } from 'node:test';
@@ -51,6 +55,8 @@ import {
   isAuroraAppMarker,
   lineDelta,
   oracleViolations,
+  preparationReport,
+  preparationViolations,
   rowsCompared,
   runOracle,
   type OracleRun,
@@ -168,6 +174,7 @@ test(
             `was ${describeTable(recorded)}, now ${describeTable(table)}`,
         );
       }
+      for (const line of preparationReport(run)) t.diagnostic(`  ${id} prepares: ${line}`);
       if (detail) {
         for (const d of run.comparison.differences) t.diagnostic(`  ${d.kind}  ${d.message}`);
       }
@@ -196,6 +203,12 @@ test(
       if (stat('speed') !== read.speed) disagree.push(`${id}: speed reads ${read.speed} on Aurora's screen and ${stat('speed')} here`);
     }
     assert.deepEqual(disagree, [], 'Incudo disagrees with what Aurora showed for armour class, speed or hit points');
+
+    // 3b. Prepared lists (ADR 0046): what the save flags, what it lists, and the count the screen showed.
+    const unprepared = measured.flatMap(({ id, run }) =>
+      preparationViolations(run, byId.get(id)?.readout.prepared).map((line) => `${id}  ${line}`),
+    );
+    assert.deepEqual(unprepared, [], 'Incudo disagrees with Aurora about a prepared list');
 
     // A manifest entry whose save has gone is a referee lost, and it says which one.
     const present = new Set(measured.map((m) => m.id));

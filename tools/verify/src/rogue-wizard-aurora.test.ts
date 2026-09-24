@@ -19,6 +19,10 @@
  *  - that whatever Aurora derived and this build did not is an input the description does not name: the Aurora
  *    marker for the level the second class began at, or a campaign option (the sample also turns on Customized
  *    Proficiencies, which the description never mentions).
+ *  - the prepared list (ADR 0046): the description leaves *which* spells to prepare to the person, so what is
+ *    held is what the builder does with the save's own. Its Wizard's limit is the count Aurora's screen showed,
+ *    every spell the save prepared is offered by this build's book and accepted, and the result is the list
+ *    the save records. That closes the last clause of the exit criterion.
  * What is not asserted is what the description leaves to the person, and the hit points, which no oracle sees
  * (ADR 0019).
  */
@@ -40,7 +44,7 @@ import {
 import { compareWithAurora, importAuroraCharacter, parseAuroraSave } from '@incudo/aurora-import';
 import { CharacterBuilder } from '@incudo/ui';
 
-import { rowsCompared, type OracleRun } from './aurora-oracle.ts';
+import { preparationViolations, rowsCompared, type OracleRun } from './aurora-oracle.ts';
 import { loadSchemas } from './node-system.ts';
 import { buildInterleavedRogueWizard } from './rogue-wizard-interleaved-build.ts';
 import { realElements, requireSaves, savesSkip } from './real-data.ts';
@@ -107,7 +111,29 @@ test(
         `${sample.id}: an element Aurora derived that no option, marker or unread filter explains`,
       );
 
-      // 4. The levels went where the save says they did, in the same order.
+      // 4a. Prepared spells (ADR 0046). Which to prepare is not in the description, so the save's are
+      //     prepared through the builder's own write path, each one offered first. The limit is what Aurora's
+      //     screen showed for the Wizard, and the list that results is the list Aurora recorded.
+      const flagged = save.magic
+        .find((block) => block.name.trim().toLowerCase() === 'wizard')!
+        .spells.filter((spell) => spell.prepared)
+        .map((spell) => spell.id);
+      assert.ok(flagged.length > 0, `${sample.id}: the save prepares something`);
+      const offered = new Set(builder.preparationOptionsFor('wizard').map((item) => item.id));
+      for (const id of flagged) {
+        assert.ok(offered.has(id), `${sample.id}: this build's spellbook does not offer ${id} to prepare`);
+        assert.equal(builder.prepare('wizard', id), true, `${sample.id}: preparing ${id} is refused`);
+      }
+      const prepared = deriveCharacter(builder.getState().character, system, elements);
+      assert.deepEqual(
+        preparationViolations({ save, derived: prepared, elements }, sample.readout.prepared),
+        [],
+        `${sample.id}: the prepared list disagrees with what Aurora recorded and showed`,
+      );
+      // The other class is an Arcane Trickster: it knows spells, it does not prepare them, and says so.
+      assert.deepEqual(prepared.preparation.map((b) => b.key), ['wizard']);
+
+      // 4b. The levels went where the save says they did, in the same order.
       assert.deepEqual(
         builder.getState().character.advancement?.map((entry) => entry.elementId),
         imported.character.advancement?.map((entry) => entry.elementId),

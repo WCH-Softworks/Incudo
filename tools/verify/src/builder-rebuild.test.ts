@@ -37,6 +37,7 @@ import {
 import { compareWithAurora, importAuroraCharacter, parseAuroraSave } from '@incudo/aurora-import';
 import { CharacterBuilder } from '@incudo/ui';
 
+import { preparationViolations } from './aurora-oracle.ts';
 import { summarize } from './derived-summary.ts';
 import { loadSchemas } from './node-system.ts';
 import { saveLabel, unnamed } from './private-saves.ts';
@@ -108,6 +109,30 @@ test(
         if (choice === classRecord || isMulticlassRecord(choice.ruleKey)) continue;
         builder.choose(choice.ruleKey, choice.elementIds);
       }
+      // What each block prepared (ADR 0046), which the picks above do not carry: a whole-list preparer's
+      // prepared spells are named by nothing else. Each one the import records must be *offered* by the
+      // builder before it is prepared, which is the difference between this and replaying a record, and
+      // preparing it must be accepted. Always-prepared spells are not offered and are not replayed.
+      const importedRows = deriveCharacter(reference, system, elements).preparation;
+      for (const row of importedRows) {
+        const offered = new Set(builder.preparationOptionsFor(row.key).map((item) => item.id));
+        for (const id of row.chosen) {
+          assert.ok(offered.has(id), `${label}: the builder does not offer ${id} to prepare for ${row.name}`);
+          assert.equal(builder.prepare(row.key, id), true, `${label}: preparing ${id} for ${row.name} is refused`);
+        }
+        for (const id of row.always) {
+          assert.equal(offered.has(id), false, `${label}: ${id} is always prepared and is offered again`);
+        }
+      }
+      const builtRows = builder.getState().preparation;
+      const shape = (rows: typeof builtRows) =>
+        rows.map((r) => ({ key: r.key, mode: r.mode, limit: r.limit, always: [...r.always.map((i) => i.id)].sort(), chosen: r.chosen.map((i) => i.id), unavailable: r.unavailable.length, over: r.over }));
+      assert.deepEqual(
+        shape(builtRows),
+        importedRows.map((r) => ({ key: r.key, mode: r.mode, limit: r.limit, always: [...r.always].sort(), chosen: r.chosen, unavailable: 0, over: r.over })),
+        `${label}: the builder's prepared lists are the import's`,
+      );
+
       if (advancement) {
         // The same two records an import writes, from the builder's own hands: what each level went
         // to, and the second class's multiclass element (ADR 0036).
@@ -150,6 +175,11 @@ test(
         builtDifferences.filter((d) => d.startsWith('spell-missing')).length,
         0,
         `${label}: no spell Aurora has is missing`,
+      );
+      assert.deepEqual(
+        preparationViolations({ save, derived: built, elements }),
+        [],
+        `${label}: the rebuilt prepared lists are the ones Aurora recorded`,
       );
       rebuilt += 1;
     }

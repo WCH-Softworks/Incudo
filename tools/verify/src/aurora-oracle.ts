@@ -27,6 +27,7 @@ import {
   BundleElementIndex,
   LayeredElementIndex,
   deriveCharacter,
+  preparationPool,
   type DerivedCharacter,
   type ElementIndex,
   type GameSystem,
@@ -244,6 +245,119 @@ export function caseMismatches(run: OracleRun): string[] {
     return same && same.size === 1
       ? [`recorded "${id}", which the content spells "${[...same][0]}"`]
       : [];
+  });
+}
+
+/**
+ * Prepared lists held to what Aurora wrote and showed — ADR 0046.
+ *
+ * `compareWithAurora` is frozen and never read a `prepared` flag, so this lives with the verifier's own
+ * comparisons. For every block a save flags a spell prepared in:
+ *
+ *  1. Incudo has a prepared list for the block.
+ *  2. The spells Incudo puts on it (always prepared, and what counts) are the flagged ones, exactly.
+ *  3. Nothing recorded is one the block cannot prepare.
+ *  4. The block prepares the way Aurora's own listing says it does: a block whose `<spells>` holds only spells
+ *     the character knows is a book, and any other lists the class. That is the second witness for the one
+ *     assumption the system definition makes about content (`heldSelect`, ADR 0046 decision 4).
+ *  5. Everything Aurora lists for the block is something Incudo holds or offers. For a block that prepares
+ *     from a book, what Incudo offers and holds is what Aurora lists, exactly; for one that prepares from
+ *     a list Incudo may offer more, because Aurora had sources and editions switched off that Incudo has no
+ *     way to know about, and it must never offer less.
+ *
+ * And across the save, when the maintainer's readout is given: the limits Incudo derives are the ones
+ * Aurora's screen showed. The readout is per class in class order and a class that does not prepare reads
+ * 0, so it is compared as a multiset of the non-zero numbers, which loses nothing that could be told apart.
+ *
+ * **Not asserted, and reported:** how many of the flagged spells Aurora marks *always* prepared. Aurora
+ * marks one the character holds by another route (a Ranger's pick, a feat's) always prepared in any block
+ * whose list has it, and content marks only what a grant says; the flagged set agrees regardless, and
+ * neither reading puts either sample over its limit.
+ *
+ * Takes the pieces and not a run, so a perturbation can hand it a derivation it changed.
+ */
+export function preparationViolations(
+  run: Pick<OracleRun, 'save' | 'derived' | 'elements'>,
+  readout?: readonly number[],
+): string[] {
+  const violations: string[] = [];
+  const mine = new Map(run.derived.preparation.map((block) => [block.key, block]));
+
+  for (const block of run.save.magic) {
+    const key = block.name.trim().toLowerCase();
+    const flagged = new Set(block.spells.filter((spell) => spell.prepared).map((spell) => spell.id));
+    if (flagged.size === 0) continue;
+    const where = `"${block.name}"`;
+    const ours = mine.get(key);
+    if (!ours) {
+      violations.push(`${where}: Aurora flags ${flagged.size} spell(s) prepared and Incudo has no prepared list for it`);
+      continue;
+    }
+
+    const counted = new Set([...ours.always, ...ours.chosen]);
+    for (const id of flagged) {
+      if (!counted.has(id)) violations.push(`${where}: Aurora has ${id} prepared and Incudo does not`);
+    }
+    for (const id of counted) {
+      if (!flagged.has(id)) violations.push(`${where}: Incudo has ${id} prepared and Aurora does not`);
+    }
+    for (const id of ours.unavailable) {
+      violations.push(`${where}: ${id} is recorded prepared and Incudo says the block cannot prepare it`);
+    }
+
+    const book = block.spells.length > 0 && block.spells.every((spell) => spell.known);
+    if ((ours.mode === 'held') !== book) {
+      violations.push(
+        `${where}: Aurora's listing is ${book ? 'a book of what the character knows' : 'the class list'} and Incudo prepares from ${ours.mode === 'held' ? 'a book' : 'the list'}`,
+      );
+    }
+
+    const listed = new Set(block.spells.map((spell) => spell.id));
+    const offered = new Set([
+      ...preparationPool(run.derived, run.elements, key).map((element) => element.id),
+      ...counted,
+    ]);
+    for (const id of listed) {
+      if (!offered.has(id)) violations.push(`${where}: Aurora lists ${id} and Incudo neither holds nor offers it`);
+    }
+    if (ours.mode === 'held') {
+      for (const id of offered) {
+        if (!listed.has(id)) violations.push(`${where}: Incudo offers ${id} from a book Aurora's does not list it in`);
+      }
+    }
+  }
+
+  if (readout) {
+    const numbers = (values: readonly number[]): string =>
+      values.filter((n) => n > 0).sort((a, b) => a - b).join('/');
+    const want = numbers(readout);
+    const got = numbers(run.derived.preparation.map((block) => block.limit));
+    if (want !== got) {
+      violations.push(`the preparable count reads ${want || 'nothing'} on Aurora's screen and ${got || 'nothing'} here`);
+    }
+  }
+  return violations;
+}
+
+/**
+ * One line per preparing block for the report: how it prepares, the limit, what is always on it, what counts,
+ * how far over that is, and how many spells Aurora marks always prepared that content does not (the
+ * difference `preparationViolations` leaves unasserted).
+ */
+export function preparationReport(run: Pick<OracleRun, 'save' | 'derived'>): string[] {
+  return run.derived.preparation.map((block) => {
+    const saved = run.save.magic.find((m) => m.name.trim().toLowerCase() === block.key);
+    const alwaysThere = new Set(
+      (saved?.spells ?? []).filter((s) => s.alwaysPrepared && s.prepared).map((s) => s.id),
+    );
+    // On a book every entry carries the flag, so it says nothing about being always prepared there.
+    const beyondContent =
+      block.mode === 'list' ? [...alwaysThere].filter((id) => !block.always.includes(id)).length : 0;
+    return (
+      `${block.name}: ${block.mode}, limit ${block.limit}, always ${block.always.length}, ` +
+      `prepared ${block.chosen.length}${block.over ? ` (${block.over} over)` : ''}` +
+      (beyondContent ? `, Aurora marks ${beyondContent} more always prepared than content does` : '')
+    );
   });
 }
 
