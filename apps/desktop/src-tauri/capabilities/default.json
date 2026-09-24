@@ -1,15 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the Incudo window is allowed to do. See apps/desktop/README.md for why the HTTP scope is as wide as it is, and why the filesystem scope is as narrow.",
+  "description": "What the Incudo window is allowed to do. See apps/desktop/README.md for why content is fetched by the app's own command, https only, and why the filesystem scope is as narrow as it is.",
   "windows": ["main"],
   "permissions": [
     "core:default",
-    {
-      "identifier": "http:default",
-      "allow": [{ "url": "https://**" }],
-      "deny": [{ "url": "http://**" }]
-    },
     "dialog:allow-open",
     "dialog:allow-save",
     "fs:allow-read-dir",

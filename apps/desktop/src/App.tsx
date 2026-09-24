@@ -34,11 +34,11 @@ import {
 import {
   SourceProfile,
   checkSourceForUpdates,
-  evictSourceCache,
+  refreshSource,
   sourcesForSystem,
   unassignedSources,
-  writeVersionStamp,
   type ConfiguredSource,
+  type RefreshReport,
   type SourceMode,
   type UpdateStatus,
 } from '@incudo/content';
@@ -350,6 +350,8 @@ function Shell({
   const [progress, setProgress] = useState<LoadProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const [updates, setUpdates] = useState<Record<string, UpdateStatus>>({});
+  /** What the last refresh of each source did, or why it could not (ADR 0050). */
+  const [refreshes, setRefreshes] = useState<Record<string, RefreshReport | { failed: string }>>({});
   const [sources, setSources] = useState<readonly ConfiguredSource[]>([]);
   const profile = useRef<SourceProfile | null>(null);
 
@@ -547,15 +549,29 @@ function Shell({
       checkForUpdates: async (id) => {
         const source = profile.current?.find(id);
         if (!source) return;
-        const status = await checkSourceForUpdates(source, platform);
-        setUpdates((previous) => ({ ...previous, [id]: status }));
-      },
-      refresh: async (id) => {
-        // ADR 0029: evict this source's cache and nothing else's, then fetch it again.
+        // Busy while it runs: under Tauri it asks every cached file (ADR 0050), which takes seconds.
         setBusy(true);
         try {
-          await evictSourceCache(platform.storage, id);
-          await writeVersionStamp(platform.storage, id, undefined);
+          const status = await checkSourceForUpdates(source, platform);
+          setUpdates((previous) => ({ ...previous, [id]: status }));
+        } finally {
+          setBusy(false);
+        }
+      },
+      refresh: async (id) => {
+        // ADR 0050, amending 0029: fetch network first and keep what cannot be reached, rather than
+        // evicting everything and hoping the network is there to refill it.
+        const source = profile.current?.find(id);
+        if (!source) return;
+        setBusy(true);
+        try {
+          const report = await refreshSource(source, platform);
+          setRefreshes((previous) => ({ ...previous, [id]: report }));
+        } catch (error) {
+          setRefreshes((previous) => ({
+            ...previous,
+            [id]: { failed: error instanceof Error ? error.message : String(error) },
+          }));
         } finally {
           setBusy(false);
         }
@@ -954,6 +970,7 @@ function Shell({
           progress={progress}
           busy={busy}
           updates={updates}
+          refreshes={refreshes}
           actions={actions}
           shell={platform.shell}
         />

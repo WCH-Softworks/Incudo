@@ -10,7 +10,7 @@
  *
  * | port             | Tauri window                    | `npm run desktop` in a browser     |
  * |------------------|---------------------------------|------------------------------------|
- * | `Fetcher`        | `tauri-plugin-http` (no CORS)   | `window.fetch` (CORS applies)      |
+ * | `Fetcher`        | `fetch_content_text` (no CORS)  | `window.fetch` (CORS applies)      |
  * | `Storage`        | IndexedDB                       | IndexedDB                          |
  * | `CharacterStore` | `dialog` + `fs` plugins         | File System Access API             |
  * | `FilePicker`     | `dialog` + `fs` plugins         | `showOpenFilePicker`               |
@@ -68,23 +68,36 @@ function inTauri(): boolean {
 /**
  * Content over HTTP.
  *
- * Under Tauri this goes through the http plugin, which is not subject to CORS — the original
- * reason the desktop app is a Tauri shell and not a web page, and a claim `README.md` has
- * been making since before anything implemented it. In a browser it is `window.fetch`, where
- * CORS very much applies: `raw.githubusercontent.com` cooperates and plenty of hosts do not.
+ * Under Tauri this goes through the shell's own `fetch_content_text` command, which is not subject
+ * to CORS — the original reason the desktop app is a Tauri shell and not a web page. It was
+ * `tauri-plugin-http` until ADR 0050: the plugin opened a new connection for every request, and 800
+ * of them stalled against a host that throttles new connections. In a browser it is `window.fetch`,
+ * where CORS very much applies: `raw.githubusercontent.com` cooperates and plenty of hosts do not.
  */
 export class DesktopFetcher implements Fetcher {
+  /**
+   * Conditional requests only under Tauri (ADR 0050). In a browser, `If-None-Match` makes a cross-origin
+   * request need a preflight, and raw.githubusercontent.com answers that preflight with a 403, so every fetch
+   * carrying one would fail; nor may a page read the `ETag` of a response the host did not expose.
+   */
+  readonly conditional = inTauri();
+
   async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
-    const headers: Record<string, string> = {};
-    if (opts?.etag) headers['If-None-Match'] = opts.etag;
+    if (this.conditional) {
+      // The shell's own command, over one shared client (ADR 0050): `src-tauri/src/lib.rs`.
+      const { invoke } = await import('@tauri-apps/api/core');
+      const reply = await invoke<{ status: number; text: string; etag: string | null }>('fetch_content_text', {
+        url,
+        etag: opts?.etag ?? null,
+      });
+      if (reply.status === 304) return { url, text: '', notModified: true };
+      if (reply.status < 200 || reply.status > 299) throw new Error(`HTTP ${reply.status} for ${url}`);
+      return { url, text: reply.text, etag: reply.etag ?? undefined };
+    }
 
-    const request = inTauri()
-      ? (await import('@tauri-apps/plugin-http')).fetch
-      : globalThis.fetch.bind(globalThis);
-
-    const response = await request(url, { headers, signal: opts?.signal });
+    const response = await globalThis.fetch(url, { signal: opts?.signal });
     if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
-    return { url, text: await response.text(), etag: response.headers.get('etag') ?? undefined };
+    return { url, text: await response.text() };
   }
 }
 

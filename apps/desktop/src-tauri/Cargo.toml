@@ -15,7 +15,9 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-tauri-plugin-http = "2"
+# The content transport (ADR 0050). The same reqwest the plugins already build, so no second TLS stack.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "charset"] }
+serde = { version = "1", features = ["derive"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 

@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react';
-import type { ConfiguredSource, SourceMode, UpdateStatus } from '@incudo/content';
+import type { ConfiguredSource, RefreshReport, SourceMode, UpdateStatus } from '@incudo/content';
 import type { GameSystem, SuggestedSource } from '@incudo/core';
 
 import { type LoadProgress, type LoadedContent } from '../content.ts';
@@ -43,6 +43,7 @@ export function SourcesPane({
   progress,
   busy,
   updates,
+  refreshes,
   actions,
   shell,
 }: {
@@ -61,6 +62,8 @@ export function SourcesPane({
   progress: LoadProgress | null;
   busy: boolean;
   updates: Record<string, UpdateStatus>;
+  /** What the last refresh of each source did, or why it failed. */
+  refreshes: Record<string, RefreshReport | { failed: string }>;
   actions: SourcesActions;
   shell: 'tauri' | 'browser';
 }): React.JSX.Element {
@@ -215,6 +218,7 @@ export function SourcesPane({
               source={source}
               loaded={loadedById.get(source.id)}
               update={updates[source.id]}
+              refreshed={refreshes[source.id]}
               busy={busy}
               actions={actions}
             />
@@ -344,12 +348,14 @@ function SourceRow({
   source,
   loaded,
   update,
+  refreshed,
   busy,
   actions,
 }: {
   source: ConfiguredSource;
   loaded: { fileCount: number; elementCount: number; failed?: string } | undefined;
   update: UpdateStatus | undefined;
+  refreshed: RefreshReport | { failed: string } | undefined;
   busy: boolean;
   actions: SourcesActions;
 }): React.JSX.Element {
@@ -396,6 +402,7 @@ function SourceRow({
       </p>
 
       {update && <UpdateNote status={update} />}
+      {refreshed && <RefreshNote report={refreshed} />}
 
       <div className="row">
         <button type="button" onClick={() => void actions.checkForUpdates(source.id)} disabled={busy}>
@@ -405,7 +412,7 @@ function SourceRow({
           type="button"
           onClick={() => void actions.refresh(source.id)}
           disabled={busy}
-          title="Throw away this source's cached copy and fetch it again"
+          title="Fetch this source again. Anything that cannot be reached keeps its saved copy."
         >
           Refresh
         </button>
@@ -419,10 +426,28 @@ function SourceRow({
 
 /** Reporting, never acting. A check that quietly refreshed would be the silent update ADR 0012 refuses. */
 function UpdateNote({ status }: { status: UpdateStatus }): React.JSX.Element {
+  const unreached =
+    status.state !== 'unknown' && status.unanswered ? ` ${status.unanswered} could not be reached.` : '';
   if (status.state === 'current') {
-    return <p className="card-note">Up to date{status.version ? ` at ${status.version}` : ''}.</p>;
+    if (status.basis === 'files') {
+      return <p className="card-note">Up to date: none of {status.checked} files has changed.{unreached}</p>;
+    }
+    return (
+      <p className="card-note">
+        The index still says {status.version ?? 'the same version'}. Only the index version could be compared
+        here, and a source can change without it moving.
+      </p>
+    );
   }
   if (status.state === 'outdated') {
+    if (status.basis === 'files') {
+      return (
+        <p className="card-note">
+          Updated upstream: {status.changed} of {status.checked} files have changed.{unreached}{' '}
+          <strong>Refresh</strong> fetches them.
+        </p>
+      );
+    }
     return (
       <p className="card-note">
         Updated upstream: you have {status.local ?? 'an unknown version'}, the index now says{' '}
@@ -431,4 +456,34 @@ function UpdateNote({ status }: { status: UpdateStatus }): React.JSX.Element {
     );
   }
   return <p className="card-note">Could not tell: {status.reason}</p>;
+}
+
+/** What a refresh did, in numbers the user can check against what they expected. */
+function RefreshNote({ report }: { report: RefreshReport | { failed: string } }): React.JSX.Element {
+  if ('failed' in report) {
+    return <p className="card-note">Refresh failed, and the saved copy was left as it was: {report.failed}</p>;
+  }
+  const parts = [`${report.fetched} downloaded`];
+  if (report.unchanged) parts.push(`${report.unchanged} unchanged`);
+  if (report.removed) parts.push(`${report.removed} no longer listed and removed`);
+  return (
+    <>
+      <p className="card-note">Refreshed: {parts.join(', ')}.</p>
+      {report.kept.length > 0 && (
+        <details className="card-note">
+          <summary>
+            {report.kept.length} {report.kept.length === 1 ? 'file' : 'files'} could not be reached, so the saved
+            copy was kept
+          </summary>
+          <ul>
+            {report.kept.map((file) => (
+              <li key={file.url}>
+                <code>{file.url}</code>: {file.reason}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
+  );
 }

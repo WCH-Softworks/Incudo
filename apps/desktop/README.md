@@ -50,12 +50,21 @@ not need any of it.
 
 A browser `fetch` for a content index is subject to CORS, and
 `raw.githubusercontent.com` happens to cooperate while plenty of hosts do not. The Tauri build
-registers `tauri-plugin-http`, which is not.
+fetches content through its own command, `fetch_content_text` in `src-tauri/src/lib.rs`, which is
+not.
 
-Its capability allows `https://**` and denies `http://**`. That is wide, and it is wide on
-purpose: the product is "point it at any content index you like", so an allowlist of hosts would
-be a list of which third-party content packs are permitted to exist. Narrowing it to a few hosts
-would be a product decision, not a security tidy-up.
+It fetches any `https://` URL and refuses anything else, and follows a redirect only to another
+`https://` URL. That is wide, and it is wide on purpose: the product is "point it at any content
+index you like", so an allowlist of hosts would be a list of which third-party content packs are
+permitted to exist. Narrowing it to a few hosts would be a product decision, not a security
+tidy-up. It returns text, a status and an ETag, and nothing else.
+
+It used to be `tauri-plugin-http`, with a capability allowing `https://**`. The plugin builds a new
+client for every request, so every file of a source opened its own connection, and an update check
+of 800 files against a host that throttles new connections stalled for minutes (ADR 0050). The
+command keeps one client for the life of the window, so connections are reused, and it times out
+rather than hanging. Removing the plugin also took away the page's ability to make arbitrary
+requests of its own.
 
 ## Importing an Aurora save needs no new Rust, and that was worth checking
 
