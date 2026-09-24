@@ -1282,10 +1282,15 @@ function selectPools(
  */
 export interface BlockFilterResolver {
   expand(rule: SelectRule, key: string): SupportsExpr | undefined;
+  /**
+   * The tags a candidate carries for a filter's sake only, lowercased: one per `setterTags` entry of the
+   * kind whose setter holds `true` — ADR 0047. Not the element's own `supports`, and never stored.
+   */
+  setterTagsOf(element: Element): string[];
 }
 
 /**
- * The resolver for one derivation, or nothing when the kind declares no `blockFilters`.
+ * The resolver for one derivation, or nothing when the kind declares no `blockFilters` and no `setterTags`.
  *
  * Memoised per (block, key): a candidate list runs the filter once per element in the pool,
  * which for a spell select is 1,079 elements, and re-scanning every stat for each of them
@@ -1296,7 +1301,7 @@ function makeBlockFilterResolver(
   active: Map<ElementId, Element>,
   stats: Map<StatKey, ResolvedStat>,
 ): BlockFilterResolver | undefined {
-  if (kind.blockFilters.length === 0) return undefined;
+  if (kind.blockFilters.length === 0 && kind.setterTags.length === 0) return undefined;
   const blocks = new Map<string, DeclaredBlock>();
   for (const block of collectDeclaredBlocks(active.values())) {
     blocks.set(block.name.trim().toLowerCase(), block);
@@ -1307,8 +1312,18 @@ function makeBlockFilterResolver(
     ([name, stat]) => [name, stat.value] as const,
   );
   const cache = new Map<string, SupportsExpr | undefined>();
+  const setterTags = kind.setterTags.map((entry) => [entry.setter.trim().toLowerCase(), entry.tag.trim().toLowerCase()] as const);
 
   return {
+    setterTagsOf(element) {
+      const tags: string[] = [];
+      for (const [setter, tag] of setterTags) {
+        for (const [name, held] of Object.entries(element.setters)) {
+          if (name.trim().toLowerCase() === setter && held.value?.trim().toLowerCase() === 'true') tags.push(tag);
+        }
+      }
+      return tags;
+    },
     expand(rule, key) {
       // Which block the rule is attached to is the rule's to say, and every one of the 323
       // interpolated selects in the corpus says it. A rule naming no block, or naming one
@@ -1375,7 +1390,8 @@ function candidateAccepted(
   filters: BlockFilterResolver | undefined,
 ): boolean {
   const ctx: SupportsContext = {
-    tags: new Set(candidate.supports.map((s) => s.toLowerCase())),
+    // What the kind says a true setter is called in a filter — ADR 0047 — beside the element's own tags.
+    tags: new Set([...candidate.supports.map((s) => s.toLowerCase()), ...(filters?.setterTagsOf(candidate) ?? [])]),
     // A spell's level and school are setters and not tags — ADR 0030.
     setterValues: setterValues(candidate),
     id: candidate.id,

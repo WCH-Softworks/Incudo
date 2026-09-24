@@ -444,6 +444,29 @@ test('a blockFilter that could never expand is caught before the app loads it', 
   );
 });
 
+test('a setterTags entry that names a setter twice, or nothing, is caught before the app loads it', async () => {
+  // Same reason as a blockFilter: a tag that never matches leaves the select offering an empty list.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.setterTags = [
+          { setter: 'isGlowing', tag: 'Glowing' },
+          { setter: 'ISGLOWING', tag: 'Lit' },
+        ];
+      }),
+    ),
+    ['characterKinds[0].setterTags: tags the setter "ISGLOWING" twice; only the first would ever be reached'],
+  );
+  assert.notDeepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.setterTags = [{ setter: 'isGlowing', tag: '' }];
+      }),
+    ),
+    [],
+  );
+});
+
 test("a contribution's requirements is content's language, and it has to parse", async () => {
   // The one place the system format embeds a *different* language inside JSON (ADR 0022). The
   // schema can only check that it is a string, so the parse happens in checkSystemReferences

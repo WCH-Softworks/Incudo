@@ -222,6 +222,10 @@
         { "key": "spellcasting:slots", "tagsFromStats": ["{name}:spellcasting:slots:*", "spellcasting:slots:*"], "fillFrom": 1 }
       ],
 
+      "setterTags": [
+        { "setter": "isRitual", "tag": "Ritual" }
+      ],
+
       "preparation": {
         "blockAttribute": "prepare",
         "limit": "{name}:spellcasting:prepare",

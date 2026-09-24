@@ -1041,6 +1041,76 @@ test('a kind that declares no blockFilters offers nothing, and says which term i
   assert.deepEqual(pick.unresolvedSupports.sort(), ['gizmo:catalogue', 'gizmo:charge']);
 });
 
+// --- a true setter is a tag, for a filter only (ADR 0047) ----------------------------------------
+
+/** A select with no block and no interpolation, which is all a setter tag needs. */
+const PLAIN = (filter: string) =>
+  ({ kind: 'select', key: 'select:P', type: 'Gadget', name: 'P', number: 1, supports: parseSupports(filter) }) as const;
+
+function withSetterTags(base: GameSystem, tags: Array<{ setter: string; tag: string }>): GameSystem {
+  return { ...base, characterKinds: [{ ...base.characterKinds[0]!, setterTags: tags }, ...base.characterKinds.slice(1)] };
+}
+
+function plainPick(system_: GameSystem, index: MapElementIndex): PendingChoice {
+  const character = { ...createCharacter('test', 'levelled'), progress: 1 };
+  character.choices = [{ ruleKey: 'seed', elementIds: ['CASTER'] }];
+  return deriveCharacter(character, system_, index).pendingChoices[0]!;
+}
+
+test('a setter that holds true is a tag for a filter, and nothing else is', () => {
+  const index = indexWith(
+    element('CASTER', 'Widget', [PLAIN('Glowing')]),
+    widget('LIT', [], { isGlowing: 'true', tier: '1' }),
+    widget('SPACED', [], { isGlowing: ' True ' }),
+    widget('OFF', [], { isGlowing: 'false' }),
+    widget('EMPTY', [], { isGlowing: '' }),
+    widget('BARE', [], { tier: '1' }),
+    widget('TAGGED', ['Glowing']),
+  );
+  const system_ = withSetterTags(system(), [{ setter: 'isGlowing', tag: 'Glowing' }]);
+  const pick = plainPick(system_, index);
+  assert.deepEqual([...pick.candidates].sort(), ['LIT', 'SPACED', 'TAGGED']);
+  assert.deepEqual(pick.unresolvedSupports, []);
+});
+
+test('the name of the setter is compared without regard to case, and only the declared one counts', () => {
+  const index = indexWith(
+    element('CASTER', 'Widget', [PLAIN('Glowing')]),
+    widget('SHOUTED', [], { ISGLOWING: 'true' }),
+    widget('OTHER', [], { isShiny: 'true' }),
+  );
+  const system_ = withSetterTags(system(), [{ setter: 'isglowing', tag: 'GLOWING' }]);
+  assert.deepEqual([...plainPick(system_, index).candidates], ['SHOUTED']);
+});
+
+/**
+ * Perturbation: without the declaration the same content offers nothing, so the list widening is the
+ * declaration's doing and not the operand's. And the tag is a reading of a filter, not a change to the
+ * element: the index it was read from still says the element has no such tag.
+ */
+test('a kind that declares no setterTags reads Glowing as it always did, and the element is unchanged', () => {
+  const lit = widget('LIT', [], { isGlowing: 'true' });
+  const index = indexWith(element('CASTER', 'Widget', [PLAIN('Glowing')]), lit);
+  assert.deepEqual(plainPick(system(), index).candidates, []);
+  const declared = withSetterTags(system(), [{ setter: 'isGlowing', tag: 'Glowing' }]);
+  assert.deepEqual(plainPick(declared, index).candidates, ['LIT']);
+  assert.deepEqual(lit.supports, [], 'the setter is read by the filter and never written onto the element');
+  assert.deepEqual(index.bySupport('glowing'), []);
+});
+
+test('a setter tag and an interpolation in one filter are both read', () => {
+  const both = element('CASTER', 'Widget', [CHARGE_1, { ...PICK, supports: parseSupports('$(gizmo:catalogue), Glowing') }]);
+  both.spellcasting = [{ name: 'Orange' }];
+  const index = indexWith(
+    both,
+    widget('LIT', ['Orange'], { isGlowing: 'true' }),
+    widget('DIM', ['Orange'], { isGlowing: 'false' }),
+    widget('LIT_WRONG_LIST', ['Purple'], { isGlowing: 'true' }),
+  );
+  const system_ = withSetterTags(blockFilterSystem(), [{ setter: 'isGlowing', tag: 'Glowing' }]);
+  assert.deepEqual([...derivedPick(system_, index).candidates], ['LIT']);
+});
+
 test("a block's own declared value beats its name, and may be a sub-expression", () => {
   // The Eldritch Knight case: the block is called one thing and filters on another, and the
   // other is a group rather than a tag. A chain that OR-ed the two would offer BY_NAME too.

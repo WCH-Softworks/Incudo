@@ -315,6 +315,23 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       }
     }
 
+    // A `setterTags` entry that names nothing, or names a setter twice, is a filter that offers an empty list
+    // with no sentence to say why (ADR 0047).
+    const tagSetters = new Set<string>();
+    for (const entry of resolved.setterTags) {
+      const setter = entry.setter.trim().toLowerCase();
+      if (setter === '' || entry.tag.trim() === '') {
+        errors.push({ path: `${where}.setterTags`, message: 'names a setter and a tag, and both must be non-empty' });
+      }
+      if (tagSetters.has(setter)) {
+        errors.push({
+          path: `${where}.setterTags`,
+          message: `tags the setter "${entry.setter}" twice; only the first would ever be reached`,
+        });
+      }
+      tagSetters.add(setter);
+    }
+
     // A preparation declaration whose filters will not parse, or which name an interpolation the kind never
     // expands, is invisible at runtime: nothing could be prepared and nothing would say why (ADR 0046).
     const preparation = resolved.preparation;

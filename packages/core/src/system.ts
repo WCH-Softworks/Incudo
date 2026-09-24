@@ -195,6 +195,20 @@ export interface BlockFilterDef {
 }
 
 /**
+ * A setter that, when it holds `true`, is a tag as far as a select's filter is concerned — ADR 0047.
+ *
+ * Aurora spells a spell's ritual-ness as `<set name="isRitual">true</set>` and filters on it as `Ritual`;
+ * neither word is core's, so the system says both. It is a named pair and not a naming rule: one setter in
+ * the corpus needs it, and a rule derived from one setter would tag the others with no operand asking for them.
+ */
+export interface SetterTagDef {
+  /** The setter's name as content writes it. Compared lowercased. */
+  setter: string;
+  /** The filter operand it answers to. Compared lowercased. */
+  tag: string;
+}
+
+/**
  * A short fact a picker prints beside a candidate of certain types — a spell's level, say.
  *
  * Which setter says it and how it reads are the system's business: core does not know that a
@@ -919,6 +933,12 @@ export interface CharacterKindDef {
    */
   blockFilters?: BlockFilterDef[];
   /**
+   * Setters that count as a tag when true, for a select's filter only — ADR 0047. Replaced rather
+   * than merged along an `extends` chain, like `blockFilters`. A kind declaring none reads a filter's
+   * operands as tags, ids and setter values, as before.
+   */
+  setterTags?: SetterTagDef[];
+  /**
    * Stats this kind contributes itself, conditionally or not — ADR 0022. Replaced rather than
    * merged along an `extends` chain, like `trackStats` and `blockStats`.
    */
@@ -973,6 +993,8 @@ export interface ResolvedCharacterKind {
   blockStats: BlockStatDef[];
   /** How a select's `$(key)` expands, per declared block — ADR 0030. */
   blockFilters: BlockFilterDef[];
+  /** Setters that are a tag when true, for a select's filter — ADR 0047. */
+  setterTags: SetterTagDef[];
   /** Stats the kind itself contributes, conditionally or not — ADR 0022. */
   contributions: ContributionDef[];
   /** How an item's setters are read, or nothing at all — ADR 0025. */
@@ -1157,6 +1179,7 @@ export function resolveCharacterKind(
   let trackStats: TrackStatDef[] = [];
   let blockStats: BlockStatDef[] = [];
   let blockFilters: BlockFilterDef[] = [];
+  let setterTags: SetterTagDef[] = [];
   let contributions: ContributionDef[] = [];
   let inventory: InventoryDef | undefined;
   let repeatableSetter: string | undefined;
@@ -1177,6 +1200,7 @@ export function resolveCharacterKind(
     if (layer.trackStats !== undefined) trackStats = layer.trackStats;
     if (layer.blockStats !== undefined) blockStats = layer.blockStats;
     if (layer.blockFilters !== undefined) blockFilters = layer.blockFilters;
+    if (layer.setterTags !== undefined) setterTags = layer.setterTags;
     if (layer.contributions !== undefined) contributions = layer.contributions;
     if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.repeatableSetter !== undefined) repeatableSetter = layer.repeatableSetter;
@@ -1198,6 +1222,7 @@ export function resolveCharacterKind(
     trackStats,
     blockStats,
     blockFilters,
+    setterTags,
     contributions,
     inventory,
     repeatableSetter,
