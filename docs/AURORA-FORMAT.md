@@ -88,6 +88,11 @@ this way). The target is routinely in a file that has not loaded yet, so appends
 applied at parse time: `parseAuroraElements` returns them unapplied and `ContentLibrary`
 folds them in once every file is in. An append whose target never loads is a warning, because
 "that supplement is enabled and the book it extends is not" is a normal thing for a user to do.
+"Every file" means every source, not only the append's own: the app loads each enabled source
+into one library, in the order they were added, and a supplement added before the book it extends
+used to lose its appends for good (Tasha's before core: 51 support tags, a warning each, and the
+same element count). The library keeps every append and folds them again after each source, so an
+append waiting on a later source is applied when its target arrives and its warning is withdrawn.
 
 **`equipped="…"` is a requirement expression, not a boolean.** The corpus contains **79 of
 them, not one of which is `"true"`**:

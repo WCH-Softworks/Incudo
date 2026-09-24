@@ -542,6 +542,17 @@ before touching `ContentLibrary.loadSource`:
   and `tools/verify/src/index-walk.test.ts` (the real corpus loaded one request at a time and ahead with jittered
   answers: every element, in order, and every diagnostic). Counts alone would not see a load that applied files in the
   order they arrived.
+- **An `<append>` reaches its target whichever source loads first.** Appends used to be folded only within their own
+  source's load, and the app loads enabled sources into one library in the order they were added: Tasha's index added
+  before core's lost 51 support tags (spells on class lists), with the same 7,544 elements and a warning each. The
+  library now keeps every append, folds them all again after each source over whatever element holds the id, withdraws
+  a warning once its target arrives, and never applies one twice. Held by `packages/content/src/appends.test.ts` and
+  `tools/verify/src/appends-across-sources.test.ts` (AuroraLegacy's four groups as four sources, forwards and
+  backwards, against the whole index as one). Seen in the browser build: 53 warnings before, 2 after.
+- **Partial sources work, and only two of AuroraLegacy's 60 indexes can build a character alone** (the top one and
+  `core.index`): skills and languages live in `core/ALE.xml`, which `core.index` lists directly and no book does. Upstream
+  states the dependency only in its README ("Requires Core Index"). Missing dependencies are to be reported, never
+  enforced; that alert is not built yet.
 
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).

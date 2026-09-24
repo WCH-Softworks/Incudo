@@ -219,6 +219,17 @@ export class ContentLibrary {
     return true;
   }
 
+  /** Every `<append>` loaded so far, by the id it targets, in the order its file was loaded. */
+  private readonly appendsByTarget = new Map<string, ElementAppend[]>();
+  /**
+   * For each target the appends have been folded into: the element as a file declared it, what
+   * folding them over it produced, and how many were folded. A target whose element is no longer
+   * that result was replaced by a later file, and the appends are folded again over the new one.
+   */
+  private readonly folded = new Map<string, { base: Element; result: Element; count: number }>();
+  /** The warning standing for each append that found no target, so a later source can withdraw it. */
+  private readonly unapplied = new Map<ElementAppend, SourceDiagnostic>();
+
   /**
    * Fold `<append>` blocks into the elements they name.
    *
@@ -226,29 +237,64 @@ export class ContentLibrary {
    * different index entirely, which is the point of the construct: a supplement extends a
    * core element without editing the core file.
    *
-   * An append whose target never loads is a warning, not an error. That is the normal case
-   * for a partial source list: the supplement is enabled, the book it extends is not, and
-   * the user is not doing anything wrong.
+   * And across sources, not only within one. The app loads each enabled source into this one
+   * library in the order the user added them, so a supplement added before the book it extends
+   * used to lose every such append for good: Tasha's added before AuroraLegacy's core dropped 51
+   * support tags, with a warning and nothing else. Every append is kept, and at the end of each
+   * load all of them are folded, in the order their files loaded, over whatever element holds
+   * each id now: one that waited is applied when its target arrives, and one whose target a later
+   * file redefined lands on the new definition, which is what a single load would have done.
+   *
+   * An append whose target is still not loaded is a warning, not an error. That is the normal
+   * case for a partial source list: the supplement is enabled, the book it extends is not, and
+   * the user is not doing anything wrong. The warning is withdrawn if a later source supplies it.
    */
   private applyAppends(appends: ElementAppend[]): void {
+    const touched = new Set<string>();
     for (const append of appends) {
-      const target = this.index.get(append.id);
-      if (!target) {
-        this.diagnostics.push({
-          level: 'warning',
-          message: `An <append> targets "${append.id}", which is not in any loaded source. Its ${append.rules.length} rule(s) and ${append.supports.length} support tag(s) were not applied.`,
-          elementId: append.id,
-          fileUrl: append.fileUrl,
-        });
-        continue;
-      }
+      const waiting = this.appendsByTarget.get(append.id);
+      if (waiting) waiting.push(append);
+      else this.appendsByTarget.set(append.id, [append]);
+      touched.add(append.id);
+    }
+    for (const append of this.unapplied.keys()) touched.add(append.id);
+    for (const [id, entry] of this.folded) if (this.index.get(id) !== entry.result) touched.add(id);
+
+    for (const id of touched) {
+      const current = this.index.get(id);
+      if (!current) continue;
+      const all = this.appendsByTarget.get(id)!;
+      const entry = this.folded.get(id);
+      const replaced = !entry || entry.result !== current;
+      if (!replaced && entry.count === all.length) continue;
+      const base = replaced ? current : entry.base;
       // Re-add rather than mutate in place: the element goes back through `add` so the
       // support index picks up the new tags. An element is a value here, not an identity.
-      this.index.add({
-        ...target,
-        rules: [...target.rules, ...append.rules],
-        supports: [...target.supports, ...append.supports],
-      });
+      const result: Element = {
+        ...base,
+        rules: [...base.rules, ...all.flatMap((append) => append.rules)],
+        supports: [...base.supports, ...all.flatMap((append) => append.supports)],
+      };
+      this.index.add(result);
+      this.folded.set(id, { base, result, count: all.length });
+      for (const append of all) {
+        const warning = this.unapplied.get(append);
+        if (!warning) continue;
+        this.diagnostics.splice(this.diagnostics.indexOf(warning), 1);
+        this.unapplied.delete(append);
+      }
+    }
+
+    for (const append of appends) {
+      if (this.index.get(append.id)) continue;
+      const warning: SourceDiagnostic = {
+        level: 'warning',
+        message: `An <append> targets "${append.id}", which is not in any loaded source. Its ${append.rules.length} rule(s) and ${append.supports.length} support tag(s) were not applied.`,
+        elementId: append.id,
+        fileUrl: append.fileUrl,
+      };
+      this.diagnostics.push(warning);
+      this.unapplied.set(append, warning);
     }
   }
 
