@@ -27,6 +27,7 @@ import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/cor
 import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
 import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
 import { ClassLevels } from './ClassLevels.tsx';
+import { PreparedSpells } from './PreparedSpells.tsx';
 import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 
@@ -41,7 +42,7 @@ export function BuilderPane({
   elements: ElementIndex;
   hasContent: boolean;
 }): React.JSX.Element {
-  const { kind, derived, decisions, steps, picks, declined } = state;
+  const { kind, derived, decisions, steps, picks, declined, preparation } = state;
   const progression = kind.progression;
   const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
 
@@ -258,6 +259,25 @@ export function BuilderPane({
                 nameOf={nameOf}
                 candidateLabel={candidateLabel}
                 stats={kind.stats}
+              />
+            </section>
+          )}
+
+          {/*
+            The list each casting block prepares. Not a decision either: nothing is owed, and a
+            character may prepare none. Shown for any character with a block that prepares, and
+            it can be reached on a save opened with no content source, where what is already on
+            the list still reads and only offering more needs content.
+          */}
+          {preparation.length > 0 && kind.preparation && (
+            <section>
+              <h2>Prepared {kind.preparation.elementType.toLowerCase()}s</h2>
+              <PreparedSpells
+                rows={preparation}
+                builder={builder}
+                elements={elements}
+                candidateLabel={candidateLabel}
+                noun={kind.preparation.elementType.toLowerCase()}
               />
             </section>
           )}

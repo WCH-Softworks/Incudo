@@ -76,6 +76,15 @@ import {
 } from './top-level-pick.ts';
 
 import {
+  planPrepare,
+  planUnprepare,
+  preparationOptions,
+  preparationRows,
+  type PreparationRow,
+  type PreparedItem,
+} from './preparation.ts';
+
+import {
   computeHitPointState,
   planHitPointChange,
   planHitPointRecord,
@@ -236,6 +245,11 @@ export interface BuilderState {
    * `reconsider` rather than gone the way an answer's own record can be.
    */
   declined: DeclinedDecision[];
+  /**
+   * One row per casting block that prepares a list — its limit, what is always on it, what the player put
+   * on it, and how far over that is (ADR 0046). Empty for a character with no such block.
+   */
+  preparation: PreparationRow[];
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -520,6 +534,37 @@ export class CharacterBuilder {
     this.invalidate();
     return true;
   };
+
+  /**
+   * Put an element on a block's prepared list — ADR 0046. Refused, writing nothing, for a block that
+   * does not prepare, an element already on the list and one the block cannot prepare (something it
+   * does not hold, or a level it has no slots for). **Going past the limit is not refused**: the row says
+   * by how much. Returns whether the element is now on the list.
+   */
+  prepare = (blockKey: string, id: ElementId): boolean => {
+    const { derived } = this.getState();
+    const next = planPrepare(this.character, derived, this.elements, blockKey, id);
+    if (!next) return false;
+    this.character = next;
+    this.invalidate();
+    return true;
+  };
+
+  /** Take an element off a block's recorded list. Taking off what is not there changes nothing. */
+  unprepare = (blockKey: string, id: ElementId): void => {
+    const next = planUnprepare(this.character, blockKey, id);
+    if (next === this.character) return;
+    this.character = next;
+    this.invalidate();
+  };
+
+  /**
+   * What a block could still have prepared, for a picker. Computed on request and not with the state:
+   * a whole list is over two hundred spells for a high level cleric, and nothing needs it until the
+   * player asks to add one.
+   */
+  preparationOptionsFor = (blockKey: string): PreparedItem[] =>
+    preparationOptions(this.getState().derived, this.elements, blockKey);
 
   /** Rename the character. An input like any other; nothing derives what a player calls them. */
   setName = (name: string): void => {
@@ -1192,6 +1237,7 @@ export class CharacterBuilder {
       steps,
       picks,
       declined,
+      preparation: preparationRows(derived, this.elements),
       focusedId: this.focusedId,
     };
   }

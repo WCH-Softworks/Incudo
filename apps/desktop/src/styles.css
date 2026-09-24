@@ -1065,6 +1065,62 @@ table.budget-rows input[type='number'] {
   grid-column: 1 / -1;
 }
 
+/*
+ * The prepared list of a casting block. Blocks stacked in the narrow settled column, like the class
+ * controls above, with the count in the warning colour only while the list is over its limit.
+ */
+.prepared {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.prepared-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prepared-block h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.prepared-count {
+  margin: 0;
+  font-weight: 600;
+}
+
+.prepared-count.over {
+  color: var(--error-line);
+}
+
+.prepared-group ul,
+.prepared-list {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.prepared-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.prepared-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.prepared-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .settled {
   padding: 10px 0;
   border-bottom: 1px solid var(--line);

@@ -12,6 +12,7 @@ export * from './use-character-builder.ts';
 export * from './budget.ts';
 export * from './hitpoints.ts';
 export * from './multiclass.ts';
+export * from './preparation.ts';
 export * from './top-level-pick.ts';
 export * from './dice.ts';
 export * from './character-library.ts';
