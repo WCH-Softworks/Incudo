@@ -268,7 +268,7 @@ before any code, both touching a public API:
       are answered — pinning is a **no**, and the rate-limit measurement is in ADR 0029.
       What is *not* done and is named rather than implied: `stream` and `download` differ only
       in **when** files are fetched, because ADR 0004's lazy per-file loading needs an
-      `ElementIndex` that can miss and there is not one.
+      `ElementIndex` that can miss and there is not one. (Measured and declined later, ADR 0051.)
       **The cache shipped subtly wrong and the `.dnd5e` import found it.**
       `CachedContentSource.loadFile` returned everything the network layer did except
       `appends`, so all 171 `<append>` blocks were dropped on every load after the first —
@@ -946,8 +946,18 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       3.1 s, a refresh with nothing changed 6.2 s and a full download 10.8 s, where it was 81 s. Driven in the
       Tauri window and the browser build on Windows. **Not done:** partial index loading (below); the window was not
       taken offline (the tests hold that); macOS and Linux.
-- [ ] Live mode hardening, the rest: partial (lazy per-file) index loading, which needs an index that can miss and
-      a builder that can wait (ADR 0029's named gap)
+- [x] **Live mode hardening, the rest: partial index loading, measured and declined, and the index walk made
+      concurrent instead** ([ADR 0051](./docs/adr/0051-lazy-loading-is-declined-and-the-index-walk-stops-waiting-on-itself.md)).
+      Measured first: a character holds 7 to 18 of AuroraLegacy's 740 files, but the builder's first screen needs 373
+      of them (every race, class, background and book, and the files whose appends reach across), an Aurora index says
+      nothing about what a file holds, and after the first load everything is cached (a reload is 0.8 s). Lazy loading
+      would save part of one load and needs an index that can miss. The same measurement found where a cold first load
+      waited: 60 of its first 63 requests are nested indexes, fetched one at a time. Each is now fetched as soon as the
+      index naming it is read, within the same six requests in flight, and applied in the same order. Adding the source
+      on a fresh profile in the Tauri window went from 36.7 s to 25.7 s; the rest is 740 files from a host that keeps
+      them five minutes. A test loads the real corpus both ways and compares every element and diagnostic. Driven in
+      the Tauri window and the browser build on Windows. **Not done:** anything that makes the element files faster;
+      macOS and Linux.
 - [x] Download mode: versioned cache, update checks against the index version — ADR 0029 built the cache, the
       version stamp and the check, and ADR 0050 made the check look at files rather than the index version, which a
       source may never bump

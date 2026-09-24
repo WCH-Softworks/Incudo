@@ -11,6 +11,12 @@
 > time, no failures and no throttling at six or twelve. And "versioned cache keys" below is
 > **not** what was built: the key is per source and per URL, the version is a stamp beside it,
 > and a refresh evicts that source's cache. ADR 0029 says why.
+>
+> **"Lazy per-file" is withdrawn** ([ADR 0051](./0051-lazy-loading-is-declined-and-the-index-walk-stops-waiting-on-itself.md)).
+> A character holds a dozen of AuroraLegacy's 740 files, but building one is offered choices from 373 of them, and an
+> Aurora index cannot say what a file holds without fetching it. `HttpContentSource` still fetches per file; the
+> library loads every file a source lists, and "a character that uses two of forty files pays for two" is true of a
+> save (ADR 0012), not of a build.
 
 ## Context
 

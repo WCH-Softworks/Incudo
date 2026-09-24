@@ -106,6 +106,11 @@ lists, and genuinely lazy loading needs an index that can miss and a caller that
 that exists, the toggle is a real setting with a small real effect, and this paragraph is the
 record that it is not yet the big one.
 
+> **Closed by [ADR 0051](./0051-lazy-loading-is-declined-and-the-index-walk-stops-waiting-on-itself.md):** measured and
+> declined. The builder's first screen alone needs 373 of the 740 files, nothing can know which without fetching them,
+> and after the first load everything is local anyway. What it did instead is fetch nested indexes as soon as they are
+> named, which is where a cold first load was waiting on itself. The toggle stays a setting about *when*.
+
 ## Consequences
 
 **Good**

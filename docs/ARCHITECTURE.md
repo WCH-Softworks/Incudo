@@ -92,7 +92,7 @@ exists specifically to prove this by shipping a second one.
 
 - **`HttpContentSource`** — fetches an index and its files on demand, straight from the repo.
   Aurora cannot do this; it is the headline feature. Resolves relative URLs against the index
-  and can lazily fetch only the files a character actually needs.
+  and fetches one file at a time, six in flight (ADR 0029).
 - **`CachedContentSource`** — a local, versioned copy on disk. Full offline. Update checks
   compare the index's `update.version` against what is cached.
 - **`BundledContentSource`** — content shipped inside the app (SRD-safe material only).
@@ -104,9 +104,12 @@ exists specifically to prove this by shipping a second one.
   in this list that does not exist; nothing has needed it.
 
 The user-facing toggle is **per source**: *stream* or *download*. Mobile defaults to download
-(metered connections); desktop defaults to stream with an opt-in download. Today the two differ
-only in *when* files are fetched — ADR 0004's lazy per-file loading needs an `ElementIndex` that
-can miss, and there is not one. ADR 0029 says so rather than letting the toggle imply more.
+(metered connections); desktop defaults to stream with an opt-in download. The two differ only
+in *when* files are fetched, and that is now the design rather than a gap: ADR 0004's lazy per-file
+loading was measured and declined (ADR 0051). A character holds a dozen of AuroraLegacy's 740 files,
+but building one is offered choices from 373 of them, and an Aurora index cannot say which without
+fetching them. What a load does instead is fetch nested indexes as soon as they are named, which was
+where a cold first load waited on itself.
 
 Which sources exist is a **profile** the user owns; a character's `sources` is a record of what
 it was built against. The two are allowed to disagree, and that disagreement is what lets the app

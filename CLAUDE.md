@@ -521,6 +521,28 @@ Things to know before touching the content cache or the desktop fetcher:
   https only, redirects only to https, timeouts. Do not put the plugin back without timing a check of the real corpus
   in the window.
 
+**A source loads every file it lists, and its nested indexes are fetched as soon as they are named**
+([ADR 0051](docs/adr/0051-lazy-loading-is-declined-and-the-index-walk-stops-waiting-on-itself.md)). Things to know
+before touching `ContentLibrary.loadSource`:
+
+- **Lazy per-file loading was measured and declined; do not build it without new numbers.** A sample character holds
+  7 to 18 of the 740 files, but the builder's first screen needs 373 (Race is declared in 123 files, Background in 98,
+  every `Source` for the Books list in 133, and 31 files carry appends that reach into other files). An Aurora index
+  names files, not types, and a file name misses 16 of the 123 race files. After the first load a reload is 0.8 s.
+  `stream` and `download` differ only in when, and that is the design now.
+- **Sixty of the first sixty-three requests of an AuroraLegacy load are indexes.** Walked one at a time they were
+  about 11 s of a cold first load. `prefetch` asks for each nested index when the index naming it is read, through the
+  same limiter as the files (six in flight, indexes first); the queue still decides when each is *applied*. It only
+  asks for what the walk would load: the same depth limit, `include` and already-loaded checks.
+- **Measured in the Tauri window on Windows, fresh profile, host cold (it keeps files 300 s): adding AuroraLegacy
+  36.7 s before, 25.7 s after.** Paired cold loads in one window: 35.0 and 33.5 s before, 25.1 s after; warm about 5.6
+  s before, 4.8 s after. The rest is 740 files at about 30 a second from a cold host, which this does not touch. A cold
+  run needs five idle minutes first, and a page that imported a module before an edit keeps the old one until reloaded.
+- **Held by comparing two loads.** `packages/content/src/index-walk.test.ts` (every rule, each checked by perturbation)
+  and `tools/verify/src/index-walk.test.ts` (the real corpus loaded one request at a time and ahead with jittered
+  answers: every element, in order, and every diagnostic). Counts alone would not see a load that applied files in the
+  order they arrived.
+
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
 Things to know before touching it:

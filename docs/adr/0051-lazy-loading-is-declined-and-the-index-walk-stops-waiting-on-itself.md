@@ -1,6 +1,6 @@
 # 0051 — Lazy per-file loading is declined, and the index walk stops waiting on itself
 
-**Status:** Proposed · 2026-09-24 · closes the gap [0029](./0029-a-cache-is-keyed-by-source-and-evicted-by-version.md)
+**Status:** Accepted · 2026-09-24 · closes the gap [0029](./0029-a-cache-is-keyed-by-source-and-evicted-by-version.md)
 named · amends [0004](./0004-live-vs-downloaded-content.md) ("lazy per-file") · builds on
 [0050](./0050-an-update-check-asks-every-cached-file-and-a-refresh-keeps-what-it-cannot-reach.md)
 
@@ -140,6 +140,51 @@ were before, and which file wins a duplicate id is unchanged. An index is fetche
 loaded it: the same depth limit, the same `include`, the same "already loaded" check. The set of URLs a load fetches
 is the same set; only when each is asked changes. A failed index is reported where it was, when the walk reaches it.
 
+## What was measured after it was built
+
+On Windows only, the same machine and network, against the live AuroraLegacy index, 2026-09-24. "Cold" means the
+host's edge had not been asked for anything for at least six and a half minutes (it keeps a file 300 s), so each cold
+run cost a wait and there are few of them. "Before" is the walk as it was, kept as an untracked copy for the comparison
+and deleted afterwards.
+
+**The Tauri window, adding the suggested source through the Sources pane on a fresh WebView2 profile:**
+
+| | before | after |
+|---|---|---|
+| Add to "14,320 elements from 740 files" | 36.7 s | **25.7 s** |
+| first 104 items of the progress count | 13.4 s | **3.6 s** |
+
+**The same window, a full load through `composeSource` into an empty in-memory cache, old walk and new:**
+
+| | before | after |
+|---|---|---|
+| cold | 35.0 s, 33.5 s | **25.1 s** |
+| the last index answered at, cold | 11.0 s, 10.7 s | **2.0 s** |
+| warm, three runs each, alternated | 5.42, 5.66, 5.61 s | **4.67, 4.69, 5.09 s** |
+| the last index answered at, warm | 1.2 to 1.4 s | **0.24 to 0.33 s** |
+
+**The browser build** (`npm run desktop`, the browser's own `fetch`, no conditional requests), the same in-page load:
+cold, **32.6 s before and 24.0 s after**, the last index at 10.6 s and 2.1 s. A warm run there says nothing: the
+browser's own HTTP cache answers for five minutes, and three loads in a row took 0.9 s each whichever walk ran.
+
+So the saving is what the context predicted, about eight to ten seconds of a cold first load, and it is the index
+walk and nothing else: the element files still arrive at about thirty a second from a cold host.
+
+Also seen, and not caused by this: after the cold Add, a reload of the window read all 740 files back from the cache
+and opened the builder with Race, Class and Background open, as before.
+
+- `packages/content/src/index-walk.test.ts` holds decisions 3 and 4 on a tree written for it: the same result as a
+  load with one request in flight when answers come back in reverse; each URL asked once, nothing past the depth limit,
+  `include` honoured; indexes from one parent in flight together; an index ahead of queued files; never more than the
+  limit in flight; a failed index reported where the walk reaches it and not as an unhandled rejection. Each of eight
+  perturbations (applying at fetch time, no depth check, no map of fetches in flight, no `include`, no prefetch, not
+  urgent, around the limiter, no rejection handler) fails the test that names it.
+- `tools/verify/src/index-walk.test.ts` loads the real corpus both ways, the second with every answer delayed by an
+  amount unrelated to its order, and compares every index, element (with its file, rules and support tags), diagnostic
+  and generated element. Applying an index when its fetch finishes fails it.
+- **Not measured:** macOS or Linux; a slow or lossy network; a cold host more than a handful of times (each needs the
+  wait); the effect on "Check for updates" and Refresh, which walk indexes the same way and were not timed.
+
 ## What this does not do
 
 - **No lazy loading, no manifest, no guessing from file names.** Decision 1.
@@ -150,8 +195,7 @@ is the same set; only when each is asked changes. A failed index is reported whe
 
 ## Consequences
 
-- A cold first load should lose most of its first 13 seconds; a warm one about a second. Measured after it is built,
-  below.
+- A cold first load loses about ten seconds and a warm one most of a second (measured below).
 - `ContentLibrary.loadSource` holds a small limiter and a map of index fetches in flight. It is still one method, and
   the queue is still the one place order is decided.
 - A request can now be in flight for an index the queue has not reached. A load that fails partway leaves those
