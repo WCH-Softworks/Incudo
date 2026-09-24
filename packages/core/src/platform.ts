@@ -11,14 +11,27 @@ export interface FetchResult {
   etag?: string;
   /** True when the result came from a transport-level cache rather than the network. */
   fromCache?: boolean;
+  /**
+   * True when a conditional request was answered "not modified" (HTTP 304): the copy whose `etag` was
+   * sent is current, and `text` is empty. Only a {@link Fetcher.conditional} fetcher reports it — ADR 0050.
+   */
+  notModified?: boolean;
 }
 
 export interface FetchOptions {
+  /** Ask only for a copy other than this one. Ignored by a fetcher that is not `conditional`. */
   etag?: string;
   signal?: AbortSignal;
 }
 
 export interface Fetcher {
+  /**
+   * Whether this fetcher can make a conditional request — ADR 0050. One that can sends `etag` as
+   * `If-None-Match`, returns the response's `ETag`, and answers a 304 with `notModified` instead of throwing.
+   * One that cannot ignores `etag`: a browser page may not, since the header needs a CORS preflight that a
+   * content host is free to refuse, and `raw.githubusercontent.com` does.
+   */
+  readonly conditional?: boolean;
   fetchText(url: string, opts?: FetchOptions): Promise<FetchResult>;
 }
 

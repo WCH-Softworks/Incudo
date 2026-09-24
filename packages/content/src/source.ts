@@ -51,10 +51,25 @@ export interface SourceDiagnostic {
   fileUrl?: string;
 }
 
+/**
+ * What an update check found. `basis` says how it was found — ADR 0050: `files` asked every cached file
+ * whether it changed, and then `checked`, `changed` and `unanswered` count them; `version` compared the top
+ * index's version, which is all a check can do without ETags and which a source may never bump.
+ */
 export type UpdateStatus =
-  | { state: 'current'; version?: string }
-  | { state: 'outdated'; local?: string; remote?: string }
+  | { state: 'current'; version?: string; basis?: UpdateBasis; checked?: number; unanswered?: number }
+  | {
+      state: 'outdated';
+      local?: string;
+      remote?: string;
+      basis?: UpdateBasis;
+      checked?: number;
+      changed?: number;
+      unanswered?: number;
+    }
   | { state: 'unknown'; reason: string };
+
+export type UpdateBasis = 'files' | 'version';
 
 export interface ContentSource {
   readonly id: string;

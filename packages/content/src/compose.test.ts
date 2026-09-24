@@ -134,12 +134,14 @@ test('an update check reports and writes nothing', async () => {
   await writeVersionStamp(storage, source.id, '1.0.0');
   assert.deepEqual(await checkSourceForUpdates(source, { fetcher, storage }), {
     state: 'current',
+    basis: 'version',
     version: '1.0.0',
   });
 
   fetcher.version = '1.4.0';
   assert.deepEqual(await checkSourceForUpdates(source, { fetcher, storage }), {
     state: 'outdated',
+    basis: 'version',
     local: '1.0.0',
     remote: '1.4.0',
   });

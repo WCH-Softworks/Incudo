@@ -34,6 +34,9 @@ export class OfflineFetcher implements Fetcher {
 }
 
 export class NodeFetcher implements Fetcher {
+  /** Node has no CORS, so it can ask conditionally (ADR 0050). A path on disk ignores the ETag. */
+  readonly conditional = true;
+
   async fetchText(url: string, opts?: FetchOptions): Promise<FetchResult> {
     // A plain path (or file: URL) reads from disk, so a local checkout of a content
     // repo can be validated with no network at all — which is how CI runs it.
@@ -44,6 +47,7 @@ export class NodeFetcher implements Fetcher {
     const headers: Record<string, string> = {};
     if (opts?.etag) headers['If-None-Match'] = opts.etag;
     const response = await fetch(url, { headers, signal: opts?.signal });
+    if (response.status === 304) return { url, text: '', notModified: true };
     if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
     return {
       url,
