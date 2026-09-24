@@ -503,6 +503,24 @@ agreed with Aurora's screen for 10 of 15 blocks. The other five were `:half`. Th
   prepared, over-limit and reload seen; the library save-and-reopen needs a folder dialog and was covered by the
   tests, which pack and reopen every sample that records a list with zero sources.
 
+**An update check asks every cached file, and a refresh keeps what it cannot reach**
+([ADR 0050](docs/adr/0050-an-update-check-asks-every-cached-file-and-a-refresh-keeps-what-it-cannot-reach.md)).
+Things to know before touching the content cache or the desktop fetcher:
+
+- **The top index's version says nothing.** AuroraLegacy.index has been 0.0.1 since 2023. A check with ETags cached
+  sends one conditional request per cached file and reports how many changed; with none it compares the version and
+  says that is all it could do. It still writes nothing.
+- **`Fetcher.conditional` says who may send `If-None-Match`.** The Tauri build may; a browser page may not, because
+  the header needs a CORS preflight and raw.githubusercontent.com refuses it with a 403. A non-conditional fetcher
+  must ignore `etag`, or every browser fetch that carried one would fail. ETags live at `content/<source>/.etag/<url>`.
+- **Refresh is `refreshSource`, network first.** A 304 keeps the cached copy, a failure keeps it and is reported, and
+  keys the load did not touch are pruned. It no longer evicts first, so offline it changes nothing.
+- **The Tauri build fetches through `fetch_content_text` in `src-tauri/src/lib.rs`, not `tauri-plugin-http`.** The
+  plugin built a client per request, the host throttles new connections, and a check of 800 files took 113 s and then
+  never finished. One client for the life of the window: 3.1 s for the check, 10.8 s for a full download (was 81 s).
+  https only, redirects only to https, timeouts. Do not put the plugin back without timing a check of the real corpus
+  in the window.
+
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
 Things to know before touching it:

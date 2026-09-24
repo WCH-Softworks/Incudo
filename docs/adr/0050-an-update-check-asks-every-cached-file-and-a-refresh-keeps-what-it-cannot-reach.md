@@ -1,8 +1,9 @@
 # 0050 — An update check asks every cached file, and a refresh keeps what it cannot reach
 
-**Status:** Proposed · 2026-09-24 · amends [0029](./0029-a-cache-is-keyed-by-source-and-evicted-by-version.md) ·
+**Status:** Accepted · 2026-09-24 · amends [0029](./0029-a-cache-is-keyed-by-source-and-evicted-by-version.md) ·
 builds on [0004](./0004-live-vs-downloaded-content.md) · **port:** `Fetcher.conditional` and
-`FetchResult.notModified` in `packages/core/src/platform.ts`
+`FetchResult.notModified` in `packages/core/src/platform.ts` · **shell:** `tauri-plugin-http` replaced by the
+app's own `fetch_content_text` command (decision 5)
 
 ## Context
 
@@ -87,6 +88,43 @@ Refresh no longer evicts first. It loads the source with the network in front of
 It reports how many files were fetched, how many were unchanged, which were kept and why, and how many were removed.
 The version stamp is written as before. Refreshing with no network at all now leaves the cache as it was.
 
+### 5. The Tauri build fetches content through its own command, over one client
+
+Found by running it, not by a test. The first build of decisions 1 to 4 went through `tauri-plugin-http`, and in
+the Tauri window on Windows a check of the 800 cached files (740 element files and 60 indexes) took **113 s** the
+first time and did not finish in 300 s the second, holding the window busy. Timed one at a time, most conditional
+requests took about 200 ms and 58 of 720 stalled for 3.2, 7.2 or 15.2 s, one for 28 s: TCP connection retries.
+The plugin (2.6.0, and 2.7.0 does the same) builds a new `reqwest` client for every request, so every file opened
+its own connection. Replayed from Node, 400 conditional requests over reused connections took **1.3 s**, and the
+same 400 each on a new connection failed with connect timeouts: the host throttles new connections.
+
+So the shell has one command, `fetch_content_text` in `src-tauri/src/lib.rs`: a URL and an optional ETag in, a
+status, text and ETag out, over **one client kept for the life of the window**, https only, redirects followed
+only to https, a 15 s connect timeout and a 120 s request timeout. `DesktopFetcher` calls it under Tauri and
+`window.fetch` in a browser. The plugin is removed, and with it the capability that let the page make any https
+request of its own. It knows nothing about content; it is a transport, like `allow_library_folder` is a scope.
+
+## What was measured after it was built
+
+In the Tauri window on Windows, against AuroraLegacy/elements, 800 files:
+
+| | through the plugin | through the command |
+|---|---|---|
+| check, ETags cached, app idle | 113 s, then over 300 s | **3.1 s** (25 s on a first run just after start-up) |
+| refresh, nothing changed | (evicted and re-downloaded everything under ADR 0029) | **6.2 s**, 0 downloaded, 800 unchanged, reload included |
+| refresh, no ETags cached (a full download) | 81 s | **10.8 s** |
+
+- A cache written before this has no ETags, so the first check says only the index version could be compared, and
+  the first refresh downloads everything once and caches them. Seen in the window, in that order.
+- In the browser build the check says the same about the index version (0.5 s) and a refresh downloads all 800
+  and keeps what fails, as designed.
+- `packages/content/src/revalidate.test.ts` holds decisions 1 to 4 with a fake host (ETags cached only by a
+  conditional fetcher; a check that counts and writes nothing; a refresh that downloads only what changed, keeps
+  everything offline, and prunes what the index stopped naming; a non-conditional fetcher never handed an ETag),
+  each checked by breaking it.
+- **Not measured:** a refresh with the network cut in the window (the test holds it; the window was not taken
+  offline), a host that sends no ETag, and macOS or Linux.
+
 ## What this does not do
 
 - **Partial index loading** (ADR 0029's "the gap is named"). `stream` still loads every file of a source on first
@@ -105,6 +143,9 @@ The version stamp is written as before. Refreshing with no network at all now le
 - The cache holds one more small key per file.
 - `Fetcher` gains an optional flag and `FetchResult` an optional field; a fetcher that knows neither behaves exactly as
   before.
+- The desktop shell has a second piece of Rust. ADR 0001 said the Rust side is "the generated shell plus plugins";
+  a plugin that opens a connection per request turned out to be the slowest part of the app, and a transport is
+  still not application code.
 
 ## Alternatives considered
 

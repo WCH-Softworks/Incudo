@@ -933,8 +933,24 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
 
 ## Phase 3 — Content story 🟡
 
-- [ ] Live mode hardening: HTTP caching, ETags, offline fallback, partial index loading
-- [ ] Download mode: versioned cache, update checks against the index version
+- [x] **Update checks that see an update, and a refresh that keeps what it cannot reach**
+      ([ADR 0050](./docs/adr/0050-an-update-check-asks-every-cached-file-and-a-refresh-keeps-what-it-cannot-reach.md)).
+      The ETags and offline-fallback half of "live mode hardening". "Check for updates" compared the top index's
+      version, and AuroraLegacy's has been 0.0.1 since 2023, so it could never flag the source it suggests. It now
+      asks every cached file with its ETag where the transport can (the Tauri build; a browser page cannot, the
+      host refuses the preflight) and says how many changed. Refresh is network first: a 304 keeps the cached copy
+      without downloading it, a failure keeps it and says so, and files the index stopped naming are removed;
+      offline, it changes nothing, where it used to evict everything first. Running it found that
+      `tauri-plugin-http` opens a connection per request, which the host throttles: a check of 800 files took 113 s
+      and then never finished. The shell now fetches through its own command over one client; the check takes
+      3.1 s, a refresh with nothing changed 6.2 s and a full download 10.8 s, where it was 81 s. Driven in the
+      Tauri window and the browser build on Windows. **Not done:** partial index loading (below); the window was not
+      taken offline (the tests hold that); macOS and Linux.
+- [ ] Live mode hardening, the rest: partial (lazy per-file) index loading, which needs an index that can miss and
+      a builder that can wait (ADR 0029's named gap)
+- [x] Download mode: versioned cache, update checks against the index version — ADR 0029 built the cache, the
+      version stamp and the check, and ADR 0050 made the check look at files rather than the index version, which a
+      source may never bump
 - [ ] Content browser (search across all loaded elements)
 - [ ] Conflict resolution when two sources define the same ID
 - [x] **Which books a character is offered** ([ADR 0049](./docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
