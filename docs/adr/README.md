@@ -73,3 +73,4 @@ new one that supersedes it.
 | [0049](./0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md) | A character records which publications it is offered, and that narrows offers only | Accepted (builds on 0012, 0028) |
 | [0050](./0050-an-update-check-asks-every-cached-file-and-a-refresh-keeps-what-it-cannot-reach.md) | An update check asks every cached file, and a refresh keeps what it cannot reach | Accepted (amends 0029) |
 | [0051](./0051-lazy-loading-is-declined-and-the-index-walk-stops-waiting-on-itself.md) | Lazy per-file loading is declined, and the index walk stops waiting on itself | Accepted (amends 0004; closes 0029's named gap) |
+| [0052](./0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md) | A source that refers to content no enabled source has is reported, and never blocked | Proposed (builds on 0005, 0028, 0051; constrains 0007) |

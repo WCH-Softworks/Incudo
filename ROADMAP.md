@@ -963,6 +963,10 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       source may never bump
 - [ ] Content browser (search across all loaded elements)
 - [ ] Conflict resolution when two sources define the same ID
+- [ ] **Say when a source refers to content no enabled source has** ([ADR 0052](./docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md),
+      proposed). Any inner index can be added as a source, and 58 of AuroraLegacy's 60 grant ids only another declares:
+      the 2014 Player's Handbook alone refers to 110 missing things and offers no skill at all, in silence. Reported per
+      source on the Sources pane, never enforced or guessed at; Incudo's own content format will declare its dependencies.
 - [x] **Which books a character is offered** ([ADR 0049](./docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
       The item was "source enable/disable per character", and a content source is the wrong unit: one index holds
       every book. The unit is Aurora's, the book (`type="Source"`), which the system marks `publication: true`.
