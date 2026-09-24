@@ -72,3 +72,4 @@ new one that supersedes it.
 | [0048](./0048-a-leading-bang-on-a-filter-operand-negates-it-and-is-read-when-the-filter-is-evaluated.md) | A leading `!` on a filter operand negates it, and is read when the filter is evaluated | Accepted (completes 0030; builds on 0005, 0012, 0047) |
 | [0049](./0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md) | A character records which publications it is offered, and that narrows offers only | Accepted (builds on 0012, 0028) |
 | [0050](./0050-an-update-check-asks-every-cached-file-and-a-refresh-keeps-what-it-cannot-reach.md) | An update check asks every cached file, and a refresh keeps what it cannot reach | Accepted (amends 0029) |
+| [0051](./0051-lazy-loading-is-declined-and-the-index-walk-stops-waiting-on-itself.md) | Lazy per-file loading is declined, and the index walk stops waiting on itself | Proposed (amends 0004; closes 0029's named gap) |
