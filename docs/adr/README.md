@@ -71,3 +71,4 @@ new one that supersedes it.
 | [0047](./0047-a-filter-operand-may-name-a-true-setter-and-the-system-says-which.md) | A filter operand may name a setter that is true, and the system says which | Accepted (completes 0030; applies 0005) |
 | [0048](./0048-a-leading-bang-on-a-filter-operand-negates-it-and-is-read-when-the-filter-is-evaluated.md) | A leading `!` on a filter operand negates it, and is read when the filter is evaluated | Accepted (completes 0030; builds on 0005, 0012, 0047) |
 | [0049](./0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md) | A character records which publications it is offered, and that narrows offers only | Accepted (builds on 0012, 0028) |
+| [0050](./0050-an-update-check-asks-every-cached-file-and-a-refresh-keeps-what-it-cannot-reach.md) | An update check asks every cached file, and a refresh keeps what it cannot reach | Proposed (amends 0029) |
