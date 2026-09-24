@@ -16,9 +16,11 @@
  * | `<input>` / `<appearance>`  | `freeform`            | the rules never read it          |
  * | `<display-properties>` b64  | `assets/portrait.png` | bytes, never base64 (ADR 0007)   |
  * | `<sources><restricted>`     | inverted, then thrown | a blocklist is the wrong keeping |
- * | `id=` nodes, `<sum>`, `<magic>` | **nothing**       | derived; re-derived instead      |
+ * | `<magic>` `prepared=` flags  | `prepared`            | a chosen list has no formula (ADR 0046) |
+ * | `id=` nodes, `<sum>`, the rest of `<magic>` | **nothing** | derived; re-derived instead |
  *
- * The last row is the interesting one. Aurora wrote its own answer into every save, and the
+ * The last row is the interesting one. (The one exception in `<magic>` is the `prepared` flag: which spells
+ * a player put on a list is an input, and for a whole-list preparer it is written nowhere else.) Aurora wrote its own answer into every save, and the
  * temptation is to import it and be sure of matching. Importing it would mean a character that
  * can never be corrected when content is fixed, and would throw away the one free oracle this
  * project gets (ADR 0008). So the derived blocks are read, kept out of the character, and used
@@ -139,6 +141,8 @@ export function importAuroraCharacter(
   character.rolls = toRolls(save, advancement);
   const inventory = toInventory(save, options.index, known, diagnostics);
   if (inventory) character.inventory = inventory;
+  const prepared = toPrepared(save);
+  if (prepared) character.prepared = prepared;
   character.freeform = toFreeform(save);
 
   const { assets, assetRefs } = extractPortrait(save, options.portraitName ?? 'portrait', diagnostics);
@@ -147,6 +151,29 @@ export function importAuroraCharacter(
   character.sources = toSourceAllowlist(save, options, diagnostics);
 
   return { character, generated, assets, extraIds: [...new Set(save.sum)], diagnostics };
+}
+
+/**
+ * The spells a save flags `prepared="true"`, per casting block, keyed by the block's lowercased name — ADR 0046.
+ *
+ * Every flagged spell is copied, the always-prepared ones included. Aurora sets the flag on a domain or
+ * oath spell content grants as well as on a player's pick, and telling them apart needs the derivation,
+ * which the importer never runs. The engine ignores a recorded id it also finds always prepared, so
+ * nothing counts twice. Duplicates are dropped (one sample lists a spell twice), order is the save's,
+ * cantrips are never flagged, and a save with no flag gets no field, exactly the character it got before.
+ */
+function toPrepared(save: AuroraSave): Record<string, ElementId[]> | undefined {
+  const out: Record<string, ElementId[]> = {};
+  for (const block of save.magic) {
+    const key = block.name.trim().toLowerCase();
+    if (!key) continue;
+    for (const spell of block.spells) {
+      if (!spell.prepared) continue;
+      const list = (out[key] ??= []);
+      if (!list.includes(spell.id)) list.push(spell.id);
+    }
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 /**

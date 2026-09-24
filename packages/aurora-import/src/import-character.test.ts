@@ -486,3 +486,39 @@ test('each class of a multiclass save keeps its own dice, filed under the charac
     'hp:level:4': 4,
   });
 });
+
+const MAGIC = `<character version="1.0.3">
+  <build>
+    <elements level-count="6"><element type="Level" name="1" id="ID_LEVEL_1" /></elements>
+    <magic>
+      <spellcasting name="Cleric" ability="Wisdom" source="ID_SC_CLERIC">
+        <slots s1="4" s2="3" s3="3" s4="0" s5="0" s6="0" s7="0" s8="0" s9="0" />
+        <cantrips><spell name="Guidance" level="0" id="ID_SPELL_GUIDANCE" /></cantrips>
+        <spells>
+          <spell name="Bless" level="1" id="ID_SPELL_BLESS" prepared="true" always-prepared="true" known="true" />
+          <spell name="Bane" level="1" id="ID_SPELL_BANE" />
+          <spell name="Healing Word" level="1" id="ID_SPELL_HEALING_WORD" prepared="true" />
+          <spell name="Healing Word" level="1" id="ID_SPELL_HEALING_WORD" prepared="true" />
+        </spells>
+      </spellcasting>
+      <spellcasting name="Eldritch Knight" ability="Intelligence" source="ID_SC_EK">
+        <slots s1="2" s2="0" s3="0" s4="0" s5="0" s6="0" s7="0" s8="0" s9="0" />
+        <spells><spell name="Shield" level="1" id="ID_SPELL_SHIELD" known="true" /></spells>
+      </spellcasting>
+    </magic>
+  </build>
+</character>`;
+
+test('a prepared flag becomes the recorded list of its block, and nothing else in <magic> does — ADR 0046', () => {
+  const { character } = importAuroraCharacter(parseAuroraSave(MAGIC), { index: index() });
+  // Keyed by the block's lowercased name, in the save's order, once each, and the always-prepared
+  // spell is copied too: telling it apart is the derivation's job and the importer never runs one.
+  assert.deepEqual(character.prepared, { cleric: ['ID_SPELL_BLESS', 'ID_SPELL_HEALING_WORD'] });
+});
+
+test('a save that flags nothing gets no prepared field at all', () => {
+  const { character } = importAuroraCharacter(parseAuroraSave(SAVE), { index: CONTENT });
+  assert.equal('prepared' in character, false);
+  const known = MAGIC.replace(/ prepared="true"/g, '');
+  assert.equal('prepared' in importAuroraCharacter(parseAuroraSave(known), { index: index() }).character, false);
+});
