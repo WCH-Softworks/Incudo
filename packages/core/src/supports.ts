@@ -9,6 +9,7 @@
  *   "ID_A|ID_B"                  -> bare element ids are legal operands too
  *   "0"                          -> a setter's value is an operand too     (ADR 0030)
  *   "$(spellcasting:list), 0"    -> $(...) expands to a sub-expression before matching
+ *   "Artificer Infusion, !TCOE Base" -> a leading `!` on an operand negates it   (ADR 0048)
  *
  * The `$(...)` form is the ugliest corner of the Aurora format and the usual place a
  * naive importer breaks: the filter is not knowable until the character is being built,
@@ -198,6 +199,12 @@ export function supportsInterpolations(
   return into;
 }
 
+/** Whether the candidate answers to one operand: a tag, its own id, or the value of one of its setters. */
+function hasOperand(operand: string, ctx: SupportsContext): boolean {
+  const tag = operand.toLowerCase();
+  return ctx.tags.has(tag) || ctx.id === operand || (ctx.setterValues?.has(tag) ?? false);
+}
+
 export function matchesSupports(
   expr: SupportsExpr | undefined,
   ctx: SupportsContext,
@@ -210,10 +217,14 @@ export function matchesSupports(
     case 'or':
       return expr.children.some((c) => matchesSupports(c, ctx, depth));
     case 'tag': {
-      const tag = expr.tag.toLowerCase();
-      return (
-        ctx.tags.has(tag) || ctx.id === expr.tag || (ctx.setterValues?.has(tag) ?? false)
-      );
+      // A leading `!` negates one operand — ADR 0048. Read here and not in the parser, on purpose: a `.incu`
+      // embeds *parsed* elements, so a parse-time reading would leave every character saved before it with the
+      // literal tag `!TCOE Base` that nothing carries (the same reason `:half` is read where a reference is
+      // evaluated, ADR 0046). A lone `!` is still a literal tag.
+      if (expr.tag.length > 1 && expr.tag.startsWith('!')) {
+        return !hasOperand(expr.tag.slice(1).trim(), ctx);
+      }
+      return hasOperand(expr.tag, ctx);
     }
     case 'interpolate': {
       if (depth >= MAX_INTERPOLATION_DEPTH) return false;

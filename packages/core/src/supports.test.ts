@@ -146,3 +146,38 @@ test('the interpolations an expression carries are reported, parenthesised or no
     ['spellcasting:list', 'spellcasting:slots'],
   );
 });
+
+// --- negation (ADR 0048) --------------------------------------------------------------------
+
+test('a leading ! negates one operand, and the rest of the filter still applies', () => {
+  const expr = parseSupports('Artificer Infusion, !TCOE Base');
+  assert.equal(matchesSupports(expr, candidate(['Artificer Infusion'])), true);
+  assert.equal(matchesSupports(expr, candidate(['Artificer Infusion', 'ERLW Version'])), true);
+  assert.equal(matchesSupports(expr, candidate(['Artificer Infusion', 'TCOE Base'])), false, 'the negated tag excludes');
+  assert.equal(matchesSupports(expr, candidate(['TCOE Base'])), false);
+  assert.equal(matchesSupports(expr, candidate([])), false, 'a negation alone does not satisfy the positive operand');
+});
+
+test('a negated operand is a tag, an id or a setter value, like a positive one', () => {
+  assert.equal(matchesSupports(parseSupports('!Wisdom'), candidate([], { setters: ['Wisdom'] })), false);
+  assert.equal(matchesSupports(parseSupports('!Wisdom'), candidate([], { setters: ['Dexterity'] })), true);
+  assert.equal(matchesSupports(parseSupports('!ID_A'), candidate([], { id: 'ID_A' })), false);
+  assert.equal(matchesSupports(parseSupports('!ID_A'), candidate([], { id: 'ID_B' })), true);
+  assert.equal(matchesSupports(parseSupports('!  spaced'), candidate(['Spaced'])), false, 'space after the ! is ignored');
+});
+
+test('a negation inside a group and beside an or', () => {
+  const expr = parseSupports('(ID_SIMPLE||ID_MARTIAL),!ID_TWOHANDED');
+  assert.equal(matchesSupports(expr, candidate(['ID_TWOHANDED'], { id: 'ID_SIMPLE' })), false, 'the tag by id form is a tag too');
+  assert.equal(matchesSupports(expr, candidate([], { id: 'ID_SIMPLE' })), true);
+  assert.equal(matchesSupports(expr, candidate(['ID_TWOHANDED'], { id: 'ID_MARTIAL' })), false);
+  assert.equal(matchesSupports(expr, candidate([], { id: 'ID_OTHER' })), false);
+  const either = parseSupports('!A||!B');
+  assert.equal(matchesSupports(either, candidate(['A', 'B'])), false);
+  assert.equal(matchesSupports(either, candidate(['A'])), true);
+});
+
+test('a lone ! is still a literal tag, and a ! inside a word is not a negation', () => {
+  assert.equal(matchesSupports(parseSupports('!'), candidate(['!'])), true);
+  assert.equal(matchesSupports(parseSupports('Hi!'), candidate(['Hi!'])), true);
+});
