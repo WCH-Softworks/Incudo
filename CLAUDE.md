@@ -813,8 +813,9 @@ deliberately **not** fixed:
   save written before it holding the literal `!TCOE Base`. It negates one operand only: a `!` before a group
   or a `$(…)` is not a negation (0 in the corpus). Samples 01 and 03 (the Artificers) pick ten elements through
   negated selects and all pass; `negation-filter.test.ts` reads each negated select's list from the elements and
-  fails without the change. Not measured: the ten infusion selects are level-gated and were not open for the test's
-  character. ~~`Ritual` — 17 uses~~ — **read** (ADR 0047): a spell carries
+  fails without the change. Driven in the Tauri window on Windows (2026-09-24, not macOS or Linux): a level 2 Tasha's Artificer is offered 11
+  infusions and none of Eberron's, the level 3 specialist 5, and a Dragonmark's ability increase leaves out the ability
+  its mark fixes. Not measured: the infusion selects that open at level 6 and above. ~~`Ritual` — 17 uses~~ — **read** (ADR 0047): a spell carries
   `<set name="isRitual">true</set>`, and a kind's `setterTags` (`systems/dnd5e/system.json`) says that a
   setter holding `true` is the tag `Ritual` *for a select's filter only*. It is a named pair and not a rule
   on purpose: one setter in the corpus needs it (the other true-setter names that are filter operands,
@@ -822,7 +823,9 @@ deliberately **not** fixed:
   added to the element or written into a save, and a second entry would be the evidence for a general rule.
   Second witness: two samples pick spells through a `Ritual` filter (06's Ritual Caster feat, 30's 2024
   Pact of the Tome) and all four are `isRitual` true. `aurora verify` cannot see it; `ritual-filter.test.ts`
-  holds each of the 17 selects to a list read straight from the spells, and removing the declaration empties them all.
+  holds each of the 17 selects to a list read straight from the spells, and removing the declaration empties them all. Driven in the Tauri window on Windows
+  (2026-09-24): a Wizard 4's Ritual Caster feat is offered 17 first-level rituals and nothing else, and two picks settle and
+  survive a save, restart and reopen with no source.
   ~~`Class` — 15 uses, matching no tag
   on any of the 14,316 elements~~ — a tag on the six `ID_INTERNAL_ASI_*` elements the overlay
   supplies, which is what those 15 filters select. The shell shows "No candidate in the loaded

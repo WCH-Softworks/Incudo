@@ -69,9 +69,14 @@ live).
   change the first and the third tests fail, and they pass with it.
 - `supports.test.ts` covers a negated tag, id and setter value, a negation inside a group and beside `||`, a lone
   `!`, and `!` inside a word.
-- **Not verified.** No Aurora number vouches for a candidate list. The builder screen was not driven in the
-  running app, and an Artificer's infusion list was not read through the builder at level 2. macOS and Linux were
-  not touched by anything here.
+- **Not verified.** No Aurora number vouches for a candidate list. **Driven in the Tauri window on Windows
+  (2026-09-24):** a Tasha's Artificer at level 2 was offered 11 infusions for "Artificer Infusion (Level 2)", nine
+  of Tasha's own and two Unearthed Arcana ones (Armor of Tools, and a second Mind Sharpener), and none of the 22
+  Eberron ones, which carry `ERLW Version`; at level 3 the Artificer Specialist offered five (Alchemist, Armorer,
+  Artillerist and Battle Smith from Tasha's, and the UA Armorer), and none of the Eberron three. A human Mark of
+  Making offered five Dragonmark ability increases and not Intelligence, which the mark fixes at +2; the
+  Charisma pick came out as +1, and all three saved characters reopened with their picks after a restart with no
+  source enabled. macOS and Linux were not driven.
 
 ## Consequences
 

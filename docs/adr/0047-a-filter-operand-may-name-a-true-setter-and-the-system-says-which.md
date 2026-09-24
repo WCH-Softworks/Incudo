@@ -119,8 +119,15 @@ Against the official corpus at `c28ce6c` and the thirty samples:
   and nothing more.
 - **Not verified.** `aurora verify` cannot see a candidate list, so no Aurora number vouches for the lists above;
   they are as right as the reading that isRitual means ritual. The six 2024 Ritual Caster slots from the third on
-  are gated on proficiency and were not open for the test's character, so their lists are unmeasured. The builder
-  screen was not driven in the running app. macOS and Linux were not touched by anything here.
+  are gated on proficiency and were not open for the test's character, so their lists are unmeasured.
+  **Driven in the Tauri window on Windows (2026-09-24), real keys for Ctrl+1/N/S:** a 2014 Wizard 4 with the Ritual
+  Caster feat taken at the level-4 improvement, Wizard chosen as its list, was offered 17 first-level spells, every
+  one a ritual (Alarm, Comprehend Languages, Detect Magic, Find Familiar, Identify, Illusory Script, Tenser's
+  Floating Disk, Unseen Servant in both editions, and the UA Guiding Hand) and no other; two picks settled, one
+  after the other, and the list fell to 16 after the first. Saved, the app restarted with no source enabled, and
+  reopened, both spells were still chosen. Reopened with no sources, the slot's alternatives are only what the save
+  embeds, which is ADR 0012's design (a save holds what it uses), not the whole ritual list. The 2024 slots and macOS
+  and Linux were not driven.
 
 ## Consequences
 

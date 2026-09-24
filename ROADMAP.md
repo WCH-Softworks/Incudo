@@ -800,9 +800,10 @@ before any code, both touching a public API:
       Alarm and accepts them. `ritual-filter.test.ts` seeds every Ritual select in the corpus and compares what it
       offers with a list read straight from the spells, and removing the declaration empties every one. Every table
       in `aurora-oracle.test.ts` is identical to the base commit (`INCUDO_ORACLE_SNAPSHOT` on it, `INCUDO_ORACLE_BASELINE`
-      on the change, and a deliberately altered baseline fails). **Not verified:** `aurora verify` cannot see a
-      candidate list, so the evidence is the corpus-read expectation and perturbation; not driven in the running app;
-      six of the eight 2024 Ritual Caster slots (the 3rd to the 8th) are gated on proficiency and were not open for the
+      on the change, and a deliberately altered baseline fails). **Driven in the Tauri window (Windows, 2026-09-24):**
+      a Wizard 4's Ritual Caster feat offered 17 first-level rituals and nothing else, and two picks settled and
+      survived a save, restart and reopen with no source. **Not verified:** `aurora verify` cannot see a
+      candidate list, so the evidence is the corpus-read expectation and perturbation; six of the eight 2024 Ritual Caster slots (the 3rd to the 8th) are gated on proficiency and were not open for the
       test's fresh character; macOS and Linux untouched.
 - [x] **A leading `!` on a filter operand is read** ([ADR 0048](./docs/adr/0048-a-leading-bang-on-a-filter-operand-negates-it-and-is-read-when-the-filter-is-evaluated.md)).
       The last of ADR 0030's unread operands: 18 `supports=` attributes, 14 select rules (the Artificer's
@@ -812,9 +813,10 @@ before any code, both touching a public API:
       written before it are fixed without a re-save. Two samples pick ten elements through such selects and all
       pass; `negation-filter.test.ts` compares each select with a list read straight from the elements, and
       fails without the change. Oracle tables identical to the base (snapshot and baseline, and a doctored baseline
-      fails). **Not verified:** the ten infusion selects are level-gated and were not open for the test's fresh
-      character, so their offered lists are unmeasured; nothing was driven in the running app; macOS and Linux
-      untouched.
+      fails). **Driven in the Tauri window (Windows, 2026-09-24):** the infusion list at level 2 (11 offered, none of
+      Eberron's), the specialist list at level 3 (5), and a Dragonmark's ability increase without the ability the
+      mark fixes; ADR 0048 has the detail. **Not verified:** the ten infusion selects were seen at level 2 only, and
+      macOS and Linux untouched.
 
 ### Where this phase actually stands
 
