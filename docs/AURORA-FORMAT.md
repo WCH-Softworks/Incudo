@@ -351,8 +351,9 @@ below it. Incudo resolves both through a character kind's `blockFilters`, so the
 
 #### Still unread, and reported rather than guessed at
 
-- **`!` negation inside a filter** — 13 uses (`Artificer Infusion, !TCOE Base`). Read as a
-  literal tag, so those nine selects offer an empty list. Unambiguous; simply not done yet.
+- **~~`!` negation inside a filter~~** — 18 attributes, 14 selects (`Artificer Infusion, !TCOE Base`).
+  **Read since ADR 0048**: a leading `!` on one operand negates it, evaluated in `matchesSupports` and not in
+  the parser. A `!` before a group or an interpolation is not read (none exists).
 - **~~`Ritual`~~** — 17 uses. A spell carries `<set name="isRitual">true</set>` and no element carries a
   `Ritual` tag. **Read since ADR 0047**: a kind's `setterTags` names the pair `isRitual` / `Ritual`, for a
   select's filter only. Two saves that pick spells through such a filter give a second witness (all four picks

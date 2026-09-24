@@ -805,11 +805,16 @@ deliberately **not** fixed:
   every write, because the collision suffix reads the current listing — so importing a set of real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
   above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the
   summary cache ADR 0027 names.
-- **One `supports` operand is still unread, and is reported rather than guessed at**
-  (ADR 0030, ADR 0005). There were three; `Class` was never an operand problem (see the
-  improvement entry above), and `Ritual` is read (ADR 0047, below). `!` **negation** inside a filter — 13 uses, read as a literal tag, so
-  `Artificer Infusion, !TCOE Base` offers an empty list; unambiguous and simply not done, and
-  the obvious next one. ~~`Ritual` — 17 uses~~ — **read** (ADR 0047): a spell carries
+- **No `supports` operand is unread any more** (ADR 0030, ADR 0005). There were three; `Class` was never an
+  operand problem (see the improvement entry above), and `Ritual` and `!` are read (ADR 0047, ADR 0048).
+  ~~`!` **negation** inside a filter~~ — **read** (ADR 0048): a tag operand starting with `!` holds when the
+  candidate does not answer to the rest (a tag, its id, or a setter value). It is read in `matchesSupports` and
+  **not in the parser**, on purpose: a `.incu` embeds parsed elements, so a parse-time reading would leave every
+  save written before it holding the literal `!TCOE Base`. It negates one operand only: a `!` before a group
+  or a `$(…)` is not a negation (0 in the corpus). Samples 01 and 03 (the Artificers) pick ten elements through
+  negated selects and all pass; `negation-filter.test.ts` reads each negated select's list from the elements and
+  fails without the change. Not measured: the ten infusion selects are level-gated and were not open for the test's
+  character. ~~`Ritual` — 17 uses~~ — **read** (ADR 0047): a spell carries
   `<set name="isRitual">true</set>`, and a kind's `setterTags` (`systems/dnd5e/system.json`) says that a
   setter holding `true` is the tag `Ritual` *for a select's filter only*. It is a named pair and not a rule
   on purpose: one setter in the corpus needs it (the other true-setter names that are filter operands,
@@ -821,7 +826,7 @@ deliberately **not** fixed:
   ~~`Class` — 15 uses, matching no tag
   on any of the 14,316 elements~~ — a tag on the six `ID_INTERNAL_ASI_*` elements the overlay
   supplies, which is what those 15 filters select. The shell shows "No candidate in the loaded
-  content matches this choice" for the one above, which is honest but not the whole truth.
+  content matches this choice" for what is left of these, which is honest but not the whole truth.
 - **~~There is no export.~~** Fixed (ADR 0038): "Save a copy…" writes the character on screen to a
   file the user picks. See the paragraph after the commands list above.
 - **An NPC or legendary creature has no way to set ability scores.** Both kinds declare a

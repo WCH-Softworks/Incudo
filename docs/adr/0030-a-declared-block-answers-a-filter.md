@@ -259,7 +259,7 @@ with, and they agree.
   in content nobody has written yet.
 - **Three constructs are still unread, and are reported here rather than guessed at**
   ([ADR 0005](./0005-aurora-import.md)):
-  - **`!` negation in a filter** — 13 uses (`Artificer Infusion, !TCOE Base`, `Ability Score
+  - **`!` negation in a filter** *(note, 2026-09-23: read since [ADR 0048](./0048-a-leading-bang-on-a-filter-operand-negates-it-and-is-read-when-the-filter-is-evaluated.md))* — 13 uses (`Artificer Infusion, !TCOE Base`, `Ability Score
     Increase,Dragonmark,!Wisdom`). `parseAtom` reads `!X` as a literal tag, which matches
     nothing, so those nine selects offer an empty list. Unambiguous and cheap, and left out only
     because no spell select uses one; it is the obvious next thing.

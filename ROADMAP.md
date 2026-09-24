@@ -804,6 +804,17 @@ before any code, both touching a public API:
       candidate list, so the evidence is the corpus-read expectation and perturbation; not driven in the running app;
       six of the eight 2024 Ritual Caster slots (the 3rd to the 8th) are gated on proficiency and were not open for the
       test's fresh character; macOS and Linux untouched.
+- [x] **A leading `!` on a filter operand is read** ([ADR 0048](./docs/adr/0048-a-leading-bang-on-a-filter-operand-negates-it-and-is-read-when-the-filter-is-evaluated.md)).
+      The last of ADR 0030's unread operands: 18 `supports=` attributes, 14 select rules (the Artificer's
+      infusions and specialist in Eberron and Tasha's, the Dragonmark ability increases, Bladesinging's weapon
+      training) offered an empty list because `!TCOE Base` was a tag nothing carries. It negates one operand, a
+      tag, an id or a setter value, and is read where the filter is evaluated and not in the parser, so saves
+      written before it are fixed without a re-save. Two samples pick ten elements through such selects and all
+      pass; `negation-filter.test.ts` compares each select with a list read straight from the elements, and
+      fails without the change. Oracle tables identical to the base (snapshot and baseline, and a doctored baseline
+      fails). **Not verified:** the ten infusion selects are level-gated and were not open for the test's fresh
+      character, so their offered lists are unmeasured; nothing was driven in the running app; macOS and Linux
+      untouched.
 
 ### Where this phase actually stands
 
