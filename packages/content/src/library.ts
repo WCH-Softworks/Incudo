@@ -76,7 +76,11 @@ export class ContentLibrary {
     options: LoadOptions = {},
   ): Promise<LoadReport> {
     const maxDepth = options.maxDepth ?? 8;
-    const root = await source.loadIndex(indexUrl);
+    // Framed here, as a nested index and a file are below: a source's layers and its fetcher say
+    // what went wrong, and only this names the address.
+    const root = await source.loadIndex(indexUrl).catch((error: unknown) => {
+      throw new Error(`Could not load ${indexUrl}: ${(error as Error).message}`);
+    });
     this.indexes.push(root);
 
     // Before the files, not after. Aurora's app materializes 51 elements that no XML file

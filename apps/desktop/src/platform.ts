@@ -95,12 +95,12 @@ export class DesktopFetcher implements Fetcher {
         throw error instanceof Error ? error : new Error(String(error));
       });
       if (reply.status === 304) return { url, text: '', notModified: true };
-      if (reply.status < 200 || reply.status > 299) throw new Error(`HTTP ${reply.status} for ${url}`);
+      if (reply.status < 200 || reply.status > 299) throw new Error(`HTTP ${reply.status}`);
       return { url, text: reply.text, etag: reply.etag ?? undefined };
     }
 
     const response = await globalThis.fetch(url, { signal: opts?.signal });
-    if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return { url, text: await response.text() };
   }
 }

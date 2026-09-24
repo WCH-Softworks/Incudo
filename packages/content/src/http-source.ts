@@ -78,7 +78,7 @@ export class HttpContentSource implements ContentSource {
 
     const result = await this.fetcher.fetchText(url, etag !== undefined && cached !== null ? { etag } : undefined);
     if (result.notModified) {
-      if (cached === null) throw new Error(`${url} was reported unchanged, and there is no cached copy of it`);
+      if (cached === null) throw new Error('Reported unchanged, and there is no cached copy of it');
       this.stats.unchanged++;
       return cached;
     }

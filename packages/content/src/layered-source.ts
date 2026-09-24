@@ -20,11 +20,11 @@ export class LayeredContentSource implements ContentSource {
   }
 
   async loadIndex(url: string): Promise<ContentIndex> {
-    return this.firstSuccess((layer) => layer.loadIndex(url), `index ${url}`);
+    return this.firstSuccess((layer) => layer.loadIndex(url));
   }
 
   async loadFile(ref: FileRef): Promise<ElementFile> {
-    return this.firstSuccess((layer) => layer.loadFile(ref), `file ${ref.url}`);
+    return this.firstSuccess((layer) => layer.loadFile(ref));
   }
 
   async checkForUpdates(index: ContentIndex): Promise<UpdateStatus> {
@@ -32,18 +32,20 @@ export class LayeredContentSource implements ContentSource {
     return this.networkLayer.checkForUpdates(index);
   }
 
-  private async firstSuccess<T>(
-    attempt: (layer: ContentSource) => Promise<T>,
-    what: string,
-  ): Promise<T> {
+  /**
+   * Every layer's reason, in the order they were tried, and nothing else. The caller names the
+   * address (ContentLibrary: "Could not load <url>: …"), and the layers of one source share its id,
+   * so a label per layer or a headline here repeated the URL up to six times in one message.
+   */
+  private async firstSuccess<T>(attempt: (layer: ContentSource) => Promise<T>): Promise<T> {
     const failures: string[] = [];
     for (const layer of this.layers) {
       try {
         return await attempt(layer);
       } catch (error) {
-        failures.push(`${layer.id}: ${(error as Error).message}`);
+        failures.push((error as Error).message);
       }
     }
-    throw new Error(`Could not load ${what}. Tried ${failures.join('; ')}`);
+    throw new Error(failures.join('; '));
   }
 }

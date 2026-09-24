@@ -73,7 +73,7 @@ class Host implements Fetcher {
   async fetchText(requested: string, opts?: FetchOptions): Promise<FetchResult> {
     if (this.offline || this.failing.has(requested)) throw new Error(`unreachable: ${requested}`);
     const text = this.files.get(requested);
-    if (text === undefined) throw new Error(`HTTP 404 for ${requested}`);
+    if (text === undefined) throw new Error('HTTP 404');
     if (opts?.etag !== undefined) this.sentEtags.push(requested);
     const etag = this.etagOf(text);
     if (this.conditional && opts?.etag === etag) {

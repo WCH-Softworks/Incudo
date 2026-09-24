@@ -65,7 +65,7 @@ function source(tree: Tree, delay: (url: string) => number = () => 0): { source:
     try {
       const ms = delay(url);
       await (ms ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve());
-      if (failing.has(url)) throw new Error(`HTTP 404 for ${url}`);
+      if (failing.has(url)) throw new Error('HTTP 404');
       return answer();
     } finally {
       log.inFlight--;
@@ -243,6 +243,6 @@ test('an index that fails ahead of the queue is reported when the queue reaches 
     failing: ['gone.index'],
   };
   const { seen } = await load(tree, (url) => (url === 'slow.xml' ? 30 : 0));
-  assert.deepEqual(seen.diagnostics, ['error: Could not load gone.index: HTTP 404 for gone.index']);
+  assert.deepEqual(seen.diagnostics, ['error: Could not load gone.index: HTTP 404']);
   assert.deepEqual(seen.elements.map(([id]) => id), ['SLOW', 'FINE']);
 });

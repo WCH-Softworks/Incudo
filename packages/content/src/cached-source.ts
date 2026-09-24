@@ -17,7 +17,8 @@ import {
 export class CacheMissError extends Error {
   readonly url: string;
   constructor(url: string) {
-    super(`Not in the local cache: ${url}`);
+    // The address is `url`, and whoever reports the miss names it; the message says what happened.
+    super('Not in the local cache');
     this.name = 'CacheMissError';
     this.url = url;
   }

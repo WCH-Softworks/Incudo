@@ -93,15 +93,15 @@ async fn fetch_content_text(
     url: String,
     etag: Option<String>,
 ) -> Result<TextReply, String> {
-    let parsed = reqwest::Url::parse(&url).map_err(|error| format!("Not a URL: {url}: {error}"))?;
+    let parsed = reqwest::Url::parse(&url).map_err(|error| format!("Not a URL: {error}"))?;
     if parsed.scheme() != "https" {
-        return Err(format!("Only https content is fetched: {url}"));
+        return Err("Only https content is fetched".to_owned());
     }
     let mut request = client.0.get(parsed);
     if let Some(etag) = etag {
         request = request.header(reqwest::header::IF_NONE_MATCH, etag);
     }
-    let response = request.send().await.map_err(|error| format!("{url}: {error}"))?;
+    let response = request.send().await.map_err(describe)?;
     let status = response.status().as_u16();
     let etag = response
         .headers()
@@ -111,9 +111,15 @@ async fn fetch_content_text(
     let text = if status == 304 {
         String::new()
     } else {
-        response.text().await.map_err(|error| format!("{url}: {error}"))?
+        response.text().await.map_err(describe)?
     };
     Ok(TextReply { status, text, etag })
+}
+
+/// What went wrong, without the address: every caller names the URL it asked for, and reqwest's
+/// own message would name it a second time ("error sending request for url (…)").
+fn describe(error: reqwest::Error) -> String {
+    error.without_url().to_string()
 }
 
 pub fn run() {

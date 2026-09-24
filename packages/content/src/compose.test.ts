@@ -165,6 +165,47 @@ test('an update check that cannot reach the network says so instead of guessing'
   assert.match((status as { reason: string }).reason, /offline/);
 });
 
+/**
+ * A fetcher that answers the index and refuses everything else, the way the app's fetchers do:
+ * its message says what went wrong and not where, because whoever reports it names the address.
+ */
+class RefusingFetcher extends CountingFetcher {
+  refuseIndex = false;
+  override async fetchText(url: string): Promise<FetchResult> {
+    if (this.refuseIndex || !url.endsWith('.index')) throw new Error('connection refused');
+    return super.fetchText(url);
+  }
+}
+
+const occurrences = (text: string, part: string): number => text.split(part).length - 1;
+
+test('a source that cannot be loaded names its address once, and says why each layer failed', async () => {
+  const fetcher = new RefusingFetcher();
+  fetcher.refuseIndex = true;
+  const source = composeSource(configured(), { fetcher, storage: new MemoryStorage() });
+
+  // It read "Could not load index X. Tried X: Not in the local cache: X; X: X: … (X)".
+  await assert.rejects(new ContentLibrary().loadSource(source, INDEX_URL), (error: Error) => {
+    assert.equal(occurrences(error.message, INDEX_URL), 1, error.message);
+    assert.match(error.message, /Not in the local cache/);
+    assert.match(error.message, /connection refused/);
+    return true;
+  });
+});
+
+test('a file that cannot be loaded names its address once', async () => {
+  const library = new ContentLibrary();
+  await library.loadSource(
+    composeSource(configured(), { fetcher: new RefusingFetcher(), storage: new MemoryStorage() }),
+    INDEX_URL,
+  );
+  const fileUrl = 'https://example.test/widgets.xml';
+  const [diagnostic] = library.diagnostics.filter((d) => d.level === 'error');
+  assert.ok(diagnostic, 'the refused file is reported');
+  assert.equal(occurrences(diagnostic.message, fileUrl), 1, diagnostic.message);
+  assert.match(diagnostic.message, /connection refused/);
+});
+
 test('nothing cached yet is unknown rather than current', async () => {
   const status = await checkSourceForUpdates(configured(), {
     fetcher: new CountingFetcher(),

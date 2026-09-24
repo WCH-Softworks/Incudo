@@ -131,7 +131,8 @@ async function checkEveryCachedFile(
       if (!result.notModified) changed++;
     } catch (error) {
       unanswered++;
-      firstFailure ??= (error as Error).message;
+      // A fetcher's message says what went wrong, not where, so the address is added here.
+      firstFailure ??= `${url}: ${(error as Error).message}`;
     }
   });
 
