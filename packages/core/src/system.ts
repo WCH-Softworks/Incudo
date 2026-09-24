@@ -29,6 +29,12 @@ export interface ElementTypeDef {
   browsable?: boolean;
   /** The user picks this directly during the build, rather than receiving it via a grant. */
   selectable?: boolean;
+  /**
+   * An element of this type is a publication, and its `name` is the string every other element carries in
+   * `source` — ADR 0049. A character may be offered only some publications (`Character.publications`); an
+   * element whose `source` names no loaded publication is always offered.
+   */
+  publication?: boolean;
 }
 
 export type StatValueKind = 'number' | 'string';

@@ -198,6 +198,16 @@ export interface Character {
    * derivation seeds: Aurora's own `<sum>` does not hold them either.
    */
   prepared?: Record<string, ElementId[]>;
+  /**
+   * The publications this character is offered, by name, in the order chosen — ADR 0049. **Absent means every
+   * publication**, which is what a new character starts with and what every save written before this has.
+   *
+   * It narrows what the builder offers and nothing else: an element the character already holds from a
+   * publication outside the list stays and derives exactly as before. An allowlist rather than a blocklist, so a
+   * book published after the table chose is not offered until someone adds it. Which element type is a
+   * publication is the system's to say (`ElementTypeDef.publication`); a name no loaded publication has is kept.
+   */
+  publications?: string[];
   createdAt?: string;
   updatedAt?: string;
 }

@@ -121,7 +121,11 @@
         "plural": { "type": "string" },
         "children": { "type": "array", "items": { "type": "string" } },
         "browsable": { "type": "boolean" },
-        "selectable": { "type": "boolean" }
+        "selectable": { "type": "boolean" },
+        "publication": {
+          "type": "boolean",
+          "description": "An element of this type is a publication, a book, and its name is the string other elements carry in their source (ADR 0049). A character may be offered only some publications. An element whose source names no loaded publication is always offered."
+        }
       }
     },
 

@@ -94,6 +94,13 @@ import {
   type HitPointRecord,
   type HitPointState,
 } from './hitpoints.ts';
+import {
+  offeredIndex,
+  publicationList,
+  setPublications as recordPublications,
+  togglePublication,
+  type PublicationList,
+} from './publications.ts';
 
 /**
  * One thing the character still has to decide.
@@ -250,6 +257,11 @@ export interface BuilderState {
    * on it, and how far over that is (ADR 0046). Empty for a character with no such block.
    */
   preparation: PreparationRow[];
+  /**
+   * Every loaded publication and whether this character is offered it (ADR 0049), read from everything
+   * loaded rather than from what is offered, so a switched-off book is still listed to switch back on.
+   */
+  publications: PublicationList;
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -300,7 +312,10 @@ export class CharacterBuilder {
   private character: Character;
   private readonly system: GameSystem;
   private readonly kind: ResolvedCharacterKind;
-  private readonly elements: ElementIndex;
+  /** Everything loaded. The publication list reads this; everything else reads {@link elements}. */
+  private readonly content: ElementIndex;
+  /** The offered view of `content` and the list it was built for — rebuilt when the list changes. */
+  private offered: { list: string[] | undefined; index: ElementIndex } | undefined;
   private readonly steps: BuildStepDef[];
   private focusedId: string | undefined;
   private readonly listeners = new Set<() => void>();
@@ -331,7 +346,7 @@ export class CharacterBuilder {
     // The build flow comes from the kind, not the system: a monster stat block and a PC
     // sheet share nothing but the stats underneath (ADR 0009).
     this.kind = resolveCharacterKind(system, character.kind);
-    this.elements = elements;
+    this.content = elements;
     // Sorted once: `requires` is a property of the definition, not of the character.
     this.steps = orderBuildSteps(this.kind.buildSteps);
 
@@ -344,6 +359,19 @@ export class CharacterBuilder {
       this.multiclass = { stepId: step.id, config, classStepId: classStep?.id };
       break;
     }
+  }
+
+  /**
+   * What the builder offers from: the loaded content, narrowed to the character's publications (ADR 0049).
+   * Every read goes through here, the derivation included, and that is safe because the view answers `get`
+   * for every id and narrows only the lists a candidate is drawn from.
+   */
+  private get elements(): ElementIndex {
+    const list = this.character.publications;
+    if (!this.offered || this.offered.list !== list) {
+      this.offered = { list, index: offeredIndex(this.content, this.system, this.character) };
+    }
+    return this.offered.index;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -565,6 +593,22 @@ export class CharacterBuilder {
    */
   preparationOptionsFor = (blockKey: string): PreparedItem[] =>
     preparationOptions(this.getState().derived, this.elements, blockKey);
+
+  /**
+   * Offer this character only the publications named, or every one with `undefined` (ADR 0049). Nothing the
+   * character holds is removed: only what is offered beside it narrows.
+   */
+  setPublications = (publications: string[] | undefined): void => {
+    const next = recordPublications(this.character, publications);
+    if (next === this.character) return;
+    this.character = next;
+    this.invalidate();
+  };
+
+  /** Switch one publication on or off for this character, starting from every one when it has no list. */
+  offerPublication = (name: string, offered: boolean): void => {
+    this.setPublications(togglePublication(this.content, this.system, this.character, name, offered));
+  };
 
   /** Rename the character. An input like any other; nothing derives what a player calls them. */
   setName = (name: string): void => {
@@ -952,7 +996,10 @@ export class CharacterBuilder {
           stepId: step.id,
           label: step.label,
           chosen: [...answer.elementIds],
-          candidates,
+          // Including what is chosen, the contract every settled pick keeps. It is not always among
+          // what the step offers now: its book may have been switched off (ADR 0049), or its own
+          // requirements may have stopped holding, and the pane lists a slot's options from this array.
+          candidates: [...new Set([...candidates, ...answer.elementIds])],
           repeatable: [],
         });
         const rank = stepOrderIndex.get(step.id) ?? Number.MAX_SAFE_INTEGER;
@@ -1238,6 +1285,7 @@ export class CharacterBuilder {
       picks,
       declined,
       preparation: preparationRows(derived, this.elements),
+      publications: publicationList(this.content, this.system, this.character),
       focusedId: this.focusedId,
     };
   }

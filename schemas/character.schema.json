@@ -190,6 +190,12 @@
       }
     },
 
+    "publications": {
+      "type": "array",
+      "description": "The publications this character is offered, by name, in the order chosen (ADR 0049). Absent means every publication. It narrows what the builder offers and nothing the character already holds; an allowlist, so a book published later is not offered until it is added. An INPUT in the sense of ADR 0006. Optional and additive, so formatVersion does not move.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+
     "createdAt": { "type": "string" },
     "updatedAt": { "type": "string" }
   }
