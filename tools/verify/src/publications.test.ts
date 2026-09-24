@@ -48,11 +48,20 @@ function offered(state: BuilderState): Set<ElementId> {
   return ids;
 }
 
-/** The loaded publication names, lowercased, which is how the join reads them. */
+/** The loaded publications a character can be refused, lowercased, which is how the join reads them. */
 function books(index: ElementIndex, system: GameSystem): Set<string> {
+  const required = requiredBooks(index, system);
   return new Set(
-    publicationTypes(system).flatMap((type) => index.byType(type).map((element) => element.name.trim().toLowerCase())),
+    publicationTypes(system)
+      .flatMap((type) => index.byType(type).map((element) => element.name.trim().toLowerCase()))
+      .filter((name) => !required.has(name)),
   );
+}
+
+/** The publications every character is offered whatever it records. */
+function requiredBooks(index: ElementIndex, system: GameSystem): Set<string> {
+  const list = publicationList(index, system, createCharacter('dnd5e', 'pc', { progress: 1 }));
+  return new Set(list.rows.filter((row) => row.required).map((row) => row.name.trim().toLowerCase()));
 }
 
 test('a character offered one book is offered nothing from another, and everything that names no book', { skip: corpusSkip }, async (t) => {
@@ -61,6 +70,7 @@ test('a character offered one book is offered nothing from another, and everythi
   const index = await realElements();
   const known = books(index, system);
   assert.ok(known.size > 0, 'the 5e definition names a publication type and content fills it');
+  const required = requiredBooks(index, system);
 
   const list = publicationList(index, system, createCharacter('dnd5e', 'pc', { progress: 1 }));
   const handbook = list.rows.find((row) => row.name === 'Player’s Handbook');
@@ -86,13 +96,22 @@ test('a character offered one book is offered nothing from another, and everythi
   assert.deepEqual(noBook(after), noBook(before), 'what names no book is offered either way');
   assert.ok(after.size < before.size, 'the list narrowed what is offered');
 
+  // A required book is offered anyway. In the official corpus it holds every skill, so without it the
+  // wizard's two skills would offer nothing.
+  const fromRequired = [...after].filter((id) => required.has(sourceOf(id)));
+  if (required.size) assert.ok(fromRequired.length > 0, 'a required book is still offered');
+  const skills = narrowed.decisions.find((d) => d.label.startsWith('Skill Proficiency'));
+  assert.ok(skills && (skills.candidates?.length ?? 0) > 0, 'the wizard is still offered skills');
+
   // Nothing the character is changed: the class is still held and derives as it did.
   assert.deepEqual(summarize(narrowed.derived), summarize(everything.derived), 'the derivation is untouched');
 
   const spellbook = (state: BuilderState): number =>
     state.decisions.find((d) => d.label.startsWith('Spellbook'))?.candidates?.length ?? 0;
   const race = (state: BuilderState): number => state.decisions.find((d) => d.id === 'build/race')?.candidates?.length ?? 0;
-  t.diagnostic(`publications loaded: ${list.rows.length}, of which ${list.rows.filter((r) => r.elements > 0).length} hold content`);
+  t.diagnostic(
+    `publications loaded: ${list.rows.length}, of which ${list.rows.filter((r) => r.elements > 0).length} hold content and ${required.size} ${required.size === 1 ? 'is' : 'are'} required: ${[...list.rows].filter((r) => r.required).map((r) => r.name).join(', ')}`,
+  );
   t.diagnostic(`offered to a level 1 wizard: ${before.size} with every book, ${after.size} with the 2014 Player’s Handbook`);
   t.diagnostic(`races ${race(everything)} → ${race(narrowed)}, spellbook ${spellbook(everything)} → ${spellbook(narrowed)}`);
 });

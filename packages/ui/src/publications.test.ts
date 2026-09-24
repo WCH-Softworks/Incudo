@@ -46,7 +46,7 @@ function system(publication = true): GameSystem {
     id: 'test',
     name: 'Test',
     version: '1.0.0',
-    elementTypes: [{ name: 'Book', publication }, { name: 'Kit' }, { name: 'Gadget' }],
+    elementTypes: [{ name: 'Book', publication, requiredWhen: 'core' }, { name: 'Kit' }, { name: 'Gadget' }],
     stats: [{ name: 'vigour', default: 10 }],
     characterKinds: [
       {
@@ -68,6 +68,8 @@ function corpus(): MapElementIndex {
     element('BOOK_ALPHA', 'Book', 'Alpha Book', { name: 'Alpha Book' }),
     element('BOOK_BETA', 'Book', 'Beta Book', { name: 'Beta Book' }),
     element('BOOK_EMPTY', 'Book', 'Empty Book', { name: 'Empty Book' }),
+    // Offered to everyone, as 5e's Aurora Legacy Essentials is: it holds what the other books refer to.
+    element('BOOK_ESSENTIALS', 'Book', 'Core', { name: 'Essentials', setters: { core: { value: 'true' } } }),
     element('KIT_ALPHA', 'Kit', 'Alpha Book', {
       rules: [
         { kind: 'stat', key: 'v', name: 'vigour', value: { kind: 'number', value: 2 } },
@@ -81,6 +83,7 @@ function corpus(): MapElementIndex {
     element('GADGET_ALPHA', 'Gadget', 'Alpha Book'),
     element('GADGET_BETA', 'Gadget', 'Beta Book'),
     element('GADGET_CORE', 'Gadget', 'Core'),
+    element('GADGET_ESSENTIAL', 'Gadget', 'Essentials'),
   ]);
   return index;
 }
@@ -106,11 +109,12 @@ test('a character with no list is offered every publication, and the builder off
   const list = builder.getState().publications;
   assert.equal(list.everything, true);
   assert.deepEqual(
-    list.rows.map((row) => [row.name, row.elements, row.offered]),
+    list.rows.map((row) => [row.name, row.elements, row.offered, row.required]),
     [
-      ['Alpha Book', 2, true],
-      ['Beta Book', 2, true],
-      ['Empty Book', 0, true],
+      ['Alpha Book', 2, true, false],
+      ['Beta Book', 2, true, false],
+      ['Empty Book', 0, true, false],
+      ['Essentials', 1, true, true],
     ],
   );
 });
@@ -123,7 +127,7 @@ test('a list narrows a top-level pick and a select pool, and leaves what names n
   assert.deepEqual(kitOffers(builder), ['KIT_ALPHA', 'KIT_CORE']);
   builder.choose('build/kit', ['KIT_ALPHA']);
   // Perturbation: narrowing only the top-level pick in `packages/ui` offers GADGET_BETA here.
-  assert.deepEqual(gadgetOffers(builder), ['GADGET_ALPHA', 'GADGET_CORE']);
+  assert.deepEqual(gadgetOffers(builder), ['GADGET_ALPHA', 'GADGET_CORE', 'GADGET_ESSENTIAL']);
 });
 
 test('switching a book off changes nothing the character holds, and derives the same numbers', () => {
@@ -145,7 +149,7 @@ test('switching a book off changes nothing the character holds, and derives the 
   const settled = after.picks.find((pick) => pick.stepId === 'kit');
   assert.deepEqual(settled?.chosen, ['KIT_ALPHA']);
   assert.deepEqual(kitOffers(builder), ['KIT_ALPHA', 'KIT_BETA', 'KIT_CORE']);
-  assert.deepEqual(gadgetOffers(builder), ['GADGET_BETA', 'GADGET_CORE']);
+  assert.deepEqual(gadgetOffers(builder), ['GADGET_BETA', 'GADGET_CORE', 'GADGET_ESSENTIAL']);
 });
 
 test('switching one off from everything records every other loaded publication', () => {
@@ -168,19 +172,33 @@ test('an empty list offers only what names no book', () => {
   const builder = new CharacterBuilder(fresh(), system(), corpus());
   builder.setPublications([]);
   assert.deepEqual(kitOffers(builder), ['KIT_CORE']);
-  assert.equal(builder.getState().publications.offered, 0);
+  // The required book is still offered, and counted as offered.
+  assert.equal(builder.getState().publications.offered, 1);
 });
 
 test('a recorded name nothing loaded has is kept and listed as not loaded', () => {
   // Perturbation: rebuilding the list from what is loaded drops "Gamma Book" on the first toggle.
   const character: Character = { ...fresh(), publications: ['Alpha Book', 'Gamma Book'] };
   const list = publicationList(corpus(), system(), character);
-  assert.deepEqual(list.rows.at(-1), { name: 'Gamma Book', elements: 0, offered: true, loaded: false });
+  assert.deepEqual(list.rows.at(-1), { name: 'Gamma Book', elements: 0, offered: true, required: false, loaded: false });
   assert.deepEqual(togglePublication(corpus(), system(), character, 'Beta Book', true), [
     'Alpha Book',
     'Gamma Book',
     'Beta Book',
   ]);
+});
+
+test('a required publication is offered with no list, cannot be switched off, and is never recorded', () => {
+  // Perturbation: without `requiredWhen` an empty list hides GADGET_ESSENTIAL, as a PHB-only 5e character
+  // would lose every skill and language Aurora Legacy Essentials holds.
+  const builder = new CharacterBuilder(fresh(), system(), corpus());
+  builder.choose('build/kit', ['KIT_ALPHA']);
+  builder.setPublications([]);
+  assert.deepEqual(gadgetOffers(builder), ['GADGET_CORE', 'GADGET_ESSENTIAL']);
+  // Switching it from "every book" changes nothing; the old return value `[]` switched every book off.
+  assert.equal(togglePublication(corpus(), system(), fresh(), 'Essentials', false), undefined);
+  // Switching another off does not write it.
+  assert.deepEqual(togglePublication(corpus(), system(), fresh(), 'Alpha Book', false), ['Beta Book', 'Empty Book']);
 });
 
 test('a system with no publication type has nothing to narrow', () => {

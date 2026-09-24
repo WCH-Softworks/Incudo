@@ -26,19 +26,33 @@ export function publicationTypes(system: GameSystem): ElementType[] {
   return system.elementTypes.filter((type) => type.publication).map((type) => type.name);
 }
 
+/** A loaded publication: its name as it spells it, and whether every character must be offered it. */
+interface LoadedPublication {
+  name: string;
+  required: boolean;
+}
+
 /**
- * The loaded publications by lowercased name, holding the name as the publication spells it.
+ * The loaded publications by lowercased name.
  *
  * Lowercased because the join ignores case, which is how Aurora matches: seven elements in the official
  * corpus name "Van Richten's Guide to Ravenloft" and the book is "…Guide To Ravenloft". Nothing else is
  * folded, so a straight apostrophe where the book has a curly one names no book and is always offered.
+ *
+ * A publication is required when its type names a `requiredWhen` setter and that setter reads true on it.
+ * In the official corpus that is one book, Aurora Legacy Essentials, which holds the skills, languages and
+ * alignments the other books refer to and says of itself that it is required.
  */
-function loadedPublications(index: ElementIndex, system: GameSystem): Map<string, string> {
-  const names = new Map<string, string>();
-  for (const type of publicationTypes(system)) {
-    for (const element of index.byType(type)) names.set(fold(element.name), element.name);
+function loadedPublications(index: ElementIndex, system: GameSystem): Map<string, LoadedPublication> {
+  const found = new Map<string, LoadedPublication>();
+  for (const type of system.elementTypes) {
+    if (!type.publication) continue;
+    for (const element of index.byType(type.name)) {
+      const flag = type.requiredWhen ? element.setters[type.requiredWhen]?.value : undefined;
+      found.set(fold(element.name), { name: element.name, required: flag?.trim().toLowerCase() === 'true' });
+    }
   }
-  return names;
+  return found;
 }
 
 function fold(name: string): string {
@@ -108,7 +122,8 @@ export function offeredIndex(index: ElementIndex, system: GameSystem, character:
   const allowed = new Set(chosen.map(fold));
   return new PublicationIndex(index, (element) => {
     const source = fold(element.source);
-    return !loaded.has(source) || allowed.has(source);
+    const publication = loaded.get(source);
+    return !publication || publication.required || allowed.has(source);
   });
 }
 
@@ -119,6 +134,8 @@ export interface PublicationRow {
   /** How many loaded elements name it as their source, case ignored. */
   elements: number;
   offered: boolean;
+  /** Offered to every character and not switchable: content marks it required (`requiredWhen`). */
+  required: boolean;
   /** False for a name the character records that no loaded publication has. Kept, never dropped. */
   loaded: boolean;
 }
@@ -156,25 +173,28 @@ export function publicationList(index: ElementIndex, system: GameSystem, charact
   const chosen = character.publications;
   const allowed = new Set((chosen ?? []).map(fold));
   const rows: PublicationRow[] = [...loaded]
-    .map(([key, name]) => ({
-      name,
+    .map(([key, publication]) => ({
+      name: publication.name,
       elements: counts.get(key) ?? 0,
-      offered: !chosen || allowed.has(key),
+      offered: !chosen || publication.required || allowed.has(key),
+      required: publication.required,
       loaded: true,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
   for (const name of chosen ?? []) {
-    if (!loaded.has(fold(name))) rows.push({ name, elements: 0, offered: true, loaded: false });
+    if (!loaded.has(fold(name))) rows.push({ name, elements: 0, offered: true, required: false, loaded: false });
   }
   return { everything: !chosen, rows, offered: rows.filter((row) => row.offered).length };
 }
 
 /**
- * The list with one publication switched on or off, as the value to record.
+ * The list with one publication switched on or off, as the value to record (`undefined` for every one).
  *
  * Switching one off from "every publication" writes every *other* loaded one, so the answer is exactly what
- * was on screen minus that book. A name is compared ignoring case, and a recorded name that is not loaded is
- * carried through untouched unless it is the one switched.
+ * was on screen minus that book. A required publication is never written: it is offered whatever the list
+ * says, and recording it would make the list look like a choice was made about it. A name is compared
+ * ignoring case, and a recorded name that is not loaded is carried through untouched unless it is the one
+ * switched.
  */
 export function togglePublication(
   index: ElementIndex,
@@ -182,10 +202,16 @@ export function togglePublication(
   character: Character,
   name: string,
   offered: boolean,
-): string[] {
+): string[] | undefined {
   const key = fold(name);
+  const loaded = loadedPublications(index, system);
+  if (loaded.get(key)?.required) return character.publications;
   const current =
-    character.publications ?? [...loadedPublications(index, system).values()].sort((a, b) => a.localeCompare(b));
+    character.publications ??
+    [...loaded.values()]
+      .filter((publication) => !publication.required)
+      .map((publication) => publication.name)
+      .sort((a, b) => a.localeCompare(b));
   const without = current.filter((recorded) => fold(recorded) !== key);
   return offered ? [...without, name] : without;
 }

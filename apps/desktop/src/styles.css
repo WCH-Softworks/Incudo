@@ -1451,3 +1451,23 @@ table.budget-rows input[type='number'] {
 .system-remove {
   flex: 0 0 auto;
 }
+
+/* The Books list in the Build pane: a switch, the book's name, and how much loaded content it holds. */
+.publications .picker-list {
+  margin-top: 6px;
+}
+
+.publication-row {
+  padding: 5px 8px;
+  white-space: normal;
+  color: var(--fg);
+}
+
+.publication-name {
+  flex: 1;
+}
+
+.publication-count {
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}

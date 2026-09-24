@@ -35,6 +35,12 @@ export interface ElementTypeDef {
    * element whose `source` names no loaded publication is always offered.
    */
   publication?: boolean;
+  /**
+   * The setter that, reading `true` on a publication, marks one every character is offered whatever it
+   * records — ADR 0049. 5e names `core`: the one book carrying it holds the skills and languages every other
+   * book refers to, so switching it off would leave a character offered no skill at all.
+   */
+  requiredWhen?: string;
 }
 
 export type StatValueKind = 'number' | 'string';

@@ -28,6 +28,7 @@ import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
 import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
 import { ClassLevels } from './ClassLevels.tsx';
 import { PreparedSpells } from './PreparedSpells.tsx';
+import { PublicationsEditor } from './PublicationsEditor.tsx';
 import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 
@@ -42,7 +43,7 @@ export function BuilderPane({
   elements: ElementIndex;
   hasContent: boolean;
 }): React.JSX.Element {
-  const { kind, derived, decisions, steps, picks, declined, preparation } = state;
+  const { kind, derived, decisions, steps, picks, declined, preparation, publications } = state;
   const progression = kind.progression;
   const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
 
@@ -279,6 +280,18 @@ export function BuilderPane({
                 candidateLabel={candidateLabel}
                 noun={kind.preparation.elementType.toLowerCase()}
               />
+            </section>
+          )}
+
+          {/*
+            Which books this character is offered. Not a decision: nothing is owed, and a character
+            that never opens it is offered every book. Shown whenever there is a list to show, which
+            with no content loaded is only the names the character recorded.
+          */}
+          {publications.rows.length > 0 && (
+            <section>
+              <h2>Books</h2>
+              <PublicationsEditor list={publications} builder={builder} />
             </section>
           )}
 

@@ -16,7 +16,7 @@
   },
 
   "elementTypes": [
-    { "name": "Source", "browsable": false, "publication": true },
+    { "name": "Source", "browsable": false, "publication": true, "requiredWhen": "core" },
     { "name": "Race", "plural": "Races", "selectable": true, "browsable": true, "children": ["Sub Race", "Race Variant", "Racial Trait"] },
     { "name": "Sub Race", "plural": "Subraces", "selectable": true },
     { "name": "Race Variant", "selectable": true },
