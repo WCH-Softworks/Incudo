@@ -761,17 +761,43 @@ before any code, both touching a public API:
       24, 25, 27, 29); dropping the first-level term or the progress term fails 15 each; reading the option as always
       on fails the three option-off samples whose recorded dice are not the averages (04, 10, 20); dropping the rolls branch fails the 15
       option-off samples. Oracle tables are identical to the snapshot before the change. **Not verified:** the readout
-      is a person's transcription; prepared spells are still not modelled; the builder's fixed-value screen
-      was covered by tests and not driven in the running app; and nothing was run on macOS or Linux.
+      is a person's transcription; prepared spells were still not modelled when this landed (they are now, below); the
+      builder's fixed-value screen was covered by tests and not driven in the running app; and nothing was run on
+      macOS or Linux.
+- [x] **Prepared spells: one recorded list per casting block, and everything else derived.** The last clause of
+      the exit criterion. Measured first, against the 30 samples and the official corpus, and **content already
+      states nearly all of it**: every preparing class ships `<class>:spellcasting:prepare` as level and ability
+      stats, always-prepared spells are `<grant … prepared="true">`, and Incudo already agreed with Aurora's screen
+      for 10 of the 15 preparing blocks. The other five were one bug, and a general one: a stat reference ending
+      `:half` or `:half:up` was read as a stat nobody publishes and contributed 0 (61 uses in the corpus).
+      **Done ([ADR 0046](./docs/adr/0046-preparing-spells-is-a-recorded-list-per-casting-block-and-the-rest-is-derived.md)).**
+      `:half` is read when a reference is evaluated (rounds down; `:half:up` up). What has no formula is one input,
+      `Character.prepared`, keyed by block, embedded in the save so it opens with no source, and copied from an
+      Aurora save by a bugfix to the frozen importer. A kind declares `preparation` in the system format; the
+      engine publishes each block's limit, what is always prepared, what counts and how far over that is (a
+      reported `over-prepared`, never a refusal); the builder has `prepare`, `unprepare` and a pool; the Build pane
+      shows "N of M prepared" per class for a multiclass caster. **All 30 samples agree with Aurora and it is held**:
+      the flagged set exactly, the limit against the maintainer's readout, a book or a list as Aurora's own listing
+      says, and everything Aurora lists held or offered. Perturbation fails the specific samples (no importer copy,
+      a wrong or short limit, `:half` read as nothing, no book, a first-level-only filter, no always-prepared
+      marker). Every other oracle table is identical to the base commit; sample 03 gains one problem, its Wizard,
+      which records 10 prepared against a limit of 8 (Aurora does not enforce it). Every sample was rebuilt
+      through the builder and each prepared spell had to be *offered* first.
+      **Not verified / not done:** rituals (the `Ritual` filter is its own change, and still the one named
+      exception in `rogue-wizard-aurora.test.ts`); the 2024 Paladin and Ranger, whose prepared count is a book
+      table content does not carry (Aurora's screen reads 0 and so does Incudo); the Wizard's minimum of one; a
+      list on the Sheet; a per-character source allowlist for the list pool (Aurora's lists are narrower than
+      Incudo's because it had sources switched off); driven in the browser build and not in the Tauri window, and
+      the folder dialog that saves and reopens a character could not be answered by a script.
 
 ### Where this phase actually stands
 
 **The engine half of Phase 2 is finished, and so is the shell work that was listed.** Every box
 above is checked, the last of them removing the CLI (the multiclass screen, the campaign options
 ADR 0032 describes, the menus and shortcuts, and the explicit export are all done). The phase
-stays 🟡 because its exit criterion — one exact character, built end to end in the running app and
-compared with Aurora's output — is met on everything but one clause: built, checked against the book, and
-compared with an Aurora save of the same choices. **The clause it does not meet is "prepared spells"**. Nothing in the rules engine is outstanding, though the
+stays 🟡 for the maintainer to close: its exit criterion — one exact character, built end to end in the running
+app and compared with Aurora's output — is now met on every clause, built, checked against the book, and
+compared with an Aurora save of the same choices (prepared spells were the last, ADR 0046). Nothing in the rules engine is outstanding, though the
 first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
 and not by any test, which is worth keeping in mind before believing that sentence.
 
@@ -851,13 +877,11 @@ level's own die. Feats were the last item and are reachable now: the campaign op
 sentence above is met on the engine side. That exact character has since been built end to end in the
 running app (see the entry above), which found and fixed a real multiclass defect. Every part of it that Aurora
 records has been compared with Aurora: the builder path on every sample save, and the Rogue/Wizard on a save
-of the same description (see the entry above). **What remains is "prepared spells", and it is a gap and not a
-formality**: nothing in the builder or the engine models preparation (a wizard's prepared list is Intelligence
-modifier plus level, chosen from the spellbook), and the comparison does not read the `prepared` flags Aurora
-records. A build can hold a spellbook and cannot say which spells are prepared. Modelling it is a decision about
-the system format (a step, a count, a sheet section), so it wants an ADR before code. `hp` stays unverifiable,
-as it always was: the save's rolls differ from the description's averages, and Aurora records rolls and never a
-total.
+of the same description (see the entry above). **Prepared spells, the last clause, are met** ([ADR 0046](./docs/adr/0046-preparing-spells-is-a-recorded-list-per-casting-block-and-the-rest-is-derived.md)):
+the Rogue 4 / Wizard 4 built through the builder has the Wizard's limit Aurora's screen showed, and preparing the
+spells its save prepared is offered and accepted, giving the list the save records. `hp` stays unverifiable as a
+number Aurora records, as it always was: the save's rolls differ from the description's averages, and Aurora
+records rolls and never a total (it agrees with the maintainer's screen readout, ADR 0044).
 
 ---
 

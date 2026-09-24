@@ -98,8 +98,14 @@ the repository; this table is why the samples exist and goes stale the day they 
 | **Interleaved** class levels, and a **first class** other than the one the levels end on | blocks only | **06** |
 | Every class once: **Barbarian, Druid, Ranger, Sorcerer, Artificer, a Paladin above level 2** | none of the five | 01, 02, 10, 11, 12 |
 | **2024** editions (half-casters from level 1, background ability scores, weapon mastery) | none | 17, 22–30 (and 15, 16) |
-| Whole-list preparer (Cleric/Druid/Paladin/Artificer); spellbook preparer with **`prepared` set**; `always-prepared` | one Cleric, two Wizards; **no test reads the flags** | **07**, **08**, 01, 03, 12 |
+| Whole-list preparer (Cleric/Druid/Paladin/Artificer); spellbook preparer with **`prepared` set**; `always-prepared` | one Cleric, two Wizards; **no test read the flags** (they are held since ADR 0046) | **07**, **08**, 01, 03, 12 |
 | Fewer spells prepared than the maximum; prepared ≠ known | none | **08**, 07 |
+
+> **Note, 2026-09-23 — every "no test can referee … prepared" below is as written before ADR 0046.** Prepared lists
+> are now held to these samples: the flagged set, the limit against the readout, whether a block is a book or a
+> list, and everything Aurora lists. What they show, measured: 13 of the 30 record a prepared list (15 blocks);
+> **sample 03's Wizard is 2 over its limit** (10 of 8), the one over-limit list, and Aurora does not enforce it; samples
+> 18 and 24 flag one more always-prepared spell than content does. Sample 08 is the small case that says 3 of 6.
 | **Level 1** and **level 20** extremes; a full slot table to 9th; 19 rolled hit dice | level 18 at most | **07**, **08**, 20 |
 | **Feat vs ability score improvement**, and a half-feat that also raises a score | eight of the nine took a feat | **07** (ASI only), 09, 10, 06 |
 | A **variant Human / Custom Lineage**, a racial cantrip from the class's own list | one variant Human | 11, 08 |

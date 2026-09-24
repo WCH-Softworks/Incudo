@@ -446,9 +446,9 @@ computes nothing. Things to know before touching it:
   unread (named in the test as the one expected missing pair, so it fails the day that is fixed), and
   Aurora records a Thieves' Tools expertise without the two internal elements it grants, in a build made
   after its content was updated, so the older "stale content" explanation for that pair is wrong. What it
-  cannot referee is `hp` (see ROADMAP Phase 2), and **prepared
-  spells**: nothing in the builder or the engine models preparation, and the comparison does not read
-  the `prepared` flags the save records, so that clause of Phase 2's exit criterion is unmet.
+  cannot referee is `hp` (see ROADMAP Phase 2). **Prepared spells are refereed too now** (ADR 0046): its
+  Wizard's limit is the count Aurora's screen showed, and preparing the spells the save prepared is offered and
+  accepted, giving the list the save records. That closed the last clause of Phase 2's exit criterion.
   `builder-rebuild.test.ts` rebuilds *every* save through the builder, single-class and multiclass, from
   its own picks, and each matches its import and Aurora.
 
@@ -460,6 +460,47 @@ class against the rest of the split already held. A class short only of ability 
 refuses. Things to know: `eligible` means "may be taken", not "requirements hold"; a minimum under a `not` is read
 for real; a class already held is flagged from its multiclass block only, since its own requirements read "not
 multiclass"; and the flag survives a save and reopen with zero sources.
+
+**Preparing spells is one recorded list per casting block, and everything else about it derives**
+([ADR 0046](docs/adr/0046-preparing-spells-is-a-recorded-list-per-casting-block-and-the-rest-is-derived.md)).
+Measured before it was built, and **content already stated nearly all of it**: every preparing class publishes
+`<class>:spellcasting:prepare`, an always-prepared spell is a `<grant … prepared="true">`, and Incudo already
+agreed with Aurora's screen for 10 of 15 blocks. The other five were `:half`. Things to know before touching it:
+
+- **`:half` and `:half:up` are read where a reference is evaluated** (`expression.ts`), and not where it is parsed,
+  because a `.incu` embeds *parsed* elements: a parse-time reading leaves every character saved before it at zero.
+  61 uses in the corpus, 57 of them other stats (Jack of All Trades, initiative) that used to read 0.
+- **The one input is `Character.prepared`**, keyed by the lowercased block name (`"wizard"`), added in the order
+  chosen, absent when empty, no `formatVersion` bump. It may hold a spell content also makes always prepared (the
+  importer copies every flag); the derivation ignores it there and the builder never writes one. It is **embedded**
+  (`collectCharacterContent` seeds from it, since a whole-list preparer's prepared spells are named by nothing else)
+  and is **not a derivation seed**: Aurora's `<sum>` does not hold them, and seeding would invent `element-extra`.
+- **`preparation` on a character kind** (`systems/dnd5e/system.json`) says which blocks prepare (`blockAttribute`),
+  where the limit is, and two `supports` filters. `deriveCharacter` publishes `preparation: PreparedBlock[]`
+  (`packages/core/src/preparation.ts`): `limit`, `mode`, `always`, `held`, `chosen`, `unavailable`, `over`. Past
+  the limit is the **error** `over-prepared` and never a refusal; something the block cannot prepare is the warning
+  `not-preparable`. `preparationPool` builds what could still be offered and is not part of the derivation: a level 20
+  Cleric's list is over two hundred spells.
+- **A book or a list is an assumption, and Aurora's own listing is its witness.** Nothing in content says a Wizard
+  keeps a book but the name of its select (`Spellbook (…)`, `heldSelect`). Aurora's `<spells>` for a book holds only
+  spells the character `known`s; a list holds the class. `preparationViolations` holds the mode to that on all 15
+  blocks. An always-prepared spell need not be on the block's own list (an Artificer's specialist spells are the
+  Wizard's and Cleric's), so removing the marker makes it unpreparable, not over the limit.
+- **Held to Aurora** in `tools/verify/src/aurora-oracle.ts` (`preparationViolations`), outside the frozen importer
+  package, for all 30: the flagged set exactly, the limits as a multiset against the readout, the mode, and
+  everything Aurora lists held or offered. `preparation.test.ts` breaks the rule seven ways and names the samples
+  that must notice. **Reported and not asserted:** Aurora marks a spell the character holds by another route
+  always prepared in any block whose list has it (samples 18 and 24: one more than content does), so Incudo counts
+  it as chosen; the set agrees and neither block is over. Sample 03's Wizard is genuinely over (10 of 8) and is
+  the one new problem in the oracle's tables.
+- **The list pool is wider than Aurora's**: Aurora had sources and editions switched off, and Incudo has no
+  per-character allowlist to narrow with (ADR 0028). Never narrower: 0 of Aurora's listed spells are missing.
+- **Not modelled:** rituals (the `Ritual` filter is its own change and still the named exception in
+  `rogue-wizard-aurora.test.ts`), the 2024 Paladin and Ranger (content declares no `prepare`; Aurora's screen
+  reads 0 and so does Incudo), the Wizard's minimum of one, and a list on the Sheet.
+- **Driven in the browser build only.** A Fighter 12 / Wizard 5 taking a Cleric level was built and its two lists
+  prepared, over-limit and reload seen; the library save-and-reopen needs a folder dialog and was covered by the
+  tests, which pack and reopen every sample that records a list with zero sources.
 
 **A budgeted step's editor is a renderer over `BudgetState`, and everything it needs is in
 `packages/ui/src/budget.ts`.** What a value costs, where the next step lands, whether the pool
@@ -783,7 +824,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040 and 0041 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041 and 0046 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

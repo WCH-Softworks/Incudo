@@ -67,3 +67,4 @@ new one that supersedes it.
 | [0043](./0043-speed-is-the-race-base-plus-what-content-adds-to-it.md) | Speed is the race's base plus what content adds to it | Accepted (touches 0022) |
 | [0044](./0044-hit-points-follow-the-method-the-character-uses.md) | Hit points follow the method the character uses, and each class keeps its own dice | Accepted (amends 0019; touches 0008; builds on 0015, 0016, 0018, 0022, 0036) |
 | [0045](./0045-a-class-split-is-one-input-and-an-unmet-ability-score-minimum-is-a-flag.md) | A class split is one input, and an unmet ability score minimum is a flag, not a gate | Accepted (amends 0036; builds on 0012, 0015, 0017) |
+| [0046](./0046-preparing-spells-is-a-recorded-list-per-casting-block-and-the-rest-is-derived.md) | Preparing spells is a recorded list per casting block, and everything else about it is derived | Accepted (touches 0008; builds on 0006, 0012, 0018, 0020, 0030, 0036, 0044, 0045) |
