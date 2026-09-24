@@ -194,7 +194,8 @@ async function through(data: Uint8Array, transform: CompressionStream | Decompre
 export function createDesktopZipCodec(): ZipCodec {
   if (typeof CompressionStream === 'undefined') {
     throw new Error(
-      'This runtime has no CompressionStream, so Incudo cannot read or write .incu files here.',
+      // No `CompressionStream` in this runtime, and a .incu is a zip.
+      'This browser cannot read or write .incu files. Use the desktop app, or a current browser.',
     );
   }
   return createZipCodec(browserCompressor);
@@ -539,7 +540,7 @@ class UnavailableCharacterStore implements CharacterStore {
   readonly available = false;
   readonly unavailableReason =
     'This browser cannot open a folder on your computer, so there is no character library here. ' +
-    'Use the desktop build (npm run desktop:app), or a Chromium-based browser.';
+    'Use the desktop app, or a Chromium-based browser.';
   async location(): Promise<string | null> {
     return null;
   }
@@ -654,7 +655,7 @@ class UnavailableFilePicker implements FilePicker {
   readonly available = false;
   readonly unavailableReason =
     'This browser cannot open a file from your computer, so there is nothing to import from. ' +
-    'Use the desktop build (npm run desktop:app), or a Chromium-based browser.';
+    'Use the desktop app, or a Chromium-based browser.';
   async pick(): Promise<PickedFile[]> {
     throw new Error(this.unavailableReason);
   }

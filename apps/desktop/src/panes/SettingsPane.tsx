@@ -33,9 +33,10 @@ export function SettingsPane({
         <div className="problem warn">
           <strong>There is no character library in this browser.</strong>
           <p>{unavailableReason}</p>
+          {/* ADR 0027: a library is a folder of real files, never browser storage. */}
           <p className="hint">
-            Incudo will not pretend to have a library it cannot back with real files — see
-            <code> docs/adr/0027-a-library-is-a-folder.md</code>.
+            Your characters are kept as ordinary files in a folder you choose, so you can copy,
+            sync and back them up. This browser cannot give Incudo such a folder.
           </p>
         </div>
       ) : (
@@ -68,11 +69,15 @@ export function SettingsPane({
         </>
       )}
 
+      {/*
+        The Tauri window fetches through its own command, which CORS does not apply to; the
+        browser build uses window.fetch, so a host that sends no CORS headers refuses it.
+      */}
       <h3>This build</h3>
       <p className="card-meta">
         {shell === 'tauri'
-          ? 'The desktop window. Content is fetched through Tauri, which CORS does not apply to.'
-          : 'The browser dev server. Content is fetched with window.fetch, so CORS applies and some content hosts will refuse.'}
+          ? 'The desktop app. It can load content from any site.'
+          : 'The browser version. Some sites do not let a web page load their files, so a content source that works in the desktop app may fail here.'}
       </p>
     </main>
   );

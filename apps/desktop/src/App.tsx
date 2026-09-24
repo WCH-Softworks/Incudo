@@ -202,6 +202,7 @@ export function App(): React.JSX.Element {
       initial={character}
       commands={commands}
       onChangeSystem={() => setChanging(true)}
+      nameOfSystem={(id) => booted.systems.find((known) => known.id === id)?.name ?? id}
     />
   );
 }
@@ -339,11 +340,18 @@ function Shell({
   initial,
   commands,
   onChangeSystem,
+  nameOfSystem,
 }: {
   system: GameSystem;
   initial: Character;
   commands: CommandBinder;
   onChangeSystem: () => void;
+  /**
+   * A system's name, for saying which one holds something. A system id is the format's key and
+   * never shown; one no loaded definition declares (removed, or failed to validate) falls back
+   * to its id, since that is still the only thing that names it.
+   */
+  nameOfSystem: (id: string) => string;
 }): React.JSX.Element {
   const [pane, setPane] = useState<Pane>('library');
   const [content, setContent] = useState<LoadedContent | null>(null);
@@ -510,8 +518,9 @@ function Shell({
         const existing = current.find(url);
         if (existing?.systemId !== undefined && existing.systemId !== system.id) {
           throw new Error(
-            `That index is already configured for "${existing.systemId}". A source is identified ` +
-              `by its URL, so it can only belong to one system at a time.`,
+            // A source is keyed on its URL (ADR 0031), which is why it can only have one system.
+            `That address is already added under ${nameOfSystem(existing.systemId)}, and a ` +
+              `source can only belong to one system at a time.`,
           );
         }
         // Tagged with the system it is being added under — ADR 0031. Nothing in an index says
@@ -887,6 +896,7 @@ function Shell({
         <LibraryPane
           state={libraryState}
           systemName={system.name}
+          nameOfSystem={nameOfSystem}
           needsSource={!mySources.some((source) => source.enabled)}
           onOpenSources={() => setPane('sources')}
           onChangeSystem={onChangeSystem}
@@ -966,6 +976,7 @@ function Shell({
           sources={mySources}
           unassigned={untagged}
           others={otherSources}
+          nameOfSystem={nameOfSystem}
           content={content}
           progress={progress}
           busy={busy}

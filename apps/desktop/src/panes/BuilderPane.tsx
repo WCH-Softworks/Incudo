@@ -107,9 +107,12 @@ export function BuilderPane({
       {!hasContent && (
         <div className="problem warning">
           <strong>No content loaded.</strong>
+          {/*
+            The system definition is loaded, so the kind's baseline grants still apply; only
+            choices need content.
+          */}
           <p>
-            The system definition is loaded, so the kind's own baseline applies, but nothing can be
-            chosen until a source is added. Load one on the Sources pane.
+            Nothing can be chosen until a content source is added. Add one on the Sources pane.
           </p>
         </div>
       )}
@@ -418,7 +421,7 @@ function Decision({
         ) : (
           // A budget decision whose step has no budget is a contradiction the view-model cannot
           // produce; it is here so a future one says so rather than rendering nothing.
-          <p className="hint">This step declares a budget the builder did not publish.</p>
+          <p className="hint">Incudo could not show this step. This is a bug in Incudo.</p>
         )
       ) : decision.kind === 'hitpoints' ? (
         hitPoints ? (
@@ -436,7 +439,8 @@ function Decision({
             )}
           </>
         ) : (
-          <p className="hint">This step declares per-level rolls the builder did not publish.</p>
+          // The same contradiction for per-level rolls: a hitpoints decision with no state.
+          <p className="hint">Incudo could not show this step. This is a bug in Incudo.</p>
         )
       ) : (
         <>
@@ -479,11 +483,12 @@ function Decision({
             // Not the same sentence as the one below, and the difference matters: adding a
             // content source will not help here, so saying "no content matches" would send the
             // user to do something useless. See OpenDecision.unresolved.
+            // The filter's unresolved `$(key)`s stay on screen in code, for a bug report.
             <p className="hint">
-              This choice filters on{' '}
-              <code>{decision.unresolved.map((k) => `$(${k})`).join(', ')}</code>, which Incudo
-              does not resolve yet — so it can offer nothing rather than the wrong thing. Not a
-              missing content source.
+              Incudo cannot yet work out which options this choice allows, so it offers none
+              rather than the wrong ones. Adding a content source will not change this. (It
+              depends on{' '}
+              <code>{decision.unresolved.map((k) => `$(${k})`).join(', ')}</code>.)
             </p>
           ) : (
             <p className="hint">No candidate in the loaded content matches this choice.</p>

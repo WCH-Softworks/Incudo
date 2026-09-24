@@ -17,6 +17,7 @@ import type { AuroraImportReport, LibraryEntry, LibraryState } from '@incudo/ui'
 export function LibraryPane({
   state,
   systemName,
+  nameOfSystem,
   needsSource,
   onOpenSources,
   onChangeSystem,
@@ -38,6 +39,8 @@ export function LibraryPane({
   state: LibraryState;
   /** Whose characters these are. The library folder holds every system's — ADR 0031. */
   systemName: string;
+  /** Another system's name for its id, since the id is never shown. */
+  nameOfSystem: (id: string) => string;
   /** True when this system has no enabled content source. A note, never a block. */
   needsSource: boolean;
   onOpenSources: () => void;
@@ -72,9 +75,13 @@ export function LibraryPane({
         <div className="problem warning">
           <strong>There is no character library in this browser.</strong>
           <p>{state.unavailableReason}</p>
+          {/*
+            ADR 0027: a library is a folder of real files, so there is no fallback to browser
+            storage — a character that lived only there could not be copied, synced or backed up.
+          */}
           <p className="hint">
-            Incudo will not pretend to have a library it cannot back with real files. A save is
-            the product — see <code>docs/adr/0027-a-library-is-a-folder.md</code>.
+            Your characters are kept as ordinary files in a folder you choose, so you can copy,
+            sync and back them up. This browser cannot give Incudo such a folder.
           </p>
         </div>
       </main>
@@ -194,7 +201,10 @@ export function LibraryPane({
       {state.elsewhere.length > 0 && !state.busy && (
         <p className="hint">
           {state.elsewhere
-            .map((other) => `${other.count} ${other.systemId ?? 'unrecognised'}`)
+            .map(
+              (other) =>
+                `${other.count} ${other.systemId === undefined ? 'unrecognised' : nameOfSystem(other.systemId)}`,
+            )
             .join(', ')}{' '}
           character(s) in this folder belong to another system and are not shown.{' '}
           <button type="button" className="linklike" onClick={onChangeSystem}>
@@ -267,7 +277,7 @@ function ImportReport({
             {report.message && <p className="card-note">{report.message}</p>}
             {report.unresolved.length > 0 && (
               <p className="card-note">
-                {report.unresolved.length} id(s) this save names are not in the content you have
+                {report.unresolved.length} item(s) this save uses are not in the content you have
                 loaded. The character imported anyway and will be missing them — usually a
                 disabled source, or a book this index does not carry.
               </p>
@@ -275,7 +285,7 @@ function ImportReport({
             {report.diagnostics.length > 0 && (
               <details className="card-note">
                 <summary>
-                  {report.diagnostics.length} thing(s) the importer had to say
+                  {report.diagnostics.length} note(s) from the import
                 </summary>
                 <ul>
                   {report.diagnostics.map((diagnostic, i) => (
@@ -334,9 +344,10 @@ function FirstRunDialog({
         leaves everything else in there alone — it is your folder, so put it in git, sync it, copy
         files in and out. Incudo rescans and never renames anything.
       </p>
+      {/* "Needs no content sources to open" is ADR 0012: a save embeds every element it uses. */}
       <p className="hint">
         You do not need one to look around: content sources and the builder work without it, and
-        a saved character needs no content sources to open (ADR 0012).
+        a saved character opens without any content sources.
         {shell === 'browser' &&
           ' In this browser build a reload may need one click to reconnect to the folder.'}
       </p>

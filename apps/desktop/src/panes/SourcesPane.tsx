@@ -39,6 +39,7 @@ export function SourcesPane({
   sources,
   unassigned,
   others,
+  nameOfSystem,
   content,
   progress,
   busy,
@@ -58,6 +59,8 @@ export function SourcesPane({
    * screen has to be able to say so rather than appearing to do nothing.
    */
   others: readonly ConfiguredSource[];
+  /** A system's name for its id, since the id is never shown. */
+  nameOfSystem: (id: string) => string;
   content: LoadedContent | null;
   progress: LoadProgress | null;
   busy: boolean;
@@ -107,10 +110,13 @@ export function SourcesPane({
         file that index references. You need one of these to <em>build</em> a character; you
         never need one to <em>open</em> a saved one.
       </p>
+      {/*
+        Why the tag is the user's word and never inferred is ADR 0031: an Aurora index has no
+        field naming its game, and the format is frozen.
+      */}
       <p className="hint">
-        A source belongs to the system you add it under. Nothing in an index says which game it
-        is for — an Aurora <code>.index</code> has no field for one — so Incudo records what you
-        said rather than guessing (ADR 0031).
+        A source belongs to the system you add it under. An Aurora <code>.index</code> file does
+        not say which game it is for, so Incudo goes by where you added it.
         {others.length > 0 && ` ${others.length} source(s) belong to other systems and are not shown here.`}
       </p>
 
@@ -145,10 +151,12 @@ export function SourcesPane({
       {elsewhere.length > 0 && (
         <p className="hint">
           {elsewhere
-            .map(({ suggestion, already }) => `${suggestion.name} (configured for ${already!.systemId})`)
+            .map(
+              ({ suggestion, already }) =>
+                `${suggestion.name} (added under ${nameOfSystem(already!.systemId!)})`,
+            )
             .join(', ')}{' '}
-          — suggested for {system.name}, but a source is identified by its URL, so it can only
-          belong to one system at a time.
+          — suggested for {system.name}, but a source can only belong to one system at a time.
         </p>
       )}
 
@@ -196,20 +204,26 @@ export function SourcesPane({
         <div className="problem error">
           <strong>Could not load that index.</strong>
           <p>{failure}</p>
+          {/*
+            In the browser build a cross-origin fetch is subject to CORS, and many hosts refuse it.
+            The Tauri window fetches through its own command (`fetch_content_text`, ADR 0050),
+            which CORS does not apply to.
+          */}
           {shell === 'browser' && (
             <p className="hint">
-              A browser <code>fetch</code> is subject to CORS, which is one of the reasons the
-              desktop app is a Tauri shell rather than a web page. Running under{' '}
-              <code>npm run desktop:app</code> uses Tauri's HTTP plugin instead, which is not.
+              This version of Incudo runs in a browser, and some sites do not let a web page load
+              their files. The desktop app has no such limit.
             </p>
           )}
         </div>
       )}
 
       <h3>Configured for {system.name}</h3>
+      {/* A save embeds every element it uses (ADR 0012), so this list being empty costs no character. */}
       {sources.length === 0 && (
         <p className="lede">
-          None yet. Your characters still open — a save carries the content it uses (ADR 0012).
+          None yet. Your saved characters still open without one: each save keeps a copy of the
+          content it uses.
         </p>
       )}
 
