@@ -200,21 +200,14 @@ export function SourcesPane({
         </p>
       )}
 
+      {/*
+        Only an add that was refused lands here: a source that is added and then fails to load is
+        kept, and says so on its own row below (`loadSources` catches per source).
+      */}
       {failure && (
         <div className="problem error">
-          <strong>Could not load that index.</strong>
+          <strong>Could not add that source.</strong>
           <p>{failure}</p>
-          {/*
-            In the browser build a cross-origin fetch is subject to CORS, and many hosts refuse it.
-            The Tauri window fetches through its own command (`fetch_content_text`, ADR 0050),
-            which CORS does not apply to.
-          */}
-          {shell === 'browser' && (
-            <p className="hint">
-              This version of Incudo runs in a browser, and some sites do not let a web page load
-              their files. The desktop app has no such limit.
-            </p>
-          )}
         </div>
       )}
 
@@ -237,6 +230,7 @@ export function SourcesPane({
               refreshed={refreshes[source.id]}
               busy={busy}
               actions={actions}
+              shell={shell}
             />
           </li>
         ))}
@@ -367,6 +361,7 @@ function SourceRow({
   refreshed,
   busy,
   actions,
+  shell,
 }: {
   source: ConfiguredSource;
   loaded: { fileCount: number; elementCount: number; failed?: string } | undefined;
@@ -374,6 +369,7 @@ function SourceRow({
   refreshed: RefreshReport | { failed: string } | undefined;
   busy: boolean;
   actions: SourcesActions;
+  shell: 'tauri' | 'browser';
 }): React.JSX.Element {
   const [name, setName] = useState(source.name);
 
@@ -416,6 +412,17 @@ function SourceRow({
             ? ' · did not load'
             : ' · not loaded in this session'}
       </p>
+      {/*
+        In the browser build a cross-origin fetch is subject to CORS, and many hosts refuse it. The
+        Tauri window fetches through its own command (`fetch_content_text`, ADR 0050), which CORS
+        does not apply to, so this is said only here.
+      */}
+      {loaded?.failed && shell === 'browser' && (
+        <p className="hint">
+          This version of Incudo runs in a browser, and some sites do not let a web page load their
+          files. The desktop app has no such limit.
+        </p>
+      )}
 
       {update && <UpdateNote status={update} />}
       {refreshed && <RefreshNote report={refreshed} />}
