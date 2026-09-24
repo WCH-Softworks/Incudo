@@ -97,18 +97,22 @@ test(
       assert.deepEqual(rowsCompared(run), { slots: 2, dc: 2, attack: 2, casterLevel: 1 });
       assert.equal(built.stats.get('multiclass:spellcasting:level')?.value, save.magicLevel, 'the shared caster level');
 
-      // 3. What Aurora has that this build lacks is an input the description does not name.
-      //    The one exception is named, and asserted to still be the exception: the Ritual Caster feat's two
-      //    spells are chosen through a `Ritual` support filter that Incudo does not read yet, so the builder
-      //    cannot offer them. The day it can, they stop being missing and this line fails, which is the point.
+      // 3. What Aurora has that this build lacks is an input the description does not name. There is no
+      //    exception left to name: the Ritual Caster feat's two spells were the one, and are offered through
+      //    the `Ritual` filter now (ADR 0047), so the build lacks nothing that is not an option or a marker.
       const notInputs = comparison.differences
         .filter((d) => d.kind === 'element-missing')
         .map((d) => d.elementId ?? '')
         .filter((id) => !id.startsWith('ID_INTERNAL_MULTICLASS_LEVEL_') && elements.get(id)?.type !== 'Option');
+      assert.deepEqual(notInputs, [], `${sample.id}: an element Aurora derived that no option or marker explains`);
+      // Those two spells came in through the builder's own offer, and are what the save records for the feat.
+      const ritualSpells = builder
+        .getState()
+        .character.choices.find((c) => c.ruleKey === 'ID_PHB_FEAT_RITUAL_CASTER_WIZARD/select:1st-level Spell (Ritual Caster)');
       assert.deepEqual(
-        notInputs.sort(),
+        [...(ritualSpells?.elementIds ?? [])].sort(),
         ['ID_PHB_SPELL_ALARM', 'ID_PHB_SPELL_COMPREHEND_LANGUAGES'],
-        `${sample.id}: an element Aurora derived that no option, marker or unread filter explains`,
+        `${sample.id}: the Ritual Caster feat's two spells`,
       );
 
       // 4a. Prepared spells (ADR 0046). Which to prepare is not in the description, so the save's are

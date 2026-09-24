@@ -105,8 +105,9 @@ export function buildInterleavedRogueWizard(builder: CharacterBuilder, elements:
   answer('Improvement Option (Wizard 4)', `Feat|${INTERNAL}`);
   answer('Feat (WIZARD 4)', 'Ritual Caster');
   // The feat is one element per class list, and asks which. Its two ritual spells are chosen through a
-  // `Ritual` support filter that Incudo does not read yet (ROADMAP, CLAUDE.md), so they are not offered.
+  // `Ritual` support filter, which the kind reads as a spell whose `isRitual` setter is true (ADR 0047).
   answer('Ritual Caster', 'Wizard');
+  answer('1st-level Spell (Ritual Caster)', 'Comprehend Languages', 'Alarm');
   answer('Cantrip (Wizard)', 'Ray of Frost');
   answer('Spellbook (Wizard)', 'Invisibility', 'Mirror Image');
 }
