@@ -29,6 +29,7 @@ import { advancementCounts, advancementElementIds, equippedElementIds } from './
 import type {
   BlockFilterDef,
   GameSystem,
+  PreparationDef,
   ResolvedCharacterKind,
   StatDef,
 } from './system.ts';
@@ -48,6 +49,15 @@ import {
 } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import { EMPTY_EQUIPMENT, resolveEquipment, type EquipmentState } from './equipment.ts';
+import {
+  derivePreparation,
+  preparationFilters,
+  preparationKey,
+  preparingBlocks,
+  type BlockAttachments,
+  type PreparationProblem,
+  type PreparedBlock,
+} from './preparation.ts';
 import {
   evaluateExpr,
   evaluateExprAsString,
@@ -158,6 +168,10 @@ export interface Problem {
     // Attuned to more items than the limit allows — ADR 0023 decision 3, ADR 0026. In
     // `over-selected`'s family: reported, and never a refusal to derive.
     | 'over-attuned'
+    // A prepared list longer than the limit allows, or holding what the block cannot prepare — ADR 0046.
+    // Reported, never a refusal.
+    | 'over-prepared'
+    | 'not-preparable'
     | 'cycle-limit'
     | 'ambiguous-track'
     | 'unresolved-interpolation'
@@ -192,6 +206,12 @@ export interface DerivedCharacter {
    * without resolving the bag a second time.
    */
   equipment: EquipmentState;
+  /**
+   * Each block that prepares a list, with its limit, what is always on it, what the player put on it that
+   * counts, and how far over that is — ADR 0046. Empty for a kind that declares no `preparation`, and a
+   * list never holds an element that seeds the derivation: those are not in Aurora's `<sum>` either.
+   */
+  preparation: PreparedBlock[];
 }
 
 export interface DeriveOptions {
@@ -389,6 +409,8 @@ export function deriveCharacter(
   reportAttunementLimit(kind, stats, equipment, problems);
 
   const ctx = makeContext(active, stats, character, kind, equipment);
+  const finalLevelFor = trackLevelReader(tracks, trackLevels, character.progress);
+  const blockFilters = makeBlockFilterResolver(kind, active, stats);
   const { pending: pendingChoices, answered: answeredChoices } = collectPendingChoices(
     active,
     character,
@@ -396,10 +418,29 @@ export function deriveCharacter(
     index,
     ctx,
     problems,
-    trackLevelReader(tracks, trackLevels, character.progress),
+    finalLevelFor,
     equipment,
-    makeBlockFilterResolver(kind, active, stats),
+    blockFilters,
   );
+
+  // The prepared lists, after everything they read has settled: the limit is a derived stat and what is
+  // always prepared depends on which tracks reached which level (ADR 0046).
+  const preparation = kind.preparation
+    ? preparedBlocks(
+        kind.preparation,
+        active,
+        character,
+        kind,
+        index,
+        ctx,
+        finalLevelFor,
+        equipment,
+        stats,
+        recordedChoices,
+        blockFilters,
+        problems,
+      )
+    : [];
 
   return {
     character,
@@ -411,6 +452,7 @@ export function deriveCharacter(
     pendingChoices,
     answeredChoices,
     equipment,
+    preparation,
     // The derivation is a fixed point, so an unresolvable grant is discovered again on
     // every pass. The user has one broken reference, not four, and should be told once.
     problems: dedupeProblems(problems),
@@ -1322,15 +1364,149 @@ export function candidatesFor(
   return pool.filter((candidate) => {
     if (excluded.has(candidate.id)) return false;
     if (context && !evaluateRequirements(candidate.requirements, context)) return false;
-    const ctx: SupportsContext = {
-      tags: new Set(candidate.supports.map((s) => s.toLowerCase())),
-      // A spell's level and school are setters and not tags — ADR 0030.
-      setterValues: setterValues(candidate),
-      id: candidate.id,
-      resolve: (key) => filters?.expand(rule, key),
-    };
-    return matchesSupports(rule.supports, ctx);
+    return candidateAccepted(rule, candidate, filters);
   });
+}
+
+/** Whether one element passes a rule's filter, expanding what the rule's block says. */
+function candidateAccepted(
+  rule: SelectRule,
+  candidate: Element,
+  filters: BlockFilterResolver | undefined,
+): boolean {
+  const ctx: SupportsContext = {
+    tags: new Set(candidate.supports.map((s) => s.toLowerCase())),
+    // A spell's level and school are setters and not tags — ADR 0030.
+    setterValues: setterValues(candidate),
+    id: candidate.id,
+    resolve: (key) => filters?.expand(rule, key),
+  };
+  return matchesSupports(rule.supports, ctx);
+}
+
+/**
+ * A select rule that exists only to ask a question of a block's filter — ADR 0046. Nothing is chosen
+ * through it; it carries the type, the filter and the block a real select would, which is all
+ * `candidateAccepted` and the block resolver read.
+ */
+function preparationRule(def: PreparationDef, blockName: string, supports: SupportsExpr): SelectRule {
+  return {
+    kind: 'select',
+    key: 'preparation',
+    type: def.elementType,
+    name: 'preparation',
+    number: 0,
+    supports,
+    spellcasting: blockName,
+  };
+}
+
+/**
+ * What every preparing block holds, and the entries the recorded lists make of it — ADR 0046.
+ *
+ * Attachment is what the rules say and nothing else: a grant with a block, or a pick recorded under a
+ * select with one. The `prepared` marker on either says it is always on the list; a select whose name
+ * starts with the kind's `heldSelect` says the block prepares from a book.
+ */
+function preparedBlocks(
+  def: PreparationDef,
+  active: Map<ElementId, Element>,
+  character: Character,
+  kind: ResolvedCharacterKind,
+  index: ElementIndex,
+  ctx: EngineContext,
+  levelFor: TrackLevelReader,
+  equipment: EquipmentState,
+  stats: Map<StatKey, ResolvedStat>,
+  recordedChoices: Map<string, ElementId[]>,
+  filters: BlockFilterResolver | undefined,
+  problems: Problem[],
+): PreparedBlock[] {
+  const blocks = preparingBlocks(def, collectDeclaredBlocks(active.values()));
+  if (blocks.length === 0) return [];
+
+  const attachments = new Map<string, BlockAttachments>();
+  for (const block of blocks) {
+    attachments.set(preparationKey(block), { attached: new Set(), always: new Set(), book: false });
+  }
+  const heldPrefix = def.heldSelect?.trim().toLowerCase();
+
+  for (const element of active.values()) {
+    for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
+      if (rule.kind !== 'grant') continue;
+      const entry = attachments.get(declaredBlockName(rule) ?? '');
+      if (!entry || !active.has(rule.id)) continue;
+      entry.attached.add(rule.id);
+      if (rule.prepared) entry.always.add(rule.id);
+    }
+    for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor, equipment)) {
+      const entry = attachments.get(declaredBlockName(rules.find((r) => declaredBlockName(r)) ?? {}) ?? '');
+      if (!entry) continue;
+      if (heldPrefix !== undefined && rules.some((r) => r.name.trim().toLowerCase().startsWith(heldPrefix))) {
+        entry.book = true;
+      }
+      const always = rules.some((r) => r.prepared);
+      for (const id of recordedChoices.get(ruleKey) ?? []) {
+        if (!active.has(id)) continue;
+        entry.attached.add(id);
+        if (always) entry.always.add(id);
+      }
+    }
+  }
+
+  const found: PreparationProblem[] = [];
+  const blocksOut = derivePreparation(
+    {
+      def,
+      blocks,
+      attachments,
+      character,
+      stats,
+      lookup: (id) => active.get(id) ?? index.get(id),
+      accepts: (block, filter, element) =>
+        candidateAccepted(preparationRule(def, block.name, filter), element, filters),
+    },
+    found,
+  );
+  problems.push(...found);
+  return blocksOut;
+}
+
+/**
+ * What a block could still have prepared, for a screen to offer — ADR 0046.
+ *
+ * Separate from the derivation on purpose: a whole list is the class's every spell of a level it has
+ * slots for (over two hundred for a level 20 cleric), and a derivation that runs on every keystroke pays
+ * nothing for a list nobody is looking at. Excludes what is already on the block's list, always or chosen.
+ * A block that prepares from what it holds offers only that; one that prepares from a list offers the
+ * index's matching elements, so it needs a source or the save's own embedded content to offer anything.
+ */
+export function preparationPool(
+  derived: DerivedCharacter,
+  index: ElementIndex,
+  blockKey: string,
+): Element[] {
+  const def = derived.kind.preparation;
+  const block = derived.preparation.find((b) => b.key === blockKey.trim().toLowerCase());
+  if (!def || !block) return [];
+  const taken = new Set<ElementId>([...block.always, ...block.chosen]);
+  const active = new Map(derived.elements.map((element) => [element.id, element]));
+
+  if (block.mode === 'held') {
+    return block.held
+      .filter((id) => !taken.has(id))
+      .map((id) => active.get(id) ?? index.get(id))
+      .filter((element): element is Element => element !== undefined);
+  }
+  const expr = preparationFilters(def).list;
+  if (!expr) return [];
+  return candidatesFor(
+    preparationRule(def, block.name, expr),
+    index,
+    [...taken],
+    requirementContextFor(derived),
+    makeBlockFilterResolver(derived.kind, active, derived.stats),
+  );
 }
 
 export interface ReferenceOptions {

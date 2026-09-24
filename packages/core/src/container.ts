@@ -23,7 +23,12 @@
  */
 
 import type { Character, SourceRef } from './character.ts';
-import { advancementElementIds, chosenElementIds, inventoryElementIds } from './character.ts';
+import {
+  advancementElementIds,
+  chosenElementIds,
+  inventoryElementIds,
+  preparedElementIds,
+} from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { referencedElementIds } from './engine.ts';
 import { baselineElementIds, type ResolvedCharacterKind } from './system.ts';
@@ -151,6 +156,9 @@ export function collectCharacterContent(
     // one, and a save whose bag cannot be read is a broken save. Step 3's derivation will
     // read only the equipped ones; that asymmetry is the point, not an oversight.
     ...inventoryElementIds(character),
+    // What was put on a prepared list. A whole-list preparer's prepared spells are named by nothing else in
+    // the character, so leaving them out saves a Cleric that opens with the names gone (ADR 0046, ADR 0012).
+    ...preparedElementIds(character),
     ...(options.kind ? baselineElementIds(options.kind, character.progress) : []),
     ...(options.extraIds ?? []),
   ];

@@ -348,6 +348,7 @@
         "blockFilters": { "type": "array", "items": { "$ref": "#/$defs/blockFilter" } },
         "contributions": { "type": "array", "items": { "$ref": "#/$defs/contribution" } },
         "inventory": { "$ref": "#/$defs/inventory" },
+        "preparation": { "$ref": "#/$defs/preparation" },
         "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },
         "repeatableSetter": {
           "type": "string",
@@ -356,6 +357,45 @@
         },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
+      }
+    },
+
+    "preparation": {
+      "description": "Which blocks let the player prepare a list, and where each number lives (ADR 0046). Some blocks let the character put a limited number of what they hold, or could hold, on a prepared list. The limit, what is always on the list and what is over are derived; only which the player picked is an input (Character.prepared). A block prepares when its declared attribute reads true, from what it holds when an active select attached to it has a name starting with heldSelect, and from a whole list otherwise. A kind with none publishes no prepared lists. Replaced rather than merged along an extends chain.",
+      "type": "object",
+      "required": ["blockAttribute", "limit", "elementType", "listFilter", "heldFilter"],
+      "additionalProperties": false,
+      "properties": {
+        "blockAttribute": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The attribute of a declared block that says it prepares. 5e's content writes prepare=\"true\" on the Wizard, Cleric, Druid, Paladin and Artificer blocks and prepare=\"false\" on the Bard's; compared lowercased and read as true."
+        },
+        "limit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The stat holding the block's limit, with {name} standing for the block's name: \"{name}:spellcasting:prepare\". Content already publishes it as level and ability stats on every preparing class."
+        },
+        "elementType": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The type of element that is prepared."
+        },
+        "heldSelect": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The prefix of a select's name whose picks form a book the block prepares from. Case is ignored. An ASSUMPTION about content, named as one: nothing says which classes keep a book but the name of the select that fills it (5e: \"Spellbook\", 40 uses in both editions). Omitted, every preparing block prepares from its list."
+        },
+        "listFilter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A supports expression, in the language of ADR 0030, that admits what a block may prepare from its whole list: \"$(spellcasting:list), $(spellcasting:slots)\" is \"on this block's list, of a level I have slots for\"."
+        },
+        "heldFilter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The same, for a block that prepares from what it holds. The list part does not apply to a book: a spellbook may hold what is not on the class's list."
+        }
       }
     },
 

@@ -22,6 +22,7 @@ import {
   type GameSystem,
 } from './system.ts';
 import { parseRequirements } from './requirements.ts';
+import { parseSupports, supportsInterpolations } from './supports.ts';
 import type { Character } from './character.ts';
 import type { ContainerManifest } from './container.ts';
 
@@ -310,6 +311,36 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
             path: `${where}.blockFilters`,
             message: `the "${filter.key}" pattern "${pattern}" needs exactly one *, and has ${stars}`,
           });
+        }
+      }
+    }
+
+    // A preparation declaration whose filters will not parse, or which name an interpolation the kind never
+    // expands, is invisible at runtime: nothing could be prepared and nothing would say why (ADR 0046).
+    const preparation = resolved.preparation;
+    if (preparation) {
+      if (!preparation.limit.includes('{name}')) {
+        errors.push({
+          path: `${where}.preparation`,
+          message: `the limit "${preparation.limit}" names no {name}, so every block would share one number`,
+        });
+      }
+      for (const field of ['listFilter', 'heldFilter'] as const) {
+        const expr = parseSupports(preparation[field]);
+        if (expr === undefined) {
+          errors.push({
+            path: `${where}.preparation`,
+            message: `${field} "${preparation[field]}" is not a supports expression`,
+          });
+          continue;
+        }
+        for (const key of supportsInterpolations(expr)) {
+          if (!filterKeys.has(key.trim().toLowerCase())) {
+            errors.push({
+              path: `${where}.preparation`,
+              message: `${field} uses $(${key}), which this kind's blockFilters never expand`,
+            });
+          }
         }
       }
     }

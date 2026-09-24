@@ -437,6 +437,42 @@ export interface InventoryDef {
 }
 
 /**
+ * How a kind lets a player prepare a list from the things a block holds — ADR 0046.
+ *
+ * Some blocks let the character put a limited number of what they hold or could hold on a "prepared" list,
+ * and the limit, what is always on it and what is over are all derivable; only *which* the player picked is
+ * not (`Character.prepared`). This says which blocks do it and where each number lives, in the shape the
+ * other kind-level declarations use, so core says none of `spell`, `prepare` or `spellbook`.
+ *
+ * A block prepares when its declared attribute `blockAttribute` reads `true`. It prepares from what it
+ * **holds** (a book) when an active select attached to it has a name starting with `heldSelect`, and from a
+ * whole **list** otherwise. A kind that declares none has no such lists, and the engine publishes none.
+ */
+export interface PreparationDef {
+  /** The block attribute that says the block prepares, compared lowercased and read as `true`. */
+  blockAttribute: string;
+  /** The stat holding the block's limit, with `{name}` standing for the block's name. */
+  limit: StatKey;
+  /** The type of element that is prepared. */
+  elementType: ElementType;
+  /**
+   * The prefix of a select's name whose picks form a book the block prepares from. Case is ignored.
+   * Omitted, every preparing block prepares from its list.
+   *
+   * This is an assumption about content and is named as one (ADR 0046 decision 4): nothing in content
+   * says which classes keep a book but the name of the select that fills it.
+   */
+  heldSelect?: string;
+  /**
+   * A `supports` expression, in the language of ADR 0030, that admits what a block may prepare from its
+   * whole list: "on this block's list, of a level I have slots for".
+   */
+  listFilter: string;
+  /** The same for a block that prepares from what it holds; the list part does not apply to a book. */
+  heldFilter: string;
+}
+
+/**
  * Substitute a block's name and attributes into a stat key.
  *
  * Returns `undefined` when a placeholder names something the block does not declare —
@@ -910,6 +946,11 @@ export interface CharacterKindDef {
    * Athletics.
    */
   repeatableSetter?: string;
+  /**
+   * Which blocks let the player prepare a list, and where each number lives — ADR 0046. Replaced rather
+   * than merged along an `extends` chain, like `inventory`. A kind without one publishes no prepared lists.
+   */
+  preparation?: PreparationDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -938,6 +979,8 @@ export interface ResolvedCharacterKind {
   inventory?: InventoryDef;
   /** The setter that marks an element as repeatable, or none — ADR 0035. */
   repeatableSetter?: string;
+  /** Which blocks prepare a list, or nothing at all — ADR 0046. */
+  preparation?: PreparationDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
   buildSteps: BuildStepDef[];
@@ -1117,6 +1160,7 @@ export function resolveCharacterKind(
   let contributions: ContributionDef[] = [];
   let inventory: InventoryDef | undefined;
   let repeatableSetter: string | undefined;
+  let preparation: PreparationDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
@@ -1136,6 +1180,7 @@ export function resolveCharacterKind(
     if (layer.contributions !== undefined) contributions = layer.contributions;
     if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.repeatableSetter !== undefined) repeatableSetter = layer.repeatableSetter;
+    if (layer.preparation !== undefined) preparation = layer.preparation;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
@@ -1156,6 +1201,7 @@ export function resolveCharacterKind(
     contributions,
     inventory,
     repeatableSetter,
+    preparation,
     candidateNotes,
     buildSteps,
     sheet,

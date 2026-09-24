@@ -526,3 +526,108 @@ test('a track expression may read a setter, and a level roll may be fixed by an 
   assert.deepEqual(await errorsFor(withRoll(base)), []);
   assert.notDeepEqual(await errorsFor(withRoll({ ...base, fixedWhen: 3 })), []);
 });
+
+test('a recorded prepared list validates as element ids by lowercased block name, and nothing else does (ADR 0046)', async () => {
+  const schemas = await loadSchemas();
+  const character = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
+
+  assert.deepEqual(
+    validateCharacter({ ...character, prepared: { wizard: ['ID_A', 'ID_B'], 'eldritch knight': [] } }, schemas).errors,
+    [],
+  );
+  // An additive field and not a formatVersion bump: the same character without it still validates.
+  assert.deepEqual(validateCharacter(character, schemas).errors, []);
+
+  assert.deepEqual(
+    validateCharacter({ ...character, prepared: { wizard: 'ID_A' } }, schemas).errors,
+    [{ path: 'prepared.wizard', message: 'must be an array, not a string' }],
+  );
+  assert.deepEqual(
+    validateCharacter({ ...character, prepared: { wizard: [''] } }, schemas).errors.map((e) => e.path),
+    ['prepared.wizard[0]'],
+  );
+  assert.deepEqual(
+    validateCharacter({ ...character, prepared: ['ID_A'] }, schemas).errors,
+    [{ path: 'prepared', message: 'must be an object, not an array' }],
+  );
+});
+
+test('a preparation declaration is checked before the app loads it (ADR 0046)', async () => {
+  const preparation = {
+    blockAttribute: 'prepare',
+    limit: '{name}:gizmo:allow',
+    elementType: 'Widget',
+    heldSelect: 'Ledger',
+    listFilter: '$(gizmo:catalogue), $(gizmo:charge)',
+    heldFilter: '$(gizmo:charge)',
+  };
+  const withFilters = (s: GameSystem, change: (p: typeof preparation) => void = () => {}) => {
+    const kind = s.characterKinds[0]!;
+    kind.blockFilters = [
+      { key: 'gizmo:catalogue', tags: ['{list}', '{name}'] },
+      { key: 'gizmo:charge', tagsFromStats: ['{name}:gizmo:charge:*'], fillFrom: 1 },
+    ];
+    const copy = { ...preparation };
+    change(copy);
+    kind.preparation = copy;
+  };
+
+  assert.deepEqual(await errorsFor(broken((s) => withFilters(s))), []);
+
+  // Every part but the ledger is required, and an unknown key is named.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        withFilters(s);
+        delete (s.characterKinds[0]!.preparation as Partial<typeof preparation>).limit;
+      }),
+    ),
+    ['characterKinds[0].preparation.limit: is required'],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        withFilters(s);
+        (s.characterKinds[0]!.preparation as unknown as Record<string, unknown>)['limits'] = 'x';
+      }),
+    ),
+    ['characterKinds[0].preparation.limits: is not a known field — did you mean "limit"?'],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        withFilters(s);
+        delete s.characterKinds[0]!.preparation!.heldSelect;
+      }),
+    ),
+    [],
+  );
+
+  // One limit for every block is a mistake nobody could see at runtime.
+  assert.deepEqual(
+    await errorsFor(broken((s) => withFilters(s, (p) => (p.limit = 'gizmo:allow')))),
+    ['characterKinds[0].preparation: the limit "gizmo:allow" names no {name}, so every block would share one number'],
+  );
+  // A filter that will not parse, and one that names an expansion the kind never makes.
+  assert.deepEqual(
+    await errorsFor(broken((s) => withFilters(s, (p) => (p.heldFilter = '   ')))),
+    ['characterKinds[0].preparation: heldFilter "   " is not a supports expression'],
+  );
+  assert.deepEqual(
+    await errorsFor(broken((s) => withFilters(s, (p) => (p.listFilter = '$(gizmo:catalogue), $(gizmo:missing)')))),
+    ['characterKinds[0].preparation: listFilter uses $(gizmo:missing), which this kind\'s blockFilters never expand'],
+  );
+});
+
+test('the shipped 5e kind declares its preparation', async () => {
+  const [, raw] = (await shippedSystems()).find(([name]) => name === 'dnd5e') ?? [];
+  const pc = (raw as GameSystem).characterKinds.find((k) => k.id === 'pc')!;
+  assert.deepEqual(pc.preparation, {
+    blockAttribute: 'prepare',
+    limit: '{name}:spellcasting:prepare',
+    elementType: 'Spell',
+    heldSelect: 'Spellbook',
+    listFilter: '$(spellcasting:list), $(spellcasting:slots)',
+    heldFilter: '$(spellcasting:slots)',
+  });
+});

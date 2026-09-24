@@ -222,6 +222,15 @@
         { "key": "spellcasting:slots", "tagsFromStats": ["{name}:spellcasting:slots:*", "spellcasting:slots:*"], "fillFrom": 1 }
       ],
 
+      "preparation": {
+        "blockAttribute": "prepare",
+        "limit": "{name}:spellcasting:prepare",
+        "elementType": "Spell",
+        "heldSelect": "Spellbook",
+        "listFilter": "$(spellcasting:list), $(spellcasting:slots)",
+        "heldFilter": "$(spellcasting:slots)"
+      },
+
       "contributions": [
         { "stat": "hp:average", "value": { "kind": "number", "value": 1 }, "requirements": "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" },
 

@@ -181,6 +181,15 @@
       "items": { "type": "string", "minLength": 1 }
     },
 
+    "prepared": {
+      "type": "object",
+      "description": "What the player put on each casting block's prepared list, keyed by the lowercased block name, each a list of element ids in the order they were added (ADR 0046). An INPUT in the sense of ADR 0006 — nothing produces which spells a character prepared. Everything else about preparation derives, so an id content also makes always prepared may appear and counts for nothing. Optional and additive, so formatVersion does not move.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 }
+      }
+    },
+
     "createdAt": { "type": "string" },
     "updatedAt": { "type": "string" }
   }

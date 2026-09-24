@@ -186,6 +186,18 @@ export interface Character {
    * "never answered" and the engine would recompute it as pending on the very next read.
    */
   declinedDecisions?: string[];
+  /**
+   * What the player put on each casting block's prepared list, keyed by the lowercased block name and
+   * holding element ids in the order they were added — ADR 0046.
+   *
+   * An input in ADR 0006's sense: nothing produces which spells a character prepared. Everything else about
+   * preparation derives (how many may be, which are always prepared, what is over), so an id that content
+   * also makes always prepared may sit here and counts for nothing. Absent when empty, like `advancement`.
+   * Additive and optional, so `formatVersion` did not move; a reader that does not know it loses the list
+   * and nothing else derives differently. The elements are embedded in the save (ADR 0012) and are **not**
+   * derivation seeds: Aurora's own `<sum>` does not hold them either.
+   */
+  prepared?: Record<string, ElementId[]>;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -327,6 +339,45 @@ export function setDeclined(
     declinedDecisions: next.length ? next : undefined,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/** The recorded prepared list of one block, by its lowercased name — ADR 0046. Empty when there is none. */
+export function getPrepared(character: Character, blockKey: string): ElementId[] {
+  return character.prepared?.[blockKey.trim().toLowerCase()] ?? [];
+}
+
+/**
+ * Replace one block's recorded prepared list — ADR 0046.
+ *
+ * Duplicates are dropped, keeping the first, and an empty list removes the block's entry (and the field
+ * when nothing is left), so a character that never prepared anything is byte-identical to one that
+ * prepared something and put it back. Writes only what it is given: whether an element may be prepared is
+ * the builder's question (it needs content) and how many is the derivation's (it needs a limit).
+ */
+export function setPrepared(
+  character: Character,
+  blockKey: string,
+  elementIds: ElementId[],
+): Character {
+  const key = blockKey.trim().toLowerCase();
+  const prepared = { ...character.prepared };
+  const unique = [...new Set(elementIds)];
+  if (unique.length) prepared[key] = unique;
+  else delete prepared[key];
+  return {
+    ...character,
+    prepared: Object.keys(prepared).length ? prepared : undefined,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Every element id on any recorded prepared list, once. The container embeds these (ADR 0012). */
+export function preparedElementIds(character: Character): ElementId[] {
+  const ids: ElementId[] = [];
+  for (const list of Object.values(character.prepared ?? {})) {
+    for (const id of list) if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 
 /** Record which generation method a budgeted build step used — ADR 0017. */
