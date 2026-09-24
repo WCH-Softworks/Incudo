@@ -134,7 +134,7 @@ Each of these is reported by `aurora verify` as `not-modelled` rather than quiet
 
 ---
 
-## Phase 2 — Desktop character builder MVP 🟡
+## Phase 2 — Desktop character builder MVP ✅
 
 *Goal: build a legal level-1-to-20 5e PC on the desktop, offline.*
 
@@ -820,10 +820,28 @@ before any code, both touching a public API:
 
 ### Where this phase actually stands
 
-**The engine half of Phase 2 is finished, and so is the shell work that was listed.** Every box
-above is checked, the last of them removing the CLI (the multiclass screen, the campaign options
-ADR 0032 describes, the menus and shortcuts, and the explicit export are all done). The phase
-stays 🟡 for the maintainer to close: its exit criterion — one exact character, built end to end in the running
+**Closed by the maintainer on 2026-09-24.** Every box above is checked, and the exit criterion below is met
+on every clause. What follows is how it stood when it closed, kept because the lessons in it outlived the phase.
+
+**What shipped against what was planned.** The phase was planned as eight boxes; all eight shipped, and three of
+them changed shape on the way:
+
+- **"Save/load `.heroforge` files"** became `.incu` ([ADR 0007](./docs/adr/0007-native-formats.md)), a zip that
+  carries the content it uses, and the phase added a library folder to hold them (ADR 0027) and a copy written
+  anywhere (ADR 0038).
+- **"Build flow driven by the system's `buildSteps`: race → class → background → …"** is not a sequence. It is one
+  list of open decisions with no current step and no Back button ([ADR 0017](./docs/adr/0017-open-decisions-not-steps.md)).
+- **"Tauri desktop shell … routing"** has no router: five panes and a command list the menu and the keyboard both
+  render (ADR 0037).
+
+Unplanned and shipped, because building the planned eight needed them: the system launcher and user-added systems
+(ADR 0031), campaign options (ADR 0032), inventory and a derived armour class (ADR 0021 to 0026), the spell slot,
+save DC, hit point and speed derivations (ADR 0018 to 0020, 0043, 0044), the filter language (ADR 0030, 0047,
+0048), prepared spells (ADR 0046), class splits (ADR 0045), thirty committed sample saves read in CI (ADR 0042),
+and the CLI's removal (ADR 0039). Not shipped, and carried: the gaps listed under "Known gaps" below, the
+per-character source allowlist (Phase 3), and anything run on macOS or Linux, which no part of this phase was.
+
+**How it stood when it closed.** Its exit criterion — one exact character, built end to end in the running
 app and compared with Aurora's output — is now met on every clause, built, checked against the book, and
 compared with an Aurora save of the same choices (prepared spells were the last, ADR 0046). Nothing in the rules engine is outstanding, though the
 first two levelling bugs ("nothing to choose", "the +2 lands as +1") were found by running it
