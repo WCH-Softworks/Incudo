@@ -118,6 +118,34 @@ function looksLikeStatRef(text: string): boolean {
   return /^[a-z][a-z \-]*$/.test(text);
 }
 
+/**
+ * A stat's number, reading a `:half` or `:half:up` suffix as "half of this" — ADR 0046.
+ *
+ * `level:paladin:half` and `proficiency:half:up` used to name a stat nothing publishes and resolve to
+ * zero; the corpus has 61 of them (Jack of All Trades' bonus, a Paladin's and an Artificer's prepared-spell
+ * limit). Five of those limits are checked against Aurora's own screen and all five read `:half` as
+ * rounding down.
+ *
+ * Read **here, when a reference is evaluated**, and not where a value is parsed, for a reason that is about
+ * stored copies: a `.incu` embeds the *parsed* elements it uses (ADR 0012), so a reading at parse time
+ * would leave every character saved before this reading a Paladin's limit of zero until it was saved again.
+ * Evaluating applies the same rule to a fresh parse and to an embedded one.
+ *
+ * Arithmetic and no game noun: the base is whatever content wrote. A stat that really is published under
+ * the suffixed name wins by being non-zero, so nothing that declares one is overridden.
+ */
+function statNumber(stat: string, ctx: ExpressionContext): number {
+  const direct = ctx.statNumber(stat);
+  if (direct !== 0) return direct;
+  const lower = stat.toLowerCase();
+  const up = lower.endsWith(':half:up');
+  if (!up && !lower.endsWith(':half')) return direct;
+  const base = lower.slice(0, lower.length - (up ? ':half:up' : ':half').length).trim();
+  if (base === '') return direct;
+  const half = ctx.statNumber(base) / 2;
+  return up ? Math.ceil(half) : Math.floor(half);
+}
+
 export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {
   switch (expr.kind) {
     case 'number':
@@ -127,7 +155,7 @@ export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {
       return Number.isFinite(n) ? n : 0;
     }
     case 'ref':
-      return ctx.statNumber(expr.stat);
+      return statNumber(expr.stat, ctx);
     case 'binary': {
       const l = evaluateExpr(expr.left, ctx);
       const r = evaluateExpr(expr.right, ctx);
@@ -170,7 +198,7 @@ export function evaluateExprAsString(expr: StatExpr, ctx: ExpressionContext): st
     case 'literal':
       return expr.value;
     case 'ref':
-      return ctx.statString(expr.stat) ?? String(ctx.statNumber(expr.stat));
+      return ctx.statString(expr.stat) ?? String(statNumber(expr.stat, ctx));
     default:
       return String(evaluateExpr(expr, ctx));
   }

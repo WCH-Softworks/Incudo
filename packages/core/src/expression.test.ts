@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseStatValue, evaluateExpr, type ExpressionContext } from './expression.ts';
+import { parseStatValue, evaluateExpr, evaluateExprAsString, type ExpressionContext } from './expression.ts';
 
 function ctx(stats: Record<string, number> = {}, strings: Record<string, string> = {}): ExpressionContext {
   return {
@@ -34,4 +34,26 @@ test('a negative number is still a number, not a negated reference', () => {
 
 test('a leading minus on something that is not a reference stays a literal', () => {
   assert.deepEqual(parseStatValue('-Fire and Ice'), { kind: 'literal', value: '-Fire and Ice' });
+});
+
+test('a reference may be halved, rounding down, or up with :up — ADR 0046', () => {
+  // It stays a plain reference in the parsed form, so a corpus cached or embedded before this reads the same.
+  assert.deepEqual(parseStatValue('level:paladin:half'), { kind: 'ref', stat: 'level:paladin:half' });
+  const stats = { 'level:paladin': 3, proficiency: 5, 'intelligence:modifier': 3 };
+  assert.equal(evaluateExpr(parseStatValue('level:paladin:half'), ctx(stats)), 1);
+  assert.equal(evaluateExpr(parseStatValue('level:paladin:half:up'), ctx(stats)), 2);
+  assert.equal(evaluateExpr(parseStatValue('proficiency:half'), ctx(stats)), 2);
+  assert.equal(evaluateExpr(parseStatValue('proficiency:half:up'), ctx(stats)), 3);
+  assert.equal(evaluateExpr(parseStatValue('intelligence:modifier:half:up'), ctx(stats)), 2);
+  // A class the character does not have reads 0, so the half of it is 0 and adds nothing.
+  assert.equal(evaluateExpr(parseStatValue('level:artificer:half'), ctx(stats)), 0);
+});
+
+test('a suffix is read only when nothing is published under the suffixed name', () => {
+  assert.equal(evaluateExpr({ kind: 'ref', stat: 'level:x:half' }, ctx({ 'level:x': 8, 'level:x:half': 7 })), 7);
+  // `half` alone and `:half` name nothing to halve.
+  assert.equal(evaluateExpr({ kind: 'ref', stat: 'half' }, ctx({ '': 8 })), 0);
+  assert.equal(evaluateExpr({ kind: 'ref', stat: ':half' }, ctx({ '': 8 })), 0);
+  // The string form of a reference takes the same reading.
+  assert.equal(evaluateExprAsString({ kind: 'ref', stat: 'level:paladin:half' }, ctx({ 'level:paladin': 5 })), '2');
 });
