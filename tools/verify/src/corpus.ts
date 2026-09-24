@@ -13,7 +13,7 @@
  */
 
 import { dirname } from 'node:path';
-import { referencedElementIds } from '@incudo/core';
+import { referencedElementIds, type Fetcher } from '@incudo/core';
 import { ContentLibrary, HttpContentSource, type SourceDiagnostic } from '@incudo/content';
 import { KNOWN_UPSTREAM_TYPOS } from '@incudo/aurora-import';
 import { LocalMirrorFetcher, OfflineFetcher } from './node-platform.ts';
@@ -45,12 +45,21 @@ export interface LoadedCorpus {
   elapsedMs: number;
 }
 
-export async function loadCorpus(location: CorpusLocation): Promise<LoadedCorpus> {
+/** How a load is made, for a test that compares two loads of the same corpus (ADR 0051). */
+export interface CorpusLoadOptions {
+  /** Requests in flight at once; the library's default when absent. */
+  concurrency?: number;
+  /** Stands between the loader and the disk, to delay or count what it asks for. */
+  wrap?: (fetcher: Fetcher) => Fetcher;
+}
+
+export async function loadCorpus(location: CorpusLocation, options: CorpusLoadOptions = {}): Promise<LoadedCorpus> {
   const started = Date.now();
-  const fetcher =
+  const disk =
     location.layout === 'repository'
       ? new LocalMirrorFetcher(location.root ?? dirname(location.index), new OfflineFetcher())
       : new OfflineFetcher();
+  const fetcher = options.wrap ? options.wrap(disk) : disk;
 
   const library = new ContentLibrary();
   const report = await library.loadSource(
@@ -60,6 +69,7 @@ export async function loadCorpus(location: CorpusLocation): Promise<LoadedCorpus
       resolveByName: location.layout === 'aurora-folder',
     }),
     location.index,
+    { concurrency: options.concurrency },
   );
   return {
     location,

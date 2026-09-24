@@ -1,6 +1,9 @@
 /**
  * A ContentLibrary is everything currently loaded: several sources, resolved into one
- * element index the engine can query. It walks nested indexes and can load lazily.
+ * element index the engine can query. It walks nested indexes and loads every file they name.
+ *
+ * Every file, on purpose: the builder lists candidates by type, and an Aurora index cannot say what
+ * a file holds without fetching it. ADR 0051 measured lazy per-file loading and declined it.
  */
 
 import {
@@ -25,14 +28,15 @@ export interface LoadOptions {
    */
   withoutGeneratedElements?: boolean;
   /**
-   * How many element files to fetch at once. ADR 0029 measured this against the real
-   * AuroraLegacy index and settled on {@link DEFAULT_CONCURRENCY}.
+   * How many requests a load has in flight at once, indexes and element files together. ADR
+   * 0029 measured this against the real AuroraLegacy index and settled on
+   * {@link DEFAULT_CONCURRENCY}.
    *
    * Raising it does **not** make the load non-deterministic: a batch is applied to the index
    * in the order the refs appeared, not in the order the fetches finished, so which file wins
-   * a duplicate id and what order the diagnostics come out in are unchanged. Nested indexes
-   * are still resolved one at a time, because the next batch of files is not known until one
-   * is parsed.
+   * a duplicate id and what order the diagnostics come out in are unchanged. A nested index is
+   * *fetched* as soon as the index naming it is read (ADR 0051) and *applied* when the queue
+   * reaches it, which is where it always was.
    */
   concurrency?: number;
 }
@@ -95,6 +99,31 @@ export class ContentLibrary {
     const pending: ElementAppend[] = [];
 
     const concurrency = Math.max(1, options.concurrency ?? DEFAULT_CONCURRENCY);
+    const limit = limiter(concurrency);
+
+    // Indexes fetched ahead of the queue — ADR 0051. Sixty of the first sixty-three requests of an
+    // AuroraLegacy load are indexes, and walking them one at a time was about 13 s of a cold first
+    // load. Each is asked for the moment the index naming it is read, so a chain of them costs its
+    // depth in round trips rather than its length. Only what the walk below would load is asked
+    // for: the same depth limit, `include` and "already loaded" checks, so the URLs a load fetches
+    // are the same set as before, and the queue still decides when each one is applied.
+    const indexFetches = new Map<string, Promise<ContentIndex>>();
+    const prefetch = (ref: FileRef, depth: number): void => {
+      if (!ref.isIndex || depth >= maxDepth) return;
+      if (indexFetches.has(ref.url) || this.loadedUrls.has(ref.url)) return;
+      if (options.include && !options.include(ref)) return;
+      const fetching = limit(() => source.loadIndex(ref.url), true);
+      indexFetches.set(ref.url, fetching);
+      // A failure is reported when the queue reaches this index, as it always was; here it is only
+      // kept from counting as unhandled.
+      fetching.then(
+        (nested) => {
+          for (const child of nested.files) prefetch(child, depth + 1);
+        },
+        () => undefined,
+      );
+    };
+    for (const ref of root.files) prefetch(ref, 0);
 
     while (queue.length) {
       const item = queue.shift()!;
@@ -105,8 +134,8 @@ export class ContentLibrary {
       if (!this.shouldLoad(ref, options)) continue;
 
       if (ref.isIndex) {
-        // One at a time, and before any more files: the children it names are what the next
-        // batch is made of, so there is nothing to overlap it with.
+        // Applied here, before any more files: the children it names are what the next batch is
+        // made of. Usually already fetched (`prefetch`, above), so this waits for nothing.
         try {
           if (depth >= maxDepth) {
             this.diagnostics.push({
@@ -116,7 +145,7 @@ export class ContentLibrary {
             });
             continue;
           }
-          const nested = await source.loadIndex(ref.url);
+          const nested = await (indexFetches.get(ref.url) ?? limit(() => source.loadIndex(ref.url), true));
           this.indexes.push(nested);
           for (const child of nested.files) queue.push({ ref: child, depth: depth + 1 });
         } catch (error) {
@@ -144,7 +173,7 @@ export class ContentLibrary {
       const results = await Promise.all(
         batch.map(async (fileRef) => {
           try {
-            return { ref: fileRef, file: await source.loadFile(fileRef) };
+            return { ref: fileRef, file: await limit(() => source.loadFile(fileRef)) };
           } catch (error) {
             return { ref: fileRef, error: error as Error };
           }
@@ -260,6 +289,37 @@ export class ContentLibrary {
       this.index.add(element);
     }
   }
+}
+
+/**
+ * At most `size` pieces of work in flight, urgent ones first when a slot frees up. An index is
+ * urgent because each one unlocks more work and an element file never does (ADR 0051).
+ */
+function limiter(size: number): <T>(work: () => Promise<T>, urgent?: boolean) => Promise<T> {
+  let active = 0;
+  const urgent: Array<() => void> = [];
+  const waiting: Array<() => void> = [];
+  const next = (): void => {
+    while (active < size) {
+      const start = urgent.shift() ?? waiting.shift();
+      if (!start) return;
+      active++;
+      start();
+    }
+  };
+  return <T>(work: () => Promise<T>, isUrgent = false) =>
+    new Promise<T>((resolve, reject) => {
+      (isUrgent ? urgent : waiting).push(() => {
+        Promise.resolve()
+          .then(work)
+          .then(resolve, reject)
+          .finally(() => {
+            active--;
+            next();
+          });
+      });
+      next();
+    });
 }
 
 function isElementFile(ref: FileRef): boolean {

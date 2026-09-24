@@ -176,12 +176,14 @@ export function SourcesPane({
           {busy ? 'Loading…' : 'Add'}
         </button>
       </div>
+      {/* The two modes differ only in when (ADR 0029). This used to promise lazy per-file loading;
+          ADR 0051 measured it and declined it, since a build is offered choices from half the corpus. */}
       <p className="hint">
         <strong>Download</strong> fetches everything now and keeps it, so the source works
         offline from here on. <strong>Stream</strong> fetches when the source is first used and
-        writes through to the same cache, so it is offline after that too. Either way nothing
-        is re-fetched until you ask — see ADR 0029, which is also honest about the lazy
-        per-file loading that would make the difference bigger and does not exist yet.
+        keeps it the same way, so it is offline after that too. Both fetch every file the
+        source lists, because building a character offers choices from all of them. Nothing is
+        fetched again until you ask.
       </p>
 
       {progress && (

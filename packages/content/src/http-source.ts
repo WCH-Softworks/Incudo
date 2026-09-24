@@ -2,7 +2,8 @@
  * Reads content straight from a repo, on demand.
  *
  * This is the capability Aurora does not have: browse and use a source without
- * downloading it first, and lazily fetch only the files a character actually needs.
+ * downloading it first. It fetches one file per call; what a load asks for is
+ * `ContentLibrary`'s decision, and that is every file (ADR 0051).
  */
 
 import { parseAuroraIndex, parseAuroraElements } from '@incudo/aurora-import';

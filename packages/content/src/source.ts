@@ -25,7 +25,7 @@ export interface ContentIndex {
   author?: string;
   version?: string;
   files: FileRef[];
-  /** Which nested indexes this one pulls in, resolved lazily. */
+  /** What the index is written in, from its URL (`detectFormat`). */
   format: 'aurora' | 'incudo';
 }
 
