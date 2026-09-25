@@ -345,8 +345,36 @@ the inventory work — a bag, slots, `equipped=`, attunement and a derived armou
 dropped Aurora `.xml` be a source** (ADR 0055/0056), builds a character, **sets its ability scores by
 all four of 5e's methods**, renders the sheet, **browses and searches everything loaded** (ADR 0053), reads and writes real `.incu` files into a folder
 the user picks, **saves a copy anywhere** (ADR 0038), and **imports Aurora `.dnd5e` saves into it**, and **multiclasses**: a level can
-be spent on any class the character qualifies for (ADR 0036).
+be spent on any class the character qualifies for (ADR 0036). **It starts any kind the system declares**, and a 5e
+**NPC starts from a creature's printed stat block** (ADR 0057).
 Not started: the mobile shell (only its `platform.ts` contract exists).
+
+**An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
+([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
+
+- **Measured first, and it moved the design.** The corpus has no `Creature`, `Legendary Action`, `Lair Action` or
+  `Regional Effect` element: the kinds were written around four types nothing declares. A creature is a `Companion`
+  (141, familiars, beasts and class summons, CR 0 to 8) that prints its six ability scores as setters and nowhere
+  else, and states armour class, hit points and speed a second time as its own `companion:*` rules. The 2025
+  Monster Manual is 32 such creatures plus 45 prose-only stat blocks (`Information`), seven of them legendary as text.
+- **`setterStats` on a kind** (`packages/core/src/setter-stats.ts`): a held element's setter is where a stat *starts*.
+  It lands where a declared default lands, before `baseStats`, so a typed score replaces it and contributions add to
+  either. A printed 12 and a typed 14 is 14, not 26 — why neither a `contribution` nor a builder copying into
+  `baseStats` was used. A value is a whole number or a fraction with at most one parenthesised note; anything else
+  (`14 + PB (natural armor)`) starts nothing and warns (`setter-not-a-number`); two suppliers warn. One function
+  answers it for the engine and for `budget.ts`, whose rows carry `printed` and count a printed target as set.
+- **5e's `npc` reads the six scores that way and `ac`/`hp`/`speed` from `companion:*`**, each redeclared with no
+  `default` (a `derive` adds to the default). With no creature they read 0, which is honest and a named gap. The six
+  scores are redeclared **capped at 30**: the system's are a player character's 20, which clipped the Triceratops and
+  Tyrannosaurus (found by `npc-creatures.test.ts`, not foreseen).
+- **A fresh NPC is offered 117 of 141**: 24 creatures carry their own requirements naming a PC's subclass, feat or
+  class level, and a candidate list leaves them out. Content being right, not a filter.
+- **Not done:** a creature's own `traits`/`actions` setters are not grants, so its traits reach the NPC only if the
+  DM picks them (next, with an ADR: whatever is reached must be embedded, ADR 0012); the printed challenge rating is
+  shown in the picker and not read (`progress` cannot be unset); an NPC from nothing cannot set AC, HP or speed.
+- **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
+  content comes from first, and show the prose stat blocks as reference rather than parse them.
+- **Driven in the browser build only**, with an origin-private folder standing in for the native folder picker.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -984,14 +1012,15 @@ deliberately **not** fixed:
   content matches this choice" for what is left of these, which is honest but not the whole truth.
 - **~~There is no export.~~** Fixed (ADR 0038): "Save a copy…" writes the character on screen to a
   file the user picks. See the paragraph after the commands list above.
-- **An NPC or legendary creature has no way to set ability scores.** Both kinds declare a
+- **~~An NPC or legendary creature has no way to set ability scores.~~** Fixed (ADR 0057), and a creature's
+  printed scores are where they start, so the budget below is the DM's override, not the only input. Both kinds declared a
   required `abilities` step with `"types": []` and **no `budget`** — the inert shape ADR 0017
   names, which matches no pending choice and reports itself complete. The editor is a budget
   renderer and knows nothing about 5e, so this is one `budget` block per kind in
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041 and 0046 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046 and 0057 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
@@ -1203,6 +1232,8 @@ built ADR 0022's `contributions` and spent it on `ac` and on ADR 0023's attuneme
   stat holds, so leaving the system-level `default: 10` in place would put a second 10 on every
   character. `npc` and `legendary` keep it and derive nothing — a monster's armour class is
   printed, not summed, and neither kind declares an inventory for `[armor:none]` to be about.
+  *(Since ADR 0057 they read the creature's own `companion:ac` rule, with no default: an NPC with no creature
+  reads 0, not 10.)*
 
 **An unattuned item contributes nothing, and says so** (ADR 0023). The gate landed at step 4 and
 the **limit** at step 5, once `contributions` existed to hold the base of 3. All 12

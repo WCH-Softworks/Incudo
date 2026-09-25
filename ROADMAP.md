@@ -901,7 +901,9 @@ so that finding one again is recognition rather than discovery.
   "one point is +1" would be the guess ADR 0005 rules out. Nothing in the 740 files contributes
   to 5e's `ability points` today, so this fires zero times; an ASI is a `+1` straight to the
   stat and lands as an ordinary contribution.
-- **An NPC or legendary creature still has no way to set ability scores.** Both kinds declare a
+- **~~An NPC or legendary creature still has no way to set ability scores.~~** Fixed by
+  [ADR 0057](./docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md), and not only by the budget named below: a creature's printed scores are where
+  an NPC's start, and the manual budget replaces them. Both kinds declare a
   required `abilities` step with `"types": []` and **no `budget`**, which is the shape ADR 0017
   called inert: it matches no pending choice and reports itself complete. The editor is ready
   for them — it is a budget renderer and knows nothing about 5e — so this is one `budget` block
@@ -1026,15 +1028,40 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
 
 ---
 
-## Phase 4 — More than one kind of character ⬜
+## Phase 4 — More than one kind of character 🟡
 
 *The first real use of [ADR 0009](./docs/adr/0009-character-kinds.md). Also the first proof that
 the kind machinery is not decorative.*
 
-- [ ] NPC / monster kind for 5e: stat block, challenge rating instead of level
-- [ ] Legendary creature kind: legendary actions, lair actions, regional effects
+- [x] **NPC / monster kind for 5e: stat block, challenge rating instead of level**
+      ([ADR 0057](./docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Measured first, and the measurement changed the fix: the corpus states a creature as
+      a `Companion` element (141 of them, from 23 books) that prints its six ability scores as setters and nowhere
+      else, and its armour class, hit points and speed a second time as its own `companion:*` rules. A kind may
+      now declare `setterStats`, a held element's setter that is where a stat *starts*: a score the DM types
+      replaces it, and content adds to either. The 5e NPC reads the six scores that way and armour class, hit
+      points and speed from the creature's rules; its ability score step is a manual-only budget, closed by a
+      creature and blocking for an NPC built from nothing; traits and actions are sets. The library starts any kind
+      the system declares, and a card says "NPC / Monster · Challenge Rating 5". Running the real corpus through it
+      found that the six ability stats carried a player character's cap of 20, which clipped the Triceratops and
+      the Tyrannosaurus; the NPC's are capped at 30. All 141 creatures derive the scores they print; no player
+      character derivation moved. Driven in the browser build. **Not done:** a creature's own named traits and
+      actions (its `traits`/`actions` setters) do not reach the NPC, the printed challenge rating is shown and
+      not read, an NPC built from nothing cannot set armour class, hit points or speed, and skills, saves, senses
+      and other speeds are not on the sheet. The Tauri window, macOS and Linux were not driven.
+- [ ] **A creature's own traits and actions reach the NPC it starts.** Named by the creature's setters (376
+      names, 373 resolve), not granted. Whatever a character reaches must be embedded in its save (ADR 0012), so it
+      belongs in the walk the derivation and `collectCharacterContent` share; an ADR first.
+- [ ] **Decide where legendary content comes from, before any UI for it.** *Reworded by ADR 0057's
+      measurement:* the corpus declares no `Legendary Action`, `Lair Action` or `Regional Effect` element; seven
+      of the 2025 Monster Manual's prose stat blocks mention legendary actions, as text only. The `legendary` kind
+      stays declared and builds like an NPC, with three empty pickers, until content for them exists: a user's own
+      file (ADR 0056) or a format for it. Was "Legendary creature kind: legendary actions, lair actions, regional
+      effects".
 - [ ] Companions and sidekicks
-- [ ] Wire up the 2025 Monster Manual creature content already in the corpus
+- [ ] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC.** *Reworded by ADR 0057's
+      measurement:* 32 of its creatures are structured and already usable; the other 45 (Rat to Tarrasque) are HTML
+      prose in `Information` elements. Parsing prose into elements is the guess ADR 0005 declines; showing it is
+      honest. Was "Wire up the 2025 Monster Manual creature content already in the corpus".
 - [ ] Kind-specific sheets and exports
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the

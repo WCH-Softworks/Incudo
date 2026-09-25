@@ -78,3 +78,4 @@ new one that supersedes it.
 | [0054](./0054-when-two-sources-define-the-same-id-the-later-one-in-the-list-is-used-and-the-list-says-so.md) | When two sources define the same id, the later one in the list is used, and the list says so | Accepted (builds on 0005, 0012, 0028, 0052) |
 | [0055](./0055-a-source-records-the-parts-switched-off-and-the-load-skips-them.md) | A source records the parts the user switched off, and the load skips them | Accepted (builds on 0028, 0051, 0052) |
 | [0056](./0056-an-aurora-file-the-user-adds-is-a-source-of-its-own-kept-as-a-copy.md) | An Aurora file the user adds is a source of its own, kept as a copy | Accepted (builds on 0012, 0028, 0031, 0052, 0054) |
+| [0057](./0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md) | A creature's printed scores are where an NPC starts, and the DM may replace them | Accepted (first use of 0009 beyond the PC; builds on 0003, 0006, 0012, 0014, 0017, 0022) |
