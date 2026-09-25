@@ -31,6 +31,12 @@
       "description": "One number whose meaning comes from the kind's progression: a level, a challenge rating, an xp total, or nothing at all. Fractional values are legal — a challenge rating of 1/4 is 0.25. Absent (format 3 only) means where the kind says it starts: where a creature the character chose prints it, or else where the progression starts, and a value the user sets replaces that print (ADR 0060)."
     },
 
+    "removedGrants": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Elements a held element's declared setter names, which the user took away (ADR 0061): a DM's creature without one of its traits. It cancels only what that holder gives, by its setter or its own grant of the same id; the element chosen, or granted by anything else, is still held. An INPUT, like declinedDecisions. Absent when empty; format 3 only."
+    },
+
     "sources": {
       "type": "array",
       "description": "An ALLOWLIST of the content sources this character was built from, with the versions it was built against. Never a blocklist: Aurora stored 37,235 disabled ids in one save, and a blocklist silently includes everything published after it was written. Since ADR 0012 these are provenance and an update path, not a load-time dependency.",

@@ -43,7 +43,7 @@ export function BuilderPane({
   elements: ElementIndex;
   hasContent: boolean;
 }): React.JSX.Element {
-  const { kind, derived, decisions, steps, picks, declined, preparation, publications, progress } = state;
+  const { kind, derived, decisions, steps, picks, declined, preparation, publications, progress, holderGrants } = state;
   const progression = kind.progression;
   const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
 
@@ -273,6 +273,54 @@ export function BuilderPane({
               ))}
             </section>
           )}
+
+          {/*
+            What a held element's setters give: a creature's traits, actions and reactions. Not
+            decisions, since nothing is owed, and not picks, since nobody chose them; each can be
+            taken away and given back (ADR 0061). Grouped by the element that gives them, and within
+            that by the step whose types they are.
+          */}
+          {[...new Set(holderGrants.map((grant) => grant.from))].map((from) => (
+            <section key={from} className="holder-grants">
+              <h2>From {nameOf(from)}</h2>
+              <p className="hint">
+                These come with the creature. Remove any this character does not have; a removed one
+                can be given back here.
+              </p>
+              {[...steps.map((step) => ({ id: step.id, label: step.label })), { id: '', label: 'Other' }]
+                .filter((group) => holderGrants.some((g) => g.from === from && g.stepId === group.id))
+                .map((step) => (
+                  <div key={step.id} className="settled">
+                    <div className="decision-head">
+                      <span className="label">{step.label}</span>
+                    </div>
+                    <ul className="holder-grant-list">
+                      {holderGrants
+                        .filter((g) => g.from === from && g.stepId === step.id)
+                        .map((grant) => (
+                          <li key={grant.elementId} className={grant.removed ? 'removed' : ''}>
+                            <span>{candidateLabel(grant.elementId)}</span>
+                            {grant.removed ? (
+                              <>
+                                <span className="hint">
+                                  {grant.held ? ' removed, but also chosen or given by something else' : ' removed'}
+                                </span>
+                                <button type="button" className="link" onClick={() => builder.restoreGranted(grant.elementId)}>
+                                  Give back
+                                </button>
+                              </>
+                            ) : (
+                              <button type="button" className="link" onClick={() => builder.removeGranted(grant.elementId)}>
+                                Remove
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                ))}
+            </section>
+          ))}
 
           {/*
             Which class each level went to. Not a decision and never outstanding, so it does not

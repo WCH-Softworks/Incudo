@@ -1133,6 +1133,29 @@ table.budget-rows input[type='number'] {
   border-bottom: 1px solid var(--line);
 }
 
+/* What a creature gives, each with Remove or Give back. A removed one stays listed, struck through, so it can
+   be given back from where it was taken. */
+.holder-grant-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.holder-grant-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.holder-grant-list li.removed > span:first-child {
+  text-decoration: line-through;
+  color: var(--fg-muted);
+}
+
 /* One card per slot of a settled pick — a single row for a top-level pick, several for a full
    content select (ADR 0032). Stacked rather than side by side: the settled column is narrow,
    and a race or spell name plus its book runs long. */

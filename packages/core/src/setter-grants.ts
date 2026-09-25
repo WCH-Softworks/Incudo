@@ -15,9 +15,14 @@ import type { SetterGrantDef } from './system.ts';
  *
  * Split on commas and trimmed, nothing more: three ids upstream end in a stray `>` and are declared with
  * it, so a reader that matched an id pattern would drop three real attacks. Whether an id resolves is the
- * caller's question, answered the way a dangling `<grant>` is.
+ * caller's question, answered the way a dangling `<grant>` is. What the character removed (ADR 0061) is left
+ * out.
  */
-export function setterGrantIds(defs: readonly SetterGrantDef[], element: Element): ElementId[] {
+export function setterGrantIds(
+  defs: readonly SetterGrantDef[],
+  element: Element,
+  removed?: ReadonlySet<ElementId>,
+): ElementId[] {
   if (defs.length === 0) return [];
   const ids: ElementId[] = [];
   const seen = new Set<ElementId>();
@@ -29,11 +34,32 @@ export function setterGrantIds(defs: readonly SetterGrantDef[], element: Element
       const id = part.trim();
       if (id === '' || seen.has(id)) continue;
       seen.add(id);
+      if (removed?.has(id)) continue;
       ids.push(id);
     }
   }
   return ids;
 }
+
+/**
+ * Which of the ids the character removed this element names in its declared setters — ADR 0061.
+ *
+ * A removal cancels what the holder gives, however it gives it: the corpus has twelve creatures that also carry
+ * a `<grant>` of an id their setter names, and a removal that stopped only the setter would leave those twelve
+ * held. The engine and `collectCharacterContent` skip the holder's own grants of these ids, and nothing else's.
+ */
+export function withdrawnGrantIds(
+  defs: readonly SetterGrantDef[],
+  element: Element,
+  removed: ReadonlySet<ElementId>,
+): ReadonlySet<ElementId> {
+  if (removed.size === 0) return NONE;
+  const named = setterGrantIds(defs, element);
+  const withdrawn = new Set(named.filter((id) => removed.has(id)));
+  return withdrawn.size ? withdrawn : NONE;
+}
+
+const NONE: ReadonlySet<ElementId> = new Set();
 
 /** A setter by name, compared without case, as every other setter name is read. */
 function findSetter(element: Element, name: string): string | undefined {

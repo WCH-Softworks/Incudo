@@ -31,7 +31,7 @@ import {
 } from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { referencedElementIds } from './engine.ts';
-import { setterGrantIds } from './setter-grants.ts';
+import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
 import { characterProgress } from './setter-stats.ts';
 import { baselineElementIds, type ResolvedCharacterKind } from './system.ts';
 import { integrityOf } from './sha256.ts';
@@ -148,6 +148,7 @@ export function collectCharacterContent(
   const collected = new Map<ElementId, Element>();
   const unresolved = new Set<ElementId>();
   const seen = new Set<ElementId>();
+  const removed: ReadonlySet<ElementId> = new Set(character.removedGrants ?? []);
 
   let frontier: ElementId[] = [
     ...chosenElementIds(character),
@@ -181,8 +182,14 @@ export function collectCharacterContent(
       collected.set(id, element);
       // What a declared setter names is granted (ADR 0058), and a grant the derivation reaches must be
       // embedded or the save opens without it. The same function the engine reads; only with a kind.
+      // What the user removed from this holder (ADR 0061) is neither named nor granted by it, so it is not
+      // embedded on its account; the same element reached through anything else still is.
       const named = options.kind ? setterGrantIds(options.kind.setterGrants, element) : [];
+      const withdrawn = options.kind
+        ? withdrawnGrantIds(options.kind.setterGrants, element, removed)
+        : new Set<ElementId>();
       for (const referenced of [...referencedElementIds([element]), ...named]) {
+        if (withdrawn.has(referenced)) continue;
         if (seen.has(referenced)) continue;
         seen.add(referenced);
         next.add(referenced);

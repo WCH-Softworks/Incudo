@@ -352,3 +352,38 @@ test("every creature's named traits, actions and reactions reach its NPC, and it
   assert.deepEqual(missing, [], 'every resolving id a creature names is held by its NPC');
   assert.deepEqual(lostOnReopen, [], 'and by the NPC reopened from its save with no source');
 });
+
+test("every creature's named traits, actions and reactions can be removed, and its save leaves them out", { skip }, async (t) => {
+  // ADR 0061. Removes everything each creature names, including the twelve its own `<grant>` also gives. Fails
+  // if the engine skips only the setter (those twelve stay held), or if `collectCharacterContent` still follows
+  // a removed id from its holder (the save embeds what the NPC no longer has).
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const stillHeld: string[] = [];
+  const embedded: string[] = [];
+  const reopenedDiffers: string[] = [];
+  let removed = 0;
+  let alsoGranted = 0;
+  for (const creature of creatures) {
+    const b = npcOn(system, elements, creature);
+    const named = b.getState().holderGrants.filter((g) => g.held).map((g) => g.elementId);
+    if (!named.length) continue;
+    const granted = new Set(creature.rules.flatMap((r) => (r.kind === 'grant' ? [r.id] : [])));
+    for (const id of named) b.removeGranted(id);
+    removed += named.length;
+    alsoGranted += named.filter((id) => granted.has(id)).length;
+    const state = b.getState();
+    for (const id of named) if (state.derived.elementIds.has(id)) stillHeld.push(`${creature.id} ${id}`);
+    const { container } = readCharacterContainer(packCharacter(state.character, system, elements, { generator: 'test' }).files);
+    const saved = new Set(container!.content.elements.map((e) => e.id));
+    for (const id of named) if (saved.has(id)) embedded.push(`${creature.id} ${id}`);
+    const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
+    if ([...reopened.elementIds].sort().join() !== [...state.derived.elementIds].sort().join()) reopenedDiffers.push(creature.id);
+  }
+  t.diagnostic(`${removed} named elements removed across ${creatures.length} creatures, ${alsoGranted} of them also granted by their creature's own rule`);
+  assert.ok(alsoGranted > 0, "the corpus has a creature that also grants what it names, and it was exercised");
+  assert.deepEqual(stillHeld, [], 'a removed element is not held');
+  assert.deepEqual(embedded, [], 'a removed element is not embedded');
+  assert.deepEqual(reopenedDiffers, [], 'the save derives what the builder did');
+});

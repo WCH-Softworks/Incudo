@@ -55,7 +55,7 @@ import {
   type CharacterProgress,
   type SetterStartNote,
 } from './setter-stats.ts';
-import { setterGrantIds } from './setter-grants.ts';
+import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
 import {
   derivePreparation,
   preparationFilters,
@@ -288,6 +288,7 @@ export function deriveCharacter(
   // baseline missing means the system definition expects content this profile has not
   // loaded — the system's problem, not the character's, and a warning.
   const baselineIds = new Set<ElementId>(baselineElementIds(kind, progress.value));
+  const removedGrants: ReadonlySet<ElementId> = new Set(character.removedGrants ?? []);
   const chosenIds = new Set<ElementId>(baselineIds);
   for (const choice of character.choices) for (const id of choice.elementIds) chosenIds.add(id);
   // A second class is chosen by no select — it is what levels 3 onwards went to (ADR 0015),
@@ -400,8 +401,11 @@ export function deriveCharacter(
       // `queue` grows as it is read, which is the order the frontier used to be walked in.
       for (let at = 0; at < queue.length; at++) {
         const element = queue[at]!;
+        // What the user took away from this holder (ADR 0061): its setter's naming and its own `<grant>` of it.
+        const withdrawn = withdrawnGrantIds(kind.setterGrants, element, removedGrants);
         for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
           if (rule.kind !== 'grant') continue;
+          if (withdrawn.has(rule.id)) continue;
           inheritTrack(nextTracks, nextMembers, element.id, rule.id, index.get(rule.id), problems);
           // Once per id, resolved or not: an id nothing declares is reported by the first
           // element to grant it, not by every one.
@@ -413,7 +417,7 @@ export function deriveCharacter(
         }
         // What a declared setter names is granted by this element, as a `<grant>` it carried would
         // be (ADR 0058): same track, reported once when unresolved, gone when the element is.
-        for (const id of setterGrantIds(kind.setterGrants, element)) {
+        for (const id of setterGrantIds(kind.setterGrants, element, removedGrants)) {
           inheritTrack(nextTracks, nextMembers, element.id, id, index.get(id), problems);
           if (!attempted.has(id)) {
             attempted.add(id);

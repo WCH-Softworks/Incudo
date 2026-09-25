@@ -254,7 +254,7 @@ test('a character and a manifest validate against their own schemas', async () =
   );
 });
 
-test('only format 3 may leave out progress — ADR 0060', async () => {
+test('only format 3 may leave out progress or record a removal — ADR 0060, ADR 0061', async () => {
   // Fails if the schema still requires `progress`, or if the referential check stops refusing a file that
   // omits it and claims 2 (a reader of 2 would open it and read no challenge rating at all).
   const schemas = await loadSchemas();
@@ -266,6 +266,13 @@ test('only format 3 may leave out progress — ADR 0060', async () => {
     { path: 'progress', message: 'is required below format 3' },
   ]);
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 4 }, schemas).errors.map((e) => e.path), ['formatVersion']);
+
+  // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
+  const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
+  assert.deepEqual(validateCharacter({ ...pc, formatVersion: 3, removedGrants: ['ID_X'] }, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...pc, removedGrants: ['ID_X'] }, schemas).errors, [
+    { path: 'removedGrants', message: 'is recorded only from format 3' },
+  ]);
 });
 
 test('an inventory validates as instances, and a duplicate instance id does not', async () => {

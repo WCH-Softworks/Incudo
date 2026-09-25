@@ -30,6 +30,8 @@ import {
   setBaseStat,
   setChoice,
   setDeclined,
+  setGrantRemoved,
+  setterGrantIds,
   setGenerationMethod,
   setName,
   setRoll,
@@ -266,8 +268,26 @@ export interface BuilderState {
   publications: PublicationList;
   /** Where the character is on its progression, and whether a creature it chose says so — ADR 0060. */
   progress: ProgressState;
+  /**
+   * What held elements give by their declared setters — a creature's traits, actions and reactions — and which
+   * of them the user removed (ADR 0061). Removed ones stay listed so they can be given back.
+   */
+  holderGrants: HolderGrant[];
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
+}
+
+/** One element a held element's setter names, and whether the user took it away — ADR 0061. */
+export interface HolderGrant {
+  elementId: ElementId;
+  /** The held element whose setter names it: the creature. */
+  from: ElementId;
+  /** The build step whose types include it, so a shell can group it with that step; '' when none does. */
+  stepId: string;
+  /** Whether the user removed it. A removed one is not held on the holder's account. */
+  removed: boolean;
+  /** Whether the character still holds it: an element the user also chose, or that something else grants, is. */
+  held: boolean;
 }
 
 /**
@@ -432,7 +452,24 @@ export class CharacterBuilder {
       );
     }
     this.invalidate();
+    this.pruneRemovedGrants();
   };
+
+  /**
+   * Forget a removal nothing held names any more (ADR 0061): a trait taken from a Wolf means nothing once the
+   * NPC is a Bear, and a record nobody can see or restore is one nobody can undo. A removal the new creature
+   * also names is kept, because the DM said this NPC does not have it.
+   */
+  private pruneRemovedGrants(): void {
+    const removed = this.character.removedGrants;
+    if (!removed?.length) return;
+    const named = new Set(this.getState().holderGrants.map((grant) => grant.elementId));
+    let next = this.character;
+    for (const id of removed) if (!named.has(id)) next = setGrantRemoved(next, id, false);
+    if (next === this.character) return;
+    this.character = next;
+    this.invalidate();
+  }
 
   /**
    * Stop a non-blocking decision from cluttering `decisions`, without answering it.
@@ -447,6 +484,22 @@ export class CharacterBuilder {
     const decision = this.getState().decisions.find((d) => d.id === decisionId);
     if (!decision || decision.blocking) return;
     this.character = setDeclined(this.character, decisionId, true);
+    this.invalidate();
+  };
+
+  /**
+   * Take away something a held element's setter gives — a trait from a creature — or give it back (ADR 0061).
+   * Refused for anything no held element's declared setter names: a class feature is content's, not the user's.
+   */
+  removeGranted = (elementId: ElementId): void => {
+    if (!this.getState().holderGrants.some((grant) => grant.elementId === elementId && !grant.removed)) return;
+    this.character = setGrantRemoved(this.character, elementId, true);
+    this.invalidate();
+  };
+
+  restoreGranted = (elementId: ElementId): void => {
+    if (!this.character.removedGrants?.includes(elementId)) return;
+    this.character = setGrantRemoved(this.character, elementId, false);
     this.invalidate();
   };
 
@@ -1322,8 +1375,37 @@ export class CharacterBuilder {
         printed: derived.progress.printed?.value,
         printable: progressCanBePrinted(this.kind),
       },
+      holderGrants: this.holderGrants(derived),
       focusedId: this.focusedId,
     };
+  }
+
+  /**
+   * Everything the held elements' declared setters name, removed or not, once each, in the order written. Read
+   * with the same function the engine grants through, unfiltered, so a removed one is still listed to restore.
+   */
+  private holderGrants(derived: DerivedCharacter): HolderGrant[] {
+    const defs = this.kind.setterGrants;
+    if (!defs.length) return [];
+    const removed = new Set(this.character.removedGrants ?? []);
+    const out: HolderGrant[] = [];
+    const seen = new Set<ElementId>();
+    for (const holder of derived.elements) {
+      for (const id of setterGrantIds(defs, holder)) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const type = this.elements.get(id)?.type;
+        const step = type === undefined ? undefined : this.steps.find((s) => s.types.includes(type));
+        out.push({
+          elementId: id,
+          from: holder.id,
+          stepId: step?.id ?? '',
+          removed: removed.has(id),
+          held: derived.elementIds.has(id),
+        });
+      }
+    }
+    return out;
   }
 
   private budgetState(step: BuildStepDef, derived: DerivedCharacter): BudgetState {

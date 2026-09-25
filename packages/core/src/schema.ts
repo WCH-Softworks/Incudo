@@ -81,7 +81,8 @@ function result<T>(value: T, errors: SchemaError[]): ValidationResult<T> {
 }
 
 /**
- * What the schema cannot say about a character: `instanceId` is unique, and only format 3 omits `progress`.
+ * What the schema cannot say about a character: `instanceId` is unique, and only format 3 omits `progress` or
+ * records `removedGrants`.
  *
  * It matters because it is an address. `setInventoryEntry` replaces by it and a UI keys rows
  * by it, so two entries sharing one is a file where editing an item changes a different item
@@ -94,6 +95,9 @@ function checkCharacterReferences(character: Character): SchemaError[] {
   // open and get wrong without a word, which is the one thing the number exists to prevent.
   if (character.formatVersion < 3 && character.progress === undefined) {
     errors.push({ path: 'progress', message: 'is required below format 3' });
+  }
+  if (character.formatVersion < 3 && character.removedGrants !== undefined) {
+    errors.push({ path: 'removedGrants', message: 'is recorded only from format 3' });
   }
   const seen = new Set<string>();
   const inventory = character.inventory ?? [];

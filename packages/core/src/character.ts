@@ -216,6 +216,15 @@ export interface Character {
    * publication is the system's to say (`ElementTypeDef.publication`); a name no loaded publication has is kept.
    */
   publications?: string[];
+  /**
+   * Elements a held element's declared setter names, which the user took away — ADR 0061. A DM's Triceratops
+   * without Stomp. An input like `declinedDecisions`: nothing derives that a trait was removed.
+   *
+   * It cancels only what the holder gives: the setter that names the id and that same holder's own `<grant>` of
+   * it. The same element chosen, or granted by anything else, is still held. Absent when empty; only format 3
+   * records it, because a reader of 2 would give the trait back without a word.
+   */
+  removedGrants?: ElementId[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -351,6 +360,24 @@ export function setAdvancement(
     advancement: advancement?.length ? advancement : undefined,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Take away an element a held element's setter names, or give it back — ADR 0061.
+ *
+ * Recording a removal raises the character to format 3. Giving the last one back leaves the field absent and the
+ * version where it is: nothing downgrades one.
+ */
+export function setGrantRemoved(character: Character, elementId: ElementId, removed: boolean): Character {
+  const current = character.removedGrants ?? [];
+  const next = removed
+    ? current.includes(elementId)
+      ? current
+      : [...current, elementId]
+    : current.filter((id) => id !== elementId);
+  const { removedGrants: _previous, ...rest } = character;
+  const written: Character = next.length ? { ...raiseFormatVersion(rest, 3), removedGrants: next } : rest;
+  return { ...written, updatedAt: new Date().toISOString() };
 }
 
 /** Whether the user has explicitly said to skip this decision — ADR 0033. */
