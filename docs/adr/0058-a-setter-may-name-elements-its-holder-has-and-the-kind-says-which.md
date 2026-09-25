@@ -97,7 +97,9 @@ already has it.
 
 ## What this does not do
 
-- **A trait cannot be taken away from an NPC.** It is granted, like a race's darkvision; there is no "suppress"
+- **~~A trait cannot be taken away from an NPC.~~** Done by
+  [ADR 0061](./0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md), as the user's input and not as
+  content cancelling content. As first written: It is granted, like a race's darkvision; there is no "suppress"
   for a grant (Phase 2's "one grant cannot cancel another"). A DM who wants a Triceratops without Stomp has, for
   now, no way to say so.
 - **The 3 unresolved Boo's Astral Menagerie traits** are reported as unresolved on the NPC that holds the

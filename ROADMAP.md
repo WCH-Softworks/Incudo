@@ -883,7 +883,8 @@ so that finding one again is recognition rather than discovery.
 - **One grant cannot cancel another.** A Mithral Armor adornment suppresses its host armour's
   `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE`, and no content file expresses that — it is Aurora
   app behaviour. It is 2 of the 55 `element-extra`, and a set of real saves carry the control case:
-  plate with no mithral does keep the marker. Not invented (ADR 0005).
+  plate with no mithral does keep the marker. Not invented (ADR 0005). *(Unchanged by ADR 0061, which lets
+  the **user** take away what a creature's setters give an NPC: an input, not content cancelling content.)*
 - **`ID_INTERNAL_MULTICLASS_LEVEL_3`** — the single `element-missing`, an Aurora-app marker
   nothing in the 740 files references and that carries no rules. Honestly unmodelled.
 - **One unresolved reference upstream** — the `…VULNERAILITY…` typo. It is a *grant* to an id
@@ -1048,7 +1049,7 @@ the kind machinery is not decorative.*
       actions (its `traits`/`actions` setters) do not reach the NPC, the printed challenge rating is shown and
       not read, an NPC built from nothing cannot set armour class, hit points or speed, and skills, saves, senses
       and other speeds are not on the sheet. The Tauri window, macOS and Linux were not driven. *(The first of
-      these was closed by ADR 0058, the next item.)*
+      these was closed by ADR 0058, the next item; the second and third by ADRs 0060 and 0059, two items on.)*
 - [x] **A creature's own traits and actions reach the NPC it starts**
       ([ADR 0058](./docs/adr/0058-a-setter-may-name-elements-its-holder-has-and-the-kind-says-which.md)). A creature
       names them as ids in its `traits`, `actions` and `reactions` setters and grants none. A kind may now declare
@@ -1058,6 +1059,22 @@ the kind machinery is not decorative.*
       reopened with no source; all 373 resolving ids reach their NPC, and the 3 upstream typos are reported. The player
       character declares none. A set step no longer offers what the character already holds. Driven in the browser
       build. **Not done:** a granted trait cannot be removed from an NPC; the Tauri window, macOS and Linux.
+      *(The first of these was closed by ADR 0061, below.)*
+- [x] **An NPC's challenge rating, armour class, hit points and speed start where its creature states them, and
+      what the creature gives can be taken away** ([ADR 0059](./docs/adr/0059-a-stat-may-start-where-another-stat-is-and-a-typed-value-replaces-it.md),
+      [ADR 0060](./docs/adr/0060-a-character-may-leave-its-progression-to-what-it-chose-and-that-is-format-3.md),
+      [ADR 0061](./docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)). The three
+      gaps the two items above left. A stat may declare `startsFrom`, another stat that is where it starts: the NPC's
+      armour class, hit points and speed start at the creature's own rules, a value the DM types replaces them, and an
+      NPC from nothing enters all three from 0 with no maximum (the Tarrasque's 697 hit points fit). A character may
+      leave `progress` out, and then starts where the creature it chose prints it: 121 of 141 creatures print a rating
+      as a number and start there, the Triceratops and the Tyrannosaurus Rex now at +3 proficiency, and a typed rating
+      replaces the print. A DM may remove a trait, action or reaction the creature gives (`removedGrants`), including
+      the twelve a creature also grants by its own rule; a removed one is neither derived nor saved, and can be given
+      back. Leaving `progress` out or recording a removal is **character format 3**, and only those characters move to
+      it: a reader of 2 would get them wrong without a word, and gets every other character right. No player character
+      derivation moved. Driven in the browser build. **Not done:** speeds other than walking, senses, skills and saves on
+      the sheet; the Tauri window, macOS and Linux.
 - [ ] **Decide where legendary content comes from, before any UI for it.** *Reworded by ADR 0057's
       measurement:* the corpus declares no `Legendary Action`, `Lair Action` or `Regional Effect` element; seven
       of the 2025 Monster Manual's prose stat blocks mention legendary actions, as text only. The `legendary` kind

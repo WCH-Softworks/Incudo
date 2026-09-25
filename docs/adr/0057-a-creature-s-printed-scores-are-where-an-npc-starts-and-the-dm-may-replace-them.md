@@ -135,13 +135,15 @@ content being right, not a filter this ADR adds.
   a Wolf built this way has Bite and Pack Tactics only if the DM picks them. Reading those setters as grants is
   the next decision, and it is not a presentation one: whatever a character reaches must also be embedded in
   its save (ADR 0012), so it belongs in the walk `collectCharacterContent` shares with the derivation.
-- **The challenge rating is still the DM's number**, the `rating` progression ADR 0009 designed, starting at
+- **~~The challenge rating is still the DM's number~~**, done by
+  [ADR 0060](./0060-a-character-may-leave-its-progression-to-what-it-chose-and-that-is-format-3.md). As first written: the `rating` progression ADR 0009 designed, starting at
   0. The printed CR is shown beside each creature in the picker, and is not read. Reading it needs a
   progression that can be unset, which is a character format question. Proficiency bonus is +2 from CR 0 to
   4, and 119 of the 121 creatures that print a CR print one in that range, so their proficiency bonus is right
   at the starting 0; the Triceratops (5) and Tyrannosaurus Rex (8) need the DM to set it. A fractional CR is
   typed as a decimal (0.25), and a card writes it back as 1/4.
-- **An NPC built from nothing has no way to set armour class, hit points or speed.** They read the creature's
+- **~~An NPC built from nothing has no way to set armour class, hit points or speed.~~** Done by
+  [ADR 0059](./0059-a-stat-may-start-where-another-stat-is-and-a-typed-value-replaces-it.md), with the starting-value model. As first written: They read the creature's
   rules, which it does not have, and publish 0. A `manual` budget over them would sum with a creature's rules
   the way a manual ability score would have summed with its setter; the answer is probably the same
   starting-value model, and it is left for the ADR that decides it.

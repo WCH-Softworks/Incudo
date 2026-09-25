@@ -116,3 +116,5 @@ Measured after it was built, against `c28ce6c`: 141 of 141 creatures state all t
 step closed. Every creature's NPC and all thirty sample saves derive identically before and after, element for
 element and stat for stat (a summary of each derivation, compared with a throwaway script), and the oracle's
 tables are unchanged (`INCUDO_ORACLE_SNAPSHOT` on the base, `INCUDO_ORACLE_BASELINE` on the change).
+
+**Driven in the browser build only**, not the Tauri window, macOS or Linux, with an origin-private folder standing in for the native folder picker. An NPC started from nothing showed Armor Class, Hit Points and Speed as an open, blocking step with three to enter; 697 hit points were typed and kept; choosing the Triceratops then kept the typed values, and clearing hit points and speed went back to the creature's 95 and 50, shown faded, while a typed armour class of 15 stayed. Running it found one thing no test had: the step showed the player character's ability score paragraph ("in 5e an ability score stops at 20") under hit points and speed, and now shows the step's own sentence while nothing is stated.

@@ -346,7 +346,8 @@ dropped Aurora `.xml` be a source** (ADR 0055/0056), builds a character, **sets 
 all four of 5e's methods**, renders the sheet, **browses and searches everything loaded** (ADR 0053), reads and writes real `.incu` files into a folder
 the user picks, **saves a copy anywhere** (ADR 0038), and **imports Aurora `.dnd5e` saves into it**, and **multiclasses**: a level can
 be spent on any class the character qualifies for (ADR 0036). **It starts any kind the system declares**, and a 5e
-**NPC starts from a creature's printed stat block** (ADR 0057).
+**NPC starts from a creature's printed stat block** (ADR 0057), its challenge rating, armour class, hit points and
+speed included, any of which the DM may replace, and what the creature gives it may be taken away (ADRs 0059-0061).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -363,14 +364,42 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   `baseStats` was used. A value is a whole number or a fraction with at most one parenthesised note; anything else
   (`14 + PB (natural armor)`) starts nothing and warns (`setter-not-a-number`); two suppliers warn. One function
   answers it for the engine and for `budget.ts`, whose rows carry `printed` and count a printed target as set.
-- **5e's `npc` reads the six scores that way and `ac`/`hp`/`speed` from `companion:*`**, each redeclared with no
-  `default` (a `derive` adds to the default). With no creature they read 0, which is honest and a named gap. The six
+- **5e's `npc` reads the six scores that way, and `ac`/`hp`/`speed` start from `companion:*`** (ADR 0059, below). The six
   scores are redeclared **capped at 30**: the system's are a player character's 20, which clipped the Triceratops and
   Tyrannosaurus (found by `npc-creatures.test.ts`, not foreseen).
 - **A fresh NPC is offered 117 of 141**: 24 creatures carry their own requirements naming a PC's subclass, feat or
   class level, and a candidate list leaves them out. Content being right, not a filter.
-- **Not done:** the printed challenge rating is shown in the picker and not read (`progress` cannot be unset); an NPC
-  from nothing cannot set AC, HP or speed.
+- **A stat may start where another stat is** ([ADR 0059](docs/adr/0059-a-stat-may-start-where-another-stat-is-and-a-typed-value-replaces-it.md)).
+  `startsFrom` on a stat names another stat; when content contributes to that one, its value is where this one starts.
+  The order of starts, most general first: `default`, `startsFrom`, a held element's printed setter, the user's
+  `baseStats`; contributions to the stat add to whichever is in force. The NPC's `ac`, `hp` and `speed` are `default: 0`
+  and `startsFrom` the creature's rule, so a typed value **replaces** the creature's rather than adding to it (the old
+  `derive` added). A required step, Armor Class, Hit Points and Speed, is a budget with one method, `entry` (from 0, no
+  maximum: the Tarrasque has 697). `DerivedCharacter.starts` publishes every start content supplied, even when a base
+  replaced it, and `budget.ts` reads a row's `printed` from it rather than recomputing setters. A budget offering one
+  method applies its bounds unrecorded.
+- **An NPC's challenge rating starts where its creature prints it**
+  ([ADR 0060](docs/adr/0060-a-character-may-leave-its-progression-to-what-it-chose-and-that-is-format-3.md)).
+  **`Character.progress` is optional**: absent means "where the kind says it starts", which is what an element the
+  character *chose* prints for the progression's stat (a `setterStats` entry naming it, 5e's `challenge`), or else the
+  progression's start. Read it through `characterProgress(character, kind, index)`, never `character.progress`
+  directly: the engine settles it once before the fixed point (choices only, because gates read it), fills it into
+  every internal step (`Progressed`), and publishes `DerivedCharacter.progress`; the collector, the builder
+  (`BuilderState.progress`, `setProgress(undefined)` to go back) and a library card (`libraryEntryProgress`, from the
+  `chosen` elements an entry keeps for a character that records none) ask the same function. 121 of 141 creatures print
+  a numeric rating; 20 print `—` and start at 0 with a warning.
+- **Character format 3, and only for the characters that need it.** A character with no `progress` or with
+  `removedGrants` is `formatVersion` 3 (`raiseFormatVersion`, `LATEST_CHARACTER_FORMAT_VERSION`); `createCharacter`
+  still writes 2, and only `setProgress(…, undefined)`, `createCharacter({ progress: null })` and `setGrantRemoved` raise
+  one. Nothing downgrades. The validator refuses either field below 3. The frozen importer and every PC are untouched.
+- **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
+  `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
+  creatures grant what they also name, so stopping only the setter would do nothing for them). Chosen, or granted by
+  anything else, the element is still held. `setterGrantIds(defs, element, removed)` and `withdrawnGrantIds` are the only
+  readers, used by the engine and by `collectCharacterContent`, so a removed trait is neither derived nor saved; a save
+  opened with no source therefore cannot name it, and the pane says so rather than printing an id. The builder publishes
+  `holderGrants`, refuses to remove what no held element names, and forgets a removal nothing names once the creature
+  changes. Not "one grant cannot cancel another": that is still content's, and still open.
 - **A creature's traits, actions and reactions are granted through its setters**
   ([ADR 0058](docs/adr/0058-a-setter-may-name-elements-its-holder-has-and-the-kind-says-which.md)). A kind's
   `setterGrants` names a setter, on some types, whose comma-separated ids the holder is granted like a `<grant>`.
@@ -1027,7 +1056,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057 and 0058 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060 and 0061 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
@@ -1169,7 +1198,8 @@ run as proof the gating is right.
 
 **A bag is a list of instances, and the container embeds all of it** (ADR 0024). `Character`
 gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
-after `baseStats`, `advancement` and `generation` each stayed at 1. Readers accept both. Three
+after `baseStats`, `advancement` and `generation` each stayed at 1. Readers accept both. *(Readers accept 3 too since
+ADR 0060, which only a character with no `progress` or with `removedGrants` is written at.)* Three
 things in the shape are measurements, not taste: an entry is an **instance** (one save carries two
 greatswords with different enchantments, so an element-keyed bag loses a real character's items);
 `slot` is an **override** and normally absent (the saves' `location` agrees with the element's own
@@ -1239,8 +1269,8 @@ built ADR 0022's `contributions` and spent it on `ac` and on ADR 0023's attuneme
   stat holds, so leaving the system-level `default: 10` in place would put a second 10 on every
   character. `npc` and `legendary` keep it and derive nothing — a monster's armour class is
   printed, not summed, and neither kind declares an inventory for `[armor:none]` to be about.
-  *(Since ADR 0057 they read the creature's own `companion:ac` rule, with no default: an NPC with no creature
-  reads 0, not 10.)*
+  *(Since ADR 0057 they read the creature's own `companion:ac` rule: an NPC with no creature reads 0, not 10. Since
+  ADR 0059 that rule is where `ac` starts, `default: 0` beneath it, and a value the DM types replaces it.)*
 
 **An unattuned item contributes nothing, and says so** (ADR 0023). The gate landed at step 4 and
 the **limit** at step 5, once `contributions` existed to hold the base of 3. All 12

@@ -102,3 +102,5 @@ DM said this NPC does not have it.
 
 No derivation moves for a character that removes nothing: every creature's NPC and all thirty samples derive identically,
 and the oracle's tables are unchanged by snapshot and baseline.
+
+**Driven in the browser build only**, not the Tauri window, macOS or Linux, with an origin-private folder standing in for the native folder picker. The Triceratops NPC listed Trampling Charge under Traits and Gore and Stomp under Actions, "From Triceratops"; removing Stomp struck it through with Give back and took it off the sheet; saved, the card said 3 elements embedded (Stomp was not); reopened with the content source switched off, the sheet had Trampling Charge and Gore only; with the source back on, Give back restored Stomp. Running it found that the save opened with no source listed the removed trait by its raw id, because a removed element is not saved; it now says one more was removed and that its content is needed to see or give it back.

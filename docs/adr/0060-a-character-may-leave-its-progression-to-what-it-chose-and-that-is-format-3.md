@@ -134,3 +134,5 @@ Measured after it was built, against `c28ce6c`: 121 creatures start at their pri
 each. Of every creature's NPC derivation, 63 change their challenge rating (the ones printing a non-zero number), 2
 their proficiency bonus (the Triceratops and the Tyrannosaurus Rex, +2 to +3) and 20 gain the warning; no element
 changes. All thirty sample saves derive identically, and the oracle's tables are unchanged by snapshot and baseline.
+
+**Driven in the browser build only**, not the Tauri window, macOS or Linux, with an origin-private folder standing in for the native folder picker. A new NPC's Challenge Rating field was empty with 0 faded; choosing the Triceratops made it 5, faded, with the sheet reading proficiency +3; typing 9 gave +4 and offered "Use the creature's (5)", which went back. Saved, the library card read "NPC / Monster · Challenge Rating 5" after a reload, before any content had loaded, from what the save embeds; reopened with the content source switched off (0 elements loaded), the sheet read CR 5 and +3.
