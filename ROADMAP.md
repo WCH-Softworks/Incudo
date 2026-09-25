@@ -973,7 +973,16 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       rank (a table row called "Elf" came before the Elf races), the narrow layout, and kept the search across panes.
       Driven in the Tauri window, Ctrl+5 and typing with real keys, and the browser build on Windows. **Not done:**
       filters by tag or setter ("3rd-level spells"); what grants an element; macOS and Linux.
-- [ ] Conflict resolution when two sources define the same ID
+- [x] **When two sources define the same id** ([ADR 0054](./docs/adr/0054-when-two-sources-define-the-same-id-the-later-one-in-the-list-is-used-and-the-list-says-so.md)).
+      Measured first: AuroraLegacy alone has no id another source defines, but beside the original Aurora repository,
+      which someone coming from Aurora may still have, 7,262 ids are defined by both and 1,978 of them differently (450
+      spells, 622 subclass features, the rules of 382). Which one a character was offered depended on the order the
+      sources were added, and the evidence was one warning per id in a list that shows fifty. The later source is
+      still used, now as the stated rule: the Sources pane says it above the list, Move up and Move down change it, and
+      each source's line says what it shares with each other source, how many differ and whose version is used, with
+      the ids behind a click. Nothing is blocked or chosen per id, and a saved character keeps what it embeds. Driven
+      in the browser build on Windows with the original's Core beside AuroraLegacy, reordered both ways. **Not done:**
+      a per-id override; "also defined by" on the Browse pane; the Tauri window, macOS and Linux.
 - [x] **Say when a source refers to content no enabled source has** ([ADR 0052](./docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md)).
       Any inner index can be added as a source, and 58 of AuroraLegacy's 60 grant ids only another declares: the 2014
       Player's Handbook alone refers to 110 missing things and offers no skill at all, and used to do it in silence. Each

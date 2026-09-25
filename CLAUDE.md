@@ -587,6 +587,22 @@ renders it and computes nothing. Things to know before touching it:
 - **Ctrl+5 was pressed with real keys in the Windows window** and arrives, from a text field too. Not verified:
   macOS and Linux.
 
+**When two sources define the same id, the later one in the list is used, and each source's line says so**
+([ADR 0054](docs/adr/0054-when-two-sources-define-the-same-id-the-later-one-in-the-list-is-used-and-the-list-says-so.md)).
+Things to know before touching `ContentLibrary.addElements` or the Sources pane's order:
+
+- **The rule is the load order, which is the profile's order**, and it is what the loader always did: no profile loads
+  differently for it. Move up and Move down (`SourceProfile.move`) swap a source with its neighbour among its own
+  system's sources and leave every other entry in place.
+- **Across sources it is a report, not a warning.** `ContentLibrary.sourceOverlaps()` pairs each source with the one
+  whose definition is used, never two losers with each other, and compares definitions as their files declared them:
+  an append folded into the first one must not make it read as different. Within one source, and over the Aurora
+  overlay, a redefinition is still the warning the corpus budget counts.
+- **Measure differences with the repository's bytes.** A checkout with `core.autocrlf=true` made 1,546 identical
+  definitions read as different: the XML parser keeps a carriage return inside text. The original Aurora repository
+  beside AuroraLegacy is 7,262 shared and 1,978 different, the same in either order.
+- **Driven in the browser build only.**
+
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
 Things to know before touching it:

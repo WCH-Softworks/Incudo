@@ -1,6 +1,6 @@
 # 0054 — When two sources define the same id, the later one in the list is used, and the list says so
 
-**Status:** Proposed · 2026-09-25 · builds on [0005](./0005-aurora-import.md) (diagnostics over guessing),
+**Status:** Accepted · 2026-09-25 · builds on [0005](./0005-aurora-import.md) (diagnostics over guessing),
 [0012](./0012-self-contained-characters.md) (a save embeds what it uses), [0028](./0028-sources-are-a-profile-characters-carry-an-allowlist.md)
 (sources are a profile) and [0052](./0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md)
 (reported per source, never blocked)
@@ -107,6 +107,34 @@ right. A source that duplicates another entirely is shown as doing so, and remov
 A saved character is not affected: its save embeds every element it uses (ADR 0012), and when it is open that copy is
 in front of what is loaded. Reordering changes what is offered, and what a character that is not yet saved derives
 from, which is what the user asked for by reordering.
+
+## What was measured after it was built
+
+`ContentLibrary.sourceOverlaps()` returns, per source id, one entry per other source it shares ids with: whose
+definition is used, the ids that differ and how many are the same. `loadSources` in the desktop app attaches it to each
+loaded source beside ADR 0052's report, `SourceProfile.move` swaps a source with its neighbour among one system's
+sources, and the Sources pane renders both.
+
+- In the browser build on Windows (2026-09-25), with AuroraLegacy configured and the original's Core index added by URL
+  under it: the rule above the list, and on each line "Also defines 2,747 things … 910 of them differently", with
+  "core's version is used" on AuroraLegacy's line and "This source's version is used" on Core's, the figures measured
+  offline. The warning count stayed at 57, AuroraLegacy's own. The Browse pane gave the Death Domain's source (the two
+  define it the same way) as AuroraLegacy with AuroraLegacy lower, and as Core after moving AuroraLegacy up. The
+  buttons at each end are disabled. The source was removed afterwards, which put the profile back (its cached files stay in the
+  browser's storage, as with any removed source).
+- Running it found two layout faults: a note's list of ids overflowed the pane, which ADR 0052's note had too and nobody
+  had seen with its one id, and the row of five buttons did not fit at 375 px. Both wrap now.
+- `packages/content/src/overlaps.test.ts`: the later source is used and each side says so; reversing the order reverses
+  it; with three sources only the one used is paired; definitions are compared before an append is folded in; within
+  one source the later file is still a warning and the source is represented by its last definition, including a later
+  source that repeats itself; the Aurora overlay stays a warning. Five perturbations (pairs attributed backwards, the
+  old warning kept, pairing each definition with the one before it, comparing the folded element, not replacing a
+  source's own earlier definition) each fail a test. `profile.test.ts` holds `move`: past another system's entry, which
+  keeps its place, and saved.
+- `tools/verify/src/appends-across-sources.test.ts` loads the real corpus split into its four groups: the one id
+  AuroraLegacy defines in two files, a Xanathar's staff that is in two groups, is an overlap there and not a warning,
+  and every overlap is a two-file warning when the corpus loads whole.
+- **Not driven:** the Tauri window (the pane is the same component; only the transport differs); macOS and Linux.
 
 ## What this does not do
 
