@@ -598,9 +598,12 @@ Things to know before touching `ContentLibrary.addElements` or the Sources pane'
   whose definition is used, never two losers with each other, and compares definitions as their files declared them:
   an append folded into the first one must not make it read as different. Within one source, and over the Aurora
   overlay, a redefinition is still the warning the corpus budget counts.
-- **Measure differences with the repository's bytes.** A checkout with `core.autocrlf=true` made 1,546 identical
-  definitions read as different: the XML parser keeps a carriage return inside text. The original Aurora repository
-  beside AuroraLegacy is 7,262 shared and 1,978 different, the same in either order.
+- **Line endings no longer change what differs.** A checkout with `core.autocrlf=true` used to make 1,546 identical
+  definitions read as different, because the XML parser kept a carriage return inside text. Since 2026-09-25 it reads
+  line endings as XML 1.0 §2.11 says (a bugfix to the frozen importer, `xml.ts`), and a CRLF checkout of the original
+  Aurora repository beside AuroraLegacy gives the same figures as a byte-exact one: 7,262 shared and 1,978 different,
+  in either order. **Do not assume a corpus is LF:** AuroraLegacy's own bytes have CRLF in 51 of its files (Tasha's,
+  several 2024 subclasses), and every sample save is CRLF. Git Bash's `grep` does not show a `\r`; count them in Node.
 - **Driven in the browser build only.**
 
 **Which books a character is offered is one recorded list, and it narrows offers only**

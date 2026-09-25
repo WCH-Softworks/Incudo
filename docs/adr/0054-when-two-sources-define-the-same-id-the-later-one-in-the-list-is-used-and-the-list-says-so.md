@@ -41,6 +41,14 @@ parser keeps a carriage return inside text, so every multi-line description read
 as the app does, the bytes are the repository's and the figure is the one above. The parser's missing end-of-line
 normalization is a separate fix to the importer, not part of this.
 
+> **Note, 2026-09-25 — the parser fix landed, and the first figure was 3,524, not 3,544.** The XML reader now
+> translates every `\r\n` and lone `\r` to `\n` before parsing (XML 1.0 §2.11). Re-measured with the same four
+> indexes at `299ab0e` beside AuroraLegacy at `c28ce6c`, in both orders: the old parser gives 1,978 differing
+> against the original as its repository stores it and **3,524** against a CRLF checkout of it; the new parser gives
+> **1,978** against both. The by-type split of the 1,978 above (622, 450, 274, 84, 73) is unchanged. AuroraLegacy's
+> own bytes carry CRLF in 51 files, so "fetched over the network, the bytes are the repository's" did not mean
+> free of carriage returns; those files moved none of the figures here.
+
 ### What the one-source figures are
 
 Within AuroraLegacy, one id is defined in two of its files (a Xanathar's staff that the 2024 Dungeon Master's Guide
