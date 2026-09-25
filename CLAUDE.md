@@ -551,8 +551,15 @@ before touching `ContentLibrary.loadSource`:
   backwards, against the whole index as one). Seen in the browser build: 53 warnings before, 2 after.
 - **Partial sources work, and only two of AuroraLegacy's 60 indexes can build a character alone** (the top one and
   `core.index`): skills and languages live in `core/ALE.xml`, which `core.index` lists directly and no book does. Upstream
-  states the dependency only in its README ("Requires Core Index"). Missing dependencies are to be reported, never
-  enforced; that alert is not built yet.
+  states the dependency only in its README ("Requires Core Index").
+- **What a source refers to and nothing enabled declares is reported on its line, never enforced**
+  ([ADR 0052](docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md)).
+  `ContentLibrary.missingContent()`: grants and select defaults to ids nothing loaded declares, and appends still
+  waiting, per source; not requirements (content writes `!ID_X` against absent ids on purpose). A rule an append folded
+  into another source's element counts against the append's source; the Aurora overlay's against the first Aurora
+  source. Never name a source as "probably missing": nothing in an Aurora index says which, and AuroraLegacy's own
+  line always shows the upstream typo, which no source supplies. `missing-content.test.ts` holds the per-source report,
+  taken together, equal to `analyseCorpus`'s whole-load count.
 
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).

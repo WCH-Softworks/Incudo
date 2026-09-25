@@ -1,6 +1,6 @@
 # 0052 — A source that refers to content no enabled source has is reported, and never blocked
 
-**Status:** Proposed · 2026-09-24 · builds on [0005](./0005-aurora-import.md) (diagnostics over guessing),
+**Status:** Accepted · 2026-09-25 · builds on [0005](./0005-aurora-import.md) (diagnostics over guessing),
 [0028](./0028-sources-are-a-profile-characters-carry-an-allowlist.md) (sources are a profile) and
 [0051](./0051-lazy-loading-is-declined-and-the-index-walk-stops-waiting-on-itself.md) · constrains the content format
 [0007](./0007-native-formats.md) names (`.incuset`) and does not yet specify
@@ -73,8 +73,12 @@ element counts. It depends only on what is enabled; nothing is stored.
 
 The Sources pane says it on the source's own line, in plain words, with the list of ids one click away:
 
-> Tasha's Cauldron of Everything refers to 156 things none of your enabled sources contain, and 51 of its additions
-> have nothing to add to. It may need another source enabled.
+> Refers to 156 things none of your enabled sources contain, and 51 of its additions to other content have nothing to
+> add to.
+
+The first draft of this ADR ended the sentence with "It may need another source enabled." Running it removed that:
+on AuroraLegacy's own line, whose one missing thing is an upstream misspelling no source will ever supply, the advice
+was wrong, and it was a guess of exactly the kind the next point rules out.
 
 - **Nothing is enforced.** The source stays enabled and loaded, a character can still be built from it, and nothing is
   enabled on the user's behalf. Adding a supplement without its core book is a thing a user may mean to do.
@@ -105,6 +109,30 @@ download, which Aurora content can never be.
 An Aurora index converted to Incudo's format carries no dependency it did not state, which is none. A user or author
 may add one by hand. Deriving one from what a load happened to find missing would turn "Core was not enabled when this
 was converted" into a rule.
+
+## What was measured after it was built
+
+`ContentLibrary.missingContent()` returns, per source id, the ids its grants and select defaults name that nothing
+loaded declares, and the target of each of its appends still waiting. `loadSources` in the desktop app attaches it to
+each loaded source once every enabled source is in, and the Sources pane renders it on that source's line, the
+sentence as the summary of a list of the ids.
+
+- In the browser build on Windows (2026-09-25), with the one AuroraLegacy source as configured: "Refers to 1 thing none
+  of your enabled sources contain", and the list holds the upstream typo. With it disabled and the 2014 Player's
+  Handbook index added on its own: 110 things and 2 additions, the figures measured offline above. (The overlay's two
+  languages are among the 110, since the book's own races grant them too.) The profile was put back afterwards.
+- `packages/content/src/missing.test.ts`: a book alone reports against itself and not a requirement; adding what it
+  builds on clears the report in either load order, leaving only what an append of its own granted, reported against
+  the book although it now sits on the other source's element; a later definition is judged, not the replaced one;
+  the overlay's references go to the first Aurora source, never to an id of their own. Five perturbations (count
+  requirements, read a folded element whole, drop appended rules, key the overlay by its own id, drop waiting appends)
+  each fail a test.
+- `tools/verify/src/missing-content.test.ts` compares two computations on the real corpus: the per-source report,
+  taken together, must equal `analyseCorpus`'s whole-load count of grants to nothing, and its waiting additions the
+  append warnings, for the whole index, its groups as four sources loaded backwards, and one group alone (Unearthed
+  Arcana: 289 and 88). It catches three of the five perturbations; the two about which source an appended rule is
+  reported against do not change the union, and no appended rule in the corpus grants anything missing today.
+- **Not driven:** the Tauri window (the note is the same component there; only the transport differs); macOS and Linux.
 
 ## What this does not do
 

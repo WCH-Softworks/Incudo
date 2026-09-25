@@ -963,10 +963,18 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       source may never bump
 - [ ] Content browser (search across all loaded elements)
 - [ ] Conflict resolution when two sources define the same ID
-- [ ] **Say when a source refers to content no enabled source has** ([ADR 0052](./docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md),
-      proposed). Any inner index can be added as a source, and 58 of AuroraLegacy's 60 grant ids only another declares:
-      the 2014 Player's Handbook alone refers to 110 missing things and offers no skill at all, in silence. Reported per
-      source on the Sources pane, never enforced or guessed at; Incudo's own content format will declare its dependencies.
+- [x] **Say when a source refers to content no enabled source has** ([ADR 0052](./docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md)).
+      Any inner index can be added as a source, and 58 of AuroraLegacy's 60 grant ids only another declares: the 2014
+      Player's Handbook alone refers to 110 missing things and offers no skill at all, and used to do it in silence. Each
+      source's line on the Sources pane now says how many things it refers to that no enabled source contains, and how
+      many of its additions wait for a target, with the ids behind a click. Never enforced, never a guess at which source
+      is missing; requirement-only references are left out, since content writes those on purpose. Running it removed
+      "it may need another source enabled", wrong on AuroraLegacy's own line, whose one missing thing is an upstream
+      typo. Driven in the browser build on Windows. **Not done:** naming a configured-but-disabled source that declares
+      what is missing; Incudo's own content format, which will declare dependencies (the ADR says what it must carry);
+      the Tauri window, macOS and Linux.
+- [ ] Choose parts of a source (a tree of its indexes) before loading it. Adding one inner index as a source already
+      works; the report above is what makes a partial choice safe to make.
 - [x] **Which books a character is offered** ([ADR 0049](./docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
       The item was "source enable/disable per character", and a content source is the wrong unit: one index holds
       every book. The unit is Aurora's, the book (`type="Source"`), which the system marks `publication: true`.
