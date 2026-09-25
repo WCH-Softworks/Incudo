@@ -4,7 +4,7 @@
  * `character-library.test.ts` and `aurora-import.test.ts` in `packages/ui` prove the same
  * properties against a fake store and hand-made saves, which is where the logic is. This is
  * the other half: real characters, imported from real `.dnd5e` files against the real
- * 12,058-element corpus, written to a real folder, listed and opened by the real view-model
+ * whole corpus, written to a real folder, listed and opened by the real view-model
  * with nothing configured and no network. It is the difference between "the code path works"
  * and "the product works".
  *

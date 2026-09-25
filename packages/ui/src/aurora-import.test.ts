@@ -1,8 +1,8 @@
 /**
  * The Aurora import, as the app runs it — against a fake store and a save written by hand.
  *
- * `tools/verify/src/library.test.ts` is the other half of this: the same function over the
- * a set of real `.dnd5e` files and the real 12,058-element corpus. This one is where the *logic*
+ * `tools/verify/src/library.test.ts` is the other half of this: the same function over
+ * a set of real `.dnd5e` files and the whole real corpus. This one is where the *logic*
  * is checked, and in particular the two steps that fail silently when they are left out —
  * the overlay of the elements Aurora generates at runtime, and `extraIds`. Both are asserted
  * here by **reading the container back with zero sources**, because that is the only place

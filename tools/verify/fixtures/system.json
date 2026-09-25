@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "id": "fixture",
   "name": "Fixture System",
-  "description": "A committed, offline, three-second stand-in for the 12,058-element Aurora corpus. It exists so the ADR 0012 self-containment test runs everywhere, including CI, where nobody has an Aurora install. The same test also runs against the real corpus when one is present — see self-contained.test.ts.",
+  "description": "A committed, offline, three-second stand-in for the full Aurora corpus. It exists so the ADR 0012 self-containment test runs everywhere, including CI, where nobody has an Aurora install. The same test also runs against the real corpus when one is present — see self-contained.test.ts.",
   "version": "1.0.0",
 
   "elementTypes": [
