@@ -212,6 +212,29 @@ export interface FileSaver {
   save(bytes: Uint8Array, options: FileSaveOptions): Promise<SavedFile | null>;
 }
 
+/**
+ * Files the user drops on the window — ADR 0056, for adding Aurora elements files as sources.
+ *
+ * A port because the two builds receive a drop differently: a browser hands the page the file itself, and the Tauri
+ * webview never does, since the host takes the drop and hands over paths (which `tauri-plugin-fs` then grants). Like
+ * {@link FilePicker} it hands back **bytes, not paths**, read at once and forgotten.
+ *
+ * Listening is scoped: a screen that accepts drops listens while it is shown and stops when it is not, so a file
+ * dropped anywhere else is ignored rather than added somewhere the user was not looking.
+ */
+export interface FileDrop {
+  /** False where this platform cannot receive a dropped file. */
+  readonly available: boolean;
+  /**
+   * Call `onDrop` with every drop's files, and `onHover` as a drag carrying files enters and leaves the window, until
+   * the returned function is called. A drop that fails to read reaches `onDrop` as an error.
+   */
+  listen(
+    onDrop: (files: PickedFile[] | Error) => void,
+    onHover?: (hovering: boolean) => void,
+  ): () => void;
+}
+
 /** An in-memory Storage. Useful for tests and for a "don't persist" mode. */
 export class MemoryStorage implements Storage {
   private readonly map = new Map<string, string>();

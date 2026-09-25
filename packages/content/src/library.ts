@@ -49,6 +49,9 @@ export interface LoadOptions {
  */
 export const DEFAULT_CONCURRENCY = 6;
 
+/** How many nested index levels a load follows before it stops and warns. Content from the internet can be cyclic. */
+export const DEFAULT_MAX_DEPTH = 8;
+
 export interface LoadReport {
   index: ContentIndex;
   filesLoaded: number;
@@ -103,7 +106,7 @@ export class ContentLibrary {
     indexUrl: string,
     options: LoadOptions = {},
   ): Promise<LoadReport> {
-    const maxDepth = options.maxDepth ?? 8;
+    const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
     // Framed here, as a nested index and a file are below: a source's layers and its fetcher say
     // what went wrong, and only this names the address.
     const root = await source.loadIndex(indexUrl).catch((error: unknown) => {
@@ -531,6 +534,7 @@ function limiter(size: number): <T>(work: () => Promise<T>, urgent?: boolean) =>
     });
 }
 
-function isElementFile(ref: FileRef): boolean {
+/** Whether a load reads this ref as an elements file: images and other non-content refs an index names are skipped. */
+export function isElementFile(ref: FileRef): boolean {
   return ref.url.toLowerCase().endsWith('.xml') || ref.url.toLowerCase().endsWith('.json');
 }

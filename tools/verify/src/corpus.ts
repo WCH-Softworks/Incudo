@@ -14,7 +14,7 @@
 
 import { dirname } from 'node:path';
 import { referencedElementIds, type Fetcher } from '@incudo/core';
-import { ContentLibrary, HttpContentSource, type SourceDiagnostic } from '@incudo/content';
+import { ContentLibrary, HttpContentSource, partsFilter, type SourceDiagnostic } from '@incudo/content';
 import { KNOWN_UPSTREAM_TYPOS } from '@incudo/aurora-import';
 import { LocalMirrorFetcher, OfflineFetcher } from './node-platform.ts';
 
@@ -51,26 +51,30 @@ export interface CorpusLoadOptions {
   concurrency?: number;
   /** Stands between the loader and the disk, to delay or count what it asks for. */
   wrap?: (fetcher: Fetcher) => Fetcher;
+  /** The parts to leave out, as a source's `excluded` does (ADR 0055). */
+  excluded?: string[];
 }
 
-export async function loadCorpus(location: CorpusLocation, options: CorpusLoadOptions = {}): Promise<LoadedCorpus> {
-  const started = Date.now();
+/** The corpus as a content source, offline, as a load reads it. */
+export function corpusSource(location: CorpusLocation, wrap?: (fetcher: Fetcher) => Fetcher): HttpContentSource {
   const disk =
     location.layout === 'repository'
       ? new LocalMirrorFetcher(location.root ?? dirname(location.index), new OfflineFetcher())
       : new OfflineFetcher();
-  const fetcher = options.wrap ? options.wrap(disk) : disk;
+  return new HttpContentSource({
+    id: location.index,
+    fetcher: wrap ? wrap(disk) : disk,
+    resolveByName: location.layout === 'aurora-folder',
+  });
+}
 
+export async function loadCorpus(location: CorpusLocation, options: CorpusLoadOptions = {}): Promise<LoadedCorpus> {
+  const started = Date.now();
   const library = new ContentLibrary();
-  const report = await library.loadSource(
-    new HttpContentSource({
-      id: location.index,
-      fetcher,
-      resolveByName: location.layout === 'aurora-folder',
-    }),
-    location.index,
-    { concurrency: options.concurrency },
-  );
+  const report = await library.loadSource(corpusSource(location, options.wrap), location.index, {
+    concurrency: options.concurrency,
+    include: partsFilter({ excluded: options.excluded }),
+  });
   return {
     location,
     library,

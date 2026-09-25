@@ -54,6 +54,17 @@ export interface ConfiguredSource {
    * whoever wrote the system, not a check by Incudo; see `SuggestedSource.official`.
    */
   official?: boolean;
+  /**
+   * The URLs of the parts of this source the user switched off, indexes or element files — ADR 0055. The load skips each
+   * wherever it is named, and everything under a switched-off index. Absent when nothing is, which loads everything: a
+   * book upstream adds later arrives switched on.
+   */
+  excluded?: string[];
+  /**
+   * `file`: one Aurora elements file the user added, kept as a copy in the app's own storage (`fileSourceKey`) and
+   * addressed as `local:<file name>` — ADR 0056. Absent: an index at `url`.
+   */
+  kind?: 'file';
   /** The version last seen in the index. The cache's stamp, mirrored here for display. */
   version?: string;
   addedAt: string;
@@ -128,6 +139,8 @@ export class SourceProfile {
       version: options.version,
       systemId: options.systemId,
       official: options.official,
+      excluded: options.excluded?.length ? options.excluded : undefined,
+      kind: options.kind,
       addedAt: options.addedAt ?? new Date().toISOString(),
     };
     this.entries.push(source);

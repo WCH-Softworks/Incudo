@@ -5,3 +5,5 @@ export * from './layered-source.ts';
 export * from './library.ts';
 export * from './profile.ts';
 export * from './compose.ts';
+export * from './parts.ts';
+export * from './file-source.ts';

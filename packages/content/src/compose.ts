@@ -13,9 +13,11 @@
 
 import type { Fetcher, Storage } from '@incudo/core';
 import { CachedContentSource } from './cached-source.ts';
+import { FILE_SOURCE_HAS_NO_UPSTREAM, FileContentSource, isFileSource } from './file-source.ts';
 import { HttpContentSource, cacheKey, etagKey, etagPrefix } from './http-source.ts';
 import { LayeredContentSource } from './layered-source.ts';
 import { ContentLibrary } from './library.ts';
+import { partsFilter } from './parts.ts';
 import type { ConfiguredSource } from './profile.ts';
 import { compareVersions, type ContentSource, type FileRef, type UpdateStatus } from './source.ts';
 
@@ -47,6 +49,8 @@ export function versionStampKey(sourceId: string): string {
  * flip".
  */
 export function composeSource(source: ConfiguredSource, options: ComposeOptions): ContentSource {
+  // A file the user added is its own copy, read from storage and never from a network (ADR 0056).
+  if (isFileSource(source)) return new FileContentSource(source.id, options.storage);
   const http = new HttpContentSource({
     id: source.id,
     fetcher: options.fetcher,
@@ -102,6 +106,7 @@ export async function checkSourceForUpdates(
   source: ConfiguredSource,
   options: ComposeOptions,
 ): Promise<UpdateStatus> {
+  if (isFileSource(source)) return { state: 'unknown', reason: FILE_SOURCE_HAS_NO_UPSTREAM };
   if (options.fetcher.conditional) {
     const byFile = await checkEveryCachedFile(source, options);
     if (byFile) return byFile;
@@ -210,6 +215,7 @@ export interface RefreshReport {
  * The caller reloads afterwards, from the cache this has just brought up to date.
  */
 export async function refreshSource(source: ConfiguredSource, options: ComposeOptions): Promise<RefreshReport> {
+  if (isFileSource(source)) throw new Error(FILE_SOURCE_HAS_NO_UPSTREAM);
   const http = new HttpContentSource({
     id: source.id,
     fetcher: options.fetcher,
@@ -246,7 +252,9 @@ export async function refreshSource(source: ConfiguredSource, options: ComposeOp
     checkForUpdates: (index) => http.checkForUpdates(index),
   };
 
-  const report = await new ContentLibrary().loadSource(refreshing, source.url);
+  // The parts the user switched off are not fetched, and the prune below removes them like a file upstream stopped naming
+  // (ADR 0055): the refresh keeps what the load uses.
+  const report = await new ContentLibrary().loadSource(refreshing, source.url, { include: partsFilter(source) });
 
   const keep = new Set<string>([versionStampKey(source.id)]);
   for (const url of touched) {
