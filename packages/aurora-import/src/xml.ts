@@ -23,7 +23,11 @@ export interface XmlNode {
 
 const VOID_SELF_CLOSING = /\/$/;
 
-export function parseXml(source: string): XmlNode {
+export function parseXml(input: string): XmlNode {
+  // XML 1.0 §2.11: every `\r\n`, and every `\r` not followed by `\n`, is read as `\n` before
+  // anything else. Without it a file checked out with CRLF endings keeps a `\r` in every
+  // multi-line description and compares as different content from its LF twin.
+  const source = input.replace(/\r\n?/g, '\n');
   const root: XmlNode = { name: '#document', attrs: {}, children: [], text: '', innerXml: source };
   const stack: XmlNode[] = [root];
   const contentStart = new Map<XmlNode, number>();
