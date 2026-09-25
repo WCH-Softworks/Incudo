@@ -31,6 +31,7 @@ import {
 } from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { referencedElementIds } from './engine.ts';
+import { setterGrantIds } from './setter-grants.ts';
 import { baselineElementIds, type ResolvedCharacterKind } from './system.ts';
 import { integrityOf } from './sha256.ts';
 
@@ -102,7 +103,8 @@ export interface CollectOptions {
    * Pass it. Those elements are part of every derivation and are reached through the system
    * definition rather than through a choice, so a save written without them derives
    * correctly against a corpus and reports them unresolved on its own — which is precisely
-   * the failure ADR 0012 exists to prevent.
+   * the failure ADR 0012 exists to prevent. It is also what says which setters grant (ADR 0058): an
+   * NPC's creature names its traits in one, and without the kind they are derived and not saved.
    */
   kind?: ResolvedCharacterKind;
   /**
@@ -173,7 +175,10 @@ export function collectCharacterContent(
         continue;
       }
       collected.set(id, element);
-      for (const referenced of referencedElementIds([element])) {
+      // What a declared setter names is granted (ADR 0058), and a grant the derivation reaches must be
+      // embedded or the save opens without it. The same function the engine reads; only with a kind.
+      const named = options.kind ? setterGrantIds(options.kind.setterGrants, element) : [];
+      for (const referenced of [...referencedElementIds([element]), ...named]) {
         if (seen.has(referenced)) continue;
         seen.add(referenced);
         next.add(referenced);

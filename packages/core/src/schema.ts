@@ -351,6 +351,25 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       }
     }
 
+    // A `setterGrants` entry that names nothing grants nothing, and one naming a type's setter twice
+    // is read twice for no reason: both are a typo nobody would see at runtime (ADR 0058).
+    const grantedFrom = new Set<string>();
+    for (const entry of resolved.setterGrants) {
+      if (entry.setter.trim() === '' || entry.types.length === 0) {
+        errors.push({ path: `${where}.setterGrants`, message: 'names types and a setter, and neither may be empty' });
+      }
+      for (const type of entry.types) {
+        const key = `${type} ${entry.setter.trim().toLowerCase()}`;
+        if (grantedFrom.has(key)) {
+          errors.push({
+            path: `${where}.setterGrants`,
+            message: `reads the setter "${entry.setter}" on a "${type}" twice`,
+          });
+        }
+        grantedFrom.add(key);
+      }
+    }
+
     // A preparation declaration whose filters will not parse, or which name an interpolation the kind never
     // expands, is invisible at runtime: nothing could be prepared and nothing would say why (ADR 0046).
     const preparation = resolved.preparation;

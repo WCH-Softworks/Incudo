@@ -183,3 +183,44 @@ test('an NPC built from nothing is asked for all six scores, and the step blocks
   assert.equal(b.getState().decisions.some((d) => d.kind === 'budget'), false);
   assert.equal(b.getState().derived.stats.get('charisma')?.value, 15);
 });
+
+test("every creature's named traits, actions and reactions reach its NPC, and its save keeps them", { skip }, async (t) => {
+  // ADR 0058. The ids are read here by a split of this test's own, not by the engine's function, so a
+  // reader that dropped an id (the three Tasha's attacks that end in ">") would fail this. Fails if the
+  // kind's `setterGrants` is removed (nothing named is held) or `collectCharacterContent` stops reading
+  // them (the reopened NPC holds none).
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const missing: string[] = [];
+  const lostOnReopen: string[] = [];
+  const unresolved = new Set<string>();
+  let named = 0;
+  for (const creature of creatures) {
+    const ids = ['traits', 'actions', 'reactions'].flatMap((setter) =>
+      (creature.setters[setter]?.value ?? '').split(',').map((id) => id.trim()).filter((id) => id !== ''),
+    );
+    const character = npcOn(system, elements, creature).getState().character;
+    const derived = deriveCharacter(character, system, elements);
+    for (const id of ids) {
+      named++;
+      if (!elements.get(id)) {
+        unresolved.add(id);
+        assert.ok(
+          derived.problems.some((p) => p.code === 'unresolved-element' && p.elementId === id),
+          `${id} is reported unresolved`,
+        );
+        continue;
+      }
+      if (!derived.elementIds.has(id)) missing.push(`${creature.id} -> ${id}`);
+    }
+    if (!ids.length) continue;
+    const packed = packCharacter(character, system, elements, { generator: 'test' });
+    const { container } = readCharacterContainer(packed.files);
+    const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
+    for (const id of ids) if (elements.get(id) && !reopened.elementIds.has(id)) lostOnReopen.push(`${creature.id} -> ${id}`);
+  }
+  t.diagnostic(`${named} traits, actions and reactions named; ${unresolved.size} name nothing loaded${unresolved.size ? `: ${[...unresolved].join(', ')}` : ''}`);
+  assert.deepEqual(missing, [], 'every resolving id a creature names is held by its NPC');
+  assert.deepEqual(lostOnReopen, [], 'and by the NPC reopened from its save with no source');
+});

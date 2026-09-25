@@ -364,6 +364,12 @@
         { "types": ["Companion"], "setter": "charisma", "stat": "charisma" }
       ],
 
+      "setterGrants": [
+        { "types": ["Companion"], "setter": "traits" },
+        { "types": ["Companion"], "setter": "actions" },
+        { "types": ["Companion"], "setter": "reactions" }
+      ],
+
       "candidateNotes": [
         { "types": ["Companion"], "setter": "challenge", "label": "CR {value}" }
       ],

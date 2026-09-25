@@ -50,6 +50,7 @@ import {
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import { EMPTY_EQUIPMENT, resolveEquipment, type EquipmentState } from './equipment.ts';
 import { setterStartingValues } from './setter-stats.ts';
+import { setterGrantIds } from './setter-grants.ts';
 import {
   derivePreparation,
   preparationFilters,
@@ -368,6 +369,16 @@ export function deriveCharacter(
             addElement(next, index, rule.id, problems, element.id);
           }
           reach(rule.id);
+        }
+        // What a declared setter names is granted by this element, as a `<grant>` it carried would
+        // be (ADR 0058): same track, reported once when unresolved, gone when the element is.
+        for (const id of setterGrantIds(kind.setterGrants, element)) {
+          inheritTrack(nextTracks, nextMembers, element.id, id, index.get(id), problems);
+          if (!attempted.has(id)) {
+            attempted.add(id);
+            addElement(next, index, id, problems, element.id);
+          }
+          reach(id);
         }
         if (!picks.size) continue;
         for (const ruleKey of selectPools(element, character, kind, ctx, levelFor, equipment).keys()) {

@@ -1037,7 +1037,10 @@ export class CharacterBuilder {
       if (!step.multiple || step.perLevel || !step.types.length) continue;
       const ruleKey = pickRuleKey(step.id);
       const chosen = [...(getChoice(this.character, ruleKey)?.elementIds ?? [])];
-      const held = new Set(chosen);
+      // Everything the character holds, not only what this step chose: a creature's own Gore is
+      // granted (ADR 0058), and offering it again would be offering what the NPC already has. The
+      // rule content `select` pools have always followed.
+      const held = new Set([...chosen, ...derived.elementIds]);
       const offered = offeredBy(step);
       const rank = stepOrderIndex.get(step.id) ?? Number.MAX_SAFE_INTEGER;
       for (const id of chosen) pickElementRank.set(id, rank);

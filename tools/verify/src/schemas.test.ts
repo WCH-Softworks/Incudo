@@ -504,6 +504,30 @@ test('a setterStats entry that starts a stat from a type twice, or names nothing
   );
 });
 
+test('a setterGrants entry that reads a setter on a type twice, or names nothing, is caught before the app loads it', async () => {
+  // ADR 0058. Removing the check in checkSystemReferences fails the first assertion; the schema's
+  // minLength catches the second.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.setterGrants = [
+          { types: ['Beast'], setter: 'deeds' },
+          { types: ['Beast'], setter: 'DEEDS' },
+        ];
+      }),
+    ),
+    ['characterKinds[0].setterGrants: reads the setter "DEEDS" on a "Beast" twice'],
+  );
+  assert.notDeepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.setterGrants = [{ types: ['Beast'], setter: '' }];
+      }),
+    ),
+    [],
+  );
+});
+
 test("a contribution's requirements is content's language, and it has to parse", async () => {
   // The one place the system format embeds a *different* language inside JSON (ADR 0022). The
   // schema can only check that it is a string, so the parse happens in checkSystemReferences
