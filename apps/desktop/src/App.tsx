@@ -34,7 +34,10 @@ import {
 import {
   SourceProfile,
   checkSourceForUpdates,
+  composeSource,
+  readIndexTree,
   refreshSource,
+  removeSource,
   sourcesForSystem,
   unassignedSources,
   type ConfiguredSource,
@@ -46,12 +49,14 @@ import {
   CharacterLibrary,
   COMMANDS,
   UserSystemStore,
+  addContentFiles,
   describeCommand,
   importAuroraSavesIntoLibrary,
   importBlock,
   resolveCommands,
   saveCopy,
   type AuroraImportReport,
+  type ContentFileResult,
   type Destination,
   type LibraryEntry,
 } from '@incudo/ui';
@@ -361,6 +366,8 @@ function Shell({
   const [updates, setUpdates] = useState<Record<string, UpdateStatus>>({});
   /** What the last refresh of each source did, or why it could not (ADR 0050). */
   const [refreshes, setRefreshes] = useState<Record<string, RefreshReport | { failed: string }>>({});
+  /** What the last files added as sources did, one line each (ADR 0056). Cleared by the user. */
+  const [fileResults, setFileResults] = useState<ContentFileResult[] | null>(null);
   const [sources, setSources] = useState<readonly ConfiguredSource[]>([]);
   const profile = useRef<SourceProfile | null>(null);
 
@@ -541,10 +548,56 @@ function Shell({
       },
       remove: async (id) => {
         // ADR 0028: this changes no character. A save that embeds this source's content keeps
-        // working forever, which is the trade ADR 0012 bought.
-        profile.current?.remove(id);
+        // working forever, which is the trade ADR 0012 bought. A file source's copy goes with it (ADR 0056).
+        const current = profile.current;
+        if (!current) return;
+        await removeSource(current, platform.storage, id);
         await persist();
         await reload();
+      },
+      readParts: async (url) => {
+        // Through the same composed source a load uses, so the indexes read here are cached for it (ADR 0055).
+        const configured = profile.current?.find(url) ?? {
+          id: url,
+          url,
+          name: url,
+          enabled: false,
+          mode: 'stream' as const,
+          addedAt: '',
+        };
+        return readIndexTree(composeSource(configured, platform), url);
+      },
+      setExcluded: async (id, excluded) => {
+        profile.current?.update(id, { excluded: excluded.length ? excluded : undefined });
+        await persist();
+        await reload();
+      },
+      addFiles: async (files) => {
+        const current = profile.current;
+        if (!current || !files.length) return;
+        setBusy(true);
+        let results: ContentFileResult[];
+        try {
+          // Tagged with the system in view, as a URL is (ADR 0031), and added last, so its definitions are used (ADR 0054).
+          results = await addContentFiles(files, current, platform.storage, { systemId: system.id, nameOfSystem });
+        } finally {
+          setBusy(false);
+        }
+        setFileResults(results);
+        if (results.some((result) => result.added)) {
+          await persist();
+          await reload();
+        }
+      },
+      pickFiles: async () => {
+        const picked = await platform.files.pick({
+          title: 'Add Aurora content files',
+          extensions: ['xml'],
+          label: 'Aurora elements file',
+          multiple: true,
+        });
+        // Cancelling is an answer, and leaves the last report where it was.
+        if (picked.length) await actionsRef.current?.addFiles(picked);
       },
       rename: async (id, name) => {
         profile.current?.update(id, { name });
@@ -614,6 +667,27 @@ function Shell({
     }),
     [persist, reload],
   );
+  // `pickFiles` hands its files to `addFiles`, and a drop listener set up once reaches the current actions the same way.
+  const actionsRef = useRef<SourcesActions | null>(null);
+  actionsRef.current = actions;
+
+  // A file dropped on the window while the Sources pane is shown is added as a source (ADR 0056); anywhere else it is
+  // ignored, rather than added somewhere the user was not looking.
+  const [dropHover, setDropHover] = useState(false);
+  useEffect(() => {
+    if (pane !== 'sources' || !platform.drops.available) return;
+    const stop = platform.drops.listen((dropped) => {
+      if (dropped instanceof Error) {
+        setFileResults([{ name: 'the dropped file', failed: dropped.message }]);
+        return;
+      }
+      void actionsRef.current?.addFiles(dropped);
+    }, setDropHover);
+    return () => {
+      stop();
+      setDropHover(false);
+    };
+  }, [pane]);
 
   /** The profile, split the way ADR 0031 splits it: mine, nobody's, and everyone else's. */
   const mySources = useMemo(() => sourcesForSystem(sources, system.id), [sources, system.id]);
@@ -1016,6 +1090,11 @@ function Shell({
           refreshes={refreshes}
           actions={actions}
           shell={platform.shell}
+          filesAvailable={platform.files.available}
+          filesUnavailableReason={platform.files.unavailableReason}
+          dropHover={dropHover}
+          fileResults={fileResults}
+          onDismissFileResults={() => setFileResults(null)}
         />
       )}
       <RenameFileDialog

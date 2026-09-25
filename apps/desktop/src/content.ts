@@ -18,6 +18,7 @@
 import {
   ContentLibrary,
   composeSource,
+  partsFilter,
   writeVersionStamp,
   type ConfiguredSource,
   type MissingContent,
@@ -95,6 +96,8 @@ export async function loadSources(
   for (const source of sources) {
     try {
       const report = await library.loadSource(composeSource(source, platform), source.url, {
+        // The parts the user switched off are skipped wherever they are named (ADR 0055).
+        include: partsFilter(source),
         onProgress: (count, total, current) =>
           onProgress?.({ loaded: count, total, current, source: source.name }),
       });

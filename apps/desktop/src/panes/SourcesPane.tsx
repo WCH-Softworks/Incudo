@@ -15,21 +15,33 @@
  * of an empty URL box — which is also how the tagging stays invisible in the common case.
  */
 
-import { useState } from 'react';
-import type {
-  ConfiguredSource,
-  MissingContent,
-  RefreshReport,
-  SourceMode,
-  SourceOverlap,
-  UpdateStatus,
+import { useEffect, useState } from 'react';
+import {
+  fileSourceName,
+  isFileSource,
+  type ConfiguredSource,
+  type IndexTreeNode,
+  type MissingContent,
+  type RefreshReport,
+  type SourceMode,
+  type SourceOverlap,
+  type UpdateStatus,
 } from '@incudo/content';
-import type { GameSystem, SuggestedSource } from '@incudo/core';
+import type { GameSystem, PickedFile, SuggestedSource } from '@incudo/core';
+import { describeContentFiles, partsView, togglePart, type ContentFileResult, type PartView } from '@incudo/ui';
 
 import { type LoadProgress, type LoadedContent } from '../content.ts';
 
 export interface SourcesActions {
   add: (url: string, mode: SourceMode, options?: Partial<ConfiguredSource>) => Promise<void>;
+  /** Read a source's tree of parts from its indexes alone — ADR 0055. */
+  readParts: (url: string) => Promise<IndexTreeNode>;
+  /** Record which parts of a configured source are switched off, and reload. */
+  setExcluded: (id: string, excluded: string[]) => Promise<void>;
+  /** Add Aurora elements files as sources, one each — ADR 0056. */
+  addFiles: (files: PickedFile[]) => Promise<void>;
+  /** Open the file picker for them. */
+  pickFiles: () => Promise<void>;
   /** Claim an untagged source for the system in view — ADR 0031. */
   assignToSystem: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
@@ -56,6 +68,11 @@ export function SourcesPane({
   refreshes,
   actions,
   shell,
+  filesAvailable,
+  filesUnavailableReason,
+  dropHover,
+  fileResults,
+  onDismissFileResults,
 }: {
   system: GameSystem;
   /** This system's sources. */
@@ -78,6 +95,14 @@ export function SourcesPane({
   refreshes: Record<string, RefreshReport | { failed: string }>;
   actions: SourcesActions;
   shell: 'tauri' | 'browser';
+  /** Whether this build can show a file picker, and why not. A drop works either way. */
+  filesAvailable: boolean;
+  filesUnavailableReason?: string;
+  /** A drag carrying files is over the window. */
+  dropHover: boolean;
+  /** What the last files added did, one line each. */
+  fileResults: ContentFileResult[] | null;
+  onDismissFileResults: () => void;
 }): React.JSX.Element {
   // Every URL the profile already holds, whatever system it is under. Offering "Add" for one
   // of these is what the running app showed: the same index appearing as a suggestion and as
@@ -99,6 +124,8 @@ export function SourcesPane({
   const [url, setUrl] = useState('');
   const [mode, setMode] = useState<SourceMode>('stream');
   const [failure, setFailure] = useState<string | null>(null);
+  /** A source about to be added with some of its parts chosen first (ADR 0055): what to add it with once they are. */
+  const [choosing, setChoosing] = useState<{ url: string; options?: Partial<ConfiguredSource> } | null>(null);
 
   async function add(target: string, options?: Partial<ConfiguredSource>): Promise<void> {
     setFailure(null);
@@ -147,6 +174,9 @@ export function SourcesPane({
                       official: suggestion.official,
                     })
                   }
+                  onChooseParts={() =>
+                    setChoosing({ url: suggestion.url, options: { name: suggestion.name, official: suggestion.official } })
+                  }
                 />
               </li>
             ))}
@@ -194,16 +224,85 @@ export function SourcesPane({
         <button type="button" onClick={() => void add(url)} disabled={busy || !url.trim()}>
           {busy ? 'Loading…' : 'Add'}
         </button>
+        <button type="button" onClick={() => setChoosing({ url: url.trim() })} disabled={busy || !url.trim()}>
+          Choose parts first
+        </button>
       </div>
+
       {/* The two modes differ only in when (ADR 0029). This used to promise lazy per-file loading;
           ADR 0051 measured it and declined it, since a build is offered choices from half the corpus. */}
       <p className="hint">
         <strong>Download</strong> fetches everything now and keeps it, so the source works
         offline from here on. <strong>Stream</strong> fetches when the source is first used and
         keeps it the same way, so it is offline after that too. Both fetch every file the
-        source lists, because building a character offers choices from all of them. Nothing is
-        fetched again until you ask.
+        source lists, less any part you switch off, because building a character offers choices
+        from all of them. Nothing is fetched again until you ask.
       </p>
+
+      {/* ADR 0055: the parts are read from the source's indexes, before any of its content is loaded. */}
+      {choosing && (
+        <PartsChooser
+          key={choosing.url}
+          url={choosing.url}
+          excluded={[]}
+          readParts={actions.readParts}
+          confirmLabel="Add with these parts"
+          busy={busy}
+          onConfirm={(excluded) => {
+            const { url: target, options } = choosing;
+            setChoosing(null);
+            void add(target, { ...options, excluded });
+          }}
+          onCancel={() => setChoosing(null)}
+        />
+      )}
+
+      {/*
+        ADR 0056. Homebrew for Aurora is mostly single files passed around by hand; each becomes a source of its own,
+        kept as a copy. A drop anywhere on the window counts while this pane is shown (App.tsx listens).
+      */}
+      <h3>Add an Aurora file</h3>
+      <div className={dropHover ? 'drop-zone hovering' : 'drop-zone'}>
+        <p>
+          {dropHover
+            ? 'Drop to add each file as a source.'
+            : 'Drop Aurora .xml files anywhere on this window, or choose them. Each file becomes a source of its own.'}
+        </p>
+        <div className="row">
+          <button
+            type="button"
+            onClick={() => void actions.pickFiles()}
+            disabled={busy || !filesAvailable}
+            title={filesAvailable ? undefined : filesUnavailableReason}
+          >
+            Choose files…
+          </button>
+        </div>
+        <p className="hint">
+          Incudo keeps its own copy of each file, so moving or deleting the original changes nothing here. Adding a
+          file with the same name again replaces the copy.
+        </p>
+      </div>
+      {fileResults && (
+        <div className={fileResults.some((result) => result.failed) ? 'problem warning' : 'problem'}>
+          <strong>{describeContentFiles(fileResults)}</strong>
+          <ul>
+            {fileResults.map((result, i) => (
+              <li key={i}>
+                {/* A refusal already names the file. */}
+                {result.failed
+                  ? result.failed
+                  : `${result.name}: ${result.added!.replaced ? 'replaced' : 'added'}, ${result.added!.elements.toLocaleString()} ${
+                      result.added!.elements === 1 ? 'element' : 'elements'
+                    }${result.added!.additions ? ` and ${result.added!.additions} additions to other content` : ''}`}
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="linklike" onClick={onDismissFileResults}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {progress && (
         <p className="progress">
@@ -344,11 +443,13 @@ function Suggestion({
   systemName,
   busy,
   onAdd,
+  onChooseParts,
 }: {
   suggestion: SuggestedSource;
   systemName: string;
   busy: boolean;
   onAdd: () => void;
+  onChooseParts: () => void;
 }): React.JSX.Element {
   return (
     <article className="source suggestion">
@@ -367,6 +468,9 @@ function Suggestion({
       <div className="row">
         <button type="button" onClick={onAdd} disabled={busy}>
           {busy ? 'Loading…' : 'Add'}
+        </button>
+        <button type="button" onClick={onChooseParts} disabled={busy}>
+          Choose parts first
         </button>
       </div>
     </article>
@@ -400,6 +504,10 @@ function SourceRow({
   shell: 'tauri' | 'browser';
 }): React.JSX.Element {
   const [name, setName] = useState(source.name);
+  const [choosing, setChoosing] = useState(false);
+  // A file the user added has nothing upstream (ADR 0056): no mode, no update check, no refresh, no parts.
+  const file = isFileSource(source);
+  const off = source.excluded?.length ?? 0;
 
   return (
     <article className="source">
@@ -418,24 +526,40 @@ function SourceRow({
           />
           Enabled
         </label>
-        <select
-          value={source.mode}
-          aria-label={`Mode for ${source.name}`}
-          onChange={(event) => void actions.setMode(source.id, event.target.value as SourceMode)}
-        >
-          <option value="stream">Stream</option>
-          <option value="download">Download</option>
-        </select>
+        {!file && (
+          <select
+            value={source.mode}
+            aria-label={`Mode for ${source.name}`}
+            onChange={(event) => void actions.setMode(source.id, event.target.value as SourceMode)}
+          >
+            <option value="stream">Stream</option>
+            <option value="download">Download</option>
+          </select>
+        )}
       </div>
 
       <p className="card-meta">
-        <code>{source.url}</code>
+        {file ? (
+          <>
+            A copy of <code>{fileSourceName(source)}</code>, added {new Date(source.addedAt).toLocaleDateString()}. Add
+            a file with the same name to replace it.
+          </>
+        ) : (
+          <code>{source.url}</code>
+        )}
       </p>
+      {off > 0 && (
+        <p className="card-meta">
+          {off} {off === 1 ? 'part' : 'parts'} switched off. <strong>Choose parts</strong> shows which.
+        </p>
+      )}
       <p className="card-meta">
         {source.version ? `version ${source.version}` : 'no version declared'}
         {/* What it contributes, which is the question "see what each source contributes" asks. */}
         {loaded && !loaded.failed
-          ? ` · ${loaded.elementCount.toLocaleString()} elements from ${loaded.fileCount} files`
+          ? ` · ${loaded.elementCount.toLocaleString()} ${loaded.elementCount === 1 ? 'element' : 'elements'} from ${
+              loaded.fileCount
+            } ${loaded.fileCount === 1 ? 'file' : 'files'}`
           : loaded?.failed
             ? ' · did not load'
             : ' · not loaded in this session'}
@@ -459,18 +583,40 @@ function SourceRow({
       {update && <UpdateNote status={update} />}
       {refreshed && <RefreshNote report={refreshed} />}
 
+      {choosing && (
+        <PartsChooser
+          url={source.url}
+          excluded={source.excluded ?? []}
+          readParts={actions.readParts}
+          confirmLabel="Use these parts"
+          busy={busy}
+          onConfirm={(excluded) => {
+            setChoosing(false);
+            void actions.setExcluded(source.id, excluded);
+          }}
+          onCancel={() => setChoosing(false)}
+        />
+      )}
+
       <div className="row">
-        <button type="button" onClick={() => void actions.checkForUpdates(source.id)} disabled={busy}>
-          Check for updates
-        </button>
-        <button
-          type="button"
-          onClick={() => void actions.refresh(source.id)}
-          disabled={busy}
-          title="Fetch this source again. Anything that cannot be reached keeps its saved copy."
-        >
-          Refresh
-        </button>
+        {!file && (
+          <>
+            <button type="button" onClick={() => void actions.checkForUpdates(source.id)} disabled={busy}>
+              Check for updates
+            </button>
+            <button
+              type="button"
+              onClick={() => void actions.refresh(source.id)}
+              disabled={busy}
+              title="Fetch this source again. Anything that cannot be reached keeps its saved copy."
+            >
+              Refresh
+            </button>
+            <button type="button" onClick={() => setChoosing(true)} disabled={busy || choosing}>
+              Choose parts
+            </button>
+          </>
+        )}
         <button type="button" onClick={() => void actions.move(source.id, 'up')} disabled={busy || first}>
           Move up
         </button>
@@ -624,5 +770,147 @@ function RefreshNote({ report }: { report: RefreshReport | { failed: string } })
         </details>
       )}
     </>
+  );
+}
+
+/**
+ * Choosing the parts of a source — ADR 0055. The tree is read from the source's indexes alone, and everything shown about
+ * it (what is on, what cannot load because a part above it is off, how many files each part holds and how many will load)
+ * is `partsView`'s; this renders it and keeps the list being edited until it is confirmed.
+ */
+function PartsChooser({
+  url,
+  excluded: initial,
+  readParts,
+  confirmLabel,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  url: string;
+  excluded: readonly string[];
+  readParts: (url: string) => Promise<IndexTreeNode>;
+  confirmLabel: string;
+  busy: boolean;
+  onConfirm: (excluded: string[]) => void;
+  onCancel: () => void;
+}): React.JSX.Element {
+  const [tree, setTree] = useState<IndexTreeNode | { failed: string } | null>(null);
+  const [excluded, setExcluded] = useState<string[]>([...initial]);
+
+  useEffect(() => {
+    let current = true;
+    readParts(url).then(
+      (read) => current && setTree(read),
+      (error: unknown) => current && setTree({ failed: error instanceof Error ? error.message : String(error) }),
+    );
+    return () => {
+      current = false;
+    };
+  }, [url, readParts]);
+
+  if (tree === null) {
+    return (
+      <section className="parts">
+        <p className="progress">Reading the parts of {url}…</p>
+      </section>
+    );
+  }
+  if ('failed' in tree) {
+    return (
+      <section className="parts">
+        <div className="problem error">
+          <strong>Could not read the parts of that source.</strong>
+          <p>{tree.failed}</p>
+        </div>
+        <div className="row">
+          <button type="button" onClick={onCancel}>
+            Close
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const view = partsView(tree, excluded);
+  const toggle = (partUrl: string): void => setExcluded((previous) => togglePart(previous, partUrl));
+  return (
+    <section className="parts">
+      <h4>Parts of {view.name}</h4>
+      <p className="hint">
+        Switch off what you do not want loaded. Anything under a part that is off is left out too. Content that builds
+        on a part you switch off will say what it is missing on the source's line.
+      </p>
+      <p className="card-meta">
+        {view.filesLoading.toLocaleString()} of {view.files.toLocaleString()} files will load.
+      </p>
+      <ul className="parts-tree">
+        {view.parts.map((part) => (
+          <PartItem key={part.key} part={part} depth={0} onToggle={toggle} />
+        ))}
+      </ul>
+      <div className="row">
+        <button type="button" onClick={() => onConfirm(view.excluded)} disabled={busy}>
+          {confirmLabel}
+        </button>
+        <button type="button" onClick={() => setExcluded([])} disabled={!excluded.length}>
+          Switch everything on
+        </button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function PartItem({
+  part,
+  depth,
+  onToggle,
+}: {
+  part: PartView;
+  depth: number;
+  onToggle: (url: string) => void;
+}): React.JSX.Element {
+  const line = (
+    <span className="part-line">
+      <label className={part.reachable ? 'toggle part' : 'toggle part unreachable'}>
+        <input
+          type="checkbox"
+          checked={part.on}
+          disabled={!part.reachable}
+          onChange={() => onToggle(part.url)}
+          aria-label={part.label}
+        />
+        {part.label}
+      </label>
+      {part.listedAs !== part.label && <span className="card-meta">{part.listedAs}</span>}
+      {part.isIndex && !part.repeated && (
+        <span className="card-meta">
+          {part.on && part.reachable && part.filesLoading !== part.files
+            ? `${part.filesLoading} of ${part.files} files`
+            : `${part.files} ${part.files === 1 ? 'file' : 'files'}`}
+        </span>
+      )}
+      {part.repeated && <span className="card-meta">listed again here; it loads once, where it is listed first</span>}
+      {part.tooDeep && <span className="card-meta">too deeply nested to be loaded</span>}
+      {part.failed && <span className="card-meta bad">could not be read: {part.failed}</span>}
+    </span>
+  );
+
+  if (!part.children.length) return <li>{line}</li>;
+  return (
+    <li>
+      {/* Groups start open so the books are in view; books start closed, since some list sixty files. */}
+      <details open={depth === 0}>
+        <summary>{line}</summary>
+        <ul className="parts-tree">
+          {part.children.map((child) => (
+            <PartItem key={child.key} part={child} depth={depth + 1} onToggle={onToggle} />
+          ))}
+        </ul>
+      </details>
+    </li>
   );
 }

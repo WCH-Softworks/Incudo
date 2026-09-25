@@ -6,7 +6,7 @@
  * which is also why the folder picker and the directory scan are here rather than inside a
  * component that happens to need them.
  *
- * Seven ports, and two implementations of each where the two builds genuinely differ:
+ * Eight ports, and two implementations of each where the two builds genuinely differ:
  *
  * | port             | Tauri window                    | `npm run desktop` in a browser     |
  * |------------------|---------------------------------|------------------------------------|
@@ -15,7 +15,8 @@
  * | `CharacterStore` | `dialog` + `fs` plugins         | File System Access API             |
  * | `FilePicker`     | `dialog` + `fs` plugins         | `showOpenFilePicker`               |
  * | `FileSaver`      | `dialog` + `fs` plugins         | `showSaveFilePicker`               |
- * | `ZipCodec`       | `CompressionStream`             | `CompressionStream`                |
+ * | `FileDrop`       | the webview's drag-drop event   | `drop` on the window               |
+ * | `ZipCodec`      | `CompressionStream`             | `CompressionStream`                |
  * | `CommandHost`    | a native menu (mouse only)      | none                               |
  *
  * `Storage` is IndexedDB in **both**, deliberately. It holds the content cache and the
@@ -29,7 +30,8 @@
  * files they can see, copy and put in git (ADR 0027).
  *
  * `FilePicker` is neither. It is one file, outside both, read once and forgotten — the
- * Aurora import, and adding a game system. `FileSaver` is its write half: one file, wherever the
+ * Aurora import, adding a game system, and adding an Aurora elements file as a source (ADR 0056).
+ * `FileDrop` is the same read by another gesture. `FileSaver` is its write half: one file, wherever the
  * user says, written once and forgotten — "Save a copy…" (ADR 0038).
  */
 
@@ -39,6 +41,7 @@ import type {
   Fetcher,
   FetchOptions,
   FetchResult,
+  FileDrop,
   FilePickOptions,
   FilePicker,
   FileSaveOptions,
@@ -755,6 +758,102 @@ class UnavailableFileSaver implements FileSaver {
   }
 }
 
+// --- files dropped on the window -------------------------------------------------------------
+
+/**
+ * Drops in the Tauri window (ADR 0056). The webview never sees a dropped file: the host takes the drop and reports paths,
+ * and `tauri-plugin-fs` grants each dropped path in its scope (its `RunEvent` handler, read in the plugin's source), so
+ * reading them needs no new permission. Paths are read at once and not kept, as the picker's are.
+ */
+class TauriFileDrop implements FileDrop {
+  readonly available = true;
+
+  listen(onDrop: (files: PickedFile[] | Error) => void, onHover?: (hovering: boolean) => void): () => void {
+    let stopped = false;
+    let unlisten: (() => void) | undefined;
+    void (async () => {
+      const { getCurrentWebview } = await import('@tauri-apps/api/webview');
+      const stop = await getCurrentWebview().onDragDropEvent((event) => {
+        const payload = event.payload;
+        if (payload.type === 'enter') onHover?.(true);
+        else if (payload.type === 'leave') onHover?.(false);
+        else if (payload.type === 'drop') {
+          onHover?.(false);
+          void (async () => {
+            try {
+              const fs = await import('@tauri-apps/plugin-fs');
+              const files: PickedFile[] = [];
+              for (const path of payload.paths) files.push({ name: baseNameOf(path), bytes: await fs.readFile(path) });
+              onDrop(files);
+            } catch (error) {
+              onDrop(error instanceof Error ? error : new Error(String(error)));
+            }
+          })();
+        }
+      });
+      // Stopped while the listener was still being set up: take it down at once.
+      if (stopped) stop();
+      else unlisten = stop;
+    })();
+    return () => {
+      stopped = true;
+      unlisten?.();
+    };
+  }
+}
+
+/**
+ * Drops in a browser tab: the page receives the files themselves. Listening on the window, so a drop anywhere on the
+ * screen that accepts it counts, and so the browser does not open the dropped file in place of the app, which is what it
+ * does with a drop nothing claims.
+ */
+class BrowserFileDrop implements FileDrop {
+  readonly available = true;
+
+  listen(onDrop: (files: PickedFile[] | Error) => void, onHover?: (hovering: boolean) => void): () => void {
+    const carriesFiles = (event: DragEvent): boolean => !!event.dataTransfer?.types.includes('Files');
+    // `dragenter` and `dragleave` fire for every element the pointer crosses; a count says when it left the window.
+    let depth = 0;
+    const enter = (event: DragEvent): void => {
+      if (!carriesFiles(event)) return;
+      event.preventDefault();
+      if (depth++ === 0) onHover?.(true);
+    };
+    const over = (event: DragEvent): void => {
+      if (!carriesFiles(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    };
+    const leave = (event: DragEvent): void => {
+      if (!carriesFiles(event)) return;
+      if (--depth <= 0) {
+        depth = 0;
+        onHover?.(false);
+      }
+    };
+    const drop = (event: DragEvent): void => {
+      if (!carriesFiles(event)) return;
+      event.preventDefault();
+      depth = 0;
+      onHover?.(false);
+      const dropped = [...(event.dataTransfer?.files ?? [])];
+      void Promise.all(dropped.map(async (file) => ({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) })))
+        .then(onDrop)
+        .catch((error: unknown) => onDrop(error instanceof Error ? error : new Error(String(error))));
+    };
+    window.addEventListener('dragenter', enter);
+    window.addEventListener('dragover', over);
+    window.addEventListener('dragleave', leave);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragenter', enter);
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('dragleave', leave);
+      window.removeEventListener('drop', drop);
+    };
+  }
+}
+
 /** The last segment of a path, whichever separator the platform used. */
 function baseNameOf(path: string): string {
   const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
@@ -896,6 +995,8 @@ export interface DesktopPlatform {
   files: FilePicker;
   /** Writing one file somewhere the user chooses — "Save a copy…". */
   saver: FileSaver;
+  /** Files dropped on the window: Aurora elements files added as sources (ADR 0056). */
+  drops: FileDrop;
   zip: ZipCodec;
   /** The menu, where there is one. See `CommandHost`. */
   commands: CommandHost;
@@ -930,6 +1031,7 @@ export function createDesktopPlatform(): DesktopPlatform {
     characters,
     files,
     saver,
+    drops: tauri ? new TauriFileDrop() : new BrowserFileDrop(),
     zip,
     commands: tauri ? new TauriCommandHost() : new BrowserCommandHost(),
     shell: tauri ? 'tauri' : 'browser',

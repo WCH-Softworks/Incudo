@@ -1625,3 +1625,70 @@ ul.browse-categories {
 .browse-columns > [hidden] {
   display: none;
 }
+
+/* --- choosing the parts of a source (ADR 0055), and adding a file (ADR 0056) ------------------ */
+
+.parts {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px;
+  margin: 12px 0;
+  background: var(--bg-sunken);
+}
+
+.parts h4 {
+  margin: 0 0 4px;
+}
+
+.parts-tree {
+  list-style: none;
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.parts > .parts-tree {
+  padding-left: 0;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.part-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.toggle.part {
+  color: var(--fg);
+  font-size: 13px;
+  white-space: normal;
+}
+
+.toggle.part.unreachable {
+  color: var(--fg-muted);
+  text-decoration: line-through;
+}
+
+.parts summary {
+  cursor: pointer;
+}
+
+.drop-zone {
+  border: 2px dashed var(--line);
+  border-radius: 7px;
+  padding: 10px 14px;
+}
+
+.drop-zone p {
+  margin: 0;
+}
+
+.drop-zone .hint {
+  margin-top: 6px;
+}
+
+.drop-zone.hovering {
+  border-color: var(--accent);
+  background: var(--bg-sunken);
+}
