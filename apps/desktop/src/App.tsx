@@ -48,6 +48,8 @@ import {
 import {
   CharacterLibrary,
   COMMANDS,
+  characterKindChoices,
+  describeKindAndProgress,
   UserSystemStore,
   addContentFiles,
   describeCommand,
@@ -426,6 +428,14 @@ function Shell({
   /** The Browse pane's search, here for the same reason: that pane unmounts when another is shown. */
   const [browseView, setBrowseView] = useState<BrowseView>(NEW_BROWSE_VIEW);
 
+  /**
+   * The kinds this system lets you start, default first, and which one New character makes. Kept
+   * here rather than in the library pane so the New character command makes the same kind the
+   * button beside the chooser would. `Shell` is keyed on the system, so a switch starts it afresh.
+   */
+  const kinds = useMemo(() => characterKindChoices(system), [system]);
+  const [newKind, setNewKind] = useState<string | undefined>(() => kinds[0]?.id);
+
   const chooseFolder = useCallback(async (): Promise<void> => {
     // Declining the OS picker counts as an answer: do not ask again this session.
     setAskDismissed(true);
@@ -800,10 +810,10 @@ function Shell({
   );
 
   const startNew = useCallback(() => {
-    setWorking({ character: newCharacter(system) });
+    setWorking({ character: newCharacter(system, newKind) });
     setSaveNote(null);
     setPane('build');
-  }, [system]);
+  }, [system, newKind]);
 
   /**
    * Write the character to `entry`, or — with `entry` left `undefined` — to a freshly chosen
@@ -998,6 +1008,10 @@ function Shell({
           onRefresh={() => void library.refresh()}
           onOpen={(entry) => void openFromLibrary(entry)}
           onNew={startNew}
+          kinds={kinds}
+          newKind={newKind}
+          onNewKind={setNewKind}
+          describeKind={(entry) => describeKindAndProgress(system, entry.kind, entry.progress)}
           onRemove={(entry) => void library.remove({ name: entry.name, form: entry.form })}
           onOpenSettings={() => setPane('settings')}
           onImport={() => void importFromAurora()}

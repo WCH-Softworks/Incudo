@@ -98,6 +98,8 @@ export function BudgetEditor({
 
   return (
     <div className="budget">
+      {/* One method is no choice: a creature's scores are only ever typed, so no radio for it. */}
+      {budget.methods.length > 1 && (
       <div className="budget-methods">
         {budget.methods.map((method) => (
           <label key={method.id} className={budget.methodId === method.id ? 'on' : ''}>
@@ -111,8 +113,9 @@ export function BudgetEditor({
           </label>
         ))}
       </div>
+      )}
 
-      {budget.methodId === undefined && (
+      {budget.methodId === undefined && budget.methods.length > 1 && (
         // The rows below are shown anyway, and that is not laziness. Every character imported
         // from Aurora lands in this state — six real scores and no recorded method, because
         // Aurora records none — so hiding the editor until a method is picked would make those
@@ -178,6 +181,14 @@ export function BudgetEditor({
         expression, and the middle column carries the clip as a negative). Both are worth
         knowing here; neither number is.
       */}
+      {budget.rows.some((row) => row.printed !== undefined) ? (
+        // ADR 0057: a printed score is where the stat starts, and a typed one replaces it.
+        <p className="hint">
+          A faded number is what the creature prints, and it is used until you type another. Clear
+          what you typed to go back to the printed score. <strong>Total</strong> is the number the
+          stat block uses.
+        </p>
+      ) : (
       <p className="hint">
         <strong>Base</strong> is the score you set.
         <strong> From elsewhere</strong> is what your race, class, feats and items add to it.
@@ -185,6 +196,7 @@ export function BudgetEditor({
         negative number in the middle column means your total has been capped — in 5e an ability
         score stops at 20 unless something raises the limit.
       </p>
+      )}
     </div>
   );
 }
@@ -257,6 +269,7 @@ function Base({
     <input
       type="number"
       value={row.base ?? ''}
+      placeholder={row.printed === undefined ? undefined : String(row.printed)}
       min={row.min}
       max={row.max}
       onChange={(event) => set(event.target.value)}

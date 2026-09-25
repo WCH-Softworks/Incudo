@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AuroraImportReport, LibraryEntry, LibraryState } from '@incudo/ui';
+import type { AuroraImportReport, KindChoice, LibraryEntry, LibraryState } from '@incudo/ui';
 
 export function LibraryPane({
   state,
@@ -25,6 +25,10 @@ export function LibraryPane({
   onRefresh,
   onOpen,
   onNew,
+  kinds,
+  newKind,
+  onNewKind,
+  describeKind,
   onRemove,
   onOpenSettings,
   onImport,
@@ -49,6 +53,13 @@ export function LibraryPane({
   onRefresh: () => void;
   onOpen: (entry: LibraryEntry) => void;
   onNew: () => void;
+  /** The kinds this system lets you start, default first. A chooser appears only when there is a choice. */
+  kinds: readonly KindChoice[];
+  /** Which of them New character makes. */
+  newKind: string | undefined;
+  onNewKind: (id: string) => void;
+  /** What a card says a character is: its kind by name, and its progression by the kind's label. */
+  describeKind: (entry: LibraryEntry) => string;
   onRemove: (entry: LibraryEntry) => void;
   onOpenSettings: () => void;
   onImport: () => void;
@@ -127,6 +138,22 @@ export function LibraryPane({
           {state.entries.length > 0 && ` · ${state.entries.length}`}
         </span>
         <div className="row">
+          {kinds.length > 1 && (
+            // Which kind New character makes. The description is the system's own sentence about
+            // the kind, shown as a tooltip because the row has no room for three paragraphs.
+            <select
+              aria-label="Kind of character"
+              value={newKind}
+              title={kinds.find((kind) => kind.id === newKind)?.description}
+              onChange={(event) => onNewKind(event.target.value)}
+            >
+              {kinds.map((kind) => (
+                <option key={kind.id} value={kind.id} title={kind.description}>
+                  {kind.name}
+                </option>
+              ))}
+            </select>
+          )}
           <button type="button" className="on" onClick={onNew}>
             New character
           </button>
@@ -217,7 +244,12 @@ export function LibraryPane({
       <ul className="library">
         {state.entries.map((entry) => (
           <li key={entry.name}>
-            <CharacterCard entry={entry} onOpen={() => onOpen(entry)} onRemove={() => onRemove(entry)} />
+            <CharacterCard
+              entry={entry}
+              kind={describeKind(entry)}
+              onOpen={() => onOpen(entry)}
+              onRemove={() => onRemove(entry)}
+            />
           </li>
         ))}
       </ul>
@@ -365,10 +397,13 @@ function FirstRunDialog({
 
 function CharacterCard({
   entry,
+  kind,
   onOpen,
   onRemove,
 }: {
   entry: LibraryEntry;
+  /** "Player Character · Level 3", from the system; the card never spells a kind id. */
+  kind: string;
   onOpen: () => void;
   onRemove: () => void;
 }): React.JSX.Element {
@@ -386,8 +421,7 @@ function CharacterCard({
             <span className="bad">will not open</span>
           ) : (
             <>
-              {entry.kind}
-              {entry.progress !== undefined && ` · ${entry.progress}`}
+              {kind}
               {entry.elementCount !== undefined && ` · ${entry.elementCount} elements embedded`}
             </>
           )}

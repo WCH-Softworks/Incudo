@@ -9,11 +9,7 @@
  */
 
 import {
-  clampProgress,
-  createCharacter,
   defaultCharacterKindId,
-  initialProgress,
-  resolveCharacterKind,
   validateCharacter,
   validateGameSystem,
   type Character,
@@ -21,6 +17,7 @@ import {
   type SchemaBundle,
   type SchemaError,
 } from '@incudo/core';
+import { newCharacterOfKind } from '@incudo/ui';
 
 import systemSchema from '@repo/schemas/system.schema.json';
 import characterSchema from '@repo/schemas/character.schema.json';
@@ -132,23 +129,15 @@ export async function loadCharacter(
 }
 
 /**
- * A blank character of the system's default kind.
+ * A blank character of one of the system's kinds, the default one when none is named.
  *
- * The same three calls the removed `character new` command made, in the same order — including
- * `initialProgress`, because a 5e PC starts at level 1 and a monster at challenge 0, and the
- * kind's progression is the only thing that knows which.
+ * `newCharacterOfKind` (`packages/ui`) does the work, including starting the kind at the start of
+ * its own progression: a 5e PC at level 1 and a monster at challenge 0.
  */
-export function newCharacter(system: GameSystem): Character {
-  const kindId = defaultCharacterKindId(system);
-  if (!kindId) throw new Error(`System "${system.id}" declares no character kinds.`);
-  const kind = resolveCharacterKind(system, kindId);
-
-  const character = createCharacter(system.id, kind.id, {
-    name: 'New Character',
-    progress: initialProgress(kind.progression),
-  });
-  character.progress = clampProgress(kind.progression, character.progress);
-  return character;
+export function newCharacter(system: GameSystem, kindId?: string): Character {
+  const kind = kindId ?? defaultCharacterKindId(system);
+  if (!kind) throw new Error(`System "${system.id}" declares no character kinds.`);
+  return newCharacterOfKind(system, kind);
 }
 
 export async function saveCharacter(

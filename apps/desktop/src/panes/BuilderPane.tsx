@@ -21,7 +21,7 @@ import type {
   SettledPick,
   DeclinedDecision,
 } from '@incudo/ui';
-import { candidateLabel as describeCandidate } from '@incudo/ui';
+import { candidateLabel as describeCandidate, progressLabel } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
 import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
@@ -88,20 +88,30 @@ export function BuilderPane({
           />
         </label>
         <label>
-          {progression.kind === 'none' ? 'Progress' : progression.stat ?? progression.kind}
+          {progressLabel(kind) ?? 'Progress'}
           <input
             type="number"
             value={state.character.progress}
             min={progression.kind === 'none' ? 0 : (progression.min ?? 0)}
             max={progression.kind === 'none' ? 0 : (progression.max ?? 20)}
+            // A challenge rating can be 1/8, 1/4 or 1/2, typed as 0.125, 0.25 or 0.5. A level cannot.
+            step={progression.kind === 'rating' ? 'any' : 1}
             disabled={progression.kind === 'none'}
             onChange={(event) => builder.setProgress(Number(event.target.value))}
           />
         </label>
-        <span className="hint">
-          Levelling is not a separate screen — whatever this opens arrives in the list below,
-          tagged with the level that raised it.
-        </span>
+        {progression.kind === 'level' && (
+          <span className="hint">
+            Levelling is not a separate screen — whatever this opens arrives in the list below,
+            tagged with the level that raised it.
+          </span>
+        )}
+        {progression.kind === 'rating' && (
+          <span className="hint">
+            The number you set here is the one the sheet uses. A creature's own rating is shown beside
+            it in the list; type 0.125, 0.25 or 0.5 for 1/8, 1/4 or 1/2.
+          </span>
+        )}
       </section>
 
       {!hasContent && (
@@ -455,8 +465,13 @@ function Decision({
           */}
           {decision.multiple && (
             <p className="hint">
-              Rules your table uses beyond the basic ones. Add any that apply, or skip this if it
-              uses none. What you add can be taken back later.
+              {/*
+                Every set step, not only campaign options: an NPC's traits and actions are sets too.
+                The step's own sentence where the system wrote one, then what is true of any set.
+              */}
+              {kind.buildSteps.find((step) => step.id === decision.stepId)?.description ??
+                'Add as many as apply, or skip this if none do.'}{' '}
+              What you add can be taken back later.
             </p>
           )}
           {decision.candidates.length > 0 ? (
