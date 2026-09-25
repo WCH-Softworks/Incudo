@@ -21,6 +21,7 @@ export * from './character-copy.ts';
 export * from './aurora-import.ts';
 export * from './user-systems.ts';
 export * from './candidate-search.ts';
+export * from './content-browser.ts';
 export * from './candidate-label.ts';
 export * from './preview-placement.ts';
 export * from './commands.ts';

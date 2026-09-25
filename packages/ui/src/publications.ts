@@ -55,6 +55,14 @@ function loadedPublications(index: ElementIndex, system: GameSystem): Map<string
   return found;
 }
 
+/**
+ * Every loaded publication's name, by the lowercased name elements carry in `source`. For a screen that shows
+ * an element's book with the book's own spelling, which the join (ignoring case) makes the right one.
+ */
+export function publicationNames(index: ElementIndex, system: GameSystem): Map<string, string> {
+  return new Map([...loadedPublications(index, system)].map(([key, publication]) => [key, publication.name]));
+}
+
 function fold(name: string): string {
   return name.trim().toLowerCase();
 }
