@@ -120,6 +120,8 @@ interface Entry {
   id: string;
   bookKey: string;
   type: ElementType;
+  /** {@link GROUP_ORDER} of the element's type: within a rank, what the system says is worth browsing first. */
+  group: number;
 }
 
 /**
@@ -155,7 +157,14 @@ export class ContentCatalog {
     this.entries = [...index.all()].map((element) => {
       const bookKey = element.source.trim().toLowerCase();
       if (!this.bookNames.has(bookKey)) this.bookNames.set(bookKey, element.source.trim());
-      return { element, name: normalize(element.name), id: element.id.toLowerCase(), bookKey, type: element.type };
+      return {
+        element,
+        name: normalize(element.name),
+        id: element.id.toLowerCase(),
+        bookKey,
+        type: element.type,
+        group: GROUP_ORDER[this.typeGroup(element.type)],
+      };
     });
     this.entries.sort(
       (a, b) =>
@@ -189,9 +198,10 @@ export class ContentCatalog {
     const text = phrase && descriptions ? this.descriptionTexts() : undefined;
     const typeCounts = new Map<ElementType, number>();
     const bookCounts = new Map<string, number>();
-    // One bucket per rank, each already in name order because the entries are: concatenating them is the
-    // ranked list with no sort per keystroke.
-    const ranked: Array<Array<{ at: number; matched?: MatchedBy }>> = [[], [], [], [], [], []];
+    // One bucket per rank and type group, each already in name order because the entries are: concatenating
+    // them is the ranked list with no sort per keystroke. The group splits a rank so that "elf" lists the Elf
+    // race before a background's table row that is also called "Elf", which it did not at first.
+    const ranked: Array<Array<{ at: number; matched?: MatchedBy }>> = Array.from({ length: MATCHED.length * 3 }, () => []);
 
     this.entries.forEach((entry, at) => {
       let rank = 0;
@@ -204,7 +214,7 @@ export class ContentCatalog {
       if (bookOk) typeCounts.set(entry.type, (typeCounts.get(entry.type) ?? 0) + 1);
       if (typeOk) bookCounts.set(entry.bookKey, (bookCounts.get(entry.bookKey) ?? 0) + 1);
       if (idle || !typeOk || !bookOk) return;
-      ranked[rank]!.push({ at, matched: phrase ? MATCHED[rank] : undefined });
+      ranked[rank * 3 + entry.group]!.push({ at, matched: phrase ? MATCHED[rank] : undefined });
     });
 
     const all = ranked.flat();

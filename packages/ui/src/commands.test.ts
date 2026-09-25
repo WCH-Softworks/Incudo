@@ -63,7 +63,7 @@ function key(k: string, mods: Partial<KeyLike> = {}): KeyLike {
   return { key: k, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...mods };
 }
 
-const NAVIGATION: CommandId[] = ['go-library', 'go-build', 'go-sheet', 'go-sources', 'go-settings'];
+const NAVIGATION: CommandId[] = ['go-library', 'go-build', 'go-sheet', 'go-sources', 'go-browse', 'go-settings'];
 
 // --- what is enabled --------------------------------------------------------------------------
 
@@ -112,7 +112,7 @@ test('mid-edit on the build pane: save is live, and new character and import are
   // button is, so a shortcut is never a quicker way to lose unsaved work than the button.
   assert.ok(!on.has('new-character'));
   assert.ok(!on.has('import-aurora'), 'its report is shown on the library screen');
-  for (const pane of ['sheet', 'sources', 'settings'] as Destination[]) {
+  for (const pane of ['sheet', 'sources', 'browse', 'settings'] as Destination[]) {
     assert.ok(!enabledIn({ ...READY, pane }).has('save-character'), pane);
   }
 });
@@ -127,7 +127,7 @@ test('a save in flight cannot be started again', () => {
 test('a copy is live on the build pane and nowhere else', () => {
   // "Saved a copy as …" is printed on Build, beside Save, so that is where it can be started.
   assert.ok(enabledIn({ ...READY, pane: 'build' }).has('save-copy'));
-  for (const pane of ['library', 'sheet', 'sources', 'settings'] as Destination[]) {
+  for (const pane of ['library', 'sheet', 'sources', 'browse', 'settings'] as Destination[]) {
     assert.ok(!enabledIn({ ...READY, pane }).has('save-copy'), pane);
   }
 });
@@ -279,7 +279,7 @@ test('no shortcut takes a chord the Windows window never delivers to the page', 
 
 test('the navigation commands reach every destination exactly once', () => {
   const destinations = COMMANDS.flatMap((c) => (c.destination ? [c.destination] : []));
-  assert.deepEqual(destinations.sort(), ['build', 'library', 'settings', 'sheet', 'sources']);
+  assert.deepEqual(destinations.sort(), ['browse', 'build', 'library', 'settings', 'sheet', 'sources']);
 });
 
 // --- keys -------------------------------------------------------------------------------------

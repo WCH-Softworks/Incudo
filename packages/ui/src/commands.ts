@@ -29,14 +29,15 @@
 
 import type { LibraryState } from './character-library.ts';
 
-/** Where a shell can be looking. The desktop shell's five panes; a phone would have its own. */
-export type Destination = 'library' | 'build' | 'sheet' | 'sources' | 'settings';
+/** Where a shell can be looking. The desktop shell's six panes; a phone would have its own. */
+export type Destination = 'library' | 'build' | 'sheet' | 'sources' | 'browse' | 'settings';
 
 export const COMMAND_IDS = [
   'go-library',
   'go-build',
   'go-sheet',
   'go-sources',
+  'go-browse',
   'go-settings',
   'new-character',
   'save-character',
@@ -89,6 +90,8 @@ export const COMMANDS: readonly CommandDef[] = [
   { id: 'go-build', label: 'Build', shortcut: { key: '2', primary: true }, destination: 'build' },
   { id: 'go-sheet', label: 'Sheet', shortcut: { key: '3', primary: true }, destination: 'sheet' },
   { id: 'go-sources', label: 'Sources', shortcut: { key: '4', primary: true }, destination: 'sources' },
+  // Beside Sources, since it shows what they hold (ADR 0053).
+  { id: 'go-browse', label: 'Browse', shortcut: { key: '5', primary: true }, destination: 'browse' },
   // The comma is the macOS Preferences convention and reads as "settings" on the other two.
   { id: 'go-settings', label: 'Settings', shortcut: { key: ',', primary: true }, destination: 'settings' },
   { id: 'new-character', label: 'New character', shortcut: { key: 'n', primary: true } },
@@ -134,7 +137,7 @@ export const MENUS: MenuLayout = [
       'change-system',
     ],
   },
-  { label: 'View', items: ['go-library', 'go-build', 'go-sheet', 'go-sources', 'go-settings'] },
+  { label: 'View', items: ['go-library', 'go-build', 'go-sheet', 'go-sources', 'go-browse', 'go-settings'] },
 ];
 
 // --- what is possible right now -------------------------------------------------------------
@@ -215,6 +218,8 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   'go-build': () => true,
   'go-sheet': () => true,
   'go-sources': () => true,
+  // Always, like the other panes: with nothing loaded it says so and points at Sources.
+  'go-browse': () => true,
   'go-settings': () => true,
   // The button lives on the library screen, only when there is a library to put one in.
   'new-character': (c) => c.pane === 'library' && libraryListed(c),

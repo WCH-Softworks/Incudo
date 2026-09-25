@@ -84,6 +84,17 @@ test('a query ranks the exact name, then a prefix, a word start, every word, the
   assert.ok(catalog(RANKED).search({ text: 'spell_fire' }).rows.some((row) => row.id === 'SPELL_FIRE_BOLT'));
 });
 
+// Perturbation: bucket by rank alone (the order is then by name and label, and the undeclared row comes first).
+test('within a rank, browsable types come first, then other declared types, then undeclared ones', () => {
+  const result = catalog([
+    element('ODD', 'Oddity', 'Rope'),
+    element('PART', 'Part', 'Rope'),
+    element('KIT', 'Kit', 'Rope'),
+    element('KIT2', 'Kit', 'Rope ladder'),
+  ]).search({ text: 'rope' });
+  assert.deepEqual(result.rows.map((row) => row.id), ['KIT', 'PART', 'ODD', 'KIT2']);
+});
+
 // Perturbations: search the raw HTML (markup then matches); keep the words as one phrase.
 test('every word must be present, in any order, and markup is neither a match nor a barrier', () => {
   const found = catalog([

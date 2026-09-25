@@ -76,6 +76,7 @@ import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
 import { BuilderPane } from './panes/BuilderPane.tsx';
 import { SheetPane } from './panes/SheetPane.tsx';
 import { SettingsPane } from './panes/SettingsPane.tsx';
+import { BrowsePane, NEW_BROWSE_VIEW, type BrowseView } from './panes/BrowsePane.tsx';
 import { loadSources, type LoadProgress, type LoadedContent } from './content.ts';
 
 type Pane = Destination;
@@ -414,6 +415,9 @@ function Shell({
    * launch is usually different.
    */
   const [askDismissed, setAskDismissed] = useState(false);
+
+  /** The Browse pane's search, here for the same reason: that pane unmounts when another is shown. */
+  const [browseView, setBrowseView] = useState<BrowseView>(NEW_BROWSE_VIEW);
 
   const chooseFolder = useCallback(async (): Promise<void> => {
     // Declining the OS picker counts as an answer: do not ask again this session.
@@ -959,6 +963,19 @@ function Shell({
         </>
       )}
       {pane === 'sheet' && <SheetPane builder={builder} state={state} />}
+      {pane === 'browse' && (
+        // What the sources loaded and nothing else: not `elements`, which puts an open save's own
+        // content in front, and not the character's offered view. ADR 0053, decision 1.
+        <BrowsePane
+          elements={content?.elements ?? null}
+          system={system}
+          sources={mySources}
+          loading={busy}
+          view={browseView}
+          onView={setBrowseView}
+          onOpenSources={() => setPane('sources')}
+        />
+      )}
       {pane === 'settings' && (
         <SettingsPane
           location={libraryState.location}

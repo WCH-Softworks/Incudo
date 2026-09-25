@@ -1471,3 +1471,150 @@ table.budget-rows input[type='number'] {
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* --- the Browse pane (ADR 0053) ---------------------------------------------
+
+   Two columns that scroll on their own, the list and the element being read, as the builder's do:
+   a result list of a hundred rows and a long description should not share one scrollbar. Below the
+   builder's breakpoint the pane shows one of the two at a time (`BrowsePane.tsx` says why). */
+.pane.browse {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: clamp(1100px, 82vw, 1600px);
+}
+
+.browse-columns {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1.2fr);
+  gap: 32px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.browse-columns > * {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.browse-search {
+  width: 100%;
+}
+
+.browse-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin: 10px 0 4px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.browse-filters select {
+  max-width: 260px;
+}
+
+.browse-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+ul.browse-rows,
+ul.browse-categories,
+ul.browse-offered {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ul.browse-rows {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+ul.browse-rows li + li {
+  border-top: 1px solid var(--line);
+}
+
+.browse-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 0;
+  background: none;
+  padding: 6px 10px;
+  overflow-wrap: anywhere;
+}
+
+.browse-row:hover {
+  background: var(--bg-sunken);
+}
+
+.browse-row.on {
+  background: var(--bg-sunken);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.browse-name {
+  color: var(--fg);
+}
+
+.browse-meta {
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.browse-excerpt {
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-top: 2px;
+}
+
+ul.browse-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.browse-title {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+.browse-detail .picker-description {
+  margin-top: 12px;
+}
+
+.browse-detail dd {
+  overflow-wrap: anywhere;
+}
+
+.browse-tag {
+  display: inline-block;
+  margin: 0 6px 2px 0;
+}
+
+@media (max-width: 1000px) {
+  .pane.browse {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .browse-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .browse-columns > * {
+    overflow: visible;
+    min-height: auto;
+  }
+}
+
+.browse-columns > [hidden] {
+  display: none;
+}
