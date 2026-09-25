@@ -89,6 +89,21 @@ export interface ResolvedStat {
   contributions: StatContribution[];
 }
 
+/**
+ * Where a stat started: a number an element the character holds prints (ADR 0057), or another stat content
+ * contributes to (ADR 0059). Published whether or not the user's own base replaced it, because an editor
+ * shows the printed value beside the typed one and "clear" goes back to it.
+ */
+export interface StatStart {
+  /** The stat as the kind declared it. */
+  stat: StatKey;
+  value: number;
+  /** The element whose setter printed it, or the stat it started from. */
+  from: string;
+  /** Whether a base the user set replaces it. */
+  replaced: boolean;
+}
+
 export interface PendingChoice {
   ruleKey: string;
   label: string;
@@ -217,6 +232,12 @@ export interface DerivedCharacter {
    * list never holds an element that seeds the derivation: those are not in Aurora's `<sum>` either.
    */
   preparation: PreparedBlock[];
+  /**
+   * Every stat whose start came from content rather than from a declared default, keyed by the stat's
+   * lowercased name — ADR 0057 and ADR 0059. What a budget row calls printed, from the same numbers the
+   * derivation used.
+   */
+  starts: Map<StatKey, StatStart>;
 }
 
 export interface DeriveOptions {
@@ -302,6 +323,7 @@ export function deriveCharacter(
 
   let active = new Map<ElementId, Element>();
   let stats = new Map<StatKey, ResolvedStat>();
+  let starts = new Map<StatKey, StatStart>();
   // Element -> the track root it belongs to. Rebuilt each pass alongside `active`, and kept
   // afterwards because the pending-choice walk needs the same gates the expansion used.
   let tracks = new Map<ElementId, ElementId>();
@@ -392,6 +414,7 @@ export function deriveCharacter(
       for (const id of next.keys()) reach(id);
     } while (queue.length);
 
+    const nextStarts = new Map<StatKey, StatStart>();
     const nextStats = computeStats(
       next,
       character,
@@ -402,11 +425,13 @@ export function deriveCharacter(
       nextMembers,
       problems,
       equipment,
+      nextStarts,
     );
 
     changed = !sameKeys(active, next) || !sameStats(stats, nextStats);
     active = next;
     stats = nextStats;
+    starts = nextStarts;
     tracks = nextTracks;
   }
 
@@ -468,6 +493,7 @@ export function deriveCharacter(
     answeredChoices,
     equipment,
     preparation,
+    starts,
     // The derivation is a fixed point, so an unresolvable grant is discovered again on
     // every pass. The user has one broken reference, not four, and should be told once.
     problems: dedupeProblems(problems),
@@ -708,6 +734,7 @@ function computeStats(
   trackMembers: Map<ElementId, Set<ElementId>>,
   problems: Problem[],
   equipment: EquipmentState,
+  starts: Map<StatKey, StatStart>,
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
@@ -809,16 +836,17 @@ function computeStats(
   // creature's Strength 12 replaces the declared 10. Before the character's own values, so a
   // score the user typed replaces the print exactly as it replaces a default, rather than being
   // added to it.
-  const starts = setterStartingValues(kind.setterStats, active.values());
-  for (const [key, start] of starts.values) {
+  const printed = setterStartingValues(kind.setterStats, active.values());
+  for (const [key, start] of printed.values) {
     result.set(key, {
       name: result.get(key)?.name ?? start.stat,
       value: start.value,
       text: result.get(key)?.text,
       contributions: [{ value: start.value, from: start.from }],
     });
+    starts.set(key, { stat: start.stat, value: start.value, from: start.from, replaced: false });
   }
-  for (const note of starts.notes) {
+  for (const note of printed.notes) {
     problems.push(
       note.kind === 'not-a-number'
         ? {
@@ -841,6 +869,8 @@ function computeStats(
   // +2 adds to the score the user bought instead of being discarded by it.
   for (const [key, value] of Object.entries(character.baseStats ?? {})) {
     const lower = key.toLowerCase();
+    const start = starts.get(lower);
+    if (start) start.replaced = true;
     result.set(lower, {
       name: result.get(lower)?.name ?? key,
       value,
@@ -966,6 +996,31 @@ function computeStats(
         contributions: [...(existing?.contributions ?? []), { value, from: `block:${block.name}` }],
       });
     }
+  }
+
+  // Where a stat starts when another stat holds it — ADR 0059. A monster's armour class is its own
+  // `companion:ac` rule. After every contribution, so the named stat is what content made it; before the
+  // derivations, which add to whatever a stat holds. It replaces a declared default and nothing else: a
+  // printed setter above, or the user's base, is the more specific start and stays. Nothing contributing to
+  // the named stat means nothing states it, and the default (or nothing) stands.
+  const baseKeys = new Set(Object.keys(character.baseStats ?? {}).map((key) => key.toLowerCase()));
+  for (const def of kind.stats) {
+    if (def.startsFrom === undefined) continue;
+    const key = def.name.toLowerCase();
+    const source = result.get(def.startsFrom.toLowerCase());
+    if (!source || source.contributions.length === 0) continue;
+    if (printed.values.has(key)) continue;
+    const replaced = baseKeys.has(key);
+    starts.set(key, { stat: def.name, value: source.value, from: def.startsFrom, replaced });
+    if (replaced) continue;
+    const existing = result.get(key);
+    const declared = typeof def.default === 'number' ? def.default : 0;
+    result.set(key, {
+      name: existing?.name ?? def.name,
+      value: (existing?.value ?? 0) - (existing ? declared : 0) + source.value,
+      text: existing?.text,
+      contributions: [{ value: source.value, from: def.startsFrom }, ...(existing?.contributions ?? [])],
+    });
   }
 
   // Derived stats last — they read the contributed values above.

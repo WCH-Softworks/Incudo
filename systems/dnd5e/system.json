@@ -118,7 +118,8 @@
       "costs": { "8": 0, "9": 1, "10": 2, "11": 3, "12": 4, "13": 5, "14": 7, "15": 9 } },
     { "id": "standard-array", "label": "Standard array", "values": [15, 14, 13, 12, 10, 8] },
     { "id": "roll", "label": "Roll", "dice": "4d6dl1", "count": 6 },
-    { "id": "manual", "label": "Enter manually", "min": 1, "max": 30 }
+    { "id": "manual", "label": "Enter manually", "min": 1, "max": 30 },
+    { "id": "entry", "label": "Enter manually", "min": 0 }
   ],
 
   "characterKinds": [
@@ -350,9 +351,9 @@
         { "name": "intelligence", "label": "Intelligence", "default": 10, "min": { "kind": "ref", "stat": "intelligence:score:set" }, "max": { "kind": "number", "value": 30 } },
         { "name": "wisdom", "label": "Wisdom", "default": 10, "min": { "kind": "ref", "stat": "wisdom:score:set" }, "max": { "kind": "number", "value": 30 } },
         { "name": "charisma", "label": "Charisma", "default": 10, "min": { "kind": "ref", "stat": "charisma:score:set" }, "max": { "kind": "number", "value": 30 } },
-        { "name": "ac", "label": "Armor Class", "derive": { "kind": "ref", "stat": "companion:ac" } },
-        { "name": "hp", "label": "Hit Points", "derive": { "kind": "ref", "stat": "companion:hp:max" } },
-        { "name": "speed", "label": "Speed", "derive": { "kind": "ref", "stat": "companion:speed" } }
+        { "name": "ac", "label": "Armor Class", "default": 0, "startsFrom": "companion:ac" },
+        { "name": "hp", "label": "Hit Points", "default": 0, "startsFrom": "companion:hp:max" },
+        { "name": "speed", "label": "Speed", "default": 0, "startsFrom": "companion:speed" }
       ],
 
       "setterStats": [
@@ -378,6 +379,8 @@
         { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
+        { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block gives, or what you enter. A number you enter replaces the creature's.",
+          "budget": { "stat": "stat block points", "targets": ["ac", "hp", "speed"], "methods": ["entry"] } },
         { "id": "traits", "label": "Traits", "types": ["Companion Trait"], "multiple": true },
         { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"], "multiple": true },
         { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
@@ -407,6 +410,8 @@
         { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
+        { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block gives, or what you enter. A number you enter replaces the creature's.",
+          "budget": { "stat": "stat block points", "targets": ["ac", "hp", "speed"], "methods": ["entry"] } },
         { "id": "traits", "label": "Traits", "types": ["Companion Trait"], "multiple": true },
         { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"], "multiple": true },
         { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"] },

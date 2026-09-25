@@ -18,7 +18,6 @@
  */
 
 import {
-  setterStartingValues,
   type BuildStepDef,
   type Character,
   type DerivedCharacter,
@@ -50,9 +49,9 @@ export interface BudgetRow {
    */
   base?: number;
   /**
-   * Where the stat starts because an element the character holds prints it — a creature's
-   * Strength (ADR 0057). A `base` replaces it; clearing the base goes back to it. Undefined when
-   * nothing held prints this stat.
+   * Where the stat starts because content states it — a creature's printed Strength (ADR 0057), or
+   * its own armour class rule (ADR 0059). A `base` replaces it; clearing the base goes back to it.
+   * Undefined when nothing the character holds states this stat.
    */
   printed?: number;
   /** What the derivation reads for this stat: the base plus everything content adds. */
@@ -216,7 +215,9 @@ export function computeBudgetState(
     .map((id) => (system.generationMethods ?? []).find((m) => m.id === id))
     .filter((m): m is GenerationMethodDef => m !== undefined);
   const methodId = character.generation?.[step.id];
-  const method = methods.find((m) => m.id === methodId);
+  // One method is no choice, and nothing records it (the editor shows no radio for it), so its bounds
+  // apply unrecorded: a creature's hit points are entered from 0 up, with no maximum.
+  const method = methods.find((m) => m.id === methodId) ?? (methods.length === 1 ? methods[0] : undefined);
   const mode = modeOf(method);
 
   const base = character.baseStats ?? {};
@@ -234,8 +235,10 @@ export function computeBudgetState(
   }
   const remaining = available - spent;
 
-  const printed = setterStartingValues(kind.setterStats, derived.elements).values;
-  const printedOf = (stat: StatKey): number | undefined => printed.get(stat.toLowerCase())?.value;
+  // Where the derivation started each target, when content rather than a declared default did: a
+  // creature's printed Strength, or its own armour class rule (ADR 0057, ADR 0059). Read off the derivation
+  // so the row shows the number the engine used, including when the user's base replaced it.
+  const printedOf = (stat: StatKey): number | undefined => derived.starts.get(stat.toLowerCase())?.value;
 
   const attainable = attainableValues(method);
   const rows: BudgetRow[] = budget.targets.map((stat) => {

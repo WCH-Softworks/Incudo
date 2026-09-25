@@ -93,7 +93,7 @@ test('every creature, built as an NPC, starts at the six scores it prints and as
       const actual = state.derived.stats.get(score)?.value;
       if (actual !== printed) wrong.push(`${creature.id} ${score}: prints ${printed}, derives ${actual}`);
     }
-    if (printsAll && state.decisions.some((d) => d.kind === 'budget')) stillOpen.push(creature.id);
+    if (printsAll && state.decisions.some((d) => d.stepId === 'abilities')) stillOpen.push(creature.id);
   }
   t.diagnostic(`${creatures.length} creatures; ${printedAll} print all six scores`);
   assert.deepEqual(wrong, [], 'every printed score is the score');
@@ -175,13 +175,91 @@ test('an NPC built from nothing is asked for all six scores, and the step blocks
   const system = await fiveE();
   const elements = await realElements();
   const b = new CharacterBuilder(newCharacterOfKind(system, 'npc'), system, elements);
-  const budget = b.getState().decisions.find((d) => d.kind === 'budget');
+  const budget = b.getState().decisions.find((d) => d.stepId === 'abilities');
   assert.ok(budget, 'the Ability Scores decision is open');
   assert.equal(budget.blocking, true);
   assert.equal(budget.remaining, 6);
   for (const [n, score] of SCORES.entries()) b.setBudgetStat('abilities', score, 10 + n);
-  assert.equal(b.getState().decisions.some((d) => d.kind === 'budget'), false);
+  assert.equal(b.getState().decisions.some((d) => d.stepId === 'abilities'), false);
   assert.equal(b.getState().derived.stats.get('charisma')?.value, 15);
+});
+
+const COMBAT = ['ac', 'hp', 'speed'];
+/** The creature's own rule each of the three starts from, read off the kind rather than spelled here. */
+function startsFrom(system: GameSystem): Map<string, string> {
+  const npc = system.characterKinds.find((k) => k.id === 'npc')!;
+  return new Map(COMBAT.map((stat) => [stat, npc.stats!.find((s) => s.name === stat)!.startsFrom!]));
+}
+
+test("every creature's armour class, hit points and speed start where its rules put them, and ask for nothing", { skip }, async (t) => {
+  // ADR 0059. Fails if the kind's `startsFrom` is removed (every creature reads 0 and the step opens), or
+  // the engine stops publishing `starts` (the step's rows count nothing as stated and it opens).
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const from = startsFrom(system);
+  const wrong: string[] = [];
+  const stillOpen: string[] = [];
+  let stated = 0;
+  for (const creature of creatures) {
+    const state = npcOn(system, elements, creature).getState();
+    let all = true;
+    for (const stat of COMBAT) {
+      const rule = state.derived.stats.get(from.get(stat)!);
+      if (!rule || rule.contributions.length === 0) {
+        all = false;
+        continue;
+      }
+      const actual = state.derived.stats.get(stat)?.value;
+      if (actual !== rule.value) wrong.push(`${creature.id} ${stat}: its rule says ${rule.value}, derives ${actual}`);
+    }
+    if (all) stated++;
+    if (all && state.decisions.some((d) => d.stepId === 'combat')) stillOpen.push(creature.id);
+  }
+  t.diagnostic(`${creatures.length} creatures; ${stated} state all three by their own rules`);
+  assert.ok(stated > 0, 'the corpus has creatures that state them');
+  assert.deepEqual(wrong, [], 'each of the three is what the creature states');
+  assert.deepEqual(stillOpen, [], 'a creature that states all three leaves nothing to enter');
+});
+
+test('an NPC from nothing enters armour class, hit points and speed, and a creature picked later does not add to them', { skip }, async () => {
+  // Fails if a typed value is added to the creature's (reads 697 + the creature's hit points), if the step
+  // is capped at an ability score's 30 (a Tarrasque's 697 would be refused), or if clearing does not go back.
+  const system = await fiveE();
+  const elements = await realElements();
+  const b = new CharacterBuilder(newCharacterOfKind(system, 'npc'), system, elements);
+  const open = b.getState().decisions.find((d) => d.stepId === 'combat');
+  assert.ok(open, 'the step is open for an NPC with no creature');
+  assert.equal(open.blocking, true);
+  assert.equal(open.remaining, 3);
+  for (const stat of COMBAT) assert.equal(b.getState().derived.stats.get(stat)?.value, 0, `${stat} with no creature`);
+
+  b.setBudgetStat('combat', 'ac', 25);
+  b.setBudgetStat('combat', 'hp', 697);
+  b.setBudgetStat('combat', 'speed', 40);
+  assert.equal(b.getState().decisions.some((d) => d.stepId === 'combat'), false, 'entered, the step closes');
+  assert.equal(b.getState().derived.stats.get('hp')?.value, 697);
+
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const offered = new Set(b.getState().decisions.find((d) => d.stepId === 'creature')!.candidates);
+  // One whose hit points are a plain positive number, so a sum would show: a class summon's rule reads a
+  // summoner's level an NPC does not have, and states 0.
+  const creature = creatures.find((c) => offered.has(c.id) && (readSetterNumber(c.setters['hp']?.value) ?? 0) > 0)!;
+  b.choose('build/creature', [creature.id]);
+  const stated = b.getState().derived.stats.get(startsFrom(system).get('hp')!)!.value;
+  assert.equal(b.getState().derived.stats.get('hp')?.value, 697, "the typed value replaces the creature's");
+  b.setBudgetStat('combat', 'hp', undefined);
+  assert.equal(b.getState().derived.stats.get('hp')?.value, stated, "clearing it goes back to the creature's");
+  const row = b.getState().steps.find((s) => s.id === 'combat')!.budget!.rows.find((r) => r.stat === 'hp')!;
+  assert.equal(row.printed, stated);
+
+  const character = b.getState().character;
+  const packed = packCharacter(character, system, elements, { generator: 'test' });
+  const { container } = readCharacterContainer(packed.files);
+  const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
+  for (const stat of COMBAT) {
+    assert.equal(reopened.stats.get(stat)?.value, b.getState().derived.stats.get(stat)?.value, `${stat} after reopening with no source`);
+  }
 });
 
 test("every creature's named traits, actions and reactions reach its NPC, and its save keeps them", { skip }, async (t) => {

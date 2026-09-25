@@ -144,6 +144,11 @@
         "kind": { "enum": ["number", "string"] },
         "default": { "type": ["number", "string"] },
         "derive": { "$ref": "#/$defs/expr" },
+        "startsFrom": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Another stat whose value is where this one starts, when content contributes to that stat at all (ADR 0059): a monster's armour class starts where its own rule for it does. A starting value, not a sum: it replaces `default`, a held element's printed setter replaces it, a value the user set replaces any of them, and what content contributes to this stat adds to whichever is in force. The named stat is read as contributed, before derivations."
+        },
         "min": { "$ref": "#/$defs/bound" },
         "max": { "$ref": "#/$defs/bound" }
       }

@@ -112,3 +112,41 @@ test('a score the element does not print is still to enter', () => {
   assert.deepEqual(scores(b).unassigned, ['grit']);
   assert.equal(budgetOpen(b), true);
 });
+
+test("a stat that starts from content's own rule counts as set, and a typed value replaces it — ADR 0059", () => {
+  // Fails if the row reads its print from setters alone rather than from the derivation's starts (the
+  // guard row is unassigned and the step stays open), or if the only method's bounds are not applied (a
+  // typed 697 is refused by the 1-30 of ability scores: here the method has no maximum).
+  const guarded: GameSystem = {
+    ...system,
+    stats: [{ name: 'guard', default: 0, startsFrom: 'beast:guard' }, { name: 'spare points', default: 0 }],
+    generationMethods: [{ id: 'entry', label: 'Entry', min: 0 }],
+    characterKinds: [
+      {
+        ...system.characterKinds[0]!,
+        setterStats: [],
+        buildSteps: [
+          { id: 'beast', label: 'Beast', types: ['Beast'], required: true },
+          { id: 'scores', label: 'Guard', types: [], required: true, budget: { stat: 'spare points', targets: ['guard'], methods: ['entry'] } },
+        ],
+      },
+    ],
+  };
+  const ox: Element = {
+    ...beast('OX', {}),
+    rules: [{ kind: 'stat', key: 'g', name: 'beast:guard', value: { kind: 'number', value: 13 } }],
+  };
+  const index = new MapElementIndex();
+  index.addAll([ox]);
+  const b = new CharacterBuilder(createCharacter('test', 'keeper'), guarded, index);
+  assert.deepEqual(scores(b).unassigned, ['guard']);
+  b.choose('build/beast', ['OX']);
+  assert.deepEqual(scores(b).unassigned, []);
+  assert.equal(row(b, 'guard').printed, 13);
+  assert.equal(row(b, 'guard').total, 13);
+  b.setBudgetStat('scores', 'guard', 697);
+  assert.equal(row(b, 'guard').total, 697);
+  assert.equal(row(b, 'guard').printed, 13);
+  b.setBudgetStat('scores', 'guard', -4);
+  assert.equal(row(b, 'guard').base, 0, "the method's floor applies unrecorded");
+});

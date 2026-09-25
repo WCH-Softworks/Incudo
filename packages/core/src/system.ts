@@ -56,6 +56,17 @@ export interface StatDef {
    */
   derive?: StatExpr;
   /**
+   * Another stat whose value is where this one starts, when content contributes to that stat at all —
+   * ADR 0059. A monster's armour class starts where its own `companion:ac` rule puts it.
+   *
+   * It is a starting value and not a sum: it replaces `default`, a held element's printed setter
+   * (`setterStats`) replaces it, a base the user set (`Character.baseStats`) replaces any of them, and
+   * everything contributed to this stat adds to whichever is in force. The named stat is read as content
+   * contributed it, before derivations; when nothing contributes to it, it supplies nothing and `default`
+   * (or nothing) stands.
+   */
+  startsFrom?: StatKey;
+  /**
    * Bounds, applied to every stat — contributed, derived or both — after the contributions
    * and derivations have settled and before `overrides`, which still win over everything
    * (ADR 0016). A bound may be a plain number or an expression, because the interesting ones
