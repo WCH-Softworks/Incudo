@@ -332,6 +332,25 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       tagSetters.add(setter);
     }
 
+    // A `setterStats` entry that names nothing starts nothing, and a second entry starting the same stat
+    // from the same type is never reached: the first element's value is used (ADR 0057).
+    const startedFrom = new Set<string>();
+    for (const entry of resolved.setterStats) {
+      if (entry.setter.trim() === '' || entry.stat.trim() === '' || entry.types.length === 0) {
+        errors.push({ path: `${where}.setterStats`, message: 'names types, a setter and a stat, and none may be empty' });
+      }
+      for (const type of entry.types) {
+        const key = `${type}\u0000${entry.stat.trim().toLowerCase()}`;
+        if (startedFrom.has(key)) {
+          errors.push({
+            path: `${where}.setterStats`,
+            message: `starts "${entry.stat}" from a "${type}" twice; only the first would ever be reached`,
+          });
+        }
+        startedFrom.add(key);
+      }
+    }
+
     // A preparation declaration whose filters will not parse, or which name an interpolation the kind never
     // expands, is invisible at runtime: nothing could be prepared and nothing would say why (ADR 0046).
     const preparation = resolved.preparation;

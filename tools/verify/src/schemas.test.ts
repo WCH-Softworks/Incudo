@@ -467,6 +467,43 @@ test('a setterTags entry that names a setter twice, or nothing, is caught before
   );
 });
 
+test('a setterStats entry that starts a stat from a type twice, or names nothing, is caught before the app loads it', async () => {
+  // ADR 0057: the second entry for one type and stat is never reached, and an empty one starts nothing,
+  // and both are invisible at runtime. Removing the check in checkSystemReferences fails the first
+  // assertion; the schema's minLength catches the second.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.setterStats = [
+          { types: ['Beast'], setter: 'might', stat: 'vigour' },
+          { types: ['Beast'], setter: 'brawn', stat: 'VIGOUR' },
+        ];
+      }),
+    ),
+    ['characterKinds[0].setterStats: starts "VIGOUR" from a "Beast" twice; only the first would ever be reached'],
+  );
+  assert.notDeepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.setterStats = [{ types: ['Beast'], setter: '', stat: 'vigour' }];
+      }),
+    ),
+    [],
+  );
+  // Two types starting one stat is ordinary: a stat block from either.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.setterStats = [
+          { types: ['Beast'], setter: 'might', stat: 'vigour' },
+          { types: ['Spirit'], setter: 'might', stat: 'vigour' },
+        ];
+      }),
+    ),
+    [],
+  );
+});
+
 test("a contribution's requirements is content's language, and it has to parse", async () => {
   // The one place the system format embeds a *different* language inside JSON (ADR 0022). The
   // schema can only check that it is a string, so the parse happens in checkSystemReferences

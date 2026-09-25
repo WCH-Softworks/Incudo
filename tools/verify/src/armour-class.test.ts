@@ -256,12 +256,24 @@ test('a body-slot item that is not armour keeps its Dexterity, and loses the bas
 });
 
 test('a monster keeps the armour class its stat block says, and derives nothing', async () => {
+  // Since ADR 0057 "its stat block" is the creature's own `companion:ac` rule. This test used to assert
+  // the system default of 10, which is what an NPC read before anything read a creature; with no
+  // creature there is no stat block, and 0 says so where a 10 would look like one.
   const { system } = await fiveE();
+  const wolf = item('WOLFISH', 'Wolfish', {}, [armourStat('companion:ac', 13)]);
+  wolf.type = 'Companion';
   for (const kindId of ['npc', 'legendary']) {
     const kind = resolveCharacterKind(system, kindId);
     const monster = createCharacter('dnd5e', kindId);
     const derived = deriveCharacter(monster, system, new MapElementIndex(), { kind });
-    assert.equal(derived.stats.get('ac')?.value, 10, `${kindId} keeps the system default`);
+    assert.equal(derived.stats.get('ac')?.value, 0, `${kindId} with no creature has no armour class`);
+    const built = deriveCharacter(
+      { ...monster, choices: [{ ruleKey: 'build/creature', elementIds: ['WOLFISH'] }] },
+      system,
+      indexWith(wolf),
+      { kind },
+    );
+    assert.equal(built.stats.get('ac')?.value, 13, `${kindId} reads the creature's own rule`);
     // No inventory, so no slot to ask about, and no contribution to make one up.
     assert.equal(kind.inventory, undefined);
     assert.deepEqual(kind.contributions, []);

@@ -49,6 +49,7 @@ import {
 } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import { EMPTY_EQUIPMENT, resolveEquipment, type EquipmentState } from './equipment.ts';
+import { setterStartingValues } from './setter-stats.ts';
 import {
   derivePreparation,
   preparationFilters,
@@ -177,6 +178,9 @@ export interface Problem {
     | 'unresolved-interpolation'
     // A `setter` expression outside a per-track value — ADR 0044.
     | 'setter-outside-track'
+    // A setter a kind reads as where a stat starts, which is not a number or is printed twice — ADR 0057.
+    | 'setter-not-a-number'
+    | 'setter-stat-conflict'
     // The bag, read through the kind's inventory declaration — ADR 0025, ADR 0023.
     | 'slot-unknown'
     | 'slot-full'
@@ -788,6 +792,37 @@ function computeStats(
       text: typeof def.default === 'string' ? def.default : undefined,
       contributions: [],
     });
+  }
+
+  // Then what a held element prints, which is where those stats start instead (ADR 0057): a
+  // creature's Strength 12 replaces the declared 10. Before the character's own values, so a
+  // score the user typed replaces the print exactly as it replaces a default, rather than being
+  // added to it.
+  const starts = setterStartingValues(kind.setterStats, active.values());
+  for (const [key, start] of starts.values) {
+    result.set(key, {
+      name: result.get(key)?.name ?? start.stat,
+      value: start.value,
+      text: result.get(key)?.text,
+      contributions: [{ value: start.value, from: start.from }],
+    });
+  }
+  for (const note of starts.notes) {
+    problems.push(
+      note.kind === 'not-a-number'
+        ? {
+            level: 'warning',
+            code: 'setter-not-a-number',
+            elementId: note.elementId,
+            message: `"${note.setter}" on ${note.elementId} reads "${note.text}", which is not a number, so it does not set where "${note.stat}" starts.`,
+          }
+        : {
+            level: 'warning',
+            code: 'setter-stat-conflict',
+            elementId: note.elementId,
+            message: `Both ${note.usedFrom} and ${note.elementId} print "${note.setter}". "${note.stat}" starts at the first one's.`,
+          },
+    );
   }
 
   // Then the character's own starting values, which replace those defaults (ADR 0014). This

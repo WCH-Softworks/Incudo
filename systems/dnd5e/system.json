@@ -330,7 +330,7 @@
     {
       "id": "npc",
       "name": "NPC / Monster",
-      "description": "A stat block rather than a sheet: challenge rating instead of a level, traits and actions picked directly instead of a build flow. Aurora files creature content under the Companion types, which is why they appear here.",
+      "description": "A stat block rather than a sheet, with a challenge rating instead of a level. Start from a creature in your content and change any score it prints, or start from nothing and enter the scores yourself. Traits and actions are picked directly.",
       "progression": { "kind": "rating", "stat": "challenge", "min": 0, "max": 30 },
 
       "elementTypes": [
@@ -343,14 +343,37 @@
         { "name": "challenge", "label": "Challenge Rating", "default": 0 },
         { "name": "proficiency", "label": "Proficiency Bonus",
           "derive": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 2 },
-            "right": { "kind": "call", "fn": "max", "args": [{ "kind": "number", "value": 0 }, { "kind": "call", "fn": "ceil", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "challenge" }, "right": { "kind": "number", "value": 4 } }, "right": { "kind": "number", "value": 4 } }] }] } } }
+            "right": { "kind": "call", "fn": "max", "args": [{ "kind": "number", "value": 0 }, { "kind": "call", "fn": "ceil", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "challenge" }, "right": { "kind": "number", "value": 4 } }, "right": { "kind": "number", "value": 4 } }] }] } } },
+        { "name": "strength", "label": "Strength", "default": 10, "min": { "kind": "ref", "stat": "strength:score:set" }, "max": { "kind": "number", "value": 30 } },
+        { "name": "dexterity", "label": "Dexterity", "default": 10, "min": { "kind": "ref", "stat": "dexterity:score:set" }, "max": { "kind": "number", "value": 30 } },
+        { "name": "constitution", "label": "Constitution", "default": 10, "min": { "kind": "ref", "stat": "constitution:score:set" }, "max": { "kind": "number", "value": 30 } },
+        { "name": "intelligence", "label": "Intelligence", "default": 10, "min": { "kind": "ref", "stat": "intelligence:score:set" }, "max": { "kind": "number", "value": 30 } },
+        { "name": "wisdom", "label": "Wisdom", "default": 10, "min": { "kind": "ref", "stat": "wisdom:score:set" }, "max": { "kind": "number", "value": 30 } },
+        { "name": "charisma", "label": "Charisma", "default": 10, "min": { "kind": "ref", "stat": "charisma:score:set" }, "max": { "kind": "number", "value": 30 } },
+        { "name": "ac", "label": "Armor Class", "derive": { "kind": "ref", "stat": "companion:ac" } },
+        { "name": "hp", "label": "Hit Points", "derive": { "kind": "ref", "stat": "companion:hp:max" } },
+        { "name": "speed", "label": "Speed", "derive": { "kind": "ref", "stat": "companion:speed" } }
+      ],
+
+      "setterStats": [
+        { "types": ["Companion"], "setter": "strength", "stat": "strength" },
+        { "types": ["Companion"], "setter": "dexterity", "stat": "dexterity" },
+        { "types": ["Companion"], "setter": "constitution", "stat": "constitution" },
+        { "types": ["Companion"], "setter": "intelligence", "stat": "intelligence" },
+        { "types": ["Companion"], "setter": "wisdom", "stat": "wisdom" },
+        { "types": ["Companion"], "setter": "charisma", "stat": "charisma" }
+      ],
+
+      "candidateNotes": [
+        { "types": ["Companion"], "setter": "challenge", "label": "CR {value}" }
       ],
 
       "buildSteps": [
         { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
-        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true },
-        { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
-        { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"] },
+        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.",
+          "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
+        { "id": "traits", "label": "Traits", "types": ["Companion Trait"], "multiple": true },
+        { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"], "multiple": true },
         { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
         { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
       ],
@@ -370,15 +393,16 @@
     {
       "id": "legendary",
       "name": "Legendary Creature",
-      "description": "An NPC plus the three things that make a boss fight: legendary actions, lair actions, regional effects. A delta on \"npc\", not a copy of it — ADR 0009.",
+      "description": "An NPC with legendary actions, lair actions and regional effects, where your content provides them. The official Aurora content describes these only as text inside a creature's description, so there is nothing to pick for them yet.",
       "extends": "npc",
       "elementTypes": ["+Legendary Action", "+Lair Action", "+Regional Effect"],
 
       "buildSteps": [
         { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
-        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true },
-        { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
-        { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"] },
+        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.",
+          "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
+        { "id": "traits", "label": "Traits", "types": ["Companion Trait"], "multiple": true },
+        { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"], "multiple": true },
         { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"] },
         { "id": "lair", "label": "Lair", "types": ["Lair Action", "Regional Effect"] },
         { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },

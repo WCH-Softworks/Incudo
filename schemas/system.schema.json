@@ -356,6 +356,7 @@
         "blockStats": { "type": "array", "items": { "$ref": "#/$defs/blockStat" } },
         "blockFilters": { "type": "array", "items": { "$ref": "#/$defs/blockFilter" } },
         "setterTags": { "type": "array", "items": { "$ref": "#/$defs/setterTag" } },
+        "setterStats": { "type": "array", "items": { "$ref": "#/$defs/setterStat" } },
         "contributions": { "type": "array", "items": { "$ref": "#/$defs/contribution" } },
         "inventory": { "$ref": "#/$defs/inventory" },
         "preparation": { "$ref": "#/$defs/preparation" },
@@ -458,6 +459,23 @@
       "properties": {
         "setter": { "type": "string", "minLength": 1, "description": "The setter's name as content writes it. Compared lowercased." },
         "tag": { "type": "string", "minLength": 1, "description": "The filter operand it answers to. Compared lowercased." }
+      }
+    },
+
+    "setterStat": {
+      "description": "A setter on an element the character holds that is where a stat starts (ADR 0057). A creature prints its ability scores as setters and states them nowhere else. The value lands where a declared default lands: a base the user set replaces it, and every contribution adds to whichever of the two is in force, so a printed 12 and a typed 14 is 14, not 26. Read as a whole number or a fraction, optionally followed by one parenthesised note (\"13 (natural armor)\", \"1/4\"); any other text starts nothing and the derivation says so. When two held elements print the same stat, the first in derivation order is used and a warning names both. Replaced rather than merged along an extends chain.",
+      "type": "object",
+      "required": ["types", "setter", "stat"],
+      "additionalProperties": false,
+      "properties": {
+        "types": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Element types whose setter is read."
+        },
+        "setter": { "type": "string", "minLength": 1, "description": "The setter's name as content writes it. Compared lowercased." },
+        "stat": { "type": "string", "minLength": 1, "description": "The stat it starts." }
       }
     },
 

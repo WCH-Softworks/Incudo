@@ -18,6 +18,7 @@
  */
 
 import {
+  setterStartingValues,
   type BuildStepDef,
   type Character,
   type DerivedCharacter,
@@ -48,6 +49,12 @@ export interface BudgetRow {
    * A *base*, never a total: a racial +2 is not in here and must never be written here.
    */
   base?: number;
+  /**
+   * Where the stat starts because an element the character holds prints it — a creature's
+   * Strength (ADR 0057). A `base` replaces it; clearing the base goes back to it. Undefined when
+   * nothing held prints this stat.
+   */
+  printed?: number;
   /** What the derivation reads for this stat: the base plus everything content adds. */
   total: number;
   /**
@@ -115,7 +122,10 @@ export interface BudgetState {
   granted: number;
   spent: number;
   remaining: number;
-  /** Targets with no value set yet. A budget is open while any of these remain. */
+  /**
+   * Targets with no value set yet. A budget is open while any of these remain. A target an element
+   * prints is set (ADR 0057): a creature's scores need no one to type them.
+   */
   unassigned: StatKey[];
   /** True when this method is a pool of points rather than a set of values to assign. */
   pooled: boolean;
@@ -224,35 +234,42 @@ export function computeBudgetState(
   }
   const remaining = available - spent;
 
+  const printed = setterStartingValues(kind.setterStats, derived.elements).values;
+  const printedOf = (stat: StatKey): number | undefined => printed.get(stat.toLowerCase())?.value;
+
   const attainable = attainableValues(method);
   const rows: BudgetRow[] = budget.targets.map((stat) => {
     const current = valueOf(stat);
     const resolved = derived.stats.get(stat.toLowerCase());
     const declaredDefault = kind.stats.find((s) => s.name.toLowerCase() === stat.toLowerCase())
       ?.default;
-    const fallback = typeof declaredDefault === 'number' ? declaredDefault : 0;
+    const fallback = printedOf(stat) ?? (typeof declaredDefault === 'number' ? declaredDefault : 0);
     const total = resolved?.value ?? current ?? fallback;
     const cost = costOf(method, current);
 
     let increase: BudgetRow['increase'];
     let decrease: BudgetRow['decrease'];
     if (mode !== 'assignment' && attainable.length) {
-      const next = current === undefined
+      // A printed score steps from the print: one up from a creature's 12 is 13, not the method's
+      // lowest value (ADR 0057).
+      const from = current ?? printedOf(stat);
+      const next = from === undefined
         ? attainable[0]
-        : attainable.find((value) => value > current);
+        : attainable.find((value) => value > from);
       if (next !== undefined) {
         const price = costOf(method, next) - cost;
         increase = { value: next, cost: price, affordable: !pooled || price <= remaining };
       }
-      const below = current === undefined
+      const below = from === undefined
         ? undefined
-        : [...attainable].reverse().find((value) => value < current);
+        : [...attainable].reverse().find((value) => value < from);
       if (below !== undefined) decrease = { value: below, refund: cost - costOf(method, below) };
     }
 
     return {
       stat,
       base: current,
+      printed: printedOf(stat),
       total,
       bonus: total - (current ?? fallback),
       cost,
@@ -303,7 +320,9 @@ export function computeBudgetState(
     granted,
     spent,
     remaining,
-    unassigned: budget.targets.filter((target) => valueOf(target) === undefined),
+    unassigned: budget.targets.filter(
+      (target) => valueOf(target) === undefined && printedOf(target) === undefined,
+    ),
     pooled,
     rows,
     pool,

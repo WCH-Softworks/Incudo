@@ -221,6 +221,22 @@ export interface SetterTagDef {
 }
 
 /**
+ * A setter on a held element that is where a stat starts — ADR 0057.
+ *
+ * A creature prints its ability scores as setters and states them nowhere else. The value lands where a
+ * declared default lands: a base the user set replaces it, and contributions add to whichever is in force.
+ * Core names no setter, stat or type; the system says all three.
+ */
+export interface SetterStatDef {
+  /** Element types whose setter is read. */
+  types: ElementType[];
+  /** The setter's name as content writes it. Compared lowercased. */
+  setter: string;
+  /** The stat it starts. */
+  stat: StatKey;
+}
+
+/**
  * A short fact a picker prints beside a candidate of certain types — a spell's level, say.
  *
  * Which setter says it and how it reads are the system's business: core does not know that a
@@ -951,6 +967,12 @@ export interface CharacterKindDef {
    */
   setterTags?: SetterTagDef[];
   /**
+   * Setters on held elements that are where a stat starts — ADR 0057. Replaced rather than merged
+   * along an `extends` chain, like `setterTags`. A kind declaring none starts every stat at its
+   * declared default, as before.
+   */
+  setterStats?: SetterStatDef[];
+  /**
    * Stats this kind contributes itself, conditionally or not — ADR 0022. Replaced rather than
    * merged along an `extends` chain, like `trackStats` and `blockStats`.
    */
@@ -1007,6 +1029,8 @@ export interface ResolvedCharacterKind {
   blockFilters: BlockFilterDef[];
   /** Setters that are a tag when true, for a select's filter — ADR 0047. */
   setterTags: SetterTagDef[];
+  /** Setters on held elements that are where a stat starts — ADR 0057. */
+  setterStats: SetterStatDef[];
   /** Stats the kind itself contributes, conditionally or not — ADR 0022. */
   contributions: ContributionDef[];
   /** How an item's setters are read, or nothing at all — ADR 0025. */
@@ -1192,6 +1216,7 @@ export function resolveCharacterKind(
   let blockStats: BlockStatDef[] = [];
   let blockFilters: BlockFilterDef[] = [];
   let setterTags: SetterTagDef[] = [];
+  let setterStats: SetterStatDef[] = [];
   let contributions: ContributionDef[] = [];
   let inventory: InventoryDef | undefined;
   let repeatableSetter: string | undefined;
@@ -1213,6 +1238,7 @@ export function resolveCharacterKind(
     if (layer.blockStats !== undefined) blockStats = layer.blockStats;
     if (layer.blockFilters !== undefined) blockFilters = layer.blockFilters;
     if (layer.setterTags !== undefined) setterTags = layer.setterTags;
+    if (layer.setterStats !== undefined) setterStats = layer.setterStats;
     if (layer.contributions !== undefined) contributions = layer.contributions;
     if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.repeatableSetter !== undefined) repeatableSetter = layer.repeatableSetter;
@@ -1235,6 +1261,7 @@ export function resolveCharacterKind(
     blockStats,
     blockFilters,
     setterTags,
+    setterStats,
     contributions,
     inventory,
     repeatableSetter,
