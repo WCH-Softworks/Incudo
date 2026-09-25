@@ -1151,7 +1151,7 @@ table.budget-rows input[type='number'] {
   flex-wrap: wrap;
 }
 
-.holder-grant-list li.removed > span:first-child {
+.holder-grant-list li.removed .name {
   text-decoration: line-through;
   color: var(--fg-muted);
 }

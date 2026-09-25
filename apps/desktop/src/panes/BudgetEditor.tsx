@@ -95,6 +95,13 @@ export function BudgetEditor({
 }): React.JSX.Element {
   const labelOf = (stat: StatKey): string =>
     kind.stats.find((s) => s.name.toLowerCase() === stat.toLowerCase())?.label ?? stat;
+  const description = kind.buildSteps.find((step) => step.id === stepId)?.description;
+  // Whether content can say where any of these targets start: a printed setter or another stat.
+  const stated = budget.targets.some(
+    (target) =>
+      kind.setterStats.some((def) => def.stat.toLowerCase() === target.toLowerCase()) ||
+      kind.stats.some((def) => def.name.toLowerCase() === target.toLowerCase() && def.startsFrom !== undefined),
+  );
 
   return (
     <div className="budget">
@@ -182,12 +189,17 @@ export function BudgetEditor({
         knowing here; neither number is.
       */}
       {budget.rows.some((row) => row.printed !== undefined) ? (
-        // ADR 0057: a printed score is where the stat starts, and a typed one replaces it.
+        // ADR 0057, ADR 0059: what the creature states is where the stat starts, and a typed one
+        // replaces it — a printed score, or the creature's own armour class rule.
         <p className="hint">
-          A faded number is what the creature prints, and it is used until you type another. Clear
-          what you typed to go back to the printed score. <strong>Total</strong> is the number the
-          stat block uses.
+          A faded number is the creature's own, and it is used until you type another. Clear what
+          you typed to go back to it. <strong>Total</strong> is the number the stat block uses.
         </p>
+      ) : stated && description !== undefined ? (
+        // A step whose values content can state (a creature's), with nothing stated yet: the step's
+        // own sentence. The paragraph below is about a player character's ability scores, and read
+        // wrong over a monster's hit points.
+        <p className="hint">{description}</p>
       ) : (
       <p className="hint">
         <strong>Base</strong> is the score you set.

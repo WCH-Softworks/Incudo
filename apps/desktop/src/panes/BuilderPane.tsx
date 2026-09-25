@@ -299,7 +299,15 @@ export function BuilderPane({
                         .filter((g) => g.from === from && g.stepId === step.id)
                         .map((grant) => (
                           <li key={grant.elementId} className={grant.removed ? 'removed' : ''}>
-                            <span>{candidateLabel(grant.elementId)}</span>
+                            {elements.get(grant.elementId) === undefined ? (
+                              // A removed element is not saved (ADR 0061), so a save opened with no
+                              // content has only its id. Giving it back needs the content it came from.
+                              <span className="hint">
+                                One more was removed. Load the content it came from to see it or give it back.
+                              </span>
+                            ) : (
+                            <>
+                            <span className="name">{candidateLabel(grant.elementId)}</span>
                             {grant.removed ? (
                               <>
                                 <span className="hint">
@@ -313,6 +321,8 @@ export function BuilderPane({
                               <button type="button" className="link" onClick={() => builder.removeGranted(grant.elementId)}>
                                 Remove
                               </button>
+                            )}
+                            </>
                             )}
                           </li>
                         ))}
