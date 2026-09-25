@@ -971,9 +971,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       can be read anywhere else, and each says which select offers it, found from the select's one-tag filter rather
       than from its id. An element shows its book, source, file, id and tags. Running it changed the order within a
       rank (a table row called "Elf" came before the Elf races), the narrow layout, and kept the search across panes.
-      Driven in the Tauri window and the browser build on Windows. **Not done:** real keystrokes in the window (the
-      screen was locked; Ctrl+5 was sent by the menu and as an injected event); filters by tag or setter ("3rd-level
-      spells"); what grants an element; macOS and Linux.
+      Driven in the Tauri window, Ctrl+5 and typing with real keys, and the browser build on Windows. **Not done:**
+      filters by tag or setter ("3rd-level spells"); what grants an element; macOS and Linux.
 - [ ] Conflict resolution when two sources define the same ID
 - [x] **Say when a source refers to content no enabled source has** ([ADR 0052](./docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md)).
       Any inner index can be added as a source, and 58 of AuroraLegacy's 60 grant ids only another declares: the 2014

@@ -584,8 +584,8 @@ renders it and computes nothing. Things to know before touching it:
   still searched and listed by the name content gave it.
 - **"Offered by" follows only a select whose filter is one plain tag.** That is how an inline list item names its
   background, from the rules and never from the shape of its id. `and`, `or`, `$(…)` and `!` filters are not followed.
-- **Not verified:** real keystrokes in the window (the screen was locked; Ctrl+5 was sent by the native menu and as
-  an injected event in the browser build), macOS and Linux.
+- **Ctrl+5 was pressed with real keys in the Windows window** and arrives, from a text field too. Not verified:
+  macOS and Linux.
 
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).

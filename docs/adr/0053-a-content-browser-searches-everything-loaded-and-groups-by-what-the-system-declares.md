@@ -169,9 +169,10 @@ list, with a way back to the same results.
 - **Running it changed four things**: the order within a rank (decision 2); the stacked layout, where the element
   being read sat above the list at 800 pixels and pushed the search box off the screen; the search being lost when
   the pane unmounted; and tags shown as plain text, where "Spell Saving Throw" read as three tags.
-- **Not done:** real keystrokes in the window. The screen was locked when they were due, so Ctrl+5 and typing were
-  sent only as injected events (in the browser build) and through the menu (in the window). Ctrl+5 is a digit chord
-  like Ctrl+1 to Ctrl+4, which do reach the page, but this one has not been pressed. macOS and Linux were not run.
+- **Real keys in the window**, pressed once the screen was unlocked: Ctrl+5 from the Characters pane reached the page
+  as a key-down and opened Browse with the search box focused, and typing "misty step" went into it (51 matches, Misty
+  Step first). Ctrl+4 then Ctrl+5 pressed with focus in that box left for Sources and came back to the same search.
+- **Not done:** macOS and Linux.
 
 ## What this does not do
 
