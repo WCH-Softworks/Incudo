@@ -16,7 +16,14 @@
  */
 
 import { useState } from 'react';
-import type { ConfiguredSource, MissingContent, RefreshReport, SourceMode, UpdateStatus } from '@incudo/content';
+import type {
+  ConfiguredSource,
+  MissingContent,
+  RefreshReport,
+  SourceMode,
+  SourceOverlap,
+  UpdateStatus,
+} from '@incudo/content';
 import type { GameSystem, SuggestedSource } from '@incudo/core';
 
 import { type LoadProgress, type LoadedContent } from '../content.ts';
@@ -29,6 +36,8 @@ export interface SourcesActions {
   rename: (id: string, name: string) => Promise<void>;
   setEnabled: (id: string, enabled: boolean) => Promise<void>;
   setMode: (id: string, mode: SourceMode) => Promise<void>;
+  /** Swap with the neighbour above or below among this system's sources — ADR 0054. */
+  move: (id: string, direction: 'up' | 'down') => Promise<void>;
   checkForUpdates: (id: string) => Promise<void>;
   refresh: (id: string) => Promise<void>;
   reload: () => Promise<void>;
@@ -101,6 +110,8 @@ export function SourcesPane({
   }
 
   const loadedById = new Map((content?.sources ?? []).map((source) => [source.id, source]));
+  // The user's name for a source, which is what its line shows, for naming it on another line (ADR 0054).
+  const nameOf = (id: string): string => sources.find((source) => source.id === id)?.name ?? id;
 
   return (
     <main className="pane">
@@ -220,11 +231,19 @@ export function SourcesPane({
         </p>
       )}
 
+      {/* ADR 0054: later wins, which is what loading them in this order has always done. */}
+      {sources.length > 1 && (
+        <p className="hint">When two sources define the same thing, the one lower in this list is used.</p>
+      )}
+
       <ul className="sources">
-        {sources.map((source) => (
+        {sources.map((source, position) => (
           <li key={source.id}>
             <SourceRow
               source={source}
+              first={position === 0}
+              last={position === sources.length - 1}
+              nameOf={nameOf}
               loaded={loadedById.get(source.id)}
               update={updates[source.id]}
               refreshed={refreshes[source.id]}
@@ -356,6 +375,9 @@ function Suggestion({
 
 function SourceRow({
   source,
+  first,
+  last,
+  nameOf,
   loaded,
   update,
   refreshed,
@@ -364,7 +386,13 @@ function SourceRow({
   shell,
 }: {
   source: ConfiguredSource;
-  loaded: { fileCount: number; elementCount: number; failed?: string; missing?: MissingContent } | undefined;
+  /** Where it sits among this system's sources, which is which one is used when two define the same id. */
+  first: boolean;
+  last: boolean;
+  nameOf: (id: string) => string;
+  loaded:
+    | { fileCount: number; elementCount: number; failed?: string; missing?: MissingContent; overlaps?: SourceOverlap[] }
+    | undefined;
   update: UpdateStatus | undefined;
   refreshed: RefreshReport | { failed: string } | undefined;
   busy: boolean;
@@ -425,6 +453,9 @@ function SourceRow({
       )}
 
       {loaded?.missing && <MissingNote missing={loaded.missing} />}
+      {loaded?.overlaps?.map((overlap) => (
+        <OverlapNote key={overlap.sourceId} overlap={overlap} other={nameOf(overlap.sourceId)} />
+      ))}
       {update && <UpdateNote status={update} />}
       {refreshed && <RefreshNote report={refreshed} />}
 
@@ -439,6 +470,12 @@ function SourceRow({
           title="Fetch this source again. Anything that cannot be reached keeps its saved copy."
         >
           Refresh
+        </button>
+        <button type="button" onClick={() => void actions.move(source.id, 'up')} disabled={busy || first}>
+          Move up
+        </button>
+        <button type="button" onClick={() => void actions.move(source.id, 'down')} disabled={busy || last}>
+          Move down
         </button>
         <button type="button" onClick={() => void actions.remove(source.id)} disabled={busy}>
           Remove
@@ -527,6 +564,35 @@ function MissingNote({ missing }: { missing: MissingContent }): React.JSX.Elemen
           </ul>
         </>
       )}
+    </details>
+  );
+}
+
+/**
+ * What this source defines that another enabled source also defines — ADR 0054. The one lower in the list is used, and
+ * this says which that is; it never says which version is right. Things both define the same way are counted and not
+ * listed, because which one is used changes nothing.
+ */
+function OverlapNote({ overlap, other }: { overlap: SourceOverlap; other: string }): React.JSX.Element {
+  const differ = overlap.differ.length;
+  const total = differ + overlap.same;
+  const shared = `Also defines ${total.toLocaleString()} ${total === 1 ? 'thing' : 'things'} ${other} defines`;
+  if (!differ) return <p className="card-note">{shared}, the same way.</p>;
+  const used = overlap.used === 'this' ? "This source's" : `${other}'s`;
+  return (
+    <details className="card-note">
+      <summary>
+        {shared}, {total === 1 ? 'differently' : `${differ.toLocaleString()} of them differently`}. {used} version is
+        used.
+      </summary>
+      <p>Defined differently:</p>
+      <ul>
+        {overlap.differ.map((id) => (
+          <li key={id}>
+            <code>{id}</code>
+          </li>
+        ))}
+      </ul>
     </details>
   );
 }

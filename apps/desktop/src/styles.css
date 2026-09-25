@@ -596,6 +596,8 @@ ul.library {
   color: var(--fg-muted);
   border-left: 2px solid var(--warn-line);
   padding-left: 8px;
+  /* Its lists are element ids, one unbroken word each. */
+  overflow-wrap: anywhere;
 }
 
 .card-note ul {
@@ -638,6 +640,11 @@ ul.sources {
   border: 1px solid var(--line);
   border-radius: 7px;
   padding: 12px;
+}
+
+/* Five buttons since a source can be moved; on a phone they take two lines. */
+.source .row {
+  flex-wrap: wrap;
 }
 
 .source-head {

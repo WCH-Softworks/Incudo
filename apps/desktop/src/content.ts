@@ -21,6 +21,7 @@ import {
   writeVersionStamp,
   type ConfiguredSource,
   type MissingContent,
+  type SourceOverlap,
 } from '@incudo/content';
 import { MapElementIndex, type ElementIndex, type Fetcher, type Storage } from '@incudo/core';
 
@@ -41,6 +42,11 @@ export interface LoadedSource {
    * once every enabled source has loaded, since what one refers to is often in the next.
    */
   missing?: MissingContent;
+  /**
+   * What this source defines that another enabled source also defines, and whose version is used (ADR 0054), absent
+   * when there is nothing. Worked out once every enabled source has loaded, like `missing`.
+   */
+  overlaps?: SourceOverlap[];
 }
 
 export interface LoadedContent {
@@ -116,9 +122,13 @@ export async function loadSources(
 
   // Reported, never acted on: a book enabled without the one it builds on is a choice (ADR 0052).
   const missing = library.missingContent();
+  // The later source is used when two define the same id (ADR 0054): said on each line, never decided for the user.
+  const overlaps = library.sourceOverlaps();
   for (const source of loaded) {
     const found = missing.get(source.id);
     if (found && !source.failed) source.missing = found;
+    const shared = overlaps.get(source.id);
+    if (shared && !source.failed) source.overlaps = shared;
   }
 
   const warnings: string[] = [];

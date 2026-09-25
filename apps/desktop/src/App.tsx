@@ -559,6 +559,21 @@ function Shell({
         profile.current?.update(id, { mode });
         await persist();
       },
+      move: async (id, direction) => {
+        // ADR 0054: the order is which source is used when two define the same id, the later one. Moved among this
+        // system's sources only, and reloaded only when the order of the enabled ones changed, which is all a load reads.
+        const current = profile.current;
+        if (!current) return;
+        const loadOrder = (): string =>
+          sourcesForSystem(current.sources, system.id)
+            .filter((s) => s.enabled)
+            .map((s) => s.id)
+            .join('\n');
+        const before = loadOrder();
+        if (!current.move(id, direction, (s) => s.systemId === system.id)) return;
+        await persist();
+        if (loadOrder() !== before) await reload();
+      },
       checkForUpdates: async (id) => {
         const source = profile.current?.find(id);
         if (!source) return;
