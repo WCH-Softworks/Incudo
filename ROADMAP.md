@@ -1047,10 +1047,17 @@ the kind machinery is not decorative.*
       character derivation moved. Driven in the browser build. **Not done:** a creature's own named traits and
       actions (its `traits`/`actions` setters) do not reach the NPC, the printed challenge rating is shown and
       not read, an NPC built from nothing cannot set armour class, hit points or speed, and skills, saves, senses
-      and other speeds are not on the sheet. The Tauri window, macOS and Linux were not driven.
-- [ ] **A creature's own traits and actions reach the NPC it starts.** Named by the creature's setters (376
-      names, 373 resolve), not granted. Whatever a character reaches must be embedded in its save (ADR 0012), so it
-      belongs in the walk the derivation and `collectCharacterContent` share; an ADR first.
+      and other speeds are not on the sheet. The Tauri window, macOS and Linux were not driven. *(The first of
+      these was closed by ADR 0058, the next item.)*
+- [x] **A creature's own traits and actions reach the NPC it starts**
+      ([ADR 0058](./docs/adr/0058-a-setter-may-name-elements-its-holder-has-and-the-kind-says-which.md)). A creature
+      names them as ids in its `traits`, `actions` and `reactions` setters and grants none. A kind may now declare
+      `setterGrants`, a setter on some element types whose ids the holder is granted as a `<grant>` would be; per
+      setter, because 212 item `proficiency` setters also name ids and are not grants. One function feeds the
+      derivation and the save's content, so a Triceratops NPC has Trampling Charge, Gore and Stomp and keeps them when
+      reopened with no source; all 373 resolving ids reach their NPC, and the 3 upstream typos are reported. The player
+      character declares none. A set step no longer offers what the character already holds. Driven in the browser
+      build. **Not done:** a granted trait cannot be removed from an NPC; the Tauri window, macOS and Linux.
 - [ ] **Decide where legendary content comes from, before any UI for it.** *Reworded by ADR 0057's
       measurement:* the corpus declares no `Legendary Action`, `Lair Action` or `Regional Effect` element; seven
       of the 2025 Monster Manual's prose stat blocks mention legendary actions, as text only. The `legendary` kind

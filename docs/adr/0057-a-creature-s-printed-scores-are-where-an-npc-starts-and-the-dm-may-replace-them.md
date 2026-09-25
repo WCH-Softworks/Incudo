@@ -130,7 +130,8 @@ content being right, not a filter this ADR adds.
 
 ## What this does not do
 
-- **The creature's named traits and actions do not reach the NPC.** They are named by setters, not granted, so
+- **~~The creature's named traits and actions do not reach the NPC.~~** Done by
+  [ADR 0058](./0058-a-setter-may-name-elements-its-holder-has-and-the-kind-says-which.md). As first written: They are named by setters, not granted, so
   a Wolf built this way has Bite and Pack Tactics only if the DM picks them. Reading those setters as grants is
   the next decision, and it is not a presentation one: whatever a character reaches must also be embedded in
   its save (ADR 0012), so it belongs in the walk `collectCharacterContent` shares with the derivation.

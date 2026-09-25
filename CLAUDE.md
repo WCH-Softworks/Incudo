@@ -369,9 +369,16 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   Tyrannosaurus (found by `npc-creatures.test.ts`, not foreseen).
 - **A fresh NPC is offered 117 of 141**: 24 creatures carry their own requirements naming a PC's subclass, feat or
   class level, and a candidate list leaves them out. Content being right, not a filter.
-- **Not done:** a creature's own `traits`/`actions` setters are not grants, so its traits reach the NPC only if the
-  DM picks them (next, with an ADR: whatever is reached must be embedded, ADR 0012); the printed challenge rating is
-  shown in the picker and not read (`progress` cannot be unset); an NPC from nothing cannot set AC, HP or speed.
+- **Not done:** the printed challenge rating is shown in the picker and not read (`progress` cannot be unset); an NPC
+  from nothing cannot set AC, HP or speed.
+- **A creature's traits, actions and reactions are granted through its setters**
+  ([ADR 0058](docs/adr/0058-a-setter-may-name-elements-its-holder-has-and-the-kind-says-which.md)). A kind's
+  `setterGrants` names a setter, on some types, whose comma-separated ids the holder is granted like a `<grant>`.
+  `setterGrantIds` (`packages/core/src/setter-grants.ts`) is the only reader, called by the engine's expansion and by
+  `collectCharacterContent` **when it is given the kind** — without it they derive and are not saved. Per setter and
+  never inferred: 212 item `proficiency` setters name ids and are requirements, not grants. Split and trimmed only
+  (three Tasha's ids end in `>` and are declared so). `pc` declares none, so a ranger's companion does not give the
+  ranger its bite. A set step (`multiple`) now leaves out everything the character holds, not only its own picks.
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
   content comes from first, and show the prose stat blocks as reference rather than parse them.
 - **Driven in the browser build only**, with an origin-private folder standing in for the native folder picker.
@@ -1020,7 +1027,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046 and 0057 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057 and 0058 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
