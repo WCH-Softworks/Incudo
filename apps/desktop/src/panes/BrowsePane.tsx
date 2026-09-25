@@ -367,9 +367,11 @@ function Detail({
             <dt>Tags</dt>
             <dd>
               {element.supports.map((tag) => (
-                <code key={tag} className="browse-tag">
+                // Bordered, because a tag may hold a space ("Saving Throw") and plain text would run
+                // two tags together.
+                <span key={tag} className="tag browse-tag">
                   {tag}
-                </code>
+                </span>
               ))}
             </dd>
           </div>
