@@ -4,15 +4,15 @@
   "title": "Incudo character",
   "description": "The `character.json` inside a `.incu` container (ADR 0012), and the whole of a character as a value. A character records the choices that produce it and nothing that can be computed from them (ADR 0006) — with one exception, `rolls`, because a die roll has no formula (ADR 0007). This file is a public API: it is the user's own saved work.",
   "type": "object",
-  "required": ["formatVersion", "id", "systemId", "kind", "name", "progress", "sources", "choices", "rolls", "freeform"],
+  "required": ["formatVersion", "id", "systemId", "kind", "name", "sources", "choices", "rolls", "freeform"],
   "additionalProperties": false,
 
   "properties": {
     "$schema": { "type": "string" },
 
     "formatVersion": {
-      "enum": [1, 2],
-      "description": "1 is a character from before inventories existed; 2 is what a writer writes (ADR 0024). It moved here and not for baseStats, advancement or generation because a reader that cannot see an `inventory` does not merely miss a field: it re-collects content.json without the bag's elements, and the save silently stops being self-contained."
+      "enum": [1, 2, 3],
+      "description": "1 is a character from before inventories existed; 2 is what a writer writes (ADR 0024). It moved here and not for baseStats, advancement or generation because a reader that cannot see an `inventory` does not merely miss a field: it re-collects content.json without the bag's elements, and the save silently stops being self-contained. 3 is a character that records no `progress` or records `removedGrants` (ADR 0060, ADR 0061), and only those: a reader of 2 would read a missing progress as nothing and give back a trait the user removed, so the number moves for them and for nothing else. A version below 3 must record `progress`."
     },
     "id": { "type": "string", "minLength": 1 },
     "systemId": {
@@ -28,7 +28,7 @@
     "name": { "type": "string" },
     "progress": {
       "type": "number",
-      "description": "One number whose meaning comes from the kind's progression: a level, a challenge rating, an xp total, or nothing at all. Fractional values are legal — a challenge rating of 1/4 is 0.25."
+      "description": "One number whose meaning comes from the kind's progression: a level, a challenge rating, an xp total, or nothing at all. Fractional values are legal — a challenge rating of 1/4 is 0.25. Absent (format 3 only) means where the kind says it starts: where a creature the character chose prints it, or else where the progression starts, and a value the user sets replaces that print (ADR 0060)."
     },
 
     "sources": {

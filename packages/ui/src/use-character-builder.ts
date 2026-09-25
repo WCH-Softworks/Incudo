@@ -19,6 +19,8 @@
 
 import {
   clampProgress,
+  progressCanBePrinted,
+  setProgress as recordProgress,
   deriveCharacter,
   evaluateRequirements,
   getChoice,
@@ -262,8 +264,25 @@ export interface BuilderState {
    * loaded rather than from what is offered, so a switched-off book is still listed to switch back on.
    */
   publications: PublicationList;
+  /** Where the character is on its progression, and whether a creature it chose says so — ADR 0060. */
+  progress: ProgressState;
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
+}
+
+/**
+ * The progression control's state — ADR 0060. What the derivation read, what a chosen creature prints for it,
+ * and whether the number on screen is one the user typed. `setProgress(undefined)` goes back to the print.
+ */
+export interface ProgressState {
+  /** The number the sheet uses: a level, a challenge rating. */
+  value: number;
+  /** Whether the user set it, rather than it starting where the creature prints it. */
+  recorded: boolean;
+  /** What the chosen creature prints, whether or not a typed value replaces it. */
+  printed?: number;
+  /** Whether this kind's progression can start where a creature prints it, so a typed value can be cleared. */
+  printable: boolean;
 }
 
 /**
@@ -444,7 +463,15 @@ export class CharacterBuilder {
    * Level-up is not a special screen: this changes a number, and whatever decisions it
    * opens arrive in the same list as every other, tagged with the level that raised them.
    */
-  setProgress = (progress: number): void => {
+  setProgress = (progress: number | undefined): void => {
+    // Forgetting the typed value is going back to where the creature prints it (ADR 0060), which only a kind
+    // whose progression a creature can print has. Every other kind always records one.
+    if (progress === undefined) {
+      if (!progressCanBePrinted(this.kind) || this.character.progress === undefined) return;
+      this.character = recordProgress(this.character, undefined);
+      this.invalidate();
+      return;
+    }
     const clamped = clampProgress(this.kind.progression, progress);
     // A multiclass character's `advancement` has to follow: new levels continue the class you
     // were playing and the ones that go take their class with them (ADR 0036). For a
@@ -554,7 +581,7 @@ export class CharacterBuilder {
     // previous class's, so no roll recorded for it could have been made on that class's die.
     this.character = planProgress(
       this.character,
-      this.character.progress + 1,
+      this.getState().derived.progress.value + 1,
       multiclass.config,
       this.elements,
       classId,
@@ -1289,6 +1316,12 @@ export class CharacterBuilder {
       declined,
       preparation: preparationRows(derived, this.elements),
       publications: publicationList(this.content, this.system, this.character),
+      progress: {
+        value: derived.progress.value,
+        recorded: derived.progress.recorded,
+        printed: derived.progress.printed?.value,
+        printable: progressCanBePrinted(this.kind),
+      },
       focusedId: this.focusedId,
     };
   }

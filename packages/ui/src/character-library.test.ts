@@ -30,6 +30,7 @@ import {
 import type { ConfiguredSource } from '@incudo/content';
 
 import { CharacterLibrary } from './character-library.ts';
+import { libraryEntryProgress } from './character-kinds.ts';
 
 // --- a library that is a Map -----------------------------------------------
 
@@ -553,4 +554,28 @@ test('a source status stays right across a system switch, with no rescan in betw
   library.setSystem('test');
   const aelin = library.getState().entries.find((e) => e.title === 'Aelin');
   assert.equal(aelin?.sourceStatuses[0]?.state, 'present');
+});
+
+test('a character that records no progression keeps what it chose on its entry, so a card can read the print — ADR 0060', async () => {
+  // Fails if `describe` drops the chosen elements (the card has nothing to read the creature's rating from).
+  const printing = testSystem();
+  const kind = printing.characterKinds[0]!;
+  kind.setterStats = [{ types: ['Widget'], setter: 'tier', stat: 'tier' }];
+  const index = corpus();
+  const creature = element('ID_KIN_RIVERFOLK', { setters: { tier: { value: '2' } } });
+  (index as MapElementIndex).add(creature);
+  let npc = setChoice(createCharacter('test', 'hero', { name: 'Unrecorded', progress: null }), 'build/kin', [creature.id]);
+  npc = { ...npc, id: 'npc' };
+  const store = new FakeStore();
+  const content = collectCharacterContent(npc, index, { kind: resolveCharacterKind(printing, 'hero') });
+  await store.write({ name: 'unrecorded.incu', form: 'zip' }, packCharacterContainer(npc, content, { now: '2026-01-02T00:00:00.000Z' }));
+  const library = new CharacterLibrary(store);
+  await library.restore();
+  const entry = library.getState().entries.find((e) => e.title === 'Unrecorded')!;
+  assert.equal(entry.progress, undefined);
+  assert.deepEqual(entry.chosen?.map((e) => e.id), [creature.id]);
+  assert.equal(libraryEntryProgress(printing, entry), 2);
+  // One that records a level keeps nothing extra.
+  const [recorded] = await libraryWith(hero());
+  assert.equal(recorded.getState().entries[0]!.chosen, undefined);
 });

@@ -39,7 +39,8 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
       name: derived.character.name,
       systemId: derived.character.systemId,
       kind: derived.character.kind,
-      progress: derived.character.progress,
+      // What the derivation read, which a character that records none still has (ADR 0060).
+      progress: derived.progress.value,
     },
     elements: derived.elements.map((e) => e.id).sort(),
     stats,

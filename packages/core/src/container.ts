@@ -32,6 +32,7 @@ import {
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { referencedElementIds } from './engine.ts';
 import { setterGrantIds } from './setter-grants.ts';
+import { characterProgress } from './setter-stats.ts';
 import { baselineElementIds, type ResolvedCharacterKind } from './system.ts';
 import { integrityOf } from './sha256.ts';
 
@@ -161,7 +162,10 @@ export function collectCharacterContent(
     // What was put on a prepared list. A whole-list preparer's prepared spells are named by nothing else in
     // the character, so leaving them out saves a Cleric that opens with the names gone (ADR 0046, ADR 0012).
     ...preparedElementIds(character),
-    ...(options.kind ? baselineElementIds(options.kind, character.progress) : []),
+    // Per step of progression, at the step the derivation reads: a recorded one, or a creature's print (ADR 0060).
+    ...(options.kind
+      ? baselineElementIds(options.kind, characterProgress(character, options.kind, index).value)
+      : []),
     ...(options.extraIds ?? []),
   ];
   for (const id of frontier) seen.add(id);

@@ -50,6 +50,7 @@ import {
   COMMANDS,
   characterKindChoices,
   describeKindAndProgress,
+  libraryEntryProgress,
   UserSystemStore,
   addContentFiles,
   describeCommand,
@@ -1011,7 +1012,7 @@ function Shell({
           kinds={kinds}
           newKind={newKind}
           onNewKind={setNewKind}
-          describeKind={(entry) => describeKindAndProgress(system, entry.kind, entry.progress)}
+          describeKind={(entry) => describeKindAndProgress(system, entry.kind, libraryEntryProgress(system, entry))}
           onRemove={(entry) => void library.remove({ name: entry.name, form: entry.form })}
           onOpenSettings={() => setPane('settings')}
           onImport={() => void importFromAurora()}

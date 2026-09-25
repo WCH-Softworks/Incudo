@@ -11,8 +11,15 @@
  * the derivation used rather than a copy of the rule that might drift from it.
  */
 
-import type { Element, ElementId, StatKey } from './model.ts';
-import type { SetterStatDef } from './system.ts';
+import { chosenElementIds, type Character } from './character.ts';
+import type { Element, ElementId, ElementIndex, StatKey } from './model.ts';
+import {
+  clampProgress,
+  initialProgress,
+  progressionStat,
+  type ResolvedCharacterKind,
+  type SetterStatDef,
+} from './system.ts';
 
 /** A stat's starting value, and the element and setter it was read from. */
 export interface SetterStart {
@@ -109,4 +116,63 @@ function findSetter(element: Element, name: string): string | undefined {
     if (key.toLowerCase() === lower) return setter.value;
   }
   return undefined;
+}
+
+/** Where a character is on its progression, and why — ADR 0060. */
+export interface CharacterProgress {
+  /** The number the derivation reads: a level, a challenge rating. */
+  value: number;
+  /** Whether the character records it (`Character.progress`), rather than starting where content prints it. */
+  recorded: boolean;
+  /** What an element the character chose prints for it, whether or not a recorded value replaces it. */
+  printed?: SetterStart;
+  /** Why a chosen element's print supplied nothing, or supplied the same stat twice. */
+  notes: SetterStartNote[];
+}
+
+/**
+ * The progression number a character is at — ADR 0060.
+ *
+ * What the character records, when it records one. Otherwise where an element it **chose** prints the
+ * progression's stat, as the kind's `setterStats` says (a creature's challenge rating), and otherwise where
+ * the kind's progression starts. The print is read from what the character chose and nothing it was granted,
+ * because a grant may sit behind a gate that reads this very number; reading only the choices keeps the
+ * answer free of that loop. The engine, the save and the builder all ask here, so the number a sheet shows,
+ * the elements a save embeds and the value an editor offers to go back to are one answer.
+ */
+export function characterProgress(
+  character: Character,
+  kind: ResolvedCharacterKind,
+  index: ElementIndex,
+): CharacterProgress {
+  const { printed, notes } = printedProgress(
+    kind,
+    chosenElementIds(character).flatMap((id) => index.get(id) ?? []),
+  );
+  if (character.progress !== undefined) return { value: character.progress, recorded: true, printed, notes };
+  const value = clampProgress(kind.progression, printed?.value ?? initialProgress(kind.progression));
+  return { value, recorded: false, printed, notes };
+}
+
+/**
+ * What the given elements print for the kind's progression stat, as its `setterStats` says, and why any
+ * supplied nothing — ADR 0060. `characterProgress` passes the elements a character chose; a library card
+ * that kept only those passes them too.
+ */
+export function printedProgress(
+  kind: ResolvedCharacterKind,
+  elements: Iterable<Element>,
+): { printed?: SetterStart; notes: SetterStartNote[] } {
+  const stat = progressionStat(kind.progression)?.toLowerCase();
+  if (stat === undefined) return { notes: [] };
+  const defs = kind.setterStats.filter((def) => def.stat.toLowerCase() === stat);
+  if (!defs.length) return { notes: [] };
+  const starts = setterStartingValues(defs, elements);
+  return { printed: starts.values.get(stat), notes: starts.notes };
+}
+
+/** Whether a kind's progression can start where a chosen element prints it — ADR 0060. */
+export function progressCanBePrinted(kind: ResolvedCharacterKind): boolean {
+  const stat = progressionStat(kind.progression)?.toLowerCase();
+  return stat !== undefined && kind.setterStats.some((def) => def.stat.toLowerCase() === stat);
 }

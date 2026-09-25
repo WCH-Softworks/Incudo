@@ -10,8 +10,11 @@ import {
   clampProgress,
   createCharacter,
   initialProgress,
+  printedProgress,
+  progressCanBePrinted,
   resolveCharacterKind,
   type Character,
+  type Element,
   type GameSystem,
   type ResolvedCharacterKind,
 } from '@incudo/core';
@@ -94,6 +97,27 @@ export function describeKindAndProgress(
 }
 
 /**
+ * The progression point a library card shows — ADR 0060. What the character records, or, for one that records
+ * none, where the creature it chose prints it (or where the kind's progression starts). The library keeps the
+ * chosen elements for exactly this, and the system's definition says which setter to read.
+ */
+export function libraryEntryProgress(
+  system: GameSystem,
+  entry: { kind?: string; progress?: number; chosen?: readonly Element[] },
+): number | undefined {
+  if (entry.progress !== undefined || entry.kind === undefined) return entry.progress;
+  let kind: ResolvedCharacterKind;
+  try {
+    kind = resolveCharacterKind(system, entry.kind);
+  } catch {
+    return undefined;
+  }
+  if (kind.progression.kind === 'none') return undefined;
+  const printed = printedProgress(kind, entry.chosen ?? []).printed?.value;
+  return clampProgress(kind.progression, printed ?? initialProgress(kind.progression));
+}
+
+/**
  * A blank character of one of the system's kinds, at the start of its progression.
  *
  * A 5e PC starts at level 1 and a monster at challenge 0; the kind's progression is the only thing that
@@ -102,10 +126,11 @@ export function describeKindAndProgress(
  */
 export function newCharacterOfKind(system: GameSystem, kindId: string, name = 'New Character'): Character {
   const kind = resolveCharacterKind(system, kindId);
-  const character = createCharacter(system.id, kind.id, {
+  // A kind whose progression a creature prints records none, so the creature chosen says where it starts
+  // and a value the DM types replaces it (ADR 0060). Every other kind starts where its progression does.
+  if (progressCanBePrinted(kind)) return createCharacter(system.id, kind.id, { name, progress: null });
+  return createCharacter(system.id, kind.id, {
     name,
-    progress: initialProgress(kind.progression),
+    progress: clampProgress(kind.progression, initialProgress(kind.progression)),
   });
-  character.progress = clampProgress(kind.progression, character.progress);
-  return character;
 }

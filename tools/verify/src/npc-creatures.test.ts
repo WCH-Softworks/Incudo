@@ -262,6 +262,56 @@ test('an NPC from nothing enters armour class, hit points and speed, and a creat
   }
 });
 
+test("every creature's NPC starts at the challenge rating it prints, and a typed one replaces it", { skip }, async (t) => {
+  // ADR 0060. Fails if the kind's `setterStats` has no entry for `challenge` (every NPC reads 0 and the two
+  // creatures above CR 4 have a proficiency bonus of +2), or if the engine reads `character.progress` alone.
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const wrong: string[] = [];
+  const unnoted: string[] = [];
+  let printed = 0;
+  let above = 0;
+  for (const creature of creatures) {
+    const state = npcOn(system, elements, creature).getState();
+    assert.equal(state.character.progress, undefined, 'a new NPC records no rating');
+    const rating = readSetterNumber(creature.setters['challenge']?.value);
+    const challenge = state.derived.stats.get('challenge')?.value;
+    const proficiency = state.derived.stats.get('proficiency')?.value;
+    if (rating === undefined) {
+      if (challenge !== 0) wrong.push(`${creature.id}: prints no rating, reads ${challenge}`);
+      const noted = state.derived.problems.some((p) => p.code === 'setter-not-a-number' && p.elementId === creature.id);
+      if (creature.setters['challenge'] !== undefined && !noted) unnoted.push(creature.id);
+      continue;
+    }
+    printed++;
+    // The Monster Manual's table, as the kind's own derivation states it: +2 to CR 4, one more per four.
+    const expected = 2 + Math.max(0, Math.ceil((rating - 4) / 4));
+    if (challenge !== rating || proficiency !== expected) {
+      wrong.push(`${creature.id}: prints ${rating}, reads ${challenge} with proficiency ${proficiency}`);
+    }
+    if (expected > 2) above++;
+  }
+  t.diagnostic(`${printed} of ${creatures.length} print a rating as a number; ${above} of them have a proficiency bonus above +2`);
+  assert.deepEqual(wrong, [], 'every printed rating is the rating');
+  assert.deepEqual(unnoted, [], 'a rating that is not a number is reported, not read as 0 in silence');
+
+  // A typed rating replaces the print, clearing it goes back, and a save keeps "the creature's" rather than a copy.
+  const creature = creatures.find((c) => (readSetterNumber(c.setters['challenge']?.value) ?? 0) > 0)!;
+  const rating = readSetterNumber(creature.setters['challenge']!.value)!;
+  const b = npcOn(system, elements, creature);
+  b.setProgress(rating + 3);
+  assert.equal(b.getState().derived.stats.get('challenge')?.value, rating + 3);
+  b.setProgress(undefined);
+  assert.equal(b.getState().derived.stats.get('challenge')?.value, rating);
+  const character = b.getState().character;
+  const { container } = readCharacterContainer(packCharacter(character, system, elements, { generator: 'test' }).files);
+  assert.equal(container!.character.progress, undefined);
+  assert.equal(container!.character.formatVersion, 3);
+  const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
+  assert.equal(reopened.stats.get('challenge')?.value, rating, 'reopened with no source');
+});
+
 test("every creature's named traits, actions and reactions reach its NPC, and its save keeps them", { skip }, async (t) => {
   // ADR 0058. The ids are read here by a split of this test's own, not by the engine's function, so a
   // reader that dropped an id (the three Tasha's attacks that end in ">") would fail this. Fails if the

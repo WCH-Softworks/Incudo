@@ -103,7 +103,8 @@ test(
           );
         }
       } else {
-        builder.setProgress(reference.progress);
+        // An import records the level it read, always: only a kind a creature prints for may omit one.
+        builder.setProgress(reference.progress!);
       }
       for (const choice of reference.choices) {
         if (choice === classRecord || isMulticlassRecord(choice.ruleKey)) continue;

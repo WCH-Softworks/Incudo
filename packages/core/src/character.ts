@@ -103,9 +103,12 @@ export interface InventoryEntry {
 
 export interface Character {
   /**
-   * 1 before an inventory existed, 2 since (ADR 0024). Readers accept both; writers write 2.
+   * 1 before an inventory existed, 2 since (ADR 0024), 3 for a character that records no `progress` or
+   * records `removedGrants` (ADR 0060, ADR 0061). Readers accept all three. A new character is written at 2,
+   * and only a write that needs 3 raises it (`raiseFormatVersion`): a reader of 2 would silently get either
+   * of those characters wrong, and gets every other one right.
    */
-  formatVersion: 1 | 2;
+  formatVersion: 1 | 2 | 3;
   id: string;
   systemId: string;
   /** Which of the system's character kinds this is: "pc", "npc", … — ADR 0009. */
@@ -114,8 +117,13 @@ export interface Character {
   /**
    * The single progression number. Its meaning comes from the kind's `progression`:
    * a level, a challenge rating, an xp total, or nothing at all.
+   *
+   * **Absent means "where the kind says it starts"** (ADR 0060): where an element the character chose
+   * prints it, as the kind's `setterStats` says — a creature's challenge rating — or else where the
+   * progression starts. A value the user set replaces the print, as `baseStats` replaces a printed score.
+   * Only format 3 may omit it. Read it through `characterProgress`, never directly, where it may be absent.
    */
-  progress: number;
+  progress?: number;
   /**
    * The sources this character was built from — an **allowlist**, with versions.
    * Since ADR 0012 these are provenance and an update path, not a load-time dependency:
@@ -218,10 +226,34 @@ export interface Character {
  */
 export const CHARACTER_FORMAT_VERSION = 2;
 
+/**
+ * The newest version a reader accepts, and what a write that needs it raises a character to — ADR 0060.
+ * A character with no `progress` or with `removedGrants` is 3; nothing else is.
+ */
+export const LATEST_CHARACTER_FORMAT_VERSION = 3;
+
+/** Raise a character to a format version a write needs. Nothing downgrades one. */
+export function raiseFormatVersion(character: Character, version: 1 | 2 | 3): Character {
+  return character.formatVersion >= version ? character : { ...character, formatVersion: version };
+}
+
+/**
+ * Set where a character is on its progression, or forget it — ADR 0060.
+ *
+ * `undefined` removes the recorded value, which means "where the kind says it starts": a creature's printed
+ * challenge rating. Removing one raises the character to format 3, because a reader of 2 requires it.
+ */
+export function setProgress(character: Character, progress: number | undefined): Character {
+  if (progress !== undefined) return { ...character, progress, updatedAt: new Date().toISOString() };
+  const { progress: _removed, ...rest } = character;
+  return { ...raiseFormatVersion(rest, 3), updatedAt: new Date().toISOString() };
+}
+
 export interface CreateCharacterOptions {
   name?: string;
   kind?: string;
-  progress?: number;
+  /** Where the character starts. `null` records none, for a kind whose progression starts where content prints it. */
+  progress?: number | null;
 }
 
 export function createCharacter(
@@ -229,7 +261,7 @@ export function createCharacter(
   kind: string,
   options: CreateCharacterOptions = {},
 ): Character {
-  return {
+  const character: Character = {
     formatVersion: CHARACTER_FORMAT_VERSION,
     id: cryptoRandomId(),
     systemId,
@@ -242,6 +274,7 @@ export function createCharacter(
     freeform: {},
     createdAt: new Date().toISOString(),
   };
+  return options.progress === null ? setProgress(character, undefined) : character;
 }
 
 export function getChoice(character: Character, ruleKey: string): Choice | undefined {
@@ -532,7 +565,7 @@ export function advancementCounts(character: Character): Map<ElementId, number> 
   const counts = new Map<ElementId, number>();
   const seen = new Set<number>();
   for (const entry of character.advancement ?? []) {
-    if (entry.at > character.progress) continue;
+    if (character.progress !== undefined && entry.at > character.progress) continue;
     // One element per point. A duplicated `at` is a broken save, and counting it twice
     // would inflate a class level; the first entry for a point wins.
     if (seen.has(entry.at)) continue;

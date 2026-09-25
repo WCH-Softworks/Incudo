@@ -21,7 +21,7 @@ import type {
   SettledPick,
   DeclinedDecision,
 } from '@incudo/ui';
-import { candidateLabel as describeCandidate, progressLabel } from '@incudo/ui';
+import { candidateLabel as describeCandidate, formatProgress, progressLabel } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
 import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
@@ -43,7 +43,7 @@ export function BuilderPane({
   elements: ElementIndex;
   hasContent: boolean;
 }): React.JSX.Element {
-  const { kind, derived, decisions, steps, picks, declined, preparation, publications } = state;
+  const { kind, derived, decisions, steps, picks, declined, preparation, publications, progress } = state;
   const progression = kind.progression;
   const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
 
@@ -91,15 +91,30 @@ export function BuilderPane({
           {progressLabel(kind) ?? 'Progress'}
           <input
             type="number"
-            value={state.character.progress}
+            // A kind a creature prints for shows the creature's number faded until one is typed, as the
+            // ability scores do; clearing the field goes back to it. Every other kind always has a value.
+            value={progress.printable && !progress.recorded ? '' : progress.value}
+            placeholder={progress.printable && !progress.recorded ? String(progress.value) : undefined}
             min={progression.kind === 'none' ? 0 : (progression.min ?? 0)}
             max={progression.kind === 'none' ? 0 : (progression.max ?? 20)}
             // A challenge rating can be 1/8, 1/4 or 1/2, typed as 0.125, 0.25 or 0.5. A level cannot.
             step={progression.kind === 'rating' ? 'any' : 1}
             disabled={progression.kind === 'none'}
-            onChange={(event) => builder.setProgress(Number(event.target.value))}
+            onChange={(event) => {
+              const raw = event.target.value;
+              if (raw === '') {
+                if (progress.printable) builder.setProgress(undefined);
+                return;
+              }
+              builder.setProgress(Number(raw));
+            }}
           />
         </label>
+        {progress.recorded && progress.printed !== undefined && progress.printed !== progress.value && (
+          <button type="button" className="link" onClick={() => builder.setProgress(undefined)}>
+            Use the creature's ({formatProgress(progress.printed)})
+          </button>
+        )}
         {progression.kind === 'level' && (
           <span className="hint">
             Levelling is not a separate screen — whatever this opens arrives in the list below,
@@ -108,8 +123,10 @@ export function BuilderPane({
         )}
         {progression.kind === 'rating' && (
           <span className="hint">
-            The number you set here is the one the sheet uses. A creature's own rating is shown beside
-            it in the list; type 0.125, 0.25 or 0.5 for 1/8, 1/4 or 1/2.
+            {progress.printable
+              ? "A faded number is the creature's own rating, and it is used until you type another. Clear what you typed to go back to it. "
+              : 'The number you set here is the one the sheet uses. '}
+            Type 0.125, 0.25 or 0.5 for 1/8, 1/4 or 1/2.
           </span>
         )}
       </section>

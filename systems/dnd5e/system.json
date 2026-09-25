@@ -362,7 +362,8 @@
         { "types": ["Companion"], "setter": "constitution", "stat": "constitution" },
         { "types": ["Companion"], "setter": "intelligence", "stat": "intelligence" },
         { "types": ["Companion"], "setter": "wisdom", "stat": "wisdom" },
-        { "types": ["Companion"], "setter": "charisma", "stat": "charisma" }
+        { "types": ["Companion"], "setter": "charisma", "stat": "charisma" },
+        { "types": ["Companion"], "setter": "challenge", "stat": "challenge" }
       ],
 
       "setterGrants": [

@@ -203,7 +203,7 @@ export function levelClasses(
   const out: Array<ElementId | undefined> = [];
   const advancement = character.advancement;
   const fallback = advancement?.length ? undefined : firstClassOf(character, config, elements);
-  for (let level = config.min; level <= character.progress; level += 1) {
+  for (let level = config.min; level <= (character.progress ?? config.min); level += 1) {
     out.push(advancement?.length ? advancement.find((entry) => entry.at === level)?.elementId : fallback);
   }
   return out;
@@ -348,7 +348,7 @@ export function planLevelClass(
   config: MulticlassConfig,
   elements: ElementIndex,
 ): Character | undefined {
-  if (!Number.isInteger(level) || level <= config.min || level > character.progress) return undefined;
+  if (!Number.isInteger(level) || level <= config.min || level > (character.progress ?? config.min)) return undefined;
   const element = elements.get(classId);
   if (!element || element.type !== config.classType) return undefined;
   const first = firstClassOf(character, config, elements);
@@ -635,7 +635,7 @@ export function computeClassLevelState(
     classes: [...counts].map(([id, held]) => ({ id, levels: held })),
     unassigned: levels.filter((row) => row.classId === undefined).map((row) => row.level),
     options,
-    canAddLevel: config.max === undefined || character.progress < config.max,
+    canAddLevel: config.max === undefined || (character.progress ?? config.min) < config.max,
     ...(config.max !== undefined ? { maxLevel: config.max } : {}),
     interleaved: levels.filter((row, index) => row.classId !== undefined && row.classId !== levels[index - 1]?.classId).length > counts.size,
   };

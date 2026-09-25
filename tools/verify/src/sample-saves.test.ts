@@ -109,7 +109,7 @@ test('each sample is the character its manifest entry says it is', { skip: corpu
     const c = imported.character;
     const classIds = c.advancement
       ? c.advancement.map((e) => e.elementId)
-      : Array<string>(c.progress).fill(
+      : Array<string>(c.progress!).fill(
           c.choices.flatMap((k) => k.elementIds).find((id) => corpus.get(id)?.type === 'Class')!,
         );
     const split = runsOf(classIds.map((id) => corpus.get(id)?.name ?? id));

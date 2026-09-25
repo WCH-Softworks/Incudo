@@ -254,6 +254,20 @@ test('a character and a manifest validate against their own schemas', async () =
   );
 });
 
+test('only format 3 may leave out progress — ADR 0060', async () => {
+  // Fails if the schema still requires `progress`, or if the referential check stops refusing a file that
+  // omits it and claims 2 (a reader of 2 would open it and read no challenge rating at all).
+  const schemas = await loadSchemas();
+  const npc = createCharacter('dnd5e', 'npc', { name: 'Vesper', progress: null });
+  assert.equal(npc.formatVersion, 3);
+  assert.equal(npc.progress, undefined);
+  assert.deepEqual(validateCharacter(npc, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
+    { path: 'progress', message: 'is required below format 3' },
+  ]);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 4 }, schemas).errors.map((e) => e.path), ['formatVersion']);
+});
+
 test('an inventory validates as instances, and a duplicate instance id does not', async () => {
   const schemas = await loadSchemas();
   const character = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -272,8 +286,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 3 }, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 4 }, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3' },
   ]);
 
   // The check no JSON Schema can express: an instance id is an address, so two entries

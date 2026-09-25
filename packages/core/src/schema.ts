@@ -81,7 +81,7 @@ function result<T>(value: T, errors: SchemaError[]): ValidationResult<T> {
 }
 
 /**
- * The one thing about a character the schema cannot say: `instanceId` is unique.
+ * What the schema cannot say about a character: `instanceId` is unique, and only format 3 omits `progress`.
  *
  * It matters because it is an address. `setInventoryEntry` replaces by it and a UI keys rows
  * by it, so two entries sharing one is a file where editing an item changes a different item
@@ -90,6 +90,11 @@ function result<T>(value: T, errors: SchemaError[]): ValidationResult<T> {
  */
 function checkCharacterReferences(character: Character): SchemaError[] {
   const errors: SchemaError[] = [];
+  // What only format 3 may do (ADR 0060, ADR 0061). A file that does it and claims 2 is one a reader of 2 would
+  // open and get wrong without a word, which is the one thing the number exists to prevent.
+  if (character.formatVersion < 3 && character.progress === undefined) {
+    errors.push({ path: 'progress', message: 'is required below format 3' });
+  }
   const seen = new Set<string>();
   const inventory = character.inventory ?? [];
   for (let i = 0; i < inventory.length; i++) {

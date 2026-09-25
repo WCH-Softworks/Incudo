@@ -112,7 +112,7 @@ export function computeHitPointState(
 
   const min = progressionMin(progression);
   const levels: HitPointLevel[] = [];
-  for (let level = min; level <= character.progress; level += 1) {
+  for (let level = min; level <= (character.progress ?? min); level += 1) {
     const advanced = character.advancement?.find((entry) => entry.at === level);
     // Advancement recorded and this level is in it: that element, however its die reads.
     // Advancement recorded and this level is not: genuinely unknown, so no fallback.

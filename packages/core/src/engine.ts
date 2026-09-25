@@ -49,7 +49,12 @@ import {
 } from './system.ts';
 import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
 import { EMPTY_EQUIPMENT, resolveEquipment, type EquipmentState } from './equipment.ts';
-import { setterStartingValues } from './setter-stats.ts';
+import {
+  characterProgress,
+  setterStartingValues,
+  type CharacterProgress,
+  type SetterStartNote,
+} from './setter-stats.ts';
 import { setterGrantIds } from './setter-grants.ts';
 import {
   derivePreparation,
@@ -238,6 +243,11 @@ export interface DerivedCharacter {
    * derivation used.
    */
   starts: Map<StatKey, StatStart>;
+  /**
+   * Where the character is on its progression, and whether it records that or starts where a creature it chose
+   * prints it — ADR 0060. `character.progress` is what was recorded and may be absent; this is what was read.
+   */
+  progress: CharacterProgress;
 }
 
 export interface DeriveOptions {
@@ -251,14 +261,23 @@ export interface DeriveOptions {
 }
 
 export function deriveCharacter(
-  character: Character,
+  recorded: Character,
   system: GameSystem,
   index: ElementIndex,
   options: DeriveOptions = {},
 ): DerivedCharacter {
   const maxPasses = options.maxPasses ?? MAX_PASSES;
   const problems: Problem[] = [];
-  const kind = options.kind ?? resolveCharacterKind(system, character.kind);
+  const kind = options.kind ?? resolveCharacterKind(system, recorded.kind);
+
+  // Where the character is on its progression: what it records, or where a creature it chose prints it
+  // (ADR 0060). Settled once, before the fixed point, from choices alone: gates read this number, so it
+  // cannot wait on what those gates reach. Everything below reads the character with it filled in.
+  const progress = characterProgress(recorded, kind, index);
+  const character: Progressed = { ...recorded, progress: progress.value };
+  if (!progress.recorded) {
+    for (const note of progress.notes) problems.push(setterNoteProblem(note));
+  }
 
   // What the character picked, plus what its kind gives everyone of that kind — the base
   // armour class a 5e character has before any content says so, and one element per level.
@@ -268,7 +287,7 @@ export function deriveCharacter(
   // resolve. A choice that has vanished is the user's build broken, and an error. A kind's
   // baseline missing means the system definition expects content this profile has not
   // loaded — the system's problem, not the character's, and a warning.
-  const baselineIds = new Set<ElementId>(baselineElementIds(kind, character.progress));
+  const baselineIds = new Set<ElementId>(baselineElementIds(kind, progress.value));
   const chosenIds = new Set<ElementId>(baselineIds);
   for (const choice of character.choices) for (const id of choice.elementIds) chosenIds.add(id);
   // A second class is chosen by no select — it is what levels 3 onwards went to (ADR 0015),
@@ -482,8 +501,21 @@ export function deriveCharacter(
       )
     : [];
 
+  // The progression's start is published beside every other start, so an editor shows the creature's
+  // challenge rating beside a typed one and can go back to it.
+  const progressKey = progressionStat(kind.progression);
+  if (progress.printed && progressKey !== undefined) {
+    starts.set(progressKey.toLowerCase(), {
+      stat: progressKey,
+      value: progress.printed.value,
+      from: progress.printed.from,
+      replaced: progress.recorded,
+    });
+  }
+
   return {
-    character,
+    character: recorded,
+    progress,
     system,
     kind,
     elements: [...active.values()],
@@ -504,10 +536,30 @@ export function deriveCharacter(
 
 interface EngineContext extends RequirementContext, ExpressionContext {}
 
+/** A character with its progression settled — ADR 0060. What every step of a derivation reads. */
+type Progressed = Character & { progress: number };
+
+/** A setter that supplied nothing, or supplied a stat twice, as the derivation reports it (ADR 0057). */
+function setterNoteProblem(note: SetterStartNote): Problem {
+  return note.kind === 'not-a-number'
+    ? {
+        level: 'warning',
+        code: 'setter-not-a-number',
+        elementId: note.elementId,
+        message: `"${note.setter}" on ${note.elementId} reads "${note.text}", which is not a number, so it does not set where "${note.stat}" starts.`,
+      }
+    : {
+        level: 'warning',
+        code: 'setter-stat-conflict',
+        elementId: note.elementId,
+        message: `Both ${note.usedFrom} and ${note.elementId} print "${note.setter}". "${note.stat}" starts at the first one's.`,
+      };
+}
+
 function makeContext(
   active: Map<ElementId, Element>,
   stats: Map<StatKey, ResolvedStat>,
-  character: Character,
+  character: Progressed,
   kind: ResolvedCharacterKind,
   equipment: EquipmentState,
 ): EngineContext {
@@ -553,7 +605,8 @@ function makeContext(
  */
 export function requirementContextFor(derived: DerivedCharacter): RequirementContext {
   const active = new Map(derived.elements.map((element) => [element.id, element]));
-  return makeContext(active, derived.stats, derived.character, derived.kind, derived.equipment);
+  const character: Progressed = { ...derived.character, progress: derived.progress.value };
+  return makeContext(active, derived.stats, character, derived.kind, derived.equipment);
 }
 
 function addElement(
@@ -726,7 +779,7 @@ function activeRules(
 
 function computeStats(
   active: Map<ElementId, Element>,
-  character: Character,
+  character: Progressed,
   kind: ResolvedCharacterKind,
   ctx: EngineContext,
   levelFor: TrackLevelReader,
@@ -836,7 +889,13 @@ function computeStats(
   // creature's Strength 12 replaces the declared 10. Before the character's own values, so a
   // score the user typed replaces the print exactly as it replaces a default, rather than being
   // added to it.
-  const printed = setterStartingValues(kind.setterStats, active.values());
+  // The progression's own stat is not among them: it is where `characterProgress` put it, read once from
+  // the choices before the fixed point (ADR 0060), and published below as the input it is.
+  const progressStatKey = progressionStat(kind.progression)?.toLowerCase();
+  const printed = setterStartingValues(
+    kind.setterStats.filter((def) => def.stat.toLowerCase() !== progressStatKey),
+    active.values(),
+  );
   for (const [key, start] of printed.values) {
     result.set(key, {
       name: result.get(key)?.name ?? start.stat,
@@ -846,23 +905,7 @@ function computeStats(
     });
     starts.set(key, { stat: start.stat, value: start.value, from: start.from, replaced: false });
   }
-  for (const note of printed.notes) {
-    problems.push(
-      note.kind === 'not-a-number'
-        ? {
-            level: 'warning',
-            code: 'setter-not-a-number',
-            elementId: note.elementId,
-            message: `"${note.setter}" on ${note.elementId} reads "${note.text}", which is not a number, so it does not set where "${note.stat}" starts.`,
-          }
-        : {
-            level: 'warning',
-            code: 'setter-stat-conflict',
-            elementId: note.elementId,
-            message: `Both ${note.usedFrom} and ${note.elementId} print "${note.setter}". "${note.stat}" starts at the first one's.`,
-          },
-    );
-  }
+  for (const note of printed.notes) problems.push(setterNoteProblem(note));
 
   // Then the character's own starting values, which replace those defaults (ADR 0014). This
   // is a *base*, not an override: it lands before the contribution loop below, so a race's
@@ -1699,7 +1742,7 @@ function sameStats(a: Map<StatKey, ResolvedStat>, b: Map<StatKey, ResolvedStat>)
 }
 
 /** The element the character's earliest recorded point of progression went to, if any. */
-function firstAdvancementElement(character: Character): ElementId | undefined {
+function firstAdvancementElement(character: Progressed): ElementId | undefined {
   let first: { at: number; elementId: ElementId } | undefined;
   for (const entry of character.advancement ?? []) {
     if (entry.at > character.progress) continue;
@@ -1715,7 +1758,7 @@ function firstAdvancementElement(character: Character): ElementId | undefined {
  */
 function implicitTrack(
   active: Map<ElementId, Element>,
-  character: Character,
+  character: Progressed,
   kind: ResolvedCharacterKind,
 ): Map<ElementId, number> {
   const progression = kind.progression;

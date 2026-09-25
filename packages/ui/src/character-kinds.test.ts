@@ -5,13 +5,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { GameSystem } from '@incudo/core';
+import { MapElementIndex, type Element, type GameSystem } from '@incudo/core';
 import {
   characterKindChoices,
   describeKindAndProgress,
   formatProgress,
+  libraryEntryProgress,
   newCharacterOfKind,
 } from './character-kinds.ts';
+import { CharacterBuilder } from './use-character-builder.ts';
 
 const system: GameSystem = {
   formatVersion: 1,
@@ -82,4 +84,66 @@ test('a card says the kind by name and the progression by its label', () => {
   // A kind this system does not declare is named by its id, never dropped.
   assert.equal(describeKindAndProgress(system, 'ghost', 2), 'ghost · 2');
   assert.equal(describeKindAndProgress(system, undefined, undefined), '');
+});
+
+// --- a rating a creature prints (ADR 0060) ---------------------------------
+
+const printing: GameSystem = {
+  ...system,
+  elementTypes: [{ name: 'Creature' }],
+  characterKinds: [
+    {
+      ...system.characterKinds[0]!,
+      elementTypes: ['Creature'],
+      setterStats: [{ types: ['Creature'], setter: 'tier', stat: 'tier' }],
+      buildSteps: [{ id: 'creature', label: 'Creature', types: ['Creature'], required: true }],
+    },
+    ...system.characterKinds.slice(1),
+  ],
+};
+
+function creature(id: string, tier: string): Element {
+  return { id, type: 'Creature', name: id, source: 'test', setters: { tier: { value: tier } }, rules: [], supports: [], origin: { sourceId: 'test', format: 'incudo' } };
+}
+
+test('a kind a creature prints for starts recording nothing; every other kind records its start', () => {
+  // Fails if `newCharacterOfKind` writes the progression's start for it (the creature's print could never apply).
+  const beast = newCharacterOfKind(printing, 'beast');
+  assert.equal(beast.progress, undefined);
+  assert.equal(beast.formatVersion, 3);
+  // `extends` carries the declaration.
+  assert.equal(newCharacterOfKind(printing, 'elder').progress, undefined);
+  assert.equal(newCharacterOfKind(printing, 'hero').progress, 1);
+  assert.equal(newCharacterOfKind(printing, 'hero').formatVersion, 2);
+});
+
+test("a card for a character that records no rating reads its creature's", () => {
+  // Fails if the card reads only what is recorded (it says the kind and no rating at all).
+  const entry = { kind: 'beast', chosen: [creature('WOLF', '1/4')] };
+  assert.equal(libraryEntryProgress(printing, entry), 0.25);
+  assert.equal(describeKindAndProgress(printing, 'beast', libraryEntryProgress(printing, entry)), 'Beast · Tier 1/4');
+  assert.equal(libraryEntryProgress(printing, { ...entry, progress: 3 }), 3, 'a recorded rating wins');
+  assert.equal(libraryEntryProgress(printing, { kind: 'beast' }), 0, 'with no creature, where the progression starts');
+  assert.equal(libraryEntryProgress(printing, { kind: 'drifter' }), undefined);
+});
+
+test("the builder shows the creature's rating until one is typed, and clearing it goes back", () => {
+  // Fails if `setProgress(undefined)` is ignored for a printing kind, or honoured for one that always records.
+  const index = new MapElementIndex();
+  index.addAll([creature('OX', '5')]);
+  const b = new CharacterBuilder(newCharacterOfKind(printing, 'beast'), printing, index);
+  assert.deepEqual(b.getState().progress, { value: 0, recorded: false, printed: undefined, printable: true });
+  b.choose('build/creature', ['OX']);
+  assert.deepEqual(b.getState().progress, { value: 5, recorded: false, printed: 5, printable: true });
+  b.setProgress(2);
+  assert.deepEqual(b.getState().progress, { value: 2, recorded: true, printed: 5, printable: true });
+  assert.equal(b.getState().derived.stats.get('tier')?.value, 2);
+  b.setProgress(undefined);
+  assert.deepEqual(b.getState().progress, { value: 5, recorded: false, printed: 5, printable: true });
+  assert.equal(b.getState().character.progress, undefined, 'the print is not copied into the character');
+
+  const hero = new CharacterBuilder(newCharacterOfKind(printing, 'hero'), printing, index);
+  hero.setProgress(4);
+  hero.setProgress(undefined);
+  assert.equal(hero.getState().character.progress, 4, 'a kind nothing prints for keeps what was typed');
 });

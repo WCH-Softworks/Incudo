@@ -17,6 +17,7 @@
 import {
   ASSETS_PREFIX,
   BundleElementIndex,
+  chosenElementIds,
   collectCharacterContent,
   packCharacterContainer,
   readCharacterContainer,
@@ -28,6 +29,7 @@ import {
   type ContainerManifest,
   type ContainerProblem,
   type ContentSubset,
+  type Element,
   type ElementId,
   type ElementIndex,
   type GameSystem,
@@ -50,8 +52,14 @@ export interface LibraryEntry {
   title: string;
   systemId?: string;
   kind?: string;
-  /** The character's progression point — a level, a challenge rating — where it has one. */
+  /** The character's progression point — a level, a challenge rating — where it records one. */
   progress?: number;
+  /**
+   * The elements the character chose, kept only when it records no progression point (ADR 0060): an NPC
+   * starts where its creature prints its challenge rating, and a card reads that with the system's
+   * definition (`libraryEntryProgress`), which the library does not have.
+   */
+  chosen?: Element[];
   updatedAt?: string;
   elementCount?: number;
   sources: SourceRef[];
@@ -537,6 +545,7 @@ export class CharacterLibrary {
       };
     }
     const { manifest, character } = container;
+    const embedded = new BundleElementIndex(container.content.elements);
     const portrait = portraitOf(container.assets, character.assets);
     const sources = character.sources ?? manifest.sources ?? [];
     return {
@@ -546,6 +555,9 @@ export class CharacterLibrary {
       systemId: manifest.systemId ?? character.systemId,
       kind: manifest.characterKind ?? character.kind,
       progress: character.progress,
+      ...(character.progress === undefined
+        ? { chosen: chosenElementIds(character).flatMap((id) => embedded.get(id) ?? []) }
+        : {}),
       updatedAt: manifest.updated ?? manifest.created,
       elementCount: manifest.elementCount ?? container.content.elements.length,
       sources,
