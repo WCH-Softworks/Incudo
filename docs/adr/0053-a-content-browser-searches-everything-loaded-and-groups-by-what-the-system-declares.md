@@ -1,6 +1,6 @@
 # 0053 — A content browser searches everything loaded, and groups it by what the system declares
 
-**Status:** Proposed · 2026-09-25 · builds on [0003](./0003-system-agnostic-content-model.md) (types are the
+**Status:** Accepted · 2026-09-25 · builds on [0003](./0003-system-agnostic-content-model.md) (types are the
 system's), [0012](./0012-self-contained-saves.md), [0049](./0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)
 (books) and [0052](./0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md) ·
 **format:** none. It reads `browsable` on an element type, which the system format has carried since Phase 0 and
@@ -93,6 +93,10 @@ matched, and alphabetically by name within a rank:
 5. the id starts with it (an id is found by typing it from its start, so "fire" does not find every `…_FIREBALL`);
 6. the description holds every word, when the user has not turned descriptions off.
 
+Within a rank, elements of the system's `browsable` types come first, then other declared types, then undeclared
+ones, and each group alphabetically. The first version ordered a rank by name alone, and running it listed a
+background's table row called "Elf" above the Elf races.
+
 Description text is the HTML with its tags removed and `&amp;`-style entities decoded, built once per load, and the
 row of a description match carries a short excerpt around the first word. Support tags, setters and `sheet` text are
 not searched. No index: the scan is single-digit milliseconds in the window (above).
@@ -132,9 +136,42 @@ needs to report a problem with content or read the Sources pane's list of missin
 ### 7. The state is a view-model in `packages/ui`
 
 `ContentCatalog` (`packages/ui/src/content-browser.ts`) builds the searchable entries once per index and answers a
-query with ranked rows, a count, type and book counts, and one page; `describeElement` answers the detail. Both run
+query with ranked rows, a count, type and book counts, and one page; its `describe` answers the detail. Both run
 under `node --test`. The pane renders what they return, 100 rows at a time with a button for the next hundred, and
-sanitizes a description only for the element being read, as the candidate picker does.
+sanitizes a description only for the element being read, as the candidate picker does. It is a sixth destination,
+Browse (Ctrl+5), beside Sources. What the user typed and chose is held by the shell, so it survives a look at another
+pane and a reload of the content; where the columns stack (below 1,000 pixels) the element being read replaces the
+list, with a way back to the same results.
+
+## What was measured after it was built
+
+- **`packages/ui/src/content-browser.test.ts`**, 15 tests, each checked against the perturbation it names (33 in all,
+  every one failing a test). One passed at first: searching the raw HTML, because each word is matched on its own
+  and both words of "shield master" were still in the markup. The test now holds that a word found only in a tag or an
+  attribute matches nothing.
+- **`tools/verify/src/content-browser.test.ts`**, on the official corpus, what must hold against any corpus: every
+  loaded element is in the browser under its own type, counted as the index holds it and grouped as the system
+  declares it, and the first element of every type is found by its name; every one of the 2,258 inline list items is
+  offered by exactly the select the importer minted it for; and a fresh character's decisions offer the same
+  candidates in the same order after a catalog was built and searched. That last test first ran after another test in
+  the file had already built a catalog on the shared index, so an in-place sort went unseen; it runs first now, and
+  sorting `byType` in place fails it. Sizes and timings are printed: 58 ms to build, 144 ms for the first query that
+  reaches descriptions (the text, with entities decoded), 2 to 10 ms for a query after that.
+- **In the browser build on Windows**: with nothing loaded the pane says so and links to Sources; after adding
+  AuroraLegacy, 14,545 elements, the 13 browsable types that hold anything as categories, and all 42 types in the
+  filter. Typing to a painted list took 16 to 67 ms, and 228 ms for the first query. "Fire" narrowed to Spells and
+  then Xanathar's Guide gives 15; switching descriptions off takes "a" from 14,303 matches to 11,284; switching the
+  only source off leaves the pane saying nothing is loaded.
+- **In the Tauri window on Windows**, on a fresh profile: adding the source took 25.1 s; opening the pane 54 ms the
+  first time and 17 ms after; a keystroke to a painted list 12 to 60 ms, and 178 ms for the first query; the next
+  hundred rows 26 ms; opening Wish 23 ms. The native menu's View › Browse item, sent as a window message, opens it with
+  the search box focused.
+- **Running it changed four things**: the order within a rank (decision 2); the stacked layout, where the element
+  being read sat above the list at 800 pixels and pushed the search box off the screen; the search being lost when
+  the pane unmounted; and tags shown as plain text, where "Spell Saving Throw" read as three tags.
+- **Not done:** real keystrokes in the window. The screen was locked when they were due, so Ctrl+5 and typing were
+  sent only as injected events (in the browser build) and through the menu (in the window). Ctrl+5 is a digit chord
+  like Ctrl+1 to Ctrl+4, which do reach the page, but this one has not been pressed. macOS and Linux were not run.
 
 ## What this does not do
 
@@ -149,6 +186,8 @@ sanitizes a description only for the element being read, as the candidate picker
 - **No link from the builder or the sheet into it**, and nothing on the Sources pane's list of missing ids links
   here: those ids are missing because nothing loaded declares them.
 - **It is not an editor.** Nothing here writes content.
+- **Rows that share a name, a type and a book look the same** until one is opened: one Unearthed Arcana book has three
+  feat features called "Divine Omens". The detail shows each one's id and what offers it.
 
 ## Consequences
 

@@ -342,7 +342,7 @@ the inventory work — a bag, slots, `equipped=`, attunement and a derived armou
 **spell selection, filtered by list, school and slot level** (ADR 0030), and
 **the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR
 0027), manages content sources (ADR 0028/0029), builds a character, **sets its ability scores by
-all four of 5e's methods**, renders the sheet, reads and writes real `.incu` files into a folder
+all four of 5e's methods**, renders the sheet, **browses and searches everything loaded** (ADR 0053), reads and writes real `.incu` files into a folder
 the user picks, **saves a copy anywhere** (ADR 0038), and **imports Aurora `.dnd5e` saves into it**, and **multiclasses**: a level can
 be spent on any class the character qualifies for (ADR 0036).
 Not started: the mobile shell (only its `platform.ts` contract exists).
@@ -560,6 +560,32 @@ before touching `ContentLibrary.loadSource`:
   source. Never name a source as "probably missing": nothing in an Aurora index says which, and AuroraLegacy's own
   line always shows the upstream typo, which no source supplies. `missing-content.test.ts` holds the per-source report,
   taken together, equal to `analyseCorpus`'s whole-load count.
+
+**The Browse pane looks through everything the enabled sources loaded, and nothing a character holds**
+([ADR 0053](docs/adr/0053-a-content-browser-searches-everything-loaded-and-groups-by-what-the-system-declares.md)).
+`ContentCatalog` (`packages/ui/src/content-browser.ts`) is the view-model; `apps/desktop/src/panes/BrowsePane.tsx`
+renders it and computes nothing. Things to know before touching it:
+
+- **It is handed `content.elements`, the index the load produced**, never the builder's `elements` (which puts an open
+  save's embedded content in front) and never `offeredIndex` (a book switched off for one character is still loaded).
+  With every source off it says nothing is loaded, whichever character is open.
+- **It must never reorder what the index hands back.** `byType` arrays are the builder's candidate lists in the
+  builder's order; the catalog sorts a copy. `tools/verify/src/content-browser.test.ts` compares a fresh character's
+  offers before and after, and runs first in its file, because the corpus is loaded once per file and an earlier test
+  building a catalog hid an in-place sort.
+- **A plain scan, no index**: under 8 ms a query in the Tauri window over 14,545 elements. Description text (tags
+  stripped, entities decoded) is built on the first query that reaches it, about 150 ms, once per load; the catalog is
+  cached per index object (`contentCatalog`), so a reload gets a new one.
+- **Ranks**, best first: name equal, name prefix, a word in the name starting with it, every word in the name, the id
+  starting with it (so "fire" does not find every `…_FIREBALL`), every word in the description. Within a rank the
+  system's `browsable` types come first, then other declared types, then undeclared ones.
+- **Types are the system's.** `browsable` (in the format since Phase 0, unread until now) decides the categories shown
+  with nothing typed; every type can be a filter, and a type the system does not declare (5e: `List`, `Level`) is
+  still searched and listed by the name content gave it.
+- **"Offered by" follows only a select whose filter is one plain tag.** That is how an inline list item names its
+  background, from the rules and never from the shape of its id. `and`, `or`, `$(…)` and `!` filters are not followed.
+- **Not verified:** real keystrokes in the window (the screen was locked; Ctrl+5 was sent by the native menu and as
+  an injected event in the browser build), macOS and Linux.
 
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).

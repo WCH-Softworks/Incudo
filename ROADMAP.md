@@ -961,7 +961,19 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
 - [x] Download mode: versioned cache, update checks against the index version — ADR 0029 built the cache, the
       version stamp and the check, and ADR 0050 made the check look at files rather than the index version, which a
       source may never bump
-- [ ] Content browser (search across all loaded elements)
+- [x] **Content browser: search across all loaded elements** ([ADR 0053](./docs/adr/0053-a-content-browser-searches-everything-loaded-and-groups-by-what-the-system-declares.md)).
+      A Browse pane (Ctrl+5) looks through what the enabled sources loaded, not a character's view of it and not a
+      save's own content. Measured first: 14,545 elements in 42 types, two the 5e definition does not declare, and a
+      plain scan over names and description text takes under 8 ms a query in the Tauri window, so there is no index.
+      With nothing typed it offers the system's `browsable` types, a field the format has carried since Phase 0 and
+      nothing had read; a search covers every element, ranked name, prefix, word start, every word, the start of an id,
+      then description text, and narrows by type and by book. The 2,258 inline list items stay in, since only 244 of them
+      can be read anywhere else, and each says which select offers it, found from the select's one-tag filter rather
+      than from its id. An element shows its book, source, file, id and tags. Running it changed the order within a
+      rank (a table row called "Elf" came before the Elf races), the narrow layout, and kept the search across panes.
+      Driven in the Tauri window and the browser build on Windows. **Not done:** real keystrokes in the window (the
+      screen was locked; Ctrl+5 was sent by the menu and as an injected event); filters by tag or setter ("3rd-level
+      spells"); what grants an element; macOS and Linux.
 - [ ] Conflict resolution when two sources define the same ID
 - [x] **Say when a source refers to content no enabled source has** ([ADR 0052](./docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md)).
       Any inner index can be added as a source, and 58 of AuroraLegacy's 60 grant ids only another declares: the 2014
