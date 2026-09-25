@@ -20,6 +20,7 @@ import {
   composeSource,
   writeVersionStamp,
   type ConfiguredSource,
+  type MissingContent,
 } from '@incudo/content';
 import { MapElementIndex, type ElementIndex, type Fetcher, type Storage } from '@incudo/core';
 
@@ -35,6 +36,11 @@ export interface LoadedSource {
   elementCount: number;
   version?: string;
   failed?: string;
+  /**
+   * What this source refers to that no enabled source declares (ADR 0052), absent when there is nothing. Worked out
+   * once every enabled source has loaded, since what one refers to is often in the next.
+   */
+  missing?: MissingContent;
 }
 
 export interface LoadedContent {
@@ -106,6 +112,13 @@ export async function loadSources(
         failed: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  // Reported, never acted on: a book enabled without the one it builds on is a choice (ADR 0052).
+  const missing = library.missingContent();
+  for (const source of loaded) {
+    const found = missing.get(source.id);
+    if (found && !source.failed) source.missing = found;
   }
 
   const warnings: string[] = [];

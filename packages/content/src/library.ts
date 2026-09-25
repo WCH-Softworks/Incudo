@@ -7,11 +7,12 @@
  */
 
 import {
+  GENERATED_SOURCE_ID,
   auroraGeneratedElements,
   improvementOptionElements,
   type ElementAppend,
 } from '@incudo/aurora-import';
-import { MapElementIndex, type Element, type ElementIndex } from '@incudo/core';
+import { MapElementIndex, referencedElementIds, type Element, type ElementIndex } from '@incudo/core';
 import type { ContentIndex, ContentSource, FileRef, SourceDiagnostic } from './source.ts';
 
 export interface LoadOptions {
@@ -55,6 +56,18 @@ export interface LoadReport {
   diagnostics: SourceDiagnostic[];
 }
 
+/**
+ * What one source refers to that nothing loaded declares — ADR 0052. Reported, never enforced: a supplement
+ * enabled without the book it builds on is a thing a user may mean to do, and nothing in an Aurora index says
+ * which book that is.
+ */
+export interface MissingContent {
+  /** Ids a grant, or a select's default, names and no loaded source declares. Sorted, each once. */
+  references: string[];
+  /** The target of each `<append>` from this source that found nothing to add to, one per append, sorted. */
+  additions: string[];
+}
+
 export class ContentLibrary {
   private readonly index = new MapElementIndex();
   private readonly loadedUrls = new Set<string>();
@@ -89,7 +102,7 @@ export class ContentLibrary {
     // them first means a source that does declare one of these ids overrides the overlay and
     // says so through the usual duplicate-id warning, rather than being quietly overwritten.
     if (root.format === 'aurora' && !options.withoutGeneratedElements) {
-      this.addGeneratedElements();
+      this.addGeneratedElements(source.id);
     }
 
     const queue: Array<{ ref: FileRef; depth: number }> = root.files.map((ref) => ({
@@ -198,7 +211,10 @@ export class ContentLibrary {
         }
         const file = result.file!;
         this.addElements(file.elements);
-        if (file.appends?.length) pending.push(...file.appends);
+        for (const append of file.appends ?? []) {
+          pending.push(append);
+          this.appendSources.set(append, source.id);
+        }
         this.diagnostics.push(...file.diagnostics);
         filesLoaded++;
         elementsLoaded += file.elements.length;
@@ -233,6 +249,62 @@ export class ContentLibrary {
   private readonly folded = new Map<string, { base: Element; result: Element; count: number }>();
   /** The warning standing for each append that found no target, so a later source can withdraw it. */
   private readonly unapplied = new Map<ElementAppend, SourceDiagnostic>();
+  /** Which source each append came from, so what it refers to is reported against that source (ADR 0052). */
+  private readonly appendSources = new Map<ElementAppend, string>();
+
+  /**
+   * For each source, what it refers to that nothing loaded declares — ADR 0052. Asked after the last source has
+   * loaded, since a reference one source makes is often declared by the next.
+   *
+   * Two things, and deliberately not a third. A grant (or a select's default) to an id nothing declares, which a
+   * character silently goes without; and an `<append>` still waiting for its target. Not a requirement naming an
+   * id nothing declares: the corpus writes `!ID_X` against ids that will never exist on purpose, 23 of them in
+   * the full AuroraLegacy corpus, and counting them would put a meaningless number beside every source.
+   *
+   * A reference counts against the source that makes it. Rules an append folded into another source's element are
+   * the append's; what the Aurora overlay refers to is the first Aurora source's, whose load brought it in.
+   */
+  missingContent(): Map<string, MissingContent> {
+    const references = new Map<string, Set<string>>();
+    const note = (sourceId: string | undefined, element: Element): void => {
+      if (sourceId === undefined) return;
+      for (const id of referencedElementIds([element], { requirements: false })) {
+        if (this.index.get(id)) continue;
+        const ids = references.get(sourceId);
+        if (ids) ids.add(id);
+        else references.set(sourceId, new Set([id]));
+      }
+    };
+
+    for (const element of this.index.all()) {
+      const owner = element.origin.sourceId === GENERATED_SOURCE_ID ? this.generatedFor : element.origin.sourceId;
+      const entry = this.folded.get(element.id);
+      // The element as its own file declared it: what appends added is looked at below, as theirs.
+      note(owner, entry && entry.result === element ? entry.base : element);
+      if (!entry || entry.result !== element) continue;
+      for (const append of this.appendsByTarget.get(element.id) ?? []) {
+        note(this.appendSources.get(append), { ...element, rules: append.rules, multiclass: undefined });
+      }
+    }
+
+    const additions = new Map<string, string[]>();
+    for (const append of this.unapplied.keys()) {
+      const sourceId = this.appendSources.get(append);
+      if (sourceId === undefined) continue;
+      const targets = additions.get(sourceId);
+      if (targets) targets.push(append.id);
+      else additions.set(sourceId, [append.id]);
+    }
+
+    const out = new Map<string, MissingContent>();
+    for (const sourceId of new Set([...references.keys(), ...additions.keys()])) {
+      out.set(sourceId, {
+        references: [...(references.get(sourceId) ?? [])].sort(),
+        additions: (additions.get(sourceId) ?? []).sort(),
+      });
+    }
+    return out;
+  }
 
   /**
    * Fold `<append>` blocks into the elements they name.
@@ -305,8 +377,15 @@ export class ContentLibrary {
   /** How many of the loaded elements came from the Aurora overlay rather than from a file. */
   generatedElements = 0;
 
-  private addGeneratedElements(): void {
+  /**
+   * The source whose load brought the Aurora overlay in: the first Aurora source. What those elements refer to and
+   * nothing declares is reported against it (ADR 0052), since the overlay belongs to no source of its own.
+   */
+  private generatedFor: string | undefined;
+
+  private addGeneratedElements(sourceId: string): void {
     if (this.generatedElements) return;
+    this.generatedFor = sourceId;
     const generated = auroraGeneratedElements();
     for (const element of generated) this.index.add(element);
     this.generatedElements = generated.length;

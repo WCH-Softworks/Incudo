@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react';
-import type { ConfiguredSource, RefreshReport, SourceMode, UpdateStatus } from '@incudo/content';
+import type { ConfiguredSource, MissingContent, RefreshReport, SourceMode, UpdateStatus } from '@incudo/content';
 import type { GameSystem, SuggestedSource } from '@incudo/core';
 
 import { type LoadProgress, type LoadedContent } from '../content.ts';
@@ -364,7 +364,7 @@ function SourceRow({
   shell,
 }: {
   source: ConfiguredSource;
-  loaded: { fileCount: number; elementCount: number; failed?: string } | undefined;
+  loaded: { fileCount: number; elementCount: number; failed?: string; missing?: MissingContent } | undefined;
   update: UpdateStatus | undefined;
   refreshed: RefreshReport | { failed: string } | undefined;
   busy: boolean;
@@ -424,6 +424,7 @@ function SourceRow({
         </p>
       )}
 
+      {loaded?.missing && <MissingNote missing={loaded.missing} />}
       {update && <UpdateNote status={update} />}
       {refreshed && <RefreshNote report={refreshed} />}
 
@@ -479,6 +480,55 @@ function UpdateNote({ status }: { status: UpdateStatus }): React.JSX.Element {
     );
   }
   return <p className="card-note">Could not tell: {status.reason}</p>;
+}
+
+/**
+ * What this source refers to that none of the enabled ones contain — ADR 0052. Said, never acted on: nothing is
+ * disabled or added, and it does not name a source that might supply it, because nothing in an Aurora index says
+ * which that is. A requirement naming something absent is not counted (content writes those on purpose), so a
+ * whole, healthy corpus says nothing here except AuroraLegacy's one upstream typo.
+ */
+function MissingNote({ missing }: { missing: MissingContent }): React.JSX.Element | null {
+  const references = missing.references.length;
+  const additions = missing.additions.length;
+  if (!references && !additions) return null;
+  const things = `${references.toLocaleString()} ${references === 1 ? 'thing' : 'things'}`;
+  const adds = `${additions.toLocaleString()} of its additions to other content ${additions === 1 ? 'has' : 'have'} nothing to add to`;
+  const sentence = references
+    ? `Refers to ${things} none of your enabled sources contain${additions ? `, and ${adds}` : ''}.`
+    : `${adds.charAt(0).toUpperCase()}${adds.slice(1)}.`;
+  const targets = [...new Set(missing.additions)];
+  return (
+    <details className="card-note">
+      <summary>
+        {sentence}
+      </summary>
+      {references > 0 && (
+        <>
+          <p>Not found in any enabled source:</p>
+          <ul>
+            {missing.references.map((id) => (
+              <li key={id}>
+                <code>{id}</code>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {targets.length > 0 && (
+        <>
+          <p>Additions waiting for:</p>
+          <ul>
+            {targets.map((id) => (
+              <li key={id}>
+                <code>{id}</code>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </details>
+  );
 }
 
 /** What a refresh did, in numbers the user can check against what they expected. */
