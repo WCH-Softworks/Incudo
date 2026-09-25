@@ -202,3 +202,26 @@ test('the assignment survives a round trip through storage', async () => {
   assert.equal(source?.systemId, 'dnd5e');
   assert.equal(source?.official, true);
 });
+
+test('moving a source swaps it with its neighbour in the same system and leaves the rest in place', async () => {
+  // ADR 0054: the order is which source is used when two define the same id, and it is changed within one system.
+  const storage = new MemoryStorage();
+  const profile = new SourceProfile(storage);
+  profile.add('https://example.test/a.index', { systemId: 'dnd5e' });
+  profile.add('https://example.test/cairn.index', { systemId: 'cairn' });
+  profile.add('https://example.test/b.index', { systemId: 'dnd5e' });
+  profile.add('https://example.test/c.index', { systemId: 'dnd5e' });
+  const names = (): string[] => profile.sources.map((s) => s.name);
+  const dnd = (s: { systemId?: string }): boolean => s.systemId === 'dnd5e';
+
+  assert.equal(profile.move('https://example.test/b.index', 'up', dnd), true);
+  assert.deepEqual(names(), ['b', 'cairn', 'a', 'c'], 'past the other system, which keeps its place');
+  assert.equal(profile.move('https://example.test/b.index', 'up', dnd), false, 'already first of its system');
+  assert.equal(profile.move('https://example.test/c.index', 'down', dnd), false, 'already last');
+  assert.equal(profile.move('https://example.test/missing.index', 'up', dnd), false);
+  assert.equal(profile.move('https://example.test/a.index', 'down', dnd), true);
+  assert.deepEqual(names(), ['b', 'cairn', 'c', 'a']);
+
+  await profile.save();
+  assert.deepEqual((await SourceProfile.load(storage)).sources.map((s) => s.name), ['b', 'cairn', 'c', 'a'], 'and it is what is saved');
+});

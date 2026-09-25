@@ -68,6 +68,21 @@ export interface MissingContent {
   additions: string[];
 }
 
+/**
+ * What one source defines that another enabled source also defines — ADR 0054. The source loaded later is used, so
+ * between two sources every shared id goes the same way.
+ */
+export interface SourceOverlap {
+  /** The other source. */
+  sourceId: string;
+  /** Whose definition is used for what both define: this source's, or the other's. */
+  used: 'this' | 'other';
+  /** Ids both define, differently. Sorted. */
+  differ: string[];
+  /** How many ids both define the same way. Which one is used changes nothing. */
+  same: number;
+}
+
 export class ContentLibrary {
   private readonly index = new MapElementIndex();
   private readonly loadedUrls = new Set<string>();
@@ -402,22 +417,87 @@ export class ContentLibrary {
     this.generatedElements += elements.length;
   }
 
+  /**
+   * For each id more than one source defines, each source's definition as its file declared it, in load order: the
+   * last is the one used (ADR 0054). Only ids with a second source are here.
+   */
+  private readonly definitions = new Map<string, Array<{ sourceId: string; element: Element }>>();
+
+  /**
+   * For each source, what it defines that another enabled source also defines, and whose definition is used — ADR
+   * 0054. Asked after the last source has loaded, like {@link missingContent}.
+   *
+   * Only pairs with the source that is used: with three sources defining an id, the first two each share it with the
+   * third and neither with the other. Definitions are compared as their files declared them, before any `<append>`,
+   * with where they came from left out.
+   */
+  sourceOverlaps(): Map<string, SourceOverlap[]> {
+    const pairs = new Map<string, { differ: string[]; same: number }>();
+    for (const [id, all] of this.definitions) {
+      const used = all[all.length - 1]!;
+      const usedBody = comparable(used.element);
+      for (const replaced of all.slice(0, -1)) {
+        const key = JSON.stringify([used.sourceId, replaced.sourceId]);
+        const pair = pairs.get(key) ?? { differ: [], same: 0 };
+        if (comparable(replaced.element) === usedBody) pair.same++;
+        else pair.differ.push(id);
+        pairs.set(key, pair);
+      }
+    }
+
+    const out = new Map<string, SourceOverlap[]>();
+    const push = (sourceId: string, overlap: SourceOverlap): void => {
+      const list = out.get(sourceId);
+      if (list) list.push(overlap);
+      else out.set(sourceId, [overlap]);
+    };
+    for (const [key, { differ, same }] of pairs) {
+      const [used, replaced] = JSON.parse(key) as [string, string];
+      differ.sort();
+      push(used, { sourceId: replaced, used: 'this', differ, same });
+      push(replaced, { sourceId: used, used: 'other', differ, same });
+    }
+    return out;
+  }
+
   addElements(elements: Iterable<Element>): void {
     for (const element of elements) {
       const existing = this.index.get(element.id);
-      if (existing && existing.origin.fileUrl !== element.origin.fileUrl) {
-        // Two sources defining the same id. Last one wins for now; Phase 2 turns this
-        // into a user-visible conflict resolution step (see ROADMAP).
-        this.diagnostics.push({
-          level: 'warning',
-          message: `"${element.id}" is defined in more than one file; using ${element.origin.fileUrl}.`,
-          elementId: element.id,
-          fileUrl: element.origin.fileUrl,
-        });
+      if (existing && existing.origin.sourceId !== element.origin.sourceId && existing.origin.sourceId !== GENERATED_SOURCE_ID) {
+        // Two sources defining the same id: the later is used, and that is the rule, not a stopgap (ADR 0054). It is
+        // reported on each source's line, from `sourceOverlaps`, rather than as one warning per id: the original
+        // Aurora repository and AuroraLegacy share 7,262.
+        const all = this.definitions.get(element.id);
+        const entry = { sourceId: element.origin.sourceId, element };
+        if (all) all.push(entry);
+        else this.definitions.set(element.id, [{ sourceId: existing.origin.sourceId, element: this.declared(existing) }, entry]);
+      } else if (existing) {
+        // Within one source, or over the Aurora overlay: the later definition wins, and it is the author's to fix.
+        if (existing.origin.fileUrl !== element.origin.fileUrl) {
+          this.diagnostics.push({
+            level: 'warning',
+            message: `"${element.id}" is defined in more than one file; using ${element.origin.fileUrl}.`,
+            elementId: element.id,
+            fileUrl: element.origin.fileUrl,
+          });
+        }
+        // The source's own later definition is the one it is represented by.
+        this.definitions.get(element.id)?.splice(-1, 1, { sourceId: element.origin.sourceId, element });
       }
       this.index.add(element);
     }
   }
+
+  /** An element as its file declared it: what `applyAppends` folded over it is left out. */
+  private declared(element: Element): Element {
+    const entry = this.folded.get(element.id);
+    return entry && entry.result === element ? entry.base : element;
+  }
+}
+
+/** An element's definition with where it came from left out, for telling two definitions apart (ADR 0054). */
+function comparable(element: Element): string {
+  return JSON.stringify({ ...element, origin: undefined });
 }
 
 /**

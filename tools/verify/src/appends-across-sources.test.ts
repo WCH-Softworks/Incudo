@@ -63,14 +63,22 @@ test('the corpus split into sources loads the same forwards, backwards and whole
   const backwards = await load(location, [...groups].reverse());
 
   // An id declared twice is settled by load order, "last one wins", and reversing the order is allowed to change which
-  // file wins. Those ids, and only those, are left out of the backwards comparison.
-  const duplicated = new Set(
-    [...whole.diagnostics, ...backwards.diagnostics]
-      .filter((d) => d.message.includes('is defined in more than one file'))
-      .map((d) => d.elementId!),
+  // file wins. Those ids, and only those, are left out of the backwards comparison. Loaded whole, every one is a
+  // warning, since the corpus is one source; split, one declared in two groups is two sources, and is reported as an
+  // overlap on each (ADR 0054) instead.
+  const redefined = (library: ContentLibrary): string[] =>
+    library.diagnostics.filter((d) => d.message.includes('is defined in more than one file')).map((d) => d.elementId!);
+  const duplicated = new Set(redefined(whole));
+  const overlapping = new Set(
+    [...backwards.sourceOverlaps().values()].flat().flatMap((overlap) => overlap.differ),
   );
   console.log(`ℹ ${corpusProvenance()}`);
-  console.log(`ℹ ${groups.length} sources, ${whole.size} elements, ${duplicated.size} id(s) declared twice`);
+  console.log(
+    `ℹ ${groups.length} sources, ${whole.size} elements, ${duplicated.size} id(s) declared twice, ${overlapping.size} of them differently in two sources`,
+  );
+
+  for (const id of overlapping) assert.ok(duplicated.has(id), `${id} overlaps across sources and is a warning loaded whole`);
+  for (const id of redefined(backwards)) assert.ok(!overlapping.has(id), `${id} is an overlap, not also a warning`);
 
   assert.equal(missed(whole), 0, 'the whole corpus has no append without a target');
   assert.equal(missed(forwards), 0, 'forwards, no append goes without its target');

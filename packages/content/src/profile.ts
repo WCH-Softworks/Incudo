@@ -141,6 +141,25 @@ export class SourceProfile {
     return source;
   }
 
+  /**
+   * Swap a source with its nearest neighbour above or below among the entries `among` accepts (a system's, ADR 0031),
+   * leaving every other entry where it is. The order is which source is used when two define the same id: the later
+   * one (ADR 0054). Returns false when there is no such neighbour.
+   */
+  move(id: string, direction: 'up' | 'down', among: (source: ConfiguredSource) => boolean = () => true): boolean {
+    const from = this.entries.findIndex((source) => source.id === id);
+    if (from < 0) return false;
+    const step = direction === 'up' ? -1 : 1;
+    for (let to = from + step; to >= 0 && to < this.entries.length; to += step) {
+      if (!among(this.entries[to]!)) continue;
+      const next = [...this.entries];
+      [next[from], next[to]] = [next[to]!, next[from]!];
+      this.entries = next;
+      return true;
+    }
+    return false;
+  }
+
   /** Removes it from the profile and changes no character (ADR 0028). */
   remove(id: string): boolean {
     const before = this.entries.length;
