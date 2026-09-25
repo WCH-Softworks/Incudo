@@ -993,8 +993,15 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       typo. Driven in the browser build on Windows. **Not done:** naming a configured-but-disabled source that declares
       what is missing; Incudo's own content format, which will declare dependencies (the ADR says what it must carry);
       the Tauri window, macOS and Linux.
-- [ ] Choose parts of a source (a tree of its indexes) before loading it. Adding one inner index as a source already
-      works; the report above is what makes a partial choice safe to make.
+- [x] **Choose parts of a source before loading it** ([ADR 0055](./docs/adr/0055-a-source-records-the-parts-switched-off-and-the-load-skips-them.md)).
+      Measured first: AuroraLegacy is 60 indexes at most two levels deep, no part named twice, and three indexes list
+      files beside nested ones (Core lists the skills-and-languages file itself; Unearthed Arcana lists 64 documents), so
+      the tree offers files as well as indexes. A source records the parts switched off, and the load and the refresh
+      skip each wherever it is named; a book upstream adds later arrives switched on. "Choose parts first" beside Add, and
+      "Choose parts" on a source's line, read the tree from the indexes alone and say how many files will load, a figure a
+      test holds equal to what a load reports. A test on the real corpus holds the tree to the URLs a load requests, one
+      for one. What a switched-off part leaves missing is ADR 0052's line. Driven in the browser build on Windows.
+      **Not done:** the Tauri window, macOS and Linux.
 - [x] **Which books a character is offered** ([ADR 0049](./docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
       The item was "source enable/disable per character", and a content source is the wrong unit: one index holds
       every book. The unit is Aurora's, the book (`type="Source"`), which the system marks `publication: true`.
@@ -1008,7 +1015,14 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       Driven in the Tauri window on Windows, save and reopen with no source included. **Not done:** the Aurora importer
       does not fill the list from a save's `<restricted>` (frozen, and the samples have none to witness it); no edition
       switch; no per-user default for new characters; macOS and Linux not driven.
-- [ ] Import a raw Aurora `.xml` the user drops in
+- [x] **Add a raw Aurora `.xml` the user drops in or picks** ([ADR 0056](./docs/adr/0056-an-aurora-file-the-user-adds-is-a-source-of-its-own-kept-as-a-copy.md)).
+      Each file is a source of its own, tagged with the system in view, kept as a copy in the app's storage (outside the
+      content cache, which may be pruned), and named by its file name, so adding it again replaces the copy. An index,
+      or a file with no elements, is refused with a sentence. It has its line like any source (what it lacks, what it
+      shares), and no update check or refresh. Dropped on the window while Sources is open, or "Choose files…". A corpus
+      file added this way loads to the same elements the corpus load made of it. Driven in the browser build on Windows
+      by a dropped file: added, shown in Browse, replaced, kept across a reload, removed with its copy. **Not done:** the
+      picker and the Tauri window's drop were not driven; a folder or zip of files; macOS and Linux.
 
 ---
 

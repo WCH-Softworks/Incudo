@@ -341,7 +341,8 @@ definitions, the `.incu` container, the JSON Schemas and the validator behind th
 the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class —
 **spell selection, filtered by list, school and slot level** (ADR 0030), and
 **the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR
-0027), manages content sources (ADR 0028/0029), builds a character, **sets its ability scores by
+0027), manages content sources (ADR 0028/0029), **lets a source's parts be switched off and a
+dropped Aurora `.xml` be a source** (ADR 0055/0056), builds a character, **sets its ability scores by
 all four of 5e's methods**, renders the sheet, **browses and searches everything loaded** (ADR 0053), reads and writes real `.incu` files into a folder
 the user picks, **saves a copy anywhere** (ADR 0038), and **imports Aurora `.dnd5e` saves into it**, and **multiclasses**: a level can
 be spent on any class the character qualifies for (ADR 0036).
@@ -605,6 +606,32 @@ Things to know before touching `ContentLibrary.addElements` or the Sources pane'
   in either order. **Do not assume a corpus is LF:** AuroraLegacy's own bytes have CRLF in 51 of its files (Tasha's,
   several 2024 subclasses), and every sample save is CRLF. Git Bash's `grep` does not show a `\r`; count them in Node.
 - **Driven in the browser build only.**
+
+**A source records the parts switched off, and the load skips them**
+([ADR 0055](docs/adr/0055-a-source-records-the-parts-switched-off-and-the-load-skips-them.md)). Things to know before
+touching `ConfiguredSource.excluded` or the chooser:
+
+- **An exclusion list, not an allowlist**, of index or element-file URLs, matched by URL through the load's existing
+  `include` hook (`partsFilter`, `packages/content/src/parts.ts`). A switched-off index is never read. `loadSources` and
+  `refreshSource` both pass it, so a refresh prunes a switched-off part's cached files like a file upstream dropped.
+- **The tree and the load must agree.** `readIndexTree` walks level by level, as the load's queue does, so "first
+  mention" means the same in both; it lists refs by the load's own `isElementFile` and depth limit. `tools/verify`'s
+  `source-parts.test.ts` holds the tree to the exact URLs a real corpus load requests. `partsView` (`packages/ui`) counts
+  what will load by walking the same way, and a test holds it to a real load for every single part switched off.
+- **Driven in the browser build only.**
+
+**An Aurora file the user adds is a source of its own, kept as a copy**
+([ADR 0056](docs/adr/0056-an-aurora-file-the-user-adds-is-a-source-of-its-own-kept-as-a-copy.md)). Things to know
+before touching `packages/content/src/file-source.ts`:
+
+- **`kind: 'file'`, id and URL `local:<file name>`**, text in `Storage` under `sources/files/`, never under `content/`:
+  eviction and the refresh prune remove whatever is under a source's cache prefix, and this is the only copy.
+  `removeSource` deletes it with the profile entry. Adding the same file name again replaces the copy in place.
+- **`composeSource` returns a `FileContentSource`** (an index of one file, parsed once), and `checkSourceForUpdates` and
+  `refreshSource` say there is nothing upstream. The pane hides mode, check, refresh and parts for it.
+- **A drop is a port, `FileDrop`**, because the Tauri webview never sees a dropped file (the host reports paths, and
+  `tauri-plugin-fs` grants them). It is listened to only while the Sources pane is shown. **`TauriFileDrop` has never
+  run**; the browser drop was driven by a dispatched drop event, and the picker path was not driven at all.
 
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
