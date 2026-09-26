@@ -1,137 +1,131 @@
 # Incudo
 
-*(in-KU-do — Latin *incus*, an anvil)*
+*(in-KU-do, from the Latin* incus*, an anvil)*
 
-A modern, system-agnostic tabletop character builder for desktop and mobile.
-Free and open source.
+A tabletop character builder for desktop and mobile that works with any game system. Free and
+open source.
 
-> **Status: early.** The engine, the importer and the content layer work, validated against
-> 14,000 real content elements, and the desktop app builds and saves characters offline. The
-> mobile app is not started. See [ROADMAP.md](./ROADMAP.md).
+> **Status: early.** The desktop app builds, saves and imports characters offline, for player
+> characters and NPCs. The mobile app is not started. See [ROADMAP.md](./ROADMAP.md).
 
 ## Why
 
-I have used [Aurora Builder](https://aurorabuilder.com/) for years and it is still the best
-offline D&D 5e character builder there is. It is also discontinued — and a decade of community
-content lives in its format, still maintained at
-[AuroraLegacy/elements](https://github.com/AuroraLegacy/elements), which nothing that came after
-it can read.
+I have used [Aurora Builder](https://aurorabuilder.com/) for years, and it is still the best
+offline character builder for D&D 5e. It is also discontinued. Its community content is still
+maintained at [AuroraLegacy/elements](https://github.com/AuroraLegacy/elements), and no other
+tool can read it.
 
-Incudo reads all of it. That is the starting point rather than the goal:
+Incudo reads all of it, and adds the following:
 
-- **Not D&D-only.** The engine knows nothing about D&D. 5e is the first *system definition* —
-  a data file — not the architecture. Users can fork the official ones or write their own; if it
-  validates, the app can build in it.
-- **More than one kind of character.** A system declares PC, NPC, legendary creature and
-  companion kinds, each with its own build flow and sheet.
-- **Desktop and mobile**, sharing the engine, the importer and the view-models.
-- **Live or downloaded content.** Read a source straight from its repo without downloading
-  it first (Aurora can't), or download it for full offline use. Streaming still writes
-  through to the cache, so there is no offline switch to forget to flip.
-- **Aurora import from day one** — content *and* saved characters, as a native input format
-  rather than a migration step. None of its formats are kept: Incudo's own are JSON, and
-  portraits are files rather than 5 MB of base64 inside the save.
-- **Free.** MIT, no accounts, no paywall. If it helps you, there's a Ko-fi link below.
+- **Any game system.** The engine has no built-in knowledge of D&D. A game is described by a
+  *system definition*, a data file, and D&D 5e is the first one. You can copy an official
+  definition and change it, or write your own. If it passes validation, the app can build
+  characters with it.
+- **Several kinds of character.** A system can declare more than one kind, each with its own
+  build steps and sheet. D&D 5e has player characters, NPCs and legendary creatures.
+- **Desktop and mobile.** Both apps share the engine, the importer and the view-models.
+- **Content read online or downloaded.** A content source can be read straight from its
+  repository, or downloaded for offline use. Either way, what is read is cached.
+- **Aurora import.** Incudo imports Aurora content and Aurora saved characters directly. Its own
+  formats are separate: characters are saved as JSON, and portraits are stored as image files.
+- **Free.** MIT licensed, with no accounts and no paywall. There is a Ko-fi link below.
 
 ## Built with AI
 
-Incudo's code is written by AI coding tools, start to finish, and it will go on being maintained
-that way. You should know that before you run it, so:
+Incudo's code is written by AI coding tools, and it will continue to be maintained that way.
 
-- Every change is directed and reviewed by a human before it lands. Nothing merges unread.
-- Bugs are the maintainer's responsibility, not the tool's. Report them normally.
-- Read the code before you trust it with anything that matters. That is ordinary advice for any
-  dependency, not special pleading here.
+- Every change is directed and reviewed by a person before it is committed.
+- Bugs are the maintainer's responsibility. Report them as you would for any project.
+- As with any software, read the code before relying on it for anything important.
 
-**There will never be AI-generated artwork in this project.** Not the logo, not icons, not
-sample content, and not as a placeholder "until something better turns up" — placeholders have a
-way of becoming permanent.
+**This project will never contain AI-generated artwork.** That includes the logo, icons, sample
+content and temporary placeholders.
 
-Art arrives one of two ways: an artist offers their own original work because they want it
-featured here, or it is commissioned and paid for. Either way the artist is credited and keeps
-their rights. If you make art and that interests you, open an issue.
+Artwork comes from artists who offer their own original work, or it is commissioned and paid
+for. In both cases the artist is credited and keeps their rights. If you are an artist and this
+interests you, open an issue.
 
-The logo — an anvil under a gear — was drawn by the maintainer and lives in
-[`brand/`](./brand/). The desktop app's icons are generated from it by `npx tauri icon`, which
-only downscales and re-packs; see
-[`apps/desktop/src-tauri/icons/`](./apps/desktop/src-tauri/icons/). It is a working logo rather
-than a finished one.
+The logo, an anvil under a gear, was drawn by the maintainer and is in [`brand/`](./brand/). The
+desktop app's icons are resized copies of it, made with `npx tauri icon`; see
+[`apps/desktop/src-tauri/icons/`](./apps/desktop/src-tauri/icons/). The logo is a working
+version, not a final one.
 
-Game content is not AI-generated either. It comes from the content indexes you point Incudo at,
-written and maintained by people. Incudo reads that content — it does not generate, rewrite or
-"improve" it.
+Game content is not AI-generated either. It comes from the content sources you add, which are
+written and maintained by people. Incudo reads that content and does not change it.
 
 ## Try it
 
 ```bash
 npm install
-npm run desktop   # the app, at http://localhost:5173
-npm test          # the tests, and the regression suite where an Aurora install is on the machine
+npm run desktop       # the app, at http://localhost:5173
+npm run corpus:sync   # optional: download the AuroraLegacy content for the full test suite
+npm test
 ```
 
-The app opens on a character library: pick a folder, add a content source, build a character.
+The app opens on a character library. Choose a folder, add a content source, and build a
+character.
 
-Against the full AuroraLegacy corpus: **740 files, 14,316 elements, 0 errors.** The regression
-suite that checks that in CI is [`tools/verify`](./tools/verify/README.md). The one reference it
-reports as unresolved is a typo upstream; see [docs/AURORA-FORMAT.md](./docs/AURORA-FORMAT.md).
+Incudo loads the full AuroraLegacy corpus, about 740 files and 14,000 elements, with no errors.
+The tests that check this run in CI against the current version of that repository; see
+[`tools/verify`](./tools/verify/README.md). The one unresolved reference they report is a typo in
+the upstream content; see [docs/AURORA-FORMAT.md](./docs/AURORA-FORMAT.md).
 
 ## Layout
 
 ```
-packages/core            model + rules engine   (no dependencies, no platform APIs)
-packages/aurora-import   Aurora XML -> Incudo model
-packages/content         content sources: live, cached, bundled, layered
+packages/core            data model and rules engine (no dependencies, no platform APIs)
+packages/aurora-import   reads Aurora content and saves into Incudo's model
+packages/content         content sources: online, cached, bundled, layered
 packages/ui              shared view-models and components
-apps/desktop             Tauri + React shell        (Phase 1)
-apps/mobile              Expo shell                 (Phase 4)
-systems/dnd5e            the D&D 5e system definition — data, not code
-systems/cairn            a tiny non-D&D system, to keep the engine honest
-tools/verify             tests against the real corpus and saves; ships nothing
+apps/desktop             desktop app (Tauri and React)
+apps/mobile              mobile app (Expo), not started
+systems/dnd5e            the D&D 5e system definition (data, not code)
+systems/cairn            a small non-D&D system, used to test that the engine stays generic
+tools/verify             tests against real content and saves; not shipped
 ```
 
 ## Documentation
 
 | | |
 |---|---|
-| [ROADMAP.md](./ROADMAP.md) | the plan, from here to 1.0 and beyond |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | how the pieces fit |
-| [docs/DATA-MODEL.md](./docs/DATA-MODEL.md) | elements, systems, characters |
-| [docs/AURORA-FORMAT.md](./docs/AURORA-FORMAT.md) | the Aurora content format, reverse-engineered |
-| [docs/AURORA-SAVE-FORMAT.md](./docs/AURORA-SAVE-FORMAT.md) | the save format, and what it taught us not to do |
-| [docs/LICENSING.md](./docs/LICENSING.md) | which systems can ship officially, and why |
-| [docs/CODE-REUSE-POLICY.md](./docs/CODE-REUSE-POLICY.md) | what may import what, and why |
-| [docs/adr/](./docs/adr/) | the decisions, with their trade-offs |
+| [ROADMAP.md](./ROADMAP.md) | the plan up to 1.0 and after |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | how the parts fit together |
+| [docs/DATA-MODEL.md](./docs/DATA-MODEL.md) | elements, systems and characters |
+| [docs/AURORA-FORMAT.md](./docs/AURORA-FORMAT.md) | the Aurora content format |
+| [docs/AURORA-SAVE-FORMAT.md](./docs/AURORA-SAVE-FORMAT.md) | the Aurora save format |
+| [docs/LICENSING.md](./docs/LICENSING.md) | which game systems can be distributed with Incudo |
+| [docs/CODE-REUSE-POLICY.md](./docs/CODE-REUSE-POLICY.md) | which packages may import which |
+| [docs/adr/](./docs/adr/) | design decisions and their trade-offs |
 
 ## Contributing
 
-**Incudo is not merging contributions yet.** Until the tool is finished the architecture stays
-under one pair of hands — this early, a merged change costs more to live with than it does to
-write. That is a deliberate phase, not a permanent policy.
+**Incudo is not merging contributions yet.** Until the first release, I am keeping the
+architecture under one maintainer, because the data model is still changing. This will change
+later.
 
-It does not mean go away:
+In the meantime:
 
-- **Open pull requests and issues anyway.** I read every one and I will tell you what I think.
-  A PR I cannot merge today is still the clearest bug report there is.
-- **Fork it.** MIT, no permission needed.
-- **This is how maintainers get chosen.** When contributions open up I will be inviting people
-  whose forks and PRs I have already been reading.
+- **Issues are open to everyone.** I read all of them and reply. Pull requests are limited to
+  collaborators for now.
+- **You can fork the project.** It is MIT licensed.
+- **Future maintainers will come from here.** When contributions open, I will invite people whose
+  issues and forks I have been following.
 
-Details in [CONTRIBUTING.md](./CONTRIBUTING.md).
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
 ## Content and licensing
 
-Incudo ships **no rulebook content**. It is an engine; you point it at content indexes
-yourself. The code is MIT ([LICENSE](./LICENSE)); the content you load is under whatever licence
-its publisher chose.
+Incudo ships **no rulebook content**. You add content sources yourself. The code is MIT licensed
+([LICENSE](./LICENSE)), and each content source is under its publisher's own licence.
 
-A system ships *officially* only if its licence permits third-party tools that accept donations
-— Incudo is Ko-fi funded, so that is the bar. D&D 5e clears it (SRD 5.1 and 5.2.1 are
-CC-BY-4.0: commercial use permitted, irrevocable, attribution required). Anything unassessed is
-treated as not permitted. That policy governs what the *project distributes*; you can write a
-system definition for any game and use it on your own machine. See
+A game system is distributed with Incudo only if its licence allows third-party tools that accept
+donations, since Incudo is funded through Ko-fi. D&D 5e meets that requirement: the SRD 5.1 and
+5.2.1 are released under CC-BY-4.0, which allows commercial use and requires attribution. A
+system whose licence has not been assessed is not distributed. This applies only to what the
+project distributes. You can write a system definition for any game and use it yourself. See
 [docs/LICENSING.md](./docs/LICENSING.md).
 
 ## Support
 
-Incudo is free and always will be. If you'd like to buy me a coffee:
+Incudo is free and will stay free. If you want to support it:
 **[ko-fi.com/willcaphir](https://ko-fi.com/willcaphir)**

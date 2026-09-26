@@ -1,25 +1,24 @@
 # Contributing
 
-Thanks for looking. Please read this section before you spend time on code.
+Please read this before you spend time on code.
 
-## The current phase: read, don't merge
+## Contributions are not being merged yet
 
-**Incudo is not merging contributions yet.** Until the tool is finished, the architecture stays
-under one pair of hands. At this stage a merged change costs more to live with than it does to
-write — the data model is still moving (see the breaking work queued in `ROADMAP.md` Phase 0),
-and every merged decision is one I would have to keep or unpick later.
+Until the first release, I am keeping the architecture under one maintainer. The data model is
+still changing, and every change I merge now is one I would have to keep or undo later. This will
+change after the first release.
 
-This is a phase, not a permanent policy, and it is not a brush-off:
+For now:
 
-- **Open pull requests and issues.** I read all of them and I will tell you what I think. A PR I
-  cannot merge today is still the clearest possible bug report, and the review is real.
-- **Fork it.** MIT, no permission needed, no hard feelings. If your fork goes somewhere
-  interesting, I want to know.
-- **This is how maintainers get chosen.** When contributions open up, I will be inviting people
-  based on forks and PR history I have already been reading — not on a form.
+- **Pull requests can only be opened by collaborators.** This restriction will be lifted when
+  contributions open.
+- **Issues are open to everyone.** I read all of them and reply.
+- **You can fork the project.** It is MIT licensed and needs no permission. If your fork does
+  something interesting, open an issue and tell me about it.
+- **Future maintainers will come from here.** When contributions open, I will invite people whose
+  issues and forks I have been following.
 
-So: everything below is worth doing. Just know that its immediate value is the conversation and
-the record, not a merge commit.
+The rest of this file describes how the project works, for anyone reading or forking the code.
 
 ## Setup
 
@@ -29,61 +28,60 @@ npm run typecheck
 npm test
 ```
 
-Node 20+ (22 recommended). No build step is needed for the packages — the tests run TypeScript
-directly via Node's type stripping.
+Node 22.9 or later is required. The packages have no build step: the tests run TypeScript
+directly using Node's type stripping.
 
-**One consequence of that:** avoid TypeScript syntax Node cannot strip — no parameter
-properties (`constructor(private readonly x: T)`), no `enum`, no `namespace`, no decorators.
-Write the field and assign it. Relative imports use the `.ts` extension; `tsc` rewrites them
-on emit.
+Because of that, do not use TypeScript syntax Node cannot strip: parameter properties
+(`constructor(private readonly x: T)`), `enum`, `namespace` and decorators. Declare the field and
+assign it instead. Relative imports use the `.ts` extension, and `tsc` rewrites them when it
+emits.
 
-## Where things go
+## Where code goes
 
-Read [docs/CODE-REUSE-POLICY.md](./docs/CODE-REUSE-POLICY.md) before your first change. The
-short version:
+Read [docs/CODE-REUSE-POLICY.md](./docs/CODE-REUSE-POLICY.md) before your first change. In short:
 
-- A rule about the game belongs in `packages/core`, never in a component.
-- `core`, `content` and `aurora-import` must not import platform APIs (`fs`, `fetch`,
-  `window`, `react-native`). They take injected `Fetcher` and `Storage`.
-- Adding a runtime dependency to those three packages needs an ADR.
+- A game rule belongs in `packages/core`, never in a component.
+- `core`, `content` and `aurora-import` must not import platform APIs (`fs`, `fetch`, `window`,
+  `react-native`). They receive a `Fetcher` and a `Storage` from the app.
+- Adding a runtime dependency to those three packages requires an ADR.
 
-## Most useful things to send
+## Most useful issues
 
-Ranked by how much they help, given nothing merges yet — the top two need no merge to be
-valuable at all:
+In order of how much they help:
 
-- **Content that does not load.** Add a homebrew source you actually use in the app's Sources
-  view: anything it cannot read, or a character it builds wrongly, is likely a real bug. An issue
-  with the index URL and what you saw is immediately actionable.
-- **Importer edge cases.** If content in the wild breaks it, a failing test plus the offending
-  XML snippet is the perfect issue — it goes straight into the corpus suite.
-- **A system definition** for a game you play (`systems/<id>/system.json`). The most valuable
-  *code* anyone can write, because a second real system is what keeps the engine honest. Note
-  that shipping one officially also depends on its licence — see
-  [docs/LICENSING.md](./docs/LICENSING.md).
+- **Content that does not load.** Add a content source you use in the app's Sources view. If the
+  app cannot read it, or builds a character from it incorrectly, it is probably a bug. Include
+  the index URL and what you saw.
+- **Importer problems.** If real content breaks the importer, include the XML that causes it. A
+  failing test is even better.
+- **A system definition** for a game you play (`systems/<id>/system.json`). A second real system
+  is the best test that the engine is not tied to D&D. Whether one can be distributed with Incudo
+  depends on its licence; see [docs/LICENSING.md](./docs/LICENSING.md).
 
 ## Testing
 
 ```bash
-npm test        # unit tests, and the real-corpus suite in tools/verify where a corpus is installed
+npm run corpus:sync   # download the current AuroraLegacy content into .corpus/
+npm test              # unit tests, plus the real-content tests when .corpus/ exists
 ```
 
-CI runs `tools/verify/src/corpus.test.ts` over the whole AuroraLegacy corpus. A change that
-increases the count of unresolved references, or of warnings, fails the build. The budgets are
-spelled out in `.github/workflows/ci.yml`, and [tools/verify/README.md](./tools/verify/README.md)
-says how to run the same check locally.
+Without `.corpus/`, the real-content tests are skipped and say so.
+
+CI runs the same tests against the current AuroraLegacy repository. A change that increases the
+number of unresolved references or warnings fails the build. The limits are in
+`.github/workflows/ci.yml`, and [tools/verify/README.md](./tools/verify/README.md) explains how to
+run the checks locally.
+
+Tests must not depend on a particular machine. Do not commit file paths, user names or character
+names.
 
 ## Decisions
 
-If you are about to make a call that a future contributor might silently undo — a format
-change, a technology choice, a new dependency in a core package — write an ADR in
-`docs/adr/`. Copy the shape of an existing one. Recording the *trade-off* matters more than
-recording the choice.
+If a change could later be undone by someone who does not know why it was made, such as a format
+change, a technology choice or a new dependency in a core package, write an ADR in `docs/adr/`.
+Follow the structure of an existing one. Record the trade-offs, not only the choice.
 
-## Pull requests
+## Commits and pull requests
 
-Small and focused beats large and complete. Explain what you tried that did not work, if
-anything — that is often the most useful part of the review.
-
-Expect a reply rather than a merge, for now. If a PR is right and I cannot take it yet, I will
-say so and say why, and it stays open.
+Keep changes small and focused. If you tried something that did not work, say what it was; that
+is often the most useful part of a review.
