@@ -158,7 +158,9 @@ content being right, not a filter this ADR adds.
   on ADR 0026's reasoning that "a monster's armour class is printed". This is what reads the printed one: an
   NPC on a creature reads its rule, and one with no creature reads 0, which says "no stat block" where a 10
   would look like one.
-- **Skills, saves, senses, damage immunities and speeds other than walking** are not on the sheet. The rules
+- **~~Skills, saves, senses, damage immunities and speeds other than walking are not on the sheet.~~** Done by
+  [ADR 0062](./0062-an-npc-s-other-speeds-saves-and-skills-are-its-creature-s-rules-and-its-senses-are-what-it-prints.md): the rules under the NPC's own names, and senses, defences and languages as
+  the creature prints them. As first written: The rules
   for them exist (`companion:perception:proficiency`, `companion:speed:fly`) and nothing publishes them under
   an NPC's own names yet.
 

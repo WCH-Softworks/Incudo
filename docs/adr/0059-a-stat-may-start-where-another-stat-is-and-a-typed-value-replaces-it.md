@@ -75,7 +75,8 @@ apply to nothing; they apply now, and this step's floor of 0 does.
 
 ## What this does not do
 
-- **Speeds other than walking, senses, skills and saves** are still not on the sheet (ADR 0057). The
+- **~~Speeds other than walking, senses, skills and saves are still not on the sheet~~** (ADR 0057). Done by
+  [ADR 0062](./0062-an-npc-s-other-speeds-saves-and-skills-are-its-creature-s-rules-and-its-senses-are-what-it-prints.md), with this ADR's `startsFrom` for each. As first written: The
   `companion:speed:<mode>` rules exist; an NPC does not publish them under names of its own.
 - **The step's pool stat is nominal.** A budget declares the stat content adds points to; `stat block points`
   has no contributor, as the NPC's `ability points` has none. The decision's id is that name.

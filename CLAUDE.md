@@ -347,7 +347,9 @@ all four of 5e's methods**, renders the sheet, **browses and searches everything
 the user picks, **saves a copy anywhere** (ADR 0038), and **imports Aurora `.dnd5e` saves into it**, and **multiclasses**: a level can
 be spent on any class the character qualifies for (ADR 0036). **It starts any kind the system declares**, and a 5e
 **NPC starts from a creature's printed stat block** (ADR 0057), its challenge rating, armour class, hit points and
-speed included, any of which the DM may replace, and what the creature gives it may be taken away (ADRs 0059-0061).
+speed included, any of which the DM may replace, and what the creature gives it may be taken away (ADRs 0059-0061). Its
+sheet shows the creature's other speeds, proficient saves and skills, and its senses, defences and languages as printed
+(ADR 0062).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -408,6 +410,17 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   never inferred: 212 item `proficiency` setters name ids and are requirements, not grants. Split and trimmed only
   (three Tasha's ids end in `>` and are declared so). `pc` declares none, so a ranger's companion does not give the
   ranger its bite. A set step (`multiple`) now leaves out everything the character holds, not only its own picks.
+- **An NPC's other speeds, saves and skills are its creature's rules under names of its own, and its senses are what
+  it prints** ([ADR 0062](docs/adr/0062-an-npc-s-other-speeds-saves-and-skills-are-its-creature-s-rules-and-its-senses-are-what-it-prints.md)).
+  A creature's skill and save rules read `companion:proficiency`, which only class summons supply themselves (for the
+  rest, Aurora's app does). The `npc` kind contributes it, `= proficiency`, **unbucketed**: in `base` the Steel
+  Defenders' own `-2` "PB removal" zeroes every proficiency they have. It is the one `companion:` stat the kind writes, and an input, not a name
+  on the sheet. `speed:<mode>`, `<skill>:proficiency` and `<ability>:save:proficiency` `startsFrom` the creature's
+  `companion:<same>`; `<skill>`, `<ability>:save` and `perception:passive` derive, reading `…:misc` so content written
+  for a character adds. Senses, defences and languages are prose in every creature and are shown, never parsed.
+  **A sheet section may declare `showWhen`** (a row shows only when that stat, `{stat}` for the row, is non-zero),
+  **`printed`** (a held element's setter as written) and **`description`**; `renderSheetSection` takes a `SheetReader`
+  and decides all three, so the pane still computes nothing. No editor for the new stats: only the walking speed has one.
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
   content comes from first, and show the prose stat blocks as reference rather than parse them.
 - **Driven in the browser build only**, with an origin-private folder standing in for the native folder picker.
@@ -1056,7 +1069,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060 and 0061 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061 and 0062 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

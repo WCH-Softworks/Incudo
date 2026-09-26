@@ -1074,7 +1074,20 @@ the kind machinery is not decorative.*
       back. Leaving `progress` out or recording a removal is **character format 3**, and only those characters move to
       it: a reader of 2 would get them wrong without a word, and gets every other character right. No player character
       derivation moved. Driven in the browser build. **Not done:** speeds other than walking, senses, skills and saves on
-      the sheet; the Tauri window, macOS and Linux.
+      the sheet; the Tauri window, macOS and Linux. *(The first of these was closed by ADR 0062, the next item.)*
+- [x] **An NPC's other speeds, saving throws and skills are on its sheet, and its senses, defences and languages as
+      its creature prints them** ([ADR 0062](./docs/adr/0062-an-npc-s-other-speeds-saves-and-skills-are-its-creature-s-rules-and-its-senses-are-what-it-prints.md)).
+      Measured first: a creature states its fly, climb, swim and burrow speeds (43, 23, 22 and 5 creatures), its skill
+      proficiencies (77) and its save proficiencies (16) as its own rules, written against a proficiency bonus Aurora's
+      app supplies, and states no sense as a rule at all (113 print one). The NPC now supplies that bonus from its
+      challenge rating and publishes each rule under the name a character's content uses (`speed:fly`, `perception`,
+      `dexterity:save`, `perception:passive`), starting where the creature's rule is, so a typed value replaces it. A
+      sheet section may show only the rows that apply (`showWhen`: a stat block lists the skills a creature is
+      proficient in, not eighteen) and text a held element prints (`printed`), shown as written and never parsed.
+      Derived and compared with the print: other speeds 91 agree and 0 differ, skills 113 and 1, saves 8 and 2. No
+      player character derivation moved. Driven in the browser build, including a save reopened with no source.
+      **Not done:** senses as numbers (content states none), an editor for the other speeds and proficiencies, and a
+      fly speed's hover; the Tauri window, macOS and Linux.
 - [ ] **Decide where legendary content comes from, before any UI for it.** *Reworded by ADR 0057's
       measurement:* the corpus declares no `Legendary Action`, `Lair Action` or `Regional Effect` element; seven
       of the 2025 Monster Manual's prose stat blocks mention legendary actions, as text only. The `legendary` kind

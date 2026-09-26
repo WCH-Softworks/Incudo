@@ -106,8 +106,9 @@ already has it.
   creature, as any dangling grant is. Not fixed; upstream's to fix.
 - **The corpus budget does not count these references.** It reads content alone, with no kind, and setter grants
   exist only through a kind. The 3 are visible on the character, not in `corpus.test.ts`.
-- **The creature's other setters** (`skills`, `saves`, `senses`, `languages`, damage immunities) are prose, and
-  still not on the sheet.
+- **~~The creature's other setters are not on the sheet.~~** Done by [ADR 0062](./0062-an-npc-s-other-speeds-saves-and-skills-are-its-creature-s-rules-and-its-senses-are-what-it-prints.md): skills and
+  saves from the creature's rules, and the rest as printed text. As first written: (`skills`, `saves`, `senses`,
+  `languages`, damage immunities) are prose, and still not on the sheet.
 
 ## Alternatives considered
 
