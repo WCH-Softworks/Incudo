@@ -1097,8 +1097,11 @@ the kind machinery is not decorative.*
       the NPC's sheet shows, grouped as the sheet groups it: running the first version offered spell slots and item
       slots, and "Strength" twice. Only a character with one moves to **character format 4**. Every creature in the
       corpus takes one and keeps it through a save opened with no source; no player character derivation moved. Driven
-      in the browser build. **Not done:** reusing a feature on another character (Phase 8's library), features for a
-      player character, conditions or grants on one; the Tauri window, macOS and Linux.
+      in the browser build. A feature never names an ability score, for any kind: the scores have their own editor.
+      **Not done:** reusing a feature on another character (a Phase 8 item, and part of its exit criteria), features
+      for a player character (whose armour class, hit points and speed are worked out, so a feature could only add to
+      them), conditions or grants
+      on one; the Tauri window, macOS and Linux.
 - [ ] **Decide where legendary content comes from, before any UI for it.** *Reworded by ADR 0057's
       measurement:* the corpus declares no `Legendary Action`, `Lair Action` or `Regional Effect` element; seven
       of the 2025 Monster Manual's prose stat blocks mention legendary actions, as text only. The `legendary` kind
@@ -1168,8 +1171,16 @@ and a house-rule overlay still receives upstream fixes.
 *Systems are the container; this is the content inside them.*
 
 - [ ] In-app element editor — homebrew without hand-writing JSON
+- [ ] **Reuse what a user writes across characters.** A custom feature ([ADR 0063](./docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md))
+      belongs to the one character it was written for, and a DM who gives three NPCs "Godspeed" writes it three times.
+      This phase gives the user a library of their own features (and whatever else they author) that any character can
+      pick from, and a way to move a feature already written on a character into it. Its shape is an element's on
+      purpose, so the move is a copy. Not optional: the phase is not done without it.
 - [ ] Validation and linting with good error messages
 - [ ] Export a homebrew source as a publishable index
+
+**Exit criteria:** a feature written once is offered to every character of its system, and a feature already
+written on a character can be moved into the user's library without being typed again.
 
 ---
 

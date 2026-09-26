@@ -64,6 +64,13 @@ Shield, Primary Hand, Caster Level and nine rows of spell slots (the system decl
 "Strength" twice. The sheet is the kind's own statement of what matters to a reader, and gives 39, all of them the
 stat block's.*
 
+**Amended the same day: never the ability scores.** A kind may declare `customFeatures.sections`, the sheet sections by
+id whose stats a feature may name (absent means every section; a name that is no section of the sheet is refused when
+the system loads). 5e's NPC names the stat block, other speeds, saving throws, skills and senses, and not Ability
+Scores, and so would any kind 5e gives features to: the scores are the character's own inputs with an editor of their
+own, and a feature is for the rest of the stat block. A line on a score the kind leaves out is reported and does
+nothing, like any stat off the list.
+
 ### 4. Add is a rule on the feature; set is where the stat starts
 
 The feature is held as an element of the kind's type, id `custom:<id>`, and the derivation seeds it as it seeds a
@@ -90,9 +97,12 @@ The builder shows the same on the feature's line, and clearing the typed value b
 
 - **A feature is one character's.** Reusing Godspeed on another NPC means writing it again. A library of the user's
   own features is ROADMAP Phase 8, and the shape here is an element's on purpose, so moving one there is a copy.
-- **The player character carries none.** Every player character's ability scores are typed bases, so a set on one
-  would always be replaced and always warn; an add would work, but a PC's house rules deserve their own look (which
-  type they are held as, and whether a feature should name a step). One line in `system.json` when decided.
+- **The player character carries none.** First written because a set on a player character's ability scores would
+  always be replaced by the typed base; the scores are out of reach now for every kind (decision 3's amendment), and
+  what is left is smaller: a player character's armour class, hit points and speed are worked out (each `derive`s from
+  armour, hit dice and content), so under decision 3 every line on one could only add. Whether add-only features are
+  what a player character wants, and the type they are held as, are the open questions; one line in `system.json` once
+  they are decided.
 - **No conditions, grants or choices.** A line is a number added or set, always in force. "Only while raging", a
   granted spell or a feature that opens a choice is content, and content is Phase 8's.
 - **No text stats.** A stat whose value is text (a creature's size) cannot be named.

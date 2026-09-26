@@ -431,7 +431,10 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   `customFeatures: { type }`, the element type the feature is held as (5e `npc`: `Companion Trait`, so it is listed
   with the creature's traits; `pc` declares none). **What a line may name is what the kind's sheet shows**
   (`customFeatureStats`), not every labelled stat: that first version offered an NPC spell slots and item slots, found by
-  running it. A feature lives in `character.json`, is held as `custom:<id>` in front of the content, and is never
+  running it. **And never an ability score, for any kind**: `customFeatures.sections` lists the sheet sections a feature
+  may name, and 5e leaves out Ability Scores (they have their own editor). `pc` still declares none: its armour class, hit
+  points and speed all derive, so a feature on a PC could only add, and whether that is wanted is undecided. **Reuse across characters
+  is a Phase 8 item and part of its exit criteria.** A feature lives in `character.json`, is held as `custom:<id>` in front of the content, and is never
   embedded content. The editor's state is `packages/ui/src/custom-features.ts`; `CustomFeatures.tsx` computes nothing.
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
   content comes from first, and show the prose stat blocks as reference rather than parse them.
