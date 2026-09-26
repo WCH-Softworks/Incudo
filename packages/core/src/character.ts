@@ -104,11 +104,12 @@ export interface InventoryEntry {
 export interface Character {
   /**
    * 1 before an inventory existed, 2 since (ADR 0024), 3 for a character that records no `progress` or
-   * records `removedGrants` (ADR 0060, ADR 0061). Readers accept all three. A new character is written at 2,
-   * and only a write that needs 3 raises it (`raiseFormatVersion`): a reader of 2 would silently get either
-   * of those characters wrong, and gets every other one right.
+   * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063). Readers
+   * accept all four. A new character is written at 2, and only a write that needs more raises it
+   * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
+   * right.
    */
-  formatVersion: 1 | 2 | 3;
+  formatVersion: CharacterFormatVersion;
   id: string;
   systemId: string;
   /** Which of the system's character kinds this is: "pc", "npc", … — ADR 0009. */
@@ -225,8 +226,37 @@ export interface Character {
    * records it, because a reader of 2 would give the trait back without a word.
    */
   removedGrants?: ElementId[];
+  /**
+   * Features the user wrote for this character, each adding to or setting stats — ADR 0063. A DM's "Godspeed:
+   * Speed 60" on an NPC. An input like `baseStats`: nothing derives that the DM wrote it. Held as an element of the
+   * type the kind's `customFeatures` names; a kind that names none carries none. Absent when empty; only format 4
+   * records it, because a reader of 3 would drop it without a word.
+   */
+  customFeatures?: CustomFeature[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type CharacterFormatVersion = 1 | 2 | 3 | 4;
+
+/** A feature the user wrote for one character — ADR 0063. */
+export interface CustomFeature {
+  /** Unique within the character. The feature is held as the element `custom:<id>`. */
+  id: string;
+  name: string;
+  description?: string;
+  /** What it does to the character's stats, in order. May be empty: a feature can be only a name. */
+  stats: CustomStatLine[];
+}
+
+/**
+ * One stat a custom feature changes — ADR 0063. `add` contributes like any content's rule; `set` is where the stat
+ * starts, replacing a default, another stat's start and a creature's print, and replaced by a value the user types.
+ */
+export interface CustomStatLine {
+  stat: StatKey;
+  mode: 'add' | 'set';
+  value: number;
 }
 
 /**
@@ -236,13 +266,13 @@ export interface Character {
 export const CHARACTER_FORMAT_VERSION = 2;
 
 /**
- * The newest version a reader accepts, and what a write that needs it raises a character to — ADR 0060.
- * A character with no `progress` or with `removedGrants` is 3; nothing else is.
+ * The newest version a reader accepts — ADR 0060, ADR 0063. A character with no `progress` or with
+ * `removedGrants` is at least 3, one with `customFeatures` is 4, and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 3;
+export const LATEST_CHARACTER_FORMAT_VERSION = 4;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
-export function raiseFormatVersion(character: Character, version: 1 | 2 | 3): Character {
+export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
   return character.formatVersion >= version ? character : { ...character, formatVersion: version };
 }
 
@@ -378,6 +408,35 @@ export function setGrantRemoved(character: Character, elementId: ElementId, remo
   const { removedGrants: _previous, ...rest } = character;
   const written: Character = next.length ? { ...raiseFormatVersion(rest, 3), removedGrants: next } : rest;
   return { ...written, updatedAt: new Date().toISOString() };
+}
+
+/**
+ * Add a custom feature, or replace the one with its id — ADR 0063. Recording one raises the character to format 4.
+ * The feature's position is kept when it is replaced, because the first of two that set one stat is the one used.
+ */
+export function setCustomFeature(character: Character, feature: CustomFeature): Character {
+  const current = character.customFeatures ?? [];
+  const at = current.findIndex((f) => f.id === feature.id);
+  const next = at < 0 ? [...current, feature] : current.map((f, i) => (i === at ? feature : f));
+  return { ...raiseFormatVersion(character, 4), customFeatures: next, updatedAt: new Date().toISOString() };
+}
+
+/**
+ * Remove a custom feature — ADR 0063. Removing the last leaves the field absent and the version where it is:
+ * nothing downgrades one.
+ */
+export function removeCustomFeature(character: Character, featureId: string): Character {
+  const next = (character.customFeatures ?? []).filter((f) => f.id !== featureId);
+  const { customFeatures: _previous, ...rest } = character;
+  return { ...rest, ...(next.length ? { customFeatures: next } : {}), updatedAt: new Date().toISOString() };
+}
+
+/** A new custom feature's id: unique within the character, and never reused while it has any. */
+export function newCustomFeatureId(character: Character): string {
+  const taken = new Set((character.customFeatures ?? []).map((f) => f.id));
+  let id = cryptoRandomId();
+  while (taken.has(id)) id = cryptoRandomId();
+  return id;
 }
 
 /** Whether the user has explicitly said to skip this decision — ADR 0033. */

@@ -23,7 +23,7 @@ import type {
   SelectRule,
   StatRule,
 } from './model.ts';
-import { declaredBlockName } from './model.ts';
+import { declaredBlockName, LayeredElementIndex, MapElementIndex } from './model.ts';
 import type { Character } from './character.ts';
 import { advancementCounts, advancementElementIds, equippedElementIds } from './character.ts';
 import type {
@@ -56,6 +56,13 @@ import {
   type SetterStartNote,
 } from './setter-stats.ts';
 import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
+import {
+  customFeatureEffects,
+  customFeatureElementId,
+  customFeatureStats,
+  type CustomFeatureNote,
+  type CustomSet,
+} from './custom-features.ts';
 import {
   derivePreparation,
   preparationFilters,
@@ -107,6 +114,8 @@ export interface StatStart {
   from: string;
   /** Whether a base the user set replaces it. */
   replaced: boolean;
+  /** The name of the custom feature that set it, when one did — ADR 0063. `from` is then its element's id. */
+  feature?: string;
 }
 
 export interface PendingChoice {
@@ -202,6 +211,11 @@ export interface Problem {
     // A setter a kind reads as where a stat starts, which is not a number or is printed twice — ADR 0057.
     | 'setter-not-a-number'
     | 'setter-stat-conflict'
+    // A feature the user wrote, which names a stat it cannot change, sets one another feature already set, or is
+    // replaced by a value the user typed — ADR 0063. Reported, never a refusal.
+    | 'custom-feature-stat'
+    | 'custom-feature-conflict'
+    | 'custom-feature-replaced'
     // The bag, read through the kind's inventory declaration — ADR 0025, ADR 0023.
     | 'slot-unknown'
     | 'slot-full'
@@ -263,12 +277,20 @@ export interface DeriveOptions {
 export function deriveCharacter(
   recorded: Character,
   system: GameSystem,
-  index: ElementIndex,
+  content: ElementIndex,
   options: DeriveOptions = {},
 ): DerivedCharacter {
   const maxPasses = options.maxPasses ?? MAX_PASSES;
   const problems: Problem[] = [];
   const kind = options.kind ?? resolveCharacterKind(system, recorded.kind);
+
+  // What the user wrote for this character (ADR 0063): each feature is held as an element in front of the content,
+  // under an id content cannot declare, and its sets are starts the stats below read.
+  const custom = customFeatureEffects(recorded, kind);
+  for (const note of custom.notes) problems.push(customFeatureNoteProblem(note, kind));
+  const index: ElementIndex = custom.elements.length
+    ? new LayeredElementIndex([customIndex(custom.elements), content])
+    : content;
 
   // Where the character is on its progression: what it records, or where a creature it chose prints it
   // (ADR 0060). Settled once, before the fixed point, from choices alone: gates read this number, so it
@@ -321,6 +343,8 @@ export function deriveCharacter(
     });
   }
   for (const id of equippedElementIds(character)) chosenIds.add(id);
+  // A custom feature is a seed: the user put it there. Not a pick, so nothing below defers it.
+  for (const element of custom.elements) chosenIds.add(element.id);
 
   // What each recorded choice holds, by the key the pool is recorded under, and which of those
   // elements only a choice put there. Nothing is deferred without a track to inherit: a character
@@ -449,6 +473,7 @@ export function deriveCharacter(
       problems,
       equipment,
       nextStarts,
+      custom.sets,
     );
 
     changed = !sameKeys(active, next) || !sameStats(stats, nextStats);
@@ -544,6 +569,62 @@ interface EngineContext extends RequirementContext, ExpressionContext {}
 type Progressed = Character & { progress: number };
 
 /** A setter that supplied nothing, or supplied a stat twice, as the derivation reports it (ADR 0057). */
+/** A custom feature's elements, as an index the derivation reads in front of the content — ADR 0063. */
+function customIndex(elements: Element[]): ElementIndex {
+  const index = new MapElementIndex();
+  for (const element of elements) index.add(element);
+  return index;
+}
+
+/**
+ * A stat as the kind shows it to a user, for a sentence about it: as a custom feature's picker names it, with its
+ * sheet section when two share a label, or else its declared label.
+ */
+function statLabel(kind: ResolvedCharacterKind, stat: StatKey): string {
+  const key = stat.toLowerCase();
+  return (
+    customFeatureStats(kind).find((s) => s.stat.toLowerCase() === key)?.fullLabel ??
+    kind.stats.find((def) => def.name.toLowerCase() === key)?.label ??
+    stat
+  );
+}
+
+function customFeatureNoteProblem(note: CustomFeatureNote, kind: ResolvedCharacterKind): Problem {
+  const name = note.featureName.trim() || 'An unnamed feature';
+  const stat = note.stat === undefined ? '' : statLabel(kind, note.stat);
+  const elementId = customFeatureElementId(note.featureId);
+  switch (note.kind) {
+    case 'no-custom-features':
+      return {
+        level: 'warning',
+        code: 'custom-feature-stat',
+        elementId,
+        message: `${name} is a feature written for this character, and a ${kind.name} cannot carry one. It changes nothing.`,
+      };
+    case 'unknown-stat':
+      return {
+        level: 'warning',
+        code: 'custom-feature-stat',
+        elementId,
+        message: `${name} changes "${note.stat}", which a ${kind.name} does not have. That line changes nothing.`,
+      };
+    case 'not-settable':
+      return {
+        level: 'warning',
+        code: 'custom-feature-stat',
+        elementId,
+        message: `${name} sets ${stat}, which is worked out from other numbers and can only be added to. That line changes nothing.`,
+      };
+    case 'two-setters':
+      return {
+        level: 'warning',
+        code: 'custom-feature-conflict',
+        elementId,
+        message: `${name} sets ${stat}, and so does ${note.usedFrom}, which comes first and is the one used.`,
+      };
+  }
+}
+
 function setterNoteProblem(note: SetterStartNote): Problem {
   return note.kind === 'not-a-number'
     ? {
@@ -792,6 +873,7 @@ function computeStats(
   problems: Problem[],
   equipment: EquipmentState,
   starts: Map<StatKey, StatStart>,
+  customSets: ReadonlyMap<StatKey, CustomSet>,
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
@@ -911,6 +993,18 @@ function computeStats(
   }
   for (const note of printed.notes) problems.push(setterNoteProblem(note));
 
+  // Then what a feature the user wrote sets (ADR 0063): more specific than what a creature prints, since the DM
+  // wrote it for this character, and less than a value the DM typed, which comes next and replaces it.
+  for (const [key, set] of customSets) {
+    result.set(key, {
+      name: result.get(key)?.name ?? set.stat,
+      value: set.value,
+      text: result.get(key)?.text,
+      contributions: [{ value: set.value, from: set.from }],
+    });
+    starts.set(key, { stat: set.stat, value: set.value, from: set.from, replaced: false, feature: set.featureName });
+  }
+
   // Then the character's own starting values, which replace those defaults (ADR 0014). This
   // is a *base*, not an override: it lands before the contribution loop below, so a race's
   // +2 adds to the score the user bought instead of being discarded by it.
@@ -918,6 +1012,16 @@ function computeStats(
     const lower = key.toLowerCase();
     const start = starts.get(lower);
     if (start) start.replaced = true;
+    // The DM wrote both, so the one that loses is named rather than dropped in silence (ADR 0063).
+    if (start?.feature !== undefined) {
+      const name = start.feature.trim() || 'An unnamed feature';
+      problems.push({
+        level: 'warning',
+        code: 'custom-feature-replaced',
+        elementId: start.from,
+        message: `${name} sets ${statLabel(kind, start.stat)} to ${start.value}, and the ${value} entered for it replaces that.`,
+      });
+    }
     result.set(lower, {
       name: result.get(lower)?.name ?? key,
       value,
@@ -1056,7 +1160,7 @@ function computeStats(
     const key = def.name.toLowerCase();
     const source = result.get(def.startsFrom.toLowerCase());
     if (!source || source.contributions.length === 0) continue;
-    if (printed.values.has(key)) continue;
+    if (printed.values.has(key) || customSets.has(key)) continue;
     const replaced = baseKeys.has(key);
     starts.set(key, { stat: def.name, value: source.value, from: def.startsFrom, replaced });
     if (replaced) continue;

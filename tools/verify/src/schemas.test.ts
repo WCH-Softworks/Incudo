@@ -18,9 +18,11 @@ import {
   formatSchemaErrors,
   MapElementIndex,
   resolveCharacterKind,
+  setCustomFeature,
   validateCharacter,
   validateGameSystem,
   validateManifest,
+  type Character,
   type GameSystem,
 } from '@incudo/core';
 
@@ -265,7 +267,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 4 }, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 5 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -273,6 +275,25 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...pc, removedGrants: ['ID_X'] }, schemas).errors, [
     { path: 'removedGrants', message: 'is recorded only from format 3' },
   ]);
+});
+
+test('only format 4 may record custom features, each with its own id — ADR 0063', async () => {
+  // Fails if the schema refuses the field or a line's shape, or if the referential check stops refusing a feature
+  // in a file that claims 3 (a reader of 3 would drop it) or two features sharing one id.
+  const schemas = await loadSchemas();
+  const npc = createCharacter('dnd5e', 'npc', { name: 'Vesper', progress: 1 });
+  const godspeed = { id: 'g', name: 'Godspeed', description: 'Fast.', stats: [{ stat: 'speed', mode: 'set' as const, value: 60 }] };
+  const four = setCustomFeature(npc, godspeed);
+  assert.equal(four.formatVersion, 4);
+  assert.deepEqual(validateCharacter(four, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...four, formatVersion: 3 }, schemas).errors, [
+    { path: 'customFeatures', message: 'is recorded only from format 4' },
+  ]);
+  assert.deepEqual(validateCharacter({ ...four, customFeatures: [godspeed, godspeed] }, schemas).errors.map((e) => e.path), [
+    'customFeatures[1].id',
+  ]);
+  const badMode = { ...four, customFeatures: [{ ...godspeed, stats: [{ stat: 'speed', mode: 'double', value: 2 }] }] };
+  assert.notDeepEqual(validateCharacter(badMode as unknown as Character, schemas).errors, []);
 });
 
 test('an inventory validates as instances, and a duplicate instance id does not', async () => {
@@ -293,8 +314,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 4 }, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 5 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4' },
   ]);
 
   // The check no JSON Schema can express: an instance id is an address, so two entries

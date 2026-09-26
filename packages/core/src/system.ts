@@ -1130,8 +1130,20 @@ export interface CharacterKindDef {
    * than merged along an `extends` chain, like `inventory`. A kind without one publishes no prepared lists.
    */
   preparation?: PreparationDef;
+  /**
+   * Whether a character of this kind may carry features its user writes, and the element type each is held as —
+   * ADR 0063. Replaced rather than merged along an `extends` chain, like `preparation`. A kind without it carries
+   * none, and a feature recorded on such a character is reported and does nothing.
+   */
+  customFeatures?: CustomFeaturesDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
+}
+
+/** How a kind holds the features its user writes — ADR 0063. */
+export interface CustomFeaturesDef {
+  /** The element type a custom feature is held as, so the sheet lists it where that type is listed. */
+  type: ElementType;
 }
 
 /** A {@link CharacterKindDef} with its `extends` chain applied and defaults filled in. */
@@ -1166,6 +1178,8 @@ export interface ResolvedCharacterKind {
   repeatableSetter?: string;
   /** Which blocks prepare a list, or nothing at all — ADR 0046. */
   preparation?: PreparationDef;
+  /** Whether characters of this kind may carry features their user writes, and as what — ADR 0063. */
+  customFeatures?: CustomFeaturesDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
   buildSteps: BuildStepDef[];
@@ -1349,6 +1363,7 @@ export function resolveCharacterKind(
   let inventory: InventoryDef | undefined;
   let repeatableSetter: string | undefined;
   let preparation: PreparationDef | undefined;
+  let customFeatures: CustomFeaturesDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
@@ -1372,6 +1387,7 @@ export function resolveCharacterKind(
     if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.repeatableSetter !== undefined) repeatableSetter = layer.repeatableSetter;
     if (layer.preparation !== undefined) preparation = layer.preparation;
+    if (layer.customFeatures !== undefined) customFeatures = layer.customFeatures;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
@@ -1396,6 +1412,7 @@ export function resolveCharacterKind(
     inventory,
     repeatableSetter,
     preparation,
+    customFeatures,
     candidateNotes,
     buildSteps,
     sheet,

@@ -366,6 +366,15 @@
         "contributions": { "type": "array", "items": { "$ref": "#/$defs/contribution" } },
         "inventory": { "$ref": "#/$defs/inventory" },
         "preparation": { "$ref": "#/$defs/preparation" },
+        "customFeatures": {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "description": "Whether a character of this kind may carry features its user writes, each adding to or setting the kind's labelled stats, and the element type each is held as, so the sheet lists it where that type is listed (ADR 0063). A kind without it carries none. Replaced rather than merged along an extends chain.",
+          "properties": {
+            "type": { "type": "string", "minLength": 1 }
+          }
+        },
         "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },
         "repeatableSetter": {
           "type": "string",

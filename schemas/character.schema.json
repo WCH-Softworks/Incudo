@@ -11,8 +11,8 @@
     "$schema": { "type": "string" },
 
     "formatVersion": {
-      "enum": [1, 2, 3],
-      "description": "1 is a character from before inventories existed; 2 is what a writer writes (ADR 0024). It moved here and not for baseStats, advancement or generation because a reader that cannot see an `inventory` does not merely miss a field: it re-collects content.json without the bag's elements, and the save silently stops being self-contained. 3 is a character that records no `progress` or records `removedGrants` (ADR 0060, ADR 0061), and only those: a reader of 2 would read a missing progress as nothing and give back a trait the user removed, so the number moves for them and for nothing else. A version below 3 must record `progress`."
+      "enum": [1, 2, 3, 4],
+      "description": "1 is a character from before inventories existed; 2 is what a writer writes (ADR 0024). It moved here and not for baseStats, advancement or generation because a reader that cannot see an `inventory` does not merely miss a field: it re-collects content.json without the bag's elements, and the save silently stops being self-contained. 3 is a character that records no `progress` or records `removedGrants` (ADR 0060, ADR 0061), and only those: a reader of 2 would read a missing progress as nothing and give back a trait the user removed, so the number moves for them and for nothing else. A version below 3 must record `progress`. 4 is a character that records `customFeatures` (ADR 0063), which a reader of 3 would drop without a word."
     },
     "id": { "type": "string", "minLength": 1 },
     "systemId": {
@@ -35,6 +35,34 @@
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "description": "Elements a held element's declared setter names, which the user took away (ADR 0061): a DM's creature without one of its traits. It cancels only what that holder gives, by its setter or its own grant of the same id; the element chosen, or granted by anything else, is still held. An INPUT, like declinedDecisions. Absent when empty; format 3 only."
+    },
+
+    "customFeatures": {
+      "type": "array",
+      "description": "Features the user wrote for this character (ADR 0063): a DM's \"Godspeed: Speed 60\". Each is held as an element of the type the character kind's `customFeatures` names, and changes stats by lines that either add, like any content's rule, or set where the stat starts, replacing a default and a creature's print and replaced by a value the user types. An INPUT, like baseStats. Absent when empty; format 4 only.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "stats"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "description": "Unique within the character; the feature is held as the element `custom:<id>`." },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "stats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["stat", "mode", "value"],
+              "additionalProperties": false,
+              "properties": {
+                "stat": { "type": "string", "minLength": 1 },
+                "mode": { "enum": ["add", "set"] },
+                "value": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
     },
 
     "sources": {

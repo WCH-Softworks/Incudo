@@ -99,6 +99,17 @@ function checkCharacterReferences(character: Character): SchemaError[] {
   if (character.formatVersion < 3 && character.removedGrants !== undefined) {
     errors.push({ path: 'removedGrants', message: 'is recorded only from format 3' });
   }
+  // A custom feature is dropped by a reader of 3 (ADR 0063), and two with one id are one address for two features.
+  if (character.formatVersion < 4 && character.customFeatures !== undefined) {
+    errors.push({ path: 'customFeatures', message: 'is recorded only from format 4' });
+  }
+  const featureIds = new Set<string>();
+  for (const [i, feature] of (character.customFeatures ?? []).entries()) {
+    if (featureIds.has(feature.id)) {
+      errors.push({ path: `customFeatures[${i}].id`, message: `"${feature.id}" is already used by another feature` });
+    }
+    featureIds.add(feature.id);
+  }
   const seen = new Set<string>();
   const inventory = character.inventory ?? [];
   for (let i = 0; i < inventory.length; i++) {
