@@ -274,9 +274,10 @@ test('a monster keeps the armour class its stat block says, and derives nothing'
       { kind },
     );
     assert.equal(built.stats.get('ac')?.value, 13, `${kindId} reads the creature's own rule`);
-    // No inventory, so no slot to ask about, and no contribution to make one up.
+    // No inventory, so no slot to ask about, and no contribution to make one up. (The kind does contribute
+    // the creature's proficiency bonus since ADR 0062, and nothing about armour class.)
     assert.equal(kind.inventory, undefined);
-    assert.deepEqual(kind.contributions, []);
+    assert.deepEqual(kind.contributions.filter((c) => c.stat.toLowerCase().startsWith('ac')), []);
     assert.equal(derived.stats.get('ac:armored:armor'), undefined);
   }
 });

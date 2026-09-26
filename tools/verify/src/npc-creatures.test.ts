@@ -26,13 +26,21 @@ import { fileURLToPath } from 'node:url';
 
 import {
   BundleElementIndex,
+  collectDeclaredBlocks,
   deriveCharacter,
   readCharacterContainer,
   readSetterNumber,
+  renderSheetSection,
+  resolveCharacterKind,
+  sheetSectionIsEmpty,
   validateGameSystem,
+  type DerivedCharacter,
   type Element,
   type ElementIndex,
   type GameSystem,
+  type ResolvedCharacterKind,
+  type SheetSectionRendering,
+  type StatDef,
 } from '@incudo/core';
 import { CharacterBuilder, newCharacterOfKind, packCharacter } from '@incudo/ui';
 
@@ -387,3 +395,245 @@ test("every creature's named traits, actions and reactions can be removed, and i
   assert.deepEqual(embedded, [], 'a removed element is not embedded');
   assert.deepEqual(reopenedDiffers, [], 'the save derives what the builder did');
 });
+
+// ADR 0062: a creature's other speeds, saving throws and skills, stated as its own `companion:*` rules, under
+// the NPC's own names; its senses, defences and languages as the text it prints.
+
+/** The NPC's stats that start where a creature's rule is, keyed by the rule they start from. */
+function startsFromAll(system: GameSystem): Map<string, StatDef> {
+  const npc = resolveCharacterKind(system, 'npc');
+  return new Map(npc.stats.filter((s) => s.startsFrom !== undefined).map((s) => [s.startsFrom!.toLowerCase(), s]));
+}
+
+/** Every rendering of an NPC's sheet, keyed by section id, as the sheet pane draws it. */
+function sheetOf(state: { derived: DerivedCharacter; kind: ResolvedCharacterKind }): Map<string, SheetSectionRendering> {
+  const { derived, kind } = state;
+  const reader = { statValue: (key: string) => derived.stats.get(key.toLowerCase())?.value, elements: derived.elements };
+  const blocks = collectDeclaredBlocks(derived.elements);
+  return new Map(kind.sheet.sections.flatMap((s) => renderSheetSection(s, blocks, reader)).map((r) => [r.id, r]));
+}
+
+/** A section's stats before `showWhen` chose among them: every row it could show. */
+function sectionStats(kind: ResolvedCharacterKind, id: string): string[] {
+  return kind.sheet.sections.find((s) => s.id === id)!.stats!;
+}
+
+test("every creature's other speeds, saving throws and skills are what its own rules state, under the NPC's names", { skip }, async (t) => {
+  // The NPC's name for a creature's `companion:<name>` rule is `<name>`, and that is what is held here, from
+  // content's side: a rule the kind has no starting stat for is reported, one it has must read the same. Fails if a
+  // stat loses its `startsFrom` (the creature's climb speed reads 0), if the kind stops contributing
+  // `companion:proficiency` (every skill and save the creature is proficient in reads a bonus of 0), or if a
+  // skill's derivation stops reading its proficiency (the rule and the NPC's stat still agree; the bonus does not).
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const read = startsFromAll(system);
+  // Only stats that start somewhere: `initiative` is the system's Dexterity modifier and reads no rule, so a
+  // creature's `companion:initiative` is reported with the rest nothing reads.
+  const declared = new Map(kind(system).stats.filter((s) => s.startsFrom).map((s) => [s.name.toLowerCase(), s]));
+  const own = (rule: string) => declared.get(rule.replace(/^companion:/, ''));
+  // What the kind supplies to the creature's rules rather than reads from them: its proficiency bonus.
+  const supplied = new Set(kind(system).contributions.map((c) => c.stat.toLowerCase()));
+  assert.ok(supplied.size > 0, 'the kind supplies what the creature calls its proficiency bonus');
+  const wrong: string[] = [];
+  const noBonus: string[] = [];
+  const unread = new Map<string, number>();
+  const stating = new Map<string, number>();
+  for (const creature of creatures) {
+    const derived = npcOn(system, elements, creature).getState().derived;
+    const proficiency = derived.stats.get('proficiency')!.value;
+    // What the creature states: its own rules and those of what it grants (a 2024 Primal Companion's bond
+    // adds proficiency to every save and skill), as the derivation collected them.
+    const stated = new Set(
+      [...derived.stats.values()]
+        .filter((s) => s.name.toLowerCase().startsWith('companion:') && s.contributions.length > 0)
+        .map((s) => s.name.toLowerCase()),
+    );
+    for (const name of stated) {
+      if (supplied.has(name)) continue;
+      const stat = own(name);
+      if (!stat) {
+        unread.set(name, (unread.get(name) ?? 0) + 1);
+        continue;
+      }
+      stating.set(stat.name, (stating.get(stat.name) ?? 0) + 1);
+      const rule = derived.stats.get(name)!;
+      const actual = derived.stats.get(stat.name)?.value;
+      if (actual !== rule.value) wrong.push(`${creature.id} ${stat.name}: its rule says ${rule.value}, derives ${actual}`);
+    }
+    for (const [name, stat] of read) {
+      if (stated.has(name)) continue;
+      const actual = derived.stats.get(stat.name)?.value ?? 0;
+      if (actual !== (stat.default ?? 0)) wrong.push(`${creature.id} ${stat.name}: states nothing, derives ${actual}`);
+    }
+    // What the creature's own rules call its proficiency bonus is its NPC's, from the challenge rating.
+    for (const rule of creature.rules) {
+      if (rule.kind !== 'stat' || rule.value.kind !== 'ref' || rule.value.stat.toLowerCase() !== 'companion:proficiency') continue;
+      const stat = own(rule.name.toLowerCase());
+      if (!stat) continue;
+      const value = derived.stats.get(stat.name)?.value ?? 0;
+      if (value < proficiency) noBonus.push(`${creature.id} ${stat.name}: ${value} with a proficiency bonus of ${proficiency}`);
+    }
+  }
+  const tally = (pattern: RegExp) =>
+    [...stating].filter(([name]) => pattern.test(name)).map(([name, n]) => `${name} ${n}`).join(', ');
+  t.diagnostic(`other speeds stated: ${tally(/^speed:/)}`);
+  t.diagnostic(`saving throw proficiencies stated: ${tally(/:save:proficiency$/)}`);
+  t.diagnostic(`skill proficiencies stated: ${tally(/^(?!.*:save:).*:proficiency$/)}`);
+  t.diagnostic(`creature rules no NPC stat reads: ${[...unread].map(([name, n]) => `${name} (${n})`).join(', ')}`);
+  assert.ok([...stating.keys()].some((name) => name.startsWith('speed:')), 'the corpus has a creature with another speed');
+  assert.ok([...stating.keys()].some((name) => name.endsWith(':save:proficiency')), 'and one with a saving throw');
+  assert.deepEqual(wrong, [], 'each is what the creature states, and 0 where it states nothing');
+  assert.deepEqual(noBonus, [], "a creature's proficiency is at least its NPC's proficiency bonus");
+});
+
+test("a creature's printed speeds, saving throws, skills and passive Perception are compared with what its NPC derives", { skip }, async (t) => {
+  // Reported, not asserted beyond "mostly": the rules are content's statement and the print is display text,
+  // parsed here only to count agreement; the kind never reads it. A kind that stopped reading the rules, or
+  // read a skill against the wrong ability, would agree with almost none.
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const kind = resolveCharacterKind(system, 'npc');
+  const byLabel = new Map(kind.stats.filter((s) => s.label).map((s) => [s.label!.toLowerCase(), s.name]));
+  const speeds = new Set(sectionStats(kind, 'speeds'));
+  const saves = new Map(sectionStats(kind, 'saves').map((stat) => [stat.slice(0, 3), stat]));
+  const skills = new Set(sectionStats(kind, 'skills'));
+  const tally = new Map<string, { agree: number; differ: string[]; unread: number }>();
+  const compare = (family: string, creature: Element, derived: DerivedCharacter, stat: string | undefined, printed: number) => {
+    const row = tally.get(family) ?? { agree: 0, differ: [], unread: 0 };
+    tally.set(family, row);
+    if (stat === undefined) {
+      row.unread++;
+      return;
+    }
+    const value = derived.stats.get(stat)?.value ?? 0;
+    if (value === printed) row.agree++;
+    else row.differ.push(`${creature.id} ${stat} (${printed} printed, ${value} derived)`);
+  };
+  for (const creature of creatures) {
+    const derived = npcOn(system, elements, creature).getState().derived;
+    for (const match of (creature.setters['speed']?.value ?? '').matchAll(/(?:^|[,;])\s*([a-z]+)\s+(\d+)\s*ft/gi)) {
+      const stat = `speed:${match[1]!.toLowerCase()}`;
+      compare('other speeds', creature, derived, speeds.has(stat) ? stat : undefined, Number(match[2]));
+    }
+    for (const match of (creature.setters['skills']?.value ?? '').matchAll(/([A-Za-z][A-Za-z ]*?)\s*([+-])\s*(\d+)\s*(?=,|;|$)/g)) {
+      const stat = byLabel.get(match[1]!.trim().toLowerCase());
+      compare('skills', creature, derived, stat && skills.has(stat) ? stat : undefined, Number(match[2]! + match[3]!));
+    }
+    for (const match of (creature.setters['saves']?.value ?? '').matchAll(/\b([A-Za-z]{3})\s*([+-])\s*(\d+)\s*(?=,|;|$)/g)) {
+      compare('saving throws', creature, derived, saves.get(match[1]!.toLowerCase()), Number(match[2]! + match[3]!));
+    }
+    const passive = /passive perception\s+(\d+)\s*(?=,|;|$)/i.exec(creature.setters['senses']?.value ?? '');
+    if (passive) compare('passive Perception', creature, derived, 'perception:passive', Number(passive[1]));
+  }
+  for (const [family, row] of tally) {
+    const detail = row.differ.length ? ` — ${row.differ.join('; ')}` : '';
+    t.diagnostic(`${family}: ${row.agree} agree with the print, ${row.differ.length} differ, ${row.unread} printed that no NPC stat reads${detail}`);
+  }
+  for (const [family, row] of tally) assert.ok(row.agree > row.differ.length, `${family} mostly agrees with the print`);
+});
+
+test("an NPC's sheet shows its creature's other speeds, proficient saves and skills, and what it prints", { skip }, async (t) => {
+  // Fails if a section loses `showWhen` (a creature with no fly speed lists one of 0, and all eighteen skills),
+  // if `{stat}` stops being substituted (every skill is left out), or if `printed` stops reading the creature.
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const wrong: string[] = [];
+  const printedTotals = new Map<string, number>();
+  for (const creature of creatures) {
+    const state = npcOn(system, elements, creature).getState();
+    const { derived, kind } = state;
+    const sheet = sheetOf(state);
+    const nonZero = (stat: string) => (derived.stats.get(stat)?.value ?? 0) !== 0;
+    const expected: Record<string, string[]> = {
+      speeds: sectionStats(kind, 'speeds').filter(nonZero),
+      saves: sectionStats(kind, 'saves').filter((s) => nonZero(`${s}:proficiency`)),
+      skills: sectionStats(kind, 'skills').filter((s) => nonZero(`${s}:proficiency`)),
+    };
+    for (const [id, stats] of Object.entries(expected)) {
+      const shown = sheet.get(id)!.stats;
+      if (shown.join() !== stats.join()) wrong.push(`${creature.id} ${id}: shows ${shown.join()}, holds ${stats.join()}`);
+    }
+    for (const id of ['senses', 'defences']) {
+      const declared = kind.sheet.sections.find((s) => s.id === id)!.printed!;
+      const lines = declared.flatMap((p) => {
+        const setter = Object.entries(creature.setters).find(([name]) => name.toLowerCase() === p.setter.toLowerCase());
+        const text = setter?.[1].value.trim();
+        return text ? [`${p.label}: ${text}`] : [];
+      });
+      const shown = sheet.get(id)!.printed.map((line) => `${line.label}: ${line.text}`);
+      if (shown.join('\n') !== lines.join('\n')) wrong.push(`${creature.id} ${id}: shows ${shown.join(' | ')}`);
+      for (const line of sheet.get(id)!.printed) printedTotals.set(line.label, (printedTotals.get(line.label) ?? 0) + 1);
+    }
+  }
+  t.diagnostic(`printed lines across ${creatures.length} creatures: ${[...printedTotals].map(([label, n]) => `${label} ${n}`).join(', ')}`);
+  assert.ok((printedTotals.get(kind(system).sheet.sections.find((s) => s.id === 'senses')!.printed![0]!.label) ?? 0) > 0, 'some creature prints its senses');
+  assert.deepEqual(wrong, [], 'each section shows what the NPC holds, and each printed line is the text as written');
+
+  // An NPC from nothing has no other speed, no proficiency and prints nothing: those sections are empty and
+  // not drawn, and its passive Perception is still 10 plus its Wisdom modifier.
+  const blank = new CharacterBuilder(newCharacterOfKind(system, 'npc'), system, elements).getState();
+  const sheet = sheetOf(blank);
+  for (const id of ['speeds', 'saves', 'skills', 'defences']) {
+    assert.equal(sheetSectionIsEmpty(sheet.get(id)!, blank.derived.elements), true, `${id} is empty for an NPC from nothing`);
+  }
+  assert.deepEqual(sheet.get('senses')!.stats, ['perception:passive']);
+  assert.equal(blank.derived.stats.get('perception:passive')?.value, 10);
+
+  // A legendary creature is an NPC with more steps, and shows the same.
+  const creature = creatures.find((c) => sheetOf(npcOn(system, elements, c).getState()).get('skills')!.stats.length > 0)!;
+  const legendary = new CharacterBuilder(newCharacterOfKind(system, 'legendary'), system, elements);
+  legendary.choose('build/creature', [creature.id]);
+  const legendarySheet = sheetOf(legendary.getState());
+  const npcSheet = sheetOf(npcOn(system, elements, creature).getState());
+  for (const id of ['speeds', 'saves', 'skills', 'senses', 'defences']) {
+    assert.deepEqual(legendarySheet.get(id), npcSheet.get(id), `a legendary creature's ${id} are an NPC's`);
+  }
+});
+
+test("a typed speed or proficiency replaces the creature's, and the NPC reopens with the same sheet and no source", { skip }, async () => {
+  // Fails if a typed value adds to the creature's (the speed reads the two summed), or if the save does not
+  // embed what the sheet prints (the reopened NPC prints nothing).
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const npc = kind(system);
+  const speeds = sectionStats(npc, 'speeds');
+  const skills = sectionStats(npc, 'skills');
+  const holds = (derived: DerivedCharacter, stat: string) => (derived.stats.get(stat)?.value ?? 0) > 0;
+  // Any creature with another speed and a skill, found by what it derives.
+  const creature = creatures.find((c) => {
+    const derived = npcOn(system, elements, c).getState().derived;
+    return speeds.some((s) => holds(derived, s)) && skills.some((s) => holds(derived, `${s}:proficiency`));
+  })!;
+  const b = npcOn(system, elements, creature);
+  const before = b.getState().derived;
+  const speed = speeds.find((s) => holds(before, s))!;
+  const skill = skills.find((s) => holds(before, `${s}:proficiency`))!;
+  const stated = before.stats.get(speed)!.value;
+
+  b.setBaseStat(speed, stated + 15);
+  assert.equal(b.getState().derived.stats.get(speed)?.value, stated + 15, "a typed speed replaces the creature's");
+  b.setBaseStat(`${skill}:proficiency`, 0);
+  assert.equal(b.getState().derived.stats.get(`${skill}:proficiency`)?.value, 0, 'a typed 0 takes the proficiency away');
+  assert.equal(sheetOf(b.getState()).get('skills')!.stats.includes(skill), false, 'and the sheet stops listing it');
+
+  const character = b.getState().character;
+  const { container } = readCharacterContainer(packCharacter(character, system, elements, { generator: 'test' }).files);
+  const offline = new BundleElementIndex(container!.content.elements);
+  const reopened = new CharacterBuilder(container!.character, system, offline).getState();
+  const original = b.getState();
+  const reopenedSheet = sheetOf(reopened);
+  for (const [id, rendering] of sheetOf(original)) {
+    assert.deepEqual(reopenedSheet.get(id), rendering, `${id} after reopening with no source`);
+    for (const stat of rendering.stats) {
+      assert.equal(reopened.derived.stats.get(stat)?.value, original.derived.stats.get(stat)?.value, `${stat} after reopening`);
+    }
+  }
+});
+
+function kind(system: GameSystem): ResolvedCharacterKind {
+  return resolveCharacterKind(system, 'npc');
+}
