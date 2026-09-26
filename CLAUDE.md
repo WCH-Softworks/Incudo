@@ -349,7 +349,7 @@ be spent on any class the character qualifies for (ADR 0036). **It starts any ki
 **NPC starts from a creature's printed stat block** (ADR 0057), its challenge rating, armour class, hit points and
 speed included, any of which the DM may replace, and what the creature gives it may be taken away (ADRs 0059-0061). Its
 sheet shows the creature's other speeds, proficient saves and skills, and its senses, defences and languages as printed
-(ADR 0062).
+(ADR 0062). A DM may write features of an NPC's own that add to or set its numbers (ADR 0063).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -394,6 +394,7 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   `removedGrants` is `formatVersion` 3 (`raiseFormatVersion`, `LATEST_CHARACTER_FORMAT_VERSION`); `createCharacter`
   still writes 2, and only `setProgress(…, undefined)`, `createCharacter({ progress: null })` and `setGrantRemoved` raise
   one. Nothing downgrades. The validator refuses either field below 3. The frozen importer and every PC are untouched.
+  *(Since ADR 0063 a character that records `customFeatures` is **4**, and `LATEST_CHARACTER_FORMAT_VERSION` is 4.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them). Chosen, or granted by
@@ -421,6 +422,17 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   **A sheet section may declare `showWhen`** (a row shows only when that stat, `{stat}` for the row, is non-zero),
   **`printed`** (a held element's setter as written) and **`description`**; `renderSheetSection` takes a `SheetReader`
   and decides all three, so the pane still computes nothing. No editor for the new stats: only the walking speed has one.
+- **A DM may write a feature of the NPC's own, "Godspeed: Speed 60"** ([ADR 0063](docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md)).
+  `Character.customFeatures` (format **4**, only when present): a name, a description and lines that each **add** to a
+  stat (an unbucketed rule on the feature) or **set** where it starts. A set sits after a creature's print and before a
+  typed base: `default` → `startsFrom` → printed setter → custom set → `baseStats`, contributions adding to whichever
+  is in force. A typed value still wins, and says so three times: `custom-feature-replaced` in the derivation, the
+  feature line's status, and the entry step's row (`BudgetRow.featureNote`). A kind opts in with
+  `customFeatures: { type }`, the element type the feature is held as (5e `npc`: `Companion Trait`, so it is listed
+  with the creature's traits; `pc` declares none). **What a line may name is what the kind's sheet shows**
+  (`customFeatureStats`), not every labelled stat: that first version offered an NPC spell slots and item slots, found by
+  running it. A feature lives in `character.json`, is held as `custom:<id>` in front of the content, and is never
+  embedded content. The editor's state is `packages/ui/src/custom-features.ts`; `CustomFeatures.tsx` computes nothing.
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
   content comes from first, and show the prose stat blocks as reference rather than parse them.
 - **Driven in the browser build only**, with an origin-private folder standing in for the native folder picker.
@@ -1069,7 +1081,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061 and 0062 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062 and 0063 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
@@ -1212,7 +1224,8 @@ run as proof the gating is right.
 **A bag is a list of instances, and the container embeds all of it** (ADR 0024). `Character`
 gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
 after `baseStats`, `advancement` and `generation` each stayed at 1. Readers accept both. *(Readers accept 3 too since
-ADR 0060, which only a character with no `progress` or with `removedGrants` is written at.)* Three
+ADR 0060, which only a character with no `progress` or with `removedGrants` is written at, and 4 since ADR 0063,
+which only a character with `customFeatures` is.)* Three
 things in the shape are measurements, not taste: an entry is an **instance** (one save carries two
 greatswords with different enchantments, so an element-keyed bag loses a real character's items);
 `slot` is an **override** and normally absent (the saves' `location` agrees with the element's own

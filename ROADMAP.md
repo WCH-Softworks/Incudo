@@ -1087,7 +1087,18 @@ the kind machinery is not decorative.*
       Derived and compared with the print: other speeds 91 agree and 0 differ, skills 113 and 1, saves 8 and 2. No
       player character derivation moved. Driven in the browser build, including a save reopened with no source.
       **Not done:** senses as numbers (content states none), an editor for the other speeds and proficiencies, and a
-      fly speed's hover; the Tauri window, macOS and Linux.
+      fly speed's hover; the Tauri window, macOS and Linux. *(The editor was answered by ADR 0063, the next item.)*
+- [x] **A DM may write a feature of an NPC's own that adds to or sets its numbers**
+      ([ADR 0063](./docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md)). Typing a number (ADR 0059)
+      gives it no reason; a feature does: "Godspeed", Speed set to 60, listed with the creature's traits and saved with
+      the character. Each line adds to a stat, as content does, or sets where it starts, replacing what the creature
+      states, with what the NPC holds still adding to it. A typed value still wins, and the entry step, the feature's
+      line and the problems list each say what it replaced; clearing it gives the feature's back. A line may name what
+      the NPC's sheet shows, grouped as the sheet groups it: running the first version offered spell slots and item
+      slots, and "Strength" twice. Only a character with one moves to **character format 4**. Every creature in the
+      corpus takes one and keeps it through a save opened with no source; no player character derivation moved. Driven
+      in the browser build. **Not done:** reusing a feature on another character (Phase 8's library), features for a
+      player character, conditions or grants on one; the Tauri window, macOS and Linux.
 - [ ] **Decide where legendary content comes from, before any UI for it.** *Reworded by ADR 0057's
       measurement:* the corpus declares no `Legendary Action`, `Lair Action` or `Regional Effect` element; seven
       of the 2025 Monster Manual's prose stat blocks mention legendary actions, as text only. The `legendary` kind

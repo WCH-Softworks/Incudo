@@ -107,6 +107,9 @@ argument. The text comes from the element the save embeds (ADR 0012), so it is t
   can be typed only by something that writes a base, which the builder offers nowhere yet. An NPC from nothing has no
   other speed and no proficiency. The stats start where a typed base would replace them, so an editor needs no change
   to the kind.
+  *(Since [ADR 0063](./0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md) a
+  feature the DM writes can set another speed and add to a save or a skill, with its reason on the sheet. A proficiency
+  still cannot be switched on, since `…:proficiency` is not a stat the sheet shows.)*
 - **Hovering** ("fly 60 ft. (hover)") is in the print only, and the NPC's fly speed does not say it.
 - **Rules nothing reads, reported**: `companion:<name>:misc` (one UA Wildfire Spirit's Nature, and three saves its
   Soul Bond trait adds), `companion:initiative` (1; the NPC's initiative is the system's Dexterity modifier), and the
