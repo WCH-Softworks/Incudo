@@ -1144,6 +1144,12 @@ export interface CharacterKindDef {
 export interface CustomFeaturesDef {
   /** The element type a custom feature is held as, so the sheet lists it where that type is listed. */
   type: ElementType;
+  /**
+   * The sheet sections, by id, whose stats a custom feature may name. Absent means every section. 5e leaves out the
+   * ability scores: they are the character's own inputs with an editor of their own, and a feature is for the stat
+   * block's other numbers.
+   */
+  sections?: string[];
 }
 
 /** A {@link CharacterKindDef} with its `extends` chain applied and defaults filled in. */

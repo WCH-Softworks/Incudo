@@ -370,9 +370,14 @@
           "type": "object",
           "required": ["type"],
           "additionalProperties": false,
-          "description": "Whether a character of this kind may carry features its user writes, each adding to or setting the kind's labelled stats, and the element type each is held as, so the sheet lists it where that type is listed (ADR 0063). A kind without it carries none. Replaced rather than merged along an extends chain.",
+          "description": "Whether a character of this kind may carry features its user writes, each adding to or setting a stat its sheet shows, and the element type each is held as, so the sheet lists it where that type is listed (ADR 0063). A kind without it carries none. Replaced rather than merged along an extends chain.",
           "properties": {
-            "type": { "type": "string", "minLength": 1 }
+            "type": { "type": "string", "minLength": 1 },
+            "sections": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "description": "The sheet sections, by id, whose stats a custom feature may name (ADR 0063). Absent means every section."
+            }
           }
         },
         "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },

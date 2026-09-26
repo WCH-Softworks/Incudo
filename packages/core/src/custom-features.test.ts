@@ -192,6 +192,21 @@ test('two stats sharing a label are told apart by their sheet section, in the pi
   assert.match(derived.problems.find((p) => p.code === 'custom-feature-stat')!.message, /Odd sets Guard \(Saves\), which is worked out/);
 });
 
+test('a kind may limit a feature to some sheet sections, and a line on another does nothing', () => {
+  // Fails if `customFeatures.sections` is ignored (guard is offered and set to 30).
+  const limited = system({ type: 'Knack', sections: ['moves'] });
+  limited.characterKinds[0]!.sheet = {
+    sections: [
+      { id: 'scores', label: 'Scores', stats: ['guard'] },
+      { id: 'moves', label: 'Moves', stats: ['stride'] },
+    ],
+  };
+  assert.deepEqual(customFeatureStats(resolveCharacterKind(limited, 'keeper')).map((s) => s.stat), ['stride']);
+  const derived = deriveCharacter(keeper([feature('a', 'Odd', [{ stat: 'guard', mode: 'set', value: 30 }])]), limited, index);
+  assert.equal(value(derived, 'guard'), 17);
+  assert.deepEqual(codes(derived), ['custom-feature-stat']);
+});
+
 test('a kind that carries no custom features holds none, and says why', () => {
   // Fails if a feature is held regardless of the kind (stride 65).
   const derived = deriveCharacter(keeper([feature('a', 'Fleet', [{ stat: 'stride', mode: 'add', value: 15 }])]), system(null), index);

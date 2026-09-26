@@ -413,7 +413,7 @@
         { "stat": "companion:proficiency", "value": { "kind": "ref", "stat": "proficiency" } }
       ],
 
-      "customFeatures": { "type": "Companion Trait" },
+      "customFeatures": { "type": "Companion Trait", "sections": ["header", "speeds", "saves", "skills", "senses"] },
 
       "setterStats": [
         { "types": ["Companion"], "setter": "strength", "stat": "strength" },

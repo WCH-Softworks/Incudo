@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import {
   BundleElementIndex,
   collectDeclaredBlocks,
+  customFeatureStats,
   deriveCharacter,
   readCharacterContainer,
   readSetterNumber,
@@ -648,6 +649,12 @@ test("a feature the DM writes sets or adds to every creature's numbers, a typed 
   const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
   const npc = kind(system);
   assert.ok(npc.customFeatures, 'the 5e NPC may carry features its DM writes');
+  // Not the ability scores, for any kind: they are the character's own inputs, with an editor of their own. Read off
+  // the kind's Ability Scores step rather than spelled here. Fails if the kind's `sections` stops leaving them out.
+  const scores = new Set(npc.buildSteps.find((s) => s.id === 'abilities')!.budget!.targets.map((s) => s.toLowerCase()));
+  const offered = customFeatureStats(npc).map((s) => s.stat.toLowerCase());
+  assert.deepEqual(offered.filter((s) => scores.has(s)), [], 'no ability score is offered');
+  assert.ok(offered.includes('speed'), 'the stat block is');
   const otherSpeeds = sectionStats(npc, 'speeds');
   const wrong: string[] = [];
   let moved = 0;

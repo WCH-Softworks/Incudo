@@ -277,6 +277,19 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   ]);
 });
 
+test('a custom feature section that names no section of the sheet is caught before the app loads it — ADR 0063', async () => {
+  // Fails if the referential check is removed: the picker would silently leave out what the author meant to allow.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  assert.deepEqual(validateGameSystem(system, schemas).errors, []);
+  const npc = system.characterKinds.find((k) => k.id === 'npc')!;
+  npc.customFeatures = { ...npc.customFeatures!, sections: [...npc.customFeatures!.sections!, 'nowhere'] };
+  assert.deepEqual(validateGameSystem(system, schemas).errors.map((e) => e.message), [
+    'names "nowhere", which is not a section of this kind\'s sheet',
+    'names "nowhere", which is not a section of this kind\'s sheet',
+  ]);
+});
+
 test('only format 4 may record custom features, each with its own id — ADR 0063', async () => {
   // Fails if the schema refuses the field or a line's shape, or if the referential check stops refusing a feature
   // in a file that claims 3 (a reader of 3 would drop it) or two features sharing one id.

@@ -44,7 +44,8 @@ export interface CustomFeatureStat {
 /**
  * What a custom feature may name on this kind: the stats its sheet shows, in the sheet's order and grouped by its
  * sections, once each. Not the progression's own stat, which is set where ADR 0060 says, nor a stat whose value is
- * text, nor a section rendered per block, whose stats the kind cannot name. Empty for a kind that carries no custom
+ * text, nor a section rendered per block, whose stats the kind cannot name, nor a section the kind's `customFeatures.sections`
+ * leaves out (5e leaves out the ability scores). Empty for a kind that carries no custom
  * features.
  *
  * The sheet and not every stat the kind declares: a system declares stats for every kind at once (an item slot, a
@@ -56,8 +57,10 @@ export function customFeatureStats(kind: ResolvedCharacterKind): CustomFeatureSt
   const defs = new Map(kind.stats.map((def) => [def.name.toLowerCase(), def]));
   const seen = new Set<string>();
   const out: CustomFeatureStat[] = [];
+  const allowed = kind.customFeatures.sections;
   for (const section of kind.sheet.sections) {
     if (section.perBlock) continue;
+    if (allowed !== undefined && !allowed.includes(section.id)) continue;
     for (const name of section.stats ?? []) {
       const key = name.toLowerCase();
       const def = defs.get(key);

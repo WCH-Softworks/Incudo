@@ -390,6 +390,14 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       }
     }
 
+    // A custom feature section that names no section of the kind's sheet offers nothing from it, and nothing would
+    // say why a stat the author meant to allow is missing from the picker (ADR 0063).
+    for (const id of resolved.customFeatures?.sections ?? []) {
+      if (!resolved.sheet.sections.some((section) => section.id === id)) {
+        errors.push({ path: `${where}.customFeatures.sections`, message: `names "${id}", which is not a section of this kind's sheet` });
+      }
+    }
+
     // A preparation declaration whose filters will not parse, or which name an interpolation the kind never
     // expands, is invisible at runtime: nothing could be prepared and nothing would say why (ADR 0046).
     const preparation = resolved.preparation;
