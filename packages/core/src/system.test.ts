@@ -6,6 +6,7 @@ import {
   collectDeclaredBlocks,
   defaultCharacterKindId,
   renderSheetSection,
+  sheetSectionIsEmpty,
   substituteBlockPlaceholders,
   initialProgress,
   progressionStat,
@@ -242,12 +243,21 @@ test('substitution reaches the block name and its attributes, and fails loudly',
   assert.equal(substituteBlockPlaceholders('{focus}:modifier', block), undefined);
 });
 
+/** A sheet reader over a plain map of stats and a list of held elements. */
+function reader(stats: Record<string, number> = {}, elements: Element[] = []) {
+  return { statValue: (key: string) => stats[key.toLowerCase()], elements };
+}
+
 test('a perBlock section renders once per block, and skips one it cannot fill', () => {
   const section = { id: 'casting', label: 'Casting', perBlock: true, stats: ['{name}:{ability}'] };
-  const rendered = renderSheetSection(section, [
-    { name: 'Runesmith', attributes: { ability: 'Grit' } },
-    { name: 'Silent', attributes: {} },
-  ]);
+  const rendered = renderSheetSection(
+    section,
+    [
+      { name: 'Runesmith', attributes: { ability: 'Grit' } },
+      { name: 'Silent', attributes: {} },
+    ],
+    reader(),
+  );
   assert.deepEqual(rendered, [
     {
       id: 'casting:runesmith',
@@ -255,15 +265,81 @@ test('a perBlock section renders once per block, and skips one it cannot fill', 
       stats: ['runesmith:grit'],
       types: [],
       blockName: 'Runesmith',
+      printed: [],
     },
   ]);
 });
 
 test('an ordinary section renders itself, blocks or no blocks', () => {
   const section = { id: 's', label: 'S', stats: ['vigour'], types: ['Widget'] };
-  assert.deepEqual(renderSheetSection(section, [{ name: 'Runesmith', attributes: {} }]), [
-    { id: 's', label: 'S', stats: ['vigour'], types: ['Widget'] },
+  assert.deepEqual(renderSheetSection(section, [{ name: 'Runesmith', attributes: {} }], reader()), [
+    { id: 's', label: 'S', stats: ['vigour'], types: ['Widget'], printed: [] },
   ]);
+});
+
+// ADR 0062. Fails if `showWhen` is ignored (every row comes back), if `{stat}` is not substituted (the
+// key read is the literal "{stat}:knack" and every row is dropped), or if a stat nothing publishes is
+// shown (it reads undefined, which is not a value).
+test('showWhen leaves out a row whose named stat reads zero or nothing, with {stat} standing for the row', () => {
+  const stats = { lift: 5, glide: 0, 'crawl:knack': 2, 'hop:knack': 0 };
+  const plain = { id: 'moves', label: 'Moves', stats: ['lift', 'glide', 'burrow'], showWhen: '{stat}' };
+  assert.deepEqual(renderSheetSection(plain, [], reader(stats))[0]!.stats, ['lift']);
+  const knacks = { id: 'knacks', label: 'Knacks', stats: ['crawl', 'hop', 'swing'], showWhen: '{stat}:knack' };
+  assert.deepEqual(renderSheetSection(knacks, [], reader(stats))[0]!.stats, ['crawl']);
+  const all = { id: 'all', label: 'All', stats: ['lift', 'glide'] };
+  assert.deepEqual(renderSheetSection(all, [], reader(stats))[0]!.stats, ['lift', 'glide'], 'no showWhen shows every row');
+});
+
+// Fails if the block's own placeholders are not substituted into `showWhen` (the key read is the literal
+// "runesmith:dc:{ability}" and every row is dropped).
+test('showWhen in a perBlock section reads the key with the row and the block substituted', () => {
+  const section = { id: 'c', label: 'C', perBlock: true, stats: ['{name}:dc', '{name}:echo'], showWhen: '{stat}:{ability}' };
+  const block = { name: 'Runesmith', attributes: { ability: 'Grit' } };
+  const rendered = renderSheetSection(section, [block], reader({ 'runesmith:dc:grit': 13 }));
+  assert.deepEqual(rendered[0]!.stats, ['runesmith:dc']);
+});
+
+// ADR 0062. Fails if printed lines stop reading the held elements (none come back), if the setter is
+// matched by exact case (the camel-cased one is lost), if an empty setter is printed, or if the element's
+// type is not checked (the scenery's senses appear).
+test("printed lines are a held element's setter text as written, per declared entry, ignoring case", () => {
+  const held = (id: string, type: string, setters: Record<string, string>): Element =>
+    ({
+      id,
+      type,
+      name: id,
+      setters: Object.fromEntries(Object.entries(setters).map(([name, value]) => [name, { value }])),
+      rules: [],
+    }) as unknown as Element;
+  const elements = [
+    held('ID_OWL', 'Beast', { senses: 'Darkvision 120 ft.; Passive Perception 15', conditionImmunities: 'Charmed', tongue: ' ' }),
+    held('ID_ROCK', 'Scenery', { senses: 'none at all' }),
+  ];
+  const section = {
+    id: 'said',
+    label: 'Said',
+    description: 'As printed.',
+    printed: [
+      { types: ['Beast'], setter: 'senses', label: 'Senses' },
+      { types: ['Beast'], setter: 'conditionimmunities', label: 'Condition Immunities' },
+      { types: ['Beast'], setter: 'tongue', label: 'Languages' },
+    ],
+  };
+  const [rendering] = renderSheetSection(section, [], reader({}, elements));
+  assert.deepEqual(rendering!.printed, [
+    { label: 'Senses', text: 'Darkvision 120 ft.; Passive Perception 15', elementId: 'ID_OWL' },
+    { label: 'Condition Immunities', text: 'Charmed', elementId: 'ID_OWL' },
+  ]);
+  assert.equal(rendering!.description, 'As printed.');
+  assert.equal(sheetSectionIsEmpty(rendering!, elements), false);
+});
+
+test('a section is empty when it has no row, no listed element and no printed line', () => {
+  const section = { id: 'moves', label: 'Moves', stats: ['glide'], showWhen: '{stat}', types: ['Knack'] };
+  const [rendering] = renderSheetSection(section, [], reader({ glide: 0 }));
+  assert.equal(sheetSectionIsEmpty(rendering!, []), true);
+  const knack = { id: 'K', type: 'Knack', name: 'K', setters: {}, rules: [] } as unknown as Element;
+  assert.equal(sheetSectionIsEmpty(rendering!, [knack]), false, 'a listed element is something to show');
 });
 
 test('the repeatable setter is inherited down an extends chain, and a child may replace it', () => {

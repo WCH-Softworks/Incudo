@@ -799,6 +799,50 @@ export interface SheetSectionDef {
    * in `blockStats` — and a sheet section iterates nothing until it says what it iterates.
    */
   perBlock?: boolean;
+  /**
+   * A sentence shown under the section's label, for whoever reads the sheet — ADR 0062. Plain
+   * prose; it evaluates nothing.
+   */
+  description?: string;
+  /**
+   * Show a row of `stats` only when this stat reads other than zero — ADR 0062. `{stat}` stands for
+   * the row's own key, so `"{stat}"` leaves out a stat that is 0 (a fly speed a creature does not
+   * have) and `"{stat}:proficiency"` leaves out a skill the character is not proficient in, which is
+   * how a printed stat block lists them. Without it every row is shown, as before.
+   */
+  showWhen?: string;
+  /**
+   * Text a held element prints, shown as it is written — ADR 0062. A stat block's senses and
+   * languages are prose in content and are never read as numbers (ADR 0005); this is where they
+   * are shown rather than left out.
+   */
+  printed?: PrintedSetterDef[];
+}
+
+/** One line of printed text a sheet section shows from a held element's setter — ADR 0062. */
+export interface PrintedSetterDef {
+  /** Element types whose setter is shown. */
+  types: ElementType[];
+  /** The setter whose value is shown, matched ignoring case. An element without it, or with it empty, shows nothing. */
+  setter: string;
+  /** What the line is called on the sheet. */
+  label: string;
+}
+
+/** One printed line of a rendered sheet section: its label, the text as written, and whose it is. */
+export interface PrintedSheetLine {
+  label: string;
+  text: string;
+  elementId: ElementId;
+}
+
+/**
+ * What a sheet section reads from the character to decide what it shows — ADR 0062: a stat's value
+ * (for `showWhen`) and the held elements (for `printed`).
+ */
+export interface SheetReader {
+  statValue(key: StatKey): number | undefined;
+  elements: readonly Element[];
 }
 
 /**
@@ -816,6 +860,10 @@ export interface SheetSectionRendering {
   types: ElementType[];
   /** The block this rendering is for, when the section is `perBlock`. */
   blockName?: string;
+  /** The section's sentence for the reader, when it declares one. */
+  description?: string;
+  /** The printed lines this section shows, in declaration order and then element order. */
+  printed: PrintedSheetLine[];
 }
 
 /**
@@ -823,14 +871,31 @@ export interface SheetSectionRendering {
  *
  * The one piece of `perBlock` a shell must not reimplement: core owns the substitution so
  * that the desktop sheet and the mobile sheet cannot disagree about what a
- * section shows.
+ * section shows. The same goes for `showWhen` and `printed` (ADR 0062), which is why the reader
+ * is passed in rather than each shell filtering rows itself.
  */
 export function renderSheetSection(
   section: SheetSectionDef,
   blocks: readonly DeclaredBlock[],
+  reader: SheetReader,
 ): SheetSectionRendering[] {
+  const shown = (stats: StatKey[], block?: DeclaredBlock): StatKey[] => {
+    const when = section.showWhen;
+    if (when === undefined) return stats;
+    return stats.filter((stat) => {
+      const named = when.split('{stat}').join(stat);
+      const key = block ? substituteBlockPlaceholders(named, block) : named;
+      const value = key === undefined ? undefined : reader.statValue(key);
+      return value !== undefined && value !== 0;
+    });
+  };
+  const described = section.description !== undefined ? { description: section.description } : {};
   const base = { id: section.id, stats: section.stats ?? [], types: section.types ?? [] };
-  if (!section.perBlock) return [{ ...base, label: section.label }];
+  if (!section.perBlock) {
+    return [
+      { ...base, stats: shown(base.stats), label: section.label, ...described, printed: printedLines(section, reader.elements) },
+    ];
+  }
 
   const renderings: SheetSectionRendering[] = [];
   for (const block of blocks) {
@@ -848,15 +913,45 @@ export function renderSheetSection(
     renderings.push({
       id: `${section.id}:${block.name.trim().toLowerCase()}`,
       label: `${section.label} — ${block.name}`,
-      stats,
+      stats: shown(stats, block),
       // Element lists are not per-block: a block names a stat namespace, not a filter over
       // the character's elements. Repeating the same spell list under every casting source
-      // would be a confident lie about which source it came from.
+      // would be a confident lie about which source it came from. Printed lines likewise.
       types: [],
       blockName: block.name,
+      ...described,
+      printed: [],
     });
   }
   return renderings;
+}
+
+/**
+ * The printed lines a section shows: each `printed` entry, for each held element of its types that
+ * carries the setter with something in it. The text is the element's own and is never parsed.
+ */
+function printedLines(section: SheetSectionDef, elements: readonly Element[]): PrintedSheetLine[] {
+  const lines: PrintedSheetLine[] = [];
+  for (const def of section.printed ?? []) {
+    const setter = def.setter.toLowerCase();
+    for (const element of elements) {
+      if (!def.types.includes(element.type)) continue;
+      const found = Object.entries(element.setters).find(([name]) => name.toLowerCase() === setter);
+      const text = found?.[1].value.trim();
+      if (!text) continue;
+      lines.push({ label: def.label, text, elementId: element.id });
+    }
+  }
+  return lines;
+}
+
+/** Whether a rendered section has nothing to show: no stat row, no listed element, no printed line. */
+export function sheetSectionIsEmpty(rendering: SheetSectionRendering, elements: readonly Element[]): boolean {
+  return (
+    rendering.stats.length === 0 &&
+    rendering.printed.length === 0 &&
+    !elements.some((element) => rendering.types.includes(element.type))
+  );
 }
 
 export interface SheetLayoutDef {

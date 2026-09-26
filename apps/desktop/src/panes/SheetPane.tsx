@@ -7,11 +7,19 @@
  *
  * `perBlock` sections are the one piece of cleverness, and they are ADR 0020's: a section can
  * name `{name}:spellcasting:dc`, which no system definition can spell out because the key comes
- * from content. It expands to one rendering per block the character's elements declare.
+ * from content. It expands to one rendering per block the character's elements declare. Which
+ * rows a section shows (`showWhen`) and the text it prints from a held element (`printed`) are
+ * decided in core as well (ADR 0062); this renders what comes back.
  */
 
 import type { BuilderState, CharacterBuilder } from '@incudo/ui';
-import { collectDeclaredBlocks, renderSheetSection, type ResolvedStat } from '@incudo/core';
+import {
+  collectDeclaredBlocks,
+  renderSheetSection,
+  sheetSectionIsEmpty,
+  type ResolvedStat,
+  type SheetReader,
+} from '@incudo/core';
 
 export function SheetPane({
   builder,
@@ -22,6 +30,10 @@ export function SheetPane({
 }): React.JSX.Element {
   const { derived, kind } = state;
   const blocks = collectDeclaredBlocks(derived.elements);
+  const reader: SheetReader = {
+    statValue: (key) => derived.stats.get(key.toLowerCase())?.value,
+    elements: derived.elements,
+  };
 
   const valueOf = (key: string): string => {
     const stat: ResolvedStat | undefined = derived.stats.get(key.toLowerCase());
@@ -44,20 +56,31 @@ export function SheetPane({
       </p>
 
       {kind.sheet.sections
-        .flatMap((section) => renderSheetSection(section, blocks))
+        .flatMap((section) => renderSheetSection(section, blocks, reader))
         .map((rendering) => {
+          if (sheetSectionIsEmpty(rendering, derived.elements)) return null;
           const elements = derived.elements.filter((e) => rendering.types.includes(e.type));
-          if (!rendering.stats.length && !elements.length) return null;
 
           return (
             <section key={rendering.id} className="sheet-section">
               <h3>{rendering.label}</h3>
+              {rendering.description && <p className="hint">{rendering.description}</p>}
               {rendering.stats.length > 0 && (
                 <dl>
                   {rendering.stats.map((key) => (
                     <div key={key}>
                       <dt>{rendering.blockName ? key : labelOf(key)}</dt>
                       <dd>{valueOf(key)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {rendering.printed.length > 0 && (
+                <dl className="sheet-printed">
+                  {rendering.printed.map((line, index) => (
+                    <div key={`${line.elementId}:${index}`}>
+                      <dt>{line.label}</dt>
+                      <dd>{line.text}</dd>
                     </div>
                   ))}
                 </dl>

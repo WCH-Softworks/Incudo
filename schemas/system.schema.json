@@ -764,6 +764,29 @@
               "perBlock": {
                 "type": "boolean",
                 "description": "Render this section once per block the character declares, substituting the block's name and attributes into every entry of `stats` (ADR 0020). Needed because blockStats publishes keys a section cannot name: there is no bard:spellcasting:dc in any system definition and there never can be, because the key comes from content. The flag is also what makes `{name}` mean something here — elsewhere it names the subject of an iteration, and a sheet section iterates nothing until it says what it iterates."
+              },
+              "description": {
+                "type": "string",
+                "description": "A sentence shown under the section's label, for whoever reads the sheet (ADR 0062). Plain prose; it evaluates nothing."
+              },
+              "showWhen": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Show a row of `stats` only when this stat reads other than zero (ADR 0062). `{stat}` stands for the row's own key: `\"{stat}\"` leaves out a stat that is 0, `\"{stat}:proficiency\"` a skill the character is not proficient in. Without it every row is shown."
+              },
+              "printed": {
+                "type": "array",
+                "description": "Text a held element prints, shown as it is written and never read as a number (ADR 0062): a stat block's senses and languages.",
+                "items": {
+                  "type": "object",
+                  "required": ["types", "setter", "label"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "types": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                    "setter": { "type": "string", "minLength": 1, "description": "The setter whose value is shown, matched ignoring case." },
+                    "label": { "type": "string", "minLength": 1 }
+                  }
+                }
               }
             }
           }
