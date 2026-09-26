@@ -637,3 +637,53 @@ test("a typed speed or proficiency replaces the creature's, and the NPC reopens 
 function kind(system: GameSystem): ResolvedCharacterKind {
   return resolveCharacterKind(system, 'npc');
 }
+
+test("a feature the DM writes sets or adds to every creature's numbers, a typed value replaces a set, and the save keeps it", { skip }, async (t) => {
+  // ADR 0063, over every creature. A feature sets the walking speed and adds to every other speed the creature has.
+  // Fails if a set is applied under the creature's own rule (the creature's speed wins), if an add is not the
+  // feature's rule (the other speeds do not move), if a typed value is added to the set or replaces it silently, or
+  // if the feature is not in the save (the reopened NPC reads the creature's speed).
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const npc = kind(system);
+  assert.ok(npc.customFeatures, 'the 5e NPC may carry features its DM writes');
+  const otherSpeeds = sectionStats(npc, 'speeds');
+  const wrong: string[] = [];
+  let moved = 0;
+  for (const creature of creatures) {
+    const b = npcOn(system, elements, creature);
+    const before = b.getState().derived;
+    const others = otherSpeeds.filter((s) => (before.stats.get(s)?.value ?? 0) > 0);
+    const id = b.addCustomFeature('Godspeed')!;
+    b.updateCustomFeature(id, {
+      stats: [{ stat: 'speed', mode: 'set', value: 60 }, ...others.map((stat) => ({ stat, mode: 'add' as const, value: 10 }))],
+    });
+    let state = b.getState();
+    if (state.derived.stats.get('speed')?.value !== 60) wrong.push(`${creature.id} speed: ${state.derived.stats.get('speed')?.value}`);
+    for (const stat of others) {
+      const expected = before.stats.get(stat)!.value + 10;
+      if (state.derived.stats.get(stat)?.value !== expected) wrong.push(`${creature.id} ${stat}: ${state.derived.stats.get(stat)?.value}`);
+      moved++;
+    }
+    if (!state.derived.elements.some((e) => e.name === 'Godspeed' && e.type === npc.customFeatures!.type)) {
+      wrong.push(`${creature.id}: the feature is not held`);
+    }
+    if (state.derived.problems.some((p) => p.code.startsWith('custom-feature'))) wrong.push(`${creature.id}: a problem with no cause`);
+
+    const { container } = readCharacterContainer(packCharacter(state.character, system, elements, { generator: 'test' }).files);
+    const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
+    for (const stat of ['speed', ...others]) {
+      if (reopened.stats.get(stat)?.value !== state.derived.stats.get(stat)?.value) wrong.push(`${creature.id} ${stat} after reopening`);
+    }
+
+    b.setBudgetStat('combat', 'speed', 45);
+    state = b.getState();
+    if (state.derived.stats.get('speed')?.value !== 45) wrong.push(`${creature.id} typed speed: ${state.derived.stats.get('speed')?.value}`);
+    if (!state.derived.problems.some((p) => p.code === 'custom-feature-replaced')) wrong.push(`${creature.id}: replaced in silence`);
+    if (state.customFeatures.features[0]!.lines[0]!.status !== 'replaced') wrong.push(`${creature.id}: the line does not say so`);
+  }
+  t.diagnostic(`${creatures.length} creatures given a written feature; ${moved} other speeds added to`);
+  assert.ok(moved > 0, 'the corpus has a creature with another speed, and it was exercised');
+  assert.deepEqual(wrong, []);
+});

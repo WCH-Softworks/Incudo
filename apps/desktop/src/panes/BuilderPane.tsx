@@ -31,6 +31,7 @@ import { PreparedSpells } from './PreparedSpells.tsx';
 import { PublicationsEditor } from './PublicationsEditor.tsx';
 import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
+import { CustomFeatures } from './CustomFeatures.tsx';
 
 export function BuilderPane({
   builder,
@@ -331,6 +332,17 @@ export function BuilderPane({
                 ))}
             </section>
           ))}
+
+          {/*
+            Features the user wrote for this character (ADR 0063). Not a decision: nothing is owed. Beside
+            what the creature gives, since a feature is listed on the sheet with the creature's traits.
+          */}
+          {state.customFeatures.available && (
+            <section className="custom-features">
+              <h2>Your own features</h2>
+              <CustomFeatures state={state} builder={builder} />
+            </section>
+          )}
 
           {/*
             Which class each level went to. Not a decision and never outstanding, so it does not

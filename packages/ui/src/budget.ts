@@ -54,6 +54,13 @@ export interface BudgetRow {
    * Undefined when nothing the character holds states this stat.
    */
   printed?: number;
+  /**
+   * The custom feature that set `printed`, when one did rather than content (ADR 0063), and a sentence saying so:
+   * that the feature sets it, or that the base typed here replaces what the feature sets. The DM wrote both, so the
+   * one that loses is named where the number is typed.
+   */
+  printedBy?: string;
+  featureNote?: string;
   /** What the derivation reads for this stat: the base plus everything content adds. */
   total: number;
   /**
@@ -273,6 +280,7 @@ export function computeBudgetState(
       stat,
       base: current,
       printed: printedOf(stat),
+      ...featureNoteOf(derived.starts.get(stat.toLowerCase()), current),
       total,
       bonus: total - (current ?? fallback),
       cost,
@@ -497,4 +505,20 @@ export function canExpressValue(
   if (method?.min !== undefined && value < method.min) return false;
   if (method?.max !== undefined && value > method.max) return false;
   return true;
+}
+
+/** What a row says about a custom feature that set where its stat starts — ADR 0063. Nothing when none did. */
+function featureNoteOf(
+  start: { value: number; feature?: string } | undefined,
+  base: number | undefined,
+): { printedBy?: string; featureNote?: string } {
+  if (start?.feature === undefined) return {};
+  const name = start.feature.trim() || 'An unnamed feature';
+  return {
+    printedBy: name,
+    featureNote:
+      base === undefined
+        ? `${name} sets this to ${start.value}.`
+        : `The ${base} entered here replaces the ${start.value} that ${name} sets. Clear it to use ${name}.`,
+  };
 }

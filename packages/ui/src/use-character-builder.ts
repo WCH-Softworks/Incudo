@@ -31,6 +31,10 @@ import {
   setChoice,
   setDeclined,
   setGrantRemoved,
+  setCustomFeature,
+  removeCustomFeature,
+  newCustomFeatureId,
+  type CustomStatLine,
   setterGrantIds,
   setGenerationMethod,
   setName,
@@ -105,6 +109,7 @@ import {
   togglePublication,
   type PublicationList,
 } from './publications.ts';
+import { customFeaturesState, type CustomFeaturesState } from './custom-features.ts';
 
 /**
  * One thing the character still has to decide.
@@ -273,6 +278,11 @@ export interface BuilderState {
    * of them the user removed (ADR 0061). Removed ones stay listed so they can be given back.
    */
   holderGrants: HolderGrant[];
+  /**
+   * Features the user wrote for this character, what each line is doing, and which stats a line may name — ADR 0063.
+   * `available` is false for a kind that carries none.
+   */
+  customFeatures: CustomFeaturesState;
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -500,6 +510,45 @@ export class CharacterBuilder {
   restoreGranted = (elementId: ElementId): void => {
     if (!this.character.removedGrants?.includes(elementId)) return;
     this.character = setGrantRemoved(this.character, elementId, false);
+    this.invalidate();
+  };
+
+  /**
+   * Write a new feature for this character, named and with no lines yet, and return its id — ADR 0063. Refused
+   * (`undefined`) for a kind that carries none, so a shell that hides the control cannot be the only guard.
+   */
+  addCustomFeature = (name: string): string | undefined => {
+    if (!this.kind.customFeatures) return undefined;
+    const id = newCustomFeatureId(this.character);
+    this.character = setCustomFeature(this.character, { id, name, stats: [] });
+    this.invalidate();
+    return id;
+  };
+
+  /**
+   * Change a feature's name, description or lines — ADR 0063. `stats` replaces the whole list, in order. An empty
+   * description is left out rather than recorded.
+   */
+  updateCustomFeature = (
+    id: string,
+    change: { name?: string; description?: string; stats?: CustomStatLine[] },
+  ): void => {
+    const current = this.character.customFeatures?.find((f) => f.id === id);
+    if (!current) return;
+    const { description: _old, ...rest } = current;
+    const description = change.description ?? current.description;
+    this.character = setCustomFeature(this.character, {
+      ...rest,
+      ...(change.name !== undefined ? { name: change.name } : {}),
+      ...(change.stats !== undefined ? { stats: change.stats } : {}),
+      ...(description?.trim() ? { description } : {}),
+    });
+    this.invalidate();
+  };
+
+  removeCustomFeature = (id: string): void => {
+    if (!this.character.customFeatures?.some((f) => f.id === id)) return;
+    this.character = removeCustomFeature(this.character, id);
     this.invalidate();
   };
 
@@ -1376,6 +1425,7 @@ export class CharacterBuilder {
         printable: progressCanBePrinted(this.kind),
       },
       holderGrants: this.holderGrants(derived),
+      customFeatures: customFeaturesState(this.character, derived, this.kind),
       focusedId: this.focusedId,
     };
   }

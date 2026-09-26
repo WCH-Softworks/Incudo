@@ -28,3 +28,4 @@ export * from './preview-placement.ts';
 export * from './commands.ts';
 export * from './source-parts.ts';
 export * from './content-files.ts';
+export * from './custom-features.ts';

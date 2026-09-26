@@ -72,6 +72,7 @@ export function CompactBudget({
           </div>
         ))}
       </dl>
+      <FeatureNotes budget={budget} labelOf={labelOf} />
       <div className="decision-head">
         {method && <span className="hint">{method.label ?? method.id}</span>}
         <button type="button" className="link" onClick={() => setEditing(true)}>
@@ -79,6 +80,30 @@ export function CompactBudget({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Where a custom feature sets one of these stats, say so beside the number (ADR 0063): that it does, or that the
+ * value typed here replaces it. The sentence is the view-model's; this only places it.
+ */
+function FeatureNotes({
+  budget,
+  labelOf,
+}: {
+  budget: BudgetState;
+  labelOf: (stat: StatKey) => string;
+}): React.JSX.Element | null {
+  const rows = budget.rows.filter((row) => row.featureNote !== undefined);
+  if (!rows.length) return null;
+  return (
+    <ul className="feature-notes">
+      {rows.map((row) => (
+        <li key={row.stat} className={row.base === undefined ? '' : 'replaced'}>
+          <strong>{labelOf(row.stat)}:</strong> {row.featureNote}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -188,12 +213,16 @@ export function BudgetEditor({
         expression, and the middle column carries the clip as a negative). Both are worth
         knowing here; neither number is.
       */}
+      <FeatureNotes budget={budget} labelOf={labelOf} />
+
       {budget.rows.some((row) => row.printed !== undefined) ? (
         // ADR 0057, ADR 0059: what the creature states is where the stat starts, and a typed one
         // replaces it — a printed score, or the creature's own armour class rule.
         <p className="hint">
-          A faded number is the creature's own, and it is used until you type another. Clear what
-          you typed to go back to it. <strong>Total</strong> is the number the stat block uses.
+          {budget.rows.some((row) => row.printedBy !== undefined)
+            ? "A faded number is what the creature states or what a feature you wrote sets, and it is used until you type another. Clear what you typed to go back to it. "
+            : "A faded number is the creature's own, and it is used until you type another. Clear what you typed to go back to it. "}
+          <strong>Total</strong> is the number the stat block uses.
         </p>
       ) : stated && description !== undefined ? (
         // A step whose values content can state (a creature's), with nothing stated yet: the step's

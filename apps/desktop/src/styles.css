@@ -1162,6 +1162,52 @@ table.budget-rows input[type='number'] {
   color: var(--fg-muted);
 }
 
+/* Features the user writes (ADR 0063): a name, a description, and one row per line. The settled
+   column is narrow, so a line's three controls wrap rather than overflow. */
+.custom-feature label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.custom-feature textarea {
+  font: inherit;
+  resize: vertical;
+}
+
+.custom-lines {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-line input[type='number'] {
+  width: 72px;
+}
+
+.custom-lines li.not-applied .hint,
+.feature-notes li.replaced {
+  color: var(--warn-line);
+}
+
+.feature-notes {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  font-size: 12px;
+}
+
 /* One card per slot of a settled pick — a single row for a top-level pick, several for a full
    content select (ADR 0032). Stacked rather than side by side: the settled column is narrow,
    and a race or spell name plus its book runs long. */
