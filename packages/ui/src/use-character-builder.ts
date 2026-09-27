@@ -31,6 +31,7 @@ import {
   setChoice,
   setDeclined,
   setGrantRemoved,
+  setAdded,
   setCustomFeature,
   removeCustomFeature,
   newCustomFeatureId,
@@ -110,6 +111,7 @@ import {
   type PublicationList,
 } from './publications.ts';
 import { customFeaturesState, type CustomFeaturesState } from './custom-features.ts';
+import { additionOptions, additionsState, type AdditionOption, type AdditionsState } from './additions.ts';
 
 /**
  * One thing the character still has to decide.
@@ -283,6 +285,12 @@ export interface BuilderState {
    * `available` is false for a kind that carries none.
    */
   customFeatures: CustomFeaturesState;
+  /**
+   * What the user added to this character from loaded content, each with whether its prerequisites hold, and which
+   * types may be added — ADR 0064. `available` is false for a kind that carries none. What could still be added is
+   * asked for with `additionOptionsFor`, not carried here: it is every feat, spell and condition loaded.
+   */
+  additions: AdditionsState;
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -551,6 +559,52 @@ export class CharacterBuilder {
     this.character = removeCustomFeature(this.character, id);
     this.invalidate();
   };
+
+  /**
+   * Put an element from loaded content on the character, whatever its own prerequisites — ADR 0064. Refused, writing
+   * nothing, for a kind that carries none, a type the kind does not list, an element this character is not offered (a
+   * book switched off), and one it already holds or has added. Returns whether it is now added.
+   */
+  addElement = (elementId: ElementId): boolean => {
+    const types = this.kind.additions?.types ?? [];
+    const type = this.content.get(elementId)?.type;
+    if (type === undefined || !types.includes(type)) return false;
+    if (!this.elements.byType(type).some((element) => element.id === elementId)) return false;
+    if (this.character.additions?.includes(elementId)) return false;
+    if (this.getState().derived.elementIds.has(elementId)) return false;
+    this.character = setAdded(this.character, elementId, true);
+    this.invalidate();
+    return true;
+  };
+
+  /**
+   * Take an added element off the character, and the answers to the selects that go with it — ADR 0064. A removed
+   * Skilled would otherwise leave its three skills recorded and still held. Exact rather than by name: a recorded
+   * choice goes when its pool was open before the removal and is not after it, repeated until nothing more closes,
+   * so a pool something else still opens keeps its answers.
+   */
+  removeAddition = (elementId: ElementId): void => {
+    if (!this.character.additions?.includes(elementId)) return;
+    const before = this.poolKeys();
+    this.character = setAdded(this.character, elementId, false);
+    this.invalidate();
+    for (;;) {
+      const open = this.poolKeys();
+      const closed = this.character.choices.filter((c) => before.has(c.ruleKey) && !open.has(c.ruleKey));
+      if (!closed.length) break;
+      const gone = new Set(closed.map((c) => c.ruleKey));
+      this.character = { ...this.character, choices: this.character.choices.filter((c) => !gone.has(c.ruleKey)) };
+      this.invalidate();
+    }
+  };
+
+  /**
+   * What could still be added, of one type or of every type the kind lists, with whether each one's prerequisites
+   * hold. Computed on request and not with the state: it is thousands of elements, and nothing needs it until the
+   * user looks.
+   */
+  additionOptionsFor = (type?: string): AdditionOption[] =>
+    additionOptions(this.getState().derived, this.kind, this.elements, type);
 
   /** Bring a skipped decision back into `decisions`, answerable exactly as before. */
   reconsider = (decisionId: string): void => {
@@ -1426,6 +1480,7 @@ export class CharacterBuilder {
       },
       holderGrants: this.holderGrants(derived),
       customFeatures: customFeaturesState(this.character, derived, this.kind),
+      additions: additionsState(this.character, derived, this.kind, this.system, this.elements),
       focusedId: this.focusedId,
     };
   }
