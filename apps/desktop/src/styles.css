@@ -1162,6 +1162,32 @@ table.budget-rows input[type='number'] {
   color: var(--fg-muted);
 }
 
+/* What the user added from content (ADR 0064): one card per element, grouped by type, with the flag and a
+   note beneath the card when its prerequisites are not met or it is not held. */
+.additions {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.additions li > .tag {
+  display: inline-block;
+  margin-top: 2px;
+}
+
+.additions li > .hint {
+  margin: 2px 0 0;
+  color: var(--warn-line);
+}
+
+.additions li.not-held .picker-name {
+  text-decoration: line-through;
+  color: var(--fg-muted);
+}
+
 /* Features the user writes (ADR 0063): a name, a description, and one row per line. The settled
    column is narrow, so a line's three controls wrap rather than overflow. */
 .custom-feature label {

@@ -32,6 +32,7 @@ import { PublicationsEditor } from './PublicationsEditor.tsx';
 import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 import { CustomFeatures } from './CustomFeatures.tsx';
+import { Additions } from './Additions.tsx';
 
 export function BuilderPane({
   builder,
@@ -341,6 +342,17 @@ export function BuilderPane({
             <section className="custom-features">
               <h2>Your own features</h2>
               <CustomFeatures state={state} builder={builder} />
+            </section>
+          )}
+
+          {/*
+            What the user added from loaded content (ADR 0064): conditions, feats, languages and the like, whatever
+            their prerequisites. Not a decision either: nothing is owed, and the list it offers is everything loaded.
+          */}
+          {state.additions.available && (
+            <section className="additions-section">
+              <h2>Added to this character</h2>
+              <Additions state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} />
             </section>
           )}
 

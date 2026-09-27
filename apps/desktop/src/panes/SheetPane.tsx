@@ -40,6 +40,8 @@ export function SheetPane({
     if (!stat) return '—';
     return stat.text ?? String(stat.value);
   };
+  // What the user added whose prerequisites are not met (ADR 0064): on the sheet like anything held, and marked.
+  const unmet = new Set(state.additions.rows.filter((row) => !row.prerequisitesMet).map((row) => row.elementId));
   const labelOf = (key: string): string =>
     kind.stats.find((s) => s.name.toLowerCase() === key.toLowerCase())?.label ?? key;
 
@@ -88,7 +90,10 @@ export function SheetPane({
               {elements.length > 0 && (
                 <ul className="sheet-elements">
                   {elements.map((element) => (
-                    <li key={element.id}>{element.name}</li>
+                    <li key={element.id}>
+                      {element.name}
+                      {unmet.has(element.id) && <span className="hint"> (prerequisites not met)</span>}
+                    </li>
                   ))}
                 </ul>
               )}

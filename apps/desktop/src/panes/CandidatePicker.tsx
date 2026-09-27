@@ -145,7 +145,8 @@ export function ChosenCandidate({
   candidateLabel: (id: ElementId) => string;
   /** What this slot could hold instead, `id` included — a `SettledPick.candidates`, filtered. */
   options: ElementId[];
-  onChange: (id: ElementId) => void;
+  /** Absent where the answer is taken back rather than changed — an element added to the character. */
+  onChange?: (id: ElementId) => void;
   /** Given only where an answer may be taken back — a member of a set, never a race. */
   onRemove?: () => void;
 }): React.JSX.Element {
@@ -154,7 +155,7 @@ export function ChosenCandidate({
   // Called before the early return below: hooks cannot be skipped by the `changing` branch.
   const preview = useCandidatePreview(elements, candidateLabel);
 
-  if (changing) {
+  if (changing && onChange) {
     return (
       <CandidatePicker
         candidates={options}
@@ -181,17 +182,19 @@ export function ChosenCandidate({
             {expanded ? 'Hide details' : 'Details'}
           </button>
         )}
-        <button
-          type="button"
-          className="link"
-          aria-describedby={preview.describedBy(id)}
-          onClick={() => {
-            preview.close();
-            setChanging(true);
-          }}
-        >
-          Change
-        </button>
+        {onChange && (
+          <button
+            type="button"
+            className="link"
+            aria-describedby={preview.describedBy(id)}
+            onClick={() => {
+              preview.close();
+              setChanging(true);
+            }}
+          >
+            Change
+          </button>
+        )}
         {onRemove && (
           <button
             type="button"
