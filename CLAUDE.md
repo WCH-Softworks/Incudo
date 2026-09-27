@@ -349,7 +349,9 @@ be spent on any class the character qualifies for (ADR 0036). **It starts any ki
 **NPC starts from a creature's printed stat block** (ADR 0057), its challenge rating, armour class, hit points and
 speed included, any of which the DM may replace, and what the creature gives it may be taken away (ADRs 0059-0061). Its
 sheet shows the creature's other speeds, proficient saves and skills, and its senses, defences and languages as printed
-(ADR 0062). A DM may write features of an NPC's own that add to or set its numbers (ADR 0063).
+(ADR 0062). A DM may write features of an NPC's own that add to or set its numbers (ADR 0063), and **put any feat, feature,
+proficiency, language, condition or spell from loaded content on a player character or an NPC, whatever its prerequisites**
+(ADR 0064).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -394,7 +396,8 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   `removedGrants` is `formatVersion` 3 (`raiseFormatVersion`, `LATEST_CHARACTER_FORMAT_VERSION`); `createCharacter`
   still writes 2, and only `setProgress(…, undefined)`, `createCharacter({ progress: null })` and `setGrantRemoved` raise
   one. Nothing downgrades. The validator refuses either field below 3. The frozen importer and every PC are untouched.
-  *(Since ADR 0063 a character that records `customFeatures` is **4**, and `LATEST_CHARACTER_FORMAT_VERSION` is 4.)*
+  *(Since ADR 0063 a character that records `customFeatures` is **4**, and since ADR 0064 one that records `additions` is
+  **5**; `LATEST_CHARACTER_FORMAT_VERSION` is 5.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them). Chosen, or granted by
@@ -436,6 +439,33 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   points and speed all derive, so a feature on a PC could only add, and whether that is wanted is undecided. **Reuse across characters
   is a Phase 8 item and part of its exit criteria.** A feature lives in `character.json`, is held as `custom:<id>` in front of the content, and is never
   embedded content. The editor's state is `packages/ui/src/custom-features.ts`; `CustomFeatures.tsx` computes nothing.
+- **A user may add an existing element to a character, and an unmet prerequisite is a flag**
+  ([ADR 0064](docs/adr/0064-a-character-may-carry-elements-its-user-adds-from-loaded-content-and-an-unmet-prerequisite-is-a-flag.md)).
+  ADR 0063's sibling, for the player character and the NPC alike. Things to know before touching it:
+  - **`Character.additions` is a list of its own, never a recorded choice** (format **5**, only when present; the
+    validator refuses it below 5 and an id twice). A choice record was the obvious shape and is wrong: `pickAnswerOf`,
+    `replacePickAnswer` and `firstClassOf` find records *by the types they hold*, so an added Origin-typed element
+    would answer a pick. `packages/ui/src/additions.test.ts` holds that, by perturbation.
+  - **The kind says which types** (`additions: { types, description }`, replaced along `extends`; a type the system
+    does not declare is refused when it loads). 5e's `pc` and `npc`: Feat, Racial Trait, Class Feature, Archetype
+    Feature, Background Feature, Proficiency, Language, Condition, Spell. Not what a character *is* (race, class,
+    subclass, background, creature, option), not items. The NPC sheet gained two sections for them.
+  - **The engine seeds an addition like a choice but never defers it**: it follows no class's track, so its level gates
+    read the character's own progression. One of a type the kind does not list is `addition-not-allowed` and not held.
+    **After the fixed point each held addition's own requirements are asked, with the element itself counted as not
+    held**, and a false one is `requirement-unmet`, a warning, the code that had been declared and never emitted. Only
+    additions: picks were offered only when they qualified, and checking every held element would add problems to
+    derivations nothing else moved. `collectCharacterContent` seeds from them, so a save embeds them.
+  - **The offer is every element of the declared types, whatever its requirements, less what is held**, read through the
+    offered view (ADR 0049), and asked for on request (`additionOptionsFor`), not carried in the state: it is thousands
+    of elements. A row's flag is read from the derivation's own `requirement-unmet`, so the row and Problems cannot
+    disagree. The prerequisite *text* is prose in the description (475 elements) and is never parsed.
+  - **Removal drops the answers to the selects it closed, exactly**: a recorded choice goes when its pool was open before
+    the removal and is not after, repeated until nothing more closes. By name (`<element>/select:`) would be wrong: a
+    pool another element still opens keeps its answers.
+  - **An added spell belongs to no casting block** and the pane says so; no DC, attack or slots, not preparable.
+  - **The corpus's `Condition` type is 23 damage resistances and immunities**, not Blinded or Charmed. Found by running it.
+  - `packages/ui/src/additions.ts` is the view-model; `Additions.tsx` computes nothing. Driven in the browser build only.
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
   content comes from first, and show the prose stat blocks as reference rather than parse them.
 - **Driven in the browser build only**, with an origin-private folder standing in for the native folder picker.
@@ -1084,7 +1114,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062 and 0063 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063 and 0064 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
@@ -1227,8 +1257,8 @@ run as proof the gating is right.
 **A bag is a list of instances, and the container embeds all of it** (ADR 0024). `Character`
 gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
 after `baseStats`, `advancement` and `generation` each stayed at 1. Readers accept both. *(Readers accept 3 too since
-ADR 0060, which only a character with no `progress` or with `removedGrants` is written at, and 4 since ADR 0063,
-which only a character with `customFeatures` is.)* Three
+ADR 0060, which only a character with no `progress` or with `removedGrants` is written at, 4 since ADR 0063,
+which only a character with `customFeatures` is, and 5 since ADR 0064, which only one with `additions` is.)* Three
 things in the shape are measurements, not taste: an entry is an **instance** (one save carries two
 greatswords with different enchantments, so an element-keyed bag loses a real character's items);
 `slot` is an **override** and normally absent (the saves' `location` agrees with the element's own

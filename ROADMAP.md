@@ -1102,6 +1102,24 @@ the kind machinery is not decorative.*
       for a player character (whose armour class, hit points and speed are worked out, so a feature could only add to
       them), conditions or grants
       on one; the Tauri window, macOS and Linux.
+- [x] **A DM or player may put existing content on a character, whatever its prerequisites**
+      ([ADR 0064](./docs/adr/0064-a-character-may-carry-elements-its-user-adds-from-loaded-content-and-an-unmet-prerequisite-is-a-flag.md)).
+      ADR 0063's sibling: an element a source declares rather than one the user writes. Aurora's users wrapped these
+      in homemade items; here the Build pane has **Added to this character**, a type filter and a search over every
+      feat, racial trait, class and subclass feature, background feature, proficiency, language, condition and spell
+      loaded, for the player character and the NPC alike. Measured first: 249 of 320 feats carry requirements, so a set
+      step, which offers only what the character qualifies for, would have offered a DM almost none. What is added is
+      held and saved with the character; one whose prerequisites fail is kept and **marked**, on its row, on the sheet
+      and as a reported problem (the engine's `requirement-unmet`, declared since the start and never emitted until
+      now), never refused. Removing one takes off the answers to the choices it opened. The additions are a list of
+      their own and not a recorded choice, so nothing that finds a race or a first class by what a record holds can
+      mistake one. Only a character with one moves to **character format 5**. The NPC's sheet gained Feats and Features
+      and Proficiencies and Conditions. Every element of the nine types in the corpus is offered, held once added,
+      flagged exactly when its own requirements fail, and survives a save opened with no source; no player character
+      derivation moved. Driven in the browser build. **Not done:** casting for an added spell (it belongs to no class,
+      and the pane says so), conditions in the rules' sense (the corpus's 23 `Condition` elements are damage
+      resistances and immunities, and there is no Blinded to add), reuse across characters (Phase 8); the Tauri window,
+      macOS and Linux.
 - [ ] **Decide where legendary content comes from, before any UI for it.** *Reworded by ADR 0057's
       measurement:* the corpus declares no `Legendary Action`, `Lair Action` or `Regional Effect` element; seven
       of the 2025 Monster Manual's prose stat blocks mention legendary actions, as text only. The `legendary` kind
