@@ -104,8 +104,8 @@ export interface InventoryEntry {
 export interface Character {
   /**
    * 1 before an inventory existed, 2 since (ADR 0024), 3 for a character that records no `progress` or
-   * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063). Readers
-   * accept all four. A new character is written at 2, and only a write that needs more raises it
+   * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063), 5 for one that
+   * records `additions` (ADR 0064). Readers accept all five. A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -233,11 +233,19 @@ export interface Character {
    * records it, because a reader of 3 would drop it without a word.
    */
   customFeatures?: CustomFeature[];
+  /**
+   * Elements from loaded content the user put on this character, in the order added — ADR 0064. A DM's NPC
+   * resistant to fire, or a feat given whatever its prerequisites. An input like `inventory`: nothing derives that the DM added
+   * it. Not a choice, so nothing that finds a record in `choices` by what it holds can claim it. Which types may be
+   * added is the kind's `additions`. Absent when empty; only format 5 records it, because a reader of 4 would drop
+   * it without a word.
+   */
+  additions?: ElementId[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5;
 
 /** A feature the user wrote for one character — ADR 0063. */
 export interface CustomFeature {
@@ -266,10 +274,11 @@ export interface CustomStatLine {
 export const CHARACTER_FORMAT_VERSION = 2;
 
 /**
- * The newest version a reader accepts — ADR 0060, ADR 0063. A character with no `progress` or with
- * `removedGrants` is at least 3, one with `customFeatures` is 4, and nothing else is raised.
+ * The newest version a reader accepts — ADR 0060, ADR 0063, ADR 0064. A character with no `progress` or with
+ * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` 5, and nothing else is
+ * raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 4;
+export const LATEST_CHARACTER_FORMAT_VERSION = 5;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -429,6 +438,24 @@ export function removeCustomFeature(character: Character, featureId: string): Ch
   const next = (character.customFeatures ?? []).filter((f) => f.id !== featureId);
   const { customFeatures: _previous, ...rest } = character;
   return { ...rest, ...(next.length ? { customFeatures: next } : {}), updatedAt: new Date().toISOString() };
+}
+
+/**
+ * Put an element on the character, or take it off — ADR 0064. Adding one already added changes nothing; recording one
+ * raises the character to format 5, and taking the last off leaves the field absent and the version where it is.
+ */
+export function setAdded(character: Character, elementId: ElementId, added: boolean): Character {
+  const current = character.additions ?? [];
+  if (added === current.includes(elementId)) return character;
+  const next = added ? [...current, elementId] : current.filter((id) => id !== elementId);
+  const { additions: _previous, ...rest } = character;
+  const written: Character = next.length ? { ...raiseFormatVersion(rest, 5), additions: next } : rest;
+  return { ...written, updatedAt: new Date().toISOString() };
+}
+
+/** What the user added to the character, in the order added — ADR 0064. */
+export function addedElementIds(character: Character): ElementId[] {
+  return [...new Set(character.additions ?? [])];
 }
 
 /** A new custom feature's id: unique within the character, and never reused while it has any. */

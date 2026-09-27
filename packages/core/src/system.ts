@@ -1136,6 +1136,12 @@ export interface CharacterKindDef {
    * none, and a feature recorded on such a character is reported and does nothing.
    */
   customFeatures?: CustomFeaturesDef;
+  /**
+   * Which types of loaded content a user may put on a character of this kind, whatever the element's own
+   * prerequisites — ADR 0064. Replaced rather than merged along an `extends` chain, like `customFeatures`. A kind
+   * without it carries none, and an addition recorded on such a character is reported and not held.
+   */
+  additions?: AdditionsDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -1150,6 +1156,14 @@ export interface CustomFeaturesDef {
    * block's other numbers.
    */
   sections?: string[];
+}
+
+/** What a user may add to a character of a kind from loaded content — ADR 0064. */
+export interface AdditionsDef {
+  /** The element types that may be added, in the order a picker offers them. */
+  types: ElementType[];
+  /** User-facing prose shown where elements are added: what adding one means in this system. */
+  description?: string;
 }
 
 /** A {@link CharacterKindDef} with its `extends` chain applied and defaults filled in. */
@@ -1186,6 +1200,8 @@ export interface ResolvedCharacterKind {
   preparation?: PreparationDef;
   /** Whether characters of this kind may carry features their user writes, and as what — ADR 0063. */
   customFeatures?: CustomFeaturesDef;
+  /** Which types a user may add to a character of this kind from loaded content — ADR 0064. */
+  additions?: AdditionsDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
   buildSteps: BuildStepDef[];
@@ -1370,6 +1386,7 @@ export function resolveCharacterKind(
   let repeatableSetter: string | undefined;
   let preparation: PreparationDef | undefined;
   let customFeatures: CustomFeaturesDef | undefined;
+  let additions: AdditionsDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
@@ -1394,6 +1411,7 @@ export function resolveCharacterKind(
     if (layer.repeatableSetter !== undefined) repeatableSetter = layer.repeatableSetter;
     if (layer.preparation !== undefined) preparation = layer.preparation;
     if (layer.customFeatures !== undefined) customFeatures = layer.customFeatures;
+    if (layer.additions !== undefined) additions = layer.additions;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
@@ -1419,6 +1437,7 @@ export function resolveCharacterKind(
     repeatableSetter,
     preparation,
     customFeatures,
+    additions,
     candidateNotes,
     buildSteps,
     sheet,

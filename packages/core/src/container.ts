@@ -24,6 +24,7 @@
 
 import type { Character, SourceRef } from './character.ts';
 import {
+  addedElementIds,
   advancementElementIds,
   chosenElementIds,
   inventoryElementIds,
@@ -163,6 +164,9 @@ export function collectCharacterContent(
     // What was put on a prepared list. A whole-list preparer's prepared spells are named by nothing else in
     // the character, so leaving them out saves a Cleric that opens with the names gone (ADR 0046, ADR 0012).
     ...preparedElementIds(character),
+    // What the user added from content (ADR 0064). Named by nothing else in the character, so a save that left it out
+    // would reopen without the NPC's condition or the feat the DM gave it.
+    ...addedElementIds(character),
     // Per step of progression, at the step the derivation reads: a recorded one, or a creature's print (ADR 0060).
     ...(options.kind
       ? baselineElementIds(options.kind, characterProgress(character, options.kind, index).value)

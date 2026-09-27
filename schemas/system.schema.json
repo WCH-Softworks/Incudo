@@ -380,6 +380,22 @@
             }
           }
         },
+        "additions": {
+          "type": "object",
+          "required": ["types"],
+          "additionalProperties": false,
+          "description": "Which element types a user may put on a character of this kind from loaded content, whatever the element's own prerequisites: an unmet one is flagged, never refused (ADR 0064). A kind without it carries none. Replaced rather than merged along an extends chain.",
+          "properties": {
+            "types": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "The element types that may be added, in the order a picker offers them."
+            },
+            "description": { "type": "string", "description": "User-facing prose shown where elements are added: what adding one means in this system." }
+          }
+        },
         "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },
         "repeatableSetter": {
           "type": "string",

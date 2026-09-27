@@ -103,6 +103,10 @@ function checkCharacterReferences(character: Character): SchemaError[] {
   if (character.formatVersion < 4 && character.customFeatures !== undefined) {
     errors.push({ path: 'customFeatures', message: 'is recorded only from format 4' });
   }
+  // An addition is dropped by a reader of 4 (ADR 0064).
+  if (character.formatVersion < 5 && character.additions !== undefined) {
+    errors.push({ path: 'additions', message: 'is recorded only from format 5' });
+  }
   const featureIds = new Set<string>();
   for (const [i, feature] of (character.customFeatures ?? []).entries()) {
     if (featureIds.has(feature.id)) {
@@ -387,6 +391,13 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           });
         }
         grantedFrom.add(key);
+      }
+    }
+
+    // A type nothing declares would offer nothing, and nothing would say why (ADR 0064).
+    for (const type of resolved.additions?.types ?? []) {
+      if (!typeNames.has(type)) {
+        errors.push({ path: `${where}.additions.types`, message: `names "${type}", which the system's elementTypes does not declare` });
       }
     }
 

@@ -27,7 +27,7 @@
     { "name": "Archetype", "plural": "Subclasses", "selectable": true, "children": ["Archetype Feature"] },
     { "name": "Archetype Feature", "plural": "Subclass Features" },
     { "name": "Background", "plural": "Backgrounds", "selectable": true, "browsable": true, "children": ["Background Feature", "Background Variant"] },
-    { "name": "Background Feature" },
+    { "name": "Background Feature", "plural": "Background Features" },
     { "name": "Background Variant", "selectable": true },
     { "name": "Background Characteristics" },
     { "name": "Feat", "plural": "Feats", "selectable": true, "browsable": true, "children": ["Feat Feature"] },
@@ -281,6 +281,11 @@
 
       "repeatableSetter": "allow duplicate",
 
+      "additions": {
+        "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature", "Proficiency", "Language", "Condition", "Spell"],
+        "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is listed with the character's spells and belongs to no spellcasting class, so no class's save DC, attack bonus or spell slots apply to it."
+      },
+
       "candidateNotes": [
         { "types": ["Spell"], "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }
       ],
@@ -291,7 +296,7 @@
         "Background", "Background Feature", "Background Variant", "Background Characteristics",
         "Feat", "Feat Feature", "Spell",
         "Item", "Magic Item", "Weapon", "Armor", "Weapon Property", "Weapon Group",
-        "Proficiency", "Language", "Deity", "Alignment", "Vision",
+        "Proficiency", "Language", "Condition", "Deity", "Alignment", "Vision",
         "Companion", "Companion Trait", "Companion Action", "Companion Reaction",
         "Ability Score Improvement", "Dragonmark",
         "Grants", "Support", "Option", "Information", "Rule"
@@ -337,7 +342,8 @@
       "elementTypes": [
         "Creature", "Companion", "Companion Trait", "Companion Action", "Companion Reaction",
         "Spell", "Item", "Magic Item", "Weapon", "Armor",
-        "Proficiency", "Language", "Alignment", "Vision", "Information", "Rule"
+        "Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature",
+        "Proficiency", "Language", "Condition", "Alignment", "Vision", "Information", "Rule"
       ],
 
       "stats": [
@@ -415,6 +421,11 @@
 
       "customFeatures": { "type": "Companion Trait", "sections": ["header", "speeds", "saves", "skills", "senses"] },
 
+      "additions": {
+        "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature", "Proficiency", "Language", "Condition", "Spell"],
+        "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is listed with the character's spells and belongs to no spellcasting class, so no class's save DC, attack bonus or spell slots apply to it."
+      },
+
       "setterStats": [
         { "types": ["Companion"], "setter": "strength", "stat": "strength" },
         { "types": ["Companion"], "setter": "dexterity", "stat": "dexterity" },
@@ -470,6 +481,8 @@
           { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
           { "id": "actions", "label": "Actions", "types": ["Companion Action"] },
           { "id": "reactions", "label": "Reactions", "types": ["Companion Reaction"] },
+          { "id": "features", "label": "Feats and Features", "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature"] },
+          { "id": "proficiencies", "label": "Proficiencies and Conditions", "types": ["Proficiency", "Language", "Condition"] },
           { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
         ]
       }
@@ -519,6 +532,8 @@
           { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
           { "id": "actions", "label": "Actions", "types": ["Companion Action"] },
           { "id": "reactions", "label": "Reactions", "types": ["Companion Reaction"] },
+          { "id": "features", "label": "Feats and Features", "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature"] },
+          { "id": "proficiencies", "label": "Proficiencies and Conditions", "types": ["Proficiency", "Language", "Condition"] },
           { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"] },
           { "id": "lair", "label": "Lair Actions & Regional Effects", "types": ["Lair Action", "Regional Effect"] },
           { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }

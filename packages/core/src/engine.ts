@@ -25,7 +25,7 @@ import type {
 } from './model.ts';
 import { declaredBlockName, LayeredElementIndex, MapElementIndex } from './model.ts';
 import type { Character } from './character.ts';
-import { advancementCounts, advancementElementIds, equippedElementIds } from './character.ts';
+import { addedElementIds, advancementCounts, advancementElementIds, equippedElementIds } from './character.ts';
 import type {
   BlockFilterDef,
   GameSystem,
@@ -216,6 +216,9 @@ export interface Problem {
     | 'custom-feature-stat'
     | 'custom-feature-conflict'
     | 'custom-feature-replaced'
+    // An element the user added of a type the kind does not let be added, which is not held — ADR 0064. An added one
+    // whose own prerequisites fail is held, and is `requirement-unmet`.
+    | 'addition-not-allowed'
     // The bag, read through the kind's inventory declaration — ADR 0025, ADR 0023.
     | 'slot-unknown'
     | 'slot-full'
@@ -345,6 +348,11 @@ export function deriveCharacter(
   for (const id of equippedElementIds(character)) chosenIds.add(id);
   // A custom feature is a seed: the user put it there. Not a pick, so nothing below defers it.
   for (const element of custom.elements) chosenIds.add(element.id);
+  // So is what the user added from content (ADR 0064), and for the same reason it is never deferred: nothing chose it,
+  // so it follows no class's track, and its level gates read the character's own progression. Only the types the
+  // kind lets be added; anything else is reported and not held, as a custom feature on a kind that carries none is.
+  const added = allowedAdditions(recorded, kind, index, problems);
+  for (const id of added) chosenIds.add(id);
 
   // What each recorded choice holds, by the key the pool is recorded under, and which of those
   // elements only a choice put there. Nothing is deferred without a track to inherit: a character
@@ -491,6 +499,11 @@ export function deriveCharacter(
     });
   }
 
+  // What the user added whose own prerequisites fail is held and flagged, never refused (ADR 0064, as ADR 0045 does
+  // for an ability score). Asked of the finished derivation, and as it would have been asked before taking the element:
+  // "does not already have this" must not fail because it now does.
+  reportUnmetAdditions(added, active, stats, character, kind, equipment, problems);
+
   // Attuned to more than the limit allows — ADR 0023 decision 3. Once, after the fixed point,
   // because the limit is a derived number: the kind contributes a base and content raises it,
   // and asking mid-loop would report a character over a limit that had not finished arriving.
@@ -569,6 +582,62 @@ interface EngineContext extends RequirementContext, ExpressionContext {}
 type Progressed = Character & { progress: number };
 
 /** A setter that supplied nothing, or supplied a stat twice, as the derivation reports it (ADR 0057). */
+/**
+ * What the user added that the kind lets be added, in the order added — ADR 0064. An element of a type the kind does not
+ * list, or any addition on a kind that lists none, is reported and left out. An id nothing declares is kept: seeding it
+ * reports it unresolved, as a vanished choice is.
+ */
+function allowedAdditions(
+  character: Character,
+  kind: ResolvedCharacterKind,
+  index: ElementIndex,
+  problems: Problem[],
+): ElementId[] {
+  const allowed = new Set(kind.additions?.types ?? []);
+  const out: ElementId[] = [];
+  for (const id of addedElementIds(character)) {
+    const element = index.get(id);
+    if (element && !allowed.has(element.type)) {
+      problems.push({
+        level: 'warning',
+        code: 'addition-not-allowed',
+        elementId: id,
+        message: kind.additions
+          ? `${element.name} was added to this character, and a ${kind.name} cannot have a ${element.type} added. It is not on the character.`
+          : `${element.name} was added to this character, and nothing can be added to a ${kind.name}. It is not on the character.`,
+      });
+      continue;
+    }
+    out.push(id);
+  }
+  return out;
+}
+
+function reportUnmetAdditions(
+  added: readonly ElementId[],
+  active: Map<ElementId, Element>,
+  stats: Map<StatKey, ResolvedStat>,
+  character: Progressed,
+  kind: ResolvedCharacterKind,
+  equipment: EquipmentState,
+  problems: Problem[],
+): void {
+  if (!added.length) return;
+  const ctx = makeContext(active, stats, character, kind, equipment);
+  for (const id of added) {
+    const element = active.get(id);
+    if (!element?.requirements) continue;
+    const before: RequirementContext = { ...ctx, hasElement: (other) => other !== id && ctx.hasElement(other) };
+    if (evaluateRequirements(element.requirements, before)) continue;
+    problems.push({
+      level: 'warning',
+      code: 'requirement-unmet',
+      elementId: id,
+      message: `${element.name} was added to this character, and its prerequisites are not met.`,
+    });
+  }
+}
+
 /** A custom feature's elements, as an index the derivation reads in front of the content — ADR 0063. */
 function customIndex(elements: Element[]): ElementIndex {
   const index = new MapElementIndex();
