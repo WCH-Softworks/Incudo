@@ -352,7 +352,9 @@ sheet shows the creature's other speeds, proficient saves and skills, and its se
 (ADR 0062). A DM may write features of an NPC's own that add to or set its numbers (ADR 0063), and **put any feat, feature,
 proficiency, language, condition or spell from loaded content on a player character or an NPC, whatever its prerequisites**
 (ADR 0064). **A legendary creature takes legendary actions, lair actions and regional effects from a user's own file or
-written by the DM on the creature**, and shows how many legendary actions it takes (ADR 0065).
+written by the DM on the creature**, and shows how many legendary actions it takes (ADR 0065). **An NPC keeps a stat
+block printed only as prose beside it for reference**, shown and saved and never held, and may skip its creature to be
+built by hand (ADR 0068).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -398,8 +400,8 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   still writes 2, and only `setProgress(…, undefined)`, `createCharacter({ progress: null })` and `setGrantRemoved` raise
   one. Nothing downgrades. The validator refuses either field below 3. The frozen importer and every PC are untouched.
   *(Since ADR 0063 a character that records `customFeatures` is **4**, and since ADR 0064 one that records `additions` is
-  **5**, and since ADR 0065 one with a custom feature that records its `type` is **6**;
-  `LATEST_CHARACTER_FORMAT_VERSION` is 6.)*
+  **5**, and since ADR 0065 one with a custom feature that records its `type` is **6**, and since ADR 0068 one that
+  records `references` is **7**; `LATEST_CHARACTER_FORMAT_VERSION` is 7.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any
@@ -470,7 +472,8 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   - **The corpus's `Condition` type is 23 damage resistances and immunities**, not Blinded or Charmed. Found by running it.
   - `packages/ui/src/additions.ts` is the view-model; `Additions.tsx` computes nothing. Driven in the browser build only.
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
-  content comes from first, and show the prose stat blocks as reference rather than parse them. The first is decided:
+  content comes from first, and show the prose stat blocks as reference rather than parse them. Both are done: the second
+  is ADR 0068, below. The first:
 - **Legendary content is content of the types the system declares, from a user's file or written by the DM**
   ([ADR 0065](docs/adr/0065-legendary-content-is-content-of-the-types-the-system-declares-and-a-dm-may-write-it-on-the-creature.md)).
   Things to know before touching it:
@@ -522,6 +525,33 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     corpus NPC changes; what this reaches is a user's file. The oracle's table is identical before and after.
   - Driven in the browser build and in the Tauri window on Windows (DOM clicks over the debug port, the file added through
     the native dialog, the saved file read back from disk); not with real input, and not on macOS or Linux.
+- **An NPC may keep content beside it for reference, shown and embedded and never held**
+  ([ADR 0068](docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
+  The 2025 Monster Manual's prose stat blocks, beside an NPC the DM builds by hand. Things to know before touching it:
+  - **Measured by `tools/verify/src/stat-block-references.test.ts`** (report-only): 63 descriptions print a stat block
+    (45 from that book, 16 PHB 2024 summons, 2 DMG 2024), all `Information`, which also holds 53 that are not stat
+    blocks. Nothing but the prose sets one apart, none carries a rule, none embeds another element, and nothing a
+    creature grants, names or embeds is one (8 share a name, which nothing reads). **Nothing in the app recognises a stat
+    block**: the offer is every element of the kind's types, by name.
+  - **`Character.references` is never held.** Not a derivation seed, not an addition (ADR 0064 holds; this must not),
+    not a choice. `collectCharacterContent` seeds from it (`referenceIdsOf`), so a save embeds the text. Format **7**,
+    only when present (`setReferenced`); the validator refuses it below 7 and an id twice. Not `referencedElementIds`,
+    which is the engine's "what an element's rules name".
+  - **The kind says which types** (`references: { types, label, description }`, replaced along `extends`, undeclared
+    types refused). 5e's NPC keeps `Information` under "For reference" and the legendary creature inherits it; `pc` none.
+  - `packages/ui/src/references.ts` is the view-model: a row not loaded, or of a type the kind does not keep, is listed
+    with a note and its text is not shown. `References.tsx` renders it on Build (first column) and after the Sheet, and
+    computes nothing but sanitizing the description.
+  - **A build step may be a `pick` that is not required** (system format): offered as a pick, never blocking, so it can
+    be skipped (ADR 0033). The NPC's and legendary creature's Creature steps are, because an NPC built from nothing had a
+    blocking Creature decision nothing could close. A step that is neither required, a set nor a `pick` still only heads
+    the selects content opens of its types; making every such step a pick would open "Languages: pick one" on a PC.
+    Tests that look for the creature step find it by `required || pick`.
+  - **Found and not fixed:** all 63 stat blocks are embedded in other descriptions (a summoning spell, a scroll) by
+    `<div element="…">`, and `sanitize-html.ts` unwraps the empty div, so those descriptions show nothing there.
+    Resolving it needs a lookup when rendering and a save that embeds what a held element's description embeds.
+  - Driven in the browser build and in the Tauri window on Windows (DOM clicks over the debug port, the saved file read
+    back from disk, reopened with the source off); not with real input, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1179,7 +1209,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066 and 0067 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067 and 0068 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
@@ -1323,8 +1353,8 @@ run as proof the gating is right.
 gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
 after `baseStats`, `advancement` and `generation` each stayed at 1. Readers accept both. *(Readers accept 3 too since
 ADR 0060, which only a character with no `progress` or with `removedGrants` is written at, 4 since ADR 0063,
-which only a character with `customFeatures` is, 5 since ADR 0064, which only one with `additions` is, and 6 since ADR 0065, which only one with a typed
-custom feature is.)* Three
+which only a character with `customFeatures` is, 5 since ADR 0064, which only one with `additions` is, 6 since ADR 0065, which only one with a typed
+custom feature is, and 7 since ADR 0068, which only one with `references` is.)* Three
 things in the shape are measurements, not taste: an entry is an **instance** (one save carries two
 greatswords with different enchantments, so an element-keyed bag loses a real character's items);
 `slot` is an **override** and normally absent (the saves' `location` agrees with the element's own

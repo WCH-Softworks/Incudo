@@ -1166,10 +1166,24 @@ the kind machinery is not decorative.*
       source off); running it made two removals opened with no source read as one line rather than two. **Not done:**
       macOS and Linux.
 - [ ] Companions and sidekicks
-- [ ] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC.** *Reworded by ADR 0057's
-      measurement:* 32 of its creatures are structured and already usable; the other 45 (Rat to Tarrasque) are HTML
-      prose in `Information` elements. Parsing prose into elements is the guess ADR 0005 declines; showing it is
-      honest. Was "Wire up the 2025 Monster Manual creature content already in the corpus".
+- [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
+      ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
+      *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the
+      corpus". Measured first, as a test: 63 descriptions print a stat block (the book's 45, 16 summons from the 2024
+      Player's Handbook, 2 from the 2024 Dungeon Master's Guide), all of type `Information`, which also holds 53 texts
+      that are not stat blocks; nothing but the prose sets one apart, and nothing links one to a structured creature
+      (8 share a name). So nothing recognises a stat block: an NPC or legendary creature may **keep content beside it
+      for reference**, any element of the types its kind lists (5e: `Information`, 116 of them, searched by name). A
+      reference is shown on the Build pane beside the decisions where its numbers are entered, and after the Sheet,
+      and saved with the character so it shows with no source; it is **never held**, so nothing derives from it. Only
+      a character that keeps one moves to **character format 7**. Running it found that an NPC built from nothing,
+      the ordinary case beside a prose block, could never be finished: its Creature decision was required and nothing
+      could answer it. A build step may now be a **pick that can be skipped** (`pick`), and the two Creature steps
+      are. A library card said "1 elements embedded"; fixed. No player character derivation moved. Driven in the
+      browser build and in the Tauri window on Windows, the saved file read back from disk and reopened with the
+      source off. **Not done:** content embeds all 63 stat blocks in other descriptions (a summoning spell's, a
+      scroll's) with `<div element>`, and Incudo shows nothing there; references for a player character; macOS and
+      Linux.
 - [ ] Kind-specific sheets and exports
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the

@@ -7,7 +7,7 @@ reworded · builds on [0003](./0003-system-agnostic-content-model.md), [0005](./
 [0063](./0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md),
 [0064](./0064-a-character-may-carry-elements-its-user-adds-from-loaded-content-and-an-unmet-prerequisite-is-a-flag.md) ·
 **format:** an optional `references` on a character, `formatVersion` **7** when present; an optional `references` on a
-character kind in the system format (`formatVersion` stays 1)
+character kind and an optional `pick` on a build step in the system format (`formatVersion` stays 1)
 
 ## Context
 
@@ -80,12 +80,29 @@ Not a filter by prose shape (the parse ADR 0005 declines), by book (a system def
 name content, and misses the 18 stat blocks in two other books), or by the empty opening heading (markup, which an
 upstream edit can change without meaning to).
 
-### 4. The NPC is built beside it by hand
+### 4. The NPC is built beside it by hand, and its creature may be skipped
 
 A reference closes no step and fills no number. The DM enters the ability scores (ADR 0057's manual budget), armour
 class, hit points and speed (ADR 0059's entry), the challenge rating, and writes the traits, actions and legendary
 actions as the creature's own features (ADRs 0063, 0065), reading the text beside them. An NPC built on one of the eight
 structured creatures that share a name with a prose block may keep the prose too; nothing matches the two for it.
+
+**Running it found that an NPC built from nothing could not be finished.** The `npc` and `legendary` kinds' Creature
+step was `required`, so a blocking Creature decision stayed open on every NPC with no creature, which is every NPC built
+beside a prose block: nothing could answer it, and ADR 0033 refuses to let a blocking decision be skipped. It was so
+since ADR 0057, and ADR 0059's run of an NPC from nothing records the steps it entered and not this one.
+
+Two readings were available and both were wrong. Dropping `required` makes the step one the builder offers nothing for:
+a step that is neither required nor a set is a heading for the selects content opens of its types (a player
+character's Languages, Spells, Equipment), which is why ADR 0065 found its optional single picks "offered nowhere".
+Letting every such step be a pick would open "Languages: pick one" on every player character.
+
+So a build step may declare **`pick: true`** (system format, `formatVersion` stays 1): a pick of one that is not
+required, offered as a pick and never blocking, so it is skipped like any non-blocking decision (ADR 0033), recorded in
+`declinedDecisions`, listed under Skipped and brought back from there. Validation refuses it with `multiple`, a set. A
+reader that does not know the key offers no pick for the step, which is what it did for a step that is not required.
+The two Creature steps declare it in place of `required`, with a sentence saying a creature may be skipped to build one
+by hand. Nothing else moves: a creature chosen is a settled pick as before, and every other step is as it was.
 
 ### 5. Where it is shown
 
@@ -108,7 +125,7 @@ kind is the authority, as it is for an addition (ADR 0064) and a written feature
   creature's stat block is. Resolving an embedding needs an index lookup when a description is rendered, and a save must
   then embed what a held element's description embeds or it opens with the gap back. It is its own item.
 - **Give a player character references.** Decision 2.
-- **Say so on a library card.** A card shows kind, progress and elements embedded.
+- **Say on a library card which text an NPC keeps.** A card shows kind, progress and elements embedded.
 
 ## Alternatives considered
 
@@ -121,6 +138,8 @@ kind is the authority, as it is for an addition (ADR 0064) and a written feature
   built from.
 - **A build step that is a set of `Information`** (ADR 0032). The same objection: a step's picks are choices, and
   choices seed the derivation.
+- **A reference that answers the Creature step**, so an NPC built beside one has nothing open. It would make a text
+  something the NPC is, and the step's candidates are creatures; decision 4 lets the step be skipped instead.
 - **One reference, not a list.** Simpler to show. A DM building a swarm beside its member, or a variant beside the
   original, keeps two; the list costs nothing more.
 - **Copy the text into the character's `freeform` notes.** Stores content in the character (ADR 0006), follows no
@@ -150,7 +169,33 @@ Each test names the perturbation that fails it, and each perturbation was run.
   reference types (116), keep them all, derive exactly what they derived keeping none (`summarize`), and saved and
   reopened against only what the save embeds, show the same rows and derive the same. Perturbed: references seeded into
   the derivation; left out of the save; the NPC's `references` removed.
+- `packages/ui/src/optional-pick.test.ts`, over a fixture with no game in it: a step declaring `pick` is offered as a
+  pick that does not block, beside a required pick that does and a step that is neither and offers nothing; skipped,
+  its step reads complete and it is listed as skipped, and reconsidered it is offered again; answered, it is a settled
+  pick that can be changed. Perturbed: `pick` ignored in `topLevelPickSteps`; the pick always blocking; every step
+  that is not required made a pick.
+- `tools/verify/src/schemas.test.ts`: a step declaring `pick` validates, and with `multiple` is refused. Perturbed: the
+  schema key renamed, the check removed.
 - The oracle's thirty-sample table is identical before and after (`INCUDO_ORACLE_SNAPSHOT` on the base,
-  `INCUDO_ORACLE_BASELINE` on the change, same checkout; a baseline with one difference removed fails, so the
-  comparison was live): no player character derivation moved, as expected with `pc` keeping none and a reference never
-  held.
+  `INCUDO_ORACLE_BASELINE` on the change, same checkout, run again after decision 4's change; a baseline with one
+  difference removed fails, so the comparison was live): no player character derivation moved, as expected with `pc`
+  keeping none, a reference never held and no `pc` step declaring `pick`.
+- **Driven in the browser build** (an origin-private folder standing in for the native folder picker): an NPC started,
+  its For reference section offered 116 options, "kraken" found the Monster Manual (2025) Kraken and it was kept, its
+  text and ability table shown in the first column (the table scrolls sideways within it; the column does not). That
+  NPC could not be finished: **the Creature decision stayed open and blocking**, which is decision 4's finding. With
+  `pick`, Creature read "optional" with a Skip, and skipped it was listed under Skipped and every step read complete.
+  Scores, armour class, hit points, speed and challenge rating were entered by hand, and the Sheet read CR 23, AC 18,
+  HP 481, speed 30, proficiency +7 and the six scores, with the Kraken's text under For reference. Saved, the only
+  source switched off and the page reloaded, the card read "NPC / Monster · Challenge Rating 23 · 1 elements embedded"
+  (fixed to "1 element" since) and the file opened to the same sheet; the Build pane still showed the text and said
+  nothing loaded could be added. Browse found the Kraken first for "kraken"; the Scroll of Titan Summoning (Kraken)
+  beside it printed no stat block where its description embeds one (the gap under "What this does not do").
+- **Driven in the Tauri window on Windows** (a fresh WebView2 profile, the library a scratch folder named in the app's
+  own store, DOM clicks over the debug port; no keystrokes, and not macOS or Linux). AuroraLegacy loaded through the
+  host in about 28 s. An NPC: Creature skipped, the Tarrasque's stat block kept from 116, its armour class, hit points,
+  speed, challenge rating and six scores read off the shown text and entered, and a feature of its own written. The
+  sheet read CR 30, AC 25, HP 697, speed 60, proficiency +9. The saved file, read back from disk with the repository's
+  zip codec, is format 7, records the reference and the skipped Creature, embeds the Tarrasque's description and nothing
+  else of content, and derived against only that holds the written feature and not the stat block. With the source
+  switched off and the window reloaded, the file opened to a sheet identical to the one before, character for character.
