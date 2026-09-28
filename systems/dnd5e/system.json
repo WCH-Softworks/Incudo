@@ -495,7 +495,7 @@
     {
       "id": "legendary",
       "name": "Legendary Creature",
-      "description": "An NPC that takes legendary actions, and may have lair actions and regional effects. Write them on the creature as features of its own, or add a file of your own content that declares them: the official content describes them only as text inside a creature's description.",
+      "description": "An NPC that also takes legendary actions, and may have lair actions and regional effects. The official content has these only as text in a creature's description, so write them on the creature as features of its own, or add a file of your own content that declares them.",
       "extends": "npc",
       "elementTypes": ["+Legendary Action", "+Lair Action", "+Regional Effect"],
 

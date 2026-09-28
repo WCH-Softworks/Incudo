@@ -79,6 +79,7 @@ export function LibraryPane({
   onDismissAsk: () => void;
   shell: 'tauri' | 'browser';
 }): React.JSX.Element {
+  const newKindDescription = kinds.length > 1 ? kinds.find((kind) => kind.id === newKind)?.description : undefined;
   if (state.status === 'unavailable') {
     return (
       <main className="pane">
@@ -139,16 +140,14 @@ export function LibraryPane({
         </span>
         <div className="row">
           {kinds.length > 1 && (
-            // Which kind New character makes. The description is the system's own sentence about
-            // the kind, shown as a tooltip because the row has no room for three paragraphs.
+            // Which kind New character makes. Its description is shown below the row.
             <select
               aria-label="Kind of character"
               value={newKind}
-              title={kinds.find((kind) => kind.id === newKind)?.description}
               onChange={(event) => onNewKind(event.target.value)}
             >
               {kinds.map((kind) => (
-                <option key={kind.id} value={kind.id} title={kind.description}>
+                <option key={kind.id} value={kind.id}>
                   {kind.name}
                 </option>
               ))}
@@ -170,6 +169,13 @@ export function LibraryPane({
           </button>
         </div>
       </div>
+
+      {/*
+        The system's own sentence about the kind New character makes. It was a tooltip on the
+        chooser, which a dropdown's options never show, and the Legendary Creature's is the only
+        place that says where its legendary actions come from.
+      */}
+      {newKindDescription && <p className="hint">{newKindDescription}</p>}
 
       {importBlockedBecause !== undefined && (
         <p className="hint">{importBlockedBecause}</p>
