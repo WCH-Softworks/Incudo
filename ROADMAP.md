@@ -883,8 +883,8 @@ so that finding one again is recognition rather than discovery.
 - **One grant cannot cancel another.** A Mithral Armor adornment suppresses its host armour's
   `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE`, and no content file expresses that — it is Aurora
   app behaviour. It is 2 of the 55 `element-extra`, and a set of real saves carry the control case:
-  plate with no mithral does keep the marker. Not invented (ADR 0005). *(Unchanged by ADR 0061, which lets
-  the **user** take away what a creature's setters give an NPC: an input, not content cancelling content.)*
+  plate with no mithral does keep the marker. Not invented (ADR 0005). *(Unchanged by ADR 0061 and ADR 0067, which
+  let the **user** take away what a creature gives an NPC: an input, not content cancelling content.)*
 - **`ID_INTERNAL_MULTICLASS_LEVEL_3`** — the single `element-missing`, an Aurora-app marker
   nothing in the 740 files references and that carries no rules. Honestly unmodelled.
 - **One unresolved reference upstream** — the `…VULNERAILITY…` typo. It is a *grant* to an id
@@ -1152,7 +1152,18 @@ the kind machinery is not decorative.*
       legendary creature are built in one app, and the engine names none of them (only comments do). The items below
       are still open. **Not done:** removing a creature's own `<grant>`s from its NPC (ADR 0061 cancels what a setter
       names); macOS and Linux. *(A draft reloaded with no source enabled lost its file's embedded content, and the next
-      Save wrote a second file embedding none of it; fixed by ADR 0066.)*
+      Save wrote a second file embedding none of it; fixed by ADR 0066. The grants, by ADR 0067, the next item.)*
+- [x] **What a creature grants can be removed from its NPC, like what it names**
+      ([ADR 0067](./docs/adr/0067-what-a-creature-grants-may-be-removed-like-what-it-names-and-only-a-holder-s-gifts-are.md),
+      amending ADR 0061). An element the kind's `setterGrants` reads (a creature) is a *holder*, and everything it gives
+      is removable: what its setters name and what its own `<grant>`s give, whatever the type. So an NPC or Legendary
+      Creature on a user's homebrew creature can lose the legendary action, lair action or regional effect the creature
+      grants, and an NPC lists them under the sheet's headings, since it offers no step for them. Nothing that is not a
+      holder gives anything removable: the player character has none, so a class's features stay content's, even
+      against a hand-edited `removedGrants`. Measured: in the official corpus every creature grant is already named by
+      its setter (12 of 12), so no corpus NPC changes. No player character derivation moved. Driven in the browser
+      build; running it made two removals opened with no source read as one line rather than two. **Not done:** the
+      Tauri window, macOS and Linux.
 - [ ] Companions and sidekicks
 - [ ] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC.** *Reworded by ADR 0057's
       measurement:* 32 of its creatures are structured and already usable; the other 45 (Rat to Tarrasque) are HTML

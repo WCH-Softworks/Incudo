@@ -402,11 +402,12 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   `LATEST_CHARACTER_FORMAT_VERSION` is 6.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
-  creatures grant what they also name, so stopping only the setter would do nothing for them). Chosen, or granted by
-  anything else, the element is still held. `setterGrantIds(defs, element, removed)` and `withdrawnGrantIds` are the only
-  readers, used by the engine and by `collectCharacterContent`, so a removed trait is neither derived nor saved; a save
-  opened with no source therefore cannot name it, and the pane says so rather than printing an id. The builder publishes
-  `holderGrants`, refuses to remove what no held element names, and forgets a removal nothing names once the creature
+  creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any
+  `<grant>` of its own. Chosen, or granted by anything else, the element is still held. `setterGrantIds(defs, element,
+  removed)`, `holderGivenIds` and `withdrawnGrantIds` are the only readers, used by the engine and by
+  `collectCharacterContent`, so a removed trait is neither derived nor saved; a save opened with no source therefore
+  cannot name it, and the pane says so rather than printing an id. The builder publishes `holderGrants`, refuses to
+  remove what no held element gives, and forgets a removal nothing names once the creature
   changes. Not "one grant cannot cancel another": that is still content's, and still open.
 - **A creature's traits, actions and reactions are granted through its setters**
   ([ADR 0058](docs/adr/0058-a-setter-may-name-elements-its-holder-has-and-the-kind-says-which.md)). A kind's
@@ -497,13 +498,29 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     every NPC whose creature grants none, and each says that uses and more are a Legendary Creature's. The NPC still
     declares none of the types, offers none, and has no uses stat; `legendary-content.test.ts` reads the legendary types
     as the difference between the two kinds' `elementTypes`, so adding them to the NPC's would empty that test.
-  - **A creature's own `<grant>`s cannot be removed from its NPC** (found, not fixed): ADR 0061's removal cancels what a
-    setter names, so the three legendary elements the homebrew creature grants have no Remove.
+  - ~~**A creature's own `<grant>`s cannot be removed from its NPC**~~ (found here, fixed by ADR 0067, below).
   - **The kind's description is a line under the Characters header** for the kind New character makes. It was a
     tooltip on the chooser's options, which a dropdown never shows.
 - **Driven in the browser build and, since 2026-09-28, in the Tauri window on Windows**: a real file drop and the native
   "Choose files…" dialog, a Legendary Creature with taken and written legendary actions and a "Lair" adding a use, saved
   and reopened with the source off. The browser build used an origin-private folder for the native folder picker.
+- **What a creature grants may be removed like what it names, and only a holder's gifts are**
+  ([ADR 0067](docs/adr/0067-what-a-creature-grants-may-be-removed-like-what-it-names-and-only-a-holder-s-gifts-are.md),
+  amending ADR 0061). Things to know before touching it:
+  - **A holder is an element of a type the kind's `setterGrants` reads** (`isGrantHolder`), and what it gives is its setter
+    ids then its own `<grant>` ids, once each (`holderGivenIds`, `packages/core/src/setter-grants.ts`). `withdrawnGrantIds`
+    answers from that and only for a holder, so the engine and `collectCharacterContent` skip a removed id among the
+    holder's own grants whatever their type, and nothing else's. The builder's `holderGrants` lists the same function.
+  - **Not "types the kind lists"**: the NPC's `elementTypes` leave out the legendary types on purpose (ADR 0065 decision
+    7), so that filter would have kept an NPC's granted Tail Sweep fixed. The holder is the scope.
+  - **A PC removes nothing**: `pc` declares no `setterGrants`, so no class, race, feat or item is a holder, and a
+    hand-edited `removedGrants` naming a class feature does nothing. `removed-grants.test.ts` holds it by perturbation.
+  - **`HolderGrant.group`** is the step's label, else the label of the sheet section that lists the type, else ''
+    ("Other"), and `holderGrants` is ordered by it; an NPC's granted legendary action has no step and is listed under
+    "Legendary Actions". The pane groups by it and computes nothing else.
+  - **Measured at `c28ce6c`**: every one of the corpus's 12 creature grants is also named by the creature's setter, so no
+    corpus NPC changes; what this reaches is a user's file. The oracle's table is identical before and after.
+  - Driven in the browser build only.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1161,7 +1178,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065 and 0066 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066 and 0067 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
