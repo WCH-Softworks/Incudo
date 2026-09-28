@@ -1026,6 +1026,19 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       file added this way loads to the same elements the corpus load made of it. Driven in the browser build on Windows
       by a dropped file: added, shown in Browse, replaced, kept across a reload, removed with its copy. **Not done:** the
       picker and the Tauri window's drop were not driven; a folder or zip of files; macOS and Linux.
+- [ ] **Read Aurora's `[character:N]` and `[type:X]`, and withdraw a granted element its own requirements rule out**
+      ([ADR 0071](./docs/adr/0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md),
+      proposed). Measured first: an element's own requirements are read when it is offered and never once it is
+      granted, so a 2014 Ranger who takes Tasha's Deft Explorer also keeps Natural Explorer; the two terms parse into
+      stats nothing publishes, so a level 4 2024 character is offered none of the 50 general feats of its book. With
+      both read, the samples hold 26 granted elements whose own requirements are false, and Aurora's sum has none of
+      them: the Artificers' firearm proficiencies and the Thieves' Tools expertise pair, both long-unexplained
+      `element-extra` rows. Decided: the system answers the two terms (a `character` stat, a kind's `heldTypesStat`);
+      a granted element whose own requirements are false is withdrawn and published as such, never a seed; a withdrawn
+      element's recorded answers are not held while it is. **Next:** implement it.
+- [ ] **Take a Tasha's optional class feature in the app.** They are 36 hidden items a character equips (six replace a
+      feature, ADR 0071), and the app has no way to put an item in the bag. A bag editor, or a skippable set step
+      offering them. After the item above, or a replacing one adds without replacing.
 
 ---
 

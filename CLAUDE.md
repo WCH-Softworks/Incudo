@@ -606,6 +606,16 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     nothing declares. The card computes nothing.
   - Driven in the browser build and in the Tauri window on Windows (DOM clicks over the debug port, the saved file read
     back from disk, reopened with the source off to an identical Sheet); not with real input, and not on macOS or Linux.
+- **Proposed and not built: an element's own requirements hold it as well as offer it** ([ADR 0071](docs/adr/0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)).
+  Today `Element.requirements` is read when an element is offered and for an addition, never once it is granted, so a
+  2014 Ranger with Tasha's Deft Explorer item also holds Natural Explorer. Aurora's `[character:N]` (64 uses) and
+  `[type:X]` (8) parse into stats nothing publishes and read false everywhere, which is also why **a level 4 2024
+  character is offered none of the 50 general feats of its book**. Measured by `tools/verify/src/replaced-features.test.ts`:
+  with both terms read, the samples hold 26 granted elements whose own requirements are false, all 26 absent from
+  Aurora's sum. They are the Artificers' 20 firearm proficiencies (the Firearms option is off) and the Thieves' Tools
+  expertise pair on four samples, so the "stale content" and "unconfirmed" readings of that pair elsewhere in this file
+  are superseded: the pair's own requirements are false and Aurora withdraws it. The ADR's Evidence section lists what
+  the implementation must show.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
