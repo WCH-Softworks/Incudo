@@ -173,7 +173,10 @@ build around it:
   these as elements. A `legendary` kind whose three extra steps offer types nothing declares is a kind with
   three empty pickers. What it needs first is somewhere for that content to come from: a user's own file (ADR
   0056), or a format for it, and Aurora's has none. The kind stays declared (it extends `npc` and builds like
-  one), and the item becomes "decide where legendary content comes from", before any UI for it.
+  one), and the item becomes "decide where legendary content comes from", before any UI for it. *(Decided by
+  [ADR 0065](./0065-legendary-content-is-content-of-the-types-the-system-declares-and-a-dm-may-write-it-on-the-creature.md): a user's own file, or
+  a feature the DM writes on the creature, held as the type it is. The steps were not empty pickers but offered
+  nothing at all: an optional single pick is shown nowhere.)*
 - **"Wire up the 2025 Monster Manual creature content already in the corpus."** 32 of its creatures are
   already usable through this ADR. The other 45, the ones a DM means by "monster", are prose. Wiring them up is
   either parsing HTML stat blocks into elements — a guess about content ADR 0005 has declined every time — or

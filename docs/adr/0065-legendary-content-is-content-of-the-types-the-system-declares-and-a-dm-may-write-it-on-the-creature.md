@@ -154,4 +154,41 @@ steps were optional single picks, which the builder offers nowhere: not an empty
 
 ## Evidence
 
-To be completed as it is built.
+Each test names the perturbation that fails it, and each perturbation was run.
+
+- `tools/verify/src/legendary-content.test.ts`. Over the current corpus, the table above as `ℹ` lines (ADR 0042: it
+  moves with the corpus and fails nothing). Over no corpus at all, the real `systems/dnd5e/system.json` and a generic
+  homebrew file written for the test (`tools/verify/fixtures/legendary/`, added and loaded as ADR 0056 adds one): a
+  legendary creature built on the file's creature holds the legendary action, lair action and regional effect the
+  creature grants, each listed in its sheet section; the Legendary Actions set offers the file's other legendary action
+  and not the granted one, and holds it once taken; a DM's written legendary action, lair action and regional effect
+  are each listed under their own heading, and a written "Lair" adding 1 reads 4 uses; the character is format 6; and
+  saved and reopened with no source, every section reads the same. Fails with the two steps back to single optional
+  picks (the spare legendary action is offered nowhere), with the uses stat removed, with the legendary types left out
+  of the kind's `customFeatures.types`, and with its `customFeatures.sections` without the legendary section. An NPC
+  built on the same creature holds its three legendary elements and lists none, reported.
+- `packages/core/src/custom-features.test.ts`, over a fixture with no game in it: a feature recording a listed type is
+  held as it and one recording none as the default; one recording an unlisted type is reported and not held, and its
+  lines do nothing; the types are the kind's; only a typed feature raises to 6. Perturbed: the recorded type ignored,
+  an unlisted type held as the default, `types` ignored, the version always 4, always 6.
+- `packages/ui/src/custom-features.test.ts`: the state names the types as the sheet heads them; the builder writes a
+  chosen type, forgets the default, keeps the type across other edits, and refuses an unlisted one; a feature recorded
+  with one has a note and its lines read `not-held`. Perturbed: the default recorded, the refusal removed, labels by
+  element name, the note removed, the chosen type not written.
+- `tools/verify/src/schemas.test.ts`: format 6 with a typed feature validates, the type at 5 is refused, 7 is refused;
+  a `types` entry the system does not declare, and a default the list leaves out, are refused. Perturbed: each check
+  removed.
+- The oracle's thirty-sample table is identical before and after (`INCUDO_ORACLE_SNAPSHOT` on the base,
+  `INCUDO_ORACLE_BASELINE` on the change, same checkout; a baseline with one difference removed fails, so the
+  comparison was live): no player character derivation moved, as expected with `pc` declaring no custom features.
+- **Driven in the browser build** (not the Tauri window, macOS or Linux), with an origin-private folder standing in for
+  the native folder picker, and the homebrew file added by a dispatched drop event on the Sources pane. The Legendary
+  Creature started from the file's creature arrived with its legendary action, lair action and regional effect; its
+  Legendary Actions set offered one option, the file's other one, and took it; no lair decision opened, since the
+  creature held all there was. A feature named for a legendary action, listed under Legendary Actions from the six
+  headings offered, and a "Lair" feature whose line was offered "Legendary Action Uses" and added 1, gave a sheet
+  reading Legendary Action Uses 4 above the granted, taken and written legendary actions. Saved to the library, every
+  source switched off and the page reloaded, its card read "Legendary Creature · Challenge Rating 10 · 7 elements
+  embedded", and it opened to the same sheet and the same two features. **Not driven:** an NPC's written action or
+  reaction, a feature recorded with an unlisted type (tests only), and the kind's description, which is the new
+  character chooser's tooltip.

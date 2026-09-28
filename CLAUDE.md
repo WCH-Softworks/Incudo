@@ -351,7 +351,8 @@ speed included, any of which the DM may replace, and what the creature gives it 
 sheet shows the creature's other speeds, proficient saves and skills, and its senses, defences and languages as printed
 (ADR 0062). A DM may write features of an NPC's own that add to or set its numbers (ADR 0063), and **put any feat, feature,
 proficiency, language, condition or spell from loaded content on a player character or an NPC, whatever its prerequisites**
-(ADR 0064).
+(ADR 0064). **A legendary creature takes legendary actions, lair actions and regional effects from a user's own file or
+written by the DM on the creature**, and shows how many legendary actions it takes (ADR 0065).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -397,7 +398,8 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   still writes 2, and only `setProgress(…, undefined)`, `createCharacter({ progress: null })` and `setGrantRemoved` raise
   one. Nothing downgrades. The validator refuses either field below 3. The frozen importer and every PC are untouched.
   *(Since ADR 0063 a character that records `customFeatures` is **4**, and since ADR 0064 one that records `additions` is
-  **5**; `LATEST_CHARACTER_FORMAT_VERSION` is 5.)*
+  **5**, and since ADR 0065 one with a custom feature that records its `type` is **6**;
+  `LATEST_CHARACTER_FORMAT_VERSION` is 6.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them). Chosen, or granted by
@@ -467,7 +469,29 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   - **The corpus's `Condition` type is 23 damage resistances and immunities**, not Blinded or Charmed. Found by running it.
   - `packages/ui/src/additions.ts` is the view-model; `Additions.tsx` computes nothing. Driven in the browser build only.
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
-  content comes from first, and show the prose stat blocks as reference rather than parse them.
+  content comes from first, and show the prose stat blocks as reference rather than parse them. The first is decided:
+- **Legendary content is content of the types the system declares, from a user's file or written by the DM**
+  ([ADR 0065](docs/adr/0065-legendary-content-is-content-of-the-types-the-system-declares-and-a-dm-may-write-it-on-the-creature.md)).
+  Things to know before touching it:
+  - **Measured by `tools/verify/src/legendary-content.test.ts`**: nothing in the corpus declares, names or grants a
+    `Legendary Action`, `Lair Action` or `Regional Effect`; seven 2025 prose stat blocks have a Legendary Actions heading,
+    none a lair or regional one, none a cost, each three uses. The 2025 rules have no lair actions in a stat block.
+  - **No format of its own and no engine noun.** The system declares the types; an element of one from any source is
+    offered, held, listed, granted by a `<grant>` and embedded like anything else. A user's own file (ADR 0056) is the
+    reusable way in, and `tools/verify/fixtures/legendary/` is a generic example of one, a creature granting its own.
+    No setter names legendary content (0 in the corpus): speculative support for a frozen format.
+  - **A written feature may be held as any type its kind lists** (`customFeatures.types`, `type` the default and among
+    them; the validator refuses an undeclared one or a list without the default). `CustomFeature.type` is recorded only
+    when it is not the default, and only then is the character **format 6**; the validator refuses it below 6. A recorded
+    type the kind does not list is `custom-feature-type` and the feature is not held. `customFeatureTypes` and
+    `customFeatureType` (`packages/core/src/custom-features.ts`) are the only readers. 5e's NPC lists trait, action and
+    reaction; the legendary kind redeclares `customFeatures` with its three types and its Legendary Actions section.
+  - **No cost field** (the 2025 rules print none; a 2014 one is in the name). **`legendary actions`**, "Legendary Action
+    Uses", default 3, is a stat of the legendary kind on its Legendary Actions section, changed by a feature, not typed:
+    an entry target with only a default would be open on every legendary creature.
+  - **The legendary kind's two steps are sets.** As optional single picks they were offered nowhere: a non-required pick
+    is not a top-level pick, so there were never "three empty pickers", there was nothing.
+  - **An NPC built on a legendary creature holds its legendary content and its sheet lists none** (reported, not fixed).
 - **Driven in the browser build only**, with an origin-private folder standing in for the native folder picker.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
@@ -1114,7 +1138,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063 and 0064 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064 and 0065 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
@@ -1258,7 +1282,8 @@ run as proof the gating is right.
 gained `inventory` and `character.json`'s `formatVersion` moved to **2** — the first time it has,
 after `baseStats`, `advancement` and `generation` each stayed at 1. Readers accept both. *(Readers accept 3 too since
 ADR 0060, which only a character with no `progress` or with `removedGrants` is written at, 4 since ADR 0063,
-which only a character with `customFeatures` is, and 5 since ADR 0064, which only one with `additions` is.)* Three
+which only a character with `customFeatures` is, 5 since ADR 0064, which only one with `additions` is, and 6 since ADR 0065, which only one with a typed
+custom feature is.)* Three
 things in the shape are measurements, not taste: an entry is an **instance** (one save carries two
 greatswords with different enchantments, so an element-keyed bag loses a real character's items);
 `slot` is an **override** and normally absent (the saves' `location` agrees with the element's own

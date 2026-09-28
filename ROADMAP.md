@@ -1120,12 +1120,23 @@ the kind machinery is not decorative.*
       and the pane says so), conditions in the rules' sense (the corpus's 23 `Condition` elements are damage
       resistances and immunities, and there is no Blinded to add), reuse across characters (Phase 8); the Tauri window,
       macOS and Linux.
-- [ ] **Decide where legendary content comes from, before any UI for it.** *Reworded by ADR 0057's
-      measurement:* the corpus declares no `Legendary Action`, `Lair Action` or `Regional Effect` element; seven
-      of the 2025 Monster Manual's prose stat blocks mention legendary actions, as text only. The `legendary` kind
-      stays declared and builds like an NPC, with three empty pickers, until content for them exists: a user's own
-      file (ADR 0056) or a format for it. Was "Legendary creature kind: legendary actions, lair actions, regional
-      effects".
+- [x] **Decide where legendary content comes from, before any UI for it**
+      ([ADR 0065](./docs/adr/0065-legendary-content-is-content-of-the-types-the-system-declares-and-a-dm-may-write-it-on-the-creature.md)).
+      *Reworded by ADR 0057's measurement;* was "Legendary creature kind: legendary actions, lair actions, regional
+      effects". Measured again first, as a test: the corpus declares nothing of the three types, names none by a setter
+      or a grant, and has them only as prose, seven 2025 stat blocks with a Legendary Actions heading, none with a lair
+      or regional one, none printing a cost, each printing three uses. Decided: a legendary action is an element of the
+      type the system declares, with no format of its own, and it comes from a **user's own Aurora file** (ADR 0056:
+      reusable, and a creature in the file grants its own) or from a **feature the DM writes on the creature**, which
+      may now be listed under any heading its kind names: an NPC's under Traits, Actions or Reactions, a legendary
+      creature's also under Legendary Actions, Lair Actions or Regional Effects. Only a feature listed away from the
+      default moves its character to **format 6**. No cost field: the name carries one as a book prints it. **Legendary
+      Action Uses** is a number on the sheet, 3 unless a feature changes it ("Lair: +1"). The two steps are sets now:
+      as optional single picks they had offered nothing, not three empty pickers. No player character derivation moved.
+      Driven in the browser build, with a homebrew file dropped on the Sources pane and the creature reopened with no
+      source. **Not done:** an NPC's sheet lists none of the legendary content a creature it is built on grants (the
+      legendary kind is for that creature); reusing a written legendary action (Phase 8); play-time tracking of uses;
+      the Tauri window, macOS and Linux.
 - [ ] Companions and sidekicks
 - [ ] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC.** *Reworded by ADR 0057's
       measurement:* 32 of its creatures are structured and already usable; the other 45 (Rat to Tarrasque) are HTML

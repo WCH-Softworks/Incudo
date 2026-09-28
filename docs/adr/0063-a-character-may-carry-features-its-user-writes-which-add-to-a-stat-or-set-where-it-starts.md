@@ -45,7 +45,10 @@ touch it. The save is exactly as self-contained as before, because the character
 A character kind may declare `customFeatures: { "type": "…" }`, replaced rather than merged along `extends`. A kind
 that declares none carries none: a feature on such a character is reported and does nothing. The type is what the
 feature is held as: 5e's `npc` says `Companion Trait`, so Godspeed is listed on the sheet among the creature's own
-traits, and `legendary` inherits it. The player character declares none (below).
+traits, and `legendary` inherits it. The player character declares none (below). *(Since
+[ADR 0065](./0065-legendary-content-is-content-of-the-types-the-system-declares-and-a-dm-may-write-it-on-the-creature.md) a kind may
+list other types beside this default, `customFeatures.types`, and a feature may record the one it is held as: the NPC's
+may be an action or a reaction, and the legendary creature redeclares the list with its own three types.)*
 
 ### 3. A feature may name what the kind's sheet shows
 
