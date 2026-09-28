@@ -297,7 +297,8 @@ export interface BuilderState {
   additions: AdditionsState;
   /**
    * What the character keeps beside it as a reference, each with its text when it is shown — ADR 0068. `available` is
-   * false for a kind that keeps none. What could still be kept is asked for with `referenceOptionsFor`.
+   * false for a kind that keeps none. What could still be kept is asked for with `referenceOptionsFor`; what the
+   * character's own elements print of those types is carried as `suggestions` (ADR 0070).
    */
   references: ReferencesState;
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
@@ -1527,7 +1528,7 @@ export class CharacterBuilder {
       holderGrants: this.holderGrants(derived),
       customFeatures: customFeaturesState(this.character, derived, this.kind, this.system),
       additions: additionsState(this.character, derived, this.kind, this.system, this.elements),
-      references: referencesState(this.character, this.kind, this.elements),
+      references: referencesState(this.character, this.kind, this.elements, derived.elements),
       focusedId: this.focusedId,
     };
   }

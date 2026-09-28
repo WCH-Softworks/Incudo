@@ -26,7 +26,7 @@ function element(id: string, type: string, source: string, rules: Rule[] = []): 
   };
 }
 
-function system(references = true): GameSystem {
+function system(references = true, grants: string[] = []): GameSystem {
   return {
     formatVersion: 1,
     id: 'test',
@@ -40,6 +40,7 @@ function system(references = true): GameSystem {
         name: 'Hero',
         default: true,
         progression: { kind: 'none' },
+        ...(grants.length ? { grants } : {}),
         elementTypes: ['Knack'],
         ...(references ? { references: { types: ['Note'], label: 'Beside it', description: 'Text to read.' } } : {}),
         buildSteps: [],
@@ -105,6 +106,7 @@ test('keeping one records it, shows its text and moves nothing derived; the refu
         description: '<p>ZEPHYR as printed.</p>',
       },
     ],
+    suggestions: [],
   });
 
   const kept = b.getState().character;
@@ -153,4 +155,81 @@ test("a kept reference's text has what it embeds put in place, whatever type tha
   const b = new CharacterBuilder(createCharacter('test', 'hero'), system(), withEmbed);
   assert.equal(b.addReference('SUMMONS'), true);
   assert.equal(b.getState().references.rows[0]!.description, '<p>It appears.</p><div><h5>Knack</h5><p>KNACK as printed.</p></div>');
+});
+
+/** A hero holding what the kind grants it, over an index of its own. */
+function holding(grants: string[], elements: Element[]): CharacterBuilder {
+  const idx = new MapElementIndex();
+  idx.addAll([element('BOOK_A', 'Book', 'Book a'), element('BOOK_B', 'Book', 'Book b'), ...elements]);
+  return new CharacterBuilder(createCharacter('test', 'hero'), system(true, grants), idx);
+}
+
+const printing = (id: string, type: string, source: string, ...embeds: string[]): Element => ({
+  ...element(id, type, source),
+  description: `<p>${id} prints.</p>${embeds.map((e) => `<div element="${e}" />`).join('')}`,
+});
+
+test("what the character's own elements print, of a type the kind keeps, is suggested by name with what prints it", () => {
+  // ADR 0070. Fails if suggestions are read from everything loaded rather than what is held (ANVIL, printed by a Knack
+  // nothing holds, suggested); if embeds inside an embed are not followed (DEEP missing); if a type the kind does not
+  // keep is suggested (PRINTED_KNACK); if an embed naming nothing is (ID_GONE); if the two holders of SPIRIT are not
+  // both named; or if the list is not by name.
+  const b = holding(
+    ['HOLDER', 'SECOND'],
+    [
+      printing('HOLDER', 'Knack', 'Book a', 'SPIRIT', 'PRINTED_KNACK', 'FAR_NOTE', 'ID_GONE'),
+      printing('SECOND', 'Knack', 'Book a', 'SPIRIT'),
+      printing('PRINTED_KNACK', 'Knack', 'Book a', 'DEEP'),
+      element('SPIRIT', 'Note', 'Book a'),
+      element('DEEP', 'Note', 'Book a'),
+      element('FAR_NOTE', 'Note', 'Book b'),
+      printing('LOOSE', 'Knack', 'Book a', 'ANVIL'),
+      element('ANVIL', 'Note', 'Book a'),
+    ],
+  );
+  assert.deepEqual(b.getState().references.suggestions, [
+    { elementId: 'DEEP', name: 'Deep', source: 'Book a', printedIn: ['Holder'] },
+    { elementId: 'FAR_NOTE', name: 'Far note', source: 'Book b', printedIn: ['Holder'] },
+    { elementId: 'SPIRIT', name: 'Spirit', source: 'Book a', printedIn: ['Holder', 'Second'] },
+  ]);
+  assert.equal(b.getState().character.references, undefined, 'a suggestion records nothing');
+});
+
+test('a suggestion goes once it is kept, and a book switched off suggests nothing', () => {
+  // Fails if what is kept stays suggested, or if suggestions ignore the offered view (ADR 0049): FAR_NOTE's book is off.
+  const b = holding(
+    ['HOLDER'],
+    [printing('HOLDER', 'Knack', 'Book a', 'SPIRIT', 'FAR_NOTE'), element('SPIRIT', 'Note', 'Book a'), element('FAR_NOTE', 'Note', 'Book b')],
+  );
+  b.setPublications(['Book a']);
+  assert.deepEqual(b.getState().references.suggestions.map((s) => s.elementId), ['SPIRIT']);
+  assert.equal(b.addReference('SPIRIT'), true);
+  assert.deepEqual(b.getState().references.suggestions, []);
+  b.removeReference('SPIRIT');
+  assert.deepEqual(b.getState().references.suggestions.map((s) => s.elementId), ['SPIRIT']);
+});
+
+test('a circle of embeds ends, and suggestions go exactly as deep as a description is shown', () => {
+  // Fails if there is no depth limit (the circle runs out of stack, and N5 and N6 are suggested) or if the limit is one
+  // early (N4 missing). The limit is what ends a circle: there is no check of its own to perturb.
+  const circle = holding(
+    ['HOLDER'],
+    [printing('HOLDER', 'Knack', 'Book a', 'C1'), printing('C1', 'Note', 'Book a', 'C2'), printing('C2', 'Note', 'Book a', 'C3'), printing('C3', 'Note', 'Book a', 'C1', 'HOLDER')],
+  );
+  assert.deepEqual(circle.getState().references.suggestions.map((s) => s.elementId), ['C1', 'C2', 'C3']);
+
+  const chain = ['N1', 'N2', 'N3', 'N4', 'N5', 'N6'];
+  const deep = holding(
+    ['HOLDER'],
+    [printing('HOLDER', 'Knack', 'Book a', 'N1'), ...chain.map((id, i) => printing(id, 'Note', 'Book a', ...(chain[i + 1] ? [chain[i + 1]!] : [])))],
+  );
+  assert.deepEqual(deep.getState().references.suggestions.map((s) => s.elementId), ['N1', 'N2', 'N3', 'N4']);
+});
+
+test('a kind that keeps nothing suggests nothing, whatever its elements print', () => {
+  // Fails if suggestions are computed without the kind's types.
+  const idx = new MapElementIndex();
+  idx.addAll([printing('HOLDER', 'Knack', 'Book a', 'SPIRIT'), element('SPIRIT', 'Note', 'Book a')]);
+  const b = new CharacterBuilder(createCharacter('test', 'hero'), system(false, ['HOLDER']), idx);
+  assert.deepEqual(b.getState().references.suggestions, []);
 });

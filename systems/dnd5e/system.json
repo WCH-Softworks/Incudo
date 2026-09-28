@@ -286,6 +286,12 @@
         "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is listed with the character's spells and belongs to no spellcasting class, so no class's save DC, attack bonus or spell slots apply to it."
       },
 
+      "references": {
+        "types": ["Information"],
+        "label": "For reference",
+        "description": "Text from your content to keep beside this character, such as the stat block of a creature your spell summons or a beast you can turn into. It is shown here and on the sheet, and saved with the character. Nothing is worked out from it."
+      },
+
       "candidateNotes": [
         { "types": ["Spell"], "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }
       ],

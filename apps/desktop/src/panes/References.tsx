@@ -1,8 +1,8 @@
 /**
  * What the character keeps beside it for reference — ADR 0068.
  *
- * A stat block printed only as prose, kept beside the NPC the DM builds from it by hand. Not a decision: nothing is
- * owed, and nothing is worked out from the text. What each kept element is and what could be kept is decided in
+ * A stat block printed only as prose, kept beside the NPC the DM builds from it by hand, or beside a player character
+ * whose spell summons the creature (ADR 0070). Not a decision: nothing is owed, and nothing is worked out from the text. What each kept element is and what could be kept is decided in
  * `packages/ui/src/references.ts`; this renders it and makes the text safe to show. Nothing here names a type.
  */
 
@@ -58,6 +58,26 @@ export function References({
             </li>
           ))}
         </ul>
+      )}
+
+      {/* What the character's own elements print that it could keep (ADR 0070), decided in packages/ui. */}
+      {references.suggestions.length > 0 && (
+        <div className="reference-suggestions">
+          <p className="hint">Printed in what this character has:</p>
+          <ul className="references">
+            {references.suggestions.map((suggestion) => (
+              <li key={suggestion.elementId}>
+                <div className="picker-row-head">
+                  <span className="picker-name">{candidateLabel(suggestion.elementId)}</span>
+                  <button type="button" className="link" onClick={() => builder.addReference(suggestion.elementId)}>
+                    Keep
+                  </button>
+                </div>
+                <p className="hint">In {suggestion.printedIn.join(', ')}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {choosing ? (

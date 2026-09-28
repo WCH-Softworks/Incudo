@@ -18,16 +18,27 @@
  * Then the thirty samples: how many hold a creature, whether any sheet section of theirs lists one, and what their held
  * elements' texts print of a type the NPC keeps.
  *
- * Everything is reported as `ℹ` lines and nothing is asserted (ADR 0042: a moving corpus fails only what must hold
+ * All of that is reported as `ℹ` lines and none of it is asserted (ADR 0042: a moving corpus fails only what must hold
  * against any corpus). The one lookup by name is Wild Shape's, reported as such: content ties no creature to it.
+ *
+ * What is asserted, against whatever the corpus holds, since ADR 0070 let the player character keep references: a
+ * fresh one is offered every element of its reference types, keeps them all, derives exactly what it derives keeping
+ * none, and saved and reopened with no source shows the same rows. And every sample is suggested exactly what its held
+ * elements' texts print of those types, the same with no source once saved, and keeping every suggestion moves nothing
+ * it derives. Fails with the player character's `references` removed (nothing offered), with references seeded into the
+ * derivation (the summaries differ), with suggestions read from everything loaded (the sets differ), and with the
+ * collector not following embeds (the reopened suggestions are empty). Every sample's suggestion is printed directly,
+ * so not following nested embeds changes none of them; `packages/ui`'s `references.test.ts` holds that.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  BundleElementIndex,
   descriptionEmbeds,
   matchesSupports,
+  readCharacterContainer,
   resolveCharacterKind,
   type Element,
   type ElementIndex,
@@ -36,7 +47,10 @@ import {
   type StatExpr,
 } from '@incudo/core';
 
+import { CharacterBuilder, newCharacterOfKind, packCharacter } from '@incudo/ui';
+
 import { runOracle } from './aurora-oracle.ts';
+import { summarize } from './derived-summary.ts';
 import { loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
@@ -230,4 +244,59 @@ test('what the samples hold of creatures, and what their elements print of what 
   t.diagnostic(`samples holding a creature: ${holding} of ${samples.length} (${tally(creatureNames)})`);
   t.diagnostic(`a player character's sheet section listing a creature type: ${[...creatureTypes].filter((type) => listed.has(type)).length}`);
   t.diagnostic(`samples whose held elements print an element of a type an NPC keeps: ${printing} (${tally(printed)})`);
+});
+
+test('a player character keeps every element of its reference types beside it, moves nothing, and shows them with no source', { skip: corpusSkip }, async (t) => {
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await realElements();
+  const kind = resolveCharacterKind(system, 'pc');
+  const types = kind.references?.types ?? [];
+  assert.ok(types.length > 0, 'a player character keeps references');
+  const all = types.flatMap((type) => elements.byType(type)).map((e) => e.id);
+
+  const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements);
+  assert.deepEqual([...b.referenceOptionsFor()].sort(), [...all].sort(), 'every one is offered');
+  const before = summarize(b.getState().derived);
+  for (const id of all) assert.equal(b.addReference(id), true, `${id} is kept`);
+  const state = b.getState();
+  assert.equal(state.character.formatVersion, 7);
+  assert.deepEqual(summarize(state.derived), before, 'nothing derived moves');
+  assert.ok(state.references.rows.every((r) => r.shown), 'every one is shown');
+
+  const packed = packCharacter(state.character, system, elements, { generator: 'test' });
+  const { container } = readCharacterContainer(packed.files);
+  const reopened = new CharacterBuilder(container!.character, system, new BundleElementIndex(container!.content.elements));
+  assert.deepEqual(reopened.getState().references, state.references, 'the same with no source');
+  assert.deepEqual(summarize(reopened.getState().derived), before, 'and derives the same');
+  t.diagnostic(`player character: ${all.length} offered and kept`);
+});
+
+test('every sample is suggested what its own elements print of what it keeps, with or without a source, and keeping it moves nothing', { skip: savesSkip }, async (t) => {
+  const elements = await realElements();
+  const { pc } = await kinds();
+  const types = new Set(pc.references?.types ?? []);
+  assert.ok(types.size > 0, 'a player character keeps references');
+  let suggested = 0;
+  for (const sample of readManifest().samples) {
+    const run = await runOracle(samplePath(sample), elements, 'sample');
+    const b = new CharacterBuilder(run.imported.character, run.system, run.elements);
+    const state = b.getState();
+    // Read here with no limit: the corpus nests two deep, inside the four a description is shown to.
+    const printed = new Set<string>();
+    for (const held of state.derived.elements) for (const to of reachedByText(held, run.elements)) if (types.has(to.type)) printed.add(to.id);
+    const ids = state.references.suggestions.map((s) => s.elementId);
+    assert.deepEqual([...ids].sort(), [...printed].sort(), `${sample.id}: suggested exactly what its elements print`);
+    suggested += ids.length;
+
+    const packed = packCharacter(run.imported.character, run.system, run.elements, { generator: 'test', extraIds: run.imported.extraIds });
+    const { container } = readCharacterContainer(packed.files);
+    const saved = new CharacterBuilder(container!.character, run.system, new BundleElementIndex(container!.content.elements));
+    assert.deepEqual(saved.getState().references.suggestions, state.references.suggestions, `${sample.id}: the same with no source`);
+
+    const before = summarize(state.derived);
+    for (const id of ids) assert.equal(b.addReference(id), true, `${sample.id}: ${id} is kept`);
+    assert.deepEqual(summarize(b.getState().derived), before, `${sample.id}: keeping them moves nothing`);
+    assert.deepEqual(b.getState().references.suggestions, [], `${sample.id}: nothing kept is still suggested`);
+  }
+  t.diagnostic(`suggestions over the samples: ${suggested}`);
 });
