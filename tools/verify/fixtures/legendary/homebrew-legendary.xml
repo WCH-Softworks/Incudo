@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	A user's own Aurora elements file for a legendary creature, written for the tests of ADR 0065. Original,
+	generic content: no book's text. It declares a creature that grants its own legendary action, lair action
+	and regional effect with <grant>, and one more legendary action nothing grants, for any creature to take.
+-->
+<elements>
+	<info>
+		<name>Homebrew Legendary Test</name>
+		<description>A legendary creature and its legendary content, for tests.</description>
+		<update version="1.0.0" />
+	</info>
+
+	<element name="Homebrew Legendary Test" type="Source" source="Homebrew Legendary Test" id="ID_TEST_SOURCE_HOMEBREW_LEGENDARY">
+		<description><p>A test book.</p></description>
+	</element>
+
+	<element name="Old Stone Drake" type="Companion" source="Homebrew Legendary Test" id="ID_TEST_COMPANION_OLD_STONE_DRAKE">
+		<description><p>A drake grown old in a mountain's roots.</p></description>
+		<setters>
+			<set name="strength">21</set>
+			<set name="dexterity">10</set>
+			<set name="constitution">19</set>
+			<set name="intelligence">12</set>
+			<set name="wisdom">13</set>
+			<set name="charisma">15</set>
+			<set name="ac">18 (natural armor)</set>
+			<set name="hp">150 (16d10 + 64)</set>
+			<set name="speed">40 ft., burrow 20 ft.</set>
+			<set name="senses">tremorsense 60 ft., passive Perception 11</set>
+			<set name="languages">Draconic, Terran</set>
+			<set name="challenge">10</set>
+			<set name="traits">ID_TEST_COMPANION_TRAIT_OLD_STONE_DRAKE_STONE_SKIN</set>
+			<set name="actions">ID_TEST_COMPANION_ACTION_OLD_STONE_DRAKE_BITE</set>
+		</setters>
+		<rules>
+			<stat name="companion:ac" value="18" />
+			<stat name="companion:hp:max" value="150" bonus="base" />
+			<stat name="companion:speed" value="40" bonus="base" />
+			<stat name="companion:speed:burrow" value="20" bonus="base" />
+			<grant type="Legendary Action" id="ID_TEST_LEGENDARY_ACTION_OLD_STONE_DRAKE_TAIL_SWEEP" />
+			<grant type="Lair Action" id="ID_TEST_LAIR_ACTION_OLD_STONE_DRAKE_FALLING_ROCK" />
+			<grant type="Regional Effect" id="ID_TEST_REGIONAL_EFFECT_OLD_STONE_DRAKE_TREMORS" />
+		</rules>
+	</element>
+
+	<element name="Stone Skin" type="Companion Trait" source="Homebrew Legendary Test" id="ID_TEST_COMPANION_TRAIT_OLD_STONE_DRAKE_STONE_SKIN">
+		<description><p>The drake ignores the first damage it takes each round.</p></description>
+	</element>
+
+	<element name="Bite" type="Companion Action" source="Homebrew Legendary Test" id="ID_TEST_COMPANION_ACTION_OLD_STONE_DRAKE_BITE">
+		<description><p>Melee attack against one creature within reach.</p></description>
+	</element>
+
+	<element name="Tail Sweep" type="Legendary Action" source="Homebrew Legendary Test" id="ID_TEST_LEGENDARY_ACTION_OLD_STONE_DRAKE_TAIL_SWEEP">
+		<description><p>The drake sweeps its tail at each creature beside it.</p></description>
+	</element>
+
+	<element name="Falling Rock" type="Lair Action" source="Homebrew Legendary Test" id="ID_TEST_LAIR_ACTION_OLD_STONE_DRAKE_FALLING_ROCK">
+		<description><p>Rock falls from the ceiling of the lair onto a point the drake chooses.</p></description>
+	</element>
+
+	<element name="Tremors" type="Regional Effect" source="Homebrew Legendary Test" id="ID_TEST_REGIONAL_EFFECT_OLD_STONE_DRAKE_TREMORS">
+		<description><p>The ground near the lair shakes now and then.</p></description>
+	</element>
+
+	<element name="Rallying Roar" type="Legendary Action" source="Homebrew Legendary Test" id="ID_TEST_LEGENDARY_ACTION_RALLYING_ROAR">
+		<description><p>A legendary action any creature may take: it roars, and its allies take heart.</p></description>
+	</element>
+</elements>

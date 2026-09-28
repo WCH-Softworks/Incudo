@@ -33,6 +33,7 @@ import {
   setGrantRemoved,
   setAdded,
   setCustomFeature,
+  customFeatureTypes,
   removeCustomFeature,
   newCustomFeatureId,
   type CustomStatLine,
@@ -534,22 +535,27 @@ export class CharacterBuilder {
   };
 
   /**
-   * Change a feature's name, description or lines — ADR 0063. `stats` replaces the whole list, in order. An empty
-   * description is left out rather than recorded.
+   * Change a feature's name, description, lines or where it is listed — ADR 0063, ADR 0065. `stats` replaces the whole
+   * list, in order. An empty description is left out rather than recorded, and so is the kind's default type, so only
+   * a feature listed elsewhere moves the character to format 6. A type the kind does not list is refused, writing
+   * nothing.
    */
   updateCustomFeature = (
     id: string,
-    change: { name?: string; description?: string; stats?: CustomStatLine[] },
+    change: { name?: string; description?: string; stats?: CustomStatLine[]; type?: string },
   ): void => {
     const current = this.character.customFeatures?.find((f) => f.id === id);
     if (!current) return;
-    const { description: _old, ...rest } = current;
+    if (change.type !== undefined && !customFeatureTypes(this.kind).includes(change.type)) return;
+    const { description: _old, type: _oldType, ...rest } = current;
     const description = change.description ?? current.description;
+    const type = change.type ?? current.type;
     this.character = setCustomFeature(this.character, {
       ...rest,
       ...(change.name !== undefined ? { name: change.name } : {}),
       ...(change.stats !== undefined ? { stats: change.stats } : {}),
       ...(description?.trim() ? { description } : {}),
+      ...(type !== undefined && type !== this.kind.customFeatures?.type ? { type } : {}),
     });
     this.invalidate();
   };
@@ -1479,7 +1485,7 @@ export class CharacterBuilder {
         printable: progressCanBePrinted(this.kind),
       },
       holderGrants: this.holderGrants(derived),
-      customFeatures: customFeaturesState(this.character, derived, this.kind),
+      customFeatures: customFeaturesState(this.character, derived, this.kind, this.system),
       additions: additionsState(this.character, derived, this.kind, this.system, this.elements),
       focusedId: this.focusedId,
     };

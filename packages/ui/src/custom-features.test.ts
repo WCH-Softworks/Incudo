@@ -29,13 +29,13 @@ function element(id: string, type: string, setters: Record<string, string> = {},
   return { id, type, name: id, source: 'test', setters: out, rules, supports: [], origin: { sourceId: 'test', format: 'incudo' } };
 }
 
-function system(customFeatures: boolean): GameSystem {
+function system(customFeatures: boolean, types?: string[]): GameSystem {
   return {
     formatVersion: 1,
     id: 'test',
     name: 'Test',
     version: '1.0.0',
-    elementTypes: [{ name: 'Beast' }, { name: 'Knack' }],
+    elementTypes: [{ name: 'Beast' }, { name: 'Knack', plural: 'Knacks' }, { name: 'Deed', plural: 'Deeds' }],
     stats: [
       { name: 'stride', label: 'Stride', default: 0, startsFrom: 'beast:stride' },
       { name: 'guard', label: 'Guard', default: 10 },
@@ -47,9 +47,9 @@ function system(customFeatures: boolean): GameSystem {
         name: 'Keeper',
         default: true,
         progression: { kind: 'none' },
-        elementTypes: ['Beast', 'Knack'],
+        elementTypes: ['Beast', 'Knack', 'Deed'],
         setterStats: [{ types: ['Beast'], setter: 'guard', stat: 'guard' }],
-        ...(customFeatures ? { customFeatures: { type: 'Knack' } } : {}),
+        ...(customFeatures ? { customFeatures: { type: 'Knack', ...(types ? { types } : {}) } } : {}),
         buildSteps: [
           { id: 'beast', label: 'Beast', types: ['Beast'], required: true },
           {
@@ -64,6 +64,7 @@ function system(customFeatures: boolean): GameSystem {
           sections: [
             { id: 'numbers', label: 'Numbers', stats: ['stride', 'guard', 'wit'] },
             { id: 'knacks', label: 'Knacks', types: ['Knack'] },
+            { id: 'deeds', label: 'Deeds', types: ['Deed'] },
           ],
         },
       },
@@ -75,8 +76,8 @@ function system(customFeatures: boolean): GameSystem {
 const index = new MapElementIndex();
 index.addAll([element('OX', 'Beast', { guard: '15' }, [{ kind: 'stat', key: 's', name: 'beast:stride', value: { kind: 'number', value: 40 } }])]);
 
-function onOx(custom = true): CharacterBuilder {
-  const b = new CharacterBuilder(createCharacter('test', 'keeper'), system(custom), index);
+function onOx(custom = true, types?: string[]): CharacterBuilder {
+  const b = new CharacterBuilder(createCharacter('test', 'keeper'), system(custom, types), index);
   b.choose('build/beast', ['OX']);
   return b;
 }
@@ -97,6 +98,7 @@ test('a written feature is held, named, and changes what its lines say', () => {
       elementId: `custom:${id}`,
       name: 'Godspeed',
       description: 'Blessed by a god of roads.',
+      type: 'Knack',
       lines: [{ stat: 'stride', mode: 'set', value: 60, label: 'Stride', status: 'applied' }],
     },
   ]);
@@ -215,4 +217,56 @@ test('the feature travels in the character, not in the embedded content, and der
   const reopened = deriveCharacter(structuredClone(character), system(true), new BundleElementIndex(content.elements));
   assert.equal(reopened.stats.get('stride')?.value, 60);
   assert.equal(reopened.stats.get('guard')?.value, 17);
+});
+
+// ADR 0065: where a feature is listed.
+
+test('a feature may be listed under any type the kind lists, named as the sheet heads it, and the default is not recorded', () => {
+  // Fails if the state names types by their element name rather than the sheet's plural, if the builder records the
+  // default type (every feature would move its character to format 6), or if a chosen type is not written.
+  const b = onOx(true, ['Knack', 'Deed']);
+  assert.deepEqual(b.getState().customFeatures.types, [
+    { type: 'Knack', label: 'Knacks' },
+    { type: 'Deed', label: 'Deeds' },
+  ]);
+  const id = b.addCustomFeature('Trample')!;
+  b.updateCustomFeature(id, { type: 'Knack' });
+  assert.equal(b.getState().character.customFeatures![0]!.type, undefined);
+  assert.equal(b.getState().character.formatVersion, 4);
+
+  b.updateCustomFeature(id, { type: 'Deed', stats: [{ stat: 'stride', mode: 'add', value: 5 }] });
+  let state = b.getState();
+  assert.equal(state.character.customFeatures![0]!.type, 'Deed');
+  assert.equal(state.character.formatVersion, 6);
+  assert.equal(state.customFeatures.features[0]!.type, 'Deed');
+  assert.equal(state.derived.elements.find((e) => e.id === `custom:${id}`)?.type, 'Deed');
+  assert.equal(state.derived.stats.get('stride')?.value, 45);
+
+  // A later change that names no type keeps the one recorded; choosing the default again forgets it.
+  b.updateCustomFeature(id, { name: 'Trample!' });
+  assert.equal(b.getState().character.customFeatures![0]!.type, 'Deed');
+  b.updateCustomFeature(id, { type: 'Knack' });
+  state = b.getState();
+  assert.equal(state.character.customFeatures![0]!.type, undefined);
+  assert.equal(state.derived.elements.find((e) => e.id === `custom:${id}`)?.type, 'Knack');
+});
+
+test('a type the kind does not list is refused, and one recorded anyway says the feature is not on the character', () => {
+  // Fails if the builder writes a type the kind does not list, or if the view says nothing about a feature the
+  // derivation does not hold (its lines would read as applied, overruled or replaced).
+  const b = onOx();
+  assert.deepEqual(b.getState().customFeatures.types, [{ type: 'Knack', label: 'Knacks' }]);
+  const id = b.addCustomFeature('Trample')!;
+  b.updateCustomFeature(id, { type: 'Deed' });
+  assert.equal(b.getState().character.customFeatures![0]!.type, undefined);
+
+  const character = createCharacter('test', 'keeper');
+  character.choices = [{ ruleKey: 'build/beast', elementIds: ['OX'] }];
+  character.formatVersion = 6;
+  character.customFeatures = [{ id: 'd', name: 'Trample', type: 'Deed', stats: [{ stat: 'stride', mode: 'set', value: 60 }] }];
+  const view = new CharacterBuilder(character, system(true), index).getState();
+  const feature = view.customFeatures.features[0]!;
+  assert.match(feature.typeNote ?? '', /cannot have a "Deed"/);
+  assert.deepEqual(feature.lines.map((l) => l.status), ['not-held']);
+  assert.equal(view.derived.stats.get('stride')?.value, 40);
 });

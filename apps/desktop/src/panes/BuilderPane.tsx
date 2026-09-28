@@ -336,7 +336,8 @@ export function BuilderPane({
 
           {/*
             Features the user wrote for this character (ADR 0063). Not a decision: nothing is owed. Beside
-            what the creature gives, since a feature is listed on the sheet with the creature's traits.
+            what the creature gives, since a feature is listed on the sheet with the creature's traits, actions
+            or, on a legendary creature, its legendary actions (ADR 0065).
           */}
           {state.customFeatures.available && (
             <section className="custom-features">
