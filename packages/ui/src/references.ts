@@ -14,6 +14,8 @@
 
 import type { Character, ElementId, ElementIndex, GameSystem, ResolvedCharacterKind } from '@incudo/core';
 
+import { expandDescription } from './description.ts';
+
 /** One element the character keeps beside it. */
 export interface ReferenceRow {
   elementId: ElementId;
@@ -27,7 +29,10 @@ export interface ReferenceRow {
   known: boolean;
   /** Whether it is shown: known, and of a type the kind keeps. */
   shown: boolean;
-  /** Its description as content wrote it, when it is shown. Not yet safe to render: the shell sanitizes it. */
+  /**
+   * Its description, when it is shown, with what it embeds put in place from the same index (ADR 0069,
+   * `expandDescription`). Not yet safe to render: the shell sanitizes it.
+   */
   description?: string;
   /** A sentence for the row when it is not shown. */
   note?: string;
@@ -74,7 +79,7 @@ export function referencesState(
       known: true,
       shown: allowed,
       ...(allowed
-        ? { description: element.description ?? '' }
+        ? { description: expandDescription(element, elements) }
         : { note: `This kind of character does not keep a ${element.type} for reference, so it is not shown.` }),
     };
   });

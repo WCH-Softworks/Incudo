@@ -141,3 +141,16 @@ test('dropping one takes it off, whatever it is, and dropping the last leaves no
   assert.equal('references' in b.getState().character, false);
   assert.deepEqual(b.getState().references.rows, []);
 });
+
+test("a kept reference's text has what it embeds put in place, whatever type that is", () => {
+  // ADR 0069. Fails if the row's description is the text as content wrote it (the marker left as an empty gap), or if
+  // the embed is looked up anywhere but the index the builder shows content from.
+  const withEmbed = new MapElementIndex();
+  withEmbed.addAll([
+    { ...element('SUMMONS', 'Note', 'Book a'), description: '<p>It appears.</p><div element="KNACK" />' },
+    element('KNACK', 'Knack', 'Book a'),
+  ]);
+  const b = new CharacterBuilder(createCharacter('test', 'hero'), system(), withEmbed);
+  assert.equal(b.addReference('SUMMONS'), true);
+  assert.equal(b.getState().references.rows[0]!.description, '<p>It appears.</p><div><h5>Knack</h5><p>KNACK as printed.</p></div>');
+});

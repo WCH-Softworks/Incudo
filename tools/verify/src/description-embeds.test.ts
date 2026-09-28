@@ -1,32 +1,50 @@
 /**
- * What an element's description embeds, and what showing and saving it would stand on.
+ * What an element's description embeds, and what showing and saving it stands on — ADR 0069.
  *
  * Aurora writes `<div element="ID_…" />` inside a description where another element's text belongs: a summoning
  * spell's creature, a subclass's features, a scroll's stat block. ADR 0068 found every prose stat block embedded this
- * way and Incudo showing nothing there. This measures, from content alone, what the embeds are before anything is
+ * way and Incudo showing nothing there. This measured, from content alone, what the embeds are before anything was
  * decided about them.
  *
  * What is reported and not asserted (ADR 0042: a moving corpus fails only what must hold against any corpus): how many
  * markers there are, in what shape, how many content switched off inside a comment; how many embeds, by the embedding
  * and the embedded element's type; how many resolve; how deep they nest and whether any is circular; how an embedded
- * description opens (with its own name or not) and whether the embedder writes a heading for it.
+ * description opens (with its own name or not) and whether the embedder writes a heading for it; and, over the thirty
+ * sample saves, how many elements a save carries only for their text.
+ *
+ * What is asserted, against whatever the corpus holds: every sample save, packed as the library packs it and reopened
+ * with no source, reads every element's description exactly as the corpus does, what it embeds included. Fails if
+ * `collectCharacterContent` stops following embeds.
  */
 
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { join } from 'node:path';
 
-import type { Element, ElementIndex } from '@incudo/core';
+import {
+  BundleElementIndex,
+  collectCharacterContent,
+  descriptionEmbeds,
+  embeddedElementIds,
+  readCharacterContainer,
+  resolveCharacterKind,
+  type Element,
+  type ElementIndex,
+} from '@incudo/core';
+import { expandDescription, packCharacter } from '@incudo/ui';
 
-import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
+import { runOracle } from './aurora-oracle.ts';
+import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip } from './real-data.ts';
+import { SAMPLES_DIR, sampleFileNames } from './sample-saves.ts';
 
 /** Every embedding marker in a description, whatever its spacing or quotes: the shape is measured, not assumed. */
 const ANY_EMBED = /<div\b[^>]*\belement\s*=\s*["']([^"']*)["'][^>]*>/g;
 /** The one shape the corpus writes: empty, self-closing, double-quoted, no other attribute. */
 const PLAIN_EMBED = /^<div element="[^"]+"\s*\/>$/;
 
-/** The embeds of a description: every marker outside a comment, since a commented-out one is switched off. */
+/** What the app reads as embeds: core's reader, which leaves out a marker inside a comment. */
 function embedsOf(element: Element): string[] {
-  const live = (element.description ?? '').replace(/<!--[\s\S]*?-->/g, '');
-  return [...live.matchAll(ANY_EMBED)].map((m) => m[1]!).filter((id) => id.trim());
+  return descriptionEmbeds(element.description).map((embed) => embed.id);
 }
 
 function tally(values: string[], limit = 12): string {
@@ -116,3 +134,67 @@ test('what descriptions embed, read from content alone', { skip: corpusSkip }, a
   const afterHeading = all.flatMap((e) => [...(e.description ?? '').matchAll(/<\/h\d>\s*(?:<div[^>]*>\s*)?<div element=/g)]);
   t.diagnostic(`embeds right after a heading the embedder wrote: ${afterHeading.length}`);
 });
+
+test('a sample save carries the text its descriptions embed, and shows it with no source', { skip: savesSkip }, async (t) => {
+  // Fails if collectCharacterContent does not follow what a description embeds: a save holding a summoning spell or a
+  // subclass reopens with the creature's or the feature's text replaced by "not in the loaded content".
+  const location = requireCorpus();
+  const elements = await realElements();
+  let total = 0;
+  let textOnly = 0;
+  let embeds = 0;
+  let resolving = 0;
+  const typesAdded: string[] = [];
+  const perSave: number[] = [];
+  for (const name of sampleFileNames()) {
+    const run = await runOracle(join(SAMPLES_DIR, name), elements, location.index);
+    const packed = packCharacter(run.imported.character, run.system, run.elements, {
+      generator: 'test',
+      extraIds: run.imported.extraIds,
+    });
+    const { container } = readCharacterContainer(packed.files);
+    const saved = new BundleElementIndex(container!.content.elements);
+    // What the save carries only for its text: named by a description in it and reached by nothing else. Measured by
+    // packing again with every description's embeds stripped, which is the collector as it was before ADR 0069.
+    const without = collectCharacterContent(run.imported.character, withoutEmbeds(run.elements), {
+      kind: resolveCharacterKind(run.system, run.imported.character.kind),
+      extraIds: run.imported.extraIds,
+    });
+    const before = new Set(without.elements.map((e) => e.id));
+    perSave.push(container!.content.elements.filter((e) => !before.has(e.id)).length);
+    for (const e of container!.content.elements) {
+      if (!before.has(e.id)) {
+        textOnly++;
+        typesAdded.push(e.type);
+      }
+      for (const id of embeddedElementIds(e)) {
+        embeds++;
+        if (saved.get(id)) resolving++;
+      }
+      assert.equal(
+        expandDescription(e, saved),
+        expandDescription(e, run.elements),
+        `${e.id} reads the same from the save alone as from the corpus`,
+      );
+    }
+    total += container!.content.elements.length;
+  }
+  t.diagnostic(`sample saves: ${sampleFileNames().length}; elements they embed: ${total}, of them only for their text: ${textOnly} (${tally(typesAdded)})`);
+  t.diagnostic(
+    `saves carrying more than their rules reach: ${perSave.filter((n) => n > 0).length} of ${perSave.length}, at most ${Math.max(0, ...perSave)} to a save`,
+  );
+  t.diagnostic(`embeds in the saved descriptions: ${embeds}, resolving in the save alone: ${resolving}`);
+});
+
+/** The same index with every description that embeds something emptied: what the collector reached before ADR 0069. */
+function withoutEmbeds(elements: ElementIndex): ElementIndex {
+  return {
+    get: (id) => {
+      const element = elements.get(id);
+      return element && embeddedElementIds(element).length ? { ...element, description: '' } : element;
+    },
+    all: () => elements.all(),
+    byType: (type) => elements.byType(type),
+    bySupport: (tag) => elements.bySupport(tag),
+  };
+}

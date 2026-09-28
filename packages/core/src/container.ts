@@ -33,6 +33,7 @@ import {
 } from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { referencedElementIds } from './engine.ts';
+import { embeddedElementIds } from './embeds.ts';
 import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
 import { characterProgress } from './setter-stats.ts';
 import { baselineElementIds, type ResolvedCharacterKind } from './system.ts';
@@ -139,6 +140,13 @@ const MAX_EMBEDDED_ELEMENTS = 20000;
  * embedding the target keeps the save readable and self-describing rather than full of ids
  * that mean nothing without a corpus.
  *
+ * **What a description embeds is included, for its text** (ADR 0069). A `<div element="…">` in a collected element's
+ * description is where another element's text is shown, so the save carries that element and what its own description
+ * embeds, and opened with no source shows the same text. Only the text: an element reached *only* that way is not
+ * held and its rules are not followed, since nothing derives from it. Reached by a rule as well, it is followed like
+ * any other. An embed that names nothing loaded is not `unresolved`, which lists what the character uses: it is a gap
+ * in a text, shown as one wherever the text is.
+ *
  * Typically 60–200 elements out of the 12,000 in a full corpus.
  */
 export function collectCharacterContent(
@@ -178,9 +186,30 @@ export function collectCharacterContent(
     ...(options.extraIds ?? []),
   ];
   for (const id of frontier) seen.add(id);
+  // Reached only through a description (ADR 0069): embedded for its text, its rules not followed. Anything in `seen`
+  // is followed in full, so an id is in at most one of the two frontiers.
+  let embedFrontier: ElementId[] = [];
+  const embedSeen = new Set<ElementId>();
+  const nextEmbeds = new Set<ElementId>();
+  const embedsOf = (element: Element): void => {
+    for (const id of embeddedElementIds(element)) {
+      if (seen.has(id) || embedSeen.has(id)) continue;
+      embedSeen.add(id);
+      nextEmbeds.add(id);
+    }
+  };
 
-  while (frontier.length && collected.size < limit) {
+  while ((frontier.length || embedFrontier.length) && collected.size < limit) {
     const next = new Set<ElementId>();
+    nextEmbeds.clear();
+    for (const id of embedFrontier) {
+      // Reached by a rule since it was queued for its text: followed in full there instead.
+      if (seen.has(id)) continue;
+      const element = index.get(id);
+      if (!element) continue;
+      collected.set(id, element);
+      embedsOf(element);
+    }
     for (const id of frontier) {
       const element = index.get(id);
       if (!element) {
@@ -202,8 +231,10 @@ export function collectCharacterContent(
         seen.add(referenced);
         next.add(referenced);
       }
+      embedsOf(element);
     }
     frontier = [...next];
+    embedFrontier = [...nextEmbeds];
   }
 
   return {
