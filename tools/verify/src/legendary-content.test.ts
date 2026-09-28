@@ -8,11 +8,14 @@
  * legendary creature, granted by its creature or taken from its steps; a DM may write one on the creature instead,
  * listed where the type is; the uses a stat block prints are a number on the sheet a feature changes; and all of it
  * survives a save opened with no source. The file is `tools/verify/fixtures/legendary/`, generic and written for this.
+ * An NPC built on the file's creature lists what the creature grants under the legendary creature's headings, shows
+ * nothing of it when its creature grants none, and neither offers more nor counts uses: those are the legendary kind's.
  *
  * Perturbations that fail it, each checked: the legendary kind's two steps back to single optional picks (the file's
  * spare legendary action is offered nowhere), its `legendary actions` stat removed (the sheet has no uses), the
  * legendary types left out of its `customFeatures.types` (a written legendary action is not held), and its
- * `customFeatures.sections` without the legendary section (a feature cannot change the uses).
+ * `customFeatures.sections` without the legendary section (a feature cannot change the uses); and the NPC sheet's two
+ * legendary sections removed (the NPC holds all three of its creature's and lists none).
  *
  * What is reported and not asserted (ADR 0042: a moving corpus fails only what must hold against any corpus): how
  * many elements of those types the corpus declares, how many creature setters and grants name one, and how many
@@ -33,6 +36,7 @@ import {
   MemoryStorage,
   readCharacterContainer,
   renderSheetSection,
+  sheetSectionIsEmpty,
   resolveCharacterKind,
   type DerivedCharacter,
   type Element,
@@ -242,19 +246,41 @@ test('a DM writes legendary content on the creature, listed where its type is, a
   assert.deepEqual(sheet(reopened, kind), shown, 'the same after a save opened with no source');
 });
 
-test('an NPC built on a legendary creature holds what it grants, and its sheet lists none of it', async (t) => {
-  // Reported, not asserted as a rule: the legendary kind is the one for that creature (ADR 0065).
+test('an NPC built on a legendary creature lists what it grants, under the headings the legendary creature uses', async () => {
+  // Amended decision (ADR 0065): the NPC holds what its creature grants, so its sheet shows it; the sections are
+  // empty, and so not shown, for any NPC whose creature grants none. Only the legendary kind says how many it
+  // takes a round and offers more.
   const system = await loadShippedSystem('dnd5e');
   const elements = await homebrew();
   const npc = resolveCharacterKind(system, 'npc');
   const creatureStep = npc.buildSteps.find((s) => s.required && s.types.length > 0 && !s.budget)!;
   const creature = creatureStep.types.flatMap((type) => elements.byType(type))[0]!;
   const b = new CharacterBuilder(newCharacterOfKind(system, 'npc'), system, elements);
+  const empty = b.getState().derived;
+  const names = new Set(legendaryTypes(system).map((type) => type.name));
+  const sections = npc.sheet.sections.filter((s) => s.types?.some((type) => names.has(type)));
+  const blocks = collectDeclaredBlocks(empty.elements);
+  const reader = { statValue: (key: string) => empty.stats.get(key.toLowerCase())?.value, elements: empty.elements };
+  for (const section of sections) {
+    for (const rendering of renderSheetSection(section, blocks, reader)) {
+      assert.ok(sheetSectionIsEmpty(rendering, empty.elements), `${section.label} is not shown on an NPC with nothing of it`);
+    }
+  }
+
   b.choose(`build/${creatureStep.id}`, [creature.id]);
   const derived = b.getState().derived;
-  const names = new Set(legendaryTypes(system).map((type) => type.name));
   const held = derived.elements.filter((e) => names.has(e.type));
-  const listed = [...sheet(derived, npc).values()].flatMap((s) => s.names).filter((name) => held.some((e) => e.name === name));
-  t.diagnostic(`an NPC on the file's creature holds ${held.length} of its legendary elements and lists ${listed.length}`);
-  assert.ok(held.length > 0);
+  assert.equal(held.length, grantedIds(creature).length, 'the NPC holds everything its creature grants');
+  const shown = sheet(derived, npc);
+  for (const element of held) {
+    assert.ok(shown.get(sectionOf(npc, element.type))!.names.includes(element.name), `${element.name} is listed on the NPC`);
+  }
+  // Nothing to take more from and no uses: those are the legendary kind's.
+  assert.ok(!npc.buildSteps.some((s) => s.types.some((type) => names.has(type))), 'the NPC offers none');
+  assert.ok(!sections.some((s) => (s.stats ?? []).length > 0), 'the NPC shows no uses');
+
+  const packed = packCharacter(b.getState().character, system, elements, { generator: 'test' });
+  const { container } = readCharacterContainer(packed.files);
+  const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
+  assert.deepEqual(sheet(reopened, npc), shown, 'the same after a save opened with no source');
 });

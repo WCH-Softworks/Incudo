@@ -1,6 +1,6 @@
 # 0065 — Legendary content is content of the types the system declares, and a DM may write it on the creature
 
-**Status:** Accepted · 2026-09-28 · answers the question [0057](./0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)
+**Status:** Accepted · 2026-09-28 · amended the same day by decision 7 (an NPC lists what its creature grants) · answers the question [0057](./0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)
 left open · builds on [0003](./0003-system-agnostic-content-model.md), [0005](./0005-aurora-import.md),
 [0008](./0008-aurora-compatibility-frozen.md), [0011](./0011-user-systems.md), [0012](./0012-self-contained-saves.md),
 [0032](./0032-a-build-step-may-offer-a-set.md), [0056](./0056-an-aurora-file-the-user-adds-is-a-source-of-its-own-kept-as-a-copy.md),
@@ -125,13 +125,33 @@ types loaded a set opens no decision, which is what a step with nothing to offer
 says where they come from instead, and the written features' heading picker offers the three headings. Before, the two
 steps were optional single picks, which the builder offers nowhere: not an empty picker, nothing at all.
 
+### 7. An NPC lists what its creature grants, and only the legendary creature takes more (amended the same day)
+
+As first accepted, an NPC built on a creature that grants legendary content held all of it and listed none: the `npc`
+kind declares neither the types nor a sheet section for them, so the sheet was silent about three elements the
+derivation holds and the save embeds, and nothing told the DM. Three answers were weighed:
+
+- **Show it** (chosen). The `npc` sheet gains the legendary kind's two sections, **Legendary Actions** and **Lair
+  Actions and Regional Effects**, listing those types and nothing else. A section that lists types and shows no stat
+  is not shown when the character holds none of them (`sheetSectionIsEmpty`, since the sheet began), so every NPC whose
+  creature grants none looks as it did. Each section's description says what the NPC does not do: "Build it as a
+  Legendary Creature to set how many it takes a round, or to add more". The NPC still declares none of the types, offers
+  none in a step, lists none among a written feature's headings, and has no **Legendary Action Uses**: taking more and
+  counting them are the legendary kind's.
+- **Report it**, as a derivation warning or a note on the creature step. A warning would be a problem on a character
+  that has none, and would make the NPC kind name what another kind is for; a note says there is something to see and
+  still does not show it.
+- **Leave it.** The stat block the DM is building prints those actions; hiding what the character holds, and what its
+  save carries, is the one outcome the sheet exists to prevent.
+
+A `system.json` change with no engine one. The NPC's elementTypes are unchanged: they are what the kind offers, and the
+test reads the legendary types as the difference between the two kinds.
+
 ## What this does not do
 
 - **Parse the 2025 prose.** Seven stat blocks have legendary actions as text, and splitting HTML into elements is the
   guess ADR 0005 declines. Showing them beside an NPC is its own Phase 4 item.
-- **Show a creature's legendary content on a plain NPC.** An NPC built on a homebrew legendary creature holds its
-  legendary actions (they are granted), and the NPC's sheet has no section for them; the legendary kind is for that
-  creature. `tools/verify/src/legendary-content.test.ts` measures it.
+- ~~**Show a creature's legendary content on a plain NPC.**~~ Decided otherwise the same day: decision 7.
 - **Reuse a written legendary action.** It is one character's, as every written feature is; a library of the user's own
   is Phase 8, and a user's file is the way to reuse one today.
 - **Track uses in play.** 3 is what the stat block prints; spending them is a play-time tracker, which Incudo is not yet.
@@ -166,7 +186,12 @@ Each test names the perturbation that fails it, and each perturbation was run.
   saved and reopened with no source, every section reads the same. Fails with the two steps back to single optional
   picks (the spare legendary action is offered nowhere), with the uses stat removed, with the legendary types left out
   of the kind's `customFeatures.types`, and with its `customFeatures.sections` without the legendary section. An NPC
-  built on the same creature holds its three legendary elements and lists none, reported.
+  built on the same creature held its three legendary elements and listed none, reported as an `ℹ` line; since decision
+  7 that test asserts it: an NPC with no creature shows neither legendary section, one built on the file's creature
+  lists each of the three under its type's section and offers none of them in a step nor counts uses, and saved and
+  reopened with no source its sheet reads the same. Fails with the NPC sheet's two legendary sections removed (checked:
+  "the NPC / Monster sheet lists Legendary Action"). The oracle's thirty-sample table was identical before and after
+  decision 7 (snapshot on the base, baseline on the change, same checkout), as a sheet-only change must leave it.
 - `packages/core/src/custom-features.test.ts`, over a fixture with no game in it: a feature recording a listed type is
   held as it and one recording none as the default; one recording an unlisted type is reported and not held, and its
   lines do nothing; the types are the kind's; only a typed feature raises to 6. Perturbed: the recorded type ignored,

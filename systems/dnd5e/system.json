@@ -483,6 +483,10 @@
           { "id": "reactions", "label": "Reactions", "types": ["Companion Reaction"] },
           { "id": "features", "label": "Feats and Features", "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature"] },
           { "id": "proficiencies", "label": "Proficiencies and Conditions", "types": ["Proficiency", "Language", "Condition"] },
+          { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"],
+            "description": "What the creature gives. Build it as a Legendary Creature to set how many it takes a round, or to add more." },
+          { "id": "lair", "label": "Lair Actions and Regional Effects", "types": ["Lair Action", "Regional Effect"],
+            "description": "What the creature gives. Build it as a Legendary Creature to add more." },
           { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
         ]
       }
