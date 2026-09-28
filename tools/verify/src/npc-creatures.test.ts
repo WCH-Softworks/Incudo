@@ -325,13 +325,16 @@ test("every creature's named traits, actions and reactions reach its NPC, and it
   // ADR 0058. The ids are read here by a split of this test's own, not by the engine's function, so a
   // reader that dropped an id (the three Tasha's attacks that end in ">") would fail this. Fails if the
   // kind's `setterGrants` is removed (nothing named is held) or `collectCharacterContent` stops reading
-  // them (the reopened NPC holds none).
+  // them (the reopened NPC holds none). A named id whose own requirements are false is withdrawn, not held (ADR
+  // 0071), and must be published as withdrawn by its creature: the UA Ancient Companion names a "Sage Only", a
+  // "Healer Only" and a "Warrior Only" feature, each requiring a variant trait the bare NPC does not hold.
   const system = await fiveE();
   const elements = await realElements();
   const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
   const missing: string[] = [];
   const lostOnReopen: string[] = [];
   const unresolved = new Set<string>();
+  const withdrawn: string[] = [];
   let named = 0;
   for (const creature of creatures) {
     const ids = ['traits', 'actions', 'reactions'].flatMap((setter) =>
@@ -349,16 +352,19 @@ test("every creature's named traits, actions and reactions reach its NPC, and it
         );
         continue;
       }
-      if (!derived.elementIds.has(id)) missing.push(`${creature.id} -> ${id}`);
+      if (derived.elementIds.has(id)) continue;
+      if (derived.withdrawn.some((w) => w.elementId === id && w.grantedBy.includes(creature.id))) withdrawn.push(`${creature.id} -> ${id}`);
+      else missing.push(`${creature.id} -> ${id}`);
     }
     if (!ids.length) continue;
     const packed = packCharacter(character, system, elements, { generator: 'test' });
     const { container } = readCharacterContainer(packed.files);
     const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
-    for (const id of ids) if (elements.get(id) && !reopened.elementIds.has(id)) lostOnReopen.push(`${creature.id} -> ${id}`);
+    for (const id of ids) if (derived.elementIds.has(id) && !reopened.elementIds.has(id)) lostOnReopen.push(`${creature.id} -> ${id}`);
   }
   t.diagnostic(`${named} traits, actions and reactions named; ${unresolved.size} name nothing loaded${unresolved.size ? `: ${[...unresolved].join(', ')}` : ''}`);
-  assert.deepEqual(missing, [], 'every resolving id a creature names is held by its NPC');
+  t.diagnostic(`withdrawn by their own requirements: ${withdrawn.length}${withdrawn.length ? ` (${withdrawn.join(', ')})` : ''}`);
+  assert.deepEqual(missing, [], 'every resolving id a creature names is held by its NPC, or withdrawn by its own requirements');
   assert.deepEqual(lostOnReopen, [], 'and by the NPC reopened from its save with no source');
 });
 

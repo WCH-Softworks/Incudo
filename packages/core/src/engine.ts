@@ -267,6 +267,18 @@ export interface DerivedCharacter {
    * prints it — ADR 0060. `character.progress` is what was recorded and may be absent; this is what was read.
    */
   progress: CharacterProgress;
+  /**
+   * Each element something granted and its own requirements ruled out, with what granted it — ADR 0071. Not held:
+   * its rules apply to nothing and its grants reach nothing. Not a problem either: "unless the character has Deft
+   * Explorer" is content working as written. Only ever a granted element; a seed is never withdrawn.
+   */
+  withdrawn: WithdrawnElement[];
+}
+
+/** A granted element its own requirements rule out, and every held element that granted it — ADR 0071. */
+export interface WithdrawnElement {
+  elementId: ElementId;
+  grantedBy: ElementId[];
 }
 
 export interface DeriveOptions {
@@ -375,9 +387,21 @@ export function deriveCharacter(
     }
   }
 
+  // Every seed a recorded choice did not put there. A choice under a withdrawn element's select stops seeding while
+  // the element is withdrawn (ADR 0071); these never do.
+  const fixedSeeds = new Set<ElementId>([
+    ...baselineIds,
+    ...advancementElementIds(character),
+    ...equippedElementIds(character),
+    ...custom.elements.map((element) => element.id),
+    ...added,
+  ]);
+
   let active = new Map<ElementId, Element>();
   let stats = new Map<StatKey, ResolvedStat>();
   let starts = new Map<StatKey, StatStart>();
+  // A granted element whose own requirements were false in the previous pass, and what granted it (ADR 0071).
+  let withdrawn = new Map<ElementId, Set<ElementId>>();
   // Element -> the track root it belongs to. Rebuilt each pass alongside `active`, and kept
   // afterwards because the pending-choice walk needs the same gates the expansion used.
   let tracks = new Map<ElementId, ElementId>();
@@ -394,11 +418,14 @@ export function deriveCharacter(
     // / Wizard 5 grants one shared marker element from two tracks, and counting it once halves
     // the character's caster level.
     const nextMembers = new Map<ElementId, Set<ElementId>>();
+    const nextWithdrawn = new Map<ElementId, Set<ElementId>>();
     const levelFor = trackLevelReader(nextTracks, trackLevels, character.progress);
     const ctx = makeContext(active, stats, character, kind, equipment);
 
-    // Seed: everything the user explicitly chose, and the kind's own baseline.
-    for (const id of chosenIds) {
+    // Seed: everything the user explicitly chose, and the kind's own baseline. Less what answered a select of an
+    // element the previous pass withdrew: that pool is closed, and the record waits for the element (ADR 0071).
+    const seeds = openSeeds(chosenIds, fixedSeeds, character.choices, withdrawn);
+    for (const id of seeds) {
       addElement(next, index, id, problems, undefined, baselineIds.has(id));
     }
     // Each element progression was spent on roots its own track. Done before the expansion
@@ -430,6 +457,31 @@ export function deriveCharacter(
       queue.push(reached);
     };
     const attempted = new Set(next.keys());
+    // One grant edge, from a `<grant>` or a setter the kind reads as one (ADR 0058). An element only a grant brings
+    // in is withdrawn when its own requirements are false (ADR 0071): asked of the previous pass, as a rule's are,
+    // with the element itself counted as not held, so "unless the character has this" does not fail on itself.
+    // A seed is never withdrawn: every seed is `attempted` before the first grant is read. And a withdrawn element
+    // joins no track, so no marker in it counts for one.
+    const grant = (from: ElementId, id: ElementId): void => {
+      const withdrawnBy = nextWithdrawn.get(id);
+      if (withdrawnBy) {
+        withdrawnBy.add(from);
+        return;
+      }
+      const target = index.get(id);
+      // Once per id, resolved or not: an id nothing declares is reported by the first
+      // element to grant it, not by every one.
+      if (!attempted.has(id)) {
+        attempted.add(id);
+        if (target && !ownRequirementsHold(target, ctx)) {
+          nextWithdrawn.set(id, new Set([from]));
+          return;
+        }
+        addElement(next, index, id, problems, from);
+      }
+      inheritTrack(nextTracks, nextMembers, from, id, target, problems);
+      reach(id);
+    };
     for (const id of next.keys()) if (!picks.has(id)) reach(id);
     do {
       // `queue` grows as it is read, which is the order the frontier used to be walked in.
@@ -437,29 +489,15 @@ export function deriveCharacter(
         const element = queue[at]!;
         // What the user took away from this holder: its setter's naming and any `<grant>` of its own (ADR 0061,
         // ADR 0067). Nothing for an element the kind does not make a holder.
-        const withdrawn = withdrawnGrantIds(kind.setterGrants, element, removedGrants);
+        const removed = withdrawnGrantIds(kind.setterGrants, element, removedGrants);
         for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
           if (rule.kind !== 'grant') continue;
-          if (withdrawn.has(rule.id)) continue;
-          inheritTrack(nextTracks, nextMembers, element.id, rule.id, index.get(rule.id), problems);
-          // Once per id, resolved or not: an id nothing declares is reported by the first
-          // element to grant it, not by every one.
-          if (!attempted.has(rule.id)) {
-            attempted.add(rule.id);
-            addElement(next, index, rule.id, problems, element.id);
-          }
-          reach(rule.id);
+          if (removed.has(rule.id)) continue;
+          grant(element.id, rule.id);
         }
         // What a declared setter names is granted by this element, as a `<grant>` it carried would
         // be (ADR 0058): same track, reported once when unresolved, gone when the element is.
-        for (const id of setterGrantIds(kind.setterGrants, element, removedGrants)) {
-          inheritTrack(nextTracks, nextMembers, element.id, id, index.get(id), problems);
-          if (!attempted.has(id)) {
-            attempted.add(id);
-            addElement(next, index, id, problems, element.id);
-          }
-          reach(id);
-        }
+        for (const id of setterGrantIds(kind.setterGrants, element, removedGrants)) grant(element.id, id);
         if (!picks.size) continue;
         for (const ruleKey of selectPools(element, character, kind, ctx, levelFor, equipment).keys()) {
           for (const id of recordedChoices.get(ruleKey) ?? []) {
@@ -487,11 +525,13 @@ export function deriveCharacter(
       custom.sets,
     );
 
-    changed = !sameKeys(active, next) || !sameStats(stats, nextStats);
+    // What was withdrawn decides which recorded choices seed the next pass, so a change there is a change too.
+    changed = !sameKeys(active, next) || !sameStats(stats, nextStats) || !sameKeys(withdrawn, nextWithdrawn);
     active = next;
     stats = nextStats;
     starts = nextStarts;
     tracks = nextTracks;
+    withdrawn = nextWithdrawn;
   }
 
   if (passes >= maxPasses) {
@@ -564,6 +604,7 @@ export function deriveCharacter(
     system,
     kind,
     elements: [...active.values()],
+    withdrawn: [...withdrawn].map(([elementId, grantedBy]) => ({ elementId, grantedBy: [...grantedBy] })),
     elementIds: new Set(active.keys()),
     stats,
     pendingChoices,
@@ -616,6 +657,39 @@ function allowedAdditions(
   return out;
 }
 
+/**
+ * Whether an element's own requirements hold, asked as they would have been before it was held: the element itself
+ * counts as not held, so "does not already have this" does not fail because it now does (ADR 0064, ADR 0071).
+ */
+function ownRequirementsHold(element: Element, ctx: RequirementContext): boolean {
+  if (!element.requirements) return true;
+  const before: RequirementContext = { ...ctx, hasElement: (other) => other !== element.id && ctx.hasElement(other) };
+  return evaluateRequirements(element.requirements, before);
+}
+
+/**
+ * The seeds of one pass: every seed, less what a recorded choice under a select of a withdrawn element holds and
+ * nothing else seeds (ADR 0071). The pool is closed while its element is withdrawn, and the record stays, so the
+ * answers count again the moment the element does. The same set, in the same order, when nothing is withdrawn.
+ */
+function openSeeds(
+  seeds: ReadonlySet<ElementId>,
+  fixed: ReadonlySet<ElementId>,
+  choices: Character['choices'],
+  withdrawn: ReadonlyMap<ElementId, unknown>,
+): Set<ElementId> {
+  if (!withdrawn.size) return new Set(seeds);
+  // A pool is keyed `<element>/select:<name>`, so an element's own pools are the keys with that prefix.
+  const prefixes = [...withdrawn.keys()].map((id) => `${id}/select:`);
+  const closedPool = (ruleKey: string): boolean => prefixes.some((prefix) => ruleKey.startsWith(prefix));
+  const open = new Set<ElementId>(fixed);
+  for (const choice of choices) {
+    if (closedPool(choice.ruleKey)) continue;
+    for (const id of choice.elementIds) open.add(id);
+  }
+  return new Set([...seeds].filter((id) => open.has(id)));
+}
+
 function reportUnmetAdditions(
   added: readonly ElementId[],
   active: Map<ElementId, Element>,
@@ -629,9 +703,7 @@ function reportUnmetAdditions(
   const ctx = makeContext(active, stats, character, kind, equipment);
   for (const id of added) {
     const element = active.get(id);
-    if (!element?.requirements) continue;
-    const before: RequirementContext = { ...ctx, hasElement: (other) => other !== id && ctx.hasElement(other) };
-    if (evaluateRequirements(element.requirements, before)) continue;
+    if (!element || ownRequirementsHold(element, ctx)) continue;
     problems.push({
       level: 'warning',
       code: 'requirement-unmet',

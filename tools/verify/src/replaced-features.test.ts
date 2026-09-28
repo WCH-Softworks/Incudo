@@ -18,6 +18,11 @@
  *
  * Everything is reported as `ℹ` lines and nothing is asserted (ADR 0042). Elements are found by their rules, setters
  * and the samples' records, except the Ranger and the Deft Explorer item, looked up by name and id to build one case.
+ *
+ * **Written before ADR 0071 was built, and kept as its record.** Since it was, the engine reads both terms and withdraws
+ * a granted element whose own requirements are false, so the sample rows here read 0 where they read 58 (and 26 with
+ * both terms read), the 2024 Fighter is offered the feats, and the Ranger holds one explorer at a time. The figures from
+ * before are in the ADR; what the change is held to is `own-requirements.test.ts` and the engine's `withdrawn.test.ts`.
  */
 
 import { test } from 'node:test';

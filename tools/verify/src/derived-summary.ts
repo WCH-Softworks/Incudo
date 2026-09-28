@@ -15,6 +15,8 @@ export interface DerivedSummary {
   stats: Record<string, number | string>;
   pendingChoices: Array<{ ruleKey: string; label: string; remaining: number }>;
   problems: Array<{ level: string; code: string; message: string; elementId?: string }>;
+  /** What a grant brought in and the element's own requirements ruled out (ADR 0071): the character's, not content's. */
+  withdrawn: Array<{ elementId: string; grantedBy: string[] }>;
 }
 
 /**
@@ -50,5 +52,8 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
     problems: derived.problems
       .map((p) => ({ level: p.level, code: p.code, message: p.message, elementId: p.elementId }))
       .sort((a, b) => (a.message < b.message ? -1 : 1)),
+    withdrawn: derived.withdrawn
+      .map((w) => ({ elementId: w.elementId, grantedBy: [...w.grantedBy].sort() }))
+      .sort((a, b) => (a.elementId < b.elementId ? -1 : 1)),
   };
 }
