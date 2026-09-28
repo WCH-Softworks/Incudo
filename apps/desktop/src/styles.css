@@ -1443,6 +1443,16 @@ table.budget-rows input[type='number'] {
   border-collapse: collapse;
 }
 
+/* Content's own sub-headings, and the name over an embedded element's text (ADR 0069): at the text's size rather than
+   the browser's smaller h5, which read as a caption under the text it heads. An embed's heading is its wrapper's first
+   child, which the rule above strips of its top margin, so it is named again here or it sits flush against the text
+   before it. */
+.picker-description h5,
+.picker-description div > h5:first-child {
+  font-size: 1em;
+  margin: 1em 0 0.25em;
+}
+
 .picker-description td,
 .picker-description th {
   border: 1px solid var(--line);

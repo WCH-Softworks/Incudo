@@ -22,10 +22,10 @@
  * Attributes are denied by default and allowed back one at a time per tag, which is what keeps
  * an `onclick` or a `style` out without a separate rule naming each dangerous one.
  *
- * What this deliberately does not do: resolve `<div element="ID_…">` into the name of the
- * element it references. That needs an `ElementIndex` lookup per reference and a rule for what
- * the result should look like, neither of which exists yet — left as a visible gap (an empty
- * div) rather than guessed at (ADR 0005).
+ * What this does not do: resolve `<div element="ID_…">` into the element it embeds. That is
+ * `expandDescription` in `packages/ui` (ADR 0069), run before this, so a marker that reaches here
+ * is one it already replaced or one nothing expanded; either way the empty div is unwrapped. The
+ * embedded text is spliced in first and sanitized with the rest: it is content too.
  */
 
 const ALLOWED_TAGS = new Set([
