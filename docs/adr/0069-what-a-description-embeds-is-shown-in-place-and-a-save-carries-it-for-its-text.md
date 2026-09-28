@@ -94,6 +94,14 @@ something that is not in your content": it is a gap in a text, and the text says
 This changes `content.json` for a character saved after it and moves no derivation: nothing seeds from what is embedded,
 and a derivation reads only what it reaches. The oracle's thirty-sample table is identical before and after.
 
+### 5. An empty element written as XML is opened before an HTML parse
+
+**Running it found this.** A description is a fragment of an XML file, and `<h4 style="…" />` there is an empty
+heading. An HTML parser ignores the slash on anything but a void element and leaves the heading open, so every prose
+stat block, all 63 of which open that way, rendered inside its own empty `h4`: 581 characters of one Kraken, in bold.
+That was so since ADR 0068 showed the first one, and it was not seen because the text was all there. `openSelfClosingTags`
+(`packages/ui`) writes every such non-void element open and closed, and the sanitizer runs it before it parses.
+
 ## What this does not do
 
 - **Search what a description embeds.** Browse's description search (ADR 0053) reads the text an element writes itself.
@@ -122,3 +130,40 @@ and a derivation reads only what it reaches. The oracle's thirty-sample table is
   content you have", which an embed in a text is not.
 - **The embedded text without its name.** It is what the marker literally holds, and it leaves a subclass as a run of
   unlabelled paragraphs, since no embedder writes a heading (0 of 3,202).
+
+## Evidence
+
+Each test names the perturbation that fails it, and each perturbation was run.
+
+- `packages/core/src/embeds.test.ts`, over a fixture with no game in it: the marker is read with either quote, another
+  attribute and either closing, and not as `data-element`, a `span`, an empty id or inside a comment (an unclosed one
+  running to the end); a chosen element's embed, and that embed's own, are carried and what the embed grants is not; an
+  element reached for its text and then by a rule is followed in full; an embed naming nothing is not `unresolved`.
+  Perturbed: embeds not followed; nested embeds not followed; embeds followed in full; an already collected id skipped
+  when a rule reaches it; a dangling embed added to `unresolved`; the attribute's leading space dropped; empty ids kept;
+  every marker called self-closing; comments read; an unclosed comment ignored.
+- `packages/ui/src/description.test.ts`: an embed is the name as a heading and the text, in place; nested; one naming
+  nothing says so with the id; a circle of two and a self-embed stop with "Already shown above"; nesting stops at the
+  limit exactly; a name is escaped; a marker that does not close itself keeps its partner; XML-empty elements are opened
+  and void ones left alone. Perturbed: the marker left in place; no heading; one level only; a missing one dropped
+  silently; the circle checked against the parent only; no depth limit; the limit one early; the name unescaped; the
+  partner lost; the rewrite removed.
+- `packages/ui/src/references.test.ts`: a kept reference's text has what it embeds put in place. Perturbed: the row's
+  description left as content wrote it.
+- `tools/verify/src/description-embeds.test.ts`: the measurement above; and against whatever the corpus holds, every
+  sample save packed as the library packs it and reopened with no source reads every element's description identically
+  to the corpus, embeds and all (1,371 embeds in the saved descriptions, every one resolving in the save alone).
+  Perturbed: the collector not following embeds (the 16 samples whose saves gain elements fail). Not following nested
+  embeds changes no sample, and is held by the core test.
+- The oracle's thirty-sample table is identical before and after (`INCUDO_ORACLE_SNAPSHOT` on the base,
+  `INCUDO_ORACLE_BASELINE` on the change, same checkout); a baseline with one difference removed fails, so the
+  comparison was live.
+- **Driven in the browser build** (an origin-private folder standing in for the folder picker). Browse: the Scroll of
+  Titan Summoning (Kraken) shows "Kraken" and its stat block, AC to challenge rating, where it had a gap; the Path of the
+  Berserker shows its four features under their names; the Lance says its special property is not in the loaded content.
+  The Kraken's block rendered bold inside its opening `h4` (decision 5) and, fixed, reads as a table. A player character
+  with the 2024 Sage background, whose description embeds the Magic Initiate feat it does not grant as such, was saved,
+  the only source switched off and the page reloaded: the card read 17 elements embedded, and the Sage's settled pick,
+  previewed with nothing loaded, showed the feat under its name, read from the save. Running it also found the one
+  commented-out embed, which the first reader counted: the Piwafwi's, reported unresolved where content had switched it
+  off. Not driven in the Tauri window; not macOS or Linux.

@@ -1181,9 +1181,23 @@ the kind machinery is not decorative.*
       could answer it. A build step may now be a **pick that can be skipped** (`pick`), and the two Creature steps
       are. A library card said "1 elements embedded"; fixed. No player character derivation moved. Driven in the
       browser build and in the Tauri window on Windows, the saved file read back from disk and reopened with the
-      source off. **Not done:** content embeds all 63 stat blocks in other descriptions (a summoning spell's, a
-      scroll's) with `<div element>`, and Incudo shows nothing there; references for a player character; macOS and
-      Linux.
+      source off. **Not done:** ~~content embeds all 63 stat blocks in other descriptions (a summoning spell's, a
+      scroll's) with `<div element>`, and Incudo shows nothing there~~ (the next item); references for a player
+      character; macOS and Linux.
+- [x] **Show what a description embeds, and save it with the character**
+      ([ADR 0069](./docs/adr/0069-what-a-description-embeds-is-shown-in-place-and-a-save-carries-it-for-its-text.md)).
+      Found by the item above. Content writes `<div element="…" />` where another element's text belongs, 3,202 times
+      in 1,273 descriptions: a subclass's features, a class's, a 2024 background's feat, a summoning spell's creature,
+      a scroll's stat block. Measured first, as a test: every one in one shape, 3,200 resolving, two levels deep at
+      most, none circular, and **no embedder writes the embedded element's name**, so it is shown as a heading over
+      its text wherever a description is (Browse, a picker's preview and its dock, a kept reference), with a sentence
+      where it names nothing loaded, closes a circle or nests too deep. A save carries the embedded elements **for
+      their text only**, not their rules: 23 more across the thirty samples, in 16 of them, every embed in the saved
+      descriptions resolving with no source. No derivation moved. Running it found two more: five markers sit inside
+      XML comments (content switching an embed off), which the first reader counted; and every prose stat block
+      rendered inside its own opening `<h4 />`, which an HTML parser leaves open, since ADR 0068 showed the first.
+      Driven in the browser build. **Not done:** searching embedded text, linking an embed to its element, saves
+      written before this (they carry what they reached); the Tauri window, macOS and Linux.
 - [ ] Kind-specific sheets and exports
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the

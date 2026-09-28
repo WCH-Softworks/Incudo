@@ -387,7 +387,11 @@ namespaced string keys verbatim — inventing a typed schema for 5e stats would 
 
 - Aurora's `<description>` is loose HTML with app-specific bits (`<div class="reference">`,
   `<div element="ID_…"/>`). Incudo stores it as HTML and resolves `element="…"` references
-  at render time; it does not try to normalize the markup.
+  at render time; it does not try to normalize the markup. The embedded element's name and text
+  stand where the marker is, and a save carries the element for its text (ADR 0069). A marker
+  inside an XML comment is content switching the embed off, and is not one. The markup is XML:
+  `<h4 />` is an empty heading, which the shell writes open and closed before an HTML parser
+  sees it.
 - `<sheet>` is display metadata (`display`, `alt`, `usage`, `action`). Kept as-is, interpreted
   by the system definition's sheet layout.
 - Aurora has undocumented app-side behaviour for certain IDs (`ID_INTERNAL_*` are helpers that

@@ -123,7 +123,10 @@ kind is the authority, as it is for an addition (ADR 0064) and a written feature
   another element's `<div element="…">`, 82 times, and Incudo shows nothing there (the sanitizer unwraps the empty div,
   as it was written to). A summoning spell's description, in Browse or a picker's preview, has a gap where its
   creature's stat block is. Resolving an embedding needs an index lookup when a description is rendered, and a save must
-  then embed what a held element's description embeds or it opens with the gap back. It is its own item.
+  then embed what a held element's description embeds or it opens with the gap back. It is its own item. *(Done by
+  [ADR 0069](./0069-what-a-description-embeds-is-shown-in-place-and-a-save-carries-it-for-its-text.md), which also found
+  every one of the 63 rendering inside its own opening heading, here too: an XML `<h4 />` is left open by an HTML
+  parser.)*
 - **Give a player character references.** Decision 2.
 - **Say on a library card which text an NPC keeps.** A card shows kind, progress and elements embedded.
 

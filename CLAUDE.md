@@ -354,7 +354,7 @@ proficiency, language, condition or spell from loaded content on a player charac
 (ADR 0064). **A legendary creature takes legendary actions, lair actions and regional effects from a user's own file or
 written by the DM on the creature**, and shows how many legendary actions it takes (ADR 0065). **An NPC keeps a stat
 block printed only as prose beside it for reference**, shown and saved and never held, and may skip its creature to be
-built by hand (ADR 0068).
+built by hand (ADR 0068). **What a description embeds is shown in place and saved with the character** (ADR 0069).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -547,11 +547,36 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     blocking Creature decision nothing could close. A step that is neither required, a set nor a `pick` still only heads
     the selects content opens of its types; making every such step a pick would open "Languages: pick one" on a PC.
     Tests that look for the creature step find it by `required || pick`.
-  - **Found and not fixed:** all 63 stat blocks are embedded in other descriptions (a summoning spell, a scroll) by
-    `<div element="…">`, and `sanitize-html.ts` unwraps the empty div, so those descriptions show nothing there.
-    Resolving it needs a lookup when rendering and a save that embeds what a held element's description embeds.
+  - ~~**Found and not fixed:** all 63 stat blocks are embedded in other descriptions by `<div element="…">`, and Incudo
+    shows nothing there.~~ Fixed by ADR 0069, below.
   - Driven in the browser build and in the Tauri window on Windows (DOM clicks over the debug port, the saved file read
     back from disk, reopened with the source off); not with real input, and not on macOS or Linux.
+- **What a description embeds is shown in place, and a save carries it for its text**
+  ([ADR 0069](docs/adr/0069-what-a-description-embeds-is-shown-in-place-and-a-save-carries-it-for-its-text.md)).
+  Things to know before touching it:
+  - **Measured by `tools/verify/src/description-embeds.test.ts`** (report-only, plus one assertion that holds against any
+    corpus): 3,207 markers, all `<div element="…" />`, 5 of them inside XML comments (content switching an embed off,
+    not an embed); 3,202 embeds in 1,273 descriptions, 3,200 resolving, at most two deep, none circular. **No embedder
+    writes the embedded element's name** (0 headings before one; its description opens without one), so it is shown.
+  - **`descriptionEmbeds` (`packages/core/src/embeds.ts`) is the one reader of the marker**, read where a description is
+    used and never when content is parsed (a `.incu` embeds parsed elements). `core` finds the reference and renders
+    nothing.
+  - **`expandDescription` (`packages/ui/src/description.ts`) puts the text in place**: the name as an `h5` and the
+    description, nested, looked up in the index the caller shows from (everything loaded in Browse; the character's view,
+    save in front, in a picker, its dock and a kept reference, whose `ReferenceRow.description` is now expanded). One
+    naming nothing, closing a circle, or deeper than `MAX_EMBED_DEPTH` (4) is a sentence in its place. The result is
+    not safe HTML: the shell's sanitizer runs over all of it, embedded text included. Panes call the two functions and
+    compute nothing.
+  - **`collectCharacterContent` follows embeds for the text only**: an element reached only that way is embedded and its
+    rules are not followed; reached by a rule too, it is followed in full, in either order. An embed naming nothing is
+    **not** `unresolved` (the library reads that as "this save uses something you do not have"). On the thirty samples: 23
+    more elements, in 16 saves, and the oracle's table identical before and after. A save written before this carries
+    what it reached; saving it again with the source loaded carries the text.
+  - **A description is XML, and `<h4 />` there is empty.** An HTML parser leaves it open, so every prose stat block
+    rendered inside its own opening heading since ADR 0068 (found by running this). `openSelfClosingTags`
+    (`packages/ui`) opens and closes every non-void empty element, and `sanitize-html.ts` runs it before parsing.
+  - Not done: searching embedded text (Browse reads what an element writes itself), linking an embed to its element.
+    Driven in the browser build only.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1209,7 +1234,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067 and 0068 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068 and 0069 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
