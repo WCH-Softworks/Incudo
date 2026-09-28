@@ -1136,7 +1136,23 @@ the kind machinery is not decorative.*
       Driven in the browser build, with a homebrew file dropped on the Sources pane and the creature reopened with no
       source. **Not done:** an NPC's sheet lists none of the legendary content a creature it is built on grants (the
       legendary kind is for that creature); reusing a written legendary action (Phase 8); play-time tracking of uses;
-      the Tauri window, macOS and Linux.
+      the Tauri window, macOS and Linux. *(Closed the same day, below, except reuse, play and macOS and Linux.)*
+- [x] **What ADR 0065 left open** (its decision 7 and evidence). An NPC built on a creature that grants legendary
+      content now lists it, under the legendary creature's two headings, each saying that setting how many it takes a
+      round, or adding more, is a Legendary Creature's; an NPC whose creature grants none shows neither. The test that
+      only reported it now asserts it. Driven in the browser build: an NPC's own action and reaction, listed and kept
+      through a save opened with no source, and a hand-edited feature of a type the NPC cannot hold, which now reads
+      "Legendary Actions (not available)" rather than the type's own name, changes nothing, and is repaired by choosing
+      a heading. Doing so found that **opening a library file did not show it** when the character on screen had the
+      same id (the builder kept its own copy); fixed. The kind's description, a tooltip nothing showed, is now a line
+      under the Characters header. **Driven in the Tauri window on Windows**, for the first time for ADR 0056's file
+      sources too: a real OS drop added the homebrew file, "Choose files…" replaced it through the native dialog, and a
+      Legendary Creature with a taken and a written legendary action and a "Lair" adding one use read the same sheet
+      after a reload with the source off. **With this, the phase's exit criterion holds**: a PC, an NPC and a
+      legendary creature are built in one app, and the engine names none of them (only comments do). The items below
+      are still open. **Not done:** removing a creature's own `<grant>`s from its NPC (ADR 0061 cancels what a setter
+      names); a draft reloaded with no source enabled loses its file's embedded content until reopened; macOS and
+      Linux.
 - [ ] Companions and sidekicks
 - [ ] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC.** *Reworded by ADR 0057's
       measurement:* 32 of its creatures are structured and already usable; the other 45 (Rat to Tarrasque) are HTML

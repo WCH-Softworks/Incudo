@@ -84,6 +84,9 @@ while a browser hands the page the file itself.
   replaced it (1.0.0 to 1.1.0), and both survived a reload. Removing it removed the copy from storage. **Not driven:**
   the file picker (a native dialog), the Tauri window's drop (`TauriFileDrop`, written against the plugin's source and
   never run), macOS and Linux.
+- **Note, 2026-09-28: both ran in the Tauri window on Windows** (ADR 0065's evidence has the run). A real OLE drop of a
+  file onto the Sources pane reached `TauriFileDrop` and added it; "Choose files…" through the native open dialog
+  replaced it. The drag came from a small form of the test's own, not from Explorer. Still not driven: macOS and Linux.
 
 ## What this does not do
 

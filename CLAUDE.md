@@ -483,7 +483,8 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   - **A written feature may be held as any type its kind lists** (`customFeatures.types`, `type` the default and among
     them; the validator refuses an undeclared one or a list without the default). `CustomFeature.type` is recorded only
     when it is not the default, and only then is the character **format 6**; the validator refuses it below 6. A recorded
-    type the kind does not list is `custom-feature-type` and the feature is not held. `customFeatureTypes` and
+    type the kind does not list is `custom-feature-type` and the feature is not held, and the editor names it as the sheet
+    would head it (`typeLabel`: "Legendary Actions (not available)"), never by the type's own name. `customFeatureTypes` and
     `customFeatureType` (`packages/core/src/custom-features.ts`) are the only readers. 5e's NPC lists trait, action and
     reaction; the legendary kind redeclares `customFeatures` with its three types and its Legendary Actions section.
   - **No cost field** (the 2025 rules print none; a 2014 one is in the name). **`legendary actions`**, "Legendary Action
@@ -491,8 +492,18 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     an entry target with only a default would be open on every legendary creature.
   - **The legendary kind's two steps are sets.** As optional single picks they were offered nowhere: a non-required pick
     is not a top-level pick, so there were never "three empty pickers", there was nothing.
-  - **An NPC built on a legendary creature holds its legendary content and its sheet lists none** (reported, not fixed).
-- **Driven in the browser build only**, with an origin-private folder standing in for the native folder picker.
+  - **An NPC built on a creature that grants legendary content lists it** (ADR 0065 decision 7, amended the same day):
+    the `npc` sheet has the legendary kind's two sections, types only, so they are hidden (`sheetSectionIsEmpty`) on
+    every NPC whose creature grants none, and each says that uses and more are a Legendary Creature's. The NPC still
+    declares none of the types, offers none, and has no uses stat; `legendary-content.test.ts` reads the legendary types
+    as the difference between the two kinds' `elementTypes`, so adding them to the NPC's would empty that test.
+  - **A creature's own `<grant>`s cannot be removed from its NPC** (found, not fixed): ADR 0061's removal cancels what a
+    setter names, so the three legendary elements the homebrew creature grants have no Remove.
+  - **The kind's description is a line under the Characters header** for the kind New character makes. It was a
+    tooltip on the chooser's options, which a dropdown never shows.
+- **Driven in the browser build and, since 2026-09-28, in the Tauri window on Windows**: a real file drop and the native
+  "Choose files…" dialog, a Legendary Creature with taken and written legendary actions and a "Lair" adding a use, saved
+  and reopened with the source off. The browser build used an origin-private folder for the native folder picker.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -776,8 +787,9 @@ before touching `packages/content/src/file-source.ts`:
 - **`composeSource` returns a `FileContentSource`** (an index of one file, parsed once), and `checkSourceForUpdates` and
   `refreshSource` say there is nothing upstream. The pane hides mode, check, refresh and parts for it.
 - **A drop is a port, `FileDrop`**, because the Tauri webview never sees a dropped file (the host reports paths, and
-  `tauri-plugin-fs` grants them). It is listened to only while the Sources pane is shown. **`TauriFileDrop` has never
-  run**; the browser drop was driven by a dispatched drop event, and the picker path was not driven at all.
+  `tauri-plugin-fs` grants them). It is listened to only while the Sources pane is shown. **`TauriFileDrop` first ran on
+  2026-09-28** in the Windows window: a real OLE drop (from a form of the test's own, not from Explorer) added a file, and
+  "Choose files…" through the native dialog replaced it. The browser drop has only ever been a dispatched drop event.
 
 **Which books a character is offered is one recorded list, and it narrows offers only**
 ([ADR 0049](docs/adr/0049-a-character-records-which-publications-it-is-offered-and-it-narrows-offers-only.md)).
@@ -913,7 +925,10 @@ autosave then writing the reversion over the draft, so reloading did not bring i
 character mid-session. And **"New character" did nothing at all**, because the memo saw the same
 system and the same index; opening from the library only ever *appeared* to work, since a save
 carries embedded content and so changed `elements` by accident. The hook now resumes from the
-builder's own state and keys on `character.id`. Twelve green test files cover this code and none
+builder's own state only when the shell hands over the *same character object* (a content reload, a
+save), and starts from what it is handed otherwise (open, new, import). It used to key on
+`character.id`, and that hid a third bug until 2026-09-28: opening the library file of the character
+already on screen kept the copy on screen and never read the file. Twelve green test files cover this code and none
 of them rebuilds a builder mid-edit, which is the whole lesson: **the tests protect the rules,
 running it protects the product.**
 
@@ -1099,6 +1114,9 @@ deliberately **not** fixed:
 - **Nothing moves a recorded source version.** ADR 0028's `moved` state is computed and shown,
   and the "refresh this character against the newer source" flow it points at does not exist,
   so a character says a source has moved until someone builds that.
+- **A draft reloaded with no source enabled has lost its file's embedded content.** The draft is
+  `character.json` only, so an NPC opened from the library and then reloaded came back without its
+  creature (2 elements where the file had 8) until opened again. Found 2026-09-28; not fixed.
 - **Importing N saves rescans the library N times.** `CharacterLibrary.save` refreshes after
   every write, because the collision suffix reads the current listing — so importing a set of real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
   above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the

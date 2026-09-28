@@ -214,6 +214,40 @@ Each test names the perturbation that fails it, and each perturbation was run.
   headings offered, and a "Lair" feature whose line was offered "Legendary Action Uses" and added 1, gave a sheet
   reading Legendary Action Uses 4 above the granted, taken and written legendary actions. Saved to the library, every
   source switched off and the page reloaded, its card read "Legendary Creature · Challenge Rating 10 · 7 elements
-  embedded", and it opened to the same sheet and the same two features. **Not driven:** an NPC's written action or
-  reaction, a feature recorded with an unlisted type (tests only), and the kind's description, which is the new
-  character chooser's tooltip.
+  embedded", and it opened to the same sheet and the same two features. **Not driven** in that run: an NPC's written
+  action or reaction, a feature recorded with an unlisted type (tests only), and the kind's description, which was the
+  new character chooser's tooltip.
+- **The three it did not reach, driven in the browser build the same day**, set up the same way. An NPC on the file's
+  creature, with a feature listed under Actions and another under Reactions: each was on the sheet in that section,
+  beside the creature's Bite and above decision 7's two legendary sections (Tail Sweep; Falling Rock and Tremors, each
+  with its note), and saved, every source switched off and the page reloaded, the card read "NPC / Monster · Challenge
+  Rating 10 · 6 elements embedded" and the file opened to the same sheet. That save, hand-edited to record one feature
+  as `Legendary Action` with a line adding 10 to Speed, opened with a note on the feature and its line greyed; the
+  feature was on no list and Speed stayed 40; choosing Reactions listed it and Speed read 50. Two things found and
+  fixed: the "Listed under" select named the unlisted type by its own name, "Legendary Action", among the headings
+  "Traits", "Actions" and "Reactions", and now reads "Legendary Actions (not available)" (`typeLabel`, in
+  `packages/ui/src/custom-features.ts`, with a test that fails on the raw name); and **opening the file did not show the
+  edit at all**, because the builder hook resumed its own copy of any character with the same id as the one opened
+  (`apps/desktop/src/use-builder.ts`, now keyed on the character object the shell hands over). The kind's description
+  was a `title` on the chooser and on its options, which a dropdown's options never show, so it could only be read by
+  hovering the closed chooser; it is now a line under the Characters header for the kind New character will make, and
+  the legendary one was reworded so as not to say "description" twice.
+- **Driven in the Tauri window on Windows** (a fresh WebView2 profile, the library a scratch folder named in the app's
+  own store, the page read and clicked over the WebView2 debug port; not macOS or Linux). The homebrew file was added by
+  **a real drop**: an OLE drag of the file, started by a scratch form and carried onto the window by real mouse input,
+  reached the page through `TauriFileDrop` and read "homebrew-legendary.xml: added, 8 elements", the first time that
+  class ran. "Choose files…" was then driven through the native open dialog (its file name set and Open pressed by window
+  messages) and replaced the copy. The source line reported the Aurora overlay's two language references as not found,
+  as ADR 0052 charges them to the first Aurora source when no core content is loaded. A Legendary Creature on the file's
+  creature offered the file's other legendary action and took it; a written "Wing Buffet (Costs 2 Actions)" listed under
+  Legendary Actions and a "Lair" feature adding 1 to Legendary Action Uses gave a sheet reading Legendary Action Uses 4
+  over Rallying Roar, Wing Buffet and Tail Sweep, with Falling Rock and Tremors below. Saved, the only source switched
+  off and the window reloaded: "Legendary Creature · Challenge Rating 10 · 7 elements embedded", and it opened to a sheet
+  identical in every line, the two features under the same headings. **Not driven:** a drag from Explorer (the drag
+  source was a form of the test's own carrying a file drop list, the format an Explorer drag carries), and keystrokes:
+  every click was a DOM click.
+- Found and not fixed: the creature's **own `<grant>`s cannot be removed** from its NPC. "From Old Stone Drake" offers
+  Remove for the trait and action its setters name and nothing for the three legendary elements it grants, since ADR
+  0061 cancels what a setter names (and a grant of the same id), not a grant alone. And a draft reloaded with no source
+  enabled has none of its file's embedded content, so an opened NPC came back without its creature until it was opened
+  again from the library.
