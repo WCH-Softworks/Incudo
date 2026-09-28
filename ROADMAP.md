@@ -1269,8 +1269,33 @@ written on a character can be moved into the user's library without being typed 
   - **Settle before RC1, not by the pipeline:** the app icon reads only against a dark
     background (`apps/desktop/src-tauri/icons/README.md` names the tile colour as an open brand
     decision), and an installer is the first place a user sees it.
+    Localization (the next item) is decided before RC1 too, even if no translation ships in it.
   - **Not verified when written:** nothing here has run. Ticked on a real RC tag that produced
     installers, downloaded from the release page and installed, not on a green workflow.
+- [ ] **Localization: decide it before the first release candidate, and before the formats are frozen.** No ADR
+      covers it and nothing is built for it: every string on screen is English written inline, in
+      `apps/desktop` panes and in some `packages/ui` view-models, and counts and dates follow the platform's
+      locale only where a pane happened to call `toLocaleString`. It goes before the next item because two of the
+      places text lives are public formats, and a translation mechanism added after they are declared stable is a
+      breaking change to both. Wants an ADR first; what it has to settle:
+  - **The app's own text.** Where strings live and which layer owns them: the rule that panes compute nothing
+    means a sentence built in a view-model is a view-model's string, and the native menu's labels come from
+    `packages/ui/src/commands.ts`. How a missing translation falls back, plural rules (English "1 match / 2
+    matches" is hand-written in panes today) and number and date formats.
+  - **Derivation problems.** Each `Problem` in `packages/core` carries a stable `code` and an English `message`;
+    whether the shell renders from the code and its data, so core stays free of any language, or the message is
+    translated where it is written.
+  - **System definitions (ADR 0011, a public format).** A system's `label`, `plural`, `description` and sheet and
+    step headings are user-facing text written by whoever authored the system: 5e's alone has 219 of them. Whether a
+    system may carry translations of its own text, and in what shape, is a system format question, and `plural` as
+    a single English word does not survive languages with more plural forms.
+  - **Saves (ADR 0012, a public format).** Probably nothing, since a character stores choices and ids, not text;
+    to be confirmed, including what a custom feature's name or a written description means in another language
+    (it is the user's own words and is not translated).
+  - **Content.** AuroraLegacy's elements are English and Aurora import is frozen (ADR 0008). Translating game
+    content is not Incudo's to do; whether a translated content source a community publishes can stand beside or in
+    place of the English one is the open question, and ADR 0054's "the later source wins" may already answer it.
+  - **Which languages ship first**, and whether right-to-left is in scope, are the maintainer's call.
 - [ ] Stable formats with a real versioning and migration policy — from here on, the system
       format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md))
 - [ ] Signed desktop installers (Windows/macOS/Linux); mobile store presence TBD
