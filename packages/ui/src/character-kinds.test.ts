@@ -11,6 +11,7 @@ import {
   describeKindAndProgress,
   formatProgress,
   libraryEntryProgress,
+  libraryEntryReferences,
   newCharacterOfKind,
 } from './character-kinds.ts';
 import { CharacterBuilder } from './use-character-builder.ts';
@@ -146,4 +147,21 @@ test("the builder shows the creature's rating until one is typed, and clearing i
   hero.setProgress(4);
   hero.setProgress(undefined);
   assert.equal(hero.getState().character.progress, 4, 'a kind nothing prints for keeps what was typed');
+});
+
+test("a library card names what a character keeps, under its kind's label, and counts past three — ADR 0070", () => {
+  // Fails if the kind's label is not read (or not inherited along extends), if an unknown kind loses the line rather
+  // than taking the default label, if the list is not cut at three with the rest counted, or if a character keeping
+  // nothing gets a line.
+  const keeping: GameSystem = structuredClone(system);
+  keeping.characterKinds[0]!.references = { types: ['Note'], label: 'Lore' };
+  const named = (...names: string[]) => names.map((name) => ({ name }));
+  assert.equal(libraryEntryReferences(keeping, { kind: 'beast', references: named('Kraken') }), 'Lore: Kraken');
+  assert.equal(libraryEntryReferences(keeping, { kind: 'elder', references: named('Kraken', 'Rat') }), 'Lore: Kraken and Rat');
+  assert.equal(libraryEntryReferences(keeping, { kind: 'beast', references: named('A', 'B', 'C') }), 'Lore: A, B and C');
+  assert.equal(libraryEntryReferences(keeping, { kind: 'beast', references: named('A', 'B', 'C', 'D', 'E') }), 'Lore: A, B, C and 2 more');
+  assert.equal(libraryEntryReferences(keeping, { kind: 'hero', references: named('Kraken') }), 'For reference: Kraken');
+  assert.equal(libraryEntryReferences(keeping, { kind: 'ghost', references: named('Kraken') }), 'For reference: Kraken');
+  assert.equal(libraryEntryReferences(keeping, { kind: 'beast' }), undefined);
+  assert.equal(libraryEntryReferences(keeping, { kind: 'beast', references: [] }), undefined);
 });

@@ -29,6 +29,7 @@ export function LibraryPane({
   newKind,
   onNewKind,
   describeKind,
+  describeReferences,
   onRemove,
   onOpenSettings,
   onImport,
@@ -60,6 +61,8 @@ export function LibraryPane({
   onNewKind: (id: string) => void;
   /** What a card says a character is: its kind by name, and its progression by the kind's label. */
   describeKind: (entry: LibraryEntry) => string;
+  /** What a card says a character keeps beside it for reference, or undefined when it keeps nothing. */
+  describeReferences: (entry: LibraryEntry) => string | undefined;
   onRemove: (entry: LibraryEntry) => void;
   onOpenSettings: () => void;
   onImport: () => void;
@@ -253,6 +256,7 @@ export function LibraryPane({
             <CharacterCard
               entry={entry}
               kind={describeKind(entry)}
+              kept={describeReferences(entry)}
               onOpen={() => onOpen(entry)}
               onRemove={() => onRemove(entry)}
             />
@@ -404,12 +408,15 @@ function FirstRunDialog({
 function CharacterCard({
   entry,
   kind,
+  kept,
   onOpen,
   onRemove,
 }: {
   entry: LibraryEntry;
   /** "Player Character · Level 3", from the system; the card never spells a kind id. */
   kind: string;
+  /** "For reference: Kraken", from the ui package; undefined when the character keeps nothing. */
+  kept: string | undefined;
   onOpen: () => void;
   onRemove: () => void;
 }): React.JSX.Element {
@@ -433,6 +440,7 @@ function CharacterCard({
             </>
           )}
         </p>
+        {kept && !entry.broken && <p className="card-meta">{kept}</p>}
         <p className="card-meta">
           <code>{entry.name}</code>
           {entry.form === 'folder' && ' · unpacked'}

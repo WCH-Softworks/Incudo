@@ -19,6 +19,8 @@ import {
   type ResolvedCharacterKind,
 } from '@incudo/core';
 
+import { DEFAULT_REFERENCES_LABEL } from './references.ts';
+
 /** One kind a new character can be, as a chooser shows it. */
 export interface KindChoice {
   id: string;
@@ -133,4 +135,31 @@ export function newCharacterOfKind(system: GameSystem, kindId: string, name = 'N
     name,
     progress: clampProgress(kind.progression, initialProgress(kind.progression)),
   });
+}
+
+/** How many kept names a library card lists before it counts the rest. */
+export const CARD_REFERENCE_NAMES = 3;
+
+/**
+ * "For reference: Kraken, Tarrasque and 2 more": what a library card says a character keeps beside it (ADR 0070), under
+ * its kind's label, or undefined when it keeps nothing. What the file records is listed whatever the kind now keeps,
+ * under the default label when the system does not declare the kind or the kind keeps nothing: the card says what is in
+ * the file, and the character's own panes say what is shown.
+ */
+export function libraryEntryReferences(
+  system: GameSystem,
+  entry: { kind?: string; references?: readonly { name: string }[] },
+): string | undefined {
+  const names = (entry.references ?? []).map((reference) => reference.name);
+  if (!names.length) return undefined;
+  let label = DEFAULT_REFERENCES_LABEL;
+  try {
+    if (entry.kind !== undefined) label = resolveCharacterKind(system, entry.kind).references?.label ?? label;
+  } catch {
+    // A kind the system does not declare: the default label.
+  }
+  const listed = names.slice(0, CARD_REFERENCE_NAMES);
+  const rest = names.length - listed.length;
+  const list = rest > 0 ? `${listed.join(', ')} and ${rest} more` : listed.length > 1 ? `${listed.slice(0, -1).join(', ')} and ${listed.at(-1)}` : listed[0];
+  return `${label}: ${list}`;
 }

@@ -20,6 +20,7 @@ import {
   packCharacterContainer,
   resolveCharacterKind,
   setChoice,
+  setReferenced,
   type Character,
   type CharacterStore,
   type Element,
@@ -578,4 +579,25 @@ test('a character that records no progression keeps what it chose on its entry, 
   // One that records a level keeps nothing extra.
   const [recorded] = await libraryWith(hero());
   assert.equal(recorded.getState().entries[0]!.chosen, undefined);
+});
+
+test('an entry names what the character keeps from the save itself, and one keeping nothing carries nothing — ADR 0070', async () => {
+  // Fails if `describe` leaves the kept elements off the entry, names them by id when the save embeds them (the card
+  // would read "ID_…"), or drops one the save does not embed rather than naming it by its id.
+  const index = corpus() as MapElementIndex;
+  index.add(element('ID_NOTE_KRAKEN', { name: 'Kraken' }));
+  let keeper = setReferenced(setReferenced(hero('Keeper'), 'ID_NOTE_KRAKEN', true), 'ID_GONE', true);
+  keeper = { ...keeper, id: 'keeper' };
+  const store = new FakeStore();
+  const content = collectCharacterContent(keeper, index, { kind: resolveCharacterKind(testSystem(), 'hero') });
+  await store.write({ name: 'keeper.incu', form: 'zip' }, packCharacterContainer(keeper, content, { now: '2026-01-02T00:00:00.000Z' }));
+  await store.write({ name: 'aelin.incu', form: 'zip' }, containerFor(hero('Aelin')));
+  const library = new CharacterLibrary(store);
+  await library.restore();
+  const entries = library.getState().entries;
+  assert.deepEqual(entries.find((e) => e.title === 'Keeper')!.references, [
+    { elementId: 'ID_NOTE_KRAKEN', name: 'Kraken' },
+    { elementId: 'ID_GONE', name: 'ID_GONE' },
+  ]);
+  assert.equal('references' in entries.find((e) => e.title === 'Aelin')!, false);
 });

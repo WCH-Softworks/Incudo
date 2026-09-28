@@ -60,6 +60,13 @@ export interface LibraryEntry {
    * definition (`libraryEntryProgress`), which the library does not have.
    */
   chosen?: Element[];
+  /**
+   * What the character keeps beside it for reference (ADR 0068), in the order kept, each named by the save's own
+   * embedded copy, or by its id when the save embeds none. Absent when it keeps nothing. A card lists them
+   * (`libraryEntryReferences`, ADR 0070): for an NPC built by hand beside a stat block, the only thing that says what
+   * it is.
+   */
+  references?: { elementId: ElementId; name: string }[];
   updatedAt?: string;
   elementCount?: number;
   sources: SourceRef[];
@@ -557,6 +564,11 @@ export class CharacterLibrary {
       progress: character.progress,
       ...(character.progress === undefined
         ? { chosen: chosenElementIds(character).flatMap((id) => embedded.get(id) ?? []) }
+        : {}),
+      ...(character.references?.length
+        ? {
+            references: character.references.map((elementId) => ({ elementId, name: embedded.get(elementId)?.name ?? elementId })),
+          }
         : {}),
       updatedAt: manifest.updated ?? manifest.created,
       elementCount: manifest.elementCount ?? container.content.elements.length,
