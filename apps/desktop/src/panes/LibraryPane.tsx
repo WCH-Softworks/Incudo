@@ -305,7 +305,7 @@ function ImportReport({
                 <>
                   {' → '}
                   <code>{report.entry?.name}</code>
-                  {` · ${report.embedded} elements embedded`}
+                  {` · ${report.embedded} ${report.embedded === 1 ? 'element' : 'elements'} embedded`}
                   {report.assetCount > 0 && ` · ${report.assetCount} asset(s)`}
                 </>
               ) : (
@@ -428,7 +428,8 @@ function CharacterCard({
           ) : (
             <>
               {kind}
-              {entry.elementCount !== undefined && ` · ${entry.elementCount} elements embedded`}
+              {entry.elementCount !== undefined &&
+                ` · ${entry.elementCount} ${entry.elementCount === 1 ? 'element' : 'elements'} embedded`}
             </>
           )}
         </p>
