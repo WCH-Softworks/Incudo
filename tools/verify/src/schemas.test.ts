@@ -728,6 +728,33 @@ test('a step may offer a set, and a set cannot also be required', async () => {
   assert.equal((await errorsFor(notBoolean)).length, 1);
 });
 
+test('a step may be a pick without being required, and a pick cannot also be a set — ADR 0068', async () => {
+  // Perturbation: drop `pick` from the schema and the first assertion fails on an unknown key; drop the check in
+  // `validateGameSystem` and the second one fails.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        delete step.required;
+        step.pick = true;
+      }),
+    ),
+    [],
+    'a definition whose step is a pick that may be skipped is a valid one',
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        delete step.required;
+        step.pick = true;
+        step.multiple = true;
+      }),
+    ),
+    ['characterKinds[0].buildSteps: step "one" is both a pick and multiple; a pick is of one, a set of any number'],
+  );
+});
+
 test('a track expression may read a setter, and a level roll may be fixed by an element (ADR 0044)', async () => {
   const withStat = (expr: unknown) =>
     broken((s) => {

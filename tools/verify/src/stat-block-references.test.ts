@@ -73,7 +73,7 @@ function tally(values: string[]): string {
 async function creatureTypes(): Promise<string[]> {
   const system = await loadShippedSystem('dnd5e');
   const npc = resolveCharacterKind(system, 'npc');
-  const step = npc.buildSteps.find((s) => s.required && s.types.length > 0 && !s.budget && !s.multiple);
+  const step = npc.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget && !s.multiple);
   assert.ok(step, 'the NPC starts from a creature');
   return step.types;
 }
@@ -159,7 +159,7 @@ test('an NPC keeps every element of its reference types beside it, moves nothing
     assert.ok(types.length > 0, `the ${kind.name} keeps references`);
     const all = types.flatMap((type) => elements.byType(type)).map((e) => e.id);
 
-    const creatureStep = kind.buildSteps.find((s) => s.required && s.types.length > 0 && !s.budget && !s.multiple)!;
+    const creatureStep = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget && !s.multiple)!;
     const fresh = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
     const creature = fresh.getState().decisions.find((d) => d.stepId === creatureStep.id)!.candidates[0]!;
     const starts: [string, (b: CharacterBuilder) => void][] = [

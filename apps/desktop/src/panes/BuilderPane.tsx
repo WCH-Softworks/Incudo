@@ -33,6 +33,7 @@ import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 import { CustomFeatures } from './CustomFeatures.tsx';
 import { Additions } from './Additions.tsx';
+import { References } from './References.tsx';
 
 export function BuilderPane({
   builder,
@@ -209,6 +210,17 @@ export function BuilderPane({
               </li>
             ))}
           </ul>
+
+          {/*
+            What the character keeps beside it for reference (ADR 0068): a stat block printed only as prose, read
+            here while its numbers are entered in Open decisions beside it. Nothing is worked out from it.
+          */}
+          {state.references.available && (
+            <div className="references-section">
+              <h2>{state.references.label}</h2>
+              <References state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} />
+            </div>
+          )}
         </section>
 
         <section>

@@ -175,7 +175,7 @@ test("a user's own file brings a legendary creature its legendary content, grant
   const elements = await homebrew();
   const kind = resolveCharacterKind(system, 'legendary');
   const types = legendaryTypes(system).map((t) => t.name);
-  const creatureStep = kind.buildSteps.find((s) => s.required && s.types.length > 0 && !s.budget)!;
+  const creatureStep = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget)!;
   const creature = creatureStep.types.flatMap((type) => elements.byType(type))[0]!;
   assert.ok(creature, 'the file declares a creature');
   const granted = grantedIds(creature);
@@ -253,7 +253,7 @@ test('an NPC built on a legendary creature lists what it grants, under the headi
   const system = await loadShippedSystem('dnd5e');
   const elements = await homebrew();
   const npc = resolveCharacterKind(system, 'npc');
-  const creatureStep = npc.buildSteps.find((s) => s.required && s.types.length > 0 && !s.budget)!;
+  const creatureStep = npc.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget)!;
   const creature = creatureStep.types.flatMap((type) => elements.byType(type))[0]!;
   const b = new CharacterBuilder(newCharacterOfKind(system, 'npc'), system, elements);
   const empty = b.getState().derived;
@@ -292,7 +292,7 @@ test('on an NPC and a legendary creature, the DM may remove what the creature gr
   const elements = await homebrew();
   for (const kindId of ['npc', 'legendary']) {
     const kind = resolveCharacterKind(system, kindId);
-    const creatureStep = kind.buildSteps.find((s) => s.required && s.types.length > 0 && !s.budget)!;
+    const creatureStep = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget)!;
     const creature = creatureStep.types.flatMap((type) => elements.byType(type))[0]!;
     const b = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
     b.choose(`build/${creatureStep.id}`, [creature.id]);

@@ -667,6 +667,14 @@ export interface BuildStepDef {
    * without the set, which is what happened before this existed — so `formatVersion` did not move.
    */
   multiple?: boolean;
+  /**
+   * This step is a pick of one even though it is not `required` — ADR 0068. Offered like a required step's pick, but
+   * never blocking, so it can be skipped (ADR 0033) and a character can be finished without it: an NPC's creature,
+   * which an NPC built by hand beside a stat block printed only as prose has none of. Without it, a step that is not
+   * required and not `multiple` is a heading for the selects content opens of its types, and offers nothing itself.
+   * Validation refuses it with `multiple`, which is a set rather than a pick.
+   */
+  pick?: boolean;
   description?: string;
   /**
    * Ids of steps that must be usable before this one is — ADR 0017.

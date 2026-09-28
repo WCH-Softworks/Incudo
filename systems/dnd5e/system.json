@@ -453,7 +453,7 @@
       ],
 
       "buildSteps": [
-        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
+        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
         { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block gives, or what you enter. A number you enter replaces the creature's.",
@@ -516,7 +516,7 @@
       },
 
       "buildSteps": [
-        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
+        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
         { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block gives, or what you enter. A number you enter replaces the creature's.",

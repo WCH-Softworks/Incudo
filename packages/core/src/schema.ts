@@ -224,6 +224,13 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           message: `step "${step.id}" is both required and multiple; a set that may be empty cannot be required`,
         });
       }
+      // A pick is of one and a set of any number (ADR 0068): the same refusal, for the same reason.
+      if (step.pick && step.multiple) {
+        errors.push({
+          path: `${where}.buildSteps`,
+          message: `step "${step.id}" is both a pick and multiple; a pick is of one, a set of any number`,
+        });
+      }
       for (const type of step.types) {
         if (!typeNames.has(type)) {
           errors.push({

@@ -1240,7 +1240,8 @@ export class CharacterBuilder {
         kind: 'pick',
         label: step.label,
         stepId: step.id,
-        blocking: true,
+        // A step that is a pick without being required (ADR 0068) can be skipped, like any non-blocking decision.
+        blocking: step.required ?? false,
         remaining: 1,
         // A top-level pick has no supports filter; the step names types and nothing else.
         unresolved: [],

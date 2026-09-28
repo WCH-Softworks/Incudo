@@ -13,6 +13,7 @@
  */
 
 import type { BuilderState, CharacterBuilder } from '@incudo/ui';
+import { ReferenceText } from './References.tsx';
 import {
   collectDeclaredBlocks,
   renderSheetSection,
@@ -100,6 +101,22 @@ export function SheetPane({
             </section>
           );
         })}
+
+      {/* What the character keeps beside it for reference (ADR 0068), after the sheet: text, not the character's own. */}
+      {state.references.rows.length > 0 && (
+        <section className="sheet-section sheet-references">
+          <h3>{state.references.label}</h3>
+          {state.references.rows.map((row) => (
+            <article key={row.elementId}>
+              <h4>
+                {row.name}
+                {row.source && <span className="hint"> · {row.source}</span>}
+              </h4>
+              <ReferenceText row={row} />
+            </article>
+          ))}
+        </section>
+      )}
     </main>
   );
 }

@@ -721,6 +721,10 @@
           "type": "boolean",
           "description": "This step is answered by a set: zero or more of its candidates, never blocking (ADR 0032). For a system's optional rules, where choosing none is the ordinary answer. Cannot be combined with `required`. A reader that does not know this key builds the character without the set, so it does not change formatVersion."
         },
+        "pick": {
+          "type": "boolean",
+          "description": "This step is a pick of one even though it is not required: offered as one, never blocking, so it may be skipped (ADR 0068). An NPC's creature, which an NPC built by hand has none of. Without it a step that is neither required nor multiple is a heading for the selects content opens of its types. Cannot be combined with `multiple`. A reader that does not know this key offers no pick for the step, as before, so it does not change formatVersion."
+        },
         "description": { "type": "string" },
         "requires": {
           "type": "array",

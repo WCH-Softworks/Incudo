@@ -44,7 +44,8 @@ export function pickRuleKey(stepId: string): string {
 const NONE: ReadonlySet<string> = new Set();
 
 /**
- * The steps that are a single top-level pick. Only `required` ones, and never a `perLevel` one:
+ * The steps that are a single top-level pick. Only `required` ones and those that declare `pick` (ADR 0068: an NPC's
+ * creature, which may be skipped), and never a `perLevel` one:
  * what a level was spent on is `Character.advancement` and belongs to `setProgress` (ADR 0015),
  * not to a choice. Steps that are neither — equipment, spells, details — are left alone rather
  * than given an invented decision, because the bag (ADR 0024) and content's own selects own them.
@@ -54,7 +55,7 @@ const NONE: ReadonlySet<string> = new Set();
  */
 export function topLevelPickSteps(steps: readonly BuildStepDef[]): BuildStepDef[] {
   return steps.filter(
-    (step) => step.required && !step.multiple && !step.perLevel && step.types.length > 0,
+    (step) => (step.required || step.pick) && !step.multiple && !step.perLevel && step.types.length > 0,
   );
 }
 
