@@ -9,9 +9,9 @@
  *
  * It is no longer five lines, and the reason is worth reading before shortening it again. The
  * builder owns the character after construction, so a rebuild starts the character over from
- * whatever it is handed — and this hook is rebuilt whenever the content index changes. Both of
- * the bugs below were found by using the app, neither had a failing test, and both were here
- * from the first commit of this file.
+ * whatever it is handed — and this hook is rebuilt whenever the content index changes. All three
+ * bugs below were found by using the app and none had a failing test; the first two were here
+ * from the first commit of this file, and the third came with the fix for the second.
  */
 
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
@@ -48,19 +48,28 @@ export function useBuilder(
   // and switches to this pane, and the memo saw the same system and the same index and handed
   // back a builder still holding the previous character. Opening from the library only appeared
   // to work — a save brings its own embedded content, so `elements` changed and took the rebuild
-  // with it. Hence `character.id`: a different character is a different builder.
+  // with it.
+  //
+  // **Bug three: opening the character already on screen kept the one on screen.** Keyed on
+  // `character.id`, a file opened from the library whose character had that id (the same
+  // character, saved and then edited, or changed on disk since) resumed the builder's state and
+  // never read the file. Found by opening a hand-edited save. So the key is the object the shell
+  // hands over: open, new and import each hand over a new one, and a save or a content reload
+  // hands over the same one, which is when resuming is right.
+  const handed = useRef(character);
   const builder = useMemo(
-    // The id decides which of the two is the live one. Same character: resume from the latest
-    // state, which is what fixes bug one. Different character: start from what was handed in.
-    () =>
-      new CharacterBuilder(
-        current.current.id === character.id ? current.current : character,
-        system,
-        elements,
-      ),
+    // Same object as last time: only the content changed, so resume from the latest state, which
+    // is what fixes bug one. A new object: start from it, whatever its id.
+    () => new CharacterBuilder(handed.current === character ? current.current : character, system, elements),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [system, elements, character.id],
+    [system, elements, character],
   );
+
+  // After the render that used it, so a second call of the memo (React's development double
+  // render) makes the same choice as the first.
+  useEffect(() => {
+    handed.current = character;
+  }, [character]);
 
   const state = useSyncExternalStore(builder.subscribe, builder.getState);
 
