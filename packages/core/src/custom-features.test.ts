@@ -18,7 +18,7 @@ import {
   type Character,
   type CustomFeature,
 } from './character.ts';
-import { customFeatureElementId, customFeatureStats } from './custom-features.ts';
+import { customFeatureElementId, customFeatureStats, customFeatureTypes } from './custom-features.ts';
 import { MapElementIndex, type Element, type Rule, type Setter } from './model.ts';
 import { resolveCharacterKind, type CustomFeaturesDef, type GameSystem, type StatDef } from './system.ts';
 
@@ -45,7 +45,7 @@ function system(customFeatures: CustomFeaturesDef | null = { type: 'Knack' }): G
     id: 'test',
     name: 'Test System',
     version: '1.0.0',
-    elementTypes: [{ name: 'Beast' }, { name: 'Charm' }, { name: 'Knack' }],
+    elementTypes: [{ name: 'Beast' }, { name: 'Charm' }, { name: 'Knack' }, { name: 'Deed' }, { name: 'Boon' }],
     stats: STATS,
     characterKinds: [
       {
@@ -53,7 +53,7 @@ function system(customFeatures: CustomFeaturesDef | null = { type: 'Knack' }): G
         name: 'Keeper',
         default: true,
         progression: { kind: 'rating', stat: 'rank', min: 0, max: 10 },
-        elementTypes: ['Beast', 'Charm', 'Knack'],
+        elementTypes: ['Beast', 'Charm', 'Knack', 'Deed', 'Boon'],
         setterStats: [{ types: ['Beast'], setter: 'guard', stat: 'guard' }],
         customFeatures: customFeatures ?? undefined,
         buildSteps: [],
@@ -239,4 +239,63 @@ test('a description is shown as the user wrote it, never as markup', () => {
   );
   const held = derived.elements.find((e) => e.id === customFeatureElementId('a'));
   assert.equal(held?.description, '<p>Runs &lt;fast&gt; &amp; far.</p><p>Always.</p>');
+});
+
+// ADR 0065: a feature may be held as another type the kind lists, as a DM's legendary action is.
+
+const typed = (id: string, name: string, type: string | undefined, stats: CustomFeature['stats'] = []): CustomFeature => ({
+  id,
+  name,
+  ...(type === undefined ? {} : { type }),
+  stats,
+});
+
+test('a feature that records a type the kind lists is held as it, and one that records none as the default', () => {
+  // Fails if the recorded type is ignored (the Deed is held as a Knack) or if its lines stop applying.
+  const kind = system({ type: 'Knack', types: ['Knack', 'Deed'] });
+  const derived = deriveCharacter(
+    keeper([typed('d', 'Trample', 'Deed', [{ stat: 'stride', mode: 'add', value: 5 }]), typed('k', 'Fleet', undefined)]),
+    kind,
+    index,
+  );
+  assert.equal(derived.elements.find((e) => e.id === customFeatureElementId('d'))?.type, 'Deed');
+  assert.equal(derived.elements.find((e) => e.id === customFeatureElementId('k'))?.type, 'Knack');
+  assert.equal(value(derived, 'stride'), 55);
+  assert.deepEqual(codes(derived), []);
+});
+
+test('a feature that records a type the kind does not list is reported and not held, and its lines do nothing', () => {
+  // Fails if it is held as the default type (the element is there, stride 60 and guard 20) or held in silence.
+  const kind = system({ type: 'Knack', types: ['Knack', 'Deed'] });
+  const derived = deriveCharacter(
+    keeper([typed('b', 'Blessing', 'Boon', [{ stat: 'stride', mode: 'set', value: 60 }, { stat: 'guard', mode: 'add', value: 3 }])]),
+    kind,
+    index,
+  );
+  assert.equal(derived.elements.find((e) => e.id === customFeatureElementId('b')), undefined);
+  assert.equal(value(derived, 'stride'), 50);
+  assert.equal(value(derived, 'guard'), 17);
+  assert.deepEqual(codes(derived), ['custom-feature-type']);
+  assert.match(derived.problems[0]!.message, /Blessing.*"Boon"/);
+  // A kind that lists no others holds only its default: the same feature is refused there too.
+  assert.deepEqual(codes(deriveCharacter(keeper([typed('b', 'Blessing', 'Deed')]), system(), index)), ['custom-feature-type']);
+});
+
+test("the types a feature may be held as are the kind's, the default first when listed so, and none for a kind with none", () => {
+  // Fails if `types` is ignored (the default alone) or a kind that lists none offers more than its default.
+  assert.deepEqual(customFeatureTypes(resolveCharacterKind(system({ type: 'Knack', types: ['Knack', 'Deed'] }), 'keeper')), ['Knack', 'Deed']);
+  assert.deepEqual(customFeatureTypes(resolveCharacterKind(system(), 'keeper')), ['Knack']);
+  assert.deepEqual(customFeatureTypes(resolveCharacterKind(system(null), 'keeper')), []);
+});
+
+test('only a feature that records its type raises the character to format 6', () => {
+  // Fails if every feature raises to 6 (a reader of 5 could have read the untyped one) or a typed one stays at 4
+  // (a reader of 5 would list a legendary action as a trait).
+  assert.equal(keeper([typed('k', 'Fleet', undefined)]).formatVersion, 4);
+  const six = keeper([typed('d', 'Trample', 'Deed')]);
+  assert.equal(six.formatVersion, 6);
+  // Back to the default is back to no type, and nothing downgrades the version.
+  const untyped = setCustomFeature(six, typed('d', 'Trample', undefined));
+  assert.equal(untyped.customFeatures![0]!.type, undefined);
+  assert.equal(untyped.formatVersion, 6);
 });

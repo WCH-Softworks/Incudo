@@ -81,8 +81,8 @@ function result<T>(value: T, errors: SchemaError[]): ValidationResult<T> {
 }
 
 /**
- * What the schema cannot say about a character: `instanceId` is unique, and only format 3 omits `progress` or
- * records `removedGrants`.
+ * What the schema cannot say about a character: `instanceId` is unique, only format 3 omits `progress` or records
+ * `removedGrants`, and the fields later formats added are recorded only from them.
  *
  * It matters because it is an address. `setInventoryEntry` replaces by it and a UI keys rows
  * by it, so two entries sharing one is a file where editing an item changes a different item
@@ -109,6 +109,10 @@ function checkCharacterReferences(character: Character): SchemaError[] {
   }
   const featureIds = new Set<string>();
   for (const [i, feature] of (character.customFeatures ?? []).entries()) {
+    // A reader of 5 would hold it as the kind's default type, and list a legendary action as a trait (ADR 0065).
+    if (character.formatVersion < 6 && feature.type !== undefined) {
+      errors.push({ path: `customFeatures[${i}].type`, message: 'is recorded only from format 6' });
+    }
     if (featureIds.has(feature.id)) {
       errors.push({ path: `customFeatures[${i}].id`, message: `"${feature.id}" is already used by another feature` });
     }
@@ -398,6 +402,20 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     for (const type of resolved.additions?.types ?? []) {
       if (!typeNames.has(type)) {
         errors.push({ path: `${where}.additions.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+      }
+    }
+
+    // A custom feature held as a type nothing declares is listed nowhere, and one whose default the list leaves out
+    // would be held as a type no picker offers (ADR 0065).
+    const customFeatures = resolved.customFeatures;
+    if (customFeatures) {
+      for (const type of new Set([customFeatures.type, ...(customFeatures.types ?? [])])) {
+        if (!typeNames.has(type)) {
+          errors.push({ path: `${where}.customFeatures`, message: `names "${type}", which the system's elementTypes does not declare` });
+        }
+      }
+      if (customFeatures.types && !customFeatures.types.includes(customFeatures.type)) {
+        errors.push({ path: `${where}.customFeatures.types`, message: `leaves out "${customFeatures.type}", the type a feature is held as by default` });
       }
     }
 

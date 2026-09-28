@@ -1148,8 +1148,15 @@ export interface CharacterKindDef {
 
 /** How a kind holds the features its user writes — ADR 0063. */
 export interface CustomFeaturesDef {
-  /** The element type a custom feature is held as, so the sheet lists it where that type is listed. */
+  /**
+   * The element type a custom feature is held as when it names none, so the sheet lists it where that type is listed.
+   */
   type: ElementType;
+  /**
+   * Every type a custom feature may be held as, in the order a picker offers them, `type` among them — ADR 0065. A
+   * DM's legendary action is held as one and listed under Legendary Actions. Absent means `type` alone.
+   */
+  types?: ElementType[];
   /**
    * The sheet sections, by id, whose stats a custom feature may name. Absent means every section. 5e leaves out the
    * ability scores: they are the character's own inputs with an editor of their own, and a feature is for the stat

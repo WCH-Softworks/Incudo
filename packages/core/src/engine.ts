@@ -216,6 +216,8 @@ export interface Problem {
     | 'custom-feature-stat'
     | 'custom-feature-conflict'
     | 'custom-feature-replaced'
+    // A feature the user wrote held as a type its kind does not list, which is not held — ADR 0065.
+    | 'custom-feature-type'
     // An element the user added of a type the kind does not let be added, which is not held — ADR 0064. An added one
     // whose own prerequisites fail is held, and is `requirement-unmet`.
     | 'addition-not-allowed'
@@ -669,6 +671,13 @@ function customFeatureNoteProblem(note: CustomFeatureNote, kind: ResolvedCharact
         code: 'custom-feature-stat',
         elementId,
         message: `${name} is a feature written for this character, and a ${kind.name} cannot carry one. It changes nothing.`,
+      };
+    case 'type-not-allowed':
+      return {
+        level: 'warning',
+        code: 'custom-feature-type',
+        elementId,
+        message: `${name} is a feature written for this character as a "${note.type}", which a ${kind.name} cannot carry. It changes nothing and is not listed.`,
       };
     case 'unknown-stat':
       return {

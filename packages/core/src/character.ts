@@ -105,7 +105,8 @@ export interface Character {
   /**
    * 1 before an inventory existed, 2 since (ADR 0024), 3 for a character that records no `progress` or
    * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063), 5 for one that
-   * records `additions` (ADR 0064). Readers accept all five. A new character is written at 2, and only a write that needs more raises it
+   * records `additions` (ADR 0064), 6 for one with a custom feature held as a type other than its kind's default (ADR 0065).
+   * Readers accept all six. A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -245,7 +246,7 @@ export interface Character {
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6;
 
 /** A feature the user wrote for one character — ADR 0063. */
 export interface CustomFeature {
@@ -253,6 +254,12 @@ export interface CustomFeature {
   id: string;
   name: string;
   description?: string;
+  /**
+   * The element type it is held as, when it is not the kind's default — ADR 0065. A DM's legendary action is held as
+   * one, so the sheet lists it under Legendary Actions. One of the kind's `customFeatures.types`; absent means its
+   * `customFeatures.type`. Only format 6 records it, because a reader of 5 would hold it as the default.
+   */
+  type?: string;
   /** What it does to the character's stats, in order. May be empty: a feature can be only a name. */
   stats: CustomStatLine[];
 }
@@ -275,10 +282,10 @@ export const CHARACTER_FORMAT_VERSION = 2;
 
 /**
  * The newest version a reader accepts — ADR 0060, ADR 0063, ADR 0064. A character with no `progress` or with
- * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` 5, and nothing else is
- * raised.
+ * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` at least 5, one with a
+ * custom feature that records its `type` 6 (ADR 0065), and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 5;
+export const LATEST_CHARACTER_FORMAT_VERSION = 6;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -420,14 +427,16 @@ export function setGrantRemoved(character: Character, elementId: ElementId, remo
 }
 
 /**
- * Add a custom feature, or replace the one with its id — ADR 0063. Recording one raises the character to format 4.
+ * Add a custom feature, or replace the one with its id — ADR 0063. Recording one raises the character to format 4, and
+ * one that records its `type` to 6 (ADR 0065).
  * The feature's position is kept when it is replaced, because the first of two that set one stat is the one used.
  */
 export function setCustomFeature(character: Character, feature: CustomFeature): Character {
   const current = character.customFeatures ?? [];
   const at = current.findIndex((f) => f.id === feature.id);
   const next = at < 0 ? [...current, feature] : current.map((f, i) => (i === at ? feature : f));
-  return { ...raiseFormatVersion(character, 4), customFeatures: next, updatedAt: new Date().toISOString() };
+  const version = feature.type === undefined ? 4 : 6;
+  return { ...raiseFormatVersion(character, version), customFeatures: next, updatedAt: new Date().toISOString() };
 }
 
 /**

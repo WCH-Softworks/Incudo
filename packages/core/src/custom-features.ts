@@ -2,7 +2,8 @@
  * Features a user writes for one character — ADR 0063.
  *
  * A DM's "Godspeed: Speed 60" on an NPC. A feature is held as an element of the type the kind's
- * `customFeatures` names, so it is listed where that type is listed; its `add` lines are that element's
+ * `customFeatures` names, or of another type it lists that the feature records (ADR 0065: a DM's legendary action), so
+ * it is listed where that type is listed; its `add` lines are that element's
  * rules, and its `set` lines are where a stat starts, after a creature's print and before a value the user
  * typed. Core names no stat: which a feature may name is read off the kind.
  *
@@ -75,12 +76,36 @@ export function customFeatureStats(kind: ResolvedCharacterKind): CustomFeatureSt
   return out;
 }
 
+/**
+ * The element types a custom feature may be held as on this kind, in the order a picker offers them, the default first
+ * when the kind lists it first — ADR 0065. Empty for a kind that carries none; the default alone for one that lists no
+ * others.
+ */
+export function customFeatureTypes(kind: ResolvedCharacterKind): string[] {
+  const def = kind.customFeatures;
+  if (!def) return [];
+  const types = def.types ?? [def.type];
+  return types.includes(def.type) ? [...types] : [def.type, ...types];
+}
+
+/**
+ * The type a feature is held as: the one it records, or the kind's default. Undefined for a kind that carries none, and
+ * for a recorded type the kind does not list, which is reported and not held (ADR 0065).
+ */
+export function customFeatureType(feature: CustomFeature, kind: ResolvedCharacterKind): string | undefined {
+  if (!kind.customFeatures) return undefined;
+  if (feature.type === undefined) return kind.customFeatures.type;
+  return customFeatureTypes(kind).includes(feature.type) ? feature.type : undefined;
+}
+
 /** Why a line of a custom feature does nothing, or does less than it says. */
 export interface CustomFeatureNote {
-  kind: 'no-custom-features' | 'unknown-stat' | 'not-settable' | 'two-setters';
+  kind: 'no-custom-features' | 'type-not-allowed' | 'unknown-stat' | 'not-settable' | 'two-setters';
   featureId: string;
   featureName: string;
   stat?: StatKey;
+  /** The type the feature records, for `type-not-allowed`. */
+  type?: string;
   /** The feature whose set is used instead, for `two-setters`. */
   usedFrom?: string;
 }
@@ -122,6 +147,12 @@ export function customFeatureEffects(character: Character, kind: ResolvedCharact
   const offered = new Map(customFeatureStats(kind).map((s) => [s.stat.toLowerCase(), s]));
   for (const feature of features) {
     const id = customFeatureElementId(feature.id);
+    // Held as some other type, it would be listed where the user did not put it: reported, and not held at all.
+    const type = customFeatureType(feature, kind);
+    if (type === undefined) {
+      notes.push({ kind: 'type-not-allowed', featureId: feature.id, featureName: feature.name, type: feature.type });
+      continue;
+    }
     const rules: StatRule[] = [];
     for (const [at, line] of feature.stats.entries()) {
       const stat = offered.get(line.stat.toLowerCase());
@@ -146,7 +177,7 @@ export function customFeatureEffects(character: Character, kind: ResolvedCharact
       }
       sets.set(key, { stat: stat.stat, value: line.value, from: id, featureName: feature.name });
     }
-    elements.push(customFeatureElement(feature, kind.customFeatures.type, rules));
+    elements.push(customFeatureElement(feature, type, rules));
   }
   return { elements, sets, notes };
 }

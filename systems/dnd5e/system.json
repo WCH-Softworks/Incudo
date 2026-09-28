@@ -419,7 +419,7 @@
         { "stat": "companion:proficiency", "value": { "kind": "ref", "stat": "proficiency" } }
       ],
 
-      "customFeatures": { "type": "Companion Trait", "sections": ["header", "speeds", "saves", "skills", "senses"] },
+      "customFeatures": { "type": "Companion Trait", "types": ["Companion Trait", "Companion Action", "Companion Reaction"], "sections": ["header", "speeds", "saves", "skills", "senses"] },
 
       "additions": {
         "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature", "Proficiency", "Language", "Condition", "Spell"],
@@ -491,9 +491,19 @@
     {
       "id": "legendary",
       "name": "Legendary Creature",
-      "description": "An NPC with legendary actions, lair actions and regional effects, where your content provides them. The official Aurora content describes these only as text inside a creature's description, so there is nothing to pick for them yet.",
+      "description": "An NPC that takes legendary actions, and may have lair actions and regional effects. Write them on the creature as features of its own, or add a file of your own content that declares them: the official content describes them only as text inside a creature's description.",
       "extends": "npc",
       "elementTypes": ["+Legendary Action", "+Lair Action", "+Regional Effect"],
+
+      "stats": [
+        { "name": "legendary actions", "label": "Legendary Action Uses", "default": 3 }
+      ],
+
+      "customFeatures": {
+        "type": "Companion Trait",
+        "types": ["Companion Trait", "Companion Action", "Companion Reaction", "Legendary Action", "Lair Action", "Regional Effect"],
+        "sections": ["header", "speeds", "saves", "skills", "senses", "legendary"]
+      },
 
       "buildSteps": [
         { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true },
@@ -503,8 +513,8 @@
           "budget": { "stat": "stat block points", "targets": ["ac", "hp", "speed"], "methods": ["entry"] } },
         { "id": "traits", "label": "Traits", "types": ["Companion Trait"], "multiple": true },
         { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"], "multiple": true },
-        { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"] },
-        { "id": "lair", "label": "Lair", "types": ["Lair Action", "Regional Effect"] },
+        { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"], "multiple": true },
+        { "id": "lair", "label": "Lair Actions and Regional Effects", "types": ["Lair Action", "Regional Effect"], "multiple": true },
         { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
         { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
       ],
@@ -534,8 +544,8 @@
           { "id": "reactions", "label": "Reactions", "types": ["Companion Reaction"] },
           { "id": "features", "label": "Feats and Features", "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature"] },
           { "id": "proficiencies", "label": "Proficiencies and Conditions", "types": ["Proficiency", "Language", "Condition"] },
-          { "id": "legendary", "label": "Legendary Actions", "types": ["Legendary Action"] },
-          { "id": "lair", "label": "Lair Actions & Regional Effects", "types": ["Lair Action", "Regional Effect"] },
+          { "id": "legendary", "label": "Legendary Actions", "stats": ["legendary actions"], "types": ["Legendary Action"] },
+          { "id": "lair", "label": "Lair Actions and Regional Effects", "types": ["Lair Action", "Regional Effect"] },
           { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
         ]
       }

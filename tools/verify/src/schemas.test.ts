@@ -268,7 +268,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 6 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 7 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -285,8 +285,8 @@ test('a custom feature section that names no section of the sheet is caught befo
   assert.deepEqual(validateGameSystem(system, schemas).errors, []);
   const npc = system.characterKinds.find((k) => k.id === 'npc')!;
   npc.customFeatures = { ...npc.customFeatures!, sections: [...npc.customFeatures!.sections!, 'nowhere'] };
+  // Once: the legendary kind declares its own (ADR 0065), where it used to inherit the NPC's and repeat the error.
   assert.deepEqual(validateGameSystem(system, schemas).errors.map((e) => e.message), [
-    'names "nowhere", which is not a section of this kind\'s sheet',
     'names "nowhere", which is not a section of this kind\'s sheet',
   ]);
 });
@@ -308,6 +308,37 @@ test('only format 4 may record custom features, each with its own id — ADR 006
   ]);
   const badMode = { ...four, customFeatures: [{ ...godspeed, stats: [{ stat: 'speed', mode: 'double', value: 2 }] }] };
   assert.notDeepEqual(validateCharacter(badMode as unknown as Character, schemas).errors, []);
+});
+
+test('only format 6 may record the type a custom feature is held as — ADR 0065', async () => {
+  // Fails if the schema refuses the field, or if the referential check stops refusing a typed feature in a file that
+  // claims 5 (a reader of 5 would hold a legendary action as a trait).
+  const schemas = await loadSchemas();
+  const npc = createCharacter('dnd5e', 'legendary', { name: 'Vesper', progress: 1 });
+  const storm = { id: 's', name: 'Storm Bolt', type: 'Legendary Action', stats: [] };
+  const six = setCustomFeature(npc, storm);
+  assert.equal(six.formatVersion, 6);
+  assert.deepEqual(validateCharacter(six, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...six, formatVersion: 5 }, schemas).errors, [
+    { path: 'customFeatures[0].type', message: 'is recorded only from format 6' },
+  ]);
+  assert.notDeepEqual(validateCharacter({ ...six, customFeatures: [{ ...storm, type: '' }] }, schemas).errors, []);
+});
+
+test('a type a custom feature may be held as is one the system declares, and the default is among them — ADR 0065', async () => {
+  // Fails if either referential check is removed: a type nothing declares is listed under no section, and a default
+  // the list leaves out is a type the picker never offers back.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  const legendary = system.characterKinds.find((k) => k.id === 'legendary')!;
+  legendary.customFeatures = { ...legendary.customFeatures!, types: [...legendary.customFeatures!.types!, 'Mythic Action'] };
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [
+    { path: 'characterKinds[2].customFeatures', message: `names "Mythic Action", which the system's elementTypes does not declare` },
+  ]);
+  legendary.customFeatures = { ...legendary.customFeatures, types: ['Legendary Action'] };
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [
+    { path: 'characterKinds[2].customFeatures.types', message: 'leaves out "Companion Trait", the type a feature is held as by default' },
+  ]);
 });
 
 test('only format 5 may record additions, each once — ADR 0064', async () => {
@@ -353,8 +384,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 6 } as unknown as Character, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 7 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6' },
   ]);
 
   // The check no JSON Schema can express: an instance id is an address, so two entries

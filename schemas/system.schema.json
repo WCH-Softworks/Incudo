@@ -372,7 +372,14 @@
           "additionalProperties": false,
           "description": "Whether a character of this kind may carry features its user writes, each adding to or setting a stat its sheet shows, and the element type each is held as, so the sheet lists it where that type is listed (ADR 0063). A kind without it carries none. Replaced rather than merged along an extends chain.",
           "properties": {
-            "type": { "type": "string", "minLength": 1 },
+            "type": { "type": "string", "minLength": 1, "description": "The element type a feature is held as when it names none." },
+            "types": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "Every element type a feature may be held as, in the order a picker offers them, `type` among them (ADR 0065): a DM's legendary action is held as one and listed where that type is. Absent means `type` alone."
+            },
             "sections": {
               "type": "array",
               "items": { "type": "string", "minLength": 1 },
