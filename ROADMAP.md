@@ -1165,7 +1165,13 @@ the kind machinery is not decorative.*
       build and in the Tauri window on Windows (a native file dialog, a real file on disk read back, reopened with the
       source off); running it made two removals opened with no source read as one line rather than two. **Not done:**
       macOS and Linux.
-- [ ] Companions and sidekicks
+- [ ] Companions and sidekicks. *Measured by ADR 0070:* a player character already **holds** a creature wherever
+      content gives one (26 selects in its own content, a familiar, a ranger's beast, a steel defender, a drake; 5 of
+      the 30 samples hold an Owl), and **no sheet section shows it**. Its stat block is setters and the traits and
+      actions they name (109 of 141 creatures carry no description), and 29 creatures, every one offered to a player
+      character, compute their numbers from whoever holds them (a Steel Defender's hit points follow its artificer's
+      level). So the design question is how a held creature is shown with numbers derived from its holder, not how it
+      is kept as text; decided there, not as a reference.
 - [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
       ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
       *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the
@@ -1182,8 +1188,8 @@ the kind machinery is not decorative.*
       are. A library card said "1 elements embedded"; fixed. No player character derivation moved. Driven in the
       browser build and in the Tauri window on Windows, the saved file read back from disk and reopened with the
       source off. **Not done:** ~~content embeds all 63 stat blocks in other descriptions (a summoning spell's, a
-      scroll's) with `<div element>`, and Incudo shows nothing there~~ (the next item); references for a player
-      character; macOS and Linux.
+      scroll's) with `<div element>`, and Incudo shows nothing there~~ (the next item); ~~references for a player
+      character~~ and ~~a library card naming what is kept~~ (ADR 0070, below); macOS and Linux.
 - [x] **Show what a description embeds, and save it with the character**
       ([ADR 0069](./docs/adr/0069-what-a-description-embeds-is-shown-in-place-and-a-save-carries-it-for-its-text.md)).
       Found by the item above. Content writes `<div element="…" />` where another element's text belongs, 3,202 times
@@ -1198,6 +1204,20 @@ the kind machinery is not decorative.*
       rendered inside its own opening `<h4 />`, which an HTML parser leaves open, since ADR 0068 showed the first.
       Driven in the browser build. **Not done:** searching embedded text, linking an embed to its element, saves
       written before this (they carry what they reached); the Tauri window, macOS and Linux.
+- [x] **Let a player character keep text for reference, and say on a library card what a character keeps**
+      ([ADR 0070](./docs/adr/0070-a-player-character-keeps-text-for-reference-and-a-creature-it-holds-is-not-a-reference.md)).
+      ADR 0068 left the player character keeping nothing. Measured first, as a test: a player character's own
+      elements print 113 of the 116 `Information` elements (summoning spells, the 2024 Beast Master, scrolls and
+      items), and 100 of those 116 are stat blocks once plain table cells are counted (ADR 0068's bold-cell count was
+      63); Wild Shape prints and selects none. So the player character keeps `Information` too, and **what its own
+      elements print is suggested first**, with what prints it ("Bestial Spirit, in Summon Beast"), read with the
+      embed reader of ADR 0069 and recorded nowhere, the same with no source. **A structured creature is not a
+      reference**: the player character already holds one where content gives one, 29 of them scale with their
+      holder, and most carry no text (Companions and sidekicks, above). A library card names what a character keeps
+      ("For reference: Kraken, Rat, Bat and 1 more"). No player character derivation moved. Driven in the browser build
+      and in the Tauri window on Windows, the saved file read back from disk and reopened with the source off.
+      **Not done:** a held creature on the sheet; a 2014 druid's Wild Shape forms (structured beasts only); a held
+      element's own text on the Sheet; macOS and Linux.
 - [ ] Kind-specific sheets and exports
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the

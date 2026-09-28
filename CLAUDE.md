@@ -354,7 +354,9 @@ proficiency, language, condition or spell from loaded content on a player charac
 (ADR 0064). **A legendary creature takes legendary actions, lair actions and regional effects from a user's own file or
 written by the DM on the creature**, and shows how many legendary actions it takes (ADR 0065). **An NPC keeps a stat
 block printed only as prose beside it for reference**, shown and saved and never held, and may skip its creature to be
-built by hand (ADR 0068). **What a description embeds is shown in place and saved with the character** (ADR 0069).
+built by hand (ADR 0068). **What a description embeds is shown in place and saved with the character** (ADR 0069). **A player character keeps
+text for reference too, offered first what its own elements print, and a library card names what a character keeps**
+(ADR 0070).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -538,7 +540,8 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     only when present (`setReferenced`); the validator refuses it below 7 and an id twice. Not `referencedElementIds`,
     which is the engine's "what an element's rules name".
   - **The kind says which types** (`references: { types, label, description }`, replaced along `extends`, undeclared
-    types refused). 5e's NPC keeps `Information` under "For reference" and the legendary creature inherits it; `pc` none.
+    types refused). 5e's NPC keeps `Information` under "For reference" and the legendary creature inherits it; `pc` too
+    since ADR 0070 (below).
   - `packages/ui/src/references.ts` is the view-model: a row not loaded, or of a type the kind does not keep, is listed
     with a note and its text is not shown. `References.tsx` renders it on Build (first column) and after the Sheet, and
     computes nothing but sanitizing the description.
@@ -577,6 +580,32 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     (`packages/ui`) opens and closes every non-void empty element, and `sanitize-html.ts` runs it before parsing.
   - Not done: searching embedded text (Browse reads what an element writes itself), linking an embed to its element.
     Driven in the browser build only.
+- **A player character keeps text for reference, what its own elements print is suggested first, and a creature it
+  holds is not a reference** ([ADR 0070](docs/adr/0070-a-player-character-keeps-text-for-reference-and-a-creature-it-holds-is-not-a-reference.md)).
+  Things to know before touching it:
+  - **Measured by `tools/verify/src/pc-references.test.ts`** (report-only, plus what holds against any corpus): a player
+    character's own elements (every type its build steps and sheet sections name) print 113 of the 116 `Information`
+    elements; 100 of the 116 are stat blocks once plain table cells count (ADR 0068's bold-cell shape found 63); Wild
+    Shape prints and selects nothing. 26 selects in its own content offer every one of the 141 creatures (ALE's
+    Companion Selection item, equipped, opens 117), 5 of the 30 samples hold one (an Owl), **no `pc` sheet section lists
+    a creature type**, 109 creatures carry no description, and 29 read their holder's stats.
+  - **`pc` declares `references: { types: ["Information"] }`**, one block in `systems/dnd5e/system.json` and no code:
+    everything ADR 0068 says of a reference holds.
+  - **`ReferencesState.suggestions`** (`referenceSuggestions`, `packages/ui/src/references.ts`): what the held elements'
+    descriptions embed, nested as far as `expandDescription` shows text (`MAX_EMBED_DEPTH`; the limit also ends a
+    circle), of the kind's reference types, **through the offered view** (the builder passes `this.elements`, never
+    `this.content`), less what is kept, by name, each with every held element that prints it. Derived on every read and
+    recorded nowhere; kind-agnostic; the same with no source, since a save carries what its elements embed.
+  - **`Companion` is deliberately not a `pc` reference type.** The player character already holds its creature, a
+    reference derives nothing (29 creatures scale with their holder), and most have no text. Showing a *held* creature
+    is the roadmap's "Companions and sidekicks", measured and not built. Do not add `Companion` to `pc`'s references
+    to get a familiar on the Sheet: it would be a second, unheld copy with the wrong numbers.
+  - **A library card names what a character keeps**: `LibraryEntry.references` (`{ elementId, name }`, named from the
+    save's embedded copy, else the id; absent when none) and `libraryEntryReferences(system, entry)`
+    (`character-kinds.ts`): "For reference: A, B, C and 2 more", under the kind's label, the default for a kind
+    nothing declares. The card computes nothing.
+  - Driven in the browser build and in the Tauri window on Windows (DOM clicks over the debug port, the saved file read
+    back from disk, reopened with the source off to an identical Sheet); not with real input, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1234,7 +1263,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068 and 0069 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069 and 0070 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

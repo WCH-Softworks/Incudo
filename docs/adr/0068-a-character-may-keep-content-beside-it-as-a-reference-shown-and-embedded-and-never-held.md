@@ -37,6 +37,11 @@ six ability scores, each a bold three-letter cell. That is a reading of prose, f
 | granted, named by a setter or embedded by a creature an NPC starts from | **0** |
 | sharing a name and a book with such a creature | 8 (the Bat, the Rat, …), which nothing in content reads |
 
+> **Note, 2026-09-28 (ADR 0070):** the bold-cell shape undercounts. Counting the six abilities as plain table cells too,
+> **100** of the 116 `Information` elements print a stat block, not 63: the 2020 summons (Tasha's spirits, the Steel
+> Defender, the Drake Companion) write their ability row without bold. So "53 that are not stat blocks" is 16. Nothing
+> decided here reads the count: the offer was every element of the type either way.
+
 Three things follow. **A stat block is not a thing content states**: it is an element of a type that also holds rules
 text, set apart only by its prose, so recognising one in the app would be reading HTML, the same guess as parsing it.
 **Nothing ties a prose block to a structured creature** but the coincidence of eight names. And **content already shows
@@ -67,7 +72,9 @@ A character kind may declare `references: { types, label?, description? }` (syst
 like `additions`; the validator refuses a type the system does not declare). `label` heads the references where they
 are shown; `description` says what keeping one means. 5e's `npc` keeps `Information`, under **For reference**, and the
 legendary creature inherits it. The player character keeps none: a druid's beast or a summoned spirit is a plausible
-use and undecided.
+use and undecided. *(Decided by [ADR 0070](./0070-a-player-character-keeps-text-for-reference-and-a-creature-it-holds-is-not-a-reference.md):
+the player character keeps `Information` too, what its own elements print is suggested first, and a structured creature
+is not a reference.)*
 
 ### 3. The offer is every element of those types; nothing recognises a stat block
 
@@ -127,8 +134,9 @@ kind is the authority, as it is for an addition (ADR 0064) and a written feature
   [ADR 0069](./0069-what-a-description-embeds-is-shown-in-place-and-a-save-carries-it-for-its-text.md), which also found
   every one of the 63 rendering inside its own opening heading, here too: an XML `<h4 />` is left open by an HTML
   parser.)*
-- **Give a player character references.** Decision 2.
-- **Say on a library card which text an NPC keeps.** A card shows kind, progress and elements embedded.
+- **Give a player character references.** Decision 2. *(Done by ADR 0070.)*
+- **Say on a library card which text an NPC keeps.** A card shows kind, progress and elements embedded. *(Done by ADR
+  0070: "For reference: Kraken, …".)*
 
 ## Alternatives considered
 
