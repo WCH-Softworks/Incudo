@@ -426,6 +426,11 @@
           "minLength": 1,
           "description": "The setter an element carries to say it may be taken more than once (ADR 0035). An element carrying it is offered again by a select that already holds it, and its rules apply once for every time the character chose it — a +1 to a score taken twice is +2. The name is the system's: Aurora spells it \"allow duplicate\". A kind that names none treats every element as taken at most once. Replaced rather than merged along an extends chain."
         },
+        "heldTypesStat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The stat that publishes, as tags, the type of every element the character holds, lowercased (ADR 0071). A requirement asks it by membership, as it asks an equipment slot: with \"type\", Aurora's [type:class] reads \"holds an element of type Class\". Must not be a stat an inventory slot publishes into. A kind that names none reads such a check as before. Replaced rather than merged along an extends chain."
+        },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
       }

@@ -84,6 +84,7 @@
     { "name": "int", "derive": { "kind": "ref", "stat": "intelligence" } },
     { "name": "wis", "derive": { "kind": "ref", "stat": "wisdom" } },
     { "name": "cha", "derive": { "kind": "ref", "stat": "charisma" } },
+    { "name": "character", "derive": { "kind": "ref", "stat": "level" } },
 
     { "name": "proficiency", "label": "Proficiency Bonus",
       "derive": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 2 },
@@ -281,6 +282,8 @@
 
       "repeatableSetter": "allow duplicate",
 
+      "heldTypesStat": "type",
+
       "additions": {
         "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature", "Proficiency", "Language", "Condition", "Spell"],
         "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is listed with the character's spells and belongs to no spellcasting class, so no class's save DC, attack bonus or spell slots apply to it."
@@ -344,6 +347,7 @@
       "name": "NPC / Monster",
       "description": "A stat block rather than a sheet, with a challenge rating instead of a level. Start from a creature in your content and change any score it prints, or start from nothing and enter the scores yourself. Traits and actions are picked directly.",
       "progression": { "kind": "rating", "stat": "challenge", "min": 0, "max": 30 },
+      "heldTypesStat": "type",
 
       "elementTypes": [
         "Creature", "Companion", "Companion Trait", "Companion Action", "Companion Reaction",

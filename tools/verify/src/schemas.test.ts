@@ -608,6 +608,21 @@ test('a setterTags entry that names a setter twice, or nothing, is caught before
   );
 });
 
+test('a held-types stat that a slot also publishes into is caught before the app loads it — ADR 0071', async () => {
+  // Both answer a requirement by membership, so only one of them could ever be read. Fails without the check.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.heldTypesStat = 'vigour';
+        s.characterKinds[0]!.inventory = { slotSetter: 'worn', occupiedTag: 'any', emptyTag: 'none', slots: [{ id: 'torso', stats: ['vigour'] }] };
+      }),
+    ),
+    ['characterKinds[0].heldTypesStat: publishes held types into "vigour", which the slot "torso" publishes into too; only one of them would ever be read'],
+  );
+  assert.deepEqual(await errorsFor(broken((s) => (s.characterKinds[0]!.heldTypesStat = 'kinds'))), []);
+  assert.notDeepEqual(await errorsFor(broken((s) => (s.characterKinds[0]!.heldTypesStat = ''))), []);
+});
+
 test('a setterStats entry that starts a stat from a type twice, or names nothing, is caught before the app loads it', async () => {
   // ADR 0057: the second entry for one type and stat is never reached, and an empty one starts nothing,
   // and both are invisible at runtime. Removing the check in checkSystemReferences fails the first

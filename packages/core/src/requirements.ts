@@ -157,13 +157,14 @@ export interface RequirementContext {
   statString(stat: string): string | undefined;
   /**
    * The tags a stat publishes, when it is one that publishes tags rather than a value — a
-   * character kind's equipment slots are the only source today (ADR 0025).
+   * character kind's equipment slots (ADR 0025), and the stat a kind names for the types of what
+   * the character holds (ADR 0071).
    *
    * Optional, and the branch `equals` takes: a slot answers `[armor:medium]` by membership,
    * and everything else answers it by string equality. That split is what lets one syntax
    * carry three kinds of question — `[armor:heavy]` is a setter's value, `[primary:versatile]`
-   * is a setter's *presence*, `[primary:double-bladed scimitar]` is an element's name — while
-   * the corpus's eight `[type:spell]` checks keep comparing a string.
+   * is a setter's *presence*, `[primary:double-bladed scimitar]` is an element's name — and,
+   * through 5e's held types, the corpus's eight `[type:spell]` and `[type:class]` checks.
    */
   statTags?(stat: string): ReadonlySet<string> | undefined;
   hasFlag(name: string): boolean;

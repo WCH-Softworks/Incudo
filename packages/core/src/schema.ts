@@ -323,6 +323,23 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       }
     }
 
+    // The stat that publishes held types (ADR 0071) is asked by membership, as a slot is, so the two cannot share a
+    // name: whichever answered, the other's tags would never be read.
+    const heldTypes = resolved.heldTypesStat?.trim().toLowerCase();
+    if (heldTypes !== undefined) {
+      if (heldTypes === '') {
+        errors.push({ path: `${where}.heldTypesStat`, message: 'names no stat' });
+      }
+      for (const slot of resolved.inventory?.slots ?? []) {
+        if ((slot.stats ?? []).some((stat) => stat.toLowerCase() === heldTypes)) {
+          errors.push({
+            path: `${where}.heldTypesStat`,
+            message: `publishes held types into "${resolved.heldTypesStat}", which the slot "${slot.id}" publishes into too; only one of them would ever be read`,
+          });
+        }
+      }
+    }
+
     // A `blockFilters` entry that resolves nothing is invisible at runtime: the select it
     // was meant to fill just goes on offering an empty list, which is exactly the sentence
     // ADR 0030's `unresolvedSupports` exists to keep separate from "you have no content".

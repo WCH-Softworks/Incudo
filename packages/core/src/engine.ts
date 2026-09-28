@@ -730,6 +730,9 @@ function makeContext(
   // The kind names the stat its progress number is published as: "level" for a 5e PC,
   // "challenge" for a monster, nothing at all for Cairn. Core never spells it — ADR 0009.
   const progressKey = progressionStat(kind.progression)?.toLowerCase();
+  // The types of what the character holds, as tags of the stat the kind names — ADR 0071. Built on first ask.
+  const heldTypesKey = kind.heldTypesStat?.trim().toLowerCase();
+  let heldTypes: ReadonlySet<string> | undefined;
   return {
     hasElement: (id) => active.has(id),
     statNumber: (stat) => {
@@ -749,9 +752,17 @@ function makeContext(
     // written by the importer, round-tripped through the container, and consumed by nothing.
     rollSum: (pattern) =>
       sumRecordedRolls(character.rolls, kind.progression, character.progress, pattern),
-    // What the character's slots hold — ADR 0025. `undefined` for every stat that is not a
-    // slot, which is what leaves the corpus's eight `[type:spell]` checks comparing a string.
-    statTags: (stat) => equipment.tags.get(stat.toLowerCase()),
+    // What the character's slots hold — ADR 0025 — and the types of what it holds, when the kind names a stat
+    // for them (ADR 0071): with 5e's `type`, the corpus's eight `[type:spell]` and `[type:class]` checks are
+    // membership. `undefined` for every other stat, which then compares a string.
+    statTags: (stat) => {
+      const key = stat.toLowerCase();
+      if (heldTypesKey !== undefined && key === heldTypesKey) {
+        heldTypes ??= new Set([...active.values()].map((element) => element.type.toLowerCase()));
+        return heldTypes;
+      }
+      return equipment.tags.get(key);
+    },
     hasFlag: (name) => stats.has(name.toLowerCase()),
   };
 }

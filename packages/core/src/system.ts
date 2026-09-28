@@ -1134,6 +1134,14 @@ export interface CharacterKindDef {
    */
   repeatableSetter?: string;
   /**
+   * The stat that publishes, as tags, the type of every element the character holds, lowercased — ADR 0071.
+   * Replaced rather than merged along an `extends` chain, like `repeatableSetter`. A requirement asks it by
+   * membership, as it asks an equipment slot: 5e names it `type`, so Aurora's `[type:class]` is "holds a
+   * Class". The name is the system's and never core's. A kind that names none reads such a check as a string
+   * comparison against a stat nothing publishes, which is false, as before.
+   */
+  heldTypesStat?: string;
+  /**
    * Which blocks let the player prepare a list, and where each number lives — ADR 0046. Replaced rather
    * than merged along an `extends` chain, like `inventory`. A kind without one publishes no prepared lists.
    */
@@ -1227,6 +1235,8 @@ export interface ResolvedCharacterKind {
   inventory?: InventoryDef;
   /** The setter that marks an element as repeatable, or none — ADR 0035. */
   repeatableSetter?: string;
+  /** The stat that publishes the types of held elements as tags, or none — ADR 0071. */
+  heldTypesStat?: string;
   /** Which blocks prepare a list, or nothing at all — ADR 0046. */
   preparation?: PreparationDef;
   /** Whether characters of this kind may carry features their user writes, and as what — ADR 0063. */
@@ -1417,6 +1427,7 @@ export function resolveCharacterKind(
   let contributions: ContributionDef[] = [];
   let inventory: InventoryDef | undefined;
   let repeatableSetter: string | undefined;
+  let heldTypesStat: string | undefined;
   let preparation: PreparationDef | undefined;
   let customFeatures: CustomFeaturesDef | undefined;
   let additions: AdditionsDef | undefined;
@@ -1443,6 +1454,7 @@ export function resolveCharacterKind(
     if (layer.contributions !== undefined) contributions = layer.contributions;
     if (layer.inventory !== undefined) inventory = layer.inventory;
     if (layer.repeatableSetter !== undefined) repeatableSetter = layer.repeatableSetter;
+    if (layer.heldTypesStat !== undefined) heldTypesStat = layer.heldTypesStat;
     if (layer.preparation !== undefined) preparation = layer.preparation;
     if (layer.customFeatures !== undefined) customFeatures = layer.customFeatures;
     if (layer.additions !== undefined) additions = layer.additions;
@@ -1470,6 +1482,7 @@ export function resolveCharacterKind(
     contributions,
     inventory,
     repeatableSetter,
+    heldTypesStat,
     preparation,
     customFeatures,
     additions,
