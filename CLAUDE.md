@@ -520,7 +520,8 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     "Legendary Actions". The pane groups by it and computes nothing else.
   - **Measured at `c28ce6c`**: every one of the corpus's 12 creature grants is also named by the creature's setter, so no
     corpus NPC changes; what this reaches is a user's file. The oracle's table is identical before and after.
-  - Driven in the browser build only.
+  - Driven in the browser build and in the Tauri window on Windows (DOM clicks over the debug port, the file added through
+    the native dialog, the saved file read back from disk); not with real input, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

@@ -104,3 +104,13 @@ Each test names the perturbation that fails it, and each perturbation was run.
   same drake, Tail Sweep removed, was offered it again beside Rallying Roar in its Legendary Actions set. A Player
   Character with a class showed no "From …" list. Running it found that a save with two removals opened with no source
   printed "One more was removed…" twice; it is now one line, "2 more were removed…".
+- **Driven in the Tauri window on Windows** the same day (not macOS or Linux): a fresh WebView2 profile, the library a
+  scratch folder named in the app's own store, the page read and clicked over the WebView2 debug port. The homebrew file
+  was added through the native "Choose files…" dialog, its file name set and Open pressed by window messages. The NPC on
+  Old Stone Drake listed the same five gifts under the same four headings; with Tail Sweep and Tremors removed, the file
+  the library wrote to disk, read back outside the app, was format 3, recorded both removals and embedded the drake,
+  Stone Skin, Bite and Falling Rock only. With the only source switched off and the window reloaded, the card read "4
+  elements embedded" and the file opened to the same sheet and the one line "2 more were removed…"; with the source back
+  on, Give back returned Tail Sweep. A Legendary Creature's set offered Rallying Roar alone, and Rallying Roar and Tail
+  Sweep once Tail Sweep was removed. **Not driven:** real mouse or keyboard input (every click was a DOM click: the screen
+  was in use), and a Player Character in the window (no corpus in the fresh profile; the browser build covered it).

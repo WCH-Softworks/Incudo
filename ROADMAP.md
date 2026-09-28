@@ -1162,8 +1162,9 @@ the kind machinery is not decorative.*
       holder gives anything removable: the player character has none, so a class's features stay content's, even
       against a hand-edited `removedGrants`. Measured: in the official corpus every creature grant is already named by
       its setter (12 of 12), so no corpus NPC changes. No player character derivation moved. Driven in the browser
-      build; running it made two removals opened with no source read as one line rather than two. **Not done:** the
-      Tauri window, macOS and Linux.
+      build and in the Tauri window on Windows (a native file dialog, a real file on disk read back, reopened with the
+      source off); running it made two removals opened with no source read as one line rather than two. **Not done:**
+      macOS and Linux.
 - [ ] Companions and sidekicks
 - [ ] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC.** *Reworded by ADR 0057's
       measurement:* 32 of its creatures are structured and already usable; the other 45 (Rat to Tarrasque) are HTML
