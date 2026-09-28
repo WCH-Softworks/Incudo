@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 
 import { MapElementIndex, type Element } from '@incudo/core';
 
-import { MAX_EMBED_DEPTH, expandDescription } from './description.ts';
+import { MAX_EMBED_DEPTH, expandDescription, openSelfClosingTags } from './description.ts';
 
 function element(id: string, name: string, description: string): Element {
   return {
@@ -94,4 +94,14 @@ test('a name is escaped, a marker that does not close itself keeps its partner, 
   const plain = element('P', 'P', '<p>nothing embedded</p>');
   assert.equal(expandDescription(plain, indexOf(plain)), '<p>nothing embedded</p>');
   assert.equal(expandDescription({ id: 'X' }, indexOf()), '');
+});
+
+test('an empty element written as XML is opened and closed, and a void one is left alone', () => {
+  // Fails if the rewrite is removed (an HTML parser leaves `<h4 />` open and a stat block renders inside its heading),
+  // if it rewrites a void element (`<br></br>` is two line breaks to a parser), or if it drops an attribute.
+  assert.equal(
+    openSelfClosingTags('<h4 style="margin-top:0px" /><p>AC 18</p><td colspan="2"/><td>MOD</td><br /><hr/><div element="X" />'),
+    '<h4 style="margin-top:0px"></h4><p>AC 18</p><td colspan="2"></td><td>MOD</td><br /><hr/><div element="X"></div>',
+  );
+  assert.equal(openSelfClosingTags('<p>a/b > c</p>'), '<p>a/b > c</p>');
 });

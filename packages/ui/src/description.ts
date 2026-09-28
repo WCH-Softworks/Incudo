@@ -63,3 +63,34 @@ function note(text: string): string {
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+/** The HTML elements that never have content, where `<br />` means what it says. */
+const VOID_ELEMENTS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'source',
+  'track',
+  'wbr',
+]);
+
+/**
+ * A description with every empty element that is not a void one written open and closed: `<h4 />` as `<h4></h4>`.
+ *
+ * A description is a fragment of an XML file, where `<h4 style="…" />` is an empty heading. An HTML parser ignores the
+ * slash on anything but a void element and leaves the heading open, so everything after it lands inside it: every one
+ * of the corpus's 63 prose stat blocks opens that way and rendered as one bold heading, and a table's `<td colspan="2"
+ * />` swallowed the cell after it. The shell runs this before it parses a description to sanitize it.
+ */
+export function openSelfClosingTags(html: string): string {
+  return html.replace(/<([a-zA-Z][a-zA-Z0-9-]*)(\s[^<>]*?)?\s*\/>/g, (whole, tag: string, attributes: string | undefined) =>
+    VOID_ELEMENTS.has(tag.toLowerCase()) ? whole : `<${tag}${attributes ?? ''}></${tag}>`,
+  );
+}

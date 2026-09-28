@@ -26,7 +26,13 @@
  * `expandDescription` in `packages/ui` (ADR 0069), run before this, so a marker that reaches here
  * is one it already replaced or one nothing expanded; either way the empty div is unwrapped. The
  * embedded text is spliced in first and sanitized with the rest: it is content too.
+ *
+ * A description is a fragment of an XML file, and `<h4 />` there is an empty heading that an HTML
+ * parser leaves open. `openSelfClosingTags` (`packages/ui`) writes such elements open and closed
+ * before parsing, or a prose stat block renders inside its own opening heading.
  */
+
+import { openSelfClosingTags } from '@incudo/ui';
 
 const ALLOWED_TAGS = new Set([
   'p',
@@ -88,7 +94,7 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
 
 /** Returns HTML safe to pass to `dangerouslySetInnerHTML`. */
 export function sanitizeDescriptionHtml(html: string): string {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const doc = new DOMParser().parseFromString(openSelfClosingTags(html), 'text/html');
   sanitizeChildren(doc.body);
   return doc.body.innerHTML;
 }
