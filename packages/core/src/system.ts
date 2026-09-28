@@ -1142,6 +1142,12 @@ export interface CharacterKindDef {
    * without it carries none, and an addition recorded on such a character is reported and not held.
    */
   additions?: AdditionsDef;
+  /**
+   * Which types of loaded content a character of this kind may keep beside it as a reference, shown and never held —
+   * ADR 0068. Replaced rather than merged along an `extends` chain, like `additions`. A kind without it keeps none,
+   * and a reference recorded on such a character is listed as not available and shows nothing.
+   */
+  references?: ReferencesDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -1170,6 +1176,16 @@ export interface AdditionsDef {
   /** The element types that may be added, in the order a picker offers them. */
   types: ElementType[];
   /** User-facing prose shown where elements are added: what adding one means in this system. */
+  description?: string;
+}
+
+/** What a character of a kind may keep beside it as a reference — ADR 0068. */
+export interface ReferencesDef {
+  /** The element types a reference may be, in the order a picker offers them. */
+  types: ElementType[];
+  /** User-facing heading for the references, where they are shown. */
+  label?: string;
+  /** User-facing prose shown where a reference is chosen: what keeping one means in this system. */
   description?: string;
 }
 
@@ -1209,6 +1225,8 @@ export interface ResolvedCharacterKind {
   customFeatures?: CustomFeaturesDef;
   /** Which types a user may add to a character of this kind from loaded content — ADR 0064. */
   additions?: AdditionsDef;
+  /** Which types a character of this kind may keep beside it as a reference — ADR 0068. */
+  references?: ReferencesDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
   buildSteps: BuildStepDef[];
@@ -1394,6 +1412,7 @@ export function resolveCharacterKind(
   let preparation: PreparationDef | undefined;
   let customFeatures: CustomFeaturesDef | undefined;
   let additions: AdditionsDef | undefined;
+  let references: ReferencesDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
@@ -1419,6 +1438,7 @@ export function resolveCharacterKind(
     if (layer.preparation !== undefined) preparation = layer.preparation;
     if (layer.customFeatures !== undefined) customFeatures = layer.customFeatures;
     if (layer.additions !== undefined) additions = layer.additions;
+    if (layer.references !== undefined) references = layer.references;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
@@ -1445,6 +1465,7 @@ export function resolveCharacterKind(
     preparation,
     customFeatures,
     additions,
+    references,
     candidateNotes,
     buildSteps,
     sheet,

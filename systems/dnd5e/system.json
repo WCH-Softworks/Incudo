@@ -426,6 +426,12 @@
         "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is listed with the character's spells and belongs to no spellcasting class, so no class's save DC, attack bonus or spell slots apply to it."
       },
 
+      "references": {
+        "types": ["Information"],
+        "label": "For reference",
+        "description": "Text from your content to keep beside this creature, such as a stat block printed only as prose. It is shown here and on the sheet, and saved with the creature. Nothing is worked out from it: enter the numbers and features yourself."
+      },
+
       "setterStats": [
         { "types": ["Companion"], "setter": "strength", "stat": "strength" },
         { "types": ["Companion"], "setter": "dexterity", "stat": "dexterity" },

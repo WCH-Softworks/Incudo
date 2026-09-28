@@ -107,6 +107,10 @@ function checkCharacterReferences(character: Character): SchemaError[] {
   if (character.formatVersion < 5 && character.additions !== undefined) {
     errors.push({ path: 'additions', message: 'is recorded only from format 5' });
   }
+  // A reference is dropped by a reader of 6 (ADR 0068).
+  if (character.formatVersion < 7 && character.references !== undefined) {
+    errors.push({ path: 'references', message: 'is recorded only from format 7' });
+  }
   const featureIds = new Set<string>();
   for (const [i, feature] of (character.customFeatures ?? []).entries()) {
     // A reader of 5 would hold it as the kind's default type, and list a legendary action as a trait (ADR 0065).
@@ -398,10 +402,15 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       }
     }
 
-    // A type nothing declares would offer nothing, and nothing would say why (ADR 0064).
+    // A type nothing declares would offer nothing, and nothing would say why (ADR 0064, ADR 0068).
     for (const type of resolved.additions?.types ?? []) {
       if (!typeNames.has(type)) {
         errors.push({ path: `${where}.additions.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+      }
+    }
+    for (const type of resolved.references?.types ?? []) {
+      if (!typeNames.has(type)) {
+        errors.push({ path: `${where}.references.types`, message: `names "${type}", which the system's elementTypes does not declare` });
       }
     }
 

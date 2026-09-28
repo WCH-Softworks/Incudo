@@ -32,6 +32,7 @@ import {
   setDeclined,
   setGrantRemoved,
   setAdded,
+  setReferenced,
   setCustomFeature,
   customFeatureTypes,
   removeCustomFeature,
@@ -113,6 +114,7 @@ import {
 } from './publications.ts';
 import { customFeaturesState, type CustomFeaturesState } from './custom-features.ts';
 import { additionOptions, additionsState, type AdditionOption, type AdditionsState } from './additions.ts';
+import { referenceOptions, referencesState, type ReferencesState } from './references.ts';
 
 /**
  * One thing the character still has to decide.
@@ -293,6 +295,11 @@ export interface BuilderState {
    * asked for with `additionOptionsFor`, not carried here: it is every feat, spell and condition loaded.
    */
   additions: AdditionsState;
+  /**
+   * What the character keeps beside it as a reference, each with its text when it is shown — ADR 0068. `available` is
+   * false for a kind that keeps none. What could still be kept is asked for with `referenceOptionsFor`.
+   */
+  references: ReferencesState;
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -617,6 +624,32 @@ export class CharacterBuilder {
    */
   additionOptionsFor = (type?: string): AdditionOption[] =>
     additionOptions(this.getState().derived, this.kind, this.elements, type);
+
+  /**
+   * Keep an element from loaded content beside the character as a reference — ADR 0068. Refused, writing nothing, for
+   * a kind that keeps none, a type the kind does not list, an element this character is not offered (a book switched
+   * off), and one already kept. Returns whether it is now kept. Nothing is derived from it, so nothing else moves.
+   */
+  addReference = (elementId: ElementId): boolean => {
+    const types = this.kind.references?.types ?? [];
+    const type = this.content.get(elementId)?.type;
+    if (type === undefined || !types.includes(type)) return false;
+    if (!this.elements.byType(type).some((element) => element.id === elementId)) return false;
+    if (this.character.references?.includes(elementId)) return false;
+    this.character = setReferenced(this.character, elementId, true);
+    this.invalidate();
+    return true;
+  };
+
+  /** Stop keeping a reference, whatever it is: one nothing loaded declares can still be dropped. */
+  removeReference = (elementId: ElementId): void => {
+    if (!this.character.references?.includes(elementId)) return;
+    this.character = setReferenced(this.character, elementId, false);
+    this.invalidate();
+  };
+
+  /** What could still be kept as a reference, by name. Computed on request: nothing needs it until the user looks. */
+  referenceOptionsFor = (): ElementId[] => referenceOptions(this.character, this.kind, this.elements);
 
   /** Bring a skipped decision back into `decisions`, answerable exactly as before. */
   reconsider = (decisionId: string): void => {
@@ -1493,6 +1526,7 @@ export class CharacterBuilder {
       holderGrants: this.holderGrants(derived),
       customFeatures: customFeaturesState(this.character, derived, this.kind, this.system),
       additions: additionsState(this.character, derived, this.kind, this.system, this.elements),
+      references: referencesState(this.character, this.kind, this.elements),
       focusedId: this.focusedId,
     };
   }

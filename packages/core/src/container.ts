@@ -25,6 +25,7 @@
 import type { Character, SourceRef } from './character.ts';
 import {
   addedElementIds,
+  referenceIdsOf,
   advancementElementIds,
   chosenElementIds,
   inventoryElementIds,
@@ -167,6 +168,9 @@ export function collectCharacterContent(
     // What the user added from content (ADR 0064). Named by nothing else in the character, so a save that left it out
     // would reopen without the NPC's condition or the feat the DM gave it.
     ...addedElementIds(character),
+    // What the character keeps beside it as a reference (ADR 0068). Never held, so the derivation reaches none of it:
+    // a save that left it out would reopen with no source and nothing to show beside the NPC.
+    ...referenceIdsOf(character),
     // Per step of progression, at the step the derivation reads: a recorded one, or a creature's print (ADR 0060).
     ...(options.kind
       ? baselineElementIds(options.kind, characterProgress(character, options.kind, index).value)

@@ -12,14 +12,29 @@
  * What is reported and not asserted (ADR 0042: a moving corpus fails only what must hold against any corpus): how
  * many stat blocks there are, of what types and books; how many of their type are not stat blocks; how many open with
  * the empty heading Aurora's stat blocks start with; whether one embeds another element; and what names one, by a
- * grant, a setter or an embedding `<div element>`, and whether any of that is a creature an NPC can start from.
+ * grant, a setter or an embedding `<div element>`, and whether any of that is a creature an NPC can start from. And,
+ * since ADR 0068, how many of the stat blocks are of a type the NPC keeps as a reference.
+ *
+ * What is asserted, against whatever the corpus holds (ADR 0068): every element of the types the NPC keeps as a
+ * reference is offered to a fresh NPC; an NPC from nothing and one on a creature, each keeping all of them, derive
+ * exactly what they derive keeping none; and saved and reopened with no source, every one shows the same text. Fails
+ * with references seeded into the derivation (the summaries differ), and with them left out of the save (a reopened
+ * row is not known). The legendary creature inherits the NPC's references and is held to the same.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resolveCharacterKind, type Element, type ElementIndex } from '@incudo/core';
+import {
+  BundleElementIndex,
+  readCharacterContainer,
+  resolveCharacterKind,
+  type Element,
+  type ElementIndex,
+} from '@incudo/core';
+import { CharacterBuilder, newCharacterOfKind, packCharacter } from '@incudo/ui';
 
+import { summarize } from './derived-summary.ts';
 import { loadShippedSystem } from './node-system.ts';
 import { corpusSkip, realElements } from './real-data.ts';
 
@@ -127,4 +142,48 @@ test('what the prose stat blocks are, read from content alone', { skip }, async 
   t.diagnostic(
     `sharing a name and a book with such a creature: ${namesACreature.length} (a coincidence of text, which nothing reads)`,
   );
+
+  const system = await loadShippedSystem('dnd5e');
+  const kept = new Set(resolveCharacterKind(system, 'npc').references?.types ?? []);
+  t.diagnostic(
+    `of a type an NPC keeps as a reference (${[...kept].join(', ') || 'none'}): ${blocks.filter((b) => kept.has(b.type)).length} of ${blocks.length}`,
+  );
+});
+
+test('an NPC keeps every element of its reference types beside it, moves nothing, and shows them with no source', { skip }, async (t) => {
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await realElements();
+  for (const kindId of ['npc', 'legendary']) {
+    const kind = resolveCharacterKind(system, kindId);
+    const types = kind.references?.types ?? [];
+    assert.ok(types.length > 0, `the ${kind.name} keeps references`);
+    const all = types.flatMap((type) => elements.byType(type)).map((e) => e.id);
+
+    const creatureStep = kind.buildSteps.find((s) => s.required && s.types.length > 0 && !s.budget && !s.multiple)!;
+    const fresh = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
+    const creature = fresh.getState().decisions.find((d) => d.stepId === creatureStep.id)!.candidates[0]!;
+    const starts: [string, (b: CharacterBuilder) => void][] = [
+      ['from nothing', () => {}],
+      ['on a creature', (b) => b.choose(`build/${creatureStep.id}`, [creature])],
+    ];
+    for (const [label, start] of starts) {
+      const b = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
+      start(b);
+      assert.deepEqual([...b.referenceOptionsFor()].sort(), [...all].sort(), `${kind.name} ${label}: every one is offered`);
+      const before = summarize(b.getState().derived);
+      for (const id of all) assert.equal(b.addReference(id), true, `${kind.name} ${label}: ${id} is kept`);
+      const state = b.getState();
+      assert.equal(state.character.formatVersion, 7);
+      assert.deepEqual(summarize(state.derived), before, `${kind.name} ${label}: nothing derived moves`);
+      assert.ok(state.references.rows.every((r) => r.shown), `${kind.name} ${label}: every one is shown`);
+
+      // Saved, and reopened against nothing but what the save embeds.
+      const packed = packCharacter(state.character, system, elements, { generator: 'test' });
+      const { container } = readCharacterContainer(packed.files);
+      const reopened = new CharacterBuilder(container!.character, system, new BundleElementIndex(container!.content.elements));
+      assert.deepEqual(reopened.getState().references, state.references, `${kind.name} ${label}: the same with no source`);
+      assert.deepEqual(summarize(reopened.getState().derived), before, `${kind.name} ${label}: and derives the same`);
+    }
+    t.diagnostic(`${kind.name}: ${all.length} offered and kept, from nothing and on a creature`);
+  }
 });

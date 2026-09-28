@@ -105,8 +105,8 @@ export interface Character {
   /**
    * 1 before an inventory existed, 2 since (ADR 0024), 3 for a character that records no `progress` or
    * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063), 5 for one that
-   * records `additions` (ADR 0064), 6 for one with a custom feature held as a type other than its kind's default (ADR 0065).
-   * Readers accept all six. A new character is written at 2, and only a write that needs more raises it
+   * records `additions` (ADR 0064), 6 for one with a custom feature held as a type other than its kind's default (ADR 0065),
+   * 7 for one that records `references` (ADR 0068). Readers accept all seven. A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -242,11 +242,19 @@ export interface Character {
    * it without a word.
    */
   additions?: ElementId[];
+  /**
+   * Elements shown beside this character as a reference, in the order chosen — ADR 0068. A DM's NPC built by hand
+   * next to a stat block that exists only as prose. **Not held**: nothing derives from one, no requirement reads one,
+   * no sheet section lists one; it is text the character keeps beside it, embedded in the save so it still shows with
+   * no source. Which types may be one is the kind's `references`. Absent when empty; only format 7 records it,
+   * because a reader of 6 would drop it without a word.
+   */
+  references?: ElementId[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /** A feature the user wrote for one character — ADR 0063. */
 export interface CustomFeature {
@@ -283,9 +291,9 @@ export const CHARACTER_FORMAT_VERSION = 2;
 /**
  * The newest version a reader accepts — ADR 0060, ADR 0063, ADR 0064. A character with no `progress` or with
  * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` at least 5, one with a
- * custom feature that records its `type` 6 (ADR 0065), and nothing else is raised.
+ * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 6;
+export const LATEST_CHARACTER_FORMAT_VERSION = 7;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -465,6 +473,25 @@ export function setAdded(character: Character, elementId: ElementId, added: bool
 /** What the user added to the character, in the order added — ADR 0064. */
 export function addedElementIds(character: Character): ElementId[] {
   return [...new Set(character.additions ?? [])];
+}
+
+/**
+ * Keep an element beside the character as a reference, or stop — ADR 0068. Keeping one already kept changes nothing;
+ * recording one raises the character to format 7, and dropping the last leaves the field absent and the version where
+ * it is.
+ */
+export function setReferenced(character: Character, elementId: ElementId, referenced: boolean): Character {
+  const current = character.references ?? [];
+  if (referenced === current.includes(elementId)) return character;
+  const next = referenced ? [...current, elementId] : current.filter((id) => id !== elementId);
+  const { references: _previous, ...rest } = character;
+  const written: Character = next.length ? { ...raiseFormatVersion(rest, 7), references: next } : rest;
+  return { ...written, updatedAt: new Date().toISOString() };
+}
+
+/** What the character keeps beside it as a reference, in the order chosen — ADR 0068. Never a seed of a derivation. */
+export function referenceIdsOf(character: Character): ElementId[] {
+  return [...new Set(character.references ?? [])];
 }
 
 /** A new custom feature's id: unique within the character, and never reused while it has any. */

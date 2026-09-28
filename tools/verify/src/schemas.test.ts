@@ -19,6 +19,7 @@ import {
   MapElementIndex,
   resolveCharacterKind,
   setAdded,
+  setReferenced,
   setCustomFeature,
   validateCharacter,
   validateGameSystem,
@@ -268,7 +269,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 7 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 8 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -366,6 +367,34 @@ test('an addable type the system does not declare is caught before the app loads
   ]);
 });
 
+test('only format 7 may record references, each once — ADR 0068', async () => {
+  // Fails if the schema refuses the field or accepts an id twice, or if the referential check stops refusing a
+  // reference in a file that claims 6 (a reader of 6 would drop it, and the NPC would lose its stat block).
+  const schemas = await loadSchemas();
+  const npc = createCharacter('dnd5e', 'npc', { name: 'Vesper', progress: 1 });
+  const seven = setReferenced(setReferenced(npc, 'ID_A', true), 'ID_B', true);
+  assert.equal(seven.formatVersion, 7);
+  assert.deepEqual(validateCharacter(seven, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...seven, formatVersion: 6 }, schemas).errors, [
+    { path: 'references', message: 'is recorded only from format 7' },
+  ]);
+  assert.deepEqual(validateCharacter({ ...seven, references: ['ID_A', 'ID_A'] }, schemas).errors.map((e) => e.path), ['references']);
+});
+
+test('a reference type the system does not declare is caught before the app loads it — ADR 0068', async () => {
+  // Fails if the referential check is removed: the picker would offer nothing of that type and say nothing.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  const npc = system.characterKinds.find((k) => k.id === 'npc')!;
+  npc.references = { ...npc.references!, types: [...npc.references!.types, 'Informaton'] };
+  // For the NPC and for the legendary creature, which inherits the NPC's.
+  const message = `names "Informaton", which the system's elementTypes does not declare`;
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [
+    { path: 'characterKinds[1].references.types', message },
+    { path: 'characterKinds[2].references.types', message },
+  ]);
+});
+
 test('an inventory validates as instances, and a duplicate instance id does not', async () => {
   const schemas = await loadSchemas();
   const character = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -384,8 +413,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 7 } as unknown as Character, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 8 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7' },
   ]);
 
   // The check no JSON Schema can express: an instance id is an address, so two entries

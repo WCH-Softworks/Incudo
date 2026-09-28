@@ -31,3 +31,4 @@ export * from './source-parts.ts';
 export * from './content-files.ts';
 export * from './custom-features.ts';
 export * from './additions.ts';
+export * from './references.ts';
