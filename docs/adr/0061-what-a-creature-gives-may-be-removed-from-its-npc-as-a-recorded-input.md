@@ -3,7 +3,9 @@
 **Status:** Accepted · 2026-09-25 · closes [0058](./0058-a-setter-may-name-elements-its-holder-has-and-the-kind-says-which.md)'s
 first gap · builds on [0006](./0006-derived-character-state.md), [0012](./0012-self-contained-saves.md),
 [0033](./0033-declining-a-decision-is-its-own-input.md), [0060](./0060-a-character-may-leave-its-progression-to-what-it-chose-and-that-is-format-3.md)
-· **format:** an optional `removedGrants` on a character, `formatVersion` **3** (ADR 0060's number) when present
+· **format:** an optional `removedGrants` on a character, `formatVersion` **3** (ADR 0060's number) when present ·
+**amended** by [0067](./0067-what-a-creature-grants-may-be-removed-like-what-it-names-and-only-a-holder-s-gifts-are.md):
+a holder's own `<grant>`s may be removed too, and only a holder's gifts may be
 
 ## Context
 

@@ -248,6 +248,8 @@ Each test names the perturbation that fails it, and each perturbation was run.
   every click was a DOM click.
 - Found and not fixed: the creature's **own `<grant>`s cannot be removed** from its NPC. "From Old Stone Drake" offers
   Remove for the trait and action its setters name and nothing for the three legendary elements it grants, since ADR
-  0061 cancels what a setter names (and a grant of the same id), not a grant alone. And a draft reloaded with no source
+  0061 cancels what a setter names (and a grant of the same id), not a grant alone. *(Fixed by
+  [ADR 0067](./0067-what-a-creature-grants-may-be-removed-like-what-it-names-and-only-a-holder-s-gifts-are.md): a
+  holder's own grants are removable, listed under their sheet heading when the kind offers no step for them.)* And a draft reloaded with no source
   enabled has none of its file's embedded content, so an opened NPC came back without its creature until it was opened
   again from the library.

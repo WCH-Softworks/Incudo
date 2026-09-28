@@ -284,3 +284,41 @@ test('an NPC built on a legendary creature lists what it grants, under the headi
   const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
   assert.deepEqual(sheet(reopened, npc), shown, 'the same after a save opened with no source');
 });
+
+test('on an NPC and a legendary creature, the DM may remove what the creature grants, and the save leaves it out', async () => {
+  // ADR 0067. The file's creature names a trait and an action in its setters and grants its legendary content by
+  // rules alone; every one of them is listed with the creature, removed, gone from the sheet, and not saved.
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await homebrew();
+  for (const kindId of ['npc', 'legendary']) {
+    const kind = resolveCharacterKind(system, kindId);
+    const creatureStep = kind.buildSteps.find((s) => s.required && s.types.length > 0 && !s.budget)!;
+    const creature = creatureStep.types.flatMap((type) => elements.byType(type))[0]!;
+    const b = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
+    b.choose(`build/${creatureStep.id}`, [creature.id]);
+    const granted = grantedIds(creature);
+    const listed = b.getState().holderGrants;
+    for (const id of granted) {
+      const grant = listed.find((g) => g.elementId === id);
+      assert.equal(grant?.from, creature.id, `${kind.name}: ${elements.get(id)!.name} is listed with the creature`);
+      // Grouped under the heading its sheet section gives it, when no step of the kind offers it.
+      assert.ok(grant!.group !== '', `${kind.name}: ${elements.get(id)!.name} has a heading`);
+    }
+    const all = listed.map((g) => g.elementId);
+    for (const id of all) b.removeGranted(id);
+    const state = b.getState();
+    assert.deepEqual([...(state.character.removedGrants ?? [])].sort(), [...all].sort(), `${kind.name}: every one is removed`);
+    for (const id of all) assert.equal(state.derived.elementIds.has(id), false, `${kind.name}: ${id} is not held`);
+    for (const section of sheet(state.derived, kind).values()) {
+      for (const id of all) assert.ok(!section.names.includes(elements.get(id)!.name), `${kind.name}: ${id} is not on the sheet`);
+    }
+
+    const packed = packCharacter(state.character, system, elements, { generator: 'test' });
+    const { container } = readCharacterContainer(packed.files);
+    const embedded = container!.content.elements.map((e) => e.id);
+    for (const id of all) assert.ok(!embedded.includes(id), `${kind.name}: ${id} is not saved`);
+    const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
+    assert.deepEqual([...reopened.elementIds].sort(), [...state.derived.elementIds].sort());
+    assert.deepEqual(sheet(reopened, kind), sheet(state.derived, kind), `${kind.name}: the same after a save opened with no source`);
+  }
+});

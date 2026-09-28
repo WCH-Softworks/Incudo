@@ -277,10 +277,11 @@ export function BuilderPane({
           )}
 
           {/*
-            What a held element's setters give: a creature's traits, actions and reactions. Not
-            decisions, since nothing is owed, and not picks, since nobody chose them; each can be
-            taken away and given back (ADR 0061). Grouped by the element that gives them, and within
-            that by the step whose types they are.
+            What a held element gives, by its setters or its own grants: a creature's traits, actions
+            and reactions, and a homebrew creature's legendary actions. Not decisions, since nothing is
+            owed, and not picks, since nobody chose them; each can be taken away and given back (ADR
+            0061, ADR 0067). Grouped by the element that gives them, and within that by the heading the
+            builder names, in the order it lists them.
           */}
           {[...new Set(holderGrants.map((grant) => grant.from))].map((from) => (
             <section key={from} className="holder-grants">
@@ -289,26 +290,22 @@ export function BuilderPane({
                 These come with the creature. Remove any this character does not have; a removed one
                 can be given back here.
               </p>
-              {[...steps.map((step) => ({ id: step.id, label: step.label })), { id: '', label: 'Other' }]
-                .filter((group) => holderGrants.some((g) => g.from === from && g.stepId === group.id))
-                .map((step) => (
-                  <div key={step.id} className="settled">
+              {[...new Set(holderGrants.filter((g) => g.from === from).map((g) => g.group))]
+                .map((group) => {
+                  const listed = holderGrants.filter((g) => g.from === from && g.group === group);
+                  // A removed element is not saved (ADR 0061), so a save opened with no content has only its
+                  // id, and giving it back needs the content it came from. One line says so for all of them.
+                  const unseen = listed.filter((g) => elements.get(g.elementId) === undefined).length;
+                  return (
+                  <div key={group} className="settled">
                     <div className="decision-head">
-                      <span className="label">{step.label}</span>
+                      <span className="label">{group || 'Other'}</span>
                     </div>
                     <ul className="holder-grant-list">
-                      {holderGrants
-                        .filter((g) => g.from === from && g.stepId === step.id)
+                      {listed
+                        .filter((g) => elements.get(g.elementId) !== undefined)
                         .map((grant) => (
                           <li key={grant.elementId} className={grant.removed ? 'removed' : ''}>
-                            {elements.get(grant.elementId) === undefined ? (
-                              // A removed element is not saved (ADR 0061), so a save opened with no
-                              // content has only its id. Giving it back needs the content it came from.
-                              <span className="hint">
-                                One more was removed. Load the content it came from to see it or give it back.
-                              </span>
-                            ) : (
-                            <>
                             <span className="name">{candidateLabel(grant.elementId)}</span>
                             {grant.removed ? (
                               <>
@@ -324,13 +321,21 @@ export function BuilderPane({
                                 Remove
                               </button>
                             )}
-                            </>
-                            )}
                           </li>
                         ))}
+                      {unseen > 0 && (
+                        <li className="removed">
+                          <span className="hint">
+                            {unseen === 1
+                              ? 'One more was removed. Load the content it came from to see it or give it back.'
+                              : `${unseen} more were removed. Load the content they came from to see them or give them back.`}
+                          </span>
+                        </li>
+                      )}
                     </ul>
                   </div>
-                ))}
+                  );
+                })}
             </section>
           ))}
 

@@ -435,7 +435,8 @@ export function deriveCharacter(
       // `queue` grows as it is read, which is the order the frontier used to be walked in.
       for (let at = 0; at < queue.length; at++) {
         const element = queue[at]!;
-        // What the user took away from this holder (ADR 0061): its setter's naming and its own `<grant>` of it.
+        // What the user took away from this holder: its setter's naming and any `<grant>` of its own (ADR 0061,
+        // ADR 0067). Nothing for an element the kind does not make a holder.
         const withdrawn = withdrawnGrantIds(kind.setterGrants, element, removedGrants);
         for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
           if (rule.kind !== 'grant') continue;

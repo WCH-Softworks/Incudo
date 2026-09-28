@@ -37,7 +37,7 @@ import {
   removeCustomFeature,
   newCustomFeatureId,
   type CustomStatLine,
-  setterGrantIds,
+  holderGivenIds,
   setGenerationMethod,
   setName,
   setRoll,
@@ -277,8 +277,9 @@ export interface BuilderState {
   /** Where the character is on its progression, and whether a creature it chose says so — ADR 0060. */
   progress: ProgressState;
   /**
-   * What held elements give by their declared setters — a creature's traits, actions and reactions — and which
-   * of them the user removed (ADR 0061). Removed ones stay listed so they can be given back.
+   * What held elements give by their declared setters or their own grants — a creature's traits, actions and
+   * reactions, and a homebrew creature's legendary actions — and which of them the user removed (ADR 0061, ADR 0067).
+   * Removed ones stay listed so they can be given back.
    */
   holderGrants: HolderGrant[];
   /**
@@ -296,13 +297,18 @@ export interface BuilderState {
   focusedId: string | undefined;
 }
 
-/** One element a held element's setter names, and whether the user took it away — ADR 0061. */
+/** One element a held element gives, by its setter or its own grant, and whether the user took it away — ADR 0061, 0067. */
 export interface HolderGrant {
   elementId: ElementId;
   /** The held element whose setter names it: the creature. */
   from: ElementId;
-  /** The build step whose types include it, so a shell can group it with that step; '' when none does. */
+  /** The build step whose types include it; '' when none does. */
   stepId: string;
+  /**
+   * The heading to list it under: its step's label, else the label of the sheet section that lists its type (ADR 0067:
+   * an NPC's legendary actions have no step), else ''. `holderGrants` is ordered so a holder's groups are contiguous.
+   */
+  group: string;
   /** Whether the user removed it. A removed one is not held on the holder's account. */
   removed: boolean;
   /** Whether the character still holds it: an element the user also chose, or that something else grants, is. */
@@ -507,8 +513,8 @@ export class CharacterBuilder {
   };
 
   /**
-   * Take away something a held element's setter gives — a trait from a creature — or give it back (ADR 0061).
-   * Refused for anything no held element's declared setter names: a class feature is content's, not the user's.
+   * Take away something a held element gives — a trait from a creature — or give it back (ADR 0061, ADR 0067).
+   * Refused for anything no holder gives: a class feature is content's, not the user's, and a class is no holder.
    */
   removeGranted = (elementId: ElementId): void => {
     if (!this.getState().holderGrants.some((grant) => grant.elementId === elementId && !grant.removed)) return;
@@ -1492,29 +1498,43 @@ export class CharacterBuilder {
   }
 
   /**
-   * Everything the held elements' declared setters name, removed or not, once each, in the order written. Read
-   * with the same function the engine grants through, unfiltered, so a removed one is still listed to restore.
+   * Everything the held elements give, by a declared setter or a `<grant>` of their own, removed or not, once each
+   * (ADR 0061, ADR 0067). Read with the same function the engine withdraws through, unfiltered, so a removed one is
+   * still listed to restore. Within a holder, in the order its step or sheet section comes, then as written.
    */
   private holderGrants(derived: DerivedCharacter): HolderGrant[] {
     const defs = this.kind.setterGrants;
     if (!defs.length) return [];
     const removed = new Set(this.character.removedGrants ?? []);
+    const sections = this.kind.sheet.sections;
     const out: HolderGrant[] = [];
     const seen = new Set<ElementId>();
     for (const holder of derived.elements) {
-      for (const id of setterGrantIds(defs, holder)) {
+      const given: { grant: HolderGrant; rank: number }[] = [];
+      for (const id of holderGivenIds(defs, holder)) {
         if (seen.has(id)) continue;
         seen.add(id);
         const type = this.elements.get(id)?.type;
-        const step = type === undefined ? undefined : this.steps.find((s) => s.types.includes(type));
-        out.push({
-          elementId: id,
-          from: holder.id,
-          stepId: step?.id ?? '',
-          removed: removed.has(id),
-          held: derived.elementIds.has(id),
+        const stepAt = type === undefined ? -1 : this.steps.findIndex((s) => s.types.includes(type));
+        const step = stepAt < 0 ? undefined : this.steps[stepAt];
+        // A type no step offers is still listed on the sheet (an NPC's legendary actions, ADR 0065), and grouped
+        // under the heading the sheet gives it rather than under nothing.
+        const sectionAt = step || type === undefined ? -1 : sections.findIndex((s) => s.types?.includes(type));
+        const section = sectionAt < 0 ? undefined : sections[sectionAt];
+        given.push({
+          grant: {
+            elementId: id,
+            from: holder.id,
+            stepId: step?.id ?? '',
+            group: step?.label ?? section?.label ?? '',
+            removed: removed.has(id),
+            held: derived.elementIds.has(id),
+          },
+          rank: step ? stepAt : section ? this.steps.length + sectionAt : Number.MAX_SAFE_INTEGER,
         });
       }
+      given.sort((a, b) => a.rank - b.rank);
+      for (const { grant } of given) out.push(grant);
     }
     return out;
   }

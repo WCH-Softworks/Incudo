@@ -1,5 +1,5 @@
 /**
- * The user may take away what a held element's setter gives — ADR 0061.
+ * The user may take away what a held element gives — ADR 0061, and ADR 0067 for what it grants by a rule alone.
  *
  * No game in the fixture: an Ox names its "deeds", and a keeper may not have one of them, as a DM's Triceratops
  * may not have Stomp. Each test names the change that fails it.
@@ -49,8 +49,11 @@ const claw = element('CLAW', 'Deed', {}, [{ kind: 'stat', key: 'r0', name: 'fury
 const ox = element('OX', 'Beast', { deeds: 'BITE, CLAW' }, [grant('CLAW')]);
 // A charm grants the bite by a rule: something else giving it, which a removal from the ox does not touch.
 const charm = element('CHARM', 'Charm', {}, [grant('BITE')]);
+// A drake names nothing and grants a roar by a rule alone, as a user's file gives a creature its legendary actions.
+const roar = element('ROAR', 'Deed', {}, [{ kind: 'stat', key: 'r1', name: 'fury', value: { kind: 'number', value: 5 } }]);
+const drake = element('DRAKE', 'Beast', {}, [grant('ROAR')]);
 const index = new MapElementIndex();
-index.addAll([bite, claw, ox, charm]);
+index.addAll([bite, claw, ox, charm, roar, drake]);
 
 function keeper(chosen: string[], removed: string[] = []): Character {
   let character = createCharacter('test', 'keeper');
@@ -101,4 +104,27 @@ test('recording a removal is format 3, and giving the last one back leaves no fi
   assert.equal(restored.formatVersion, 3);
   assert.ok(deriveCharacter(restored, system, index).elementIds.has('BITE'));
   assert.equal(keeper(['OX']).formatVersion, 2, 'a character that removes nothing is not raised');
+});
+
+test("a holder's grant by a rule alone may be removed too, and the save leaves it out", () => {
+  // ADR 0067. Fails if a holder withdraws only what its setter names (`holderGivenIds` without the holder's own
+  // grants): ROAR is held, fury reads 5, and the save embeds it.
+  const character = keeper(['DRAKE'], ['ROAR']);
+  const derived = deriveCharacter(character, system, index);
+  assert.equal(derived.elementIds.has('ROAR'), false);
+  assert.equal(derived.stats.get('fury')?.value, 0);
+  const content = collectCharacterContent(character, index, { kind });
+  assert.deepEqual(content.elements.map((e) => e.id), ['DRAKE']);
+  const reopened = deriveCharacter(character, system, new BundleElementIndex(content.elements));
+  assert.deepEqual([...reopened.elementIds], [...derived.elementIds]);
+  assert.ok(deriveCharacter(keeper(['DRAKE']), system, index).elementIds.has('ROAR'), 'not removed, it is held');
+});
+
+test('what an element the kind does not make a holder grants cannot be removed, whatever the character records', () => {
+  // ADR 0067: a class granting a class feature is the case this guards. Fails if every element withdraws its own
+  // grants of a removed id (`holderGivenIds` without `isGrantHolder`): the charm's bite, and a saved one, disappear.
+  const character = keeper(['CHARM'], ['BITE']);
+  assert.ok(deriveCharacter(character, system, index).elementIds.has('BITE'));
+  const content = collectCharacterContent(character, index, { kind });
+  assert.deepEqual(content.elements.map((e) => e.id), ['BITE', 'CHARM']);
 });
