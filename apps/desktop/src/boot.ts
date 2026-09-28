@@ -16,8 +16,9 @@ import {
   type GameSystem,
   type SchemaBundle,
   type SchemaError,
+  type Storage,
 } from '@incudo/core';
-import { newCharacterOfKind } from '@incudo/ui';
+import { newCharacterOfKind, readDraftOrigin, type WorkingCharacter } from '@incudo/ui';
 
 import systemSchema from '@repo/schemas/system.schema.json';
 import characterSchema from '@repo/schemas/character.schema.json';
@@ -126,6 +127,17 @@ export async function loadCharacter(
     // A corrupt draft is not worth losing the app over; start fresh rather than refusing to boot.
   }
   return newCharacter(system);
+}
+
+/**
+ * The draft and what was kept beside it (ADR 0066): the embedded content, assets and library entry
+ * of the file it was opened from, so a reload hands the shell back what it held. A record kept for
+ * any other character is not this one's, which includes the fresh character `loadCharacter` starts
+ * when the draft is another system's.
+ */
+export async function loadDraft(system: GameSystem, storage: Storage): Promise<WorkingCharacter> {
+  const character = await loadCharacter(system, (key) => storage.read(key));
+  return { ...(await readDraftOrigin(storage, character.id)), character };
 }
 
 /**

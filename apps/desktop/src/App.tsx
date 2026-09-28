@@ -25,8 +25,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LayeredElementIndex,
   MapElementIndex,
-  type Character,
-  type ContainerFiles,
   type ElementIndex,
   type GameSystem,
   type LibraryEntryRef,
@@ -58,14 +56,16 @@ import {
   importBlock,
   resolveCommands,
   saveCopy,
+  writeDraftOrigin,
   type AuroraImportReport,
   type ContentFileResult,
   type Destination,
   type LibraryEntry,
+  type WorkingCharacter,
 } from '@incudo/ui';
 
 import {
-  loadCharacter,
+  loadDraft,
   loadShippedSystems,
   newCharacter,
   readChosenSystem,
@@ -108,7 +108,8 @@ export function App(): React.JSX.Element {
   const [booted, setBooted] = useState<Booted | null>(null);
   /** The system in play. Null means the launcher is on screen. */
   const [system, setSystem] = useState<GameSystem | null>(null);
-  const [character, setCharacter] = useState<Character | null>(null);
+  /** The draft the shell starts from, with what was kept beside it (ADR 0066). */
+  const [character, setCharacter] = useState<WorkingCharacter | null>(null);
   /** Set while the user is deliberately changing systems, so the launcher can say "current". */
   const [changing, setChanging] = useState(false);
   /**
@@ -139,7 +140,7 @@ export function App(): React.JSX.Element {
       setBooted(next);
       if (next.remembered) {
         setSystem(next.remembered);
-        setCharacter(await loadCharacter(next.remembered, (key) => platform.storage.read(key)));
+        setCharacter(await loadDraft(next.remembered, platform.storage));
       }
     })();
   }, [reboot]);
@@ -159,7 +160,7 @@ export function App(): React.JSX.Element {
    */
   const choose = useCallback(async (picked: GameSystem): Promise<void> => {
     await writeChosenSystem(picked.id, (key, value) => platform.storage.write(key, value));
-    const next = await loadCharacter(picked, (key) => platform.storage.read(key));
+    const next = await loadDraft(picked, platform.storage);
     setCharacter(next);
     setSystem(picked);
     setChanging(false);
@@ -352,7 +353,7 @@ function Shell({
   nameOfSystem,
 }: {
   system: GameSystem;
-  initial: Character;
+  initial: WorkingCharacter;
   commands: CommandBinder;
   onChangeSystem: () => void;
   /**
@@ -374,28 +375,12 @@ function Shell({
   const [sources, setSources] = useState<readonly ConfiguredSource[]>([]);
   const profile = useRef<SourceProfile | null>(null);
 
-  /** The character being edited, and where it came from in the library (if anywhere). */
-  const [working, setWorking] = useState<{
-    character: Character;
-    /** The save's own embedded content, when this character was opened from a file. */
-    embedded?: ElementIndex;
-    /**
-     * The save's asset files, when it was opened from one. Held so the next Save and any copy
-     * write the portrait back out: a character records only where it is, not what it holds.
-     */
-    assets?: ContainerFiles;
-    entry?: LibraryEntryRef;
-    /** What the manifest said when it was read — the conflict check compares this. */
-    readAt?: string;
-    /**
-     * `character.name` as of the last successful save (or the open that gave us `entry`).
-     * `LibraryEntryRef.name` is never derived from this — a character renamed to something else still
-     * lives in `aelin.incu` (ADR 0027) — so this is the one place that remembers what the name
-     * *was*, which is what lets the next save notice it changed and ask about the file too.
-     * Always set together with `entry`; undefined exactly when `entry` is.
-     */
-    savedName?: string;
-  }>({ character: initial });
+  /**
+   * The character being edited, and where it came from in the library (if anywhere). What each
+   * field is for is on `WorkingCharacter` (`packages/ui`), since all of it but the character is
+   * kept beside the draft too (ADR 0066).
+   */
+  const [working, setWorking] = useState<WorkingCharacter>(initial);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   /** A save in flight. A second one would race the first on `working.readAt`. */
   const [saving, setSaving] = useState(false);
@@ -488,6 +473,15 @@ function Shell({
   useEffect(() => {
     void saveCharacter(state.character, (key, value) => platform.storage.write(key, value));
   }, [state.character]);
+
+  // The rest of the draft: the file the character came from and the content it brought (ADR 0066).
+  // Only when `working` changes, which is an open, a new character or a save, never a keystroke:
+  // without it a reload with no source enabled showed the character without its embedded content,
+  // and the next Save wrote a second file that embedded none of it.
+  useEffect(() => {
+    const { character, ...origin } = working;
+    void writeDraftOrigin(platform.storage, character.id, origin);
+  }, [working]);
 
   const persist = useCallback(async (): Promise<void> => {
     const current = profile.current;

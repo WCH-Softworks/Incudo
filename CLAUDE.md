@@ -1018,7 +1018,7 @@ Build only, beside Save; the thirteenth command. Things to know before touching 
   reachability bug**, so `compose.test.ts` now asserts the two layers *agree* rather than that
   the cache answers.
 
-Eleven things the shell has surfaced, five of them since fixed and struck through. The rest are
+Twelve things the shell has surfaced, seven of them since fixed and struck through. The rest are
 deliberately **not** fixed:
 
 - **~~An answered `pick` cannot be changed.~~** Fixed. It was predicted here to be "a real screen
@@ -1114,9 +1114,14 @@ deliberately **not** fixed:
 - **Nothing moves a recorded source version.** ADR 0028's `moved` state is computed and shown,
   and the "refresh this character against the newer source" flow it points at does not exist,
   so a character says a source has moved until someone builds that.
-- **A draft reloaded with no source enabled has lost its file's embedded content.** The draft is
-  `character.json` only, so an NPC opened from the library and then reloaded came back without its
-  creature (2 elements where the file had 8) until opened again. Found 2026-09-28; not fixed.
+- **~~A draft reloaded with no source enabled has lost its file's embedded content.~~** Fixed
+  ([ADR 0066](docs/adr/0066-the-draft-keeps-what-the-shell-held-beside-the-character.md)), and it was worse than
+  recorded: the library entry went too, so the next Save wrote a *second* file embedding nothing. The draft now keeps
+  the rest of the working state beside `character:current`, under `character:current:origin`: the opened file's
+  embedded content and assets, its entry, read time and saved name, tied to the draft by the character's id, all or
+  none, and written on an open, a new character or a save, never a keystroke. It keeps what the session held, not what
+  the character reaches: an element taken from a source after opening is not kept, because a reload must change
+  nothing. `packages/ui/src/draft.ts`; `boot.ts`'s `loadDraft` reads it. Driven in the browser build only.
 - **Importing N saves rescans the library N times.** `CharacterLibrary.save` refreshes after
   every write, because the collision suffix reads the current listing — so importing a set of real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
   above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the
@@ -1156,7 +1161,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064 and 0065 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065 and 0066 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

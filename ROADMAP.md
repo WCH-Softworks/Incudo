@@ -1151,8 +1151,8 @@ the kind machinery is not decorative.*
       after a reload with the source off. **With this, the phase's exit criterion holds**: a PC, an NPC and a
       legendary creature are built in one app, and the engine names none of them (only comments do). The items below
       are still open. **Not done:** removing a creature's own `<grant>`s from its NPC (ADR 0061 cancels what a setter
-      names); a draft reloaded with no source enabled loses its file's embedded content until reopened; macOS and
-      Linux.
+      names); macOS and Linux. *(A draft reloaded with no source enabled lost its file's embedded content, and the next
+      Save wrote a second file embedding none of it; fixed by ADR 0066.)*
 - [ ] Companions and sidekicks
 - [ ] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC.** *Reworded by ADR 0057's
       measurement:* 32 of its creatures are structured and already usable; the other 45 (Rat to Tarrasque) are HTML
