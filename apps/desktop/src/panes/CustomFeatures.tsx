@@ -73,7 +73,7 @@ function Feature({
             value={feature.type}
             onChange={(event) => builder.updateCustomFeature(feature.id, { type: event.target.value })}
           >
-            {feature.typeNote && <option value={feature.type}>{feature.type}</option>}
+            {feature.typeNote && <option value={feature.type}>{feature.typeLabel}</option>}
             {types.map((t) => (
               <option key={t.type} value={t.type}>
                 {t.label}

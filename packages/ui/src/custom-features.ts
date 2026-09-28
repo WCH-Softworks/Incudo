@@ -46,6 +46,11 @@ export interface CustomFeatureView {
   /** The type it is held as: the one it records, or the kind's default. */
   type: string;
   /**
+   * Where it is listed, as the sheet heads that list: a `types` entry's label, or, for a type the kind does not
+   * list, the system's name for that list and "(not available)", never the type's own name.
+   */
+  typeLabel: string;
+  /**
    * A sentence when the type it records is one the kind does not list: it is then not held, listed nowhere, and its
    * lines change nothing (ADR 0065).
    */
@@ -76,17 +81,19 @@ export function customFeaturesState(
   system: GameSystem,
 ): CustomFeaturesState {
   const stats = customFeatureStats(kind);
-  const types = customFeatureTypes(kind).map((type): CustomFeatureType => {
+  // A list's heading: the system's plural for the type, else its name, else the type as recorded.
+  const headingOf = (type: string): string => {
     const def = system.elementTypes.find((t) => t.name === type);
-    return { type, label: def?.plural ?? def?.name ?? type };
-  });
+    return def?.plural ?? def?.name ?? type;
+  };
+  const types = customFeatureTypes(kind).map((type): CustomFeatureType => ({ type, label: headingOf(type) }));
   const fallback = kind.customFeatures?.type ?? '';
   const byKey = new Map(stats.map((s) => [s.stat.toLowerCase(), s]));
   const typed = new Map(Object.entries(character.baseStats ?? {}).map(([k, v]) => [k.toLowerCase(), v]));
   const features = (character.customFeatures ?? []).map((feature): CustomFeatureView => {
     const elementId = customFeatureElementId(feature.id);
     const type = feature.type ?? fallback;
-    const listed = types.some((t) => t.type === type);
+    const listed = types.find((t) => t.type === type);
     const lines = feature.stats.map((line): CustomLineView => {
       const key = line.stat.toLowerCase();
       const stat = byKey.get(key);
@@ -119,7 +126,10 @@ export function customFeaturesState(
       name: feature.name,
       description: feature.description ?? '',
       type,
-      ...(listed ? {} : { typeNote: `This character cannot have a "${type}", so the feature is not on it. Choose where to list it.` }),
+      typeLabel: listed ? listed.label : `${headingOf(type)} (not available)`,
+      ...(listed
+        ? {}
+        : { typeNote: `This character has no "${headingOf(type)}", so the feature is not on it and changes nothing. Choose where to list it.` }),
       lines,
     };
   });

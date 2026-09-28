@@ -99,6 +99,7 @@ test('a written feature is held, named, and changes what its lines say', () => {
       name: 'Godspeed',
       description: 'Blessed by a god of roads.',
       type: 'Knack',
+      typeLabel: 'Knacks',
       lines: [{ stat: 'stride', mode: 'set', value: 60, label: 'Stride', status: 'applied' }],
     },
   ]);
@@ -239,6 +240,7 @@ test('a feature may be listed under any type the kind lists, named as the sheet 
   assert.equal(state.character.customFeatures![0]!.type, 'Deed');
   assert.equal(state.character.formatVersion, 6);
   assert.equal(state.customFeatures.features[0]!.type, 'Deed');
+  assert.equal(state.customFeatures.features[0]!.typeLabel, 'Deeds');
   assert.equal(state.derived.elements.find((e) => e.id === `custom:${id}`)?.type, 'Deed');
   assert.equal(state.derived.stats.get('stride')?.value, 45);
 
@@ -253,7 +255,8 @@ test('a feature may be listed under any type the kind lists, named as the sheet 
 
 test('a type the kind does not list is refused, and one recorded anyway says the feature is not on the character', () => {
   // Fails if the builder writes a type the kind does not list, or if the view says nothing about a feature the
-  // derivation does not hold (its lines would read as applied, overruled or replaced).
+  // derivation does not hold (its lines would read as applied, overruled or replaced), or if it names the list by
+  // the recorded type rather than as the sheet heads it (checked: `typeLabel` as the raw type fails here).
   const b = onOx();
   assert.deepEqual(b.getState().customFeatures.types, [{ type: 'Knack', label: 'Knacks' }]);
   const id = b.addCustomFeature('Trample')!;
@@ -266,7 +269,10 @@ test('a type the kind does not list is refused, and one recorded anyway says the
   character.customFeatures = [{ id: 'd', name: 'Trample', type: 'Deed', stats: [{ stat: 'stride', mode: 'set', value: 60 }] }];
   const view = new CharacterBuilder(character, system(true), index).getState();
   const feature = view.customFeatures.features[0]!;
-  assert.match(feature.typeNote ?? '', /cannot have a "Deed"/);
+  // Named as the sheet heads the list, never by the type's own name: the system calls a Deed's list "Deeds".
+  assert.equal(feature.typeLabel, 'Deeds (not available)');
+  assert.match(feature.typeNote ?? '', /has no "Deeds"/);
+  assert.ok(!`${feature.typeLabel} ${feature.typeNote}`.includes('"Deed"'), "the type's own name is not shown");
   assert.deepEqual(feature.lines.map((l) => l.status), ['not-held']);
   assert.equal(view.derived.stats.get('stride')?.value, 40);
 });
