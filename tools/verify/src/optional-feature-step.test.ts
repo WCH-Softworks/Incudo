@@ -50,7 +50,7 @@ test('a 2014 Ranger takes Deft Explorer from the step, loses Natural Explorer, s
   pick('class', (id) => elements.get(id)?.name === 'Ranger' && elements.get(id)?.source === 'Player’s Handbook');
 
   const optional = b.getState().decisions.find((d) => d.id === STEP);
-  assert.ok(optional?.candidates.includes(DEFT), 'the step offers the Deft Explorer item');
+  assert.ok(optional && optional.candidates.includes(DEFT),'the step offers the Deft Explorer item');
   const family = [...elements.all()].filter((e) => e.setters['category']?.value === 'Optional Class Features');
   t.diagnostic(`the step offers a 2014 Ranger ${optional.candidates.length} items; the corpus has ${family.length} of the category`);
 
