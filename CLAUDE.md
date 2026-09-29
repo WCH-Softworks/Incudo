@@ -360,7 +360,8 @@ built by hand (ADR 0068). **What a description embeds is shown in place and save
 text for reference too, offered first what its own elements print, and a library card names what a character keeps**
 (ADR 0070). **A player character takes Tasha's optional class features, and one that replaces a feature replaces it** (ADRs
 0071, 0072). **A creature a character holds is shown as its own stat block, its numbers derived from the character** (ADR
-0073).
+0073). **Each kind's sheet shows its printed page: a player character's saves, skills, modifiers and the spell slots it casts
+with, an NPC's first line and printed dice, a Cairn character's entered scores** (ADR 0074).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -722,6 +723,58 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     a creature's challenge rating for its bonus; `companion:attack`; tracking a creature's hit points. Driven in the
     browser build and the Tauri window on Windows (DOM clicks over the debug port, the saved file read back from disk and
     reopened with the source off); not with real input, and not on macOS or Linux.
+- **A kind's sheet shows its printed page, and every row says what it is**
+  ([ADR 0074](docs/adr/0074-a-kind-s-sheet-shows-its-printed-page-and-every-row-says-what-it-is.md)). The roadmap's
+  "Kind-specific sheets and exports"; exports are Phase 5's, since an export renders the sheet. Things to know before
+  touching it:
+  - **Measured by `tools/verify/src/kind-sheets.test.ts`**, first report-only on the base commit: the Spell Slots section
+    read the multiclass pool (`spellcasting:slots:N`), which **only a multiclass caster publishes**, so all 13
+    single-class casters among the samples drew nine zeros; every casting block's two rows were labelled by their keys
+    ("wizard:spellcasting:dc"); a player character held 153 skill and 60 save proficiencies and no row showed a save, a
+    skill, passive Perception or a modifier; race, class and background were listed nowhere; no creature's size, type,
+    alignment or printed armour class and hit points were shown; Cairn's ability step had no budget (ADR 0017's inert
+    shape), so every Cairn character read 10, 10, 10 and 1. **No test saw the slots**: the oracle compares stats, never
+    the sheet.
+  - **`packages/ui/src/sheet.ts` is the view-model** (`sheetView`, `sheetSections`, `formatStatValue`;
+    `BuilderState.sheet`): a row's label, its value as written, what is beside it, the listed elements and their unmet
+    marker (ADR 0064), empty sections left out. `companionsView` (ADR 0073) builds each creature's sections with the same
+    `sheetSections`. `SheetPane.tsx` and `Companions.tsx` (its `SheetRows`) compute nothing. **A section lists its
+    elements in the order it names their types**, then in the order held, and draws them before its printed lines.
+  - **Three optional system-format fields** (`formatVersion` stays 1): `signed` on a stat or a `blockStats` entry
+    ("+2", "+0", "-1"; display only), `label` on a `blockStats` entry (a per-block row's name, found through the new
+    `SheetSectionRendering.entries`, the section entry each row came from), and `beside` on a sheet section (a stat
+    template, `{stat}` for the row, block placeholders resolved in a `perBlock` section; `renderSheetSection` publishes
+    it aligned with the rows `showWhen` keeps). The validator refuses a `beside` naming nothing the kind or scope
+    declares. **An unlabelled row still falls back to its key** (a user's system may have one); every shipped kind is
+    held to none by the test, not by the validator.
+  - **5e's `pc`** (`systems/dnd5e/system.json`, no engine change): `<ability>:save`, the eighteen skills and
+    `perception:passive` with the NPC's formulas (modifier + `…:proficiency` + `…:misc`), all rows shown, signed;
+    scores with modifiers beside; a Character section (race, subrace, class, subclass, background, alignment, deity);
+    Senses (passive Perception and `Vision`). **Spell slots**: the pool with `showWhen`, and a `perBlock` section over
+    `{name}:spellcasting:table:<n>` = the block's own `{name}:spellcasting:slots:<n>` × `{name}:spellcasting:table`
+    (`max(solo, 1 − min(1, multiclass:spellcasting:level))`: 1 for a single-class caster, and for pact magic beside a
+    pool). **Do not name it under `spellcasting:slots:*`**: `blockFilters`' `tagsFromStats` globs that for spell
+    selects, and the oracle's row count shifts that pattern. The pool's labels are the system's "1st-level Spell Slots".
+  - **5e's `npc` and `legendary`** (the legendary kind repeats the NPC's sections; change both): a Creature section listing
+    `Creature`/`Companion` and printing `size`, `type`, `alignment`; the header prints `ac` and `hp` as written
+    ("95 (10d12 + 30)") and shows `initiative`; scores with modifiers beside; saves, skills and bonus signed. A held
+    creature's sections (`pc.companions.sheet`) got modifiers, signs and the printed first line.
+  - **Cairn**: Abilities is a budget over Strength, Dexterity and Willpower (method `scores`, 3 to 18) and a Hit
+    Protection step (`protection`, 1 to 6); its sheet lists the Background. Rolling in order (Cairn's rule) is not
+    offered: the roll method assigns. **The score editor's footnote is every kind's**, so it names no game's rules (it
+    said "in 5e an ability score stops at 20" on Cairn, found by running it).
+  - **Saves and skills are worked, not refereed**: Aurora's save records the companion's skills and never the character's.
+    The test works every sample's from Aurora's own `<sum>` and the book (682 rows agree, 0 differ; the 38 something else
+    adds to are held to their three terms). Content spells one expertise id `…_SLEIGHT_OF_HAND` with underscores and the
+    rest without, so the check ignores underscores. Never describe these as verified against Aurora.
+  - **Content's `<sheet>` hints are parsed and read by nothing, on purpose** (`display="false"` on 1,779 elements, 2 to 12
+    listed per sample, and `alt`, `usage`, `action`): Aurora hid Darkvision and Tough because its sheet showed their
+    effect elsewhere. Reading them is its own decision.
+  - The oracle is identical before and after. **Not done:** a proficiency mark on a save or skill; levels per class;
+    hit dice, death saves, inspiration, personality, attacks; the `<sheet>` hints; the Build pane's "Progress" number on a
+    level-less kind. Driven in the browser build (a Cairn character too) and the Tauri window on Windows (a packed sample
+    and a built NPC, the file read back from disk, reopened with the source off); not with real input, Cairn not in the
+    window, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1380,7 +1433,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072 and 0073 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073 and 0074 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

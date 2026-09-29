@@ -1,7 +1,7 @@
 # 0074 — A kind's sheet shows its printed page, and every row says what it is
 
-**Status:** Accepted · 2026-09-29 · answers the roadmap's "Kind-specific sheets and exports", and moves its exports to
-Phase 5 · builds on [0003](./0003-system-agnostic-content-model.md), [0009](./0009-character-kinds.md),
+**Status:** Accepted · 2026-09-29 · implemented the same day · answers the roadmap's "Kind-specific sheets and exports",
+and moves its exports to Phase 5 · builds on [0003](./0003-system-agnostic-content-model.md), [0009](./0009-character-kinds.md),
 [0018](./0018-tables-and-track-stats.md), [0020](./0020-stats-keyed-on-declared-blocks.md),
 [0041](./0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -87,6 +87,11 @@ label, its value as shown, and what is shown beside it), printed lines, and list
 The character's Sheet and each held creature's stat block (ADR 0073) are built by the same function, and the Sheet pane
 computes nothing. Everything an export will need is in it, so Phase 5 starts from rows rather than from a component.
 
+A section lists its elements in the order it names their types, and in the order held within one type, so a header
+reads race, class, subclass, background rather than the order a derivation reached them (found by running it: the first
+version read "Sage, Wizard, Elf, Evoker"). A section's listed elements are drawn before its printed lines, so a
+creature is named before its size.
+
 ### 3. Every row says what it is
 
 A row's label is its stat's `label`; **a per-block row's is its `blockStats` entry's `label`** (new, optional), so the
@@ -120,9 +125,10 @@ System definition changes only; no engine noun, no engine change.
 
 ### 5. 5e's NPC shows its stat block's first line and its dice
 
-- The header lists the creature it is built on, prints its **size, type and alignment**, and its **armour class and hit
-  points as printed** beside the numbers the NPC derives, which a typed value may replace (ADR 0059); the printed hit
-  points carry the dice. **Initiative** joins the header.
+- A **Creature** section names the creature it is built on and prints its **size, type and alignment**; the header
+  prints its **armour class and hit points as printed** beside the numbers the NPC derives, which a typed value may
+  replace (ADR 0059), and the printed hit points carry the dice. **Initiative** joins the header. An NPC built from
+  nothing shows no Creature section.
 - The scores show their modifiers beside them; saves, skills, proficiency bonus and modifiers are `signed`. A held
   creature's stat block (ADR 0073) gets the same.
 
@@ -131,7 +137,8 @@ System definition changes only; no engine noun, no engine change.
 Cairn's Abilities step becomes a budget over Strength, Dexterity and Willpower with one method, entry from 3 to 18, and
 a Hit Protection step one from 1 to 6: a system definition change, as ADR 0057 made for the NPC. Rolling in order, which
 is Cairn's rule, is not offered: the budget's roll method assigns what it rolls, and offering it would be a different
-rule under the same name.
+rule under the same name. Its sheet gains a Background section: the one element a Cairn character is built from was listed
+nowhere.
 
 ### 7. Content's sheet hints are reported, not read
 
@@ -149,9 +156,12 @@ number with no reason beside it. So the hint is left unread and measured, and re
   needs a section that iterates tracks, as `perBlock` iterates blocks.
 - **Hit dice, death saves, inspiration, personality, attacks.** The first has no stat (hit points follow the method,
   ADR 0044); the rest are play-time state or text nothing records yet.
-- **Referee a player character's saves and skills against Aurora.** Aurora's save records the companion's and never the
-  character's, and the readout has none. They are content's rules summed by the NPC's formulas, checked by perturbation
-  and by one sample worked by hand from its recorded scores and proficiencies. Never describe them as verified.
+- **Referee a player character's saves and skills against Aurora's numbers.** Aurora's save records the companion's and
+  never the character's, and the readout has none. They are content's rules summed by the NPC's formulas, worked for
+  every sample from Aurora's own list of its elements and the book (below) and checked by perturbation. Never describe
+  them as verified against Aurora.
+- **Hide the Build pane's "Progress" number on a kind with no progression.** A Cairn character is shown one, and it
+  means nothing there. Found by building one; a Build pane question, not a sheet one.
 - **Parse a creature's printed armour class or hit points.** Shown as written beside the derived numbers (ADR 0005).
 - **Read `<sheet>` hints** (decision 7), **exports** (Phase 5), **a layout per kind** (a stat block drawn as a stat
   block rather than as sections): the sections are what an export and a print layout will lay out.
@@ -173,5 +183,50 @@ number with no reason beside it. So the hint is left unread and measured, and re
 
 ## Evidence
 
-- `tools/verify/src/kind-sheets.test.ts`: the measurement above, report-only, run on the base commit before anything
-  changed.
+Each test names the perturbation that fails it, and each perturbation was run.
+
+- `tools/verify/src/kind-sheets.test.ts`: first the measurement above, report-only, committed and run on the base commit
+  before anything changed; then, reading the sheet through `sheetView` and `companionsView`, what holds against any
+  corpus. Every row of every shipped kind has a label. No sample's sheet calls a row by its key or draws a section of
+  zeros. **Saves and skills worked from Aurora's own `<sum>` of each sample and the book** (the ability modifier, plus
+  the proficiency bonus where the list holds the proficiency, twice it where it holds the expertise): **682 rows agree,
+  0 differ**, and the 38 rows something else adds to (Jack of All Trades, a Champion's Remarkable Athlete, an item) are
+  held to their three terms. The first run of that check found one difference, and it was the check's: content spells
+  one expertise id `…_SLEIGHT_OF_HAND` where every other runs the words together. **All 20 samples with spell slots
+  show exactly the ones they cast with.** Every creature's NPC names it and prints its size, type, alignment, armour
+  class and hit points as written, with each score's modifier beside it; a held creature's stat block has its first
+  line and modifiers; a Cairn character's entered scores are its sheet's. Perturbed: a block stat's label removed; the
+  pool shown as before; every block's own table shown; pact magic not kept beside a pool; Stealth's `:misc` term
+  dropped (caught by a level 20 Champion); Wisdom's save proficiency term dropped; the NPC's printed first line, or its
+  printed hit points, removed; `beside` removed from the NPC's or a held creature's scores; a held creature's first
+  line removed; either of Cairn's budgets removed. Performance's `:misc` dropped is **not** caught: the one sample with
+  Jack of All Trades is proficient in Performance, so the term is 0 there.
+- `packages/ui/src/sheet.test.ts`: labels from a stat, from a block stat through the entry a row came from, and the key
+  as a fallback; signed values, a block stat's too; `beside`; an empty text as a dash; the listing, its order by type,
+  its hidden items, its unmet marker; empty sections left out; the builder publishing it. Eleven perturbations and the
+  ordering one, each failing.
+- `packages/core/src/system.test.ts`: `beside` and `entries` aligned with the rows `showWhen` keeps, resolved per
+  block. `tools/verify/src/schemas.test.ts`: a `beside` naming nothing declared is refused, and the JSON Schema accepts
+  the field. Six and two perturbations, each failing.
+- The oracle's thirty-sample table is **identical** before and after (`INCUDO_ORACLE_SNAPSHOT` on the base commit,
+  `INCUDO_ORACLE_BASELINE` after the system definition change, same checkout, no `.env.local`); a baseline with one
+  difference removed fails, so the comparison was live. The new stats move no derived number the oracle compares.
+  `npm run typecheck` and `npm test` pass (1,159 tests).
+- **Driven in the browser build** (an origin-private folder standing in for the folder picker). Two samples imported
+  through the app, a 2024 Wizard 5 and a Wizard 3 / Rogue 3 / Warlock 3: the first shows 1st to 3rd-level slots 4, 3, 2
+  where it had shown nine zeros, Spell Save DC 15, Spell Attack Bonus +7, Arcana +10 with expertise, passive Perception
+  14; the second the shared pool of 4 and 3 and the Warlock's two 2nd-level slots beside it, and its Owl's stat block
+  with modifiers and its first line. An NPC on the Triceratops: Huge, Beast, unaligned; "13 (natural armor)" and
+  "95 (10d12 + 30)" as printed; initiative -1; Strength 22 (+6). A Cairn character with scores entered as 12, 9, 14 and 4.
+  Each saved, the content source switched off and the page reloaded, and each reopened to the same Sheet text,
+  character for character. No console errors. Running it found the section order and the Creature section's order
+  above, and that the score editor's footnote, shown for every kind, told a Cairn player about "your race, class,
+  feats" and "in 5e an ability score stops at 20"; it names no game now.
+- **Driven in the Tauri window on Windows** (a fresh WebView2 profile, the library a scratch folder set in its storage,
+  DOM clicks over the debug port; no keystrokes, and not macOS or Linux). The Wizard 5 sample, packed by the
+  repository's own code into the folder, opened before any source was added and showed the same sheet as above.
+  AuroraLegacy loaded in 45 s; an NPC on the Triceratops built and saved; the file, read back from disk with the
+  repository's zip codec, is character format 3 as any NPC with no recorded rating already was, embeds its four
+  elements, and derives with only them to the same Creature, Stat Block and Ability Scores rows. With the source
+  switched off and the window reloaded ("no content loaded"), both reopened to the same Sheet text. Cairn was not
+  driven in the window.

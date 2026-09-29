@@ -1266,7 +1266,30 @@ the kind machinery is not decorative.*
       and in the Tauri window on Windows, the saved file read back from disk and reopened with the source off.
       **Not done:** ~~a held creature on the sheet~~ (ADR 0073, above); a 2014 druid's Wild Shape forms (structured beasts only); a held
       element's own text on the Sheet; macOS and Linux.
-- [ ] Kind-specific sheets and exports
+- [x] **Each kind's sheet shows its printed page, and every row says what it is**
+      ([ADR 0074](./docs/adr/0074-a-kind-s-sheet-shows-its-printed-page-and-every-row-says-what-it-is.md)).
+      *Reworded by its measurement;* was "Kind-specific sheets and exports". Every kind already drew its sheet from its
+      own declaration, so the question was what each one leaves out. Measured first, as a test, the sheet as the pane drew
+      it: the Spell Slots section read the multiclass pool, which only a multiclass caster has, so **every single-class
+      caster's sheet said it had no spell slots** (13 of the 30 samples, and 23 read nothing but zeros); each casting
+      block's two rows were labelled with their internal keys; a player character's derivation held 153 skill and 60 save
+      proficiencies and no row showed a save, a skill, passive Perception or a modifier; race, class and background were
+      listed nowhere; no creature's size, type, alignment or printed armour class and hit points were shown; and Cairn's
+      scores could not be set at all. **Exports are Phase 5's**: an export renders the sheet, so the sheet is now a view
+      (`packages/ui`) that the Sheet pane, a held creature's stat block and a future export share. Three optional fields
+      in the system format: a stat may be `signed` (+2), a block stat may carry a `label`, a section may show a stat
+      `beside` each row ("18 (+4)"). 5e's player character now shows its first page, saves and skills worked from
+      Aurora's own list of each sample's elements agreeing on all 682 rows the book decides alone, and the spell slots it
+      casts with (the pool, a block's own table, pact magic beside a pool: all 20 casting samples exact); its NPC names its
+      creature and prints its first line and its dice; Cairn's scores and Hit Protection are entered, and its sheet names
+      the background. No oracle row moved; no character format change. Running it found the order a section lists
+      things in, and a 5e sentence under Cairn's score editor. Driven in the browser build and in the Tauri window on
+      Windows, saved files reopened with the source off. **Not done:** a mark on the saves and skills a character is
+      proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice, death saves, inspiration,
+      personality and attacks; reading content's `<sheet>` hints (`display="false"` on 1,779 elements, and `alt`,
+      `usage` and `action`), which Aurora honoured because its sheet showed each hidden element's effect elsewhere; a
+      stat block laid out as a stat block; the "Progress" number a level-less Cairn character is shown on Build; Cairn in
+      the Tauri window; macOS and Linux.
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the
 engine has no code that names any of them.
@@ -1274,6 +1297,9 @@ engine has no code that names any of them.
 ---
 
 ## Phase 5 — Export & sharing ⬜
+
+*An export is a rendering of the sheet, which is already one view per kind (ADR 0074, `packages/ui/src/sheet.ts`): an
+NPC's export is its stat block and a player character's its page, with nothing kind-specific of the export's own.*
 
 - [ ] PDF character sheet (fillable official sheet + a clean Incudo sheet)
 - [ ] Plain-text / Markdown export
