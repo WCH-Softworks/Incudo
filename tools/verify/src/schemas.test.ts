@@ -770,6 +770,47 @@ test('a step may be a pick without being required, and a pick cannot also be a s
   );
 });
 
+test('a step may equip, and equipping takes none of the keys that make a step something else — ADR 0072', async () => {
+  // Perturbation: drop `equip` or `hiddenSetter` from the schema and the first assertion fails on an unknown key; drop
+  // the checks in `validateGameSystem` and the clash and no-types assertions fail.
+  const equip = { setter: 'shelf', values: ['Switches'] };
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.buildSteps![0]!.equip = equip;
+        s.characterKinds[0]!.inventory = { slotSetter: 'place', occupiedTag: 'any', emptyTag: 'none', slots: [], hiddenSetter: 'tucked' };
+      }),
+    ),
+    [],
+    'a step that equips, and an inventory naming a hidden setter, are valid',
+  );
+  for (const key of ['required', 'pick', 'multiple', 'perLevel'] as const) {
+    assert.deepEqual(
+      await errorsFor(
+        broken((s) => {
+          const step = s.characterKinds[0]!.buildSteps![0]!;
+          step.equip = equip;
+          step[key] = true;
+        }),
+      ),
+      [`characterKinds[0].buildSteps: step "one" equips and is also ${key}; a step that equips is a set of its own and takes neither`],
+    );
+  }
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        step.equip = equip;
+        step.types = [];
+      }),
+    ),
+    ['characterKinds[0].buildSteps: step "one" equips and names no types, so it could offer nothing'],
+  );
+  // No values: the schema says so rather than the builder offering nothing.
+  const empty = broken((s) => (s.characterKinds[0]!.buildSteps![0]!.equip = { setter: 'shelf', values: [] }));
+  assert.equal((await errorsFor(empty)).length, 1);
+});
+
 test('a track expression may read a setter, and a level roll may be fixed by an element (ADR 0044)', async () => {
   const withStat = (expr: unknown) =>
     broken((s) => {

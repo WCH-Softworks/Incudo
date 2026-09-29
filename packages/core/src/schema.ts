@@ -231,6 +231,25 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           message: `step "${step.id}" is both a pick and multiple; a pick is of one, a set of any number`,
         });
       }
+      // A step whose answers are equipped bag entries (ADR 0072) is a set of its own kind: none of the keys that make
+      // a step a pick, a set of choices, a per-level step or a budget means anything beside it, so each is refused.
+      if (step.equip) {
+        const clashes = (['required', 'pick', 'multiple', 'perLevel', 'budget', 'levelRoll'] as const).filter(
+          (key) => step[key] !== undefined && step[key] !== false,
+        );
+        for (const key of clashes) {
+          errors.push({
+            path: `${where}.buildSteps`,
+            message: `step "${step.id}" equips and is also ${key}; a step that equips is a set of its own and takes neither`,
+          });
+        }
+        if (step.types.length === 0) {
+          errors.push({
+            path: `${where}.buildSteps`,
+            message: `step "${step.id}" equips and names no types, so it could offer nothing`,
+          });
+        }
+      }
       for (const type of step.types) {
         if (!typeNames.has(type)) {
           errors.push({

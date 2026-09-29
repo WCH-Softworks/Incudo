@@ -663,7 +663,12 @@
           "description": "Setters whose *presence* becomes a tag, named after the setter rather than its value. `<set name=\"versatile\">1d8</set>` is how a quarterstaff says it is versatile, and `[primary:versatile]` is the corpus asking; the die is not what the question is about."
         },
         "slots": { "type": "array", "items": { "$ref": "#/$defs/slot" } },
-        "attunement": { "$ref": "#/$defs/attunement" }
+        "attunement": { "$ref": "#/$defs/attunement" },
+        "hiddenSetter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A setter which, reading `true` (case ignored), keeps an item off the sheet's lists (ADR 0072). The item is still held, derived and saved. 5e's content writes `inventory-hidden` on an item a character equips to enable a feature and does not carry."
+        }
       }
     },
 
@@ -729,6 +734,21 @@
         "pick": {
           "type": "boolean",
           "description": "This step is a pick of one even though it is not required: offered as one, never blocking, so it may be skipped (ADR 0068). An NPC's creature, which an NPC built by hand has none of. Without it a step that is neither required nor multiple is a heading for the selects content opens of its types. Cannot be combined with `multiple`. A reader that does not know this key offers no pick for the step, as before, so it does not change formatVersion."
+        },
+        "equip": {
+          "type": "object",
+          "required": ["setter", "values"],
+          "additionalProperties": false,
+          "description": "This step is a set whose answers are equipped bag entries, never choices (ADR 0072): it offers the elements of its types whose setter `setter` reads one of `values` (case ignored), and taking one puts it in the bag equipped. For content a character equips to enable, such as 5e's optional class features. What it has taken is read back from the bag, so an imported character that equips one has it taken. Never blocking and skippable, like a `multiple` step. Cannot be combined with required, pick, multiple, perLevel, budget or levelRoll, and needs types. A reader that does not know this key sees a heading that offers nothing, so it does not change formatVersion.",
+          "properties": {
+            "setter": { "type": "string", "minLength": 1, "description": "The setter read on each element of the step's types." },
+            "values": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "The values that admit an element, compared ignoring case."
+            }
+          }
         },
         "description": { "type": "string" },
         "requires": {

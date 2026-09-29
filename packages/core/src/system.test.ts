@@ -7,6 +7,7 @@ import {
   defaultCharacterKindId,
   renderSheetSection,
   sheetSectionIsEmpty,
+  sheetListedElements,
   substituteBlockPlaceholders,
   initialProgress,
   progressionStat,
@@ -363,4 +364,28 @@ test('candidate notes are inherited down an extends chain, and a child may repla
 
   system.characterKinds[2]!.candidateNotes = [];
   assert.deepEqual(resolveCharacterKind(system, 'gamma').candidateNotes, [], 'replaced, not merged');
+});
+
+// ADR 0072. Fails if the hidden setter is not read (the lantern is listed), if it is matched by exact case or value (the
+// mixed-case one is listed), if any value hides (the one reading false is left out), or if a kind that names no setter
+// hides anything.
+test('a sheet lists every held element but the items its kind names a hidden setter for', () => {
+  const item = (id: string, setters: Record<string, string>): Element =>
+    ({
+      id,
+      type: 'Gadget',
+      name: id,
+      setters: Object.fromEntries(Object.entries(setters).map(([name, value]) => [name, { value }])),
+      rules: [],
+    }) as unknown as Element;
+  const elements = [
+    item('LANTERN', { tucked: 'true' }),
+    item('SWITCH', { Tucked: ' TRUE ' }),
+    item('ROPE', { tucked: 'false' }),
+    item('KNIFE', {}),
+  ];
+  const inventory = { slotSetter: 'place', occupiedTag: 'any', emptyTag: 'none', slots: [], hiddenSetter: 'tucked' };
+  assert.deepEqual(sheetListedElements(elements, { inventory }).map((e) => e.id), ['ROPE', 'KNIFE']);
+  assert.equal(sheetListedElements(elements, { inventory: { ...inventory, hiddenSetter: undefined } }).length, 4);
+  assert.equal(sheetListedElements(elements, {}).length, 4);
 });
