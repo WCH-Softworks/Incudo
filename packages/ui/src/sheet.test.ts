@@ -147,7 +147,7 @@ test('a section lists what the sheet may list, marks what is unmet, and one with
 
 // Fails if the builder does not publish the sheet, or publishes it without the additions whose prerequisites fail.
 test('the builder publishes the sheet, marking what the user added with its prerequisites unmet', () => {
-  const character = { ...tinker(), formatVersion: 5, additions: ['GEM'] };
+  const character = { ...tinker(), formatVersion: 5 as const, additions: ['GEM'] };
   const state = new CharacterBuilder(character, system(), index).getState();
   const gear = state.sheet.sections.find((s) => s.id === 'gear')!;
   assert.deepEqual(gear.elements.find((e) => e.elementId === 'GEM'), { elementId: 'GEM', name: 'Gem', prerequisitesUnmet: true });
