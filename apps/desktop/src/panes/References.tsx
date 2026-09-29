@@ -7,20 +7,22 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { BuilderState, CharacterBuilder, ReferenceRow } from '@incudo/ui';
+import { referenceEntry, type BuilderState, type CharacterBuilder, type SheetDocumentReference } from '@incudo/ui';
 import type { ElementId, ElementIndex } from '@incudo/core';
 
 import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
 import { CandidatePicker } from './CandidatePicker.tsx';
 
-/** A kept element's text, sanitized as every description is, or why it is not shown. */
-export function ReferenceText({ row }: { row: ReferenceRow }): React.JSX.Element {
-  const html = useMemo(() => (row.description ? sanitizeDescriptionHtml(row.description) : ''), [row.description]);
-  if (!row.shown) return <p className="hint">{row.note}</p>;
+/**
+ * A kept element's text, sanitized as every description is, or the sentence `packages/ui` wrote in its place
+ * (`referenceEntry`, ADR 0075): the Sheet, the Build pane and the text export say the same.
+ */
+export function ReferenceText({ entry }: { entry: SheetDocumentReference }): React.JSX.Element {
+  const html = useMemo(() => (entry.html ? sanitizeDescriptionHtml(entry.html) : ''), [entry.html]);
   return html ? (
     <div className="picker-description reference-text" dangerouslySetInnerHTML={{ __html: html }} />
   ) : (
-    <p className="hint">It has no text to show.</p>
+    <p className="hint">{entry.note}</p>
   );
 }
 
@@ -54,7 +56,7 @@ export function References({
                   Remove
                 </button>
               </div>
-              <ReferenceText row={row} />
+              <ReferenceText entry={referenceEntry(row)} />
             </li>
           ))}
         </ul>

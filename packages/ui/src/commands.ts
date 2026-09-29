@@ -42,6 +42,7 @@ export const COMMAND_IDS = [
   'new-character',
   'save-character',
   'save-copy',
+  'export-sheet',
   'import-aurora',
   'choose-library-folder',
   'refresh-library',
@@ -102,6 +103,9 @@ export const COMMANDS: readonly CommandDef[] = [
   // where it is (ADR 0038). Measured by pressing real keys: S, E, U, M, G and X are taken before the
   // page sees them; K, O, D, H, B, Y and L arrive. `commands.test.ts` keeps the taken ones out.
   { id: 'save-copy', label: 'Save a copy…', shortcut: { key: 'd', primary: true, shift: true } },
+  // The sheet on screen as text (ADR 0075). No shortcut: the free Ctrl+Shift chords are found by pressing real keys in
+  // the Windows window, as Save a copy's were, and a chord WebView2 takes before the page would be worse than none.
+  { id: 'export-sheet', label: 'Export sheet as text…' },
   // No shortcut: Ctrl+I is italic in every text field and Ctrl+Shift+I is developer tools.
   { id: 'import-aurora', label: 'Import from Aurora…' },
   { id: 'choose-library-folder', label: 'Choose library folder…' },
@@ -127,6 +131,7 @@ export const MENUS: MenuLayout = [
       'new-character',
       'save-character',
       'save-copy',
+      'export-sheet',
       null,
       'import-aurora',
       null,
@@ -168,6 +173,8 @@ export interface CommandContext {
   saverAvailable: boolean;
   /** A copy is being written. */
   copying: boolean;
+  /** A sheet is being exported. */
+  exporting: boolean;
 }
 
 /** The launcher, or the moment before anything has loaded: every command is unavailable. */
@@ -185,6 +192,7 @@ export const NO_WORKSPACE: CommandContext = {
   saving: false,
   saverAvailable: false,
   copying: false,
+  exporting: false,
 };
 
 /**
@@ -228,6 +236,9 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   // Beside Save, and for the same reason: "Saved a copy as …" is printed there. It needs no
   // library at all — the file goes wherever the user says — so it is live with none chosen.
   'save-copy': (c) => c.pane === 'build' && c.saverAvailable && !c.saving && !c.copying,
+  // On the Sheet, whose bar prints "Exported the sheet as …": what is exported is what is on screen there. Like a copy it
+  // needs no library, and no content either (ADR 0075).
+  'export-sheet': (c) => c.pane === 'sheet' && c.saverAvailable && !c.exporting,
   // Its report is printed on the library screen, so that is where it can be started.
   'import-aurora': (c) => c.pane === 'library' && !c.importing && importBlock(c) === undefined,
   // Settings holds this one, but the first-run dialog and the library screen do too.

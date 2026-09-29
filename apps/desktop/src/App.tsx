@@ -53,10 +53,12 @@ import {
   UserSystemStore,
   addContentFiles,
   describeCommand,
+  exportSheet,
   importAuroraSavesIntoLibrary,
   importBlock,
   resolveCommands,
   saveCopy,
+  sheetDocument,
   writeDraftOrigin,
   type AuroraImportReport,
   type ContentFileResult,
@@ -387,6 +389,9 @@ function Shell({
   const [saving, setSaving] = useState(false);
   /** A copy being written: a dialog is open, or bytes are going to disk. */
   const [copying, setCopying] = useState(false);
+  /** A sheet being exported as text, and what the Sheet's bar says about the last one (ADR 0075). */
+  const [exporting, setExporting] = useState(false);
+  const [exportNote, setExportNote] = useState<string | null>(null);
   /** A save whose character name no longer matches the file it would write to. */
   const [renamePrompt, setRenamePrompt] = useState<{ from: string; to: string } | null>(null);
 
@@ -467,6 +472,8 @@ function Shell({
   }, [working.embedded, content]);
 
   const { builder, state } = useBuilder(working.character, system, elements);
+  // What the Sheet shows, as one value: the pane draws it and the text export writes it (ADR 0075).
+  const document = useMemo(() => sheetDocument(state), [state]);
 
   // The draft, not the library. ADR 0027: a builder that wrote a zip into the user's folder on
   // every keystroke would be slow and a poor neighbour to a folder under version control, so
@@ -878,6 +885,22 @@ function Shell({
   }, [state.character, system, elements, sources, working.assets]);
 
   /**
+   * Write the sheet on screen as text to a file the user picks. Like a copy it changes nothing: the document is what the
+   * Sheet pane is drawing, and nothing here touches `working`.
+   */
+  const exportToFile = useCallback(async (): Promise<void> => {
+    setExporting(true);
+    try {
+      const result = await exportSheet(platform.saver, document);
+      if (result.status === 'saved') setExportNote(`Exported the sheet as ${result.file.name}.`);
+      else if (result.status === 'failed') setExportNote(`Could not export the sheet. ${result.message}`);
+      // Cancelled: an answer. The note that was on screen stays.
+    } finally {
+      setExporting(false);
+    }
+  }, [document]);
+
+  /**
    * Save, unless the character was renamed since the last save. `LibraryEntryRef.name` never
    * follows `character.name` (ADR 0027) — "a character renamed to something else still lives in
    * aelin.incu" — so without this a rename would save silently under the old filename, with
@@ -923,12 +946,14 @@ function Shell({
     saving,
     saverAvailable: platform.saver.available,
     copying,
+    exporting,
   });
 
   const handlers: CommandHandlers = {
     'new-character': startNew,
     'save-character': () => void saveToLibrary(),
     'save-copy': () => void copyToFile(),
+    'export-sheet': () => void exportToFile(),
     'import-aurora': () => void importFromAurora(),
     'choose-library-folder': () => void chooseFolder(),
     'refresh-library': () => void library.refresh(),
@@ -1062,7 +1087,27 @@ function Shell({
           />
         </>
       )}
-      {pane === 'sheet' && <SheetPane builder={builder} state={state} />}
+      {pane === 'sheet' && (
+        <>
+          <div className="pane-bar">
+            <span className="status">Writes this page to a Markdown (.md) text file.</span>
+            <button
+              type="button"
+              onClick={() => void exportToFile()}
+              disabled={!platform.saver.available || exporting}
+              title={
+                platform.saver.available
+                  ? describeCommand('export-sheet', commands.os)
+                  : platform.saver.unavailableReason
+              }
+            >
+              Export sheet as text…
+            </button>
+            {exportNote && <span className="status">{exportNote}</span>}
+          </div>
+          <SheetPane builder={builder} document={document} />
+        </>
+      )}
       {pane === 'browse' && (
         // What the sources loaded and nothing else: not `elements`, which puts an open save's own
         // content in front, and not the character's offered view. ADR 0053, decision 1.

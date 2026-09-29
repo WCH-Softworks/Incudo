@@ -49,6 +49,7 @@ const READY: CommandContext = {
   saving: false,
   saverAvailable: true,
   copying: false,
+  exporting: false,
 };
 
 function enabledIn(context: CommandContext): Set<CommandId> {
@@ -180,6 +181,35 @@ test('a copy sits beside Save in the File menu, labelled as a question, with its
   assert.equal(entry.label, 'Save a copy…');
   assert.equal(entry.shortcut, 'Ctrl+Shift+D');
   assert.equal(describeCommand('save-copy', 'mac'), 'Save a copy… (⇧⌘D)');
+});
+
+// --- export the sheet as text ----------------------------------------------------------------------
+
+test('an export is live on the sheet and nowhere else, with no library and no content', () => {
+  // ADR 0075: "Exported the sheet as …" is printed on the Sheet, and what it writes is what is on screen there. Fails if
+  // the rule names another pane, or asks for the library or for content.
+  assert.ok(enabledIn({ ...READY, pane: 'sheet' }).has('export-sheet'));
+  for (const pane of ['library', 'build', 'sources', 'browse', 'settings'] as Destination[]) {
+    assert.ok(!enabledIn({ ...READY, pane }).has('export-sheet'), pane);
+  }
+  const bare = { ...READY, pane: 'sheet' as const, library: 'no-location' as const, contentLoaded: false, hasEnabledSource: false };
+  assert.ok(enabledIn(bare).has('export-sheet'));
+});
+
+test('an export needs a save dialog, is not started twice, and waits behind a dialog', () => {
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', saverAvailable: false }).has('export-sheet'));
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', exporting: true }).has('export-sheet'));
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', modal: true }).has('export-sheet'));
+});
+
+test('an export sits below Save a copy in the File menu, labelled as a question, with no shortcut', () => {
+  const file = MENUS.find((menu) => menu.label === 'File')!;
+  assert.equal(file.items.indexOf('export-sheet'), file.items.indexOf('save-copy') + 1);
+  const entry = menuModel('other')
+    .flatMap((menu) => menu.entries)
+    .find((e) => e.kind === 'command' && e.id === 'export-sheet') as { label: string; shortcut?: string };
+  assert.equal(entry.label, 'Export sheet as text…');
+  assert.equal(entry.shortcut, undefined);
 });
 
 test('while the library scans: new character stays, refresh and save do not', () => {

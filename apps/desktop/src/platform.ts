@@ -751,7 +751,7 @@ class BrowserFileSaver implements FileSaver {
 class UnavailableFileSaver implements FileSaver {
   readonly available = false;
   readonly unavailableReason =
-    'This browser cannot save a file to your computer, so a copy cannot be made. ' +
+    'This browser cannot save a file to your computer. ' +
     'Use the desktop app, or a Chromium-based browser.';
   async save(): Promise<SavedFile | null> {
     throw new Error(this.unavailableReason);

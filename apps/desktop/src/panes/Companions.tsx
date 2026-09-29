@@ -1,11 +1,12 @@
 /**
  * The creatures a character holds, each as its own stat block — ADR 0073.
  *
- * Renders `BuilderState.companions` (`packages/ui/src/companions.ts`) and computes nothing: which sections show, their
- * rows, labels and values, and what gave each creature are decided there, against the creature's own scope.
+ * Renders the sheet document's creatures (`packages/ui/src/sheet-document.ts`, from `companions.ts`) and computes
+ * nothing: which sections show, their rows, labels and values, and what gave each creature are decided there, against
+ * the creature's own scope.
  */
 
-import type { CompanionsView, SheetSectionView } from '@incudo/ui';
+import { PREREQUISITES_UNMET, type SheetDocument, type SheetSectionView } from '@incudo/ui';
 
 /**
  * A section's rows, listed elements and printed lines, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
@@ -33,7 +34,7 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
           {section.elements.map((element) => (
             <li key={element.elementId}>
               {element.name}
-              {element.prerequisitesUnmet && <span className="hint"> (prerequisites not met)</span>}
+              {element.prerequisitesUnmet && <span className="hint"> ({PREREQUISITES_UNMET})</span>}
             </li>
           ))}
         </ul>
@@ -52,7 +53,7 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
   );
 }
 
-export function Companions({ view }: { view: CompanionsView }): React.JSX.Element {
+export function Companions({ view }: { view: NonNullable<SheetDocument['companions']> }): React.JSX.Element {
   return (
     <section className="sheet-section sheet-companions">
       <h3>{view.label}</h3>
@@ -63,7 +64,7 @@ export function Companions({ view }: { view: CompanionsView }): React.JSX.Elemen
             {creature.name}
             {creature.source && <span className="hint"> · {creature.source}</span>}
           </h4>
-          {creature.heldBy.length > 0 && <p className="hint">From {creature.heldBy.join(', ')}</p>}
+          {creature.from && <p className="hint">{creature.from}</p>}
           {creature.notes.map((note) => (
             <p key={note} className="hint">
               {note}
