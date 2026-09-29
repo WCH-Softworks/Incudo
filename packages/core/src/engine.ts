@@ -294,6 +294,8 @@ export interface CompanionDerivation {
   elements: Element[];
   /** What the scope finds that the holder's derivation does not: a feature the creature names and nothing declares. */
   problems: Problem[];
+  /** What the scope withdrew (ADR 0071): a feature the creature names whose own requirements are false. */
+  withdrawn: WithdrawnElement[];
 }
 
 /** A granted element its own requirements rule out, and every held element that granted it — ADR 0071. */
@@ -337,6 +339,7 @@ export function deriveCharacter(
       starts: scope.starts,
       elements: scope.elements,
       problems: scope.problems.filter((problem) => !seen.has(problemKey(problem))),
+      withdrawn: scope.withdrawn,
     };
   });
   return derived;

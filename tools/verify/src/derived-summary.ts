@@ -17,6 +17,11 @@ export interface DerivedSummary {
   problems: Array<{ level: string; code: string; message: string; elementId?: string }>;
   /** What a grant brought in and the element's own requirements ruled out (ADR 0071): the character's, not content's. */
   withdrawn: Array<{ elementId: string; grantedBy: string[] }>;
+  /**
+   * Each held creature's scope (ADR 0073): what it holds, its stats and what it finds. Present only when the character
+   * holds one, so the summary of every other character is what it was.
+   */
+  companions?: Array<{ elementId: string; elements: string[]; stats: Record<string, number | string>; problems: string[] }>;
 }
 
 /**
@@ -29,11 +34,21 @@ export interface DerivedSummary {
  * (ADR 0012).
  */
 export function summarize(derived: DerivedCharacter): DerivedSummary {
-  const stats: Record<string, number | string> = {};
-  for (const key of [...derived.stats.keys()].sort()) {
-    const stat = derived.stats.get(key)!;
-    stats[key] = stat.text ?? stat.value;
-  }
+  const statsOf = (map: DerivedCharacter['stats']): Record<string, number | string> => {
+    const out: Record<string, number | string> = {};
+    for (const key of [...map.keys()].sort()) {
+      const stat = map.get(key)!;
+      out[key] = stat.text ?? stat.value;
+    }
+    return out;
+  };
+  const stats = statsOf(derived.stats);
+  const companions = derived.companions.map((c) => ({
+    elementId: c.elementId,
+    elements: c.elements.map((e) => e.id).sort(),
+    stats: statsOf(c.stats),
+    problems: c.problems.map((p) => `${p.level} ${p.code}: ${p.message}`).sort(),
+  }));
 
   return {
     character: {
@@ -55,5 +70,6 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
     withdrawn: derived.withdrawn
       .map((w) => ({ elementId: w.elementId, grantedBy: [...w.grantedBy].sort() }))
       .sort((a, b) => (a.elementId < b.elementId ? -1 : 1)),
+    ...(companions.length ? { companions } : {}),
   };
 }

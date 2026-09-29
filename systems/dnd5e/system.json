@@ -296,6 +296,87 @@
         "description": "Text from your content to keep beside this character, such as the stat block of a creature your spell summons or a beast you can turn into. It is shown here and on the sheet, and saved with the character. Nothing is worked out from it."
       },
 
+      "companions": {
+        "types": ["Companion"],
+        "label": "Companions",
+        "description": "Creatures this character has from its features, spells and items, each with its own stat block. Where a creature’s stat block depends on this character, such as a steel defender’s hit points, the numbers here follow this character.",
+        "stats": [
+          {"name":"companion:ac","label":"Armor Class"},
+          {"name":"companion:hp:max","label":"Hit Points"},
+          {"name":"companion:speed","label":"Speed"},
+          {"name":"companion:speed:burrow","label":"Burrow"},
+          {"name":"companion:speed:climb","label":"Climb"},
+          {"name":"companion:speed:fly","label":"Fly"},
+          {"name":"companion:speed:swim","label":"Swim"},
+          {"name":"companion:proficiency","label":"Proficiency Bonus"},
+          {"name":"companion:strength","label":"Strength","default":10},
+          {"name":"companion:dexterity","label":"Dexterity","default":10},
+          {"name":"companion:constitution","label":"Constitution","default":10},
+          {"name":"companion:intelligence","label":"Intelligence","default":10},
+          {"name":"companion:wisdom","label":"Wisdom","default":10},
+          {"name":"companion:charisma","label":"Charisma","default":10},
+          {"name":"companion:strength:modifier","derive":{"kind":"call","fn":"floor","args":[{"kind":"binary","op":"/","left":{"kind":"binary","op":"-","left":{"kind":"ref","stat":"companion:strength"},"right":{"kind":"number","value":10}},"right":{"kind":"number","value":2}}]}},
+          {"name":"companion:dexterity:modifier","derive":{"kind":"call","fn":"floor","args":[{"kind":"binary","op":"/","left":{"kind":"binary","op":"-","left":{"kind":"ref","stat":"companion:dexterity"},"right":{"kind":"number","value":10}},"right":{"kind":"number","value":2}}]}},
+          {"name":"companion:constitution:modifier","derive":{"kind":"call","fn":"floor","args":[{"kind":"binary","op":"/","left":{"kind":"binary","op":"-","left":{"kind":"ref","stat":"companion:constitution"},"right":{"kind":"number","value":10}},"right":{"kind":"number","value":2}}]}},
+          {"name":"companion:intelligence:modifier","derive":{"kind":"call","fn":"floor","args":[{"kind":"binary","op":"/","left":{"kind":"binary","op":"-","left":{"kind":"ref","stat":"companion:intelligence"},"right":{"kind":"number","value":10}},"right":{"kind":"number","value":2}}]}},
+          {"name":"companion:wisdom:modifier","derive":{"kind":"call","fn":"floor","args":[{"kind":"binary","op":"/","left":{"kind":"binary","op":"-","left":{"kind":"ref","stat":"companion:wisdom"},"right":{"kind":"number","value":10}},"right":{"kind":"number","value":2}}]}},
+          {"name":"companion:charisma:modifier","derive":{"kind":"call","fn":"floor","args":[{"kind":"binary","op":"/","left":{"kind":"binary","op":"-","left":{"kind":"ref","stat":"companion:charisma"},"right":{"kind":"number","value":10}},"right":{"kind":"number","value":2}}]}},
+          {"name":"companion:strength:save","label":"Strength","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:strength:modifier"},"right":{"kind":"ref","stat":"companion:strength:save:proficiency"}},"right":{"kind":"ref","stat":"companion:strength:save:misc"}}},
+          {"name":"companion:dexterity:save","label":"Dexterity","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:dexterity:modifier"},"right":{"kind":"ref","stat":"companion:dexterity:save:proficiency"}},"right":{"kind":"ref","stat":"companion:dexterity:save:misc"}}},
+          {"name":"companion:constitution:save","label":"Constitution","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:constitution:modifier"},"right":{"kind":"ref","stat":"companion:constitution:save:proficiency"}},"right":{"kind":"ref","stat":"companion:constitution:save:misc"}}},
+          {"name":"companion:intelligence:save","label":"Intelligence","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:intelligence:modifier"},"right":{"kind":"ref","stat":"companion:intelligence:save:proficiency"}},"right":{"kind":"ref","stat":"companion:intelligence:save:misc"}}},
+          {"name":"companion:wisdom:save","label":"Wisdom","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:wisdom:modifier"},"right":{"kind":"ref","stat":"companion:wisdom:save:proficiency"}},"right":{"kind":"ref","stat":"companion:wisdom:save:misc"}}},
+          {"name":"companion:charisma:save","label":"Charisma","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:charisma:modifier"},"right":{"kind":"ref","stat":"companion:charisma:save:proficiency"}},"right":{"kind":"ref","stat":"companion:charisma:save:misc"}}},
+          {"name":"companion:acrobatics","label":"Acrobatics","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:dexterity:modifier"},"right":{"kind":"ref","stat":"companion:acrobatics:proficiency"}},"right":{"kind":"ref","stat":"companion:acrobatics:misc"}}},
+          {"name":"companion:animal handling","label":"Animal Handling","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:wisdom:modifier"},"right":{"kind":"ref","stat":"companion:animal handling:proficiency"}},"right":{"kind":"ref","stat":"companion:animal handling:misc"}}},
+          {"name":"companion:arcana","label":"Arcana","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:intelligence:modifier"},"right":{"kind":"ref","stat":"companion:arcana:proficiency"}},"right":{"kind":"ref","stat":"companion:arcana:misc"}}},
+          {"name":"companion:athletics","label":"Athletics","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:strength:modifier"},"right":{"kind":"ref","stat":"companion:athletics:proficiency"}},"right":{"kind":"ref","stat":"companion:athletics:misc"}}},
+          {"name":"companion:deception","label":"Deception","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:charisma:modifier"},"right":{"kind":"ref","stat":"companion:deception:proficiency"}},"right":{"kind":"ref","stat":"companion:deception:misc"}}},
+          {"name":"companion:history","label":"History","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:intelligence:modifier"},"right":{"kind":"ref","stat":"companion:history:proficiency"}},"right":{"kind":"ref","stat":"companion:history:misc"}}},
+          {"name":"companion:insight","label":"Insight","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:wisdom:modifier"},"right":{"kind":"ref","stat":"companion:insight:proficiency"}},"right":{"kind":"ref","stat":"companion:insight:misc"}}},
+          {"name":"companion:intimidation","label":"Intimidation","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:charisma:modifier"},"right":{"kind":"ref","stat":"companion:intimidation:proficiency"}},"right":{"kind":"ref","stat":"companion:intimidation:misc"}}},
+          {"name":"companion:investigation","label":"Investigation","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:intelligence:modifier"},"right":{"kind":"ref","stat":"companion:investigation:proficiency"}},"right":{"kind":"ref","stat":"companion:investigation:misc"}}},
+          {"name":"companion:medicine","label":"Medicine","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:wisdom:modifier"},"right":{"kind":"ref","stat":"companion:medicine:proficiency"}},"right":{"kind":"ref","stat":"companion:medicine:misc"}}},
+          {"name":"companion:nature","label":"Nature","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:intelligence:modifier"},"right":{"kind":"ref","stat":"companion:nature:proficiency"}},"right":{"kind":"ref","stat":"companion:nature:misc"}}},
+          {"name":"companion:perception","label":"Perception","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:wisdom:modifier"},"right":{"kind":"ref","stat":"companion:perception:proficiency"}},"right":{"kind":"ref","stat":"companion:perception:misc"}}},
+          {"name":"companion:performance","label":"Performance","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:charisma:modifier"},"right":{"kind":"ref","stat":"companion:performance:proficiency"}},"right":{"kind":"ref","stat":"companion:performance:misc"}}},
+          {"name":"companion:persuasion","label":"Persuasion","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:charisma:modifier"},"right":{"kind":"ref","stat":"companion:persuasion:proficiency"}},"right":{"kind":"ref","stat":"companion:persuasion:misc"}}},
+          {"name":"companion:religion","label":"Religion","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:intelligence:modifier"},"right":{"kind":"ref","stat":"companion:religion:proficiency"}},"right":{"kind":"ref","stat":"companion:religion:misc"}}},
+          {"name":"companion:sleight of hand","label":"Sleight of Hand","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:dexterity:modifier"},"right":{"kind":"ref","stat":"companion:sleight of hand:proficiency"}},"right":{"kind":"ref","stat":"companion:sleight of hand:misc"}}},
+          {"name":"companion:stealth","label":"Stealth","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:dexterity:modifier"},"right":{"kind":"ref","stat":"companion:stealth:proficiency"}},"right":{"kind":"ref","stat":"companion:stealth:misc"}}},
+          {"name":"companion:survival","label":"Survival","derive":{"kind":"binary","op":"+","left":{"kind":"binary","op":"+","left":{"kind":"ref","stat":"companion:wisdom:modifier"},"right":{"kind":"ref","stat":"companion:survival:proficiency"}},"right":{"kind":"ref","stat":"companion:survival:misc"}}},
+          {"name":"companion:perception:passive","label":"Passive Perception","derive":{"kind":"binary","op":"+","left":{"kind":"number","value":10},"right":{"kind":"ref","stat":"companion:perception"}}}
+        ],
+        "setterStats": [
+          {"types":["Companion"],"setter":"strength","stat":"companion:strength"},
+          {"types":["Companion"],"setter":"dexterity","stat":"companion:dexterity"},
+          {"types":["Companion"],"setter":"constitution","stat":"companion:constitution"},
+          {"types":["Companion"],"setter":"intelligence","stat":"companion:intelligence"},
+          {"types":["Companion"],"setter":"wisdom","stat":"companion:wisdom"},
+          {"types":["Companion"],"setter":"charisma","stat":"companion:charisma"}
+        ],
+        "contributions": [
+          {"stat":"companion:proficiency","value":{"kind":"number","value":2}}
+        ],
+        "setterGrants": [
+          {"types":["Companion"],"setter":"traits"},
+          {"types":["Companion"],"setter":"actions"},
+          {"types":["Companion"],"setter":"reactions"}
+        ],
+        "sheet": [
+          {"id":"block","label":"Stat Block","stats":["companion:ac","companion:hp:max","companion:speed","companion:proficiency"]},
+          {"id":"abilities","label":"Ability Scores","stats":["companion:strength","companion:dexterity","companion:constitution","companion:intelligence","companion:wisdom","companion:charisma"]},
+          {"id":"speeds","label":"Other Speeds","stats":["companion:speed:burrow","companion:speed:climb","companion:speed:fly","companion:speed:swim"],"showWhen":"{stat}"},
+          {"id":"saves","label":"Saving Throws","description":"The saving throws the creature is proficient in. Any other is the ability modifier.","stats":["companion:strength:save","companion:dexterity:save","companion:constitution:save","companion:intelligence:save","companion:wisdom:save","companion:charisma:save"],"showWhen":"{stat}:proficiency"},
+          {"id":"skills","label":"Skills","description":"The skills the creature is proficient in. Any other is the ability modifier.","stats":["companion:acrobatics","companion:animal handling","companion:arcana","companion:athletics","companion:deception","companion:history","companion:insight","companion:intimidation","companion:investigation","companion:medicine","companion:nature","companion:perception","companion:performance","companion:persuasion","companion:religion","companion:sleight of hand","companion:stealth","companion:survival"],"showWhen":"{stat}:proficiency"},
+          {"id":"senses","label":"Senses","stats":["companion:perception:passive"],"printed":[{"types":["Companion"],"setter":"senses","label":"As printed"}]},
+          {"id":"defences","label":"Defences and Languages","description":"As the creature’s stat block prints them.","printed":[{"types":["Companion"],"setter":"vulnerabilities","label":"Damage Vulnerabilities"},{"types":["Companion"],"setter":"resistances","label":"Damage Resistances"},{"types":["Companion"],"setter":"damage resistances","label":"Damage Resistances"},{"types":["Companion"],"setter":"immunities","label":"Damage Immunities"},{"types":["Companion"],"setter":"damage immunities","label":"Damage Immunities"},{"types":["Companion"],"setter":"conditionImmunities","label":"Condition Immunities"},{"types":["Companion"],"setter":"condition immunities","label":"Condition Immunities"},{"types":["Companion"],"setter":"languages","label":"Languages"}]},
+          {"id":"traits","label":"Traits","types":["Companion Trait"]},
+          {"id":"actions","label":"Actions","types":["Companion Action"]},
+          {"id":"reactions","label":"Reactions","types":["Companion Reaction"]}
+        ]
+      },
+
       "candidateNotes": [
         { "types": ["Spell"], "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }
       ],
