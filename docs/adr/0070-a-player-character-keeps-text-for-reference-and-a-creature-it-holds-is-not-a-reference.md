@@ -111,7 +111,9 @@ says what is in the file, and the character's panes say what is shown.
 
 ## What this does not do
 
-- **Show a player character's held creature.** Measured and not built: a held Owl, Steel Defender or Primal Companion
+- **~~Show a player character's held creature.~~** Done by
+  [ADR 0073](./0073-a-creature-a-character-holds-is-derived-one-at-a-time-in-its-holder-s-namespace-and-shown-as-its-own-stat-block.md),
+  each derived in a scope of its own. As first written: Measured and not built: a held Owl, Steel Defender or Primal Companion
   appears on no sheet section, and its stat block is setters and named elements, some reading the character's numbers.
   It is the "Companions and sidekicks" item, with its design question stated there.
 - **Give a 2014 druid's Wild Shape forms a text.** The 2014 beasts are structured creatures only (48 from the Player's

@@ -1,6 +1,6 @@
 # 0073 — A creature a character holds is derived one at a time in its holder's namespace, and shown as its own stat block
 
-**Status:** Accepted · 2026-09-29 · answers the question [0070](./0070-a-player-character-keeps-text-for-reference-and-a-creature-it-holds-is-not-a-reference.md)
+**Status:** Accepted · 2026-09-29 · implemented the same day · answers the question [0070](./0070-a-player-character-keeps-text-for-reference-and-a-creature-it-holds-is-not-a-reference.md)
 decision 3 left to the roadmap's "Companions and sidekicks", and splits that item · builds on
 [0003](./0003-system-agnostic-content-model.md), [0006](./0006-derived-character-state.md),
 [0012](./0012-self-contained-saves.md), [0022](./0022-kinds-contribute-systems-do-not-ship-content.md),
@@ -96,8 +96,9 @@ format is otherwise unchanged. A kind that declares none derives exactly as befo
 For every element the character holds of a declared type, the engine derives the character again with **every other
 held element of those types left out** (never added, so what only it gave is not reached either) and with the
 declaration's stats, starts, contributions and setter grants **added to the kind's**. That scope is published as
-`DerivedCharacter.companions` (`{ elementId, stats, starts, elements, problems }`, `problems` being what the scope finds
-that the holder's derivation does not).
+`DerivedCharacter.companions` (`{ elementId, stats, starts, elements, problems, withdrawn }`, `problems` being what the
+scope finds that the holder's derivation does not, and `withdrawn` what it withdrew by ADR 0071: the UA Ancient
+Companion's three "(X Only)" features are withdrawn in its scope, as they are on an NPC).
 
 This is content's own model, taken one creature at a time. Content writes a creature's numbers into its holder's
 derivation because they read the holder (a ranger's level, an artificer's Intelligence) and because the holder's own
@@ -114,9 +115,14 @@ creature's named features are held in its scope only: a ranger still does not ge
 On `pc` in `systems/dnd5e/system.json`, a system definition change with no game noun in core:
 
 - **The six scores start at the creature's print** (`companion:strength` … from its setters), with their modifiers.
-- **`companion:proficiency` is 2, unbucketed**: the value the four 2014 Owl samples show Aurora supplying, and the one
-  the class summons' own "-2 base companion PB removal" is written against (ADR 0062 read the same rule the same way).
-  With it a Steel Defender's bonus is its artificer's, as its stat block says.
+- **`companion:proficiency` is 2, in the bucket `proficiency`**: the value the four 2014 Owl samples show Aurora
+  supplying. The bucket is measured, not chosen for looks. Of the 12 creatures that supply their own bonus from their
+  holder's, and whose stat blocks all say it is the holder's, 8 write it in `base` and take away "the app's" 2 in a
+  bucket of their own, 3 Fizban's drakes write it in `proficiency`, and the Eberron homunculus writes it in `base` and
+  takes nothing away. Unbucketed (the first version, and ADR 0062's reading for the NPC), the drakes and the homunculus
+  read their holder's bonus **plus 2**: right for 8 of 12. In `proficiency` the drakes' own value replaces the 2 and
+  the 8 still take it away: right for 11. In `base` the 8 read 2 less: right for 1. Found by running the app, not by a
+  test: a Battle Smith's homunculus showed +5.
 - **Saves, skills and passive Perception** are the NPC's formulas (ADR 0062) under the creature's names:
   `companion:<ability>:save`, `companion:<skill>`, `companion:perception:passive`, each reading the creature's own
   `…:proficiency` and `…:misc`.
@@ -140,6 +146,12 @@ left out, each row with its label and value. The Sheet pane renders it after the
 what it keeps for reference, and computes nothing.
 
 ## What this does not do
+
+- **Show the Eberron homunculus's proficiency bonus right.** Its row reads its artificer's bonus plus 2, because its
+  content supplies the bonus in `base` and takes nothing away (above). Its skills, saves and passive Perception read
+  the artificer's bonus directly and are right. Upstream's to make consistent; the tests report it by name.
+- **Revisit the NPC's reading of the same rule.** ADR 0062 contributes the NPC's own bonus unbucketed, which the
+  measurement above says is right for 8 of the 12 class summons. Not measured on the NPC here, and not changed.
 
 - **Say which creature a holder's feature is for.** Improved Defender's +2 and the Ranger's Companion's bonuses are
   written against "the companion", and with two held each scope has them. Content does not say, and guessing from which
@@ -176,5 +188,50 @@ what it keeps for reference, and computes nothing.
 
 ## Evidence
 
-To be filled in when it is built: the tests, each with the perturbation that fails it; the oracle before and after on
-the same checkout; and the app, driven.
+Each test names the perturbation that fails it, and each perturbation was run.
+
+- `packages/core/src/companions.test.ts`, over a fixture with no game in it: a held creature's scope has its print, its
+  rules reading its holder, the declaration's contributions and derivations, and its holder's feature; what it names is
+  held in its scope only, and the holder's own derivation is the same with or without the declaration; two creatures
+  sum in the holder and each scope sees only its own, in the order held; a creature another element grants is left out
+  of the other's scope; what only the other creature gives is left out and what something else gives is not; a scope
+  reports what it finds and the holder does not; a save embeds what a creature names and derives the same scope from
+  it alone. Perturbed: seeds not excluded; grants not excluded (found live: every fixture creature was chosen, so no
+  test failed until one arrived by a grant); the collector not following the scope's setter grants; the scope's starts
+  not added; the scope's problems dropped.
+- `packages/ui/src/companions.test.ts`: nothing for a kind declaring none or a character holding none; a creature's
+  name, source, what gave it (a choice or a grant), labelled rows, printed lines and named features, read from its
+  scope; empty sections left out; two creatures each with their own numbers, and which rows show asked of each scope
+  (a cat's swim does not make the ox swim); a missing named feature said without its id; the builder publishing it.
+  Perturbed: labels not read; stats valued from the holder; rows shown by the holder's stats (found live: no case
+  told them apart until the cat swam); empty sections kept; what gave it not read; problems not read; not published.
+- `tools/verify/src/companions.test.ts`, against whatever the corpus holds: 5e's declaration validates, and one naming an
+  undeclared type or reading a setter off a type that is not a creature is refused; every creature held by a player
+  character has one scope, its six scores are its print, the numbers content's rules make are kept (5 that read their
+  own Constitution modifier are right only in the scope, and are reported), everything it names is held there or
+  withdrawn there and never by the holder, and every proficiency written against its bonus is at least 2; two
+  creatures held together each read what they read alone; a 2014 Battle Smith built through the builder has a Steel
+  Defender with 2 + Intelligence modifier + 5 × artificer level hit points and the artificer's bonus; every sample
+  holding a creature has its scope, and saved and reopened with no source derives the same. Perturbed: `companions`
+  removed from `pc`; its `setterStats`; its proficiency contribution; its setter grants (found live: the test read
+  what a creature names off the declaration it was testing, and passed without it; it reads the NPC's now); other
+  creatures not left out; the collector not following the scope's setter grants. Reported: against Aurora's recorded
+  `<companion>` block, the four 2014 Owl samples agree on every score, save and skill, and the 2025 Owl reads
+  Perception and Stealth +5 (its print) where Aurora recorded +1; 11 of the 12 bonus-supplying summons read their
+  holder's bonus.
+- `tools/verify/src/held-creatures.test.ts`: the measurement in the Context, report-only.
+- The oracle's thirty-sample table is identical before and after (`INCUDO_ORACLE_SNAPSHOT` on the base commit,
+  `INCUDO_ORACLE_BASELINE` on the change, same checkout, no `.env.local`), after the last system change; a baseline
+  with one difference removed fails, so the comparison was live. No player character derivation moved, as decision 2
+  says: the holder's own derivation is unchanged. `npm test` and `npm run typecheck` pass.
+- **Driven in the browser build** (an origin-private folder standing in for the folder picker). A level 5 Human Battle
+  Smith (Tasha's) with its Steel Defender and the Homunculus Servant infusion: the Sheet showed two stat blocks, the
+  defender at armour class 15, 27 hit points, speed 40 and +3, with Vigilant, Force-Empowered Rend, Repair and Deflect
+  Attack; the homunculus at 13, 6, 20 and fly 30, with Evasion, Force Strike and Channel Magic, each "From" the feature
+  that gave it. Saved, the source switched off and the page reloaded, the file reopened to the same companions text,
+  character for character. No console errors.
+- **Driven in the Tauri window on Windows** (a fresh WebView2 profile, the library a scratch folder, DOM clicks over the
+  debug port; no keystrokes, and not macOS or Linux). AuroraLegacy loaded through the host in about 60 s. The same
+  character built and saved; the file, read back from disk with the repository's zip codec, is character format 2
+  (unchanged), embeds all seven named features, holds none of them, and derived against only the save gives both
+  scopes (27 and 6 hit points). With the source switched off and the window reloaded, it reopened to the same text.

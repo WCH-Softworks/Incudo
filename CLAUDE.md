@@ -359,7 +359,8 @@ block printed only as prose beside it for reference**, shown and saved and never
 built by hand (ADR 0068). **What a description embeds is shown in place and saved with the character** (ADR 0069). **A player character keeps
 text for reference too, offered first what its own elements print, and a library card names what a character keeps**
 (ADR 0070). **A player character takes Tasha's optional class features, and one that replaces a feature replaces it** (ADRs
-0071, 0072).
+0071, 0072). **A creature a character holds is shown as its own stat block, its numbers derived from the character** (ADR
+0073).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -601,7 +602,7 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     recorded nowhere; kind-agnostic; the same with no source, since a save carries what its elements embed.
   - **`Companion` is deliberately not a `pc` reference type.** The player character already holds its creature, a
     reference derives nothing (29 creatures scale with their holder), and most have no text. Showing a *held* creature
-    is the roadmap's "Companions and sidekicks", measured and not built. Do not add `Companion` to `pc`'s references
+    is ADR 0073 (below), a scope per creature. Do not add `Companion` to `pc`'s references
     to get a familiar on the Sheet: it would be a second, unheld copy with the wrong numbers.
   - **A library card names what a character keeps**: `LibraryEntry.references` (`{ elementId, name }`, named from the
     save's embedded copy, else the id; absent when none) and `libraryEntryReferences(system, entry)`
@@ -676,6 +677,51 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     additional ability score items), each a declaration away and each wanting a look. Driven in the browser build and the
     Tauri window on Windows (DOM clicks over the debug port, the saved file read back from disk with no source); not with
     real input, and not on macOS or Linux.
+- **A creature a character holds is derived one at a time in its holder's namespace, and shown as its own stat block**
+  ([ADR 0073](docs/adr/0073-a-creature-a-character-holds-is-derived-one-at-a-time-in-its-holder-s-namespace-and-shown-as-its-own-stat-block.md)).
+  The roadmap's "Companions" half; sidekicks were split off (the corpus has no sidekick content). Things to know before
+  touching it:
+  - **Measured by `tools/verify/src/held-creatures.test.ts`** (report-only): content writes a held creature's numbers in
+    its holder's derivation, in the one namespace the NPC reads (`companion:`), reading the holder (a Steel Defender's hit
+    points, class levels) and added to by the holder's own features (Ranger's Companion, Improved Defender). The six
+    scores are setters only. It assumes one creature, as Aurora's app does, and 22 of the 26 creature selects do not keep
+    a character to one: a Battle Smith with the Homunculus Servant infusion holds two, and in the holder they **sum**.
+  - **`companions` on a kind** (system format, `formatVersion` 1): `types`, `label`, `description`, and what a
+    creature's scope adds, `stats`, `setterStats`, `contributions`, `setterGrants`, `sheet` (sections, ADR 0062's
+    fields included). Replaced along `extends`. `companionScopeKind` (`system.ts`) builds the scope's kind. The validator
+    refuses an undeclared type, a scope setter on a type that is not a creature, a section id twice, a `perBlock` section.
+  - **The engine derives each held creature again** (`deriveCharacter` → internal `derive` with an `exclude` set): every
+    other held creature is never added, as a seed or a grant, so what only it gives is not reached. Published as
+    `DerivedCharacter.companions` (`{ elementId, stats, starts, elements, problems, withdrawn }`, `problems` only what
+    the holder's derivation does not have). **The holder's own derivation is unchanged**: it still sums, as Aurora's
+    would, and nothing on its sheet reads the namespace. Do not "fix" the holder's `companion:*`; the scope is where one
+    creature is meant. A scope costs a full derivation (3 to 9 ms on the corpus), only for a character holding a creature.
+  - **What a creature names is held in its scope only** (the scope's `setterGrants`); `pc` still declares no
+    `setterGrants`, so the ranger does not get its beast's bite. `collectCharacterContent` follows the scope's setter
+    grants as it follows the kind's, so a save embeds them; a save written before this does not, and reopened with no
+    source its stat block says "One feature this creature names is not in any loaded source" per missing feature.
+  - **5e's `pc` declaration** (`systems/dnd5e/system.json`, no engine noun): `companion:<ability>` from the print with
+    modifiers; `companion:<ability>:save`, `companion:<skill>`, `companion:perception:passive` as the NPC's formulas;
+    labels for `companion:ac`, `hp:max`, `speed` and the other speeds; **`companion:proficiency` 2 in the bucket
+    `proficiency`**. That bucket is measured: of the 12 creatures supplying their own bonus from their holder's, 8 write
+    `base` and take away "the app's" 2 in a bucket of their own, 3 Fizban's drakes write `proficiency`, the Eberron
+    homunculus writes `base` and takes nothing away. Unbucketed is right for 8, `proficiency` for 11, `base` for 1. The
+    homunculus's bonus row reads +2 over (its skills are right). Found by running the app. The NPC (ADR 0062) still takes
+    its own bonus unbucketed; not revisited.
+  - **Aurora records the companion it shows**: every save has a `<companion>` block (scores, saves, skills; 25 samples
+    with no creature record 10s). The four samples holding the 2014 Owl agree with the scope on every score, save and
+    skill; the 2025 Owl reads Perception and Stealth +5, its print, where Aurora recorded +1. Reported by
+    `companions.test.ts`, not asserted, and not in the oracle.
+  - `packages/ui/src/companions.ts` is the view-model (`BuilderState.companions`): per creature, its name, what gave it
+    (the element whose choice holds it, or whose grant names it), its sections rendered by `renderSheetSection` against
+    its scope, empty ones left out. `Companions.tsx` renders it on the Sheet after the character, before its references.
+  - Tests: `packages/core/src/companions.test.ts`, `packages/ui/src/companions.test.ts`, `tools/verify/src/companions.test.ts`
+    (every creature by type; two held together; a Battle Smith through the builder; the samples reopened with no
+    source), each case failing under its named perturbation. The oracle is identical before and after.
+  - **Not done:** which creature a holder's feature is for when two are held (Improved Defender's +2 applies to both);
+    a creature's challenge rating for its bonus; `companion:attack`; tracking a creature's hit points. Driven in the
+    browser build and the Tauri window on Windows (DOM clicks over the debug port, the saved file read back from disk and
+    reopened with the source off); not with real input, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1334,7 +1380,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071 and 0072 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072 and 0073 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

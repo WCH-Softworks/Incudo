@@ -1194,13 +1194,32 @@ the kind machinery is not decorative.*
       build and in the Tauri window on Windows (a native file dialog, a real file on disk read back, reopened with the
       source off); running it made two removals opened with no source read as one line rather than two. **Not done:**
       macOS and Linux.
-- [ ] Companions and sidekicks. *Measured by ADR 0070:* a player character already **holds** a creature wherever
-      content gives one (26 selects in its own content, a familiar, a ranger's beast, a steel defender, a drake; 5 of
-      the 30 samples hold an Owl), and **no sheet section shows it**. Its stat block is setters and the traits and
-      actions they name (109 of 141 creatures carry no description), and 29 creatures, every one offered to a player
-      character, compute their numbers from whoever holds them (a Steel Defender's hit points follow its artificer's
-      level). So the design question is how a held creature is shown with numbers derived from its holder, not how it
-      is kept as text; decided there, not as a reference.
+- [x] **Show each creature a character holds as its own stat block, with numbers derived from the character**
+      ([ADR 0073](./docs/adr/0073-a-creature-a-character-holds-is-derived-one-at-a-time-in-its-holder-s-namespace-and-shown-as-its-own-stat-block.md)).
+      *Split from "Companions and sidekicks" by its measurement;* sidekicks are the next item. Measured first, as a
+      test: content writes a held creature's numbers in its holder's derivation, in one `companion:` namespace, reading
+      the holder (a Steel Defender's hit points, a class level) and added to by the holder's own features (Ranger's
+      Companion, Improved Defender); it never publishes the six scores (setters only), and supplies no proficiency bonus
+      for 129 of 141 creatures, so a held Owl was proficient in nothing. It assumes one creature, as Aurora's app does
+      ("a limitation of the app", in content), and only 4 of the 26 creature selects keep a character to one: a Battle
+      Smith with the Homunculus Servant infusion holds two, and they summed (armour class 28 where they are 13 and 15).
+      So each held creature is **derived in a scope of its own**: the character with the other creatures left out, plus
+      what the kind's new `companions` declaration adds (5e's player character: the six scores from the print,
+      modifiers, a proficiency bonus of 2, saves, skills, passive Perception, and the traits, actions and reactions it
+      names, held in its scope and never by the character). The Sheet shows each after the character's own sections,
+      with what gave it. The character's own derivation is unchanged, so no player character derivation and no oracle
+      row moved; no character format change. Aurora records a companion block in every save: the four samples holding
+      the 2014 Owl agree with it on every score, save and skill. Running it found the proficiency bonus's bucket: 11 of
+      the 12 class summons that supply their own read their holder's bonus. Driven in the browser build and in the
+      Tauri window on Windows, the saved file read back from disk and reopened with the source off. **Not done:** which
+      creature a holder's feature is for when two are held (Improved Defender's +2 applies to both); the Eberron
+      homunculus's bonus row (+2 over, upstream's content); a creature's challenge rating for its bonus (two
+      creatures above challenge 4); a creature's attack bonus (`companion:attack`); tracking a creature's hit points;
+      macOS and Linux.
+- [ ] Sidekicks. *Split from "Companions and sidekicks" by ADR 0073's measurement:* the corpus has no sidekick content
+      (one `Source` element for "Unearthed Arcana: Sidekicks", holding nothing), so there is nothing to read yet.
+      Content first, from upstream or a user's own file; then whether a sidekick is an NPC with a class track or a held
+      creature.
 - [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
       ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
       *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the
@@ -1242,10 +1261,10 @@ the kind machinery is not decorative.*
       elements print is suggested first**, with what prints it ("Bestial Spirit, in Summon Beast"), read with the
       embed reader of ADR 0069 and recorded nowhere, the same with no source. **A structured creature is not a
       reference**: the player character already holds one where content gives one, 29 of them scale with their
-      holder, and most carry no text (Companions and sidekicks, above). A library card names what a character keeps
+      holder, and most carry no text (shown as held since ADR 0073, above). A library card names what a character keeps
       ("For reference: Kraken, Rat, Bat and 1 more"). No player character derivation moved. Driven in the browser build
       and in the Tauri window on Windows, the saved file read back from disk and reopened with the source off.
-      **Not done:** a held creature on the sheet; a 2014 druid's Wild Shape forms (structured beasts only); a held
+      **Not done:** ~~a held creature on the sheet~~ (ADR 0073, above); a 2014 druid's Wild Shape forms (structured beasts only); a held
       element's own text on the Sheet; macOS and Linux.
 - [ ] Kind-specific sheets and exports
 
