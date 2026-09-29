@@ -262,8 +262,9 @@ export function packCharacter(
  * The file name a character is offered under: its name reduced to what every filesystem
  * accepts, plus `.incu`.
  */
-export function suggestedFileName(characterName: string): string {
-  return `${slug(characterName) || 'character'}.incu`;
+/** A file name for a character: its name as a slug, with `extension` (a library file's, unless told otherwise). */
+export function suggestedFileName(characterName: string, extension = 'incu'): string {
+  return `${slug(characterName) || 'character'}.${extension}`;
 }
 
 export class CharacterLibrary {
