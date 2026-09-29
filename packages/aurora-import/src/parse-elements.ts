@@ -245,6 +245,17 @@ function directSupports(node: XmlNode): string[] {
   return tags;
 }
 
+/**
+ * A `<set>`'s value is its text, entities decoded, unless it holds markup. It used to be the raw
+ * source slice every time, so `Mounts &amp; Vehicles` kept the entity (87 setters in the official
+ * corpus, all `&amp;`: an item category, a book's author and information). Two setters hold markup,
+ * a spell's casting time naming another spell in `<i>`, and `.text` would drop the italic word, so
+ * those stay the source as written, the way a description does.
+ */
+function setterValue(set: XmlNode): string {
+  return set.children.length > 0 ? set.innerXml || set.text : set.text;
+}
+
 function parseSetters(node: XmlNode | undefined): Record<string, Setter> {
   const out: Record<string, Setter> = {};
   if (!node) return out;
@@ -253,7 +264,7 @@ function parseSetters(node: XmlNode | undefined): Record<string, Setter> {
     if (!name) continue;
     const { name: _ignored, ...attrs } = set.attrs;
     out[name] = {
-      value: (set.innerXml || set.text).trim(),
+      value: setterValue(set).trim(),
       attrs: Object.keys(attrs).length ? attrs : undefined,
     };
   }

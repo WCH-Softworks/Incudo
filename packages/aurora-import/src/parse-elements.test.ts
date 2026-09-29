@@ -343,3 +343,21 @@ test('an <item>\'s text survives inline markup, in order — Ghosts of Saltmarsh
   const item = file.elements.find((e) => e.id === 'ID_BACKGROUND_SMUGGLER/list:Ideal/1')!;
   assert.equal(item.name, 'Wealth. Heaps of coins are the only true measure of success.');
 });
+
+test('a setter\'s value decodes entities as text does, and one holding markup keeps it', () => {
+  // The official corpus writes `Mounts &amp; Vehicles` as an item category and `D&amp;D` in a
+  // book's author and information; the value was the raw source, so the entity reached the value.
+  // A spell's casting time names another spell in <i>, which decoded text would drop.
+  const file = parse(`
+    <element name="Camel" type="Item" id="ID_CAMEL">
+      <setters>
+        <set name="category">Mounts &amp; Vehicles</set>
+        <set name="note">&lt;not markup&gt; &#38; <![CDATA[a & b]]></set>
+        <set name="time">1 reaction, when targeted by the <i>magic missile</i> spell</set>
+      </setters>
+    </element>`);
+  const setters = file.elements[0]!.setters;
+  assert.equal(setters['category']!.value, 'Mounts & Vehicles');
+  assert.equal(setters['note']!.value, '<not markup> & a & b');
+  assert.equal(setters['time']!.value, '1 reaction, when targeted by the <i>magic missile</i> spell');
+});
