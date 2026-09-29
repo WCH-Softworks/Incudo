@@ -8,8 +8,9 @@
 import type { CompanionsView, SheetSectionView } from '@incudo/ui';
 
 /**
- * A section's rows, printed lines and listed elements, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
- * the character's Sheet and each creature's stat block, which are built by the same function.
+ * A section's rows, listed elements and printed lines, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
+ * the character's Sheet and each creature's stat block, which are built by the same function. Elements before printed
+ * lines, so an NPC's Creature section names the creature before its size, type and alignment.
  */
 export function SheetRows({ section }: { section: SheetSectionView }): React.JSX.Element {
   return (
@@ -27,16 +28,6 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
           ))}
         </dl>
       )}
-      {section.printed.length > 0 && (
-        <dl className="sheet-printed">
-          {section.printed.map((line, index) => (
-            <div key={`${line.elementId}:${index}`}>
-              <dt>{line.label}</dt>
-              <dd>{line.text}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
       {section.elements.length > 0 && (
         <ul className="sheet-elements">
           {section.elements.map((element) => (
@@ -46,6 +37,16 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
             </li>
           ))}
         </ul>
+      )}
+      {section.printed.length > 0 && (
+        <dl className="sheet-printed">
+          {section.printed.map((line, index) => (
+            <div key={`${line.elementId}:${index}`}>
+              <dt>{line.label}</dt>
+              <dd>{line.text}</dd>
+            </div>
+          ))}
+        </dl>
       )}
     </>
   );

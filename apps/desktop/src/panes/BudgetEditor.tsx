@@ -230,12 +230,14 @@ export function BudgetEditor({
         // wrong over a monster's hit points.
         <p className="hint">{description}</p>
       ) : (
+      // Every kind of every system reaches this paragraph, so it names no game's rules: it used to say "your race,
+      // class, feats" and "in 5e an ability score stops at 20" on a Cairn character, found by building one (ADR 0074).
       <p className="hint">
-        <strong>Base</strong> is the score you set.
-        <strong> From elsewhere</strong> is what your race, class, feats and items add to it.
+        <strong>Base</strong> is the value you set.
+        <strong> From elsewhere</strong> is what the rest of the character adds to it.
         <strong> Total</strong> is base plus those, and it is the number your sheet uses. A
-        negative number in the middle column means your total has been capped — in 5e an ability
-        score stops at 20 unless something raises the limit.
+        negative number in the middle column means the total has been capped at a limit the
+        game sets.
       </p>
       )}
     </div>

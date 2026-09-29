@@ -38,7 +38,7 @@ function system(): GameSystem {
     id: 'test',
     name: 'Test System',
     version: '1.0.0',
-    elementTypes: [{ name: 'Gadget' }, { name: 'Nothing' }],
+    elementTypes: [{ name: 'Gadget' }, { name: 'Charm' }, { name: 'Nothing' }],
     stats: [
       { name: 'grit', label: 'Grit', default: 14 },
       {
@@ -55,7 +55,7 @@ function system(): GameSystem {
         name: 'Tinker',
         default: true,
         progression: { kind: 'none' },
-        elementTypes: ['Gadget', 'Nothing'],
+        elementTypes: ['Gadget', 'Charm', 'Nothing'],
         blockStats: [
           { stat: '{name}:dc', value: num(12), label: 'Rune DC' },
           { stat: '{name}:bonus', value: num(4), label: 'Rune Bonus', signed: true },
@@ -69,7 +69,7 @@ function system(): GameSystem {
             { id: 'scores', label: 'Scores', stats: ['grit'], beside: '{stat}:mod' },
             { id: 'other', label: 'Other', stats: ['luck', 'untitled'] },
             { id: 'runes', label: 'Runes', perBlock: true, stats: ['{name}:dc', '{name}:bonus', '{name}:raw'] },
-            { id: 'gear', label: 'Gear', types: ['Gadget'] },
+            { id: 'gear', label: 'Gear', types: ['Charm', 'Gadget'] },
             { id: 'empty', label: 'Empty', types: ['Nothing'] },
           ],
         },
@@ -82,12 +82,13 @@ const rune = element('RUNE', 'Rune', {}, { spellcasting: [{ name: 'Runesmith', a
 const lamp = element('LAMP', 'Lamp');
 const toggle = element('SWITCH', 'Switch', { hidden: 'true' });
 const gem = element('GEM', 'Gem', {}, { requirements: { kind: 'has', id: 'NOPE' } });
+const charm = element('CHARM', 'Charm', {}, { type: 'Charm' });
 const index = new MapElementIndex();
-for (const e of [rune, lamp, toggle, gem]) index.add(e);
+for (const e of [rune, lamp, toggle, gem, charm]) index.add(e);
 
 function tinker(): Character {
   const character = createCharacter('test', 'tinker');
-  character.choices = [{ ruleKey: 'build/gear', elementIds: ['RUNE', 'LAMP', 'SWITCH'] }];
+  character.choices = [{ ruleKey: 'build/gear', elementIds: ['RUNE', 'LAMP', 'SWITCH', 'CHARM'] }];
   return character;
 }
 
@@ -132,16 +133,18 @@ test('a value is written as text, a signed number or a number, and a missing one
   assert.equal(formatStatValue(stat(5), false), '5');
 });
 
-// Fails if the sheet lists every held element (the hidden switch appears), if an empty section is kept, or if the unmet
-// marker is not read.
-test('a section lists what the sheet may list, marks what is unmet, and one with nothing to show is left out', () => {
+// Fails if the sheet lists every held element (the hidden switch appears), if an empty section is kept, if the unmet
+// marker is not read, or if the elements are listed in the order held rather than the order of the section's types
+// (the charm, held last, is of the section's first type).
+test("a section lists what the sheet may list, by its types' order, marks what is unmet, and one with nothing is left out", () => {
   assert.deepEqual(section('gear')!.elements, [
+    { elementId: 'CHARM', name: 'Charm' },
     { elementId: 'RUNE', name: 'Rune' },
     { elementId: 'LAMP', name: 'Lamp' },
   ]);
   assert.equal(section('empty'), undefined);
   const marked = sheet(new Set(['LAMP'])).sections.find((s) => s.id === 'gear')!;
-  assert.deepEqual(marked.elements[1], { elementId: 'LAMP', name: 'Lamp', prerequisitesUnmet: true });
+  assert.deepEqual(marked.elements[2], { elementId: 'LAMP', name: 'Lamp', prerequisitesUnmet: true });
   assert.equal(sheet().kindName, 'Tinker');
 });
 

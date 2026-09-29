@@ -114,8 +114,11 @@ export function sheetSections(
           ...(besideKey ? { beside: formatStatValue(resolved(besideKey), stats.get(besideKey.toLowerCase())?.signed === true) } : {}),
         };
       });
+      // In the order the section names its types, as a printed sheet's header reads race, class, background; within a
+      // type, in the order the character holds them.
       const elements = listed
         .filter((e) => rendering.types.includes(e.type))
+        .sort((a, b) => rendering.types.indexOf(a.type) - rendering.types.indexOf(b.type))
         .map((e): SheetListedElement => ({ elementId: e.id, name: e.name, ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}) }));
       if (!rows.length && !rendering.printed.length && !elements.length) continue;
       views.push({
