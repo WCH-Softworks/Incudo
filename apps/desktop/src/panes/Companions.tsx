@@ -5,7 +5,51 @@
  * rows, labels and values, and what gave each creature are decided there, against the creature's own scope.
  */
 
-import type { CompanionsView } from '@incudo/ui';
+import type { CompanionsView, SheetSectionView } from '@incudo/ui';
+
+/**
+ * A section's rows, printed lines and listed elements, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
+ * the character's Sheet and each creature's stat block, which are built by the same function.
+ */
+export function SheetRows({ section }: { section: SheetSectionView }): React.JSX.Element {
+  return (
+    <>
+      {section.rows.length > 0 && (
+        <dl>
+          {section.rows.map((row) => (
+            <div key={row.stat}>
+              <dt>{row.label}</dt>
+              <dd>
+                {row.value}
+                {row.beside !== undefined && <span className="sheet-beside"> ({row.beside})</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {section.printed.length > 0 && (
+        <dl className="sheet-printed">
+          {section.printed.map((line, index) => (
+            <div key={`${line.elementId}:${index}`}>
+              <dt>{line.label}</dt>
+              <dd>{line.text}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {section.elements.length > 0 && (
+        <ul className="sheet-elements">
+          {section.elements.map((element) => (
+            <li key={element.elementId}>
+              {element.name}
+              {element.prerequisitesUnmet && <span className="hint"> (prerequisites not met)</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
 
 export function Companions({ view }: { view: CompanionsView }): React.JSX.Element {
   return (
@@ -28,33 +72,7 @@ export function Companions({ view }: { view: CompanionsView }): React.JSX.Elemen
             <div key={section.id} className="sheet-companion-section">
               <h5>{section.label}</h5>
               {section.description && <p className="hint">{section.description}</p>}
-              {section.rows.length > 0 && (
-                <dl>
-                  {section.rows.map((row) => (
-                    <div key={row.stat}>
-                      <dt>{row.label}</dt>
-                      <dd>{row.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {section.printed.length > 0 && (
-                <dl className="sheet-printed">
-                  {section.printed.map((line, index) => (
-                    <div key={`${line.elementId}:${index}`}>
-                      <dt>{line.label}</dt>
-                      <dd>{line.text}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {section.elements.length > 0 && (
-                <ul className="sheet-elements">
-                  {section.elements.map((element) => (
-                    <li key={element.elementId}>{element.name}</li>
-                  ))}
-                </ul>
-              )}
+              <SheetRows section={section} />
             </div>
           ))}
         </article>

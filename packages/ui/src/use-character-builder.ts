@@ -116,6 +116,7 @@ import { customFeaturesState, type CustomFeaturesState } from './custom-features
 import { additionOptions, additionsState, type AdditionOption, type AdditionsState } from './additions.ts';
 import { referenceOptions, referencesState, type ReferencesState } from './references.ts';
 import { companionsView, type CompanionsView } from './companions.ts';
+import { sheetView, type SheetView } from './sheet.ts';
 import {
   equipOffer,
   equipTaken,
@@ -316,6 +317,11 @@ export interface BuilderState {
    * 0073. Undefined when the kind declares none or the character holds none.
    */
   companions?: CompanionsView;
+  /**
+   * The character's own sheet as it is drawn: its kind's sections, each row labelled and written, empty sections left
+   * out — ADR 0074. What the user added with its prerequisites unmet is marked, as `additions` says.
+   */
+  sheet: SheetView;
   /**
    * What the derivation withdrew because its own requirements are false (ADR 0071), named — ADR 0072. Taking a feature
    * that replaces another withdraws the other, and Build lists it here rather than letting it disappear.
@@ -1575,6 +1581,7 @@ export class CharacterBuilder {
       };
     });
 
+    const additions = additionsState(this.character, derived, this.kind, this.system, this.elements);
     return {
       character: this.character,
       derived,
@@ -1593,10 +1600,12 @@ export class CharacterBuilder {
       },
       holderGrants: this.holderGrants(derived),
       customFeatures: customFeaturesState(this.character, derived, this.kind, this.system),
-      additions: additionsState(this.character, derived, this.kind, this.system, this.elements),
+      additions,
       withdrawn: withdrawnRows(derived, this.elements),
       references: referencesState(this.character, this.kind, this.elements, derived.elements),
       companions: companionsView(derived, this.kind, this.elements),
+      // What the user added whose prerequisites are not met (ADR 0064) is on the sheet like anything held, and marked.
+      sheet: sheetView(derived, this.kind, new Set(additions.rows.filter((row) => !row.prerequisitesMet).map((row) => row.elementId))),
       focusedId: this.focusedId,
     };
   }

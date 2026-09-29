@@ -7,8 +7,8 @@ Phase 5 · builds on [0003](./0003-system-agnostic-content-model.md), [0009](./0
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
 [0062](./0062-an-npc-s-other-speeds-saves-and-skills-are-its-creature-s-rules-and-its-senses-are-what-it-prints.md),
 [0073](./0073-a-creature-a-character-holds-is-derived-one-at-a-time-in-its-holder-s-namespace-and-shown-as-its-own-stat-block.md) ·
-**format:** three optional fields in the system format, `signed` on a stat, `label` on a `blockStats` entry and `beside`
-on a sheet section (`formatVersion` stays 1); no character format change
+**format:** three optional fields in the system format, `signed` on a stat or a `blockStats` entry, `label` on a
+`blockStats` entry and `beside` on a sheet section (`formatVersion` stays 1); no character format change
 
 ## Context
 
@@ -93,8 +93,9 @@ A row's label is its stat's `label`; **a per-block row's is its `blockStats` ent
 Wizard's block reads "Spell Save DC" and "Spell Attack Bonus". A row nothing labels still falls back to its key rather
 than disappearing, because a user's system (ADR 0011) may have one; every shipped kind is held to having none by a test.
 
-**A stat may be `signed`** (new, optional): a bonus is written with its sign, "+2", "+0", "-1", wherever it is shown.
-It is display and evaluates nothing. **A section may say what is shown `beside` each row** (new, optional): a stat
+**A stat may be `signed`** (new, optional), and so may a `blockStats` entry: a bonus is written with its sign, "+2",
+"+0", "-1", wherever it is shown, so a spell attack bonus reads "+7" and a save DC "15". It is display and evaluates
+nothing. **A section may say what is shown `beside` each row** (new, optional): a stat
 template with `{stat}` for the row, as `showWhen` has (ADR 0062), so a score reads "18 (+4)". A `beside` key the kind
 does not declare is refused by the validator, as a row's stat is.
 

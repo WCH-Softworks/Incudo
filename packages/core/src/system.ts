@@ -171,6 +171,8 @@ export interface BlockStatDef {
    * definition declares, so this is where their label lives; the section's own label already names the block.
    */
   label?: string;
+  /** A bonus, written with its sign where a sheet shows it, as {@link StatDef.signed} — ADR 0074. */
+  signed?: boolean;
 }
 
 /**

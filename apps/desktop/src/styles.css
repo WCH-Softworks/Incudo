@@ -479,6 +479,12 @@ ul.problems li.error {
   margin-top: 6px;
 }
 
+/* What a row shows beside its value, a score's modifier: secondary to the value it qualifies. */
+.sheet-beside {
+  color: var(--fg-muted);
+  font-weight: normal;
+}
+
 .sheet-elements {
   list-style: none;
   margin: 6px 0 0;

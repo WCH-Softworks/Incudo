@@ -5,24 +5,14 @@
  * `kind.sheet` (ADR 0009), which is why the same component renders a monster stat block — and
  * why a system that has never heard of armour class gets a sheet rather than a blank pane.
  *
- * `perBlock` sections are the one piece of cleverness, and they are ADR 0020's: a section can
- * name `{name}:spellcasting:dc`, which no system definition can spell out because the key comes
- * from content. It expands to one rendering per block the character's elements declare. Which
- * rows a section shows (`showWhen`) and the text it prints from a held element (`printed`) are
- * decided in core as well (ADR 0062); this renders what comes back.
+ * What each section shows, what each row is called and how its value is written are decided in
+ * `packages/ui/src/sheet.ts` (ADR 0074), over core's `renderSheetSection` (ADRs 0020, 0062); this
+ * draws `BuilderState.sheet` and computes nothing.
  */
 
 import type { BuilderState, CharacterBuilder } from '@incudo/ui';
 import { ReferenceText } from './References.tsx';
-import { Companions } from './Companions.tsx';
-import {
-  collectDeclaredBlocks,
-  renderSheetSection,
-  sheetListedElements,
-  sheetSectionIsEmpty,
-  type ResolvedStat,
-  type SheetReader,
-} from '@incudo/core';
+import { Companions, SheetRows } from './Companions.tsx';
 
 export function SheetPane({
   builder,
@@ -31,26 +21,7 @@ export function SheetPane({
   builder: CharacterBuilder;
   state: BuilderState;
 }): React.JSX.Element {
-  const { derived, kind } = state;
-  // An item the system marks hidden is held and saved, and not listed (ADR 0072): it is a switch a character equips
-  // to enable a feature, and the feature is what the sheet lists.
-  const listed = sheetListedElements(derived.elements, kind);
-  const blocks = collectDeclaredBlocks(derived.elements);
-  const reader: SheetReader = {
-    statValue: (key) => derived.stats.get(key.toLowerCase())?.value,
-    elements: derived.elements,
-  };
-
-  const valueOf = (key: string): string => {
-    const stat: ResolvedStat | undefined = derived.stats.get(key.toLowerCase());
-    if (!stat) return '—';
-    return stat.text ?? String(stat.value);
-  };
-  // What the user added whose prerequisites are not met (ADR 0064): on the sheet like anything held, and marked.
-  const unmet = new Set(state.additions.rows.filter((row) => !row.prerequisitesMet).map((row) => row.elementId));
-  const labelOf = (key: string): string =>
-    kind.stats.find((s) => s.name.toLowerCase() === key.toLowerCase())?.label ?? key;
-
+  const { sheet } = state;
   return (
     <main className="pane sheet">
       <input
@@ -60,52 +31,16 @@ export function SheetPane({
         onChange={(event) => builder.setName(event.target.value)}
       />
       <p className="lede">
-        {kind.name} · {derived.elements.length} elements
+        {sheet.kindName} · {sheet.elementCount} elements
       </p>
 
-      {kind.sheet.sections
-        .flatMap((section) => renderSheetSection(section, blocks, reader))
-        .map((rendering) => {
-          if (sheetSectionIsEmpty(rendering, listed)) return null;
-          const elements = listed.filter((e) => rendering.types.includes(e.type));
-
-          return (
-            <section key={rendering.id} className="sheet-section">
-              <h3>{rendering.label}</h3>
-              {rendering.description && <p className="hint">{rendering.description}</p>}
-              {rendering.stats.length > 0 && (
-                <dl>
-                  {rendering.stats.map((key) => (
-                    <div key={key}>
-                      <dt>{rendering.blockName ? key : labelOf(key)}</dt>
-                      <dd>{valueOf(key)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {rendering.printed.length > 0 && (
-                <dl className="sheet-printed">
-                  {rendering.printed.map((line, index) => (
-                    <div key={`${line.elementId}:${index}`}>
-                      <dt>{line.label}</dt>
-                      <dd>{line.text}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {elements.length > 0 && (
-                <ul className="sheet-elements">
-                  {elements.map((element) => (
-                    <li key={element.id}>
-                      {element.name}
-                      {unmet.has(element.id) && <span className="hint"> (prerequisites not met)</span>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          );
-        })}
+      {sheet.sections.map((section) => (
+        <section key={section.id} className="sheet-section">
+          <h3>{section.label}</h3>
+          {section.description && <p className="hint">{section.description}</p>}
+          <SheetRows section={section} />
+        </section>
+      ))}
 
       {/* Each creature the character holds, as its own stat block (ADR 0073): after the character, before what it keeps. */}
       {state.companions && <Companions view={state.companions} />}

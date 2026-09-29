@@ -537,6 +537,10 @@
           "type": "string",
           "minLength": 1,
           "description": "What a sheet row showing this stat is called (ADR 0074). A perBlock section's rows are keys no system definition declares, so their label lives here; the section's own label names the block."
+        },
+        "signed": {
+          "type": "boolean",
+          "description": "A bonus, written with its sign where a sheet shows it, as a stat's own `signed` (ADR 0074)."
         }
       }
     },

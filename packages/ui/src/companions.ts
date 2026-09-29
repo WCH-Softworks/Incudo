@@ -2,38 +2,27 @@
  * The creatures a character holds, each as its own stat block — ADR 0073.
  *
  * The engine derives each held creature in a scope of its own (`DerivedCharacter.companions`); this reads the kind's
- * `companions` sections against that scope with core's `renderSheetSection`, so the Sheet pane renders rows and
+ * `companions` sections against that scope with the sheet's own `sheetSections` (ADR 0074), so a creature's rows are
+ * labelled, written and shown beside one another exactly as the character's are, and the Sheet pane renders rows and
  * computes nothing. Kind-agnostic: every label, stat and type comes from the system.
  */
 
 import {
-  renderSheetSection,
   type CompanionDerivation,
   type DerivedCharacter,
   type ElementId,
   type ElementIndex,
-  type PrintedSheetLine,
   type ResolvedCharacterKind,
-  type SheetReader,
   type SheetSectionDef,
 } from '@incudo/core';
 
+import { sheetSections, type SheetRow, type SheetSectionView, type SheetVocabulary } from './sheet.ts';
+
 /** A stat row, labelled and valued as the sheet shows it. */
-export interface CompanionStatRow {
-  stat: string;
-  label: string;
-  value: string;
-}
+export type CompanionStatRow = SheetRow;
 
 /** One section of a creature's stat block, with nothing left to decide. */
-export interface CompanionSection {
-  id: string;
-  label: string;
-  description?: string;
-  rows: CompanionStatRow[];
-  printed: PrintedSheetLine[];
-  elements: Array<{ elementId: ElementId; name: string }>;
-}
+export type CompanionSection = SheetSectionView;
 
 /** One held creature. */
 export interface CompanionView {
@@ -64,11 +53,9 @@ export function companionsView(
 ): CompanionsView | undefined {
   const declaration = kind.companions;
   if (!declaration || derived.companions.length === 0) return undefined;
-  const labels = new Map<string, string>();
-  for (const def of [...kind.stats, ...(declaration.stats ?? [])]) {
-    if (def.label !== undefined) labels.set(def.name.toLowerCase(), def.label);
-  }
-  const creatures = derived.companions.map((scope) => creatureView(scope, derived, declaration.sheet ?? [], labels, index));
+  // A scope's stats are the kind's and the declaration's (ADR 0073), and a creature's sections iterate no blocks.
+  const vocabulary: SheetVocabulary = { stats: [...kind.stats, ...(declaration.stats ?? [])], blockStats: [] };
+  const creatures = derived.companions.map((scope) => creatureView(scope, derived, declaration.sheet ?? [], vocabulary, index));
   return {
     label: declaration.label ?? 'Companions',
     ...(declaration.description !== undefined ? { description: declaration.description } : {}),
@@ -80,36 +67,12 @@ function creatureView(
   scope: CompanionDerivation,
   derived: DerivedCharacter,
   sheet: readonly SheetSectionDef[],
-  labels: Map<string, string>,
+  vocabulary: SheetVocabulary,
   index: ElementIndex,
 ): CompanionView {
   const creature = scope.elements.find((e) => e.id === scope.elementId) ?? index.get(scope.elementId);
-  const reader: SheetReader = {
-    statValue: (key) => scope.stats.get(key.toLowerCase())?.value,
-    elements: scope.elements,
-  };
-  const valueOf = (key: string): string => {
-    const stat = scope.stats.get(key.toLowerCase());
-    return stat ? (stat.text ?? String(stat.value)) : '—';
-  };
-  const sections: CompanionSection[] = [];
-  for (const section of sheet) {
-    for (const rendering of renderSheetSection(section, [], reader)) {
-      const elements = scope.elements
-        .filter((e) => rendering.types.includes(e.type))
-        .map((e) => ({ elementId: e.id, name: e.name }));
-      const rows = rendering.stats.map((stat) => ({ stat, label: labels.get(stat.toLowerCase()) ?? stat, value: valueOf(stat) }));
-      if (!rows.length && !rendering.printed.length && !elements.length) continue;
-      sections.push({
-        id: rendering.id,
-        label: rendering.label,
-        ...(rendering.description !== undefined ? { description: rendering.description } : {}),
-        rows,
-        printed: rendering.printed,
-        elements,
-      });
-    }
-  }
+  // No blocks: a creature's sections are refused `perBlock` by the validator, so a scope's declared blocks are unread.
+  const sections = sheetSections(sheet, { stats: scope.stats, elements: scope.elements }, vocabulary);
   return {
     elementId: scope.elementId,
     name: creature?.name ?? scope.elementId,
