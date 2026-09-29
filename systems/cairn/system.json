@@ -20,6 +20,11 @@
     { "name": "slots", "label": "Inventory Slots", "default": 10 }
   ],
 
+  "generationMethods": [
+    { "id": "scores", "label": "Enter manually", "min": 3, "max": 18 },
+    { "id": "protection", "label": "Enter manually", "min": 1, "max": 6 }
+  ],
+
   "characterKinds": [
     {
       "id": "adventurer",
@@ -31,13 +36,17 @@
       "elementTypes": ["Background", "Trait", "Item", "Spellbook"],
 
       "buildSteps": [
-        { "id": "abilities", "label": "Abilities", "types": [], "required": true },
+        { "id": "abilities", "label": "Abilities", "types": [], "required": true, "description": "Roll 3d6 for each, in order, and enter what you rolled.",
+          "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "willpower"], "methods": ["scores"] } },
+        { "id": "protection", "label": "Hit Protection", "types": [], "required": true, "description": "Roll 1d6 and enter what you rolled.",
+          "budget": { "stat": "protection points", "targets": ["hp"], "methods": ["protection"] } },
         { "id": "background", "label": "Background", "types": ["Background"], "required": true },
         { "id": "gear", "label": "Gear", "types": ["Item", "Spellbook"] }
       ],
 
       "sheet": {
         "sections": [
+          { "id": "background", "label": "Background", "types": ["Background"] },
           { "id": "abilities", "label": "Abilities", "stats": ["strength", "dexterity", "willpower", "hp"] },
           { "id": "inventory", "label": "Inventory", "stats": ["slots"], "types": ["Item", "Spellbook"] },
           { "id": "traits", "label": "Traits", "types": ["Trait"] }
