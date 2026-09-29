@@ -1204,6 +1204,12 @@ export interface CharacterKindDef {
    * and a reference recorded on such a character is listed as not available and shows nothing.
    */
   references?: ReferencesDef;
+  /**
+   * The creatures a character of this kind holds, each derived in a scope of its own, and what that scope adds —
+   * ADR 0073. Replaced rather than merged along an `extends` chain, like `references`. A kind without it derives no
+   * scope, and a creature it holds is held as any other element.
+   */
+  companions?: CompanionsDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
 }
@@ -1243,6 +1249,35 @@ export interface ReferencesDef {
   label?: string;
   /** User-facing prose shown where a reference is chosen: what keeping one means in this system. */
   description?: string;
+}
+
+/**
+ * The creatures a character of a kind holds, and what the character's derivation adds when it is seen from one of them
+ * — ADR 0073.
+ *
+ * Content writes a held creature's numbers in its holder's derivation, because they read the holder and the holder's
+ * features add to them, and assumes there is one. For each held element of `types` the engine derives the character
+ * again with every other held element of those types left out, and with these stats, starts, contributions and setter
+ * grants added to the kind's: that is the creature's scope. The sheet sections are read against it. Core names no
+ * type, stat or setter; the system says all of them.
+ */
+export interface CompanionsDef {
+  /** The element types a held creature is. */
+  types: ElementType[];
+  /** User-facing heading over the creatures, where they are shown. */
+  label?: string;
+  /** User-facing prose under that heading: what is shown and where its numbers come from. */
+  description?: string;
+  /** Stats declared in the scope, as a kind declares them; a stat of the kind's with the same name is replaced. */
+  stats?: StatDef[];
+  /** Setters on held elements that are where a stat starts in the scope (ADR 0057), after the kind's. */
+  setterStats?: SetterStatDef[];
+  /** What the scope contributes, after the kind's (ADR 0022). */
+  contributions?: ContributionDef[];
+  /** Setters on held elements that name what the creature holds in its scope (ADR 0058), after the kind's. */
+  setterGrants?: SetterGrantDef[];
+  /** The sections a creature's stat block shows, read against its scope. */
+  sheet?: SheetSectionDef[];
 }
 
 /** A {@link CharacterKindDef} with its `extends` chain applied and defaults filled in. */
@@ -1285,6 +1320,8 @@ export interface ResolvedCharacterKind {
   additions?: AdditionsDef;
   /** Which types a character of this kind may keep beside it as a reference — ADR 0068. */
   references?: ReferencesDef;
+  /** The creatures a character of this kind holds, each derived in a scope of its own — ADR 0073. */
+  companions?: CompanionsDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
   buildSteps: BuildStepDef[];
@@ -1472,6 +1509,7 @@ export function resolveCharacterKind(
   let customFeatures: CustomFeaturesDef | undefined;
   let additions: AdditionsDef | undefined;
   let references: ReferencesDef | undefined;
+  let companions: CompanionsDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
@@ -1499,6 +1537,7 @@ export function resolveCharacterKind(
     if (layer.customFeatures !== undefined) customFeatures = layer.customFeatures;
     if (layer.additions !== undefined) additions = layer.additions;
     if (layer.references !== undefined) references = layer.references;
+    if (layer.companions !== undefined) companions = layer.companions;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
@@ -1527,9 +1566,31 @@ export function resolveCharacterKind(
     customFeatures,
     additions,
     references,
+    companions,
     candidateNotes,
     buildSteps,
     sheet,
+  };
+}
+
+/**
+ * The kind a held creature's scope is derived with — ADR 0073: the kind, with the companion declaration's stats (by
+ * name, replacing the kind's), starts, contributions and setter grants added, and no companions of its own, so a scope
+ * derives none. Undefined for a kind that declares none.
+ */
+export function companionScopeKind(kind: ResolvedCharacterKind): ResolvedCharacterKind | undefined {
+  const companions = kind.companions;
+  if (!companions) return undefined;
+  const stats = new Map<string, StatDef>();
+  for (const stat of kind.stats) stats.set(stat.name.toLowerCase(), stat);
+  for (const stat of companions.stats ?? []) stats.set(stat.name.toLowerCase(), stat);
+  return {
+    ...kind,
+    stats: [...stats.values()],
+    setterStats: [...kind.setterStats, ...(companions.setterStats ?? [])],
+    contributions: [...kind.contributions, ...(companions.contributions ?? [])],
+    setterGrants: [...kind.setterGrants, ...(companions.setterGrants ?? [])],
+    companions: undefined,
   };
 }
 

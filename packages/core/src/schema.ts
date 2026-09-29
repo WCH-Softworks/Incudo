@@ -457,6 +457,38 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       }
     }
 
+    // A creature type nothing declares is never held, and a scope setter on a type that is not a creature reads an
+    // element the scope does not show: both are a typo nobody would see at runtime (ADR 0073).
+    const companions = resolved.companions;
+    if (companions) {
+      for (const type of companions.types) {
+        if (!typeNames.has(type)) {
+          errors.push({ path: `${where}.companions.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+        }
+      }
+      const creatureTypes = new Set(companions.types);
+      for (const [field, entries] of [
+        ['setterStats', companions.setterStats ?? []],
+        ['setterGrants', companions.setterGrants ?? []],
+      ] as const) {
+        for (const entry of entries) {
+          for (const type of entry.types) {
+            if (!creatureTypes.has(type)) {
+              errors.push({ path: `${where}.companions.${field}`, message: `reads a "${type}", which is not one of the companion types` });
+            }
+          }
+        }
+      }
+      const ids = new Set<string>();
+      for (const section of companions.sheet ?? []) {
+        if (ids.has(section.id)) errors.push({ path: `${where}.companions.sheet`, message: `declares the section "${section.id}" twice` });
+        ids.add(section.id);
+        if (section.perBlock) {
+          errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" is perBlock, which a creature's stat block does not read` });
+        }
+      }
+    }
+
     // A custom feature held as a type nothing declares is listed nowhere, and one whose default the list leaves out
     // would be held as a type no picker offers (ADR 0065).
     const customFeatures = resolved.customFeatures;

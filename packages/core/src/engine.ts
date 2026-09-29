@@ -38,6 +38,7 @@ import {
   collectDeclaredBlocks,
   expandBlockFilter,
   progressionStat,
+  companionScopeKind,
   resolveCharacterKind,
   substituteBlockPlaceholders,
   trackStatKey,
@@ -273,6 +274,26 @@ export interface DerivedCharacter {
    * Explorer" is content working as written. Only ever a granted element; a seed is never withdrawn.
    */
   withdrawn: WithdrawnElement[];
+  /**
+   * Each creature the character holds, derived in a scope of its own — ADR 0073: the character with every other held
+   * element of the kind's companion types left out, and the companion declaration's stats, starts, contributions and
+   * setter grants added. In the order the creatures are held. Empty for a kind that declares no companions.
+   */
+  companions: CompanionDerivation[];
+}
+
+/** One held creature's scope — ADR 0073. */
+export interface CompanionDerivation {
+  /** The creature. */
+  elementId: ElementId;
+  /** Every stat of the scope, the holder's included, as the holder's own are published. */
+  stats: Map<StatKey, ResolvedStat>;
+  /** Where the scope's stats started, as {@link DerivedCharacter.starts}. */
+  starts: Map<StatKey, StatStart>;
+  /** Everything the scope holds: the holder's elements less the other creatures, and what the creature names. */
+  elements: Element[];
+  /** What the scope finds that the holder's derivation does not: a feature the creature names and nothing declares. */
+  problems: Problem[];
 }
 
 /** A granted element its own requirements rule out, and every held element that granted it — ADR 0071. */
@@ -296,6 +317,47 @@ export function deriveCharacter(
   system: GameSystem,
   content: ElementIndex,
   options: DeriveOptions = {},
+): DerivedCharacter {
+  const kind = options.kind ?? resolveCharacterKind(system, recorded.kind);
+  const derived = derive(recorded, system, content, { ...options, kind }, NO_EXCLUSIONS);
+  const scopeKind = companionScopeKind(kind);
+  if (!scopeKind) return derived;
+  const types = new Set(kind.companions!.types);
+  const held = derived.elements.filter((element) => types.has(element.type));
+  if (!held.length) return derived;
+  // Each creature seen alone (ADR 0073). The others are never added, so what only they gave is not reached either;
+  // everything else is derived exactly as the holder is, which is what lets a creature's rules read its holder.
+  const seen = new Set(derived.problems.map(problemKey));
+  derived.companions = held.map((creature) => {
+    const others = new Set(held.filter((other) => other.id !== creature.id).map((other) => other.id));
+    const scope = derive(recorded, system, content, { ...options, kind: scopeKind }, others);
+    return {
+      elementId: creature.id,
+      stats: scope.stats,
+      starts: scope.starts,
+      elements: scope.elements,
+      problems: scope.problems.filter((problem) => !seen.has(problemKey(problem))),
+    };
+  });
+  return derived;
+}
+
+const NO_EXCLUSIONS: ReadonlySet<ElementId> = new Set();
+
+function problemKey(problem: Problem): string {
+  return JSON.stringify([problem.code, problem.elementId ?? '', problem.message]);
+}
+
+/**
+ * The derivation itself. `exclude` is what a creature's scope leaves out (ADR 0073): an id in it is never added, as a
+ * seed or a grant, so nothing it would have reached is reached through it.
+ */
+function derive(
+  recorded: Character,
+  system: GameSystem,
+  content: ElementIndex,
+  options: DeriveOptions,
+  exclude: ReadonlySet<ElementId>,
 ): DerivedCharacter {
   const maxPasses = options.maxPasses ?? MAX_PASSES;
   const problems: Problem[] = [];
@@ -426,6 +488,7 @@ export function deriveCharacter(
     // element the previous pass withdrew: that pool is closed, and the record waits for the element (ADR 0071).
     const seeds = openSeeds(chosenIds, fixedSeeds, character.choices, withdrawn);
     for (const id of seeds) {
+      if (exclude.has(id)) continue;
       addElement(next, index, id, problems, undefined, baselineIds.has(id));
     }
     // Each element progression was spent on roots its own track. Done before the expansion
@@ -463,6 +526,7 @@ export function deriveCharacter(
     // A seed is never withdrawn: every seed is `attempted` before the first grant is read. And a withdrawn element
     // joins no track, so no marker in it counts for one.
     const grant = (from: ElementId, id: ElementId): void => {
+      if (exclude.has(id)) return;
       const withdrawnBy = nextWithdrawn.get(id);
       if (withdrawnBy) {
         withdrawnBy.add(from);
@@ -605,6 +669,7 @@ export function deriveCharacter(
     kind,
     elements: [...active.values()],
     withdrawn: [...withdrawn].map(([elementId, grantedBy]) => ({ elementId, grantedBy: [...grantedBy] })),
+    companions: [],
     elementIds: new Set(active.keys()),
     stats,
     pendingChoices,

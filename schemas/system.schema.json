@@ -420,6 +420,22 @@
             "description": { "type": "string", "description": "User-facing prose shown where a reference is chosen: what keeping one means in this system." }
           }
         },
+        "companions": {
+          "type": "object",
+          "required": ["types"],
+          "additionalProperties": false,
+          "description": "The creatures a character of this kind holds, each derived in a scope of its own: the character with every other held element of these types left out, and these stats, starts, contributions and setter grants added to the kind's (ADR 0073). Content writes a held creature's numbers in its holder's derivation, reading the holder, and assumes there is one; the scope is that, one creature at a time. A kind without it derives no scope. Replaced rather than merged along an extends chain.",
+          "properties": {
+            "types": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "The element types a held creature is." },
+            "label": { "type": "string", "minLength": 1, "description": "User-facing heading over the creatures where they are shown." },
+            "description": { "type": "string", "description": "User-facing prose under that heading." },
+            "stats": { "type": "array", "items": { "$ref": "#/$defs/stat" }, "description": "Stats declared in the scope; one with the name of a kind's stat replaces it there." },
+            "setterStats": { "type": "array", "items": { "$ref": "#/$defs/setterStat" }, "description": "Setters of a held creature that are where a scope stat starts (ADR 0057)." },
+            "contributions": { "type": "array", "items": { "$ref": "#/$defs/contribution" }, "description": "What the scope contributes, after the kind's (ADR 0022)." },
+            "setterGrants": { "type": "array", "items": { "$ref": "#/$defs/setterGrant" }, "description": "Setters of a held creature that name what it holds in its scope and not on the character (ADR 0058)." },
+            "sheet": { "type": "array", "items": { "$ref": "#/$defs/sheetSection" }, "description": "The sections of a creature's stat block, read against its scope." }
+          }
+        },
         "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },
         "repeatableSetter": {
           "type": "string",
@@ -828,6 +844,44 @@
       }
     },
 
+    "sheetSection": {
+      "type": "object",
+      "required": ["id", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "stats": { "type": "array", "items": { "type": "string" } },
+        "types": { "type": "array", "items": { "type": "string" } },
+        "perBlock": {
+          "type": "boolean",
+          "description": "Render this section once per block the character declares, substituting the block's name and attributes into every entry of `stats` (ADR 0020). Needed because blockStats publishes keys a section cannot name: there is no bard:spellcasting:dc in any system definition and there never can be, because the key comes from content. The flag is also what makes `{name}` mean something here — elsewhere it names the subject of an iteration, and a sheet section iterates nothing until it says what it iterates."
+        },
+        "description": {
+          "type": "string",
+          "description": "A sentence shown under the section's label, for whoever reads the sheet (ADR 0062). Plain prose; it evaluates nothing."
+        },
+        "showWhen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Show a row of `stats` only when this stat reads other than zero (ADR 0062). `{stat}` stands for the row's own key: `\"{stat}\"` leaves out a stat that is 0, `\"{stat}:proficiency\"` a skill the character is not proficient in. Without it every row is shown."
+        },
+        "printed": {
+          "type": "array",
+          "description": "Text a held element prints, shown as it is written and never read as a number (ADR 0062): a stat block's senses and languages.",
+          "items": {
+            "type": "object",
+            "required": ["types", "setter", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "types": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "setter": { "type": "string", "minLength": 1, "description": "The setter whose value is shown, matched ignoring case." },
+              "label": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
     "sheet": {
       "type": "object",
       "required": ["sections"],
@@ -835,44 +889,7 @@
       "properties": {
         "sections": {
           "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["id", "label"],
-            "additionalProperties": false,
-            "properties": {
-              "id": { "type": "string", "minLength": 1 },
-              "label": { "type": "string", "minLength": 1 },
-              "stats": { "type": "array", "items": { "type": "string" } },
-              "types": { "type": "array", "items": { "type": "string" } },
-              "perBlock": {
-                "type": "boolean",
-                "description": "Render this section once per block the character declares, substituting the block's name and attributes into every entry of `stats` (ADR 0020). Needed because blockStats publishes keys a section cannot name: there is no bard:spellcasting:dc in any system definition and there never can be, because the key comes from content. The flag is also what makes `{name}` mean something here — elsewhere it names the subject of an iteration, and a sheet section iterates nothing until it says what it iterates."
-              },
-              "description": {
-                "type": "string",
-                "description": "A sentence shown under the section's label, for whoever reads the sheet (ADR 0062). Plain prose; it evaluates nothing."
-              },
-              "showWhen": {
-                "type": "string",
-                "minLength": 1,
-                "description": "Show a row of `stats` only when this stat reads other than zero (ADR 0062). `{stat}` stands for the row's own key: `\"{stat}\"` leaves out a stat that is 0, `\"{stat}:proficiency\"` a skill the character is not proficient in. Without it every row is shown."
-              },
-              "printed": {
-                "type": "array",
-                "description": "Text a held element prints, shown as it is written and never read as a number (ADR 0062): a stat block's senses and languages.",
-                "items": {
-                  "type": "object",
-                  "required": ["types", "setter", "label"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "types": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-                    "setter": { "type": "string", "minLength": 1, "description": "The setter whose value is shown, matched ignoring case." },
-                    "label": { "type": "string", "minLength": 1 }
-                  }
-                }
-              }
-            }
-          }
+          "items": { "$ref": "#/$defs/sheetSection" }
         }
       }
     }

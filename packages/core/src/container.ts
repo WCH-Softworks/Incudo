@@ -221,7 +221,14 @@ export function collectCharacterContent(
       // embedded or the save opens without it. The same function the engine reads; only with a kind.
       // What the user removed from this holder (ADR 0061, ADR 0067) is neither named nor granted by it, so it is not
       // embedded on its account; the same element reached through anything else still is.
-      const named = options.kind ? setterGrantIds(options.kind.setterGrants, element) : [];
+      // A held creature's own features too (ADR 0073): held in its scope only, and its stat block lists them, so a save
+      // that left them out would reopen with the creature's numbers and none of its actions.
+      const named = options.kind
+        ? [
+            ...setterGrantIds(options.kind.setterGrants, element),
+            ...setterGrantIds(options.kind.companions?.setterGrants ?? [], element),
+          ]
+        : [];
       const withdrawn = options.kind
         ? withdrawnGrantIds(options.kind.setterGrants, element, removed)
         : new Set<ElementId>();
