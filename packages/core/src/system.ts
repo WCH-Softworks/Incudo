@@ -79,6 +79,11 @@ export interface StatDef {
    */
   min?: number | StatExpr;
   max?: number | StatExpr;
+  /**
+   * A bonus, written with its sign wherever it is shown: "+2", "+0", "-1" — ADR 0074. Display only; nothing
+   * evaluates it, and a stat without it is written as its number.
+   */
+  signed?: boolean;
 }
 
 /**
@@ -161,6 +166,11 @@ export interface BlockStatDef {
   stat: StatKey;
   /** Evaluated once per block. Placeholders inside a `ref`'s stat name resolve too. */
   value: StatExpr;
+  /**
+   * What a sheet row showing this stat is called — ADR 0074. A `perBlock` section's rows are keys no system
+   * definition declares, so this is where their label lives; the section's own label already names the block.
+   */
+  label?: string;
 }
 
 /**
@@ -851,6 +861,12 @@ export interface SheetSectionDef {
    * are shown rather than left out.
    */
   printed?: PrintedSetterDef[];
+  /**
+   * A stat shown beside each row's value — ADR 0074. `{stat}` stands for the row's own key, as in `showWhen`, so
+   * `"{stat}:modifier"` shows a score's modifier beside it: "18 (+4)". In a `perBlock` section the block's
+   * placeholders resolve too.
+   */
+  beside?: string;
 }
 
 /** One line of printed text a sheet section shows from a held element's setter — ADR 0062. */
@@ -898,6 +914,10 @@ export interface SheetSectionRendering {
   description?: string;
   /** The printed lines this section shows, in declaration order and then element order. */
   printed: PrintedSheetLine[];
+  /** For each of `stats`, the section's own entry it came from: the row's key, or its `perBlock` pattern. */
+  entries: StatKey[];
+  /** For each of `stats`, the stat shown beside it, when the section declares `beside` — ADR 0074. */
+  beside?: StatKey[];
 }
 
 /**
@@ -913,27 +933,46 @@ export function renderSheetSection(
   blocks: readonly DeclaredBlock[],
   reader: SheetReader,
 ): SheetSectionRendering[] {
-  const shown = (stats: StatKey[], block?: DeclaredBlock): StatKey[] => {
+  // A row template (`showWhen`, `beside`): `{stat}` for the row, and a block's placeholders in a perBlock section.
+  const named = (template: string, stat: StatKey, block?: DeclaredBlock): StatKey | undefined => {
+    const key = template.split('{stat}').join(stat);
+    return block ? substituteBlockPlaceholders(key, block) : key;
+  };
+  // Each row is its key and the section entry it came from, kept together so `entries` and `beside` stay aligned.
+  const shown = (rows: Array<[StatKey, StatKey]>, block?: DeclaredBlock) => {
     const when = section.showWhen;
-    if (when === undefined) return stats;
-    return stats.filter((stat) => {
-      const named = when.split('{stat}').join(stat);
-      const key = block ? substituteBlockPlaceholders(named, block) : named;
-      const value = key === undefined ? undefined : reader.statValue(key);
-      return value !== undefined && value !== 0;
-    });
+    const kept =
+      when === undefined
+        ? rows
+        : rows.filter(([stat]) => {
+            const key = named(when, stat, block);
+            const value = key === undefined ? undefined : reader.statValue(key);
+            return value !== undefined && value !== 0;
+          });
+    const beside = section.beside;
+    return {
+      stats: kept.map(([stat]) => stat),
+      entries: kept.map(([, entry]) => entry),
+      ...(beside !== undefined ? { beside: kept.map(([stat]) => named(beside, stat, block) ?? '') } : {}),
+    };
   };
   const described = section.description !== undefined ? { description: section.description } : {};
   const base = { id: section.id, stats: section.stats ?? [], types: section.types ?? [] };
   if (!section.perBlock) {
     return [
-      { ...base, stats: shown(base.stats), label: section.label, ...described, printed: printedLines(section, reader.elements) },
+      {
+        ...base,
+        ...shown(base.stats.map((stat): [StatKey, StatKey] => [stat, stat])),
+        label: section.label,
+        ...described,
+        printed: printedLines(section, reader.elements),
+      },
     ];
   }
 
   const renderings: SheetSectionRendering[] = [];
   for (const block of blocks) {
-    const stats: StatKey[] = [];
+    const rows: Array<[StatKey, StatKey]> = [];
     let complete = true;
     for (const stat of base.stats) {
       const key = substituteBlockPlaceholders(stat, block);
@@ -941,13 +980,13 @@ export function renderSheetSection(
         complete = false;
         break;
       }
-      stats.push(key);
+      rows.push([key, stat]);
     }
     if (!complete) continue;
     renderings.push({
       id: `${section.id}:${block.name.trim().toLowerCase()}`,
       label: `${section.label} — ${block.name}`,
-      stats: shown(stats, block),
+      ...shown(rows, block),
       // Element lists are not per-block: a block names a stat namespace, not a filter over
       // the character's elements. Repeating the same spell list under every casting source
       // would be a confident lie about which source it came from. Printed lines likewise.

@@ -264,6 +264,7 @@ test('a perBlock section renders once per block, and skips one it cannot fill', 
       id: 'casting:runesmith',
       label: 'Casting — Runesmith',
       stats: ['runesmith:grit'],
+      entries: ['{name}:{ability}'],
       types: [],
       blockName: 'Runesmith',
       printed: [],
@@ -274,7 +275,7 @@ test('a perBlock section renders once per block, and skips one it cannot fill', 
 test('an ordinary section renders itself, blocks or no blocks', () => {
   const section = { id: 's', label: 'S', stats: ['vigour'], types: ['Widget'] };
   assert.deepEqual(renderSheetSection(section, [{ name: 'Runesmith', attributes: {} }], reader()), [
-    { id: 's', label: 'S', stats: ['vigour'], types: ['Widget'], printed: [] },
+    { id: 's', label: 'S', stats: ['vigour'], entries: ['vigour'], types: ['Widget'], printed: [] },
   ]);
 });
 
@@ -298,6 +299,29 @@ test('showWhen in a perBlock section reads the key with the row and the block su
   const block = { name: 'Runesmith', attributes: { ability: 'Grit' } };
   const rendered = renderSheetSection(section, [block], reader({ 'runesmith:dc:grit': 13 }));
   assert.deepEqual(rendered[0]!.stats, ['runesmith:dc']);
+});
+
+// ADR 0074. Fails if `beside` is not published (a score reads without its modifier), if `{stat}` is not substituted
+// (every row reads the literal "{stat}:mod"), if it is not kept aligned with the rows `showWhen` leaves (the second
+// row reads the first dropped row's), or if `entries` loses its alignment the same way.
+test('beside names a stat per row, with {stat} for the row, aligned with the rows showWhen keeps', () => {
+  const section = { id: 'a', label: 'A', stats: ['grit', 'wile', 'nerve'], beside: '{stat}:mod', showWhen: '{stat}' };
+  const [rendered] = renderSheetSection(section, [], reader({ grit: 14, wile: 0, nerve: 9 }));
+  assert.deepEqual(rendered!.stats, ['grit', 'nerve']);
+  assert.deepEqual(rendered!.entries, ['grit', 'nerve']);
+  assert.deepEqual(rendered!.beside, ['grit:mod', 'nerve:mod']);
+  const plain = renderSheetSection({ id: 'p', label: 'P', stats: ['grit'] }, [], reader({ grit: 14 }))[0]!;
+  assert.equal(plain.beside, undefined, 'no beside declared, none published');
+});
+
+// Fails if a perBlock section's `beside` does not resolve the block's placeholders, or if `entries` names the
+// substituted key rather than the pattern the row came from (a label is looked up by the pattern).
+test('beside and entries in a perBlock section resolve the block and keep the pattern', () => {
+  const section = { id: 'c', label: 'C', perBlock: true, stats: ['{name}:dc'], beside: '{stat}:{ability}' };
+  const [rendered] = renderSheetSection(section, [{ name: 'Runesmith', attributes: { ability: 'Grit' } }], reader());
+  assert.deepEqual(rendered!.stats, ['runesmith:dc']);
+  assert.deepEqual(rendered!.entries, ['{name}:dc']);
+  assert.deepEqual(rendered!.beside, ['runesmith:dc:grit']);
 });
 
 // ADR 0062. Fails if printed lines stop reading the held elements (none come back), if the setter is

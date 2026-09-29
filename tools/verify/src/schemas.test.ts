@@ -194,6 +194,18 @@ test('a system that would throw at load fails validation instead', async () => {
     ),
     ['characterKinds[0].sheet: section "s" shows the stat "nope", which is not declared by the system or by this kind'],
   );
+
+  // ADR 0074: what a row shows beside it must be declared as the row must be. Fails if the check is removed.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], beside: '{stat}:nope' }] })),
+    ),
+    ['characterKinds[0].sheet: section "s" shows "vigour:nope" beside "vigour", which is not declared by the system or by this kind'],
+  );
+  assert.deepEqual(
+    await errorsFor(broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], beside: '{stat}' }] }))),
+    [],
+  );
 });
 
 test('structural mistakes get messages a non-programmer can act on', async () => {

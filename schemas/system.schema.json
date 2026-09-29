@@ -150,7 +150,11 @@
           "description": "Another stat whose value is where this one starts, when content contributes to that stat at all (ADR 0059): a monster's armour class starts where its own rule for it does. A starting value, not a sum: it replaces `default`, a held element's printed setter replaces it, a value the user set replaces any of them, and what content contributes to this stat adds to whichever is in force. The named stat is read as contributed, before derivations."
         },
         "min": { "$ref": "#/$defs/bound" },
-        "max": { "$ref": "#/$defs/bound" }
+        "max": { "$ref": "#/$defs/bound" },
+        "signed": {
+          "type": "boolean",
+          "description": "A bonus, written with its sign wherever it is shown: \"+2\", \"+0\", \"-1\" (ADR 0074). Display only; nothing evaluates it."
+        }
       }
     },
 
@@ -528,6 +532,11 @@
         "value": {
           "$ref": "#/$defs/expr",
           "description": "Evaluated once per block. Placeholders resolve inside a `ref`'s stat name too, so \"{ability}:modifier\" reads charisma:modifier for the Bard and intelligence:modifier for the Wizard. An entry with a placeholder the block does not declare contributes nothing and is reported."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What a sheet row showing this stat is called (ADR 0074). A perBlock section's rows are keys no system definition declares, so their label lives here; the section's own label names the block."
         }
       }
     },
@@ -860,6 +869,11 @@
         "description": {
           "type": "string",
           "description": "A sentence shown under the section's label, for whoever reads the sheet (ADR 0062). Plain prose; it evaluates nothing."
+        },
+        "beside": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A stat shown beside each row's value (ADR 0074). `{stat}` stands for the row's own key, as in showWhen: \"{stat}:modifier\" shows a score's modifier beside it. In a perBlock section the block's placeholders resolve too. It must name a stat the kind publishes."
         },
         "showWhen": {
           "type": "string",

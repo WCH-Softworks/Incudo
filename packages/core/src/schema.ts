@@ -486,6 +486,14 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         if (section.perBlock) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" is perBlock, which a creature's stat block does not read` });
         }
+        // What a row shows beside it is a stat the scope has, or the row reads a blank (ADR 0074).
+        const scopeStats = new Set([...statNames, ...(companions.stats ?? []).map((s) => s.name.toLowerCase())]);
+        for (const stat of section.stats ?? []) {
+          const beside = section.beside?.split('{stat}').join(stat).toLowerCase();
+          if (beside !== undefined && !scopeStats.has(beside)) {
+            errors.push({ path: `${where}.companions.sheet`, message: `section "${section.id}" shows "${beside}" beside "${stat}", which is not declared` });
+          }
+        }
       }
     }
 
@@ -550,6 +558,14 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
 
     for (const section of resolved.sheet.sections) {
       for (const stat of section.stats ?? []) {
+        // What a row shows beside it (ADR 0074) must be published as the row must be, or it reads a blank.
+        const beside = section.beside?.split('{stat}').join(stat).toLowerCase();
+        if (beside !== undefined && !(section.perBlock ? blockStatPatterns : statNames).has(beside)) {
+          errors.push({
+            path: `${where}.sheet`,
+            message: `section "${section.id}" shows "${beside}" beside "${stat}", which is not declared by the system or by this kind`,
+          });
+        }
         if (section.perBlock) {
           if (!blockStatPatterns.has(stat.toLowerCase())) {
             errors.push({
