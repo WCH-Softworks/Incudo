@@ -1,6 +1,6 @@
 # 0072 — A build step may offer items a character equips, and what it takes is a bag entry
 
-**Status:** Proposed · 2026-09-29 · closes the gap [0071](./0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)
+**Status:** Accepted · 2026-09-29 · implemented the same day (ROADMAP Phase 3; see the note at the end) · closes the gap [0071](./0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)
 left ("the app cannot put an item in the bag") for Tasha's optional class features · builds on
 [0006](./0006-derived-character-state.md), [0012](./0012-self-contained-saves.md), [0024](./0024-inventory-is-a-list-of-instances.md),
 [0032](./0032-a-build-step-may-offer-a-set.md),
@@ -169,3 +169,51 @@ What the implementation must show, each test naming the perturbation that fails 
 - The oracle: `INCUDO_ORACLE_SNAPSHOT` on the base and `INCUDO_ORACLE_BASELINE` on the change, same checkout, every moved
   row accounted for; `oracleViolations` empty.
 - Driven in the browser build and in the Tauri window on Windows.
+
+## Note, 2026-09-29 — built, and what it measured
+
+Implemented as decided, in five commits after the measurement and this ADR: the format-version fix below, the system
+format (`equip`, `hiddenSetter`, `sheetListedElements`, validation), the view-model (`packages/ui/src/equip-step.ts` and
+the builder), the 5e declaration with its corpus test, and the two pane changes.
+
+**Found on the way: `setInventoryEntry` lowered a character's format version.** It wrote 2 whatever the character was, so
+a character with additions (5) or references (7) that took an item would have been written as 2 and refused by the
+validator. Nothing in the app wrote a bag before this step, so nothing had hit it. It now raises to 2 and never lowers.
+
+**The oracle is identical.** `INCUDO_ORACLE_SNAPSHOT` on the ADR's commit and `INCUDO_ORACLE_BASELINE` on the change, same
+checkout (AuroraLegacy/elements at `c28ce6c`): no row moved on any of the thirty samples, no problem count, no compared
+row, and `oracleViolations` stays empty. As expected: no sample carries one of these items and the engine is unchanged.
+The full suite passes.
+
+**On the real corpus** (`tools/verify/src/optional-feature-step.test.ts`): the step offers a 2014 Ranger all 36 items; a
+Ranger built through the builder with Natural Explorer's Favored Terrain answered takes Deft Explorer, holds Deft Explorer
+and Canny and not Natural Explorer or its answer, and `BuilderState.withdrawn` names Natural Explorer as given by the
+Ranger; the record is one equipped bag entry and no choice; the sheet lists the feature and not the item; the file packs
+and reopens with no source to the same `summarize()`, and reads the item as taken; taken back, Natural Explorer returns
+with its answer and Canny's language answer is dropped. A character offered only the 2014 Player's Handbook is offered
+none. Removing the step from 5e, or its `hiddenSetter`, fails that test.
+
+Held in `packages/ui/src/equip-step.test.ts` (eight cases over a fixture with no game in it, and fourteen perturbations,
+each failing the case that names it: the step left out of the set loop, the setter unread, its value compared by exact
+case, own requirements unread, the offer read from everything loaded, `choose` recorded as a choice, the step heading
+content selects, taken items read from choices, a carried entry never equipped, take-back always removing or always
+unequipping, answers pruned after taking, not pruned after taking back, no withdrawn rows), `packages/core`'s
+`system.test.ts` and `inventory.test.ts`, and `tools/verify/src/schemas.test.ts` (eight perturbations of the format and
+the fix, each failing).
+
+**Driven** in the browser build and in the Tauri window on Windows (DOM clicks over the debug port, a fresh WebView2
+profile, a scratch library): a 2014 Human Ranger answered Favored Terrain with Forest, took Deft Explorer from the 36 on
+offer, and Build listed Natural Explorer under "Not held" while the sheet showed Favored Enemy, Deft Explorer and Canny
+and no item; Canny's language was answered; Remove brought Natural Explorer back with Forest and dropped the language; the
+item was taken again and saved. In the browser build the source was then switched off and the file reopened from the
+library to the same Build and Sheet, and taking the item back there, with no source, gave Natural Explorer back with
+Forest. From the window, the saved file was read back from disk with `nodeZipCodec` and derived with no source: format 2,
+valid, one equipped bag entry, Deft Explorer taken, Natural Explorer withdrawn. Not with real input, and not on macOS or
+Linux.
+
+**Seen while measuring, not part of this:** 87 setter values in the corpus keep a literal `&amp;` (an item category
+"Mounts &amp; Vehicles", book authors "D&amp;D Beyond"): the importer decodes entities in text and attributes and not in
+setters. Reported separately; nothing here compares a value with an `&` in it.
+
+**Not done:** a note on a candidate saying whether it gives this character anything; the other hidden families (decision
+6); a general bag editor.

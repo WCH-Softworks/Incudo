@@ -1038,11 +1038,23 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       proficiencies and the Thieves' Tools expertise pair on four samples, and nothing else moves. A level 4 2024
       Fighter is offered 23 of the 50 feats, the Ability Score Improvement feat among them. Driven in the browser build
       and in the Tauri window on Windows (DOM clicks over the debug port, the saved file derived with no source).
-      **Not done:** the replacement itself cannot be driven, since the app cannot put an item in the bag (next item);
+      **Not done:** the replacement itself cannot be driven, since the app cannot put an item in the bag (next item,
+      since done);
       a seed whose own requirements have become false is not flagged; macOS and Linux not driven.
-- [ ] **Take a Tasha's optional class feature in the app.** They are 36 hidden items a character equips (six replace a
-      feature, ADR 0071), and the app has no way to put an item in the bag. A bag editor, or a skippable set step
-      offering them. The item above is done, so a replacing one now replaces once equipped.
+- [x] **Take a Tasha's optional class feature in the app**
+      ([ADR 0072](./docs/adr/0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md)).
+      Measured first: the 36 items carry no requirements of their own (their grants are gated on the class level), nothing
+      offers or selects them, none of the samples carries one, and a 2024 class answers their gates as a 2014 one does. A
+      build step may now declare `equip`, a setter and its values: it is a skippable set like campaign options, and what
+      it takes is an equipped bag entry, the record an Aurora import makes, so an imported one reads as taken. Taking one
+      back removes a bare entry and drops the answers it closed, and keeps a replaced feature's. 5e declares "Optional
+      class features" after class levels; its inventory names `inventory-hidden`, which keeps the item off the sheet; and
+      Build lists what is withdrawn under "Not held". A 2014 Ranger takes Deft Explorer, loses Natural Explorer, and taken
+      back has it again with its favoured terrain. Running it found `setInventoryEntry` lowering a later format version to 2.
+      The oracle is identical on all thirty samples. Driven in the browser build and in the Tauri window on Windows (DOM
+      clicks over the debug port, the saved file read back from disk with no source). **Not done:** a general bag editor;
+      saying which items give a character anything; the other hidden item families (climb speeds, feat unlockers, the
+      companion and familiar selections); macOS and Linux not driven.
 
 ---
 

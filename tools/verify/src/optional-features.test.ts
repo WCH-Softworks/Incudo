@@ -15,6 +15,9 @@
  *
  * Everything is reported as `ℹ` lines and nothing is asserted (ADR 0042). The items are found by their setter, the
  * classes by the stats their grants are gated on and by name, never by an id.
+ *
+ * **Written before ADR 0072 was built, and kept as its record.** Since it was, 5e's "Optional class features" step takes
+ * these items into the bag; what that is held to is `optional-feature-step.test.ts` and `packages/ui/src/equip-step.test.ts`.
  */
 
 import { test } from 'node:test';

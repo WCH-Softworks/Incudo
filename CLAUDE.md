@@ -358,7 +358,8 @@ written by the DM on the creature**, and shows how many legendary actions it tak
 block printed only as prose beside it for reference**, shown and saved and never held, and may skip its creature to be
 built by hand (ADR 0068). **What a description embeds is shown in place and saved with the character** (ADR 0069). **A player character keeps
 text for reference too, offered first what its own elements print, and a library card names what a character keeps**
-(ADR 0070).
+(ADR 0070). **A player character takes Tasha's optional class features, and one that replaces a feature replaces it** (ADRs
+0071, 0072).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -637,9 +638,43 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     perturbation; `tools/verify/src/own-requirements.test.ts` (2014 Ranger with Deft Explorer equipped and carried,
     answer included; the 2024 Fighter's offer). With 5e's `heldTypesStat` removed the oracle fails on all thirty for
     `Ability Score Maximum Over 20` (`[type:class]`), which is why the terms had to come first.
-  - **Not done:** the replacement cannot be driven in the app (it cannot put an item in the bag: ROADMAP Phase 3's next
-    item); a seed whose own requirements have since become false is not flagged. Driven in the browser build and the
+  - **Not done:** ~~the replacement cannot be driven in the app~~ (it can since ADR 0072, below); a seed whose own
+    requirements have since become false is not flagged. Driven in the browser build and the
     Tauri window on Windows (DOM clicks over the debug port, the saved file derived from disk with no source); not with
+    real input, and not on macOS or Linux.
+- **A build step may offer items a character equips, and what it takes is an equipped bag entry**
+  ([ADR 0072](docs/adr/0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md)).
+  Tasha's optional class features, taken in the app. Things to know before touching it:
+  - **Measured by `tools/verify/src/optional-features.test.ts`** (report-only): 36 `Item`s of category "Optional Class
+    Features", all `misc`, all `inventory-hidden`, **no requirements of their own**: the class and level are on their
+    grants (`[level:ranger:1]`), and six carry an unconditional replacement marker. Nothing grants, selects or offers
+    them; no sample carries one; a 2024 class answers their gates as a 2014 one does (content's, not narrowed here).
+    `inventory-hidden` is on 91 items, and 8 of them are 2024 mounts with no rules, so **hidden is not "a switch"**: the
+    category names the family.
+  - **`BuildStepDef.equip: { setter, values }`** (system format, `formatVersion` 1): a set like `multiple` (never
+    blocking, skippable, published as `OpenDecision.multiple` and `SettledPick.multiple` under `build/<stepId>`), whose
+    offer is the step's types admitted by the setter (case ignored), own requirements holding, through the offered view,
+    and **whose answers are equipped bag entries, never choices**. What it has taken is read back from the bag, so an
+    imported item reads as taken. Validation refuses it beside `required`, `pick`, `multiple`, `perLevel`, `budget`,
+    `levelRoll`, and with no types. **Not `multiple` as well**, on purpose: a reader knowing only `multiple` would offer
+    every item as choices. It heads no content select (`stepForType` skips it).
+  - **`packages/ui/src/equip-step.ts` is the view-model**; the builder's `choose` routes the step's key there
+    (`equip`). Taking back comes first and drops the answers it closed (`dropClosedAnswers`, shared with
+    `removeAddition`); taking comes second and drops nothing, so a replaced feature's answer waits for it. Taking equips
+    a carried entry of the element if there is one; taking back removes an entry that records nothing else and only
+    unequips one with a quantity, slot, attunement, adornment, name or notes. The pane renders it as any set.
+  - **`InventoryDef.hiddenSetter`** (5e: `inventory-hidden`): `sheetListedElements` (core) leaves such an item off the
+    sheet's lists; still held, derived and saved. The Sheet pane reads through it.
+  - **`BuilderState.withdrawn`** names what ADR 0071 withdrew and its granters; Build lists it under "Not held" (an
+    Artificer's firearms proficiency too).
+  - **`setInventoryEntry` raises the format version to 2 and never lowers it.** It used to write 2 over a 5 or 7.
+  - The oracle is identical before and after on all thirty samples. Tests: `packages/ui/src/equip-step.test.ts` (each
+    case failing under its named perturbation), `tools/verify/src/optional-feature-step.test.ts` (a 2014 Ranger through
+    the builder, packed and reopened with no source).
+  - **Not done:** a bag editor; a note saying which items give this character anything; the other hidden families
+    ("Additional Feature": climb speeds, feat unlockers, Lycanthropy, the Companion and Familiar Selection items; UA's
+    additional ability score items), each a declaration away and each wanting a look. Driven in the browser build and the
+    Tauri window on Windows (DOM clicks over the debug port, the saved file read back from disk with no source); not with
     real input, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
@@ -1299,7 +1334,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070 and 0071 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071 and 0072 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
