@@ -193,6 +193,8 @@ test('what content writes for a creature, in its holder\'s derivation', { skip: 
   t.diagnostic(`  opened by: ${selects.map((x) => `${x.owner.name} (${x.owner.type})`).join('; ')}`);
   const oneOnly = all.filter((e) => openers.has(e.id) && /only have one companion/i.test(e.description ?? ''));
   t.diagnostic(`  whose text says a character has only one companion (a lookup by text): ${oneOnly.length} (${oneOnly.map((e) => e.name).join(', ')})`);
+  const sidekicks = all.filter((e) => /sidekick/i.test(e.name));
+  t.diagnostic(`elements naming a sidekick (a lookup by name, the roadmap's other half): ${sidekicks.length}, of ${tally(sidekicks.map((e) => e.type))}`);
 });
 
 test('a player character holding each creature, against the NPC built on it', { skip: corpusSkip }, async (t) => {
