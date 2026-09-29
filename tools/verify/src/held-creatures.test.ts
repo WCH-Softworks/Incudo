@@ -168,6 +168,14 @@ test('what content writes for a creature, in its holder\'s derivation', { skip: 
   t.diagnostic(`stats in it content reads: ${new Set(read).size}; read and contributed by nothing, so Aurora's app supplies them: ${tally(unsupplied)}`);
   const outside = creatures.flatMap((c) => c.rules.flatMap((r) => (r.kind === 'stat' && !inNamespace(r.name) ? [r.name.toLowerCase()] : [])));
   t.diagnostic(`stats creatures write outside it: ${tally(outside)}`);
+  // Which bucket a creature that supplies its own proficiency bonus writes it in, and whether it takes away "the app's"
+  // 2: the one number content writes against a value it never states.
+  const supplied = creatures.flatMap((c) => {
+    const rules = c.rules.filter((r) => r.kind === 'stat' && r.name.toLowerCase() === `${s.prefix}proficiency`);
+    if (!rules.length) return [];
+    return [rules.map((r) => (r.kind === 'stat' ? `${r.bonus ?? 'unbucketed'} ${JSON.stringify(r.value).includes('"number"') ? 'a number' : 'a stat'}` : '')).join(' + ')];
+  });
+  t.diagnostic(`creatures supplying their own ${s.prefix}proficiency: ${supplied.length}, as ${tally(supplied)}`);
   t.diagnostic(`rules on creatures by kind: ${tally(creatures.flatMap((c) => c.rules.map((r) => r.kind)))}`);
   const grants = creatures.flatMap((c) => c.rules.flatMap((r) => (r.kind === 'grant' ? [elements.get(r.id)] : [])));
   t.diagnostic(`a creature's own grants: ${grants.length}, of ${tally(grants.map((g) => g?.type ?? '(nothing declared)'))}; those granting further: ${grants.filter((g) => g?.rules.some((r) => r.kind === 'grant')).length}`);

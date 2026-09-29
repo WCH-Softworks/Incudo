@@ -356,7 +356,7 @@
           {"types":["Companion"],"setter":"charisma","stat":"companion:charisma"}
         ],
         "contributions": [
-          {"stat":"companion:proficiency","value":{"kind":"number","value":2}}
+          {"stat":"companion:proficiency","value":{"kind":"number","value":2},"bonus":"proficiency"}
         ],
         "setterGrants": [
           {"types":["Companion"],"setter":"traits"},

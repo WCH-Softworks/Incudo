@@ -14,6 +14,7 @@
 
 import type { BuilderState, CharacterBuilder } from '@incudo/ui';
 import { ReferenceText } from './References.tsx';
+import { Companions } from './Companions.tsx';
 import {
   collectDeclaredBlocks,
   renderSheetSection,
@@ -105,6 +106,9 @@ export function SheetPane({
             </section>
           );
         })}
+
+      {/* Each creature the character holds, as its own stat block (ADR 0073): after the character, before what it keeps. */}
+      {state.companions && <Companions view={state.companions} />}
 
       {/* What the character keeps beside it for reference (ADR 0068), after the sheet: text, not the character's own. */}
       {state.references.rows.length > 0 && (

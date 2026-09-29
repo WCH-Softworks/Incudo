@@ -1840,3 +1840,23 @@ ul.browse-categories {
 .sheet-references h4 {
   margin: 8px 0 4px;
 }
+
+/* A held creature's stat block (ADR 0073): one article per creature, its sections under small headings. */
+.sheet-companion + .sheet-companion {
+  margin-top: 18px;
+}
+
+.sheet-companion h4 {
+  margin: 8px 0 2px;
+}
+
+.sheet-companion-section {
+  margin-top: 10px;
+}
+
+.sheet-companion-section h5 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-muted);
+}

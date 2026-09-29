@@ -115,6 +115,7 @@ import {
 import { customFeaturesState, type CustomFeaturesState } from './custom-features.ts';
 import { additionOptions, additionsState, type AdditionOption, type AdditionsState } from './additions.ts';
 import { referenceOptions, referencesState, type ReferencesState } from './references.ts';
+import { companionsView, type CompanionsView } from './companions.ts';
 import {
   equipOffer,
   equipTaken,
@@ -310,6 +311,11 @@ export interface BuilderState {
    * character's own elements print of those types is carried as `suggestions` (ADR 0070).
    */
   references: ReferencesState;
+  /**
+   * Each creature the character holds as its own stat block, derived from the character where its rules say so — ADR
+   * 0073. Undefined when the kind declares none or the character holds none.
+   */
+  companions?: CompanionsView;
   /**
    * What the derivation withdrew because its own requirements are false (ADR 0071), named — ADR 0072. Taking a feature
    * that replaces another withdraws the other, and Build lists it here rather than letting it disappear.
@@ -1590,6 +1596,7 @@ export class CharacterBuilder {
       additions: additionsState(this.character, derived, this.kind, this.system, this.elements),
       withdrawn: withdrawnRows(derived, this.elements),
       references: referencesState(this.character, this.kind, this.elements, derived.elements),
+      companions: companionsView(derived, this.kind, this.elements),
       focusedId: this.focusedId,
     };
   }

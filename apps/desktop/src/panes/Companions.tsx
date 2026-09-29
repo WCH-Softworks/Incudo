@@ -1,0 +1,64 @@
+/**
+ * The creatures a character holds, each as its own stat block — ADR 0073.
+ *
+ * Renders `BuilderState.companions` (`packages/ui/src/companions.ts`) and computes nothing: which sections show, their
+ * rows, labels and values, and what gave each creature are decided there, against the creature's own scope.
+ */
+
+import type { CompanionsView } from '@incudo/ui';
+
+export function Companions({ view }: { view: CompanionsView }): React.JSX.Element {
+  return (
+    <section className="sheet-section sheet-companions">
+      <h3>{view.label}</h3>
+      {view.description && <p className="hint">{view.description}</p>}
+      {view.creatures.map((creature) => (
+        <article key={creature.elementId} className="sheet-companion">
+          <h4>
+            {creature.name}
+            {creature.source && <span className="hint"> · {creature.source}</span>}
+          </h4>
+          {creature.heldBy.length > 0 && <p className="hint">From {creature.heldBy.join(', ')}</p>}
+          {creature.notes.map((note) => (
+            <p key={note} className="hint">
+              {note}
+            </p>
+          ))}
+          {creature.sections.map((section) => (
+            <div key={section.id} className="sheet-companion-section">
+              <h5>{section.label}</h5>
+              {section.description && <p className="hint">{section.description}</p>}
+              {section.rows.length > 0 && (
+                <dl>
+                  {section.rows.map((row) => (
+                    <div key={row.stat}>
+                      <dt>{row.label}</dt>
+                      <dd>{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {section.printed.length > 0 && (
+                <dl className="sheet-printed">
+                  {section.printed.map((line, index) => (
+                    <div key={`${line.elementId}:${index}`}>
+                      <dt>{line.label}</dt>
+                      <dd>{line.text}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {section.elements.length > 0 && (
+                <ul className="sheet-elements">
+                  {section.elements.map((element) => (
+                    <li key={element.elementId}>{element.name}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </article>
+      ))}
+    </section>
+  );
+}

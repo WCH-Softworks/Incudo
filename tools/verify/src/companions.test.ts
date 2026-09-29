@@ -130,6 +130,9 @@ test('every creature a player character holds has a scope with its print, its ru
   const declared = new Set((s.pc.companions!.stats ?? []).map((d) => d.name.toLowerCase()));
   const readsScope = (c: Element) => c.rules.some((r) => r.kind === 'stat' && JSON.stringify(r.value).toLowerCase().match(/"stat":"([^"]+)"/g)?.some((m) => declared.has(m.slice(8, -1))));
   const improved: string[] = [];
+  // A creature that supplies its own bonus from its holder's, and what its scope reads: its stat block says the holder's.
+  const suppliers: string[] = [];
+  const offBy: string[] = [];
   let proficiencies = 0;
   for (const creature of creatures) {
     const derived = holding(s, elements, [{ ruleKey: way.ruleKey, elementIds: [creature.id] }]);
@@ -157,6 +160,11 @@ test('every creature a player character holds has a scope with its print, its ru
       assert.ok(withdrawn || scope.elements.some((e) => e.id === id), `${creature.id}: ${id} is held in its scope, or withdrawn there`);
       if (!own.has(id)) assert.equal(derived.elementIds.has(id), false, `${creature.id}: ${id} is not the holder's`);
     }
+    if (creature.rules.some((r) => r.kind === 'stat' && r.name.toLowerCase() === `${s.prefix}proficiency` && r.value.kind === 'ref')) {
+      suppliers.push(creature.name);
+      const mine = read(scope.stats, `${s.prefix}proficiency`);
+      if (mine !== read(derived.stats, 'proficiency')) offBy.push(`${creature.name} (${creature.source}) +${mine}`);
+    }
     // A proficiency written against the creature's own bonus is at least that bonus.
     for (const rule of creature.rules) {
       if (rule.kind !== 'stat' || !/:proficiency$/i.test(rule.name) || rule.value.kind !== 'ref') continue;
@@ -165,6 +173,7 @@ test('every creature a player character holds has a scope with its print, its ru
       assert.ok((read(scope.stats, rule.name) ?? 0) >= 2, `${creature.id}: ${rule.name} is at least 2`);
     }
   }
+  t.diagnostic(`creatures supplying their own bonus from their holder's: ${suppliers.length}; reading other than the holder's +${read(holding(s, elements, []).stats, 'proficiency')}: ${offBy.join(', ') || 'none'}`);
   t.diagnostic(`reading a stat only the scope declares, and so different from the holder: ${improved.join('; ') || 'none'}`);
   t.diagnostic(`${creatures.length} creatures, each with a scope; ${numbers.length} of their stats kept as content makes them; ${proficiencies} proficiencies at least 2`);
 });
@@ -178,7 +187,7 @@ test('two creatures held together each read what they read alone, and the holder
   );
   assert.ok(opener, 'an element a player character may be given opens a creature select');
   const select = opener.rules.find((r): r is SelectRule => r.kind === 'select' && s.types.has(r.type))!;
-  const given = { formatVersion: 5, additions: [opener.id] };
+  const given: Partial<Character> = { formatVersion: 5, additions: [opener.id] };
   const openerKey = `${opener.id}/select:${select.name}`;
   // Its first candidate, as the builder offers it.
   const offered = new CharacterBuilder({ ...newCharacterOfKind(s.system, 'pc'), ...given }, s.system, elements)
