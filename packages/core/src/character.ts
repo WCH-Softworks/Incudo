@@ -606,7 +606,9 @@ export function getInventoryEntry(
  * item should not jump to the bottom of the bag.
  *
  * This is the one mutator that moves `formatVersion`, because it is the one that makes the
- * file need a reader that understands inventories (ADR 0024). Nothing downgrades it.
+ * file need a reader that understands inventories (ADR 0024). Nothing downgrades it: it used to write 2 over whatever
+ * the character was, so one with additions (5) or references (7) that took an item was written as 2 and refused by
+ * the validator. Found by ADR 0072, whose step is the first thing in the app that writes a bag.
  */
 export function setInventoryEntry(character: Character, entry: InventoryEntry): Character {
   const existing = character.inventory ?? [];
@@ -614,8 +616,7 @@ export function setInventoryEntry(character: Character, entry: InventoryEntry): 
   const inventory =
     at === -1 ? [...existing, entry] : existing.map((e, i) => (i === at ? entry : e));
   return {
-    ...character,
-    formatVersion: CHARACTER_FORMAT_VERSION,
+    ...raiseFormatVersion(character, CHARACTER_FORMAT_VERSION),
     inventory,
     updatedAt: new Date().toISOString(),
   };

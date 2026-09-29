@@ -128,6 +128,13 @@ test('adding to a character written before inventories existed moves its format 
   assert.equal(emptied.formatVersion, 2);
 });
 
+test('adding to a character already past format 2 never lowers its version — ADR 0072', () => {
+  // Fails if `setInventoryEntry` writes 2 whatever the character was (it did): a character with references is 7, and
+  // written as 2 the validator refuses it.
+  const later: Character = { ...createCharacter('test', 'pc'), formatVersion: 7 };
+  assert.equal(setInventoryEntry(later, { instanceId: 'a', elementId: 'X' }).formatVersion, 7);
+});
+
 /**
  * The ADR 0012 half, and the trap `kind.grants` set first: the container walks the character,
  * so anything referenced *without being chosen* has to be seeded deliberately.
