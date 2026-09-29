@@ -128,4 +128,45 @@ entry, no draft and no character.
 
 ## Evidence
 
-Filled in as built; see the test files named above and below.
+Each test names the perturbation that fails it, and each perturbation was run.
+
+- `tools/verify/src/sheet-export.test.ts`: the measurement above, committed and run on the base commit, and since then
+  what holds against any corpus. For every sample, all 282 creature characters, an NPC and a player character each
+  keeping all 116 texts, and a Cairn character: the Markdown is **identical packed and reopened with no source**; it heads
+  every section and writes every row, listed element and printed line; it writes no unescaped `<`, no empty heading and
+  no uneven table; a sample's holds none of the importer's prose and no portrait path. The 232 kept texts say **the same
+  words in the same order** as their HTML with the tags taken away, and their 220 tables have **the same columns**, a
+  spanning cell counted as the columns it spans. Perturbed: a spanning cell written as one cell; an empty heading
+  written; bold text dropped by the reader; printed lines left out of a section; the collector not seeding kept
+  references. **What did not work first**: a count of pipes per table row. Every row is padded to the table's width, so
+  a spanning cell written as one shifted the grid's MOD and SAVE headers a column and the count stayed equal; the test
+  compares columns now. And the collector not following embeds was expected to fail it and does not: no text a kind may
+  keep embeds another element (every `h5` in them is content's own caption), so none depends on it today.
+- `packages/ui/src/html-markdown.test.ts`: the 2024 grid and a `thead` table, an empty self-closing heading, lists with
+  emphasis whose spaces sit inside the tag, entities, `<script>` in the text and in the markup, links, hard breaks, the
+  escapes, a stray closing tag. `packages/ui/src/sheet-document.test.ts`: the document's sentences, the Build pane's
+  entry, the whole Markdown of a fixture with a creature and three kept elements, an unnamed and a markup-named
+  character, the export through a fake save port (UTF-8 bytes, `.md`, a name and nothing else in the result, a cancel, a
+  failed write, no dialog). `packages/ui/src/commands.test.ts`: the command on the Sheet only, without a library or
+  content, not twice, not behind a dialog, below Save a copy. Perturbed: `escapeMarkdown` made the identity and a title
+  left unescaped (**caught here and not by the corpus test**: the corpus gives escaping almost nothing to do, as
+  measured); the lede's count written; the `from` line not written; a text-less kept element given no sentence; the
+  command enabled on Build.
+- The oracle's thirty-sample table is **identical** before and after (`INCUDO_ORACLE_SNAPSHOT` on the ADR's commit,
+  `INCUDO_ORACLE_BASELINE` after, same checkout, no `.env.local`), and a baseline with one difference removed fails, so
+  the comparison was live. `npm run typecheck` and `npm test` pass (1,184 tests).
+- **Driven in the browser build** (an origin-private folder standing in for the folder picker and the save dialog, a
+  sample served by the dev server for the import dialog). Sample 05, a Wizard 3 / Rogue 3 / Warlock 3 holding an Owl,
+  imported and exported from the Sheet: `sample-05.md`, **byte-identical** to what the tests write from the corpus. An
+  NPC on the Triceratops named `Old Horn [the *Grey*]` keeping the Kraken's stat block: its title escaped, its stat
+  block as a pipe table and lists. Both saved, the source switched off and the page reloaded ("no content loaded"),
+  both reopened and exported again: **identical to the first exports**. A Cairn character with entered scores exported
+  its two sections. The Sheet still showed "From Find Familiar" under the Owl. No console errors.
+- **Driven in the Tauri window on Windows** (a fresh WebView2 profile, the library a scratch folder holding Sample 05
+  packed by the repository's own code, DOM clicks over the debug port, no keystrokes, not macOS or Linux). **No content
+  source was ever added.** The native File menu, read with Win32, showed "Export sheet as text…" enabled on the Sheet
+  with Save and Save a copy greyed, and greyed on Build; `WM_COMMAND` on it opened the real Windows save dialog titled
+  "Export this character's sheet as text", a scratch path was typed into it by `WM_SETTEXT` and Save pressed by
+  `BM_CLICK`. The file written is **byte-identical** to the browser's and the tests', and the bar read "Exported the
+  sheet as tauri-sample-05.md." The dialog's replace prompt and its Cancel were not exercised in the window; the port's
+  cancel is Save a copy's, unchanged (ADR 0038).

@@ -1296,13 +1296,32 @@ engine has no code that names any of them.
 
 ---
 
-## Phase 5 — Export & sharing ⬜
+## Phase 5 — Export & sharing 🟡
 
 *An export is a rendering of the sheet, which is already one view per kind (ADR 0074, `packages/ui/src/sheet.ts`): an
-NPC's export is its stat block and a player character's its page, with nothing kind-specific of the export's own.*
+NPC's export is its stat block and a player character's its page, with nothing kind-specific of the export's own. What the
+Sheet shows, its creatures and kept text included, is one document (`packages/ui/src/sheet-document.ts`, ADR 0075) that the
+pane draws and every export renders: the PDF and the print layout start from it, not from the pane.*
 
 - [ ] PDF character sheet (fillable official sheet + a clean Incudo sheet)
-- [ ] Plain-text / Markdown export
+- [x] **Plain-text / Markdown export: "Export sheet as text…" writes the Sheet as Markdown that reads as plain text**
+      ([ADR 0075](./docs/adr/0075-a-text-export-is-the-sheet-document-written-as-markdown-that-reads-as-plain-text.md)).
+      Measured first, over the thirty samples, every creature as an NPC and a legendary creature, and Cairn: the Sheet's
+      view is identical reopened with no source, none of its text is markup, and the only HTML is a kept element's text
+      (fifteen tags, 110 tables, 63 of them the 2024 grid with spanning cells and no header row). A listed element's
+      description would add 18,635 to 93,290 characters to a sample, so the export lists names, as the Sheet does. The
+      Sheet pane composed three sentences of its own, so the sheet became one document the pane and the export both read.
+      Plain text and Markdown are one format (`#` headings, `- Label: value` lists, pipe tables), escaped only where
+      Markdown would misread a character, and writing no HTML. A kept text is read into Markdown in `packages/ui`
+      (`htmlToMarkdown`), where the shell's DOM sanitizer cannot run; every kept text says the same words, and every
+      table has the same columns, as its HTML. A command on the Sheet through Save a copy's save port, needing no library
+      and no content. No oracle row moved; no system or character format change. Driven in the browser build (a sample,
+      an NPC keeping a stat block, a Cairn character; the first two exported again with the source off, byte for byte the
+      same) and in the Tauri window on Windows (a sample opened with no source ever added, exported from the native menu
+      through the real save dialog, byte for byte the tests' file). **Not done:** a copy to the clipboard (a port of its
+      own); a shortcut (a Ctrl+Shift chord has to be found by pressing real keys in the Windows window); feature
+      descriptions, personality, notes, the bag and prepared spells, none of which the Sheet shows; the save dialog's
+      replace prompt and Cancel, not exercised for an export in the window; macOS and Linux.
 - [ ] "Content has been updated — refresh?" flow, diffing recorded source versions against
       available ones and showing what would change before touching the character
 - [ ] Print layout

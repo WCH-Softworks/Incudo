@@ -361,7 +361,8 @@ text for reference too, offered first what its own elements print, and a library
 (ADR 0070). **A player character takes Tasha's optional class features, and one that replaces a feature replaces it** (ADRs
 0071, 0072). **A creature a character holds is shown as its own stat block, its numbers derived from the character** (ADR
 0073). **Each kind's sheet shows its printed page: a player character's saves, skills, modifiers and the spell slots it casts
-with, an NPC's first line and printed dice, a Cairn character's entered scores** (ADR 0074).
+with, an NPC's first line and printed dice, a Cairn character's entered scores** (ADR 0074). **The Sheet can be exported
+as text: "Export sheet as text…" writes it as Markdown that reads as plain text** (ADR 0075).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -775,6 +776,45 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     level-less kind. Driven in the browser build (a Cairn character too) and the Tauri window on Windows (a packed sample
     and a built NPC, the file read back from disk, reopened with the source off); not with real input, Cairn not in the
     window, and not on macOS or Linux.
+- **The sheet is one document, and a text export is it written as Markdown that reads as plain text**
+  ([ADR 0075](docs/adr/0075-a-text-export-is-the-sheet-document-written-as-markdown-that-reads-as-plain-text.md)).
+  Phase 5's first item. Things to know before touching it:
+  - **Measured by `tools/verify/src/sheet-export.test.ts`** (first report-only on the base commit): the Sheet's view is
+    identical packed and reopened with no source for all thirty samples, all 282 creature characters and Cairn; none of
+    its text is markup (21 creature lines carry square brackets); the importer's `freeform` prose and the portrait path
+    never reach it; a listed element's description would add 18,635 to 93,290 characters to a sample. The only HTML is
+    a kept element's text: 116 elements a kind may keep, fifteen tags (all on the shell sanitizer's allowlist), 110
+    tables (63 the 2024 grid, `<td colspan="2"/>` and no header row; 47 with a `thead`; every row as wide once spans
+    count; only `b`, `i`, `strong` in a cell), 100 empty `<h4 />`s, no embed of another element.
+  - **`sheetDocument(state)`** (`packages/ui/src/sheet-document.ts`) is what the Sheet shows: name, kind, the sheet's
+    sections, held creatures (with a `from` line) and kept references (`referenceEntry`: the HTML, or a `note`,
+    `NO_KEPT_TEXT` when there is no text). **The Sheet pane, `Companions.tsx` and `References.tsx` render it and compose
+    no sentence**; `PREREQUISITES_UNMET` is the words beside an unmet addition. A print layout or a PDF is another
+    renderer of the document, never of `BuilderState` directly: that is the drift it removed. The lede's element count
+    is in it and the export leaves it out (it counts internal elements).
+  - **`sheetMarkdown(document)`** (`sheet-markdown.ts`): `#` title ("Unnamed character" when blank), the kind, `##` per
+    section with one list (rows `Label: value (beside)`, elements, printed `Label: text`, in the pane's order), `###` per
+    creature and kept element, content's headings from `####`. UTF-8, `\n`, a final newline. **Plain text and Markdown
+    are one format.** Names only, as the Sheet shows.
+  - **`htmlToMarkdown`** (`html-markdown.ts`) is a small tolerant tag reader, no DOM, run after `openSelfClosingTags`:
+    blocks, lists (nested ones indented), pipe tables whose first row is the header and where a spanning cell is followed
+    by empty ones, `**`/`*` with spaces moved outside the markers, http(s) links only, `script`/`style` and the rest of the
+    sanitizer's removed list dropped with their contents. **It writes no HTML**: `escapeMarkdown` escapes `\` `` ` `` `*`
+    `_` `<` always, `&` only before an entity, `]` only before `(`, `[` or `:`; `escapeLineStart` a line that would read as
+    a heading, quote, list, rule or table. Nothing else is escaped, so "Hit Dice [d8s]" reads as written.
+  - **`exportSheet(saver, document)`** (`sheet-export.ts`) goes through ADR 0038's `FileSaver` and returns a name only;
+    `suggestedFileName(name, 'md')`. The `export-sheet` command is **enabled on the Sheet only** (its bar prints
+    "Exported the sheet as …"), needs no library and no content, sits below Save a copy in the File menu, and has **no
+    shortcut**: a free Ctrl+Shift chord must be found with real keys in the Windows window (ADR 0038).
+  - Tests: the corpus test (offline identity, every section and row written, no HTML, no empty heading, the words and
+    table columns of all 232 kept texts), `packages/ui`'s `html-markdown.test.ts`, `sheet-document.test.ts` and
+    `commands.test.ts`, each case failing under its named perturbation. **Escaping is held by the `packages/ui` tests
+    only**: the corpus gives it almost nothing to do. A count of pipes per table row did not see a spanning cell written
+    as one (rows are padded to the table's width); the test compares columns. The oracle is identical before and after.
+  - **Not done:** a copy to the clipboard; a shortcut; feature descriptions, personality, notes, the bag, prepared spells.
+    Driven in the browser build (exports compared byte for byte with the tests' and with the source off) and the Tauri
+    window on Windows (no source ever added; the native menu item and the real save dialog, by window messages); not with
+    real input, not the dialog's replace prompt or Cancel, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1433,7 +1473,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073 and 0074 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074 and 0075 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
