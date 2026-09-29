@@ -19,7 +19,28 @@
  *   values or an asset path reaches the view.
  * - **Names or descriptions?** The sheet lists held elements by name. How much text their descriptions would add.
  *
- * All of it is reported as `ℹ` lines and nothing is asserted (ADR 0042). The first run was on the commit before ADR 0075.
+ * All of that is reported as `ℹ` lines (ADR 0042). The first run, on the commit before ADR 0075, asserted nothing.
+ *
+ * What is asserted since ADR 0075 holds against any corpus. For every sample, every creature as an NPC and as a
+ * legendary creature, an NPC and a player character keeping every element their kind may keep, and a Cairn character:
+ * the Markdown (`sheetMarkdown(sheetDocument(state))`) is **the same packed and reopened with no source**; it heads
+ * every section and lists every row, element and printed line the document holds; it writes no HTML (no `<` it did not
+ * escape), no empty heading, and no table whose rows differ in width; and a sample's holds none of the importer's
+ * freeform prose and no asset path. And every kept text, read into Markdown, says the same words in the same order as
+ * its HTML with the tags taken away, and every table in it has the same columns, a spanning cell counted as the
+ * columns it spans: nothing lost, nothing added, no header over the wrong column.
+ *
+ * Perturbations, each run and failing here: a spanning cell not followed by empty ones (the grid tables' headers
+ * shift a column; a count of pipes did not see it, since every row is padded to the table's width); an empty heading
+ * written; bold text dropped by the reader (the words differ); printed lines left out of a section's list; the
+ * collector not seeding kept references (every kept text reopens as "not in the loaded content").
+ *
+ * Not caught here, and caught by `packages/ui`'s `html-markdown.test.ts` and `sheet-document.test.ts`: `escapeMarkdown`
+ * made the identity, and a title left unescaped. The corpus gives them almost nothing to do (its only such characters
+ * are square brackets no link follows and one ampersand that spells no entity), which is what the measurement says.
+ * The lede's element count written is caught there too. The collector not following embeds is caught by neither: no
+ * text a kind may keep embeds another element (every `h5` in them is content's own caption), so no kept text depends on
+ * it today; core's `embeds.test.ts` holds the collector to it.
  */
 
 import { test } from 'node:test';
@@ -36,7 +57,20 @@ import {
   type ElementIndex,
   type GameSystem,
 } from '@incudo/core';
-import { CharacterBuilder, expandDescription, newCharacterOfKind, openSelfClosingTags, packCharacter, type BuilderState } from '@incudo/ui';
+import {
+  CharacterBuilder,
+  escapeMarkdown,
+  expandDescription,
+  htmlToMarkdown,
+  newCharacterOfKind,
+  openSelfClosingTags,
+  packCharacter,
+  sheetDocument,
+  sheetMarkdown,
+  type BuilderState,
+  type SheetDocument,
+  type SheetSectionView,
+} from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
@@ -55,6 +89,71 @@ function drawn(state: BuilderState): unknown {
     companions: state.companions ?? null,
     references: { label: state.references.label, rows: state.references.rows },
   };
+}
+
+/** The text export of a builder's state. */
+const exported = (state: BuilderState): string => sheetMarkdown(sheetDocument(state));
+
+/**
+ * What is wrong with a Markdown export of `document`: a `<` it did not escape, an empty heading, a table whose rows
+ * differ in width, or a section, row, listed element or printed line it does not write.
+ */
+function markdownProblems(document: SheetDocument, markdown: string): string[] {
+  const problems: string[] = [];
+  if (/(^|[^\\])</m.test(markdown)) problems.push(`HTML: ${/.{0,30}(?:^|[^\\])<.{0,30}/m.exec(markdown)?.[0]}`);
+  if (/^#+\s*$/m.test(markdown)) problems.push('an empty heading');
+  const pipes = (line: string): number => (line.replace(/\\\\/g, '').match(/(?<!\\)\|/g) ?? []).length;
+  let table: number | undefined;
+  for (const line of markdown.split('\n')) {
+    if (!line.startsWith('|')) table = undefined;
+    else if (table === undefined) table = pipes(line);
+    else if (pipes(line) !== table) problems.push(`a table row of ${pipes(line)} pipes under a header of ${table}: ${line.slice(0, 60)}`);
+  }
+  const lines = new Set(markdown.split('\n'));
+  const e = escapeMarkdown;
+  const section = (s: SheetSectionView, level: number): void => {
+    if (!lines.has(`${'#'.repeat(level)} ${e(s.label)}`)) problems.push(`no heading for ${s.label}`);
+    for (const row of s.rows) if (![...lines].some((l) => l.startsWith(`- ${e(row.label)}: ${e(row.value)}`))) problems.push(`no row ${row.label}`);
+    for (const el of s.elements) if (![...lines].some((l) => l.startsWith(`- ${e(el.name)}`))) problems.push(`no element ${el.name}`);
+    for (const p of s.printed) if (!lines.has(`- ${e(p.label)}: ${e(p.text)}`)) problems.push(`no printed ${p.label}`);
+  };
+  for (const s of document.sections) section(s, 2);
+  for (const creature of document.companions?.creatures ?? []) for (const s of creature.sections) section(s, 4);
+  for (const entry of document.references?.entries ?? []) if (![...lines].some((l) => l.startsWith(`### ${e(entry.name)}`))) problems.push(`no reference ${entry.name}`);
+  return problems;
+}
+
+/** The words of a text, in order: what a reader of it reads, whatever it is marked up with. */
+const words = (text: string): string[] => text.match(/[\p{L}\p{N}]+/gu) ?? [];
+
+/**
+ * Each table's rows as the columns a reader sees them in, one string of words per column: from the HTML, a cell
+ * spanning columns followed by empty ones; from the Markdown, its cells between unescaped pipes, the delimiter row
+ * left out. A header over the wrong column is a difference, which a count of pipes cannot see.
+ */
+function htmlTableColumns(html: string): string[][][] {
+  return (openSelfClosingTags(html).match(/<table[\s\S]*?<\/table>/g) ?? []).map((table) =>
+    (table.match(/<tr[\s\S]*?<\/tr>/g) ?? []).map((row) =>
+      [...row.matchAll(/<t[dh](\s[^>]*)?>([\s\S]*?)<\/t[dh]>/g)].flatMap((cell) => [
+        words(cell[2]!.replace(/<[^>]*>/g, ' ')).join(' '),
+        ...Array.from({ length: Number(/colspan="(\d+)"/.exec(cell[1] ?? '')?.[1] ?? 1) - 1 }, () => ''),
+      ]),
+    ),
+  );
+}
+function markdownTableColumns(markdown: string): string[][][] {
+  const tables: string[][][] = [];
+  let current: string[][] | undefined;
+  for (const line of markdown.split('\n')) {
+    if (!line.startsWith('|')) {
+      current = undefined;
+      continue;
+    }
+    if (!current) tables.push((current = []));
+    if (/^\|( --- \|)+$/.test(line)) continue;
+    current.push(line.slice(1, -1).split(/(?<!\\)\|/).map((cell) => words(cell).join(' ')));
+  }
+  return tables;
 }
 
 /** Every string the view holds, with where it sits (its key). */
@@ -138,6 +237,9 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
   let withDescription = 0;
   let listedTotal = 0;
   let samples = 0;
+  const problems: string[] = [];
+  const offlineExports: string[] = [];
+  const leaked: string[] = [];
 
   for (const sample of readManifest().samples) {
     samples++;
@@ -180,6 +282,16 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
     const offline = reopened(state, run.system, run.elements, run.imported.extraIds);
     const d = firstDifference(view, drawn(offline));
     if (d) differ.push(`${sample.id} ${d}`);
+
+    // The export: what the document holds, written right, the same with no source, and none of the prose it leaves out.
+    const markdown = exported(state);
+    problems.push(...markdownProblems(sheetDocument(state), markdown).map((p) => `${sample.id} ${p}`));
+    if (exported(offline) !== markdown) offlineExports.push(sample.id);
+    for (const [key, value] of Object.entries(character.freeform)) {
+      const prose = /^(backstory|background-|background\.|attacks\.)/.test(key) && value.trim().length >= 4;
+      if (prose && markdown.includes(value.trim().slice(0, 40))) leaked.push(`${sample.id} ${key}`);
+    }
+    for (const path of Object.values(character.assets ?? {})) if (markdown.includes(path)) leaked.push(`${sample.id} ${path}`);
   }
 
   const range = (pick: (s: (typeof sizes)[number]) => number): string => {
@@ -197,12 +309,20 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
   t.diagnostic(`freeform values or asset paths that reach the view: ${personal.join(', ') || 'none'}`);
   t.diagnostic(`samples whose view differs reopened with no source: ${differ.length}${differ.length ? `: ${differ.slice(0, 5).join(' | ')}` : ''}`);
   assert.ok(samples > 0);
+  // Fails if the export leaves out what a section shows, writes HTML, an empty heading or an uneven table.
+  assert.deepEqual(problems, []);
+  // Fails if the export reads anything the save does not carry.
+  assert.deepEqual(offlineExports, []);
+  // Fails if the export writes the importer's prose or a portrait path, which the Sheet does not show.
+  assert.deepEqual(leaked, []);
 });
 
 test('every creature as an NPC and as a legendary creature: what its sheet holds, the same with no source', { skip: corpusSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
+  const problems: string[] = [];
+  const offlineExports: string[] = [];
   for (const kindId of ['npc', 'legendary']) {
     const kind = resolveCharacterKind(system, kindId);
     const step = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget && !s.multiple)!;
@@ -218,13 +338,59 @@ test('every creature as an NPC and as a legendary creature: what its sheet holds
       readStrings(drawn(state), c);
       rows += state.sheet.sections.reduce((n, s) => n + s.rows.length, 0);
       printed += state.sheet.sections.reduce((n, s) => n + s.printed.length, 0);
-      const d = firstDifference(drawn(state), drawn(reopened(state, system, elements)));
+      const offline = reopened(state, system, elements);
+      const d = firstDifference(drawn(state), drawn(offline));
       if (d) differ.push(`${creature.name} ${d}`);
+      const markdown = exported(state);
+      problems.push(...markdownProblems(sheetDocument(state), markdown).map((p) => `${kind.name} ${creature.name}: ${p}`));
+      if (exported(offline) !== markdown) offlineExports.push(`${kind.name} ${creature.name}`);
     }
     t.diagnostic(`${kind.name}: ${creatures.length} creatures, ${rows} rows and ${printed} printed lines in all`);
     reportStrings(t, kind.name, c);
     t.diagnostic(`${kind.name}: views that differ reopened with no source: ${differ.length}${differ.length ? `: ${differ.slice(0, 5).join(' | ')}` : ''}`);
   }
+  // Fails if an NPC's export leaves out what its sheet shows, or writes it wrong.
+  assert.deepEqual(problems, []);
+  // Fails if it reads anything the save does not carry.
+  assert.deepEqual(offlineExports, []);
+});
+
+test('a character keeping every element its kind may keep: every text written, word for word, the same with no source', { skip: corpusSkip }, async (t) => {
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await realElements();
+  const problems: string[] = [];
+  let entries = 0;
+  let tables = 0;
+  for (const kindId of ['npc', 'pc']) {
+    const kind = resolveCharacterKind(system, kindId);
+    const all = (kind.references?.types ?? []).flatMap((type) => elements.byType(type));
+    const builder = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
+    for (const element of all) assert.equal(builder.addReference(element.id), true, `${kind.name} keeps ${element.name}`);
+    const state = builder.getState();
+    const document = sheetDocument(state);
+    const markdown = exported(state);
+    problems.push(...markdownProblems(document, markdown).map((p) => `${kind.name}: ${p}`));
+    // Fails if the collector does not follow embeds: the reopened texts lose what they print.
+    if (exported(reopened(state, system, elements)) !== markdown) problems.push(`${kind.name}: the export differs with no source`);
+    for (const entry of document.references?.entries ?? []) {
+      entries++;
+      // What a reader of the HTML reads, tags gone and entities decoded, against what a reader of the Markdown reads.
+      const html = openSelfClosingTags(entry.html ?? '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&');
+      const said = words(entry.html ? html : entry.note ?? '');
+      const written = words(htmlToMarkdown(entry.html ?? '') || (entry.note ?? ''));
+      if (said.join(' ') !== written.join(' ')) {
+        const at = said.findIndex((w, i) => w !== written[i]);
+        problems.push(`${kind.name} ${entry.name}: the words differ from "${said.slice(at, at + 6).join(' ')}" / "${written.slice(at, at + 6).join(' ')}"`);
+      }
+      tables += htmlTableColumns(entry.html ?? '').length;
+      const columns = JSON.stringify(markdownTableColumns(htmlToMarkdown(entry.html ?? '')));
+      if (columns !== JSON.stringify(htmlTableColumns(entry.html ?? ''))) problems.push(`${kind.name} ${entry.name}: a table's columns differ`);
+    }
+  }
+  t.diagnostic(`kept texts written: ${entries}; tables in them, column for column: ${tables}`);
+  assert.ok(entries > 0);
+  // Fails if the reader drops or adds a word (bold text dropped, a cell lost), or the export differs with no source.
+  assert.deepEqual(problems, []);
 });
 
 /** The shell sanitizer's own lists, read from its source so this report cannot drift from it. */
@@ -324,6 +490,11 @@ test('a Cairn character\'s sheet', async (t) => {
   readStrings(drawn(state), c);
   t.diagnostic(`cairn/${kind.id}: ${state.sheet.sections.map((s) => `${s.label} (${s.rows.length} rows, ${s.elements.length} listed)`).join(', ')}; companions ${state.companions ? 'yes' : 'none'}; references available: ${state.references.available}`);
   reportStrings(t, 'Cairn', c);
-  const d = firstDifference(drawn(state), drawn(reopened(state, system, new BundleElementIndex([]))));
+  const offline = reopened(state, system, new BundleElementIndex([]));
+  const d = firstDifference(drawn(state), drawn(offline));
   t.diagnostic(`the same with no source: ${d ?? 'yes'}`);
+  // Fails if the export writes a Cairn sheet wrong, or reads anything but the character.
+  assert.deepEqual(markdownProblems(sheetDocument(state), exported(state)), []);
+  assert.equal(exported(offline), exported(state));
+  assert.match(exported(state), /^# New Character\n\n/);
 });
