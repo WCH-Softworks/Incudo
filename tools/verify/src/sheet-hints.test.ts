@@ -216,7 +216,7 @@ test('on the samples: what the sheet lists that has a hint, what it would say, a
     const stats = state.derived.stats;
     const level = stats.get('level')?.value ?? 0;
     const classLevels = [...stats].filter(([key, s]) => /^level:[a-z ]+$/.test(key) && s.value > 0).map(([key, s]) => `${key.slice(6)} ${s.value}`);
-    const multiclass = (sample.classes ?? []).length > 1 || classLevels.length > 1;
+    const multiclass = new Set(sample.split.map((run) => run.class)).size > 1;
     // Of what a sheet would show (listed and not hidden): its sheet text, the full text of those with none, and the full
     // text of all of them, as plain characters.
     let sheetChars = 0;
