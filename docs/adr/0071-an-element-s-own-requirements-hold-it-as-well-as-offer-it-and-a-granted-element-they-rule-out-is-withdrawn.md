@@ -1,6 +1,6 @@
 # 0071 — An element's own requirements hold it as well as offer it, and a granted element they rule out is withdrawn
 
-**Status:** Proposed · 2026-09-28 · not yet implemented (ROADMAP Phase 2) · amends the reading of `Element.requirements`
+**Status:** Accepted · 2026-09-28 · implemented the same day (ROADMAP Phase 3; see the note at the end) · amends the reading of `Element.requirements`
 that ADR [0005](./0005-aurora-import.md) left ("filters candidate lists; it does not make an element the character
 already has disappear") · builds on [0006](./0006-derived-character-state.md), [0025](./0025-slots-publish-tags.md),
 [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md), [0040](./0040-a-chosen-element-follows-the-track-of-the-element-that-offered-it.md),
@@ -156,3 +156,42 @@ What the implementation must show, each test naming the perturbation that fails 
   source.
 - Driven in the browser build and in the Tauri window on Windows, as far as the app can reach it (a 2024 character at
   level 4 taking the Ability Score Improvement feat; the replacement itself needs the bag, above).
+
+## Note, 2026-09-28 — built, and what it moved
+
+Implemented as decided, in two commits: the two terms first, then the withdrawal. Measured on AuroraLegacy/elements at
+`c28ce6c` (the `.corpus/` checkout), `INCUDO_ORACLE_SNAPSHOT` on the base and `INCUDO_ORACLE_BASELINE` on the change,
+plus a before/after of every sample's `summarize()` and of every candidate list its pending and answered choices offer.
+
+**Reading the terms alone moves no element, stat or problem on the thirty samples** (only the new `character` stat
+appears). It moves offers: eight feat choices on seven samples offer 34 to 48 more feats, the 2024 ones that require
+`[character:4]`. All 64 `[character:N]` uses that matter are element requirements: the eight rule-level ones sit
+inside XML comments.
+
+**The withdrawal moves 30 oracle rows, every one an `element-extra` that is gone (73 to 43), and nothing else**: no
+problem count, no compared row, no other element. `oracleViolations` stays empty.
+
+| sample | withdrawn (granted by) | rows gone |
+|---|---|---|
+| the two Artificers | the firearms proficiency (the Artificer class) | 11 each: it and the 10 firearm proficiencies only it grants |
+| four with Thieves' Tools expertise | the internal Thieves' Tools expertise proficiency (the expertise element) | 2 each: it and the class feature only it grants |
+
+The Consequences' "falls by 26" was the count of held elements whose own requirements are false (11 × 2 + 1 × 4);
+the oracle falls by 30 because a withdrawn element takes what only it grants with it. `thieves tools:proficiency` is
+no longer published on those four, and Aurora's own sum agrees they hold neither element.
+
+**Outside the samples:** the UA Ancient Companion names three features, "(Sage Only)", "(Healer Only)" and "(Warrior
+Only)", each requiring a variant trait a bare NPC built on it does not hold, so they are withdrawn there too; nothing
+else among the 141 creatures moves. A level 4 2024 Fighter is offered 23 of the 50 general feats (the rest carry other prerequisites this
+character does not meet), the Ability Score Improvement feat among them, and none at level 3.
+
+Held by `packages/core/src/withdrawn.test.ts` and `held-types.test.ts` (each case failing under the perturbation it
+names: no withdrawal, seeds checked too, the element counted as held, first granter only, pools not closed, shared
+answers dropped, a withdrawal kept across passes, the held types unread, `type` answered for a kind that names none),
+a schema case, and `tools/verify/src/own-requirements.test.ts` (the Ranger with the item equipped and carried, its
+Natural Explorer answer withdrawn and back; the Fighter's offer). With 5e's `heldTypesStat` removed, the oracle fails
+on all thirty samples for `Ability Score Maximum Over 20`, which is decision 1's reason for coming first. The samples
+reopen identically with no source, `withdrawn` included. Driven in the browser build and in the Tauri window on
+Windows: the 2024 Fighter at level 4 takes the feat and two Strength increases, reads 12, saves, and the file read
+back from disk derives the same with no source. The replacement itself was not driven: the app cannot put an item in
+the bag. Not driven on macOS or Linux.

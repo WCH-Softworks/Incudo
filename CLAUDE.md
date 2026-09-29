@@ -258,7 +258,8 @@ a rule for it would be the guess ADR 0005 rules out.
 > not "one species": 42 of the 73 are two Incudo-only internal multiclass grants on 21 of the 22 single-class
 > samples, 22 are firearm proficiencies on the two Artificer samples, 8 the Thieves' Tools pair on four
 > samples and 1 a 2024 weapon mastery grant (detail in docs/AURORA-SAVE-FORMAT.md's note). Whether that
-> internal pair is an Aurora omission or an over-grant is not settled.
+> internal pair is an Aurora omission or an over-grant is not settled. *(Since ADR 0071 the firearm 22 and the
+> Thieves' Tools 8 are gone: both are granted elements whose own requirements are false, and element-extra is 43.)*
 
 `compareWithAurora` in `packages/aurora-import` classifies all of them (frozen, ADR 0008; it was
 never in the CLI); see docs/AURORA-SAVE-FORMAT.md. `aurora-oracle.test.ts` *records* the whole table
@@ -271,7 +272,8 @@ clone at `c28ce6c`.
 (`ID_INTERNAL_MULTICLASS_LEVEL_5`, the same Aurora marker as the Paladin/Warlock's `_3`, named for the
 character level the second class began at), 2 element-extra (the Thieves' Tools expertise pair, which
 Aurora never derived here or in the Rogue 8; Aurora's updater rewrote `class-rogue.xml` a quarter of an
-hour before the save, so it may have run on the older copy in memory — **unconfirmed**), 1
+hour before the save, so it may have run on the older copy in memory — **unconfirmed**, and since ADR 0071 superseded:
+the pair's own requirements are false and Incudo withdraws it too), 1
 not-modelled, **0 stat-mismatch, 0 spell-missing**, two blocks and every row compared. It is the only
 save with two ordinary casting blocks, and it is what showed that Aurora records each block's *own*
 slot table and the shared pool only as a caster level ([ADR 0041](docs/adr/0041-aurora-records-a-slot-row-per-block-and-the-shared-caster-level-once.md)):
@@ -606,16 +608,39 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     nothing declares. The card computes nothing.
   - Driven in the browser build and in the Tauri window on Windows (DOM clicks over the debug port, the saved file read
     back from disk, reopened with the source off to an identical Sheet); not with real input, and not on macOS or Linux.
-- **Proposed and not built: an element's own requirements hold it as well as offer it** ([ADR 0071](docs/adr/0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)).
-  Today `Element.requirements` is read when an element is offered and for an addition, never once it is granted, so a
-  2014 Ranger with Tasha's Deft Explorer item also holds Natural Explorer. Aurora's `[character:N]` (64 uses) and
-  `[type:X]` (8) parse into stats nothing publishes and read false everywhere, which is also why **a level 4 2024
-  character is offered none of the 50 general feats of its book**. Measured by `tools/verify/src/replaced-features.test.ts`:
-  with both terms read, the samples hold 26 granted elements whose own requirements are false, all 26 absent from
-  Aurora's sum. They are the Artificers' 20 firearm proficiencies (the Firearms option is off) and the Thieves' Tools
-  expertise pair on four samples, so the "stale content" and "unconfirmed" readings of that pair elsewhere in this file
-  are superseded: the pair's own requirements are false and Aurora withdraws it. The ADR's Evidence section lists what
-  the implementation must show.
+- **An element's own requirements hold it as well as offer it, and a granted element they rule out is withdrawn**
+  ([ADR 0071](docs/adr/0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)).
+  Things to know before touching it:
+  - **Aurora's `[character:N]` and `[type:X]` are answered by the system, not core.** 5e declares `character` (a ref to
+    `level`, beside the six ability abbreviations), and a kind may name `heldTypesStat` (5e: `type`): `makeContext`'s
+    `statTags` then answers that stat with the lowercased types of every held element, the membership branch equipment
+    slots use. A kind that names none reads `[type:x]` as before (false). The validator refuses a held-types stat a slot
+    publishes into. Reading them alone moved no sample's elements; it widened eight feat choices, and a level 4 2024
+    Fighter is offered 23 of its book's 50 general feats, the Ability Score Improvement feat among them.
+  - **Withdrawal is in the expansion's `grant()`**: an id reached only by a `<grant>` or a setter grant, the first time
+    it is attempted in a pass, is asked its own requirements against the *previous* pass's context, itself counted as not
+    held (`ownRequirementsHold`, the same function the additions flag uses). False: not added, joins no track, recorded
+    with every granter. **A seed is never withdrawn** because every seed is `attempted` before any grant is read; do not
+    reorder that. A recorded choice under `<withdrawn id>/select:` stops seeding (`openSeeds`), unless another open
+    choice or a fixed seed names the same element; the record stays in `choices`. A change in what is withdrawn keeps the
+    fixed point going. Cycles hit the existing `cycle-limit`.
+  - **`DerivedCharacter.withdrawn`** (`{ elementId, grantedBy[] }`) is not a `Problem`, and `summarize()` includes it.
+    `collectCharacterContent` needed nothing: it ignores gates, so a withdrawn element is still embedded, which is what
+    lets a save re-derive the same withdrawal with no source and bring the element back when its condition clears.
+  - **Measured, oracle before and after on `.corpus/` at `c28ce6c`: 30 `element-extra` rows go (73 to 43) and nothing
+    else moves.** The Artificers' firearms proficiency is withdrawn (Firearms option off) and takes its 10 children; the
+    internal Thieves' Tools expertise proficiency is withdrawn on four samples and takes its class feature. So the
+    "unconfirmed" and "stale content" readings of that pair elsewhere in this file are superseded: its own requirements
+    are false and Aurora withdraws it. Outside the samples, the UA Ancient Companion's three "(X Only)" features are
+    withdrawn on a bare NPC (`npc-creatures.test.ts` accepts a named id only when published as withdrawn by it).
+  - Tests: `packages/core/src/withdrawn.test.ts` and `held-types.test.ts`, each case failing under its named
+    perturbation; `tools/verify/src/own-requirements.test.ts` (2014 Ranger with Deft Explorer equipped and carried,
+    answer included; the 2024 Fighter's offer). With 5e's `heldTypesStat` removed the oracle fails on all thirty for
+    `Ability Score Maximum Over 20` (`[type:class]`), which is why the terms had to come first.
+  - **Not done:** the replacement cannot be driven in the app (it cannot put an item in the bag: ROADMAP Phase 3's next
+    item); a seed whose own requirements have since become false is not flagged. Driven in the browser build and the
+    Tauri window on Windows (DOM clicks over the debug port, the saved file derived from disk with no source); not with
+    real input, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -716,7 +741,8 @@ computes nothing. Things to know before touching it:
   was unread (the test named them as the one expected missing pair; **ADR 0047 read the filter and the pair is
   gone: the build offers and accepts both, and the test asserts no element Aurora derived is missing beyond an
   option or a marker**), and Aurora records a Thieves' Tools expertise without the two internal elements it grants, in a build made
-  after its content was updated, so the older "stale content" explanation for that pair is wrong. What it
+  after its content was updated, so the older "stale content" explanation for that pair is wrong (ADR 0071 found the
+right one: its own requirements are false, and Incudo now withdraws it as well). What it
   cannot referee is `hp` (see ROADMAP Phase 2). **Prepared spells are refereed too now** (ADR 0046): its
   Wizard's limit is the count Aurora's screen showed, and preparing the spells the save prepared is offered and
   accepted, giving the list the save records. That closed the last clause of Phase 2's exit criterion.
@@ -1273,7 +1299,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069 and 0070 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070 and 0071 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

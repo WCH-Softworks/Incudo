@@ -1026,19 +1026,23 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       file added this way loads to the same elements the corpus load made of it. Driven in the browser build on Windows
       by a dropped file: added, shown in Browse, replaced, kept across a reload, removed with its copy. **Not done:** the
       picker and the Tauri window's drop were not driven; a folder or zip of files; macOS and Linux.
-- [ ] **Read Aurora's `[character:N]` and `[type:X]`, and withdraw a granted element its own requirements rule out**
-      ([ADR 0071](./docs/adr/0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md),
-      proposed). Measured first: an element's own requirements are read when it is offered and never once it is
-      granted, so a 2014 Ranger who takes Tasha's Deft Explorer also keeps Natural Explorer; the two terms parse into
-      stats nothing publishes, so a level 4 2024 character is offered none of the 50 general feats of its book. With
-      both read, the samples hold 26 granted elements whose own requirements are false, and Aurora's sum has none of
-      them: the Artificers' firearm proficiencies and the Thieves' Tools expertise pair, both long-unexplained
-      `element-extra` rows. Decided: the system answers the two terms (a `character` stat, a kind's `heldTypesStat`);
-      a granted element whose own requirements are false is withdrawn and published as such, never a seed; a withdrawn
-      element's recorded answers are not held while it is. **Next:** implement it.
+- [x] **Read Aurora's `[character:N]` and `[type:X]`, and withdraw a granted element its own requirements rule out**
+      ([ADR 0071](./docs/adr/0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)).
+      Measured first: an element's own requirements were read when it was offered and never once it was granted, so a
+      2014 Ranger who takes Tasha's Deft Explorer also kept Natural Explorer; the two terms parsed into stats nothing
+      published, so a level 4 2024 character was offered none of the 50 general feats of its book. 5e now declares a
+      `character` stat (the level) and its kinds a `heldTypesStat`, `type`, whose tags are the held elements' types; a
+      granted element whose own requirements are false is withdrawn (never a seed) and published in
+      `DerivedCharacter.withdrawn`, not as a problem, and a recorded answer under its select waits for it. The oracle,
+      before and after on the same checkout: 30 `element-extra` rows go (73 to 43), the Artificers' 22 firearm
+      proficiencies and the Thieves' Tools expertise pair on four samples, and nothing else moves. A level 4 2024
+      Fighter is offered 23 of the 50 feats, the Ability Score Improvement feat among them. Driven in the browser build
+      and in the Tauri window on Windows (DOM clicks over the debug port, the saved file derived with no source).
+      **Not done:** the replacement itself cannot be driven, since the app cannot put an item in the bag (next item);
+      a seed whose own requirements have become false is not flagged; macOS and Linux not driven.
 - [ ] **Take a Tasha's optional class feature in the app.** They are 36 hidden items a character equips (six replace a
       feature, ADR 0071), and the app has no way to put an item in the bag. A bag editor, or a skippable set step
-      offering them. After the item above, or a replacing one adds without replacing.
+      offering them. The item above is done, so a replacing one now replaces once equipped.
 
 ---
 
