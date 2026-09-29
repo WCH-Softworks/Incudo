@@ -17,6 +17,7 @@ import { ReferenceText } from './References.tsx';
 import {
   collectDeclaredBlocks,
   renderSheetSection,
+  sheetListedElements,
   sheetSectionIsEmpty,
   type ResolvedStat,
   type SheetReader,
@@ -30,6 +31,9 @@ export function SheetPane({
   state: BuilderState;
 }): React.JSX.Element {
   const { derived, kind } = state;
+  // An item the system marks hidden is held and saved, and not listed (ADR 0072): it is a switch a character equips
+  // to enable a feature, and the feature is what the sheet lists.
+  const listed = sheetListedElements(derived.elements, kind);
   const blocks = collectDeclaredBlocks(derived.elements);
   const reader: SheetReader = {
     statValue: (key) => derived.stats.get(key.toLowerCase())?.value,
@@ -61,8 +65,8 @@ export function SheetPane({
       {kind.sheet.sections
         .flatMap((section) => renderSheetSection(section, blocks, reader))
         .map((rendering) => {
-          if (sheetSectionIsEmpty(rendering, derived.elements)) return null;
-          const elements = derived.elements.filter((e) => rendering.types.includes(e.type));
+          if (sheetSectionIsEmpty(rendering, listed)) return null;
+          const elements = listed.filter((e) => rendering.types.includes(e.type));
 
           return (
             <section key={rendering.id} className="sheet-section">

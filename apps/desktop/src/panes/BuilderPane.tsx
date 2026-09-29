@@ -289,6 +289,31 @@ export function BuilderPane({
           )}
 
           {/*
+            What the character is given and does not hold, because the element's own prerequisites rule it out (ADR
+            0071): a feature an optional one replaces, or a proficiency that needs a campaign option. Listed so taking a
+            replacing feature says what it replaced rather than making it disappear (ADR 0072). Nothing to change here:
+            it comes back when what rules it out is gone.
+          */}
+          {state.withdrawn.length > 0 && (
+            <section className="withdrawn">
+              <h2>Not held</h2>
+              <p className="hint">
+                Given to this character and ruled out by their own prerequisites: something the character has replaces
+                them, or they need a rule this character does not use. They come back when that changes, with any
+                choices already made for them.
+              </p>
+              <ul className="withdrawn-list">
+                {state.withdrawn.map((row) => (
+                  <li key={row.elementId}>
+                    <span className="name">{row.name}</span>
+                    <span className="hint"> from {row.grantedBy.join(', ')}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/*
             What a held element gives, by its setters or its own grants: a creature's traits, actions
             and reactions, and a homebrew creature's legendary actions. Not decisions, since nothing is
             owed, and not picks, since nobody chose them; each can be taken away and given back (ADR
