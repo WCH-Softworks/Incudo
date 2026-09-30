@@ -104,13 +104,38 @@ export interface SupportsRule extends RuleBase {
   tag: string;
 }
 
+/**
+ * How content says an element is written on a character sheet (Aurora's `<sheet>`) — ADR 0076. Display only: nothing
+ * derives from it, and only a sheet section reads it.
+ */
 export interface SheetHints {
+  /** `false` keeps the element out of a sheet section that declares `omitHidden`. */
   display?: boolean;
+  /** A shorter name for the sheet ("Turn Undead" for "Channel Divinity: Turn Undead"). */
   alt?: string;
   usage?: string;
   action?: string;
   name?: string;
+  /**
+   * The first description's text. Kept beside `descriptions` so every reader of it, and every save written before
+   * `descriptions` existed, reads what it read.
+   */
   description?: string;
+  /**
+   * Every description, in the order content wrote them, each with the level it applies from and the usage or action
+   * it writes over the sheet's own. Absent in a save written before ADR 0076: a reader then treats `description` as
+   * the one description, applying at every level.
+   */
+  descriptions?: SheetDescription[];
+}
+
+/** One `<description>` of a sheet: its text, and what it says of itself. */
+export interface SheetDescription {
+  text: string;
+  /** Applies from this level on; absent, at every level. */
+  level?: number;
+  usage?: string;
+  action?: string;
 }
 
 export interface MulticlassBlock {

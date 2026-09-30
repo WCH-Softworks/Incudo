@@ -361,3 +361,38 @@ test('a setter\'s value decodes entities as text does, and one holding markup ke
   assert.equal(setters['note']!.value, '<not markup> & a & b');
   assert.equal(setters['time']!.value, '1 reaction, when targeted by the <i>magic missile</i> spell');
 });
+
+test('a <sheet> keeps every description, in order, with the level, usage and action each writes (ADR 0076)', () => {
+  // Fails with parseSheet reading `firstChild(node, 'description')` again, as it did: `descriptions` is absent.
+  // The commented-out description is content switching one off; a CRLF file reads as its LF twin.
+  const file = parse(`
+    <element name="Rage" type="Class Feature" id="ID_RAGE">
+      <sheet action="Bonus Action" usage="{{barbarian rage:count}}/Long Rest" alt="Rage!">\r
+        <description>In battle, +{{barbarian rage:damage}} damage.\r
+Second line.</description>
+        <!-- <description level="10">switched off</description> -->
+        <description level="9">From nine.</description>
+        <description level="20" usage="Unlimited">From twenty.</description>
+      </sheet>
+    </element>`);
+  const sheet = file.elements[0]!.sheet!;
+  assert.equal(sheet.description, 'In battle, +{{barbarian rage:damage}} damage.\nSecond line.');
+  assert.deepEqual(sheet.descriptions, [
+    { text: 'In battle, +{{barbarian rage:damage}} damage.\nSecond line.' },
+    { text: 'From nine.', level: 9 },
+    { text: 'From twenty.', level: 20, usage: 'Unlimited' },
+  ]);
+  assert.equal(sheet.action, 'Bonus Action');
+  assert.equal(sheet.alt, 'Rage!');
+  assert.equal(file.diagnostics.length, 0);
+});
+
+test('a sheet with no description records none, and a level that is not a number is reported', () => {
+  const file = parse(`
+    <element name="Hidden" type="Class Feature" id="ID_HIDDEN"><sheet display="false" /></element>
+    <element name="Odd" type="Class Feature" id="ID_ODD"><sheet><description level="high">Text.</description></sheet></element>`);
+  assert.deepEqual(file.elements[0]!.sheet, { display: false });
+  assert.deepEqual(file.elements[1]!.sheet!.descriptions, [{ text: 'Text.' }]);
+  assert.equal(file.diagnostics.length, 1);
+  assert.match(file.diagnostics[0]!.message, /"high" is not a number/);
+});

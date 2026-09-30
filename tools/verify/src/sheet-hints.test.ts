@@ -188,6 +188,35 @@ test('what content writes in <sheet>, and what the importer keeps of it', { skip
   assert.ok(raw.size > 0);
 });
 
+test('every <description> a <sheet> writes reaches the element, in order, with its level, usage and action', { skip: corpusSkip }, async (t) => {
+  // What holds against any corpus (ADR 0042): the importer keeps what the file wrote, as the file wrote it, line ends read
+  // as XML reads them. Fails with parseSheet keeping the first description only (220 sheets differ at `c28ce6c`), or
+  // with a description's own `usage` left unread (8 elements, 11 descriptions).
+  const { elements, raw } = await load();
+  const decode = (text: string): string =>
+    text.replace(/&#x([0-9a-f]+);|&#(\d+);|&(amp|lt|gt|quot|apos);/gi, (_, hex: string, dec: string, named: string) =>
+      hex ? String.fromCodePoint(parseInt(hex, 16)) : dec ? String.fromCodePoint(Number(dec)) : ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" } as Record<string, string>)[named.toLowerCase()]!);
+  const differ: string[] = [];
+  let compared = 0;
+  for (const [id, sheet] of raw) {
+    const element = elements.get(id);
+    if (!element) continue;
+    const expected = sheet.descriptions.map((d) => ({
+      text: d.text.replace(/\r\n?/g, '\n'),
+      ...(d.attributes['level'] !== undefined ? { level: Number(d.attributes['level']) } : {}),
+      ...(d.attributes['usage'] ? { usage: decode(d.attributes['usage']) } : {}),
+      ...(d.attributes['action'] ? { action: decode(d.attributes['action']) } : {}),
+    }));
+    compared += expected.length;
+    const actual = element.sheet?.descriptions ?? [];
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) differ.push(id);
+    else if (expected.length && element.sheet?.description !== expected[0]!.text) differ.push(`${id} (first)`);
+  }
+  t.diagnostic(`sheet descriptions compared: ${compared}; differing: ${differ.length}${differ.length ? `: ${differ.slice(0, 6).join(', ')}` : ''}`);
+  assert.ok(compared > 0, 'no sheet description was read: the corpus loaded nothing');
+  assert.deepEqual(differ, []);
+});
+
 test('on the samples: what the sheet lists that has a hint, what it would say, and what it names', { skip: corpusSkip || savesSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const { elements, raw } = await load();

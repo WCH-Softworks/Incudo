@@ -14,6 +14,7 @@ import {
   type Rule,
   type Setter,
   type SpellcastingBlock,
+  type SheetDescription,
   type SheetHints,
 } from '@incudo/core';
 import { parseXml, childrenNamed, firstChild, findFirst, decodeEntities, type XmlNode } from './xml.ts';
@@ -163,7 +164,7 @@ function toElement(
       options.fileUrl,
     ),
     description: firstChild(node, 'description')?.innerXml.trim() || undefined,
-    sheet: parseSheet(firstChild(node, 'sheet')),
+    sheet: parseSheet(firstChild(node, 'sheet'), id, diagnostics, options.fileUrl),
     multiclass: parseMulticlass(
       firstChild(node, 'multiclass'),
       id,
@@ -271,7 +272,21 @@ function parseSetters(node: XmlNode | undefined): Record<string, Setter> {
   return out;
 }
 
-function parseSheet(node: XmlNode | undefined): SheetHints | undefined {
+/**
+ * A `<sheet>`: its attributes, and every `<description>` with the level, usage and action it writes on itself.
+ *
+ * The sixth silently dropped construct (ADR 0076), found as the other five were, by counting what the corpus holds:
+ * this used to keep the first description only, and 220 sheets write two to five, gated by `level=` (Rage's "Unlimited"
+ * at 20, Sneak Attack's dice). `description` stays the first one's text, so a reader of it and a save written before
+ * this read what they did. A description the XML comments out is not one: the reader skips comments. Bugfix, so ADR
+ * 0008's freeze allows it.
+ */
+function parseSheet(
+  node: XmlNode | undefined,
+  ownerId: string,
+  diagnostics: ImportDiagnostic[],
+  fileUrl: string,
+): SheetHints | undefined {
   if (!node) return undefined;
   const hints: SheetHints = {};
   if (node.attrs['display'] !== undefined) hints.display = node.attrs['display'] !== 'false';
@@ -279,8 +294,30 @@ function parseSheet(node: XmlNode | undefined): SheetHints | undefined {
   if (node.attrs['usage']) hints.usage = node.attrs['usage'];
   if (node.attrs['action']) hints.action = node.attrs['action'];
   if (node.attrs['name']) hints.name = node.attrs['name'];
-  const description = firstChild(node, 'description');
-  if (description) hints.description = description.innerXml.trim();
+  const descriptions: SheetDescription[] = [];
+  for (const child of childrenNamed(node, 'description')) {
+    const description: SheetDescription = { text: child.innerXml.trim() };
+    const rawLevel = child.attrs['level'];
+    const level = numberOrUndefined(rawLevel);
+    if (level !== undefined) description.level = level;
+    else if (rawLevel !== undefined) {
+      // Read as ungated, it would shadow the text meant for the lower levels; so it is reported, and kept ungated
+      // only because dropping the text would lose it.
+      diagnostics.push({
+        level: 'warning',
+        message: `A sheet description's level "${rawLevel}" is not a number; it is shown at every level.`,
+        elementId: ownerId,
+        fileUrl,
+      });
+    }
+    if (child.attrs['usage']) description.usage = child.attrs['usage'];
+    if (child.attrs['action']) description.action = child.attrs['action'];
+    descriptions.push(description);
+  }
+  if (descriptions.length) {
+    hints.description = descriptions[0]!.text;
+    hints.descriptions = descriptions;
+  }
   return Object.keys(hints).length ? hints : undefined;
 }
 
