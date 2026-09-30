@@ -12,22 +12,27 @@
  *
  * Printing is this pane on paper (ADR 0077): the print rules in styles.css hide what is not the sheet, print the title
  * where the name field is, flow the character's sections and its creatures (`.sheet-flow`) in two columns, and start
- * what it keeps on a page of its own. Nothing here knows a section by name.
+ * what it keeps on a page of its own. Nothing here knows a section by name. What the print options step chose (ADR 0078)
+ * arrives as classes on the root, which mean something only in print, and as one `@page` rule carrying the name.
  */
 
-import type { CharacterBuilder, SheetDocument } from '@incudo/ui';
+import type { CharacterBuilder, PrintRendering, SheetDocument } from '@incudo/ui';
 import { ReferenceText } from './References.tsx';
 import { Companions, SheetRows } from './Companions.tsx';
 
 export function SheetPane({
   builder,
   document,
+  print,
 }: {
   builder: CharacterBuilder;
   document: SheetDocument;
+  /** What the next print uses: `printRendering` of the choices in force. */
+  print: PrintRendering;
 }): React.JSX.Element {
   return (
-    <main className="pane sheet">
+    <main className={['pane', 'sheet', ...print.classes].join(' ')}>
+      {print.pageRule && <style>{print.pageRule}</style>}
       {/* The name is edited here, and printed as the document's title: a text box prints at its own width. */}
       <h1 className="sheet-print-title">{document.title}</h1>
       <input

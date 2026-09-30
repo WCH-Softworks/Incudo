@@ -715,6 +715,25 @@ dialog.ask h2 {
   font-size: 16px;
 }
 
+dialog.print-options fieldset {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+dialog.print-options legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+dialog.print-options label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 4px 0;
+}
+
 dialog.ask .row {
   margin-bottom: 0;
   justify-content: flex-end;

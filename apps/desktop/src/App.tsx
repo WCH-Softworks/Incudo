@@ -54,16 +54,25 @@ import {
   addContentFiles,
   describeCommand,
   exportSheet,
+  finishPrintStep,
   importAuroraSavesIntoLibrary,
   importBlock,
+  DEFAULT_PRINT_OPTIONS,
+  printOptionsView,
+  printRendering,
+  readPrintOptions,
   resolveCommands,
   saveCopy,
   sheetDocument,
+  withPageNumbers,
+  withPrintPart,
+  withRunningName,
   writeDraftOrigin,
   type AuroraImportReport,
   type ContentFileResult,
   type Destination,
   type LibraryEntry,
+  type PrintOptions,
   type WorkingCharacter,
 } from '@incudo/ui';
 
@@ -86,6 +95,7 @@ import { LibraryPane } from './panes/LibraryPane.tsx';
 import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
 import { BuilderPane } from './panes/BuilderPane.tsx';
 import { SheetPane } from './panes/SheetPane.tsx';
+import { PrintOptionsDialog } from './panes/PrintOptions.tsx';
 import { SettingsPane } from './panes/SettingsPane.tsx';
 import { BrowsePane, NEW_BROWSE_VIEW, type BrowseView } from './panes/BrowsePane.tsx';
 import { loadSources, type LoadProgress, type LoadedContent } from './content.ts';
@@ -394,6 +404,12 @@ function Shell({
   const [exportNote, setExportNote] = useState<string | null>(null);
   /** A save whose character name no longer matches the file it would write to. */
   const [renamePrompt, setRenamePrompt] = useState<{ from: string; to: string } | null>(null);
+  // What the next print uses (ADR 0078): the remembered choices, until the print options step records new ones.
+  const [printOptions, setPrintOptions] = useState<PrintOptions>(DEFAULT_PRINT_OPTIONS);
+  // The step's own choices while it is open; `null` while it is closed.
+  const [printDraft, setPrintDraft] = useState<PrintOptions | null>(null);
+  // Set by the step's Print: the platform's dialog opens once the Sheet carries the choices and the step has closed.
+  const [printRequested, setPrintRequested] = useState(false);
 
   /** The Aurora import: what it is doing, and what it did. Cleared by the user, not a timer. */
   const [importing, setImporting] = useState(false);
@@ -901,13 +917,39 @@ function Shell({
   }, [document]);
 
   /**
-   * Print the Sheet through the platform's own dialog (ADR 0077). `window.print()` in both builds: Tauri documents it for
-   * every platform, and wry's own `print()` on Windows is this call. What prints is the Sheet pane under the print rules in
-   * styles.css; nothing here lays anything out.
+   * "Print sheet…" opens the print options step (ADR 0078), with the remembered choices read afresh; its Print then opens
+   * the platform's own dialog. Nothing here decides what the step offers: `printOptionsView` does.
    */
   const printSheet = useCallback((): void => {
-    window.print();
+    void readPrintOptions(platform.storage).then((remembered) => {
+      setPrintOptions(remembered);
+      setPrintDraft(remembered);
+    });
   }, []);
+
+  /** The step's two answers. Print records the choices and prints; Cancel records nothing and prints nothing. */
+  const finishPrint = useCallback(
+    async (answer: 'print' | 'cancel'): Promise<void> => {
+      if (printDraft === null) return;
+      const next = await finishPrintStep(platform.storage, answer, printDraft, printOptions);
+      setPrintOptions(next);
+      setPrintDraft(null);
+      if (answer === 'print') setPrintRequested(true);
+    },
+    [printDraft, printOptions],
+  );
+
+  // The platform's dialog, after the render that closed the step and put the choices on the Sheet: the step's own close
+  // runs in a child's effect, before this one. `window.print()` in both builds (ADR 0077): Tauri documents it for every
+  // platform, and wry's own `print()` on Windows is this call.
+  useEffect(() => {
+    if (!printRequested) return;
+    setPrintRequested(false);
+    window.print();
+  }, [printRequested]);
+
+  const printView = useMemo(() => (printDraft === null ? null : printOptionsView(document, printDraft)), [document, printDraft]);
+  const printing = useMemo(() => printRendering(printOptions, document), [printOptions, document]);
 
   // While the Sheet prints, the page is titled with the character, so a print dialog's header and the name "Save as PDF"
   // suggests read the character rather than the app (ADR 0077 decision 3). Put back afterwards. `window.document`, since
@@ -964,6 +1006,7 @@ function Shell({
   // dialog is open: nothing behind it should react to a shortcut.
   const modal =
     renamePrompt !== null ||
+    printDraft !== null ||
     (pane === 'library' && libraryState.status === 'no-location' && !askDismissed);
   const resolved = resolveCommands({
     workspace: true,
@@ -1142,7 +1185,7 @@ function Shell({
             </button>
             {exportNote && <span className="status">{exportNote}</span>}
           </div>
-          <SheetPane builder={builder} document={document} />
+          <SheetPane builder={builder} document={document} print={printing} />
         </>
       )}
       {pane === 'browse' && (
@@ -1190,6 +1233,14 @@ function Shell({
           onDismissFileResults={() => setFileResults(null)}
         />
       )}
+      <PrintOptionsDialog
+        view={printView}
+        onPart={(part, chosen) => setPrintDraft((draft) => draft && withPrintPart(draft, document, part, chosen))}
+        onPageNumbers={(chosen) => setPrintDraft((draft) => draft && withPageNumbers(draft, chosen))}
+        onRunningName={(chosen) => setPrintDraft((draft) => draft && withRunningName(draft, chosen))}
+        onPrint={() => void finishPrint('print')}
+        onCancel={() => void finishPrint('cancel')}
+      />
       <RenameFileDialog
         prompt={renamePrompt}
         onRenameFile={() => void resolveRename(true)}

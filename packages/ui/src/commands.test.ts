@@ -247,6 +247,15 @@ test('Ctrl+P is claimed on every pane and prints only on the sheet', () => {
   assert.equal(matchShortcut(key('P', { ctrlKey: true, shiftKey: true }), 'other'), undefined, 'Ctrl+Shift+P is not print');
 });
 
+test('while the print options step is open, Ctrl+P is claimed and runs nothing (ADR 0078)', () => {
+  // The step is a modal dialog: a second Ctrl+P must neither open the platform's dialog behind it nor a second step.
+  // Fails if the modal flag stops claiming the key (the platform would print the page with the step on it).
+  const outcome = keyOutcome(key('p', { ctrlKey: true }), 'other', resolveCommands({ ...READY, pane: 'sheet', modal: true }));
+  assert.deepEqual(outcome, { id: 'print-sheet', claimed: true, run: false });
+  // The label still ends in an ellipsis: the command asks something before it prints.
+  assert.ok(COMMANDS.find((c) => c.id === 'print-sheet')!.label.endsWith('…'));
+});
+
 test('while the library scans: new character stays, refresh and save do not', () => {
   const scanning = enabledIn({ ...READY, library: 'scanning', libraryBusy: true });
   assert.ok(scanning.has('new-character'), 'the screen shows its button while scanning');

@@ -107,8 +107,9 @@ export const COMMANDS: readonly CommandDef[] = [
   // The sheet on screen as text (ADR 0075). No shortcut: the free Ctrl+Shift chords are found by pressing real keys in
   // the Windows window, as Save a copy's were, and a chord WebView2 takes before the page would be worse than none.
   { id: 'export-sheet', label: 'Export sheet as text…' },
-  // The sheet on paper, through the platform's own print dialog (ADR 0077). Ctrl+P is every platform's print chord, and
-  // claimed on every pane it stops the platform printing whichever pane is showing.
+  // The sheet on paper (ADR 0077): a step of the app's own choosing what prints, then the platform's own print dialog
+  // (ADR 0078). Ctrl+P is every platform's print chord, and claimed on every pane it stops the platform printing
+  // whichever pane is showing; while the step is open it is claimed and runs nothing, as for any dialog.
   { id: 'print-sheet', label: 'Print sheet…', shortcut: { key: 'p', primary: true } },
   // No shortcut: Ctrl+I is italic in every text field and Ctrl+Shift+I is developer tools.
   { id: 'import-aurora', label: 'Import from Aurora…' },
@@ -244,8 +245,8 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   // On the Sheet, whose bar prints "Exported the sheet as …": what is exported is what is on screen there. Like a copy it
   // needs no library, and no content either (ADR 0075).
   'export-sheet': (c) => c.pane === 'sheet' && c.saverAvailable && !c.exporting,
-  // On the Sheet, which is what prints (ADR 0077). The dialog is the platform's, so it needs no library, no content and
-  // no save dialog; it prints what is on screen, not a file.
+  // On the Sheet, which is what prints (ADR 0077). The options step is the app's and the dialog the platform's, so it
+  // needs no library, no content and no save dialog; it prints what is on screen, not a file.
   'print-sheet': (c) => c.pane === 'sheet',
   // Its report is printed on the library screen, so that is where it can be started.
   'import-aurora': (c) => c.pane === 'library' && !c.importing && importBlock(c) === undefined,
