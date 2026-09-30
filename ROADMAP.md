@@ -1360,6 +1360,16 @@ pane draws and every export renders: the PDF and the print layout start from it,
       the browser build prints the same. What did not work first: keeping every section whole, which left pages half
       empty. No oracle row moved; no system or character format change. **Not done:** a stat block drawn as the book
       prints it; turning off the dialog's default header and footer (they print the page's address); macOS and Linux.
+- [ ] **A printed sheet carries nothing of the web page it came from.** Seen on paper (2026-09-30): the print dialog's
+      default headers and footers put the date and time at the top of every page and the page's address and a page
+      number at the bottom. In the dev build the address is `localhost:5173`; an installed build would print
+      `tauri.localhost`, which reads no better. ADR 0077 left them to the dialog; the maintainer's call is that a sheet
+      should not show them. Two ways, neither chosen yet: take the page margin away in the print rules (`@page` with no
+      margin, the margin moved inside the page), since the dialog prints its headers only in the margin; or print through
+      WebView2's own print settings, which can turn them off, from Rust and on Windows only. Either way the dialog's own
+      checkbox can still put them back, which is the user's choice. Decide at the same time whether the sheet prints its
+      own page numbers and the character's name on later pages: a three-page sheet that loses a page is worse without
+      them. Wants an amendment to ADR 0077 first.
 
 ---
 
@@ -1472,6 +1482,34 @@ written on a character can be moved into the user's library without being typed 
     content is not Incudo's to do; whether a translated content source a community publishes can stand beside or in
     place of the English one is the open question, and ADR 0054's "the later source wins" may already answer it.
   - **Which languages ship first**, and whether right-to-left is in scope, are the maintainer's call.
+- [ ] **The desktop app behaves like an application, not a web page.** Raised by the maintainer after using it
+      (2026-09-30). Each part is small; together they are most of why the window still feels like a browser tab. Some
+      are Tauri or WebView2 settings rather than page code, and the one that needs a picture already has one:
+  - **No right-click menu.** Today a right click opens WebView2's own menu (Back, Refresh, Save as, Print, and Inspect
+    in a dev build), none of it the app's. Remove it, and bring a menu back only when a feature belongs in one, as the
+    app's own. Either the page declines the `contextmenu` event or WebView2's default menus are switched off from
+    Rust; the second also covers a moment before the page has loaded. What goes with it: a text field loses right-click
+    Cut, Copy, Paste and spelling suggestions (the keyboard chords stay). Decide whether text fields keep theirs.
+  - **No blank white window while it starts.** The window is shown before the page has drawn anything, so it is white
+    until React renders, even in the dark scheme. Tauri's window config has what it needs: `visible: false` and showing
+    the window once the first screen has rendered, and a `backgroundColor` so what is shown first is the app's colour
+    rather than white (the scheme decides which, so it may be set from the system theme at start rather than in the
+    config). A loading screen, if one is still wanted after that, can be plain HTML and CSS in `index.html` that React
+    replaces, which covers the browser build as well. **No new artwork is needed**: the window's background is a colour,
+    and a loading screen can use the logo in `brand/` (downscaling supplied art is allowed, generating it is not).
+    Measure how long the blank window lasts first, cold and warm, so the fix can be shown to work.
+  - **The dev server stays off the common ports.** An installed build runs no server: Tauri serves the built files
+    through its own protocol (`http://tauri.localhost` on Windows), with no port to collide. Only development does:
+    `npm run desktop` and `npm run desktop:app` run Vite on 5173, Vite's own default and the port every other Vite
+    project on the machine wants. `strictPort` and `scripts/check-port.mjs` already refuse to move and name the process
+    holding it (a dev server that moved would leave the Tauri window blank). Move it to a fixed port no popular
+    framework or database uses, named in one place: `vite.config.ts`, `tauri.conf.json`'s `devUrl` and
+    `check-port.mjs` all repeat 5173 today, and so do the READMEs and CLAUDE.md.
+  - **Also worth a look, not yet decided or tried:** the browser's own keys and gestures that may still act in the
+    window (reloading the page, a find bar, zooming the whole app), to be found by pressing real keys in it, as the
+    command chords were; WebView2 has settings for browser keys and zoom that a release build could switch off while
+    the browser build keeps them for development. And selecting the text of buttons and headings by dragging across
+    them.
 - [ ] Stable formats with a real versioning and migration policy — from here on, the system
       format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md))
 - [ ] Signed desktop installers (Windows/macOS/Linux); mobile store presence TBD
@@ -1485,6 +1523,32 @@ written on a character can be moved into the user's library without being typed 
 ## Beyond 1.0
 
 Committed to as *direction*, not scope. Each gets a design doc before work starts.
+
+### 1.x — A laid-out sheet
+After the first release, by the maintainer's call (2026-09-30), once the printed sheet had been seen on paper. The
+Sheet today is a column of labelled sections; the screen, the print layout (ADR 0077) and the text export all read
+that one document, and it shows everything, but it reads as lists rather than as a sheet. Not a copy of the official
+character sheet: a sheet organised with more care, as general UX work.
+- **Cards, aligned**, rather than one flow of sections: the scores, combat numbers, saves and skills as blocks placed
+  beside each other, features as cards with their sheet lines, a stat block drawn as one (the "stat block laid out as a
+  stat block" that ADR 0077 left out).
+- **Proficiencies are not a list of words.** Grouped by what they are (armour, weapons, tools, languages), and a group
+  granted whole shown as the group: a Paladin / Sorcerer sample lists some fifty separate weapon proficiencies next to
+  "Simple Weapons" and "Martial Weapons". What content declares that a grouping could read has to be measured first;
+  the "Weapon Proficiency (…)" in a name is text, not data (ADR 0005).
+- **Spells are not a paragraph of names**: by level, with what a player needs at the table.
+- **Explanations are not on the sheet.** A section's description ("The ability modifier, plus the proficiency bonus for
+  a saving throw the character is proficient in…", ADR 0062's `description`) is shown on the Sheet, printed, and
+  written to the text export (ADR 0075). It explains the number and is not part of the character; where it lives
+  instead (the Build pane, a line shown on screen only) is part of the decision. Small and separable, if wanted before
+  the rest.
+- **No headings invented to hold a row.** "Senses" holding passive Perception (ADR 0074 decision 4) is not a heading the
+  game uses; it exists because a column of labelled sections needs somewhere to put the number. A laid-out sheet puts
+  passive Perception by Perception, and any heading that only carries a row goes the same way.
+- **What it has to keep:** the engine still names no game, so which blocks a sheet has and what goes in each is the
+  system definition's to declare. That is a system format change (a public API, ADR 0011), the layout declaration ADR
+  0077 considered and kept for later. An ADR first, amending 0062, 0074, 0075 and 0077; the sheet document stays the
+  one thing the pane, the print, the export and the PDF read.
 
 ### 2.x — Story building tools ❄️
 Campaign and session notes, NPC and faction tracking, timelines, relationship maps, linking
