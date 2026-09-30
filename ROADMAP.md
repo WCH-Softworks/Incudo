@@ -1335,12 +1335,13 @@ pane draws and every export renders: the PDF and the print layout start from it,
       `display="false"` (188 and 10 on the samples: Spellcasting, subclass placeholders, Tough), the header and Senses
       keep theirs, and a hidden element a section lists anyway is named without its line (found in the Tauri window: a
       2014 class's header read its sheet text). A stat block's traits keep "Primal Bond", which the book prints. No oracle
-      row moved; no character format change. Driven in the browser build (two samples, one reopened with the source off,
-      exports byte for byte the tests') and the Tauri window on Windows (two samples with no source ever added, exported
-      from the native menu through the real save dialog, byte for byte the tests'). **Not done:** spells, proficiencies
-      and backgrounds described on the sheet (content writes no sheet text for them); a reason beside a number a hidden
-      feature moved (Tough); counting uses (Phase 6); an NPC's or held creature's sheet lines driven in either build;
-      macOS and Linux.
+      row moved; no character format change. Driven in the browser build (samples, a held Owl, an NPC and a held creature
+      from a user's own file whose lines name stats and change with level, reopened with the sources off, exports byte for
+      byte the tests') and the Tauri window on Windows (the same, no source ever added, exported from the native menu
+      through the real save dialog, byte for byte the tests'); driving a held creature found its unfilled placeholders
+      counted nowhere. **Not done:** spells, proficiencies and backgrounds described on the sheet (content writes no sheet
+      text for them); a reason beside a number a hidden feature moved (Tough); counting uses (Phase 6); a hidden trait a
+      stat block prints is named without its line (three Tasha's "Primal Bond"s, which no sample holds); macOS and Linux.
 - [ ] "Content has been updated — refresh?" flow, diffing recorded source versions against
       available ones and showing what would change before touching the character
 - [ ] Print layout

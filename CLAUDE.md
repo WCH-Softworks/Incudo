@@ -863,12 +863,18 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   - Tests: `packages/core/src/sheet-hints.test.ts`, `engine.test.ts`, `packages/ui/src/sheet-hints.test.ts`,
     `parse-elements.test.ts`, `schemas.test.ts` and the corpus assertions in `sheet-hints.test.ts`, each case failing
     under its named perturbation. The oracle is identical before and after.
+  - **A held creature's unfilled placeholders are counted on its own view** (`CompanionView.unfilled`, the same
+    `unfilledIn` helper); `SheetView.unfilled` counts only the character's own sections. Found by driving one.
+  - **No creature feature in the corpus names a stat**, so filling inside a creature's scope is only reachable from a
+    user's own file; the drive used a scratch one (not committed), and `companions.test.ts` holds it (two creatures' lines
+    each read their own scope, not the holder's sum).
   - **Not done:** spells, proficiencies and backgrounds described on the sheet (content writes no sheet text for them); a
-    reason beside a number a hidden feature moved (Tough); counting uses (Phase 6); an NPC's or held creature's lines
-    driven in either build. Driven in the browser build (samples 17 and 11, 17 reopened with the source off, exports byte
-    for byte the tests'; before the hidden-line fix) and the Tauri window on Windows (samples 02 and 17 packed outside it,
-    no source ever added, exported from the native menu through the real save dialog, byte for byte the tests'); not with
-    real input, not importing in the window, and not on macOS or Linux.
+    reason beside a number a hidden feature moved (Tough); counting uses (Phase 6); a hidden trait a stat block prints is
+    named without its line (the three Tasha's "Primal Bond"s, held by no sample). Driven in the browser build (samples 17,
+    11 and 08, an NPC and a held creature from a user's own file, reopened with the sources off, exports byte for byte
+    the tests') and the Tauri window on Windows (samples 02, 17, 08 and 11 and the NPC packed outside it, no source ever
+    added, exported from the native menu through the real save dialog, byte for byte the tests'); not with real input,
+    not importing in the window, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

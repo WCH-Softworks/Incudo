@@ -128,7 +128,14 @@ Not the derivation's numbers, not a picker, not Browse. A hint is display.
   the Tauri window read "Paladin: A holy warrior bound to a sacred oath."). A 2014 class carries sheet text, and its
   `display="false"` says the line is for a feature list content keeps it out of. So in a section that does not declare
   `omitHidden`, a hidden element carries its sheet name if any and no text, usage or action. 46 header lines on the
-  samples.
+  samples. **What it costs:** a stat block's Traits keep a hidden trait, since the book prints it, and so name it without
+  its line too. Of the 9 hidden creature traits, the 2024 "Primal Bond" and the three Unearthed Arcana spirits carry no
+  sheet text, so nothing is lost; the three Tasha's "Primal Bond"s carry one, and a ranger holding a Tasha's beast sees
+  "Primal Bond" without it (no sample holds one). A section flag saying which it wants would separate the two and has
+  not been added for three elements.
+- **A held creature's unfilled placeholders are counted on its own view** (`CompanionView.unfilled`), by the same
+  helper as the character's (`unfilledIn`); `SheetView.unfilled` counts the character's own sections. Found by driving a
+  held creature whose action named a stat nothing publishes: its stat block showed "+— to hit" and nothing counted it.
 - **`listedName` and `listedUsage`** (`sheet-document.ts`) are the one wording of "**Rage** (Bonus Action; 3/Long
   Rest)": the pane and the export both call them. A listed element is in bold only when content writes it a line, so a
   list of proficiencies reads as it did.
@@ -177,6 +184,7 @@ restored) and failed the test that names it.
 | the level each held element's rules read is published, its track's else the character's | `engine.test.ts`; `summarize()` now carries it, so the self-containment, rebuild and reopen tests compare it | every element at the character's level; an element in no track at 0 |
 | the choice by level, the old-save fallback, the placeholder reader, the `:half` reader | `packages/core/src/sheet-hints.test.ts` | the first text at every level; the gate compared with `<`; the last in file order; `descriptions` read alone; an untrimmed name; `{{}}` read; the case kept; `:half` rounding up |
 | the view: text at the gate level with its own usage and action; `:half:up`, a text stat, escaping, "—" counted; `alt` then `name`; lines kept; `omitHidden` honoured only where declared; a hidden element listed anyway named without a line; the export's bold, parenthesis, lines and markup | `packages/ui/src/sheet-hints.test.ts` (10 cases) | 21, one or more per clause, among them the text chosen by the character's level and the line given back to a hidden element |
+| a held creature's lines are filled from its own scope, and its unpublished placeholders counted on its own view | `companions.test.ts` | lines filled from the holder (two creatures' values sum); the creature's count left out |
 | on the samples: each shown text is the one the raw XML gives at `gateLevels`, filled; no shown hint keeps a `{{`; no "—" for a published stat; a hidden element leaves only a section declaring `omitHidden`, and one declaring it lists none; packed and reopened with no source, the same hints | `sheet-hints.test.ts` (any corpus) | the text by character level (sample 17's Font of Magic); braces left; `:half:up` unread; the hint honoured everywhere; `omitHidden` unread; a save embedding elements without their later descriptions |
 | `omitHidden` is in the schema, a boolean, and refused beside no types | `schemas.test.ts` | the check removed; the property left out of the schema |
 
@@ -203,6 +211,22 @@ same sheets listed every one of them by name only.
   over the debug port. Sample 02's header read names only, its Lay on Hands kept its three lines; sample 17's Font of
   Magic read the Sorcerer 3 text. Both exported from the native menu item through the real save dialog (window
   messages: `WM_COMMAND`, `WM_SETTEXT`, `PostMessage` `BM_CLICK`), and both files are byte for byte the tests'.
-- **Not exercised:** real keyboard or mouse input; importing into the window (its samples were packed outside it); an
-  NPC's or a held creature's sheet lines in either build (the samples assertion covers the held creatures' sections);
-  the save dialog's replace prompt and Cancel; macOS and Linux.
+- **An NPC's and a held creature's sheet lines, driven.** No creature feature in the corpus names a stat, so a user's
+  own Aurora file (a scratch file of generic test content, not committed) was added through Sources' "Choose files…":
+  a creature whose trait names `{{proficiency}}` and `{{proficiency:half:up}}`, writes three lines with an `<i>`, and
+  has a level-5 description with its own "Unlimited"; an action with a shorter sheet name, its own action and a stat
+  nothing publishes; a hidden trait; and a feat granting the creature. In the browser build, with both sources loaded:
+  sample 08's Owl (a held corpus creature) showed "Flyby" and "Talons" with their lines; the creature built as an NPC
+  read "Pack Sense (2/Long Rest): Adds +2 …, or +1 …" in three lines at challenge 2, and the level-5 text with
+  "Unlimited" once a challenge rating of 5 was typed (an NPC's elements gate on its rating, as its rules do); "Quiet
+  Paws" was named without its line and "Quick Snap (Bonus Action): Melee attack, +— to hit." read the unpublished stat
+  as a dash. Sample 11 (Barbarian 5) given the feat through "Added to this character" held the creature, listed "Hound
+  Keeper (1/Day): … +3" and showed the creature's level-5 text filled from the holder's proficiency (the feat follows no
+  class, so its creature gates on the character's level). All four exports hashed equal to the tests' pipeline; the
+  NPC and sample 11 were saved, both sources switched off, the page reloaded, and all three reopened from the library
+  exported byte for byte the same. In the Tauri window, the same three packed into the scratch library and opened with
+  no source ever added showed the same lines and exported, through the native menu and the real save dialog, files byte
+  for byte the tests'. That drive found the uncounted placeholder above.
+- **Not exercised:** real keyboard or mouse input; importing into the window (its characters were packed outside it); a
+  Legendary Creature's lines (it lists the NPC's sections); a ranger holding a Tasha's beast; the save dialog's replace
+  prompt and Cancel; macOS and Linux.
