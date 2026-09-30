@@ -1360,16 +1360,36 @@ pane draws and every export renders: the PDF and the print layout start from it,
       the browser build prints the same. What did not work first: keeping every section whole, which left pages half
       empty. No oracle row moved; no system or character format change. **Not done:** a stat block drawn as the book
       prints it; turning off the dialog's default header and footer (they print the page's address); macOS and Linux.
-- [ ] **A printed sheet carries nothing of the web page it came from.** Seen on paper (2026-09-30): the print dialog's
-      default headers and footers put the date and time at the top of every page and the page's address and a page
-      number at the bottom. In the dev build the address is `localhost:5173`; an installed build would print
-      `tauri.localhost`, which reads no better. ADR 0077 left them to the dialog; the maintainer's call is that a sheet
-      should not show them. Two ways, neither chosen yet: take the page margin away in the print rules (`@page` with no
-      margin, the margin moved inside the page), since the dialog prints its headers only in the margin; or print through
-      WebView2's own print settings, which can turn them off, from Rust and on Windows only. Either way the dialog's own
-      checkbox can still put them back, which is the user's choice. Decide at the same time whether the sheet prints its
-      own page numbers and the character's name on later pages: a three-page sheet that loses a page is worse without
-      them. Wants an amendment to ADR 0077 first.
+- [ ] **Print options of the app's own, then the platform's print dialog; and nothing of the web page on paper.**
+      Seen on paper (2026-09-30): the print dialog's default headers and footers put the date and time at the top of
+      every page and the page's address and a page number at the bottom (`localhost:5173` in the dev build; an installed
+      build would print `tauri.localhost`). ADR 0077 left them to the dialog; the maintainer's call is that a sheet should
+      not show them. Chosen direction (2026-09-30), over replacing the platform's dialog with one of the app's (three
+      native implementations, a printer list and a preview of its own, and the loss of what users know from their own
+      dialogs; only Windows testable here) and over printing without a dialog through WebView2 (Windows only, Rust):
+  - **"Print sheet…" first opens a small options step of the app's own**, deciding what goes on the page: which parts
+    (the character, its held creatures, what it keeps for reference), and whether the sheet prints its own page
+    numbers and the character's name on later pages (a three-page sheet that loses a page is worse without them). A
+    view-model in `packages/ui`, kind-agnostic and under `node --test`, as the commands and the sheet are; the pane
+    renders it and computes nothing. What it chooses reaches the print rules as classes or attributes on the Sheet,
+    never as a second renderer (ADR 0077 decision 1). Whether the choices are remembered, per character or per user,
+    is part of it.
+  - **Then the platform's own dialog**, unchanged: printer, copies, pages, "Save as PDF". The same in every shell,
+    the browser build included.
+  - **No page furniture, in every shell**: the print rules take the page margin away (`@page` with no margin, the
+    margin moved inside the page), since the dialogs print their headers and footers only in the margin. The dialog's
+    own checkbox can still put them back, which is the user's choice. Whether WebKit's print panels on macOS and Linux
+    honour this as Chromium does is part of the macOS and Linux item below.
+  - Wants an amendment to ADR 0077 first, measured as that ADR was: what each part costs in pages on the samples,
+    and that a margin-less page prints no furniture, to PDF and on paper, in the Windows window.
+- [ ] **"Print sheet…" on macOS and Linux: does it print at all?** Open until the maintainer's macOS and Linux
+      environments exist. The command calls `window.print()`, which Tauri's own documentation says works on every
+      platform. But the same documentation says Tauri's Rust `print()` is only supported on macOS, and the wry version
+      the lockfile pins has no handling of the page's `window.print()` in its macOS webview that could be found (its macOS
+      print is `NSPrintOperation`, reached only through that `print()`), so on macOS the command may do nothing. On Linux
+      wry's `print()` opens GTK's print dialog; whether `window.print()` does the same in WebKitGTK is unseen. What
+      settles it: pressing "Print sheet…" and Ctrl+P (⌘P) in the window on each, and, where it does nothing, printing
+      through a Tauri command that calls `print()` instead. Neither platform has run any of ADR 0077.
 
 ---
 
