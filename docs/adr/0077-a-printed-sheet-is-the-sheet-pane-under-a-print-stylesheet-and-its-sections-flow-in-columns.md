@@ -180,8 +180,8 @@ no port is added. It needs no library and no content.
 **Ctrl+P is the proposed shortcut**, claimed everywhere and run only on the Sheet, so pressing it on Build no longer
 prints a clipped Build pane. It is kept only if **real keys pressed in the Windows window** reach the page (ADR 0038:
 WebView2 took Ctrl+Shift+S before the page ever saw it); if WebView2 takes Ctrl+P, the command has no shortcut, and
-Ctrl+P prints the Sheet through WebView2's own preview under the same stylesheet. (Built with no shortcut: the keys
-could not be pressed. Decision 8.)
+Ctrl+P prints the Sheet through WebView2's own preview under the same stylesheet. (Built with Ctrl+P, once real keys
+were pressed. Decision 8.)
 
 ### 7. ADR 0076's "Primal Bond" cost stays open, with no per-section flag
 
@@ -206,10 +206,14 @@ the cost, and the print stylesheet does not change that decision.
   left the Companions heading alone at the foot of a page. Its sections are kept whole instead.
 - **The name is printed as a heading beside the field it is edited in** (`.sheet-print-title`, hidden on screen), and
   the lede's element count is a `span` of its own so print can drop it and keep the kind.
-- **No shortcut.** Ctrl+P could not be pressed with real keys in the window: another application held the foreground,
-  and taking it for real input was not this work's to do. So, as decision 6 said, the command has none, and the app
-  claims no P chord, leaving the platform's own print alone. Pressing Ctrl+P on the Sheet and on Build with real keys is
-  what adding it needs.
+- **Ctrl+P, once real keys were pressed.** It was first built with no shortcut, because another application held the
+  foreground. Given the window, real keys showed Ctrl+P arriving as a key-down that the app claims before WebView2 acts
+  on it: on Build nothing opens, on the Sheet exactly one preview, three presses out of three. So decision 6's shortcut
+  stands, claimed on every pane.
+- **The print dialog's headers and footers are on by default**: the date, the page's title (the character's, decision
+  3), its address (`localhost:5173` in the dev build) and the page number. They are the dialog's option, as decision 6
+  said paper, margins and headers are, and nothing here turns them off. The spooler names a job, and "Save as PDF" a file
+  (`Sample 17.pdf`), after the character.
 - **`window.print()` holds the page while WebView2's preview is open**: the page answers nothing until the dialog closes.
   The preview is a DevTools target of its own (`edge://print/`), which is how a drive can read or cancel it without the
   keyboard. It opens on the printer's own paper; the PDFs below are A4.
@@ -258,7 +262,7 @@ restored) and failed the test that names it.
 | the measurement above, committed and run on the commit before anything here; since then, for every sample, every creature as an NPC and a Legendary Creature, a Cairn character and an unnamed one, the document's `title` is the Markdown's first heading | `tools/verify/src/print-layout.test.ts` | a blank name left blank |
 | under `@media print`, read as source: `.app` and `.pane` grow; the header, the bar, the name field and the element count are hidden; the title is shown (and hidden on screen); light tokens; two columns; a grid, a listed element, a creature's section and a section listing no elements kept whole, **a whole section not**; headings kept with what follows; kept texts on a page of their own with tables shown whole; `.sheet-text`'s line breaks untouched. The Sheet pane draws the title from the document, the count as its own span, and the sections and creatures inside the flow, the kept texts outside it | `print-layout.test.ts` | each, one at a time: the app left one window tall; the pane left scrolling; the header printed; the count printed; the title not shown; the dark text left; no columns; **a whole section kept unbroken**; a section of rows allowed to split; kept texts on the sheet's page; a kept table cut at the edge; the pane printing the name as written; the creatures outside the flow |
 | `title`: trimmed, "Unnamed character" when blank, the name as written kept beside it, and read by the Markdown | `packages/ui/src/sheet-document.test.ts` | the Markdown computing its own heading again; the title not trimmed |
-| `print-sheet`: on the Sheet only, needing no library, content or save dialog, not behind a dialog, below "Export sheet as text…", no shortcut and no P chord claimed | `packages/ui/src/commands.test.ts` | the command enabled on every pane |
+| `print-sheet`: on the Sheet only, needing no library, content or save dialog, not behind a dialog, below "Export sheet as text…"; on Ctrl+P (⌘P), claimed on every pane and run only on the Sheet | `packages/ui/src/commands.test.ts` | the command enabled on every pane |
 
 **What the tests cannot show** is that a page prints right: they hold the rules to being written. The drives below held
 the pages.
@@ -287,6 +291,14 @@ the pages.
   character's name in the dialog's header, "Total: 3 sheets of paper" for a Paladin / Sorcerer. Cancelled through the
   preview's own DevTools target; the page then answered again, having seen both print events. The Sheet bar's button
   opened the same preview.
+- **Ctrl+P, on paper and to PDF, with real keys** (the window given for it, brought to the front, `SendKeys`; a key
+  logger in the page): on Build, Ctrl+P arrived as a key-down, was claimed, and opened nothing; on the Sheet, reached by
+  a real Ctrl+3, each of three presses was claimed and opened one preview. From the first, with the Epson L1250 the
+  preview's default printer on A4, Print sent the sheet to the printer: the spooler showed the job as "Sample 17", three
+  pages, and it left the queue. From another, "Save as PDF" (which switched the paper to Letter) opened Windows' save
+  dialog suggesting `Sample 17.pdf`; saved to a scratch path, the PDF is the sheet as laid out on screen by these rules:
+  two columns, feature names bold with their usage beside them, content's lines kept, headings with their content, plus
+  the dialog's default header and footer (date, title, `localhost:5173`, page numbers).
 - **Printed in the browser build**: headless Edge on the dev server, an origin-private folder standing in for the folder
   picker, five of the same characters (three samples, the NPC and the character keeping the long texts): **the same page
   counts and the same words** as the window.
@@ -295,6 +307,6 @@ the pages.
   copy of the snapshot with one difference removed fails, so the comparison was live. Nothing here touches a derivation.
 - `npm run typecheck` exits 0; `npm test` passes 1,215 of 1,216, the one skipped being the check that the system `unzip`
   agrees a container is a zip, which this environment has no `unzip` for.
-- **Not exercised:** real keyboard or mouse input, and so Ctrl+P (decision 8); a physical printer; WebView2's "Print
-  using system dialog"; Chromium's visible print dialog and "Save as PDF" in a headed browser (the browser build was
+- **Not exercised:** a real mouse (the dialogs were driven through their own targets and window messages); the printed
+  paper, which the maintainer holds and this record has not seen; WebView2's "Print using system dialog"; Chromium's visible print dialog and "Save as PDF" in a headed browser (the browser build was
   printed headless); macOS and Linux, where Tauri's `print()` and a GTK or macOS dialog would be seen for the first time.

@@ -899,15 +899,16 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   - **"Print sheet…"** (`print-sheet`, Sheet only, File menu below the text export and on the Sheet's bar) calls
     `window.print()`; Tauri documents it for every platform and wry's `print()` on Windows is that call. While printing
     the page is titled with the character (`beforeprint`/`afterprint`, which `Page.printToPDF` fires too), so the dialog's
-    header and "Save as PDF" name the character. **No shortcut**: Ctrl+P waits for real keys pressed in the Windows
-    window, and until then the app claims no P chord.
+    header, the spooler's job and "Save as PDF" name the character. **Ctrl+P**, claimed on every pane: real keys in the
+    Windows window reach the page as a key-down before WebView2 acts, so Build opens nothing and the Sheet one preview.
   - **Driving it**: `window.print()` holds the page until WebView2's preview closes; the preview is a DevTools target of
     its own (`edge://print/`), so a drive cancels it there. A drive that looks for "the page" must pick the app's URL,
     not the first page target.
   - The oracle is identical before and after. Driven in the Tauri window on Windows (34 packed characters, no source ever
     added, printed to A4 PDF: every word of the text export in order, nothing clipped; the native menu item and the
-    button opening the preview) and in headless Edge on the dev server (the same pages and words); not with real input,
-    not to a physical printer, not in a headed browser's dialog, and not on macOS or Linux.
+    button and real Ctrl+P opening the preview, printed from it to a real printer and saved as PDF with the layout intact)
+    and in headless Edge on the dev server (the same pages and words); not in a headed browser's dialog, and not on macOS
+    or Linux. The dialog's default header and footer print the page's address; that is the dialog's option.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

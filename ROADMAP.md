@@ -1355,10 +1355,11 @@ pane draws and every export renders: the PDF and the print layout start from it,
       own. The document gained its `title`, which the Markdown export reads too. Printed to PDF in the Tauri window on
       Windows for the thirty samples, the creature characters, a character keeping the longest texts and Cairn, no source
       ever added: every word of the text export in order and nothing clipped, samples on 2 to 4 A4 pages, an NPC on 1; the
-      native menu item and the Sheet's button open WebView2's print preview; the browser build prints the same. What did
-      not work first: keeping every section whole, which left pages half empty. No oracle row moved; no system or character
-      format change. **Not done:** a shortcut (Ctrl+P waits for real keys pressed in the Windows window); a stat block drawn
-      as the book prints it; a physical printer; macOS and Linux.
+      native menu item, the Sheet's button and Ctrl+P (real keys: claimed on every pane, one preview on the Sheet) open
+      WebView2's print preview, from which the sheet went to a real printer and to "Save as PDF" with its layout intact;
+      the browser build prints the same. What did not work first: keeping every section whole, which left pages half
+      empty. No oracle row moved; no system or character format change. **Not done:** a stat block drawn as the book
+      prints it; turning off the dialog's default header and footer (they print the page's address); macOS and Linux.
 
 ---
 
