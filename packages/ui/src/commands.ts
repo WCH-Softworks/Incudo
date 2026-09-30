@@ -107,11 +107,9 @@ export const COMMANDS: readonly CommandDef[] = [
   // The sheet on screen as text (ADR 0075). No shortcut: the free Ctrl+Shift chords are found by pressing real keys in
   // the Windows window, as Save a copy's were, and a chord WebView2 takes before the page would be worse than none.
   { id: 'export-sheet', label: 'Export sheet as text…' },
-  // The sheet on paper, through the platform's own print dialog (ADR 0077). No shortcut yet: Ctrl+P is the one proposed,
-  // and it is kept only once real keys pressed in the Windows window are seen to reach the page, which has not been done
-  // (a chord WebView2 takes first is worse than none, ADR 0038). Until then Ctrl+P is the browser's and WebView2's own,
-  // which prints whichever pane is showing.
-  { id: 'print-sheet', label: 'Print sheet…' },
+  // The sheet on paper, through the platform's own print dialog (ADR 0077). Ctrl+P is every platform's print chord, and
+  // claimed on every pane it stops the platform printing whichever pane is showing.
+  { id: 'print-sheet', label: 'Print sheet…', shortcut: { key: 'p', primary: true } },
   // No shortcut: Ctrl+I is italic in every text field and Ctrl+Shift+I is developer tools.
   { id: 'import-aurora', label: 'Import from Aurora…' },
   { id: 'choose-library-folder', label: 'Choose library folder…' },

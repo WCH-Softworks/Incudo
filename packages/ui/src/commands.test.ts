@@ -226,17 +226,25 @@ test('printing is live on the sheet and nowhere else, needing no library, conten
   assert.ok(!enabledIn({ ...READY, pane: 'sheet', modal: true }).has('print-sheet'));
 });
 
-test('printing sits below the text export in the File menu, labelled as a question, with no shortcut yet', () => {
+test('printing sits below the text export in the File menu, labelled as a question, on Ctrl+P', () => {
   const file = MENUS.find((menu) => menu.label === 'File')!;
   assert.equal(file.items.indexOf('print-sheet'), file.items.indexOf('export-sheet') + 1);
   const entry = menuModel('other')
     .flatMap((menu) => menu.entries)
     .find((e) => e.kind === 'command' && e.id === 'print-sheet') as { label: string; shortcut?: string };
   assert.equal(entry.label, 'Print sheet…');
-  // Ctrl+P is proposed (ADR 0077) and waits for real keys in the Windows window. Until then the app claims no P chord,
-  // so the platform's own print is not swallowed.
-  assert.equal(entry.shortcut, undefined);
-  assert.equal(matchShortcut(key('p', { ctrlKey: true }), 'other'), undefined);
+  assert.equal(entry.shortcut, 'Ctrl+P');
+  assert.equal(describeCommand('print-sheet', 'mac'), 'Print sheet… (⌘P)');
+});
+
+test('Ctrl+P is claimed on every pane and prints only on the sheet', () => {
+  // Fails if Ctrl+P is left to the platform off the Sheet: it would print whichever pane is showing.
+  for (const pane of ['library', 'build', 'sheet', 'sources', 'browse', 'settings'] as Destination[]) {
+    const outcome = keyOutcome(key('p', { ctrlKey: true }), 'other', resolveCommands({ ...READY, pane }));
+    assert.deepEqual(outcome, { id: 'print-sheet', claimed: true, run: pane === 'sheet' }, pane);
+  }
+  assert.equal(matchShortcut(key('p', { metaKey: true }), 'mac'), 'print-sheet');
+  assert.equal(matchShortcut(key('P', { ctrlKey: true, shiftKey: true }), 'other'), undefined, 'Ctrl+Shift+P is not print');
 });
 
 test('while the library scans: new character stays, refresh and save do not', () => {
