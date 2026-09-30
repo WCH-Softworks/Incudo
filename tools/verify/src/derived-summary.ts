@@ -18,10 +18,21 @@ export interface DerivedSummary {
   /** What a grant brought in and the element's own requirements ruled out (ADR 0071): the character's, not content's. */
   withdrawn: Array<{ elementId: string; grantedBy: string[] }>;
   /**
+   * The level each held element's own rules read (ADR 0076): its class track's, else the character's. A property of the
+   * character and what it embeds, so a save reopened with no source must agree on it.
+   */
+  gateLevels: Record<string, number>;
+  /**
    * Each held creature's scope (ADR 0073): what it holds, its stats and what it finds. Present only when the character
    * holds one, so the summary of every other character is what it was.
    */
-  companions?: Array<{ elementId: string; elements: string[]; stats: Record<string, number | string>; problems: string[] }>;
+  companions?: Array<{
+    elementId: string;
+    elements: string[];
+    stats: Record<string, number | string>;
+    problems: string[];
+    gateLevels: Record<string, number>;
+  }>;
 }
 
 /**
@@ -42,12 +53,15 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
     }
     return out;
   };
+  const levelsOf = (map: DerivedCharacter['gateLevels']): Record<string, number> =>
+    Object.fromEntries([...map].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)));
   const stats = statsOf(derived.stats);
   const companions = derived.companions.map((c) => ({
     elementId: c.elementId,
     elements: c.elements.map((e) => e.id).sort(),
     stats: statsOf(c.stats),
     problems: c.problems.map((p) => `${p.level} ${p.code}: ${p.message}`).sort(),
+    gateLevels: levelsOf(c.gateLevels),
   }));
 
   return {
@@ -70,6 +84,7 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
     withdrawn: derived.withdrawn
       .map((w) => ({ elementId: w.elementId, grantedBy: [...w.grantedBy].sort() }))
       .sort((a, b) => (a.elementId < b.elementId ? -1 : 1)),
+    gateLevels: levelsOf(derived.gateLevels),
     ...(companions.length ? { companions } : {}),
   };
 }

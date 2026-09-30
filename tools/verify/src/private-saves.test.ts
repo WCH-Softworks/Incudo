@@ -45,6 +45,7 @@ function summaryNamed(name: string, hp: number): DerivedSummary {
     pendingChoices: [],
     problems: [],
     withdrawn: [],
+    gateLevels: {},
   };
 }
 

@@ -337,6 +337,35 @@ test('each track publishes its own count as a stat', () => {
   assert.equal(derived.stats.get('level')?.value, 8);
 });
 
+test('each held element is published at the level its own rules read: its track\'s, else the total (ADR 0076)', () => {
+  // Fails with `gateLevels` read from the character's progression for every element (all 8), or from the track's
+  // root for an element in no track (0): what a sheet chooses its text by is the engine's own answer.
+  const character = createCharacter('test', 'levelled');
+  character.progress = 8;
+  character.advancement = [
+    ...Array.from({ length: 5 }, (_, i) => ({ at: i + 1, elementId: 'Alpha' })),
+    ...Array.from({ length: 3 }, (_, i) => ({ at: i + 6, elementId: 'Beta' })),
+  ];
+  character.choices = [{ ruleKey: 'seed', elementIds: ['LOOSE'] }];
+  const index = trackedIndex();
+  index.addAll([element('LOOSE', 'Gadget')]);
+
+  const derived = deriveCharacter(character, trackedSystem(), index);
+  assert.equal(derived.gateLevels.get('Alpha'), 5);
+  assert.equal(derived.gateLevels.get('ALPHA_EARLY'), 5, 'a granted element reads its granter\'s track');
+  assert.equal(derived.gateLevels.get('Beta'), 3);
+  assert.equal(derived.gateLevels.get('BETA_EARLY'), 3);
+  assert.equal(derived.gateLevels.get('LOOSE'), 8, 'an element in no track reads the character\'s progression');
+  assert.deepEqual([...derived.gateLevels.keys()].sort(), [...derived.elementIds].sort(), 'one entry per held element');
+
+  // With no advancement, every element reads the total, as its rules do.
+  const single = createCharacter('test', 'levelled');
+  single.progress = 8;
+  single.choices = [{ ruleKey: 'seed', elementIds: ['Alpha'] }];
+  const alone = deriveCharacter(single, trackedSystem(), trackedIndex());
+  assert.equal(alone.gateLevels.get('ALPHA_LATE'), 8);
+});
+
 test('an advancement entry seeds the derivation, because no select chose it', () => {
   const character = createCharacter('test', 'levelled');
   character.progress = 2;

@@ -280,6 +280,12 @@ export interface DerivedCharacter {
    * setter grants added. In the order the creatures are held. Empty for a kind that declares no companions.
    */
   companions: CompanionDerivation[];
+  /**
+   * The level each held element's own `level=` rules read — ADR 0076: its class track's level when it follows one
+   * (ADR 0015), the character's progression otherwise. Published so a reader asking "which level is this element at"
+   * (a sheet choosing the text for it) asks the rule the engine used rather than writing a second one.
+   */
+  gateLevels: Map<ElementId, number>;
 }
 
 /** One held creature's scope — ADR 0073. */
@@ -296,6 +302,8 @@ export interface CompanionDerivation {
   problems: Problem[];
   /** What the scope withdrew (ADR 0071): a feature the creature names whose own requirements are false. */
   withdrawn: WithdrawnElement[];
+  /** The level each element of the scope gates at, as {@link DerivedCharacter.gateLevels}. */
+  gateLevels: Map<ElementId, number>;
 }
 
 /** A granted element its own requirements rule out, and every held element that granted it — ADR 0071. */
@@ -340,6 +348,7 @@ export function deriveCharacter(
       elements: scope.elements,
       problems: scope.problems.filter((problem) => !seen.has(problemKey(problem))),
       withdrawn: scope.withdrawn,
+      gateLevels: scope.gateLevels,
     };
   });
   return derived;
@@ -673,6 +682,7 @@ function derive(
     elements: [...active.values()],
     withdrawn: [...withdrawn].map(([elementId, grantedBy]) => ({ elementId, grantedBy: [...grantedBy] })),
     companions: [],
+    gateLevels: new Map([...active.keys()].map((id) => [id, finalLevelFor(id)])),
     elementIds: new Set(active.keys()),
     stats,
     pendingChoices,
