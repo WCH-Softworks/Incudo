@@ -212,6 +212,33 @@ test('an export sits below Save a copy in the File menu, labelled as a question,
   assert.equal(entry.shortcut, undefined);
 });
 
+// --- print the sheet -------------------------------------------------------------------------------
+
+test('printing is live on the sheet and nowhere else, needing no library, content or save dialog', () => {
+  // ADR 0077: what prints is the Sheet on screen. Fails if the rule names another pane, or asks for anything else.
+  assert.ok(enabledIn({ ...READY, pane: 'sheet' }).has('print-sheet'));
+  for (const pane of ['library', 'build', 'sources', 'browse', 'settings'] as Destination[]) {
+    assert.ok(!enabledIn({ ...READY, pane }).has('print-sheet'), pane);
+  }
+  const bare = { ...NO_WORKSPACE, workspace: true, pane: 'sheet' as const };
+  assert.ok(enabledIn(bare).has('print-sheet'), 'no library, no content, no pickers');
+  assert.ok(enabledIn({ ...READY, pane: 'sheet', exporting: true }).has('print-sheet'), 'an export in flight does not stop a print');
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', modal: true }).has('print-sheet'));
+});
+
+test('printing sits below the text export in the File menu, labelled as a question, with no shortcut yet', () => {
+  const file = MENUS.find((menu) => menu.label === 'File')!;
+  assert.equal(file.items.indexOf('print-sheet'), file.items.indexOf('export-sheet') + 1);
+  const entry = menuModel('other')
+    .flatMap((menu) => menu.entries)
+    .find((e) => e.kind === 'command' && e.id === 'print-sheet') as { label: string; shortcut?: string };
+  assert.equal(entry.label, 'Print sheet…');
+  // Ctrl+P is proposed (ADR 0077) and waits for real keys in the Windows window. Until then the app claims no P chord,
+  // so the platform's own print is not swallowed.
+  assert.equal(entry.shortcut, undefined);
+  assert.equal(matchShortcut(key('p', { ctrlKey: true }), 'other'), undefined);
+});
+
 test('while the library scans: new character stays, refresh and save do not', () => {
   const scanning = enabledIn({ ...READY, library: 'scanning', libraryBusy: true });
   assert.ok(scanning.has('new-character'), 'the screen shows its button while scanning');

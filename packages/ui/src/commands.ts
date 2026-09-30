@@ -43,6 +43,7 @@ export const COMMAND_IDS = [
   'save-character',
   'save-copy',
   'export-sheet',
+  'print-sheet',
   'import-aurora',
   'choose-library-folder',
   'refresh-library',
@@ -106,6 +107,11 @@ export const COMMANDS: readonly CommandDef[] = [
   // The sheet on screen as text (ADR 0075). No shortcut: the free Ctrl+Shift chords are found by pressing real keys in
   // the Windows window, as Save a copy's were, and a chord WebView2 takes before the page would be worse than none.
   { id: 'export-sheet', label: 'Export sheet as text…' },
+  // The sheet on paper, through the platform's own print dialog (ADR 0077). No shortcut yet: Ctrl+P is the one proposed,
+  // and it is kept only once real keys pressed in the Windows window are seen to reach the page, which has not been done
+  // (a chord WebView2 takes first is worse than none, ADR 0038). Until then Ctrl+P is the browser's and WebView2's own,
+  // which prints whichever pane is showing.
+  { id: 'print-sheet', label: 'Print sheet…' },
   // No shortcut: Ctrl+I is italic in every text field and Ctrl+Shift+I is developer tools.
   { id: 'import-aurora', label: 'Import from Aurora…' },
   { id: 'choose-library-folder', label: 'Choose library folder…' },
@@ -132,6 +138,7 @@ export const MENUS: MenuLayout = [
       'save-character',
       'save-copy',
       'export-sheet',
+      'print-sheet',
       null,
       'import-aurora',
       null,
@@ -239,6 +246,9 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   // On the Sheet, whose bar prints "Exported the sheet as …": what is exported is what is on screen there. Like a copy it
   // needs no library, and no content either (ADR 0075).
   'export-sheet': (c) => c.pane === 'sheet' && c.saverAvailable && !c.exporting,
+  // On the Sheet, which is what prints (ADR 0077). The dialog is the platform's, so it needs no library, no content and
+  // no save dialog; it prints what is on screen, not a file.
+  'print-sheet': (c) => c.pane === 'sheet',
   // Its report is printed on the library screen, so that is where it can be started.
   'import-aurora': (c) => c.pane === 'library' && !c.importing && importBlock(c) === undefined,
   // Settings holds this one, but the first-run dialog and the library screen do too.
