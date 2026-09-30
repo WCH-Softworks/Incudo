@@ -348,7 +348,8 @@ function listedOf(state: BuilderState): { where: string; element: SheetListedEle
 test('on the samples, what the sheet shows of the hints: chosen by gate level, filled, hidden only where a section says', { skip: corpusSkip || savesSkip }, async (t) => {
   // What holds against any corpus (ADR 0042), per sample:
   // - each listed element's text is the description the raw XML gives at the level its rules read (`gateLevels`), read
-  //   independently of the importer (fails with the text chosen by the character's level: sample 17's Font of Magic);
+  //   independently of the importer, and none for a hidden element a section lists anyway (fails with the text chosen
+  //   by the character's level: sample 17's Font of Magic; or with a hidden element given its line: every 2014 class);
   // - no shown text, usage or action keeps a `{{`, and every stat the view says is unpublished really is (fails with a
   //   placeholder left in place, or with `:half:up` not read: `level:wizard:half:up` reads as unpublished);
   // - a section that does not declare `omitHidden` lists every element of its types the sheet may list, hidden or not,
@@ -369,6 +370,7 @@ test('on the samples, what the sheet shows of the hints: chosen by gate level, f
   const offline: string[] = [];
   const shownHints = new Map<string, number>();
   const omittedBySection = new Map<string, number>();
+  const withheld = new Map<string, number>();
   let listed = 0;
   let withText = 0;
 
@@ -399,7 +401,11 @@ test('on the samples, what the sheet shows of the hints: chosen by gate level, f
       if (!where.includes(' / ') && held && sheet && sheet.descriptions.length) {
         const level = derived.gateLevels.get(element.elementId) ?? 0;
         const lines = describedAt(sheet, level)?.split(/\r\n?|\n/).map((line) => line.trim()).filter(Boolean).join('\n');
-        const expected = lines ? fillPlaceholders(lines, derived.stats, true).text : undefined;
+        // A hidden element a section lists anyway (a header's class) is named with no line: the line is for a list
+        // content keeps it out of.
+        const hidden = sheet.attributes['display'] === 'false';
+        if (hidden && lines) tally(withheld, where);
+        const expected = lines && !hidden ? fillPlaceholders(lines, derived.stats, true).text : undefined;
         if (element.text !== expected) wrongText.push(`${sample.id} ${element.name} at ${level}`);
       }
     }
@@ -432,6 +438,7 @@ test('on the samples, what the sheet shows of the hints: chosen by gate level, f
   t.diagnostic(`listed elements over the samples, creatures' included: ${listed}; with sheet text: ${withText}; hints shown: ${show(shownHints)}`);
   t.diagnostic(`hidden elements a section leaves out, by section: ${show(omittedBySection)}`);
   t.diagnostic(`placeholders nothing publishes, by stat: ${show(unfilled)}`);
+  t.diagnostic(`hidden elements listed anyway whose sheet text is withheld, by section: ${show(withheld)}`);
   assert.ok(system && listed > 0, 'the samples listed nothing');
   assert.deepEqual(wrongText, [], 'a text is not the one the raw XML gives at its gate level');
   assert.deepEqual(leftBraces, [], 'a shown hint keeps a placeholder');

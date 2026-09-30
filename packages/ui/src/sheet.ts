@@ -169,6 +169,9 @@ function sheetHintsOf(element: Element, source: SheetSource): Omit<SheetListedEl
   const out: Omit<SheetListedElement, 'elementId' | 'name' | 'prerequisitesUnmet'> = {};
   const other = hints.alt || hints.name;
   if (other && other !== element.name) out.sheetName = other;
+  // A hidden element's line is written for a feature list content keeps it out of. Where a section lists it anyway (a
+  // header naming the class), it is named and nothing more: "Paladin", not "Paladin: A holy warrior bound to …".
+  if (hints.display === false) return out;
   const description = sheetDescriptionAt(hints, source.gateLevels?.get(element.id) ?? 0);
   const unfilled: string[] = [];
   const fill = (text: string | undefined, html: boolean): string | undefined => {

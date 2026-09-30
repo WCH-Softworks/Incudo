@@ -114,6 +114,13 @@ test('a section that omits hidden elements leaves out what content hides; one th
   assert.deepEqual(listed([hidden, shown]).map((e) => e.elementId), ['PLACEHOLDER', 'SHOWN']);
 });
 
+test('a hidden element a section lists anyway is named, with no sheet line', () => {
+  // Fails with the hint read only for leaving elements out: a header would read "Paladin: A holy warrior bound to …",
+  // the line content wrote for a feature list it keeps the class out of (found by running it on a 2014 sample).
+  const klass = element('Paladin', 'Gadget', { display: false, alt: 'Holy Warrior', usage: '1/Day', description: 'A holy warrior bound to a sacred oath.' });
+  assert.deepEqual(listed([klass]), [{ elementId: 'Paladin', name: 'Paladin', sheetName: 'Holy Warrior' }]);
+});
+
 test('an element with no hints is listed as it was', () => {
   // Fails with any field written for an element content writes nothing for.
   assert.deepEqual(listed([element('PLAIN', 'Gadget')]), [{ elementId: 'PLAIN', name: 'PLAIN' }]);
