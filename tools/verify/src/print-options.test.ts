@@ -82,27 +82,20 @@ interface SheetParts {
 }
 
 function partsOf(document: SheetDocument): SheetParts {
-  const own = document.sections.map(sectionCost).reduce((a, b) => ({ chars: a.chars + b.chars, lines: a.lines + b.lines }), { chars: 0, lines: 0 });
+  const sum = (costs: PartCost[], start: PartCost): PartCost =>
+    costs.reduce((a, b) => ({ chars: a.chars + b.chars, lines: a.lines + b.lines }), start);
   const creatures = document.companions?.creatures ?? [];
   const entries = document.references?.entries ?? [];
-  return {
-    own,
-    ...(creatures.length
-      ? {
-          creatures: creatures
-            .map((c) => c.sections.map(sectionCost).reduce((a, b) => ({ chars: a.chars + b.chars, lines: a.lines + b.lines }), { chars: c.name.length, lines: 1 }))
-            .reduce((a, b) => ({ ...a, chars: a.chars + b.chars, lines: a.lines + b.lines }), { chars: 0, lines: 1, count: creatures.length }),
-        }
-      : {}),
-    ...(entries.length
-      ? {
-          kept: entries
-            .map((e) => ({ chars: e.name.length + plain(e.html ?? e.note ?? '').length, lines: 1 + keptLines(e.html ?? e.note ?? '') }))
-            .reduce((a, b) => ({ ...a, chars: a.chars + b.chars, lines: a.lines + b.lines }), { chars: 0, lines: 1, count: entries.length }),
-        }
-      : {}),
-    title: document.title,
-  };
+  const parts: SheetParts = { own: sum(document.sections.map(sectionCost), { chars: 0, lines: 0 }), title: document.title };
+  if (creatures.length) {
+    const each = creatures.map((c) => sum(c.sections.map(sectionCost), { chars: c.name.length, lines: 1 }));
+    parts.creatures = { ...sum(each, { chars: 0, lines: 1 }), count: creatures.length };
+  }
+  if (entries.length) {
+    const each = entries.map((e) => ({ chars: e.name.length + plain(e.html ?? e.note ?? '').length, lines: 1 + keptLines(e.html ?? e.note ?? '') }));
+    parts.kept = { ...sum(each, { chars: 0, lines: 1 }), count: entries.length };
+  }
+  return parts;
 }
 
 function report(t: Diagnostic, what: string, sheets: SheetParts[]): void {
