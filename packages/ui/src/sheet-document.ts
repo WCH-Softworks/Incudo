@@ -34,6 +34,9 @@ export function listedUsage(element: Pick<SheetListedElement, 'action' | 'usage'
   return parts.length ? parts.join('; ') : undefined;
 }
 
+/** The title of a character whose name is blank. */
+export const UNNAMED_CHARACTER = 'Unnamed character';
+
 /** What a kept element with no text says in its place. */
 export const NO_KEPT_TEXT = 'It has no text to show.';
 
@@ -63,6 +66,11 @@ export interface SheetDocumentReference {
 export interface SheetDocument {
   /** The character's name as the user wrote it. */
   name: string;
+  /**
+   * What a sheet is headed with: the name trimmed, or `UNNAMED_CHARACTER` when it is blank. The Markdown's first heading,
+   * a printed page's heading and, while it prints, the page's own title (ADR 0077): said once, here.
+   */
+  title: string;
   kindName: string;
   /** How many elements the derivation holds, internal ones included: the pane's lede shows it, an export does not. */
   elementCount: number;
@@ -86,6 +94,7 @@ export function sheetDocument(state: SheetDocumentSource): SheetDocument {
   const { sheet, companions, references } = state;
   return {
     name: state.character.name,
+    title: state.character.name.trim() || UNNAMED_CHARACTER,
     kindName: sheet.kindName,
     elementCount: sheet.elementCount,
     sections: sheet.sections,

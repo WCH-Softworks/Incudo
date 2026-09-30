@@ -13,9 +13,16 @@ import type { FileSaveOptions, FileSaver, SavedFile } from '@incudo/core';
 
 import type { CompanionsView } from './companions.ts';
 import type { ReferenceRow } from './references.ts';
-import { NO_KEPT_TEXT, PREREQUISITES_UNMET, referenceEntry, sheetDocument, type SheetDocumentSource } from './sheet-document.ts';
+import {
+  NO_KEPT_TEXT,
+  PREREQUISITES_UNMET,
+  referenceEntry,
+  sheetDocument,
+  UNNAMED_CHARACTER,
+  type SheetDocumentSource,
+} from './sheet-document.ts';
 import { exportSheet } from './sheet-export.ts';
-import { sheetMarkdown, UNNAMED_CHARACTER } from './sheet-markdown.ts';
+import { sheetMarkdown } from './sheet-markdown.ts';
 import type { SheetView } from './sheet.ts';
 
 const sheet: SheetView = {
@@ -168,6 +175,20 @@ test('the Markdown: title, kind, a heading per section, one list of rows, elemen
   );
   // Fails if the pane's element count is written: it counts internal elements and says nothing on paper.
   assert.doesNotMatch(markdown, /17/);
+});
+
+test('the title is the name trimmed, or unnamed when blank, and the Markdown and a print say the same (ADR 0077)', () => {
+  // Fails if the title is the untrimmed name, or a blank name is left blank: a printed page would be headed by nothing.
+  assert.equal(sheetDocument(source).title, 'Nyx');
+  assert.equal(sheetDocument({ ...source, character: { name: '  Nyx the Bold ' } }).title, 'Nyx the Bold');
+  assert.equal(sheetDocument({ ...source, character: { name: ' \t ' } }).title, UNNAMED_CHARACTER);
+  // The name as written stays beside it: the Sheet's name field edits that, not the title.
+  assert.equal(sheetDocument({ ...source, character: { name: '  Nyx the Bold ' } }).name, '  Nyx the Bold ');
+  // Markup is the title as written; each renderer escapes it (the Markdown below, the pane as React text).
+  assert.equal(sheetDocument({ ...source, character: { name: '<b>Nyx</b>' } }).title, '<b>Nyx</b>');
+  // Fails if the Markdown computes its own heading instead of reading the document's.
+  const retitled = { ...sheetDocument(source), title: 'Read from the document' };
+  assert.match(sheetMarkdown(retitled), /^# Read from the document\n/);
 });
 
 test('a blank name is titled as unnamed, and a name that reads as markup is escaped', () => {

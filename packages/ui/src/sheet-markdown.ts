@@ -15,9 +15,6 @@ import { escapeLineStart, escapeMarkdown, htmlToMarkdown } from './html-markdown
 import { listedName, listedUsage, PREREQUISITES_UNMET, type SheetDocument } from './sheet-document.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
 
-/** The title of a character whose name is blank. */
-export const UNNAMED_CHARACTER = 'Unnamed character';
-
 export function sheetMarkdown(document: SheetDocument): string {
   const blocks: string[] = [];
   const heading = (level: number, text: string): void => void blocks.push(`${'#'.repeat(level)} ${escapeMarkdown(text)}`);
@@ -31,7 +28,7 @@ export function sheetMarkdown(document: SheetDocument): string {
   };
   const named = (name: string, source?: string): string => (source ? `${name} · ${source}` : name);
 
-  heading(1, document.name.trim() || UNNAMED_CHARACTER);
+  heading(1, document.title);
   paragraph(document.kindName);
 
   const sections = (list: readonly SheetSectionView[], level: number): void => {
