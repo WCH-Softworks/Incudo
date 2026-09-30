@@ -22,11 +22,28 @@
  *   dark scheme does to the text colour, what scrolls instead of growing, whether anything calls the platform's print,
  *   and which components sanitize content's HTML (the only sanitizer is the shell's, over a DOM).
  *
- * All of it is reported as `ℹ` lines (ADR 0042), and nothing is asserted: this is the measurement ADR 0077 was written
- * from, committed and run before anything it proposes.
+ * All of it is reported as `ℹ` lines (ADR 0042). The first run, on the commit before ADR 0077, asserted nothing: it is
+ * the measurement the ADR was written from.
+ *
+ * What is asserted since ADR 0077 holds against any corpus, and against the shell as source:
+ *
+ * - For every sheet read here, the document's `title` is the Markdown export's first heading, so a printed page and the
+ *   text export are headed the same.
+ * - The stylesheet's `@media print` block undoes what binds the pane to the window (`.app`, `.pane`), hides the app's
+ *   chrome, the name field and the element count, prints the title, sets light colour tokens, flows `.sheet-flow` in two
+ *   columns, keeps what fits whole (a grid of rows, a listed element, a creature's section, a section that lists no
+ *   elements) and **not a whole section**, starts kept texts on a page and lets their tables show, and leaves
+ *   `.sheet-text`'s line breaks alone; outside print, the title is hidden. The Sheet pane draws the title, the count and
+ *   the flow those rules name.
+ *
+ * What it cannot show is that a page prints right: the rules are held to being written, and ADR 0077's drives printed
+ * the thirty samples, the creature characters and a Cairn character to PDF in the Windows window and compared their
+ * words with the Markdown export. Perturbations, each run and failing here: every rule above removed, one at a time; a
+ * whole section kept unbroken again (what the first printed sample showed, a page half empty before every long list).
  */
 
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -41,12 +58,14 @@ import {
 } from '@incudo/core';
 import {
   CharacterBuilder,
+  escapeMarkdown,
   expandDescription,
   listedName,
   listedUsage,
   newCharacterOfKind,
   openSelfClosingTags,
   sheetDocument,
+  sheetMarkdown,
   type BuilderState,
   type SheetDocument,
   type SheetSectionView,
@@ -142,9 +161,14 @@ class Census {
   readonly hiddenNamed = new Map<string, number>();
   readonly hiddenLost = new Map<string, number>();
   readonly statBlock = new Map<string, number>();
+  /** Sheets whose Markdown is not headed by the document's title (ADR 0077): what fails. */
+  readonly titles: string[] = [];
 
   /** One sheet document: `where` names the kind, `lookup` finds a listed element's own hints. */
   read(document: SheetDocument, kind: ResolvedCharacterKind, lookup: (id: string) => Element | undefined, where: string): void {
+    if (!document.title.trim() || !sheetMarkdown(document).startsWith(`# ${escapeMarkdown(document.title)}\n`)) {
+      this.titles.push(`${where} "${document.name}"`);
+    }
     const own = document.sections.reduce((n, s) => n + sectionChars(s), 0);
     const creatures = (document.companions?.creatures ?? []).reduce((n, c) => n + c.name.length + c.sections.reduce((m, s) => m + sectionChars(s), 0), 0);
     const references = (document.references?.entries ?? []).reduce((n, e) => n + e.name.length + plain(e.html ?? e.note ?? '').length, 0);
@@ -243,6 +267,9 @@ test('the samples: what a printed page of each holds', { skip: corpusSkip || sav
   }
   t.diagnostic(`samples read: ${sheets}`);
   census.report(t, 'samples');
+  assert.ok(sheets > 0);
+  // Fails if a printed page and the text export could be headed differently.
+  assert.deepEqual(census.titles, []);
 });
 
 test('every creature as an NPC and as a legendary creature: what a printed stat block holds', { skip: corpusSkip }, async (t) => {
@@ -261,6 +288,7 @@ test('every creature as an NPC and as a legendary creature: what a printed stat 
     }
     t.diagnostic(`${kind.name}: ${creatures.length} creatures read`);
     census.report(t, kind.name);
+    assert.deepEqual(census.titles, [], kind.name);
   }
 });
 
@@ -315,6 +343,11 @@ test('a Cairn character: what a printed page of it holds', async (t) => {
   const census = new Census();
   census.read(sheetDocument(state), kind, (id) => index.get(id), `Cairn ${kind.name}`);
   census.report(t, `Cairn ${kind.name}`);
+  assert.deepEqual(census.titles, []);
+  // A new character's blank name is still a heading.
+  const unnamed = new CharacterBuilder({ ...state.character, name: '' }, system, index).getState();
+  census.read(sheetDocument(unnamed), kind, (id) => index.get(id), 'unnamed');
+  assert.deepEqual(census.titles, []);
 });
 
 /** The shell's stylesheet and the components that draw the Sheet, read as source, so this report cannot drift from them. */
@@ -356,4 +389,118 @@ test('the shell: what a printed page would have to undo or repeat', (t) => {
   const app = readFileSync(join(src, 'App.tsx'), 'utf8');
   const sheetBlock = /\{pane === 'sheet' && \([\s\S]*?<\/>\s*\)\}/.exec(app)?.[0] ?? '';
   t.diagnostic(`what App.tsx draws around the Sheet: ${[...sheetBlock.matchAll(/<([A-Za-z]+)[\s>]/g)].map((m) => m[1]).join(' ')}; always above it: header, nav`);
+});
+
+/** A selector list split at its top-level commas: `:not(.a, .b)` is one selector. */
+function splitSelectors(list: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of list) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) {
+      out.push(current.trim());
+      current = '';
+    } else current += ch;
+  }
+  if (current.trim()) out.push(current.trim());
+  return out;
+}
+
+/**
+ * The rules of a stylesheet, as selector → property → value, the last declaration winning: those inside `@media print`
+ * blocks, or those outside every `@media` block. Comments are dropped. Enough for the shell's own stylesheet, which
+ * nests nothing deeper than one `@media`.
+ */
+function cssRules(css: string, which: 'print' | 'screen'): Map<string, Map<string, string>> {
+  const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = new Map<string, Map<string, string>>();
+  const add = (selectors: string, body: string): void => {
+    for (const selector of splitSelectors(selectors)) {
+      const declarations = rules.get(selector) ?? new Map<string, string>();
+      for (const declaration of body.split(';')) {
+        const at = declaration.indexOf(':');
+        if (at > 0) declarations.set(declaration.slice(0, at).trim(), declaration.slice(at + 1).trim());
+      }
+      rules.set(selector, declarations);
+    }
+  };
+  let i = 0;
+  while (i < text.length) {
+    const open = text.indexOf('{', i);
+    if (open < 0) break;
+    const head = text.slice(i, open).trim();
+    if (head.startsWith('@media')) {
+      // The block's own rules, up to its matching brace.
+      let depth = 1;
+      let j = open + 1;
+      while (depth > 0 && j < text.length) {
+        if (text[j] === '{') depth++;
+        if (text[j] === '}') depth--;
+        j++;
+      }
+      const inner = text.slice(open + 1, j - 1);
+      if (which === 'print' && /\bprint\b/.test(head)) {
+        for (const m of inner.matchAll(/([^{}]+)\{([^{}]*)\}/g)) add(m[1]!, m[2]!);
+      }
+      i = j;
+    } else {
+      const close = text.indexOf('}', open);
+      if (which === 'screen') add(head, text.slice(open + 1, close));
+      i = close + 1;
+    }
+  }
+  return rules;
+}
+
+test('the print rules: the Sheet pane on paper, laid out by what it holds (ADR 0077)', (t) => {
+  const src = join(import.meta.dirname, '..', '..', '..', 'apps', 'desktop', 'src');
+  const css = readFileSync(join(src, 'styles.css'), 'utf8');
+  const print = cssRules(css, 'print');
+  const screen = cssRules(css, 'screen');
+  const problems: string[] = [];
+  const expect = (rules: Map<string, Map<string, string>>, selector: string, property: string, value: RegExp, why: string): void => {
+    const found = rules.get(selector)?.get(property);
+    if (found === undefined || !value.test(found)) problems.push(`${selector} { ${property}: ${found ?? 'unset'} }: ${why}`);
+  };
+
+  // The window's bound undone: printed one window tall, everything below the fold is lost.
+  expect(print, '.app', 'height', /^auto$/, 'the app is one window tall');
+  expect(print, '.app', 'overflow', /^visible$/, 'the app hides what overflows');
+  expect(print, '.pane', 'overflow', /^visible$/, 'the pane scrolls instead of growing');
+  // Not the sheet.
+  for (const selector of ['header', '.pane-bar', '.sheet-name', '.sheet-element-count']) expect(print, selector, 'display', /^none$/, 'printed, and not the sheet');
+  // The title is printed as text, and only printed.
+  expect(print, '.sheet-print-title', 'display', /^block$/, 'the name is not printed');
+  expect(screen, '.sheet-print-title', 'display', /^none$/, 'the name is shown twice on screen');
+  // Light colours whatever the screen uses.
+  expect(print, ':root', '--fg', /^#0{3}(0{3})?$/, 'text follows the screen\'s scheme onto paper');
+  expect(print, ':root', 'color-scheme', /^light$/, 'the page keeps the dark scheme');
+  // Two columns, and what fits is not split.
+  expect(print, '.sheet-flow', 'columns', /^2$/, 'the sections are not in columns');
+  for (const selector of ['dl', '.sheet-elements > li', '.sheet-companion-section', '.sheet-section:not(.sheet-companions, .sheet-references, :has(.sheet-elements))']) {
+    expect(print, selector, 'break-inside', /^avoid$/, 'what fits can split across a column');
+  }
+  // Not a whole section: kept whole, a long list jumped to the next page and left this one half empty.
+  const section = print.get('.sheet-section')?.get('break-inside');
+  if (section === 'avoid') problems.push('.sheet-section { break-inside: avoid }: a long section leaves a page half empty');
+  expect(print, 'h3', 'break-after', /^avoid$/, 'a heading can end a column');
+  // What the character keeps: a page of its own, its tables shown whole.
+  expect(print, '.sheet-references', 'break-before', /^page$/, 'kept texts share a page with the sheet');
+  expect(print, '.reference-text', 'overflow', /^visible$/, 'a twelve-column table is cut at the edge');
+  // Content's lines survive print.
+  expect(screen, '.sheet-text', 'white-space', /^pre-line$/, 'content\'s lines run together');
+  if (print.get('.sheet-text')?.has('white-space')) problems.push('.sheet-text: print changes its white-space');
+
+  // The Sheet pane draws what those rules name.
+  const pane = readFileSync(join(src, 'panes', 'SheetPane.tsx'), 'utf8');
+  if (!/<h1 className="sheet-print-title">\{document\.title\}<\/h1>/.test(pane)) problems.push('SheetPane: no printed title from the document');
+  if (!/className="sheet-element-count"/.test(pane)) problems.push('SheetPane: the element count cannot be hidden in print');
+  const flow = /<div className="sheet-flow">([\s\S]*?)<\/div>/.exec(pane)?.[1] ?? '';
+  if (!/document\.sections\.map/.test(flow) || !/<Companions /.test(flow)) problems.push('SheetPane: the sections and creatures are not in the flow');
+  if (/document\.references/.test(flow)) problems.push('SheetPane: the kept texts are in the two-column flow');
+
+  t.diagnostic(`print rules read: ${print.size} selectors`);
+  assert.deepEqual(problems, []);
 });
