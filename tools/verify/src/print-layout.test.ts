@@ -58,12 +58,16 @@ import {
 } from '@incudo/core';
 import {
   CharacterBuilder,
+  cssString,
+  DEFAULT_PRINT_OPTIONS,
   escapeMarkdown,
   expandDescription,
   listedName,
   listedUsage,
   newCharacterOfKind,
   openSelfClosingTags,
+  PRINT_PARTS,
+  printRendering,
   sheetDocument,
   sheetMarkdown,
   type BuilderState,
@@ -440,7 +444,7 @@ function cssRules(css: string, which: 'print' | 'screen'): Map<string, Map<strin
         if (text[j] === '}') depth--;
         j++;
       }
-      const inner = text.slice(open + 1, j - 1);
+      const inner = withoutPageRules(text.slice(open + 1, j - 1));
       if (which === 'print' && /\bprint\b/.test(head)) {
         for (const m of inner.matchAll(/([^{}]+)\{([^{}]*)\}/g)) add(m[1]!, m[2]!);
       }
@@ -453,6 +457,186 @@ function cssRules(css: string, which: 'print' | 'screen'): Map<string, Map<strin
   }
   return rules;
 }
+
+/** A block's body from just after its opening brace, braces matched: a page rule nests its margin boxes. */
+function blockEnd(css: string, from: number): number {
+  let depth = 1;
+  let j = from;
+  while (depth > 0 && j < css.length) {
+    if (css[j] === '{') depth++;
+    if (css[j] === '}') depth--;
+    j++;
+  }
+  return j;
+}
+
+/** The `@page` rules of some CSS, with where each starts and ends. */
+function pageBlocks(css: string): { selector: string; body: string; start: number; end: number }[] {
+  return [...css.matchAll(/@page\b([^{]*)\{/g)].map((m) => {
+    const from = m.index! + m[0].length;
+    const end = blockEnd(css, from);
+    return { selector: m[1]!.trim(), body: css.slice(from, end - 1), start: m.index!, end };
+  });
+}
+
+function withoutPageRules(css: string): string {
+  let out = css;
+  for (const block of pageBlocks(css).reverse()) out = out.slice(0, block.start) + out.slice(block.end);
+  return out;
+}
+
+/** What is inside every `@media print` block, comments dropped. */
+function printBlocks(css: string): string {
+  const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return [...text.matchAll(/@media[^{]*\bprint\b[^{]*\{/g)]
+    .map((m) => {
+      const from = m.index! + m[0].length;
+      return text.slice(from, blockEnd(text, from) - 1);
+    })
+    .join('\n');
+}
+
+interface PageRule {
+  declarations: Map<string, string>;
+  boxes: Map<string, Map<string, string>>;
+}
+
+/** Declarations split at semicolons outside strings: a name may hold one. */
+function declarationsOf(body: string): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const declaration of body.match(/(?:"(?:[^"\\]|\\.)*"|[^;"])+/g) ?? []) {
+    const at = declaration.indexOf(':');
+    if (at > 0) map.set(declaration.slice(0, at).trim(), declaration.slice(at + 1).trim());
+  }
+  return map;
+}
+
+const MARGIN_BOX = /@([a-z-]+)\s*\{((?:"(?:[^"\\]|\\.)*"|[^}"])*)\}/g;
+
+/** Page selector (`''` for every page, `name`, `name:first`, `:first`) → its rules in source order. */
+function pageRules(css: string): Map<string, PageRule[]> {
+  const rules = new Map<string, PageRule[]>();
+  for (const block of pageBlocks(css)) {
+    const boxes = new Map<string, Map<string, string>>();
+    for (const m of block.body.matchAll(MARGIN_BOX)) boxes.set(m[1]!, declarationsOf(m[2]!));
+    const list = rules.get(block.selector) ?? [];
+    list.push({ declarations: declarationsOf(block.body.replace(MARGIN_BOX, '')), boxes });
+    rules.set(block.selector, list);
+  }
+  return rules;
+}
+
+type Edge = 'top' | 'right' | 'bottom' | 'left';
+const EDGES: Edge[] = ['top', 'right', 'bottom', 'left'];
+
+/** A printed page as the rules that apply to it make it, in cascade order (later wins). */
+function resolvePage(rules: PageRule[]): { margins: Record<Edge, string>; padding: string | undefined; boxes: Map<string, Map<string, string>> } {
+  const margins: Record<Edge, string> = { top: 'unset', right: 'unset', bottom: 'unset', left: 'unset' };
+  let padding: string | undefined;
+  const boxes = new Map<string, Map<string, string>>();
+  for (const rule of rules) {
+    for (const [property, value] of rule.declarations) {
+      if (property === 'margin') {
+        const [top, right = top, bottom = top, left = right] = value.split(/\s+/) as [string, string?, string?, string?];
+        Object.assign(margins, { top, right, bottom, left });
+      } else if (/^margin-(top|right|bottom|left)$/.test(property)) margins[property.slice(7) as Edge] = value;
+      else if (property === 'padding') padding = value;
+    }
+    for (const [name, declarations] of rule.boxes) {
+      const merged = boxes.get(name) ?? new Map<string, string>();
+      for (const [property, value] of declarations) merged.set(property, value);
+      boxes.set(name, merged);
+    }
+  }
+  return { margins, padding, boxes };
+}
+
+const isZero = (length: string): boolean => /^0([a-z]+)?$/.test(length);
+/** A box that draws something: content set, and not `none`, `normal` or an empty string. */
+const drawn = (box: Map<string, string> | undefined): boolean => {
+  const content = box?.get('content');
+  return content !== undefined && !/^(none|normal|""|'')$/.test(content);
+};
+
+test('the print rules: no edge of a page left to the dialog, and the parts the step can leave out hidden (ADR 0078)', (t) => {
+  const src = join(import.meta.dirname, '..', '..', '..', 'apps', 'desktop', 'src');
+  const css = readFileSync(join(src, 'styles.css'), 'utf8');
+  const printCss = printBlocks(css);
+  const print = cssRules(css, 'print');
+  const problems: string[] = [];
+
+  // By default, no margin, and the space the dialog's margin kept is padding inside the page.
+  const every = resolvePage(pageRules(printCss).get('') ?? []);
+  for (const edge of EDGES) if (!isZero(every.margins[edge])) problems.push(`@page: the ${edge} margin is ${every.margins[edge]}, where the dialog prints its own`);
+  if (every.padding === undefined || isZero(every.padding)) problems.push("@page: no padding, so the sheet runs to the paper's edge");
+
+  // A name that would break an unescaped rule.
+  const title = 'A "B" \\ C; } @page {';
+  const document: SheetDocument = { name: title, title, kindName: 'Kind', elementCount: 0, sections: [] };
+  for (const pageNumbers of [false, true]) {
+    for (const runningName of [false, true]) {
+      const combination = `${pageNumbers ? 'numbers' : 'no numbers'}, ${runningName ? 'name' : 'no name'}`;
+      const rendering = printRendering({ ...DEFAULT_PRINT_OPTIONS, pageNumbers, runningName }, document);
+      const classes = new Set(rendering.classes);
+      // The named page: the print rule on `.sheet` whose classes are all present, the one naming most of them.
+      let page: string | undefined;
+      let named = -1;
+      for (const [selector, declarations] of print) {
+        const m = /^\.sheet((?:\.print-[a-z-]+)+)$/.exec(selector);
+        if (!m || !declarations.has('page')) continue;
+        const needs = m[1]!.split('.').filter(Boolean);
+        if (needs.every((c) => classes.has(c)) && needs.length > named) {
+          page = declarations.get('page');
+          named = needs.length;
+        }
+      }
+      const rules = pageRules(printCss + '\n' + (rendering.pageRule ?? ''));
+      for (const which of ['first', 'later'] as const) {
+        const resolved = resolvePage([
+          ...(rules.get('') ?? []),
+          ...(which === 'first' ? (rules.get(':first') ?? []) : []),
+          ...(page ? (rules.get(page) ?? []) : []),
+          ...(page && which === 'first' ? (rules.get(`${page}:first`) ?? []) : []),
+        ]);
+        const where = `${combination}, the ${which} page`;
+        for (const edge of EDGES) {
+          const onEdge = [...resolved.boxes].filter(([name, box]) => name.startsWith(edge) && drawn(box));
+          if (!isZero(resolved.margins[edge]) && onEdge.length === 0) problems.push(`${where}: the ${edge} edge has a margin and no box drawing in it, so the dialog prints there`);
+          if (isZero(resolved.margins[edge]) && onEdge.length > 0) problems.push(`${where}: a box on the ${edge} edge with no margin prints at the paper's edge`);
+        }
+        const numbered = [...resolved.boxes].some(([name, box]) => name.startsWith('bottom') && drawn(box) && /counter\(page\)/.test(box.get('content')!));
+        if (numbered !== pageNumbers) problems.push(`${where}: page numbers ${numbered ? 'printed' : 'missing'}`);
+        const nameShown = [...resolved.boxes].some(([, box]) => drawn(box) && box.get('content') === cssString(title));
+        if (nameShown !== (runningName && which === 'later')) problems.push(`${where}: the name ${nameShown ? 'printed' : 'missing'}`);
+        for (const [name, box] of resolved.boxes) {
+          if (drawn(box) && !box.has('font')) problems.push(`${where}: @${name} prints in the platform's serif`);
+        }
+      }
+    }
+  }
+
+  // Each part the step can leave out is hidden by its class.
+  for (const part of PRINT_PARTS) {
+    const hidden = [...print].some(([selector, declarations]) => selector.includes(`.print-omit-${part}`) && declarations.get('display') === 'none');
+    if (!hidden) problems.push(`.print-omit-${part}: no rule hides the part`);
+  }
+
+  // The Sheet takes the classes and the name's rule, and the step's Print is the only way to the platform's dialog.
+  const pane = readFileSync(join(src, 'panes', 'SheetPane.tsx'), 'utf8');
+  if (!/className=\{\['pane', 'sheet', \.\.\.print\.classes\]/.test(pane)) problems.push('SheetPane: the print classes are not on the root');
+  if (!/<style>\{print\.pageRule\}<\/style>/.test(pane)) problems.push("SheetPane: the name's rule is not rendered");
+  const app = readFileSync(join(src, 'App.tsx'), 'utf8');
+  // Calls, not mentions: a comment may name it.
+  const prints = [...app.matchAll(/^\s*window\.print\(\);/gm)].length;
+  if (prints !== 1) problems.push(`App: window.print() called ${prints} times; only after the step's Print`);
+  const handler = /const printSheet = useCallback\(([\s\S]*?)\n  \}, \[/.exec(app)?.[1] ?? '';
+  if (!handler || /window\.print/.test(handler)) problems.push("App: \"Print sheet…\" opens the platform's dialog without the step");
+  if (!/if \(!printRequested\) return;[\s\S]{0,80}window\.print\(\)/.test(app)) problems.push("App: the platform's dialog does not wait for the step's Print");
+  if (!/printDraft !== null \|\|/.test(app)) problems.push('App: the step is not modal');
+
+  t.diagnostic(`@page rules read: ${[...pageRules(printCss)].map(([k, v]) => `${k || '(every page)'} ×${v.length}`).join(', ')}`);
+  assert.deepEqual(problems, []);
+});
 
 test('the print rules: the Sheet pane on paper, laid out by what it holds (ADR 0077)', (t) => {
   const src = join(import.meta.dirname, '..', '..', '..', 'apps', 'desktop', 'src');

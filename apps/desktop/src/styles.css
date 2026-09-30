@@ -1909,6 +1909,105 @@ ul.browse-categories {
 }
 
 @media print {
+  /* No edge of a printed page is left to the print dialog (ADR 0078): it prints its date, title, address and page number
+     in any edge that has a margin and no margin box with content, and offers them only while some edge does. So by
+     default the page has no margin and the space the dialog's margin kept moves inside the page, and an edge gets a
+     margin only when it carries the app's own box: the page number at the foot, the name at the head of later pages. */
+  @page {
+    margin: 0;
+    padding: 10mm;
+  }
+
+  /* The page the Sheet prints on, chosen by the running items the print options step chose. */
+  .sheet.print-page-numbers {
+    page: sheet-numbered;
+  }
+
+  .sheet.print-running-name {
+    page: sheet-named;
+  }
+
+  .sheet.print-page-numbers.print-running-name {
+    page: sheet-named-numbered;
+  }
+
+  /* Page numbers: a margin at the foot carrying them, none at the head. The boxes are in the page's own font and muted
+     colour, written out: a margin box is outside the page's elements, and left unset prints in the platform's serif. */
+  @page sheet-numbered {
+    margin: 0 0 10mm;
+    padding: 10mm 10mm 0;
+
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      padding-right: 10mm;
+      font: 8pt system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #4a4a4f;
+    }
+  }
+
+  /* The name on later pages: a margin at the head, carrying the name, whose text the Sheet's own rule supplies (a margin
+     box cannot read the page). Not on the first page, which is headed with the name already; its top has no margin, or
+     the dialog prints its date and title there. */
+  @page sheet-named {
+    margin: 10mm 0 0;
+    padding: 0 10mm 10mm;
+
+    @top-left {
+      padding-left: 10mm;
+      font: 8pt system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #4a4a4f;
+    }
+  }
+
+  @page sheet-named:first {
+    margin-top: 0;
+    padding-top: 10mm;
+
+    @top-left {
+      content: none;
+    }
+  }
+
+  @page sheet-named-numbered {
+    margin: 10mm 0;
+    padding: 0 10mm;
+
+    @top-left {
+      padding-left: 10mm;
+      font: 8pt system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #4a4a4f;
+    }
+
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      padding-right: 10mm;
+      font: 8pt system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #4a4a4f;
+    }
+  }
+
+  @page sheet-named-numbered:first {
+    margin-top: 0;
+    padding-top: 10mm;
+
+    @top-left {
+      content: none;
+    }
+  }
+
+  /* A part the print options step left out. */
+  .print-omit-sections .sheet-flow > .sheet-section:not(.sheet-companions),
+  .print-omit-companions .sheet-companions,
+  .print-omit-references .sheet-references {
+    display: none;
+  }
+
+  /* With nothing printed before them, what the character keeps starts on the first page, under the title. */
+  .print-omit-sections:not(:has(.sheet-companions)) .sheet-references,
+  .print-omit-sections.print-omit-companions .sheet-references {
+    break-before: auto;
+  }
+
   /* Light whatever the screen uses: with backgrounds not printed, the dark scheme's text is light grey on white. */
   :root {
     color-scheme: light;

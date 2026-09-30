@@ -16,19 +16,27 @@
  *   read against them.
  * - **How long a running name would be**: the titles a later page would carry.
  *
- * Report-only (ADR 0042): `ℹ` lines, nothing asserted. Pages are not measured here: a page is where the browser breaks
- * the flow, which only a print shows. ADR 0078's drive printed the same characters with each part left out.
+ * Report-only (ADR 0042) on the commit before ADR 0078: `ℹ` lines, nothing asserted. Pages are not measured here: a page
+ * is where the browser breaks the flow, which only a print shows. ADR 0078's drive printed the same characters with each
+ * part left out.
+ *
+ * Asserted since ADR 0078, against any corpus: for every sheet read here, the step (`printOptionsView`) offers exactly
+ * the parts the document has, read here from the document itself, and none when it has only its own sections. Perturbed:
+ * a part offered that the document lacks fails it.
  */
 
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 
 import { resolveCharacterKind, BundleElementIndex, type ElementIndex, type GameSystem } from '@incudo/core';
 import {
   CharacterBuilder,
+  DEFAULT_PRINT_OPTIONS,
   listedName,
   listedUsage,
   newCharacterOfKind,
   openSelfClosingTags,
+  printOptionsView,
   sheetDocument,
   type SheetDocument,
   type SheetSectionView,
@@ -68,6 +76,33 @@ function sectionCost(section: SheetSectionView): { chars: number; lines: number 
 /** A kept text's lines: one per block a reader sees (a paragraph, a heading, a list item, a table row). */
 const keptLines = (html: string): number =>
   Math.max(1, (openSelfClosingTags(html).match(/<(p|h[1-6]|li|tr|div)\b/g) ?? []).length);
+
+/**
+ * Whether the step offers this sheet exactly the parts its document has, with the document's own labels: `undefined` when
+ * it does, else what is wrong. Remembering every part left out must not change what is offered.
+ */
+function offerProblem(document: SheetDocument): string | undefined {
+  const has: string[] = ['sections'];
+  const labels: string[] = [];
+  if ((document.companions?.creatures.length ?? 0) > 0) {
+    has.push('companions');
+    labels.push(document.companions!.label);
+  }
+  if ((document.references?.entries.length ?? 0) > 0) {
+    has.push('references');
+    labels.push(document.references!.label);
+  }
+  for (const omit of [[], ['sections', 'companions', 'references']] as const) {
+    const view = printOptionsView(document, { ...DEFAULT_PRINT_OPTIONS, omit: [...omit] });
+    const offered = view.parts?.choices.map((c) => c.part) ?? ['sections'];
+    if (has.length === 1 && view.parts) return `${document.title}: offered parts on a sheet of one part`;
+    if (offered.join() !== has.join()) return `${document.title}: offered ${offered.join(', ')}, has ${has.join(', ')}`;
+    const offeredLabels = view.parts?.choices.slice(1).map((c) => c.label) ?? [];
+    if (offeredLabels.join() !== labels.join()) return `${document.title}: labelled ${offeredLabels.join(', ')}`;
+    if (view.parts && !view.parts.choices.some((c) => c.chosen)) return `${document.title}: no part chosen`;
+  }
+  return undefined;
+}
 
 interface PartCost {
   chars: number;
@@ -139,19 +174,25 @@ test('the samples: the parts of each sheet and what each costs', { skip: corpusS
   const asSaved: SheetParts[] = [];
   const keeping: SheetParts[] = [];
   const suggested: number[] = [];
+  const problems: (string | undefined)[] = [];
   for (const sample of samplesWhere(() => true)) {
     const run = await runOracle(samplePath(sample), elements, 'sample');
     const builder = new CharacterBuilder(run.imported.character, run.system, run.elements);
-    asSaved.push(partsOf(sheetDocument(builder.getState())));
+    const saved = sheetDocument(builder.getState());
+    asSaved.push(partsOf(saved));
+    problems.push(offerProblem(saved));
     // What a player would keep: every text the character's own elements print (ADR 0070), the pane's suggestions.
     const suggestions = builder.getState().references.suggestions;
     suggested.push(suggestions.length);
     for (const s of suggestions) builder.addReference(s.elementId);
-    keeping.push(partsOf(sheetDocument(builder.getState())));
+    const kept = sheetDocument(builder.getState());
+    keeping.push(partsOf(kept));
+    problems.push(offerProblem(kept));
   }
   report(t, 'samples as saved', asSaved);
   t.diagnostic(`samples: texts their own elements print, offered to keep, per sheet ${range(suggested)}; sheets with any ${suggested.filter((n) => n > 0).length}`);
   report(t, 'samples keeping every text offered', keeping);
+  assert.deepEqual(problems.filter(Boolean), [], 'the step offers exactly the parts each sheet has');
 });
 
 test('every creature as an NPC and as a legendary creature: the parts of each sheet', { skip: corpusSkip }, async (t) => {
@@ -162,13 +203,17 @@ test('every creature as an NPC and as a legendary creature: the parts of each sh
     const kind = resolveCharacterKind(system, kindId);
     const step = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget && !s.multiple)!;
     const sheets: SheetParts[] = [];
+    const problems: (string | undefined)[] = [];
     for (const creature of step.types.flatMap((type) => elements.byType(type))) {
       const builder = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
       builder.choose(`build/${step.id}`, [creature.id]);
       builder.setName(creature.name);
-      sheets.push(partsOf(sheetDocument(builder.getState())));
+      const document = sheetDocument(builder.getState());
+      sheets.push(partsOf(document));
+      problems.push(offerProblem(document));
     }
     report(t, kind.name, sheets);
+    assert.deepEqual(problems.filter(Boolean), [], `${kind.name}: the step offers exactly the parts each sheet has`);
   }
 });
 
@@ -177,5 +222,7 @@ test('a Cairn character: the parts of its sheet', async (t) => {
   const kind = resolveCharacterKind(system, system.characterKinds[0]!.id);
   const index: ElementIndex = new BundleElementIndex([]);
   const builder = new CharacterBuilder(newCharacterOfKind(system, kind.id), system, index);
-  report(t, `Cairn ${kind.name}`, [partsOf(sheetDocument(builder.getState()))]);
+  const document = sheetDocument(builder.getState());
+  report(t, `Cairn ${kind.name}`, [partsOf(document)]);
+  assert.equal(offerProblem(document), undefined);
 });
