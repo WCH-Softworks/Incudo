@@ -12,8 +12,8 @@
  */
 
 import { escapeLineStart, escapeMarkdown, htmlToMarkdown } from './html-markdown.ts';
-import { PREREQUISITES_UNMET, type SheetDocument } from './sheet-document.ts';
-import type { SheetSectionView } from './sheet.ts';
+import { listedName, listedUsage, PREREQUISITES_UNMET, type SheetDocument } from './sheet-document.ts';
+import type { SheetListedElement, SheetSectionView } from './sheet.ts';
 
 /** The title of a character whose name is blank. */
 export const UNNAMED_CHARACTER = 'Unnamed character';
@@ -73,7 +73,24 @@ function sectionItems(section: SheetSectionView): string[] {
   const e = escapeMarkdown;
   return [
     ...section.rows.map((row) => `${e(row.label)}: ${e(row.value)}${row.beside !== undefined ? ` (${e(row.beside)})` : ''}`),
-    ...section.elements.map((element) => `${e(element.name)}${element.prerequisitesUnmet ? ` (${PREREQUISITES_UNMET})` : ''}`),
+    ...section.elements.map(elementItem),
     ...section.printed.map((line) => `${e(line.label)}: ${e(line.text)}`),
   ];
+}
+
+/**
+ * A listed element: its name, and when content writes it a sheet line (ADR 0076), the name in bold with what using it
+ * takes and its text: "**Rage** (Bonus Action; 3/Long Rest): In battle, …". Each line of the text is its own line of
+ * the item, ending in two spaces so a Markdown reader breaks it where a plain-text reader sees it break.
+ */
+function elementItem(element: SheetListedElement): string {
+  const e = escapeMarkdown;
+  const usage = listedUsage(element);
+  const name = usage !== undefined || element.text !== undefined ? `**${e(listedName(element))}**` : e(listedName(element));
+  const head = `${name}${element.prerequisitesUnmet ? ` (${PREREQUISITES_UNMET})` : ''}${usage !== undefined ? ` (${e(usage)})` : ''}`;
+  const lines = (element.text ?? '')
+    .split('\n')
+    .map((line) => htmlToMarkdown(line).replace(/\s*\n\s*/g, ' ').trim())
+    .filter(Boolean);
+  return lines.length ? `${head}: ${lines.join('  \n  ')}` : head;
 }

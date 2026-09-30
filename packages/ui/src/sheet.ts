@@ -7,12 +7,21 @@
  * and each held creature's stat block (ADR 0073) are built by the same function, so the Sheet pane draws rows and
  * computes nothing, and an export (Phase 5) can start from rows rather than from a component. Kind-agnostic: every
  * label, stat and type comes from the system.
+ *
+ * A listed element carries what content writes for the sheet (ADR 0076): a shorter name, the description for the
+ * level it gates at with its `{{stat}}` placeholders filled from the derivation, and its usage and action. Core reads
+ * the hints (`sheetDescriptionAt`, `sheetPlaceholders`, `halfReference`); this writes the numbers as the sheet
+ * writes them.
  */
 
 import {
   collectDeclaredBlocks,
+  evaluateExpr,
+  halfReference,
   renderSheetSection,
+  sheetDescriptionAt,
   sheetListedElements,
+  sheetPlaceholders,
   type BlockStatDef,
   type DerivedCharacter,
   type Element,
@@ -33,11 +42,28 @@ export interface SheetRow {
   beside?: string;
 }
 
-/** One held element a section lists, marked when the user added it with its prerequisites unmet (ADR 0064). */
+/**
+ * One held element a section lists, marked when the user added it with its prerequisites unmet (ADR 0064), with what
+ * content writes for it on a sheet (ADR 0076), each field only when content wrote one.
+ */
 export interface SheetListedElement {
   elementId: ElementId;
   name: string;
   prerequisitesUnmet?: true;
+  /** The shorter name content gives it on a sheet ("Turn Undead"), when that differs from its name. */
+  sheetName?: string;
+  /**
+   * Its sheet text at the level it gates at, placeholders filled, one line per line content wrote (`\n` between, none
+   * blank, none indented). Each line is inline HTML as content wrote it (an entity, an `<i>`), not yet safe to render:
+   * each renderer sanitizes or converts it, and keeps the line breaks.
+   */
+  text?: string;
+  /** How often it may be used ("3/Long Rest", "Channel Divinity"), filled. Plain text. */
+  usage?: string;
+  /** What using it takes ("Bonus Action"). Plain text. */
+  action?: string;
+  /** The stats its text, usage or action names and nothing publishes, each written as "—" in their place. */
+  unfilled?: string[];
 }
 
 /** One section with nothing left to decide. */
@@ -55,12 +81,19 @@ export interface SheetView {
   kindName: string;
   elementCount: number;
   sections: SheetSectionView[];
+  /** How many placeholders its listed elements' sheet text names that nothing publishes (ADR 0076): 0 when all fill. */
+  unfilled: number;
 }
 
 /** What a sheet reads: the stats and the held elements of one derivation, the character's or a creature's scope. */
 export interface SheetSource {
   stats: ReadonlyMap<string, ResolvedStat>;
   elements: readonly Element[];
+  /**
+   * The level each held element's own rules read (`DerivedCharacter.gateLevels`), which chooses its sheet text. An
+   * element it does not name reads its ungated text.
+   */
+  gateLevels?: ReadonlyMap<ElementId, number>;
 }
 
 /**
@@ -82,6 +115,79 @@ export function formatStatValue(stat: ResolvedStat | undefined, signed: boolean)
   if (stat.text !== undefined) return stat.text.trim() === '' ? '—' : stat.text;
   if (signed && stat.value >= 0) return `+${stat.value}`;
   return String(stat.value);
+}
+
+/** What `fillPlaceholders` wrote, and the stats it could not. */
+export interface FilledText {
+  text: string;
+  unfilled: string[];
+}
+
+/**
+ * A sheet text with each `{{stat}}` replaced by the stat's value as the sheet writes it, unsigned ("3/Long Rest"): its
+ * text when it is text, else its number, a `:half` or `:half:up` suffix read by the expression code that reads it in
+ * a rule (ADR 0046). A stat nothing publishes is written "—" and named in `unfilled`, never guessed (ADR 0005).
+ * `html` escapes what is written in, for a text that is HTML.
+ */
+export function fillPlaceholders(text: string, stats: ReadonlyMap<string, ResolvedStat>, html = false): FilledText {
+  const found = sheetPlaceholders(text);
+  if (!found.length) return { text, unfilled: [] };
+  const ctx = {
+    statNumber: (key: string): number => stats.get(key.toLowerCase())?.value ?? 0,
+    statString: (key: string): string | undefined => stats.get(key.toLowerCase())?.text,
+  };
+  const unfilled: string[] = [];
+  let out = '';
+  let at = 0;
+  for (const placeholder of found) {
+    const direct = stats.get(placeholder.stat.toLowerCase());
+    const half = direct ? undefined : halfReference(placeholder.stat);
+    let value: string;
+    if (direct) value = formatStatValue(direct, false);
+    else if (half && stats.has(half.base)) value = String(evaluateExpr({ kind: 'ref', stat: placeholder.stat }, ctx));
+    else {
+      value = '—';
+      unfilled.push(placeholder.stat);
+    }
+    out += text.slice(at, placeholder.start) + (html ? escapeHtml(value) : value);
+    at = placeholder.end;
+  }
+  return { text: out + text.slice(at), unfilled };
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * What content writes for an element on a sheet (ADR 0076): its shorter name, and its description at the level it
+ * gates at, with that description's own usage and action over the sheet's, each filled. Nothing when it writes nothing.
+ */
+function sheetHintsOf(element: Element, source: SheetSource): Omit<SheetListedElement, 'elementId' | 'name' | 'prerequisitesUnmet'> {
+  const hints = element.sheet;
+  if (!hints) return {};
+  const out: Omit<SheetListedElement, 'elementId' | 'name' | 'prerequisitesUnmet'> = {};
+  const other = hints.alt || hints.name;
+  if (other && other !== element.name) out.sheetName = other;
+  const description = sheetDescriptionAt(hints, source.gateLevels?.get(element.id) ?? 0);
+  const unfilled: string[] = [];
+  const fill = (text: string | undefined, html: boolean): string | undefined => {
+    if (text === undefined || text.trim() === '') return undefined;
+    const filled = fillPlaceholders(text, source.stats, html);
+    unfilled.push(...filled.unfilled);
+    return filled.text;
+  };
+  // Content writes one line of sheet text per line of the file, indented as the XML is: a line break is a break
+  // ("• Bite: …", "• Claw: …"), which HTML would run together, and the indentation is the file's, not the text's.
+  const lines = description?.text.split('\n').map((line) => line.trim()).filter(Boolean).join('\n');
+  const text = fill(lines, true);
+  const usage = fill(description?.usage ?? hints.usage, false);
+  const action = fill(description?.action ?? hints.action, false);
+  if (text !== undefined) out.text = text;
+  if (usage !== undefined) out.usage = usage;
+  if (action !== undefined) out.action = action;
+  if (unfilled.length) out.unfilled = unfilled;
+  return out;
 }
 
 /** The sections of a sheet drawn against one derivation. `listed` is what they may list, `unmet` what to mark. */
@@ -116,10 +222,17 @@ export function sheetSections(
       });
       // In the order the section names its types, as a printed sheet's header reads race, class, background; within a
       // type, in the order the character holds them.
+      // A section that says so leaves out what content hides from a sheet's lists (ADR 0076); one naming what the
+      // character is (race, class) does not, since content hides those too.
       const elements = listed
-        .filter((e) => rendering.types.includes(e.type))
+        .filter((e) => rendering.types.includes(e.type) && !(section.omitHidden && e.sheet?.display === false))
         .sort((a, b) => rendering.types.indexOf(a.type) - rendering.types.indexOf(b.type))
-        .map((e): SheetListedElement => ({ elementId: e.id, name: e.name, ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}) }));
+        .map((e): SheetListedElement => ({
+          elementId: e.id,
+          name: e.name,
+          ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}),
+          ...sheetHintsOf(e, source),
+        }));
       if (!rows.length && !rendering.printed.length && !elements.length) continue;
       views.push({
         id: rendering.id,
@@ -139,15 +252,17 @@ export function sheetSections(
  * keeps off the sheet (ADR 0072), and marking what the user added with its prerequisites unmet (ADR 0064).
  */
 export function sheetView(derived: DerivedCharacter, kind: ResolvedCharacterKind, unmet: ReadonlySet<ElementId> = new Set()): SheetView {
+  const sections = sheetSections(
+    kind.sheet.sections,
+    derived,
+    { stats: kind.stats, blockStats: kind.blockStats },
+    sheetListedElements(derived.elements, kind),
+    unmet,
+  );
   return {
     kindName: kind.name,
     elementCount: derived.elements.length,
-    sections: sheetSections(
-      kind.sheet.sections,
-      derived,
-      { stats: kind.stats, blockStats: kind.blockStats },
-      sheetListedElements(derived.elements, kind),
-      unmet,
-    ),
+    sections,
+    unfilled: sections.reduce((sum, section) => sum + section.elements.reduce((n, e) => n + (e.unfilled?.length ?? 0), 0), 0),
   };
 }

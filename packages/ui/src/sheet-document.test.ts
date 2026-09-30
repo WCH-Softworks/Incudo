@@ -21,6 +21,7 @@ import type { SheetView } from './sheet.ts';
 const sheet: SheetView = {
   kindName: 'Tinker',
   elementCount: 17,
+  unfilled: 0,
   sections: [
     {
       id: 'scores',

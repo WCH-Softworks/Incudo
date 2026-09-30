@@ -485,6 +485,15 @@ ul.problems li.error {
   font-weight: normal;
 }
 
+/* A listed element's sheet text keeps the line breaks content wrote (a feature's "• Bite", "• Claw" lines). */
+.sheet-text {
+  white-space: pre-line;
+}
+
+.sheet-usage {
+  color: var(--fg-muted);
+}
+
 .sheet-elements {
   list-style: none;
   margin: 6px 0 0;

@@ -21,6 +21,14 @@
  *
  * Aurora's save records nothing of its sheet (no hint, no chosen text), so nothing here has a referee.
  *
+ * Since ADR 0076 read them, it also asserts what holds against any corpus (ADR 0042), each with the perturbation that
+ * fails it beside the assertion: every raw description reaches `Element.sheet.descriptions` in order with its own
+ * attributes; on the samples, each shown text is the one the raw XML gives at the level its element's rules read, no
+ * shown hint keeps a placeholder and none is a dash for a stat the derivation publishes, a hidden element leaves only a
+ * section that declares `omitHidden`, and a sample packed and reopened with no source shows the same hints. The report
+ * below the first run's findings reads the sheet as it is now drawn, so the display="false" counts by section are what
+ * a section still lists.
+ *
  * The first run, on AuroraLegacy/elements at `c28ce6c`, found:
  * - **The importer drops part of it.** 220 sheets have two to five `<description>`s, gated by `level=` (332 gates),
  *   and `parseSheet` keeps the first: 320 descriptions are dropped, and 12 that carry a `usage` or `action` of their
@@ -45,8 +53,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { Element, Fetcher } from '@incudo/core';
-import { CharacterBuilder } from '@incudo/ui';
+import {
+  BundleElementIndex,
+  halfReference,
+  readCharacterContainer,
+  sheetListedElements,
+  type Element,
+  type Fetcher,
+} from '@incudo/core';
+import { CharacterBuilder, fillPlaceholders, packCharacter, type BuilderState, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadCorpus } from './corpus.ts';
@@ -317,4 +332,112 @@ test('on the samples: what the sheet lists that has a hint, what it would say, a
   t.diagnostic(`a listed element's other name on the sheet, examples: ${[...renamed.keys()].join('; ') || 'none'}`);
   t.diagnostic(`listed elements whose hint names a stat: ${withPlaceholders}; those the derivation publishes (\`:half\` read as the engine reads it): ${show(resolved)}`);
   t.diagnostic(`and that it does not: ${show(unresolved)}`);
+});
+
+/** Every listed element of a sheet, the character's own sections and each held creature's, with where it is listed. */
+function listedOf(state: BuilderState): { where: string; element: SheetListedElement }[] {
+  const out: { where: string; element: SheetListedElement }[] = [];
+  const add = (sections: readonly SheetSectionView[], prefix: string): void => {
+    for (const section of sections) for (const element of section.elements) out.push({ where: `${prefix}${section.label}`, element });
+  };
+  add(state.sheet.sections, '');
+  for (const creature of state.companions?.creatures ?? []) add(creature.sections, `${creature.name} / `);
+  return out;
+}
+
+test('on the samples, what the sheet shows of the hints: chosen by gate level, filled, hidden only where a section says', { skip: corpusSkip || savesSkip }, async (t) => {
+  // What holds against any corpus (ADR 0042), per sample:
+  // - each listed element's text is the description the raw XML gives at the level its rules read (`gateLevels`), read
+  //   independently of the importer (fails with the text chosen by the character's level: sample 17's Font of Magic);
+  // - no shown text, usage or action keeps a `{{`, and every stat the view says is unpublished really is (fails with a
+  //   placeholder left in place, or with `:half:up` not read: `level:wizard:half:up` reads as unpublished);
+  // - a section that does not declare `omitHidden` lists every element of its types the sheet may list, hidden or not,
+  //   and one that does lists none that is hidden (fails with the hint honoured everywhere: every race and class
+  //   leaves the Character header; or with `omitHidden` unread: Spellcasting stays in Features & Traits);
+  // - packed and reopened with no source, every listed element carries the same hints (fails with a save embedding an
+  //   element without its later descriptions).
+  t.diagnostic(corpusProvenance());
+  const { elements, raw } = await load();
+  const system = (await runOracle(samplePath(readManifest().samples[0]!), elements, 'sample')).system;
+  const wrongText: string[] = [];
+  const leftBraces: string[] = [];
+  const wronglyUnfilled: string[] = [];
+  const unfilled = new Map<string, number>();
+  const hiddenWhereNotOmitted: string[] = [];
+  const missingWhereNotOmitted: string[] = [];
+  const hiddenShown: string[] = [];
+  const offline: string[] = [];
+  const shownHints = new Map<string, number>();
+  const omittedBySection = new Map<string, number>();
+  let listed = 0;
+  let withText = 0;
+
+  for (const sample of readManifest().samples) {
+    const run = await runOracle(samplePath(sample), elements, 'sample');
+    const builder = new CharacterBuilder(run.imported.character, run.system, run.elements);
+    const state = builder.getState();
+    const { derived } = state;
+    const kind = derived.kind;
+    const listable = sheetListedElements(derived.elements, kind);
+
+    for (const { where, element } of listedOf(state)) {
+      listed++;
+      const held = run.elements.get(element.elementId);
+      const sheet = raw.get(element.elementId);
+      for (const key of ['sheetName', 'text', 'usage', 'action'] as const) if (element[key] !== undefined) tally(shownHints, key);
+      if (element.text !== undefined) withText++;
+      for (const field of [element.text, element.usage, element.action]) {
+        if (field?.includes('{{')) leftBraces.push(`${sample.id} ${element.name}: ${field.slice(0, 60)}`);
+      }
+      for (const stat of element.unfilled ?? []) {
+        tally(unfilled, stat);
+        const half = halfReference(stat);
+        if (derived.stats.has(stat.toLowerCase()) || (half && derived.stats.has(half.base))) wronglyUnfilled.push(`${sample.id} ${element.name}: ${stat}`);
+      }
+      // The choice, against the raw XML read by this file rather than the importer. A creature's scope reads its own
+      // gate levels; only the character's own sections are compared here, where `derived.gateLevels` is the answer.
+      if (!where.includes(' / ') && held && sheet && sheet.descriptions.length) {
+        const level = derived.gateLevels.get(element.elementId) ?? 0;
+        const lines = describedAt(sheet, level)?.split(/\r\n?|\n/).map((line) => line.trim()).filter(Boolean).join('\n');
+        const expected = lines ? fillPlaceholders(lines, derived.stats, true).text : undefined;
+        if (element.text !== expected) wrongText.push(`${sample.id} ${element.name} at ${level}`);
+      }
+    }
+
+    // What each section lists against what it may list: every element of its types, less what it says to leave out.
+    for (const def of kind.sheet.sections) {
+      const types = def.types ?? [];
+      if (!types.length || def.perBlock) continue;
+      const shown = new Set(state.sheet.sections.filter((s) => s.id === def.id).flatMap((s) => s.elements.map((e) => e.elementId)));
+      for (const element of listable.filter((e) => types.includes(e.type))) {
+        const hidden = element.sheet?.display === false;
+        if (def.omitHidden) {
+          if (hidden && shown.has(element.id)) hiddenShown.push(`${sample.id} ${def.label}: ${element.name}`);
+          if (hidden) tally(omittedBySection, def.label);
+          if (!hidden && !shown.has(element.id)) missingWhereNotOmitted.push(`${sample.id} ${def.label}: ${element.name}`);
+        } else if (!shown.has(element.id)) {
+          (hidden ? hiddenWhereNotOmitted : missingWhereNotOmitted).push(`${sample.id} ${def.label}: ${element.name}`);
+        }
+      }
+    }
+
+    // Packed and reopened with no source: the save's embedded elements carry every description (ADR 0012).
+    const packed = packCharacter(state.character, run.system, run.elements, { generator: 'test', extraIds: run.imported.extraIds });
+    const { container } = readCharacterContainer(packed.files);
+    const reopened = new CharacterBuilder(container!.character, run.system, new BundleElementIndex(container!.content.elements)).getState();
+    const hints = (s: BuilderState): string => JSON.stringify(listedOf(s));
+    if (hints(reopened) !== hints(state)) offline.push(sample.id);
+  }
+
+  t.diagnostic(`listed elements over the samples, creatures' included: ${listed}; with sheet text: ${withText}; hints shown: ${show(shownHints)}`);
+  t.diagnostic(`hidden elements a section leaves out, by section: ${show(omittedBySection)}`);
+  t.diagnostic(`placeholders nothing publishes, by stat: ${show(unfilled)}`);
+  assert.ok(system && listed > 0, 'the samples listed nothing');
+  assert.deepEqual(wrongText, [], 'a text is not the one the raw XML gives at its gate level');
+  assert.deepEqual(leftBraces, [], 'a shown hint keeps a placeholder');
+  assert.deepEqual(wronglyUnfilled, [], 'a placeholder is written as a dash for a stat the derivation publishes');
+  assert.deepEqual(hiddenWhereNotOmitted, [], 'a hidden element left a section that does not declare omitHidden');
+  assert.deepEqual(hiddenShown, [], 'a section that declares omitHidden lists a hidden element');
+  assert.deepEqual(missingWhereNotOmitted, [], 'a section left out an element that is not hidden');
+  assert.deepEqual(offline, [], 'the hints differ once the sample is packed and reopened with no source');
 });

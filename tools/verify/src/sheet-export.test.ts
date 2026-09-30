@@ -52,6 +52,7 @@ import {
   BundleElementIndex,
   readCharacterContainer,
   resolveCharacterKind,
+  sheetDescriptions,
   type Character,
   type Element,
   type ElementIndex,
@@ -62,6 +63,7 @@ import {
   escapeMarkdown,
   expandDescription,
   htmlToMarkdown,
+  listedName,
   newCharacterOfKind,
   openSelfClosingTags,
   packCharacter,
@@ -114,7 +116,11 @@ function markdownProblems(document: SheetDocument, markdown: string): string[] {
   const section = (s: SheetSectionView, level: number): void => {
     if (!lines.has(`${'#'.repeat(level)} ${e(s.label)}`)) problems.push(`no heading for ${s.label}`);
     for (const row of s.rows) if (![...lines].some((l) => l.startsWith(`- ${e(row.label)}: ${e(row.value)}`))) problems.push(`no row ${row.label}`);
-    for (const el of s.elements) if (![...lines].some((l) => l.startsWith(`- ${e(el.name)}`))) problems.push(`no element ${el.name}`);
+    // A listed element is written by the name a sheet gives it, in bold when content writes it a sheet line (ADR 0076).
+    for (const el of s.elements) {
+      const name = e(listedName(el));
+      if (![...lines].some((l) => l.startsWith(`- ${name}`) || l.startsWith(`- **${name}**`))) problems.push(`no element ${el.name}`);
+    }
     for (const p of s.printed) if (!lines.has(`- ${e(p.label)}: ${e(p.text)}`)) problems.push(`no printed ${p.label}`);
   };
   for (const s of document.sections) section(s, 2);
@@ -273,8 +279,18 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
     // What could be personal: the importer's freeform text and the portrait's path, anywhere in the view.
     const character: Character = state.character;
     const shown = JSON.stringify(view);
+    // Aurora copies a background feature's text into the save whether or not its user changed it; a value that is text a
+    // held element writes itself (its description or its sheet text, ADR 0076) is content's words, not the user's.
+    const words = (text: string): string => text.replace(/\s+/g, ' ').trim();
+    const contentTexts = state.derived.elements.flatMap((element) => [element.description ?? '', ...sheetDescriptions(element.sheet).map((d) => d.text)]).map(words);
+    // Twenty characters or more, so a number or a word is not taken for a quotation.
+    const contents = (value: string): boolean => words(value).length >= 20 && contentTexts.some((text) => text.includes(words(value)));
     for (const [key, value] of Object.entries(character.freeform)) {
       tally(freeformKeys, key.replace(/^list\..*/, 'list.*').replace(/^appearance\..*/, 'appearance.*'));
+      if (contents(value)) {
+        tally(freeformKeys, "of them, content's own text");
+        continue;
+      }
       if (value.trim().length >= 4 && shown.includes(JSON.stringify(value).slice(1, -1))) personal.push(`${sample.id} ${key}`);
     }
     for (const path of Object.values(character.assets ?? {})) if (shown.includes(path)) personal.push(`${sample.id} asset ${path}`);
@@ -288,7 +304,7 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
     problems.push(...markdownProblems(sheetDocument(state), markdown).map((p) => `${sample.id} ${p}`));
     if (exported(offline) !== markdown) offlineExports.push(sample.id);
     for (const [key, value] of Object.entries(character.freeform)) {
-      const prose = /^(backstory|background-|background\.|attacks\.)/.test(key) && value.trim().length >= 4;
+      const prose = /^(backstory|background-|background\.|attacks\.)/.test(key) && value.trim().length >= 4 && !contents(value);
       if (prose && markdown.includes(value.trim().slice(0, 40))) leaked.push(`${sample.id} ${key}`);
     }
     for (const path of Object.values(character.assets ?? {})) if (markdown.includes(path)) leaked.push(`${sample.id} ${path}`);

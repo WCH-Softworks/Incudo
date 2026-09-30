@@ -72,7 +72,7 @@ function creatureView(
 ): CompanionView {
   const creature = scope.elements.find((e) => e.id === scope.elementId) ?? index.get(scope.elementId);
   // No blocks: a creature's sections are refused `perBlock` by the validator, so a scope's declared blocks are unread.
-  const sections = sheetSections(sheet, { stats: scope.stats, elements: scope.elements }, vocabulary);
+  const sections = sheetSections(sheet, { stats: scope.stats, elements: scope.elements, gateLevels: scope.gateLevels }, vocabulary);
   return {
     elementId: scope.elementId,
     name: creature?.name ?? scope.elementId,

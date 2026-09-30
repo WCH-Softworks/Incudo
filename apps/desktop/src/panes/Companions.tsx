@@ -6,7 +6,11 @@
  * the creature's own scope.
  */
 
-import { PREREQUISITES_UNMET, type SheetDocument, type SheetSectionView } from '@incudo/ui';
+import { useMemo } from 'react';
+
+import { listedName, listedUsage, PREREQUISITES_UNMET, type SheetDocument, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
+
+import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
 
 /**
  * A section's rows, listed elements and printed lines, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
@@ -32,10 +36,7 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
       {section.elements.length > 0 && (
         <ul className="sheet-elements">
           {section.elements.map((element) => (
-            <li key={element.elementId}>
-              {element.name}
-              {element.prerequisitesUnmet && <span className="hint"> ({PREREQUISITES_UNMET})</span>}
-            </li>
+            <ListedElement key={element.elementId} element={element} />
           ))}
         </ul>
       )}
@@ -50,6 +51,30 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
         </dl>
       )}
     </>
+  );
+}
+
+/**
+ * A listed element: its name, and what content writes for it on a sheet when it writes anything (ADR 0076), "Rage
+ * (Bonus Action; 3/Long Rest): …", as `packages/ui` chose and filled it. The text is sanitized as every description is,
+ * and keeps the line breaks content wrote.
+ */
+function ListedElement({ element }: { element: SheetListedElement }): React.JSX.Element {
+  const usage = listedUsage(element);
+  const html = useMemo(() => (element.text ? sanitizeDescriptionHtml(element.text) : ''), [element.text]);
+  const name = listedName(element);
+  return (
+    <li>
+      {usage !== undefined || html ? <strong>{name}</strong> : name}
+      {element.prerequisitesUnmet && <span className="hint"> ({PREREQUISITES_UNMET})</span>}
+      {usage !== undefined && <span className="sheet-usage"> ({usage})</span>}
+      {html && (
+        <>
+          {': '}
+          <span className="sheet-text" dangerouslySetInnerHTML={{ __html: html }} />
+        </>
+      )}
+    </li>
   );
 }
 
