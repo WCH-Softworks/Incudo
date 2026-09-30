@@ -174,8 +174,9 @@ The boxes' text is set small in the page's muted colour and the page's own font;
 platform's default serif (measured).
 
 The roadmap's "the dialog's own checkbox can still put them back" is dropped: the dialog offers no such checkbox then
-(measured). The furniture goes on every print, and that is the maintainer's call recorded in the roadmap. If a user wants
-the address and date on paper, that is a request for a new option here, not for a margin.
+(measured). The furniture goes on every print, and that is the maintainer's call recorded in the roadmap. Asked (2026-09-30)
+whether the step should offer to print the date and address instead, the maintainer said no: there is no case for them
+on a sheet, so no option brings them back.
 
 ### 5. The choices are remembered per user, not per character
 
@@ -196,7 +197,7 @@ leaving the number off where there is one page would take a second rule the plat
 ## What this does not do
 
 - **Choose paper, orientation, scale, copies or which pages.** The platform's dialog still does, as ADR 0077 said.
-- **Put the dialog's headers and footers back.** Decision 4; a new option if one is ever asked for.
+- **Put the dialog's headers and footers back.** Decision 4, and decided: no option for them.
 - **Print without the platform's dialog**, or save a PDF without it (WebView2's `PrintToPdf`, Windows only). Phase 5's
   PDF item decides that.
 - **Remember choices per character**, or skip the step ("don't ask again"). The step is one click; a way to skip it is a
