@@ -16,7 +16,7 @@ import {
   type SheetSectionDef,
 } from '@incudo/core';
 
-import { sheetSections, type SheetRow, type SheetSectionView, type SheetVocabulary } from './sheet.ts';
+import { sheetSections, unfilledIn, type SheetRow, type SheetSectionView, type SheetVocabulary } from './sheet.ts';
 
 /** A stat row, labelled and valued as the sheet shows it. */
 export type CompanionStatRow = SheetRow;
@@ -35,6 +35,8 @@ export interface CompanionView {
   sections: CompanionSection[];
   /** What its stat block could not show, in plain words. */
   notes: string[];
+  /** How many placeholders its sections' sheet lines name that nothing in its scope publishes (ADR 0076). */
+  unfilled: number;
 }
 
 export interface CompanionsView {
@@ -80,6 +82,7 @@ function creatureView(
     heldBy: heldBy(scope.elementId, derived),
     sections,
     notes: notesOf(scope),
+    unfilled: unfilledIn(sections),
   };
 }
 

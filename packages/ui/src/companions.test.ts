@@ -150,3 +150,25 @@ test('the builder\'s state carries it', () => {
   const state = new CharacterBuilder(withOx, system(), index).getState();
   assert.deepEqual(state.companions?.creatures.map((c) => c.name), ['Ox']);
 });
+
+test('a creature\'s sheet lines are filled from its own scope, and what nothing publishes is counted on its view', () => {
+  // ADR 0076. Fails if a creature's lines are filled from the holder, where the two guards sum to 8 (each reads "8"), or
+  // if a creature's unpublished placeholder is left uncounted (its view reads 0), as it was until driving it showed a
+  // hound's "+— to hit" counted nowhere.
+  const howl: Element = { ...element('HOWL', 'Deed', 'Howl'), sheet: { usage: '{{pet:guard}}/Day', description: 'Guards +{{pet:guard}}, reach {{pet:nowhere}}.' } };
+  const dog = element('DOG', 'Beast', 'Dog', { might: '8', deeds: 'HOWL' }, [guard(3)]);
+  const wolf = element('WOLF', 'Beast', 'Wolf', { might: '9', deeds: 'HOWL' }, [guard(5)]);
+  const pack = element('PACK', 'Whistle', 'Pack Horn', {}, [{ kind: 'grant', id: 'DOG' } as Rule, { kind: 'grant', id: 'WOLF' } as Rule]);
+  const local = new MapElementIndex();
+  for (const e of [howl, dog, wolf, pack]) local.add(e);
+  const character = createCharacter('test', 'keeper');
+  character.choices = [{ ruleKey: 'build/pack', elementIds: ['PACK'] }];
+  const sys = system();
+  const kind = resolveCharacterKind(sys, 'keeper');
+  const shown = companionsView(deriveCharacter(character, sys, local, { kind }), kind, local)!;
+  const lineOf = (n: number) => shown.creatures[n]!.sections.find((s) => s.id === 'deeds')!.elements[0]!;
+  assert.deepEqual(shown.creatures.map((c) => c.name), ['Dog', 'Wolf']);
+  assert.deepEqual(lineOf(0), { elementId: 'HOWL', name: 'Howl', text: 'Guards +3, reach —.', usage: '3/Day', unfilled: ['pet:nowhere'] });
+  assert.equal(lineOf(1).text, 'Guards +5, reach —.');
+  assert.deepEqual(shown.creatures.map((c) => c.unfilled), [1, 1]);
+});

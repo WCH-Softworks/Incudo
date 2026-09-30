@@ -57,6 +57,7 @@ const companions: CompanionsView = {
       source: 'Test Book',
       heldBy: ['Owl Kit', 'Brass Charm'],
       notes: ['One feature this creature names is not in any loaded source.'],
+      unfilled: 0,
       sections: [{ id: 'stats', label: 'Stat Block', rows: [{ stat: 'companion:grit', label: 'Grit', value: '8', beside: '-1' }], printed: [], elements: [] }],
     },
   ],
