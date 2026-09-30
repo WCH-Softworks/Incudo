@@ -137,13 +137,23 @@ function looksLikeStatRef(text: string): boolean {
 function statNumber(stat: string, ctx: ExpressionContext): number {
   const direct = ctx.statNumber(stat);
   if (direct !== 0) return direct;
+  const half = halfReference(stat);
+  if (!half) return direct;
+  const value = ctx.statNumber(half.base) / 2;
+  return half.up ? Math.ceil(value) : Math.floor(value);
+}
+
+/**
+ * The stat a `:half` or `:half:up` reference halves, lowercased, and which way it rounds; `undefined` for a reference
+ * with no such suffix. The one reading of the suffix: an expression reads it through here, and so does a sheet asking
+ * whether a placeholder names something the derivation publishes (ADR 0076).
+ */
+export function halfReference(stat: string): { base: string; up: boolean } | undefined {
   const lower = stat.toLowerCase();
   const up = lower.endsWith(':half:up');
-  if (!up && !lower.endsWith(':half')) return direct;
+  if (!up && !lower.endsWith(':half')) return undefined;
   const base = lower.slice(0, lower.length - (up ? ':half:up' : ':half').length).trim();
-  if (base === '') return direct;
-  const half = ctx.statNumber(base) / 2;
-  return up ? Math.ceil(half) : Math.floor(half);
+  return base === '' ? undefined : { base, up };
 }
 
 export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {

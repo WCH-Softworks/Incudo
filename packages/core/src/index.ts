@@ -18,6 +18,7 @@ export * from './setter-stats.ts';
 export * from './setter-grants.ts';
 export * from './custom-features.ts';
 export * from './embeds.ts';
+export * from './sheet-hints.ts';
 export * from './container.ts';
 export * from './json-schema.ts';
 export * from './schema.ts';
