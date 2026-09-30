@@ -1382,6 +1382,11 @@ pane draws and every export renders: the PDF and the print layout start from it,
     honour this as Chromium does is part of the macOS and Linux item below.
   - Wants an amendment to ADR 0077 first, measured as that ADR was: what each part costs in pages on the samples,
     and that a margin-less page prints no furniture, to PDF and on paper, in the Windows window.
+  - **Proposed as [ADR 0078](docs/adr/0078-a-print-is-chosen-in-a-step-of-the-app-s-own-and-no-edge-of-the-page-is-left-to-the-dialog.md)**
+    (2026-09-30), measured to PDF and in the preview in the Windows window, not yet on paper. The measurement corrects
+    two things above: with no margin the dialog does not offer its headers-and-footers option at all, so it cannot put
+    them back; and a page number needs a margin, since only a margin box prints one. So every edge of the page gets
+    either no margin or a margin carrying the app's own box.
 - [ ] **"Print sheet…" on macOS and Linux: does it print at all?** Open until the maintainer's macOS and Linux
       environments exist. The command calls `window.print()`, which Tauri's own documentation says works on every
       platform. But the same documentation says Tauri's Rust `print()` is only supported on macOS, and the wry version
