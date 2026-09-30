@@ -901,6 +901,39 @@ function Shell({
   }, [document]);
 
   /**
+   * Print the Sheet through the platform's own dialog (ADR 0077). `window.print()` in both builds: Tauri documents it for
+   * every platform, and wry's own `print()` on Windows is this call. What prints is the Sheet pane under the print rules in
+   * styles.css; nothing here lays anything out.
+   */
+  const printSheet = useCallback((): void => {
+    window.print();
+  }, []);
+
+  // While the Sheet prints, the page is titled with the character, so a print dialog's header and the name "Save as PDF"
+  // suggests read the character rather than the app (ADR 0077 decision 3). Put back afterwards. `window.document`, since
+  // `document` here is the sheet's.
+  const printTitle = document.title;
+  useEffect(() => {
+    if (pane !== 'sheet') return;
+    let before: string | undefined;
+    const onBefore = (): void => {
+      before = window.document.title;
+      window.document.title = printTitle;
+    };
+    const onAfter = (): void => {
+      if (before !== undefined) window.document.title = before;
+      before = undefined;
+    };
+    window.addEventListener('beforeprint', onBefore);
+    window.addEventListener('afterprint', onAfter);
+    return () => {
+      onAfter();
+      window.removeEventListener('beforeprint', onBefore);
+      window.removeEventListener('afterprint', onAfter);
+    };
+  }, [pane, printTitle]);
+
+  /**
    * Save, unless the character was renamed since the last save. `LibraryEntryRef.name` never
    * follows `character.name` (ADR 0027) — "a character renamed to something else still lives in
    * aelin.incu" — so without this a rename would save silently under the old filename, with
@@ -954,6 +987,7 @@ function Shell({
     'save-character': () => void saveToLibrary(),
     'save-copy': () => void copyToFile(),
     'export-sheet': () => void exportToFile(),
+    'print-sheet': printSheet,
     'import-aurora': () => void importFromAurora(),
     'choose-library-folder': () => void chooseFolder(),
     'refresh-library': () => void library.refresh(),
@@ -1090,7 +1124,10 @@ function Shell({
       {pane === 'sheet' && (
         <>
           <div className="pane-bar">
-            <span className="status">Writes this page to a Markdown (.md) text file.</span>
+            <span className="status">Print this page, or write it to a Markdown (.md) text file.</span>
+            <button type="button" onClick={printSheet} title={describeCommand('print-sheet', commands.os)}>
+              Print sheet…
+            </button>
             <button
               type="button"
               onClick={() => void exportToFile()}

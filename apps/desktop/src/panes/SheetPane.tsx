@@ -9,6 +9,10 @@
  * `packages/ui/src/sheet.ts` (ADR 0074), over core's `renderSheetSection` (ADRs 0020, 0062). What
  * the whole page shows, the character's held creatures and what it keeps included, is one document
  * (`sheetDocument`, ADR 0075), which the text export renders too; this draws it and composes nothing.
+ *
+ * Printing is this pane on paper (ADR 0077): the print rules in styles.css hide what is not the sheet, print the title
+ * where the name field is, flow the character's sections and its creatures (`.sheet-flow`) in two columns, and start
+ * what it keeps on a page of its own. Nothing here knows a section by name.
  */
 
 import type { CharacterBuilder, SheetDocument } from '@incudo/ui';
@@ -24,6 +28,8 @@ export function SheetPane({
 }): React.JSX.Element {
   return (
     <main className="pane sheet">
+      {/* The name is edited here, and printed as the document's title: a text box prints at its own width. */}
+      <h1 className="sheet-print-title">{document.title}</h1>
       <input
         className="sheet-name"
         type="text"
@@ -31,19 +37,22 @@ export function SheetPane({
         onChange={(event) => builder.setName(event.target.value)}
       />
       <p className="lede">
-        {document.kindName} · {document.elementCount} elements
+        {document.kindName}
+        <span className="sheet-element-count"> · {document.elementCount} elements</span>
       </p>
 
-      {document.sections.map((section) => (
-        <section key={section.id} className="sheet-section">
-          <h3>{section.label}</h3>
-          {section.description && <p className="hint">{section.description}</p>}
-          <SheetRows section={section} />
-        </section>
-      ))}
+      <div className="sheet-flow">
+        {document.sections.map((section) => (
+          <section key={section.id} className="sheet-section">
+            <h3>{section.label}</h3>
+            {section.description && <p className="hint">{section.description}</p>}
+            <SheetRows section={section} />
+          </section>
+        ))}
 
-      {/* Each creature the character holds, as its own stat block (ADR 0073): after the character, before what it keeps. */}
-      {document.companions && <Companions view={document.companions} />}
+        {/* Each creature the character holds, as its own stat block (ADR 0073): after the character, before what it keeps. */}
+        {document.companions && <Companions view={document.companions} />}
+      </div>
 
       {/* What the character keeps beside it for reference (ADR 0068), after the sheet: text, not the character's own. */}
       {document.references && (

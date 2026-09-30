@@ -1875,3 +1875,131 @@ ul.browse-categories {
   font-weight: 600;
   color: var(--fg-muted);
 }
+
+/* --- print (ADR 0077) -----------------------------------------------------------------------------------------------
+
+   The Sheet on paper: the same pane, drawn from the same document, with what binds it to the window undone. Last in the
+   file on purpose, so its colour tokens win over the dark scheme's by source order. Every section is laid out by what it
+   holds, as on screen, and none is known by name: the scores, saves and skills come out side by side because they are
+   short and consecutive, not because anything here says which they are. `break-*` are preferences: a section longer
+   than a column breaks anyway. */
+
+/* The name as text, for paper; the name field is for editing and prints at its own width. */
+.sheet-print-title {
+  display: none;
+}
+
+@media print {
+  /* Light whatever the screen uses: with backgrounds not printed, the dark scheme's text is light grey on white. */
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --bg-sunken: #ffffff;
+    --fg: #000000;
+    --fg-muted: #4a4a4f;
+    --line: #b4b4ba;
+    --accent: #000000;
+  }
+
+  body {
+    font-size: 10pt;
+    line-height: 1.35;
+  }
+
+  /* The app is one window tall and each pane scrolls inside it; on paper both grow with what they hold. */
+  .app {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .pane {
+    overflow: visible;
+    max-width: none;
+    width: auto;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Not the sheet: the app's header and navigation, a pane's bar, the name field, and the lede's count of elements,
+     which counts internal ones and says nothing on paper (ADR 0075). */
+  header,
+  .pane-bar,
+  .sheet-name,
+  .sheet-element-count {
+    display: none;
+  }
+
+  .sheet-print-title {
+    display: block;
+    font-size: 16pt;
+    margin: 0;
+  }
+
+  .sheet .lede {
+    margin: 0 0 6pt;
+  }
+
+  /* The character's sections, then its creatures, down two columns. */
+  .sheet-flow {
+    columns: 2;
+    column-gap: 9mm;
+  }
+
+  /* A section may break: kept whole, a long one (Features & Traits, Proficiencies) jumped to the next page and left
+     half of this one empty, which the first printed sample showed on every page. */
+  .sheet-section {
+    padding: 4pt 0 6pt;
+  }
+
+  /* A heading stays with what follows it. */
+  h3,
+  h4,
+  h5,
+  .sheet-section > .hint,
+  .sheet-companion > .hint {
+    break-after: avoid;
+  }
+
+  .sheet-section h3 {
+    margin: 2pt 0 3pt;
+  }
+
+  dd {
+    font-size: 11pt;
+  }
+
+  /* What does fit is not split: a grid of rows (the scores, the skills), a listed element with its lines, a creature's
+     section. Not a whole creature: its stat block is a column long, and kept whole it left its heading behind. */
+  dl,
+  .sheet-elements > li,
+  .sheet-companion-section,
+  .hint {
+    break-inside: avoid;
+  }
+
+  /* A section that lists no elements is a heading, a sentence and a grid of rows or printed lines, never a column long:
+     kept whole, so the skills' heading does not end one column with their numbers starting the next. Chosen by what it
+     holds, not by what it is called. The creatures' part and the kept texts are parts, not sections, and may be long. */
+  .sheet-section:not(.sheet-companions, .sheet-references, :has(.sheet-elements)) {
+    break-inside: avoid;
+  }
+
+  /* What the character keeps is content's own pages, up to a page and more with tables twelve columns wide: a page of
+     its own at the page's full width, breaking between its blocks and never inside a table row. */
+  .sheet-references {
+    break-before: page;
+  }
+
+  .reference-text {
+    overflow: visible;
+  }
+
+  .picker-description {
+    max-width: none;
+  }
+
+  .reference-text tr {
+    break-inside: avoid;
+  }
+}
