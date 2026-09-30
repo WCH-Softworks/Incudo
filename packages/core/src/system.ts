@@ -869,6 +869,13 @@ export interface SheetSectionDef {
    * placeholders resolve too.
    */
   beside?: string;
+  /**
+   * Leave out a listed element whose own sheet hints say not to show it (`display: false`) — ADR 0076. Content marks a
+   * feature that way when its effect is shown elsewhere or a choice beside it names it better (Spellcasting, a subclass
+   * placeholder, Tough), and also every race and class, which a header names: so it is a section's to honour, and one
+   * that names what a character is declares none. The element is still held, derived and saved.
+   */
+  omitHidden?: boolean;
 }
 
 /** One line of printed text a sheet section shows from a held element's setter — ADR 0062. */

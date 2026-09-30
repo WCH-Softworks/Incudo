@@ -879,6 +879,10 @@
           "minLength": 1,
           "description": "A stat shown beside each row's value (ADR 0074). `{stat}` stands for the row's own key, as in showWhen: \"{stat}:modifier\" shows a score's modifier beside it. In a perBlock section the block's placeholders resolve too. It must name a stat the kind publishes."
         },
+        "omitHidden": {
+          "type": "boolean",
+          "description": "Leave out a listed element whose own sheet hints say not to show it (Aurora's <sheet display=\"false\">, ADR 0076). Content marks a feature that way when its effect is shown elsewhere or a choice beside it names it better, and also every race and class, which a header names: so a section that lists features declares it and one that names what a character is does not. The element is still held, derived and saved. Only meaningful beside types."
+        },
         "showWhen": {
           "type": "string",
           "minLength": 1,

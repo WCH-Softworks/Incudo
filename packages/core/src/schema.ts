@@ -486,6 +486,9 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         if (section.perBlock) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" is perBlock, which a creature's stat block does not read` });
         }
+        if (section.omitHidden && !section.types?.length) {
+          errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" leaves out hidden elements and lists none` });
+        }
         // What a row shows beside it is a stat the scope has, or the row reads a blank (ADR 0074).
         const scopeStats = new Set([...statNames, ...(companions.stats ?? []).map((s) => s.name.toLowerCase())]);
         for (const stat of section.stats ?? []) {
@@ -557,6 +560,10 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     const blockStatPatterns = new Set(resolved.blockStats.map((b) => b.stat.toLowerCase()));
 
     for (const section of resolved.sheet.sections) {
+      // Leaving hidden elements out of a section that lists none says nothing (ADR 0076).
+      if (section.omitHidden && !section.types?.length) {
+        errors.push({ path: `${where}.sheet`, message: `section "${section.id}" leaves out hidden elements and lists none` });
+      }
       for (const stat of section.stats ?? []) {
         // What a row shows beside it (ADR 0074) must be published as the row must be, or it reads a blank.
         const beside = section.beside?.split('{stat}').join(stat).toLowerCase();

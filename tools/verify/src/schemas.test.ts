@@ -206,6 +206,25 @@ test('a system that would throw at load fails validation instead', async () => {
     await errorsFor(broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], beside: '{stat}' }] }))),
     [],
   );
+
+  // ADR 0076: a section that leaves hidden elements out must list some, and the flag is a boolean. Fails if the check
+  // is removed (the first), or `omitHidden` is left out of the schema (every one: an unknown field).
+  assert.deepEqual(
+    await errorsFor(broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], omitHidden: true }] }))),
+    ['characterKinds[0].sheet: section "s" leaves out hidden elements and lists none'],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', types: [s.characterKinds[0]!.elementTypes![0]!], omitHidden: true }] })),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', types: [s.characterKinds[0]!.elementTypes![0]!], omitHidden: 'yes' as unknown as boolean }] })),
+    ),
+    ['characterKinds[0].sheet.sections[0].omitHidden: must be a boolean, not a string'],
+  );
 });
 
 test('structural mistakes get messages a non-programmer can act on', async () => {
