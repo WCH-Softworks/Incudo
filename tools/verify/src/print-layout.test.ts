@@ -1,0 +1,359 @@
+/**
+ * What a printed page of a character has to hold, measured before deciding what the print layout is.
+ *
+ * The roadmap's Phase 5 item is two words, "Print layout". ADRs 0075 and 0076 say a print layout is a renderer of the one
+ * sheet document (`sheetDocument`, `packages/ui/src/sheet-document.ts`), never of `BuilderState` directly, and ADR 0075
+ * says the Sheet pane is already most of a print layout. This reads that document, over the thirty samples (as 5e player
+ * characters, found with `samplesWhere`), every creature as an NPC and as a legendary creature, a character keeping
+ * every text its kind may keep, and a Cairn character, and asks:
+ *
+ * - **How much is on the page.** Per kind and per section: how many rows, listed elements, printed lines and sheet lines
+ *   (a listed element with content's sheet text, ADR 0076), and how many characters, and per sheet the same for the
+ *   character, its held creatures and what it keeps. The longest sheet texts, kept texts and tables.
+ * - **What could sit side by side.** Which sections are only short figures (rows, no listed element, no printed line,
+ *   every value short), whether that shape is the same for a section on every sheet, and the order the shapes come in:
+ *   whether a renderer can put the scores, saves and skills beside each other from what the document says, without
+ *   knowing their names.
+ * - **What the document has for a stat block.** Whether a creature's traits, actions and reactions carry their text or
+ *   only their names, and which listed elements a section names without the sheet line content wrote for them (ADR
+ *   0076 decision 6: a hidden element a section lists anyway), by section, which is the "Primal Bond" cost.
+ * - **What the shell does that a printed page would have to undo or repeat.** Read from the stylesheet and the three
+ *   components that draw the Sheet: whether anything is styled for print, what bounds the page to the window, what the
+ *   dark scheme does to the text colour, what scrolls instead of growing, whether anything calls the platform's print,
+ *   and which components sanitize content's HTML (the only sanitizer is the shell's, over a DOM).
+ *
+ * All of it is reported as `ℹ` lines (ADR 0042), and nothing is asserted: this is the measurement ADR 0077 was written
+ * from, committed and run before anything it proposes.
+ */
+
+import { test } from 'node:test';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import {
+  BundleElementIndex,
+  resolveCharacterKind,
+  sheetDescriptions,
+  type Element,
+  type ElementIndex,
+  type ResolvedCharacterKind,
+  type SheetSectionDef,
+} from '@incudo/core';
+import {
+  CharacterBuilder,
+  expandDescription,
+  listedName,
+  listedUsage,
+  newCharacterOfKind,
+  openSelfClosingTags,
+  sheetDocument,
+  type BuilderState,
+  type SheetDocument,
+  type SheetSectionView,
+} from '@incudo/ui';
+
+import { runOracle } from './aurora-oracle.ts';
+import { loadShippedSystem } from './node-system.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { samplePath, samplesWhere } from './sample-saves.ts';
+
+type Diagnostic = { diagnostic: (s: string) => void };
+
+const tally = (into: Map<string, number>, key: string, by = 1): void => void into.set(key, (into.get(key) ?? 0) + by);
+const show = (m: Map<string, number>, limit = 40): string =>
+  [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, limit).map(([k, v]) => `${k} ${v}`).join(', ') || 'none';
+const range = (values: number[]): string => {
+  if (!values.length) return '—';
+  const sorted = [...values].sort((a, b) => a - b);
+  const lo = sorted[0]!;
+  const hi = sorted[sorted.length - 1]!;
+  return lo === hi ? String(lo) : `${lo} to ${hi} (median ${sorted[Math.floor(sorted.length / 2)]})`;
+};
+
+/** A text as a reader of the page reads it: tags gone, entities one character, runs of space one space. */
+const plain = (html: string): string =>
+  openSelfClosingTags(html).replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;|&#x?[0-9a-f]+;/gi, '·').replace(/\s+/g, ' ').trim();
+
+/** How many characters a section puts on the page: its heading, its rows, its listed elements with their lines, its printed lines. */
+function sectionChars(section: SheetSectionView): number {
+  let n = section.label.length + (section.description?.length ?? 0);
+  for (const row of section.rows) n += row.label.length + row.value.length + (row.beside?.length ?? 0);
+  for (const e of section.elements) n += listedName(e).length + (listedUsage(e)?.length ?? 0) + (e.text ? plain(e.text).length : 0);
+  for (const p of section.printed) n += p.label.length + p.text.length;
+  return n;
+}
+
+/** How many lines a section takes before any wrapping: one per row, per listed element, per line of its text, per printed line. */
+function sectionLines(section: SheetSectionView): number {
+  return (
+    section.rows.length +
+    section.printed.length +
+    section.elements.reduce((n, e) => n + 1 + (e.text ? e.text.split('\n').length - 1 : 0), 0)
+  );
+}
+
+/** The longest value a row shows, with what is beside it. */
+const widestValue = (section: SheetSectionView): number =>
+  section.rows.reduce((n, r) => Math.max(n, r.value.length + (r.beside !== undefined ? r.beside.length + 3 : 0)), 0);
+
+/**
+ * The candidate rule for "short figures", a section a paper sheet could set in boxes beside others: rows only, and every
+ * value, with what is beside it, eight characters or fewer ("18 (+4)", "+11", "1/4"). Named by shape, never by id.
+ */
+const FIGURE_WIDTH = 8;
+function shapeOf(section: SheetSectionView): string {
+  const rows = section.rows.length > 0;
+  const listed = section.elements.length > 0;
+  const printed = section.printed.length > 0;
+  const lines = section.elements.some((e) => e.text !== undefined);
+  if (rows && !listed && !printed) return widestValue(section) <= FIGURE_WIDTH ? 'figures' : 'rows';
+  if (!rows && listed && !printed) return lines ? 'prose' : 'names';
+  if (!rows && !listed && printed) return 'printed';
+  return `mixed(${[rows && 'rows', listed && (lines ? 'prose' : 'names'), printed && 'printed'].filter(Boolean).join('+')})`;
+}
+
+interface SectionTally {
+  sheets: number;
+  rows: number[];
+  elements: number[];
+  printed: number[];
+  sheetLines: number[];
+  chars: number[];
+  lines: number[];
+  widest: number;
+  beside: boolean;
+  shapes: Map<string, number>;
+}
+
+/** One sheet's size: characters of its own sections, its held creatures and what it keeps, and its lines. */
+interface SheetTotal {
+  own: number;
+  creatures: number;
+  references: number;
+  lines: number;
+  parts: string;
+}
+
+class Census {
+  readonly sections = new Map<string, SectionTally>();
+  readonly sequences = new Map<string, number>();
+  readonly totals: SheetTotal[] = [];
+  readonly texts: { chars: number; lines: number; where: string }[] = [];
+  readonly hiddenNamed = new Map<string, number>();
+  readonly hiddenLost = new Map<string, number>();
+  readonly statBlock = new Map<string, number>();
+
+  /** One sheet document: `where` names the kind, `lookup` finds a listed element's own hints. */
+  read(document: SheetDocument, kind: ResolvedCharacterKind, lookup: (id: string) => Element | undefined, where: string): void {
+    const own = document.sections.reduce((n, s) => n + sectionChars(s), 0);
+    const creatures = (document.companions?.creatures ?? []).reduce((n, c) => n + c.name.length + c.sections.reduce((m, s) => m + sectionChars(s), 0), 0);
+    const references = (document.references?.entries ?? []).reduce((n, e) => n + e.name.length + plain(e.html ?? e.note ?? '').length, 0);
+    const lines =
+      document.sections.reduce((n, s) => n + 1 + sectionLines(s), 0) +
+      (document.companions?.creatures ?? []).reduce((n, c) => n + 1 + c.sections.reduce((m, s) => m + 1 + sectionLines(s), 0), 0);
+    const parts = ['sections', document.companions && 'creatures', document.references && 'references'].filter(Boolean).join(' + ');
+    this.totals.push({ own, creatures, references, lines, parts });
+    tally(this.sequences, document.sections.map(shapeOf).join(' › '));
+
+    const defs = new Map<string, SheetSectionDef>();
+    for (const def of kind.sheet.sections) defs.set(def.id, def);
+    for (const section of document.sections) this.section(`${where} · ${section.label}`, section, defs.get(section.id), lookup, where);
+    const creatureDefs = new Map<string, SheetSectionDef>();
+    for (const def of kind.companions?.sheet ?? []) creatureDefs.set(def.id, def);
+    for (const creature of document.companions?.creatures ?? []) {
+      for (const section of creature.sections) this.section(`${where}'s creature · ${section.label}`, section, creatureDefs.get(section.id), lookup, `${where}'s creature`);
+    }
+  }
+
+  private section(key: string, section: SheetSectionView, def: SheetSectionDef | undefined, lookup: (id: string) => Element | undefined, where: string): void {
+    let t = this.sections.get(key);
+    if (!t) this.sections.set(key, (t = { sheets: 0, rows: [], elements: [], printed: [], sheetLines: [], chars: [], lines: [], widest: 0, beside: false, shapes: new Map() }));
+    t.sheets++;
+    t.rows.push(section.rows.length);
+    t.elements.push(section.elements.length);
+    t.printed.push(section.printed.length);
+    t.sheetLines.push(section.elements.filter((e) => e.text !== undefined).length);
+    t.chars.push(sectionChars(section));
+    t.lines.push(sectionLines(section));
+    t.widest = Math.max(t.widest, widestValue(section));
+    t.beside ||= section.rows.some((r) => r.beside !== undefined);
+    tally(t.shapes, shapeOf(section));
+
+    for (const e of section.elements) {
+      if (e.text) this.texts.push({ chars: plain(e.text).length, lines: e.text.split('\n').length, where: `${where} · ${section.label} · ${listedName(e)}` });
+      const element = lookup(e.elementId);
+      const hidden = element?.sheet?.display === false;
+      const written = sheetDescriptions(element?.sheet).some((d) => d.text.trim() !== '');
+      // A hidden element a section lists anyway is named and given no line (ADR 0076 decision 6).
+      if (hidden && !def?.omitHidden) {
+        tally(this.hiddenNamed, `${where} · ${section.label}`);
+        if (written) tally(this.hiddenLost, `${where} · ${section.label} · ${element!.name}`);
+      }
+    }
+    // A stat block's features: with their text on the page, or named only.
+    const types = def?.types ?? [];
+    if (types.some((type) => /^Companion (Trait|Action|Reaction)$/.test(type))) {
+      for (const e of section.elements) {
+        const element = lookup(e.elementId);
+        const description = (element?.description ?? '').trim() !== '';
+        tally(this.statBlock, `${where} · ${section.label} · ${e.text !== undefined ? 'with its sheet line' : description ? 'named only, its description not on the sheet' : 'named only, no text anywhere'}`);
+      }
+    }
+  }
+
+  report(t: Diagnostic, what: string): void {
+    for (const [key, s] of this.sections) {
+      t.diagnostic(
+        `${key}: on ${s.sheets} sheets; rows ${range(s.rows)}, listed ${range(s.elements)}, with a sheet line ${range(s.sheetLines)}, ` +
+          `printed ${range(s.printed)}; lines ${range(s.lines)}, characters ${range(s.chars)}; widest value ${s.widest}${s.beside ? ' (with what is beside it)' : ''}; shape ${show(s.shapes)}`,
+      );
+    }
+    t.diagnostic(`${what}: the sections' shapes in order, by sheets: ${show(this.sequences, 4)}`);
+    const pick = (f: (x: SheetTotal) => number): string => range(this.totals.map(f));
+    t.diagnostic(
+      `${what}: per sheet, characters of its own sections ${pick((x) => x.own)}, of its held creatures ${pick((x) => x.creatures)}, ` +
+        `of what it keeps ${pick((x) => x.references)}; lines before wrapping ${pick((x) => x.lines)}`,
+    );
+    const parts = new Map<string, number>();
+    for (const x of this.totals) tally(parts, x.parts);
+    t.diagnostic(`${what}: the document's parts, by sheets: ${show(parts)}`);
+    const longest = [...this.texts].sort((a, b) => b.chars - a.chars).slice(0, 5);
+    const texts = this.texts.map((x) => x.chars);
+    t.diagnostic(
+      `${what}: sheet lines ${this.texts.length}, ${range(texts)} characters, ${range(this.texts.map((x) => x.lines))} lines each; ` +
+        `longest: ${longest.map((x) => `${x.where} (${x.chars} characters, ${x.lines} lines)`).join('; ') || 'none'}`,
+    );
+    t.diagnostic(`${what}: hidden elements a section lists anyway, named without a line, by section: ${show(this.hiddenNamed)}`);
+    t.diagnostic(`${what}: of them, ones content writes a sheet line for, which the page loses: ${show(this.hiddenLost)}`);
+    if (this.statBlock.size) t.diagnostic(`${what}: a stat block's traits, actions and reactions: ${show(this.statBlock)}`);
+  }
+}
+
+test('the samples: what a printed page of each holds', { skip: corpusSkip || savesSkip }, async (t) => {
+  t.diagnostic(corpusProvenance());
+  const elements = await realElements();
+  const census = new Census();
+  let sheets = 0;
+  for (const sample of samplesWhere(() => true)) {
+    const run = await runOracle(samplePath(sample), elements, 'sample');
+    const state = new CharacterBuilder(run.imported.character, run.system, run.elements).getState();
+    const kind = resolveCharacterKind(run.system, state.character.kind);
+    census.read(sheetDocument(state), kind, (id) => run.elements.get(id), kind.name);
+    sheets++;
+  }
+  t.diagnostic(`samples read: ${sheets}`);
+  census.report(t, 'samples');
+});
+
+test('every creature as an NPC and as a legendary creature: what a printed stat block holds', { skip: corpusSkip }, async (t) => {
+  t.diagnostic(corpusProvenance());
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await realElements();
+  for (const kindId of ['npc', 'legendary']) {
+    const kind = resolveCharacterKind(system, kindId);
+    const step = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget && !s.multiple)!;
+    const creatures = step.types.flatMap((type) => elements.byType(type));
+    const census = new Census();
+    for (const creature of creatures) {
+      const builder = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
+      builder.choose(`build/${step.id}`, [creature.id]);
+      census.read(sheetDocument(builder.getState()), kind, (id) => elements.get(id), kind.name);
+    }
+    t.diagnostic(`${kind.name}: ${creatures.length} creatures read`);
+    census.report(t, kind.name);
+  }
+});
+
+/** A table's shape: how many columns (a spanning cell counted as the columns it spans), how many rows. */
+function tableShapes(html: string): { columns: number; rows: number }[] {
+  return (openSelfClosingTags(html).match(/<table[\s\S]*?<\/table>/g) ?? []).map((table) => {
+    const rows = table.match(/<tr[\s\S]*?<\/tr>/g) ?? [];
+    const width = (row: string): number =>
+      [...row.matchAll(/<t[dh](\s[^>]*)?>/g)].reduce((n, m) => n + Number(/colspan="(\d+)"/.exec(m[1] ?? '')?.[1] ?? 1), 0);
+    return { columns: Math.max(0, ...rows.map(width)), rows: rows.length };
+  });
+}
+
+test('a character keeping every text its kind may keep: how long a kept text and its tables run on paper', { skip: corpusSkip }, async (t) => {
+  t.diagnostic(corpusProvenance());
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await realElements();
+  for (const kindId of ['pc', 'npc']) {
+    const kind = resolveCharacterKind(system, kindId);
+    const kept = (kind.references?.types ?? []).flatMap((type) => elements.byType(type));
+    const builder = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
+    for (const element of kept) builder.addReference(element.id);
+    const document = sheetDocument(builder.getState());
+    const entries = document.references?.entries ?? [];
+    const lengths = entries.map((e) => ({ name: e.name, chars: plain(e.html ?? e.note ?? '').length, tables: tableShapes(e.html ?? '') }));
+    const tables = lengths.flatMap((e) => e.tables.map((shape) => ({ ...shape, name: e.name })));
+    const columns = new Map<string, number>();
+    for (const table of tables) tally(columns, `${table.columns} columns`);
+    const longest = [...lengths].sort((a, b) => b.chars - a.chars).slice(0, 3);
+    const tallest = [...tables].sort((a, b) => b.rows - a.rows).slice(0, 3);
+    t.diagnostic(
+      `${kind.name} keeping ${entries.length}: ${range(lengths.map((e) => e.chars))} characters each; ` +
+        `longest ${longest.map((e) => `${e.name} (${e.chars})`).join(', ')}; ` +
+        `with a table ${lengths.filter((e) => e.tables.length).length}, tables ${tables.length}: ${show(columns)}; ` +
+        `rows ${range(tables.map((x) => x.rows))}, most ${tallest.map((x) => `${x.name} (${x.rows} rows, ${x.columns} columns)`).join(', ')}`,
+    );
+    // The kept texts, with the expansion the pane shows (ADR 0069), against what the element writes itself.
+    const expanded = kept.map((e) => plain(expandDescription(e, elements)).length - plain(e.description ?? '').length).filter((n) => n > 0);
+    t.diagnostic(`${kind.name}: kept texts longer for what they embed: ${expanded.length}`);
+  }
+});
+
+test('a Cairn character: what a printed page of it holds', async (t) => {
+  const system = await loadShippedSystem('cairn');
+  const kind = resolveCharacterKind(system, system.characterKinds[0]!.id);
+  const index: ElementIndex = new BundleElementIndex([]);
+  const builder = new CharacterBuilder(newCharacterOfKind(system, kind.id), system, index);
+  for (const step of builder.getState().steps) {
+    for (const [at, stat] of (step.budget?.targets ?? []).entries()) builder.setBudgetStat(step.id, stat, 4 + at);
+  }
+  const state: BuilderState = builder.getState();
+  const census = new Census();
+  census.read(sheetDocument(state), kind, (id) => index.get(id), `Cairn ${kind.name}`);
+  census.report(t, `Cairn ${kind.name}`);
+});
+
+/** The shell's stylesheet and the components that draw the Sheet, read as source, so this report cannot drift from them. */
+test('the shell: what a printed page would have to undo or repeat', (t) => {
+  const src = join(import.meta.dirname, '..', '..', '..', 'apps', 'desktop', 'src');
+  const css = readFileSync(join(src, 'styles.css'), 'utf8');
+  const rule = (selector: string): string => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return [...css.matchAll(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`, 'g'))]
+      .map((m) => m[1]!.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim())
+      .join(' | ') || 'no rule';
+  };
+  t.diagnostic(`@media print rules: ${(css.match(/@media[^{]*\bprint\b/g) ?? []).length}; @page rules: ${(css.match(/@page\b/g) ?? []).length}; break-/page-break- properties: ${(css.match(/\b(page-)?break-(before|after|inside)\s*:/g) ?? []).length}`);
+  for (const selector of ['.app', '.pane', 'header', '.pane-bar', '.sheet-name', '.sheet-section', 'dl', '.sheet-text', '.reference-text', '.picker-description']) {
+    t.diagnostic(`${selector}: ${rule(selector)}`);
+  }
+  const dark = /@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+  const token = (name: string, block: string): string => new RegExp(`--${name}:\\s*([^;]+);`).exec(block)?.[1]?.trim() ?? 'unset';
+  t.diagnostic(`colours: light --fg ${token('fg', css)}, --fg-muted ${token('fg-muted', css)}; dark --fg ${token('fg', dark)}, --fg-muted ${token('fg-muted', dark)}, --bg ${token('bg', dark)}`);
+
+  const files = (readdirSync(src, { recursive: true }) as string[]).filter((f) => /\.(ts|tsx)$/.test(f));
+  const calls = new Map<string, number>();
+  for (const file of files) {
+    const text = readFileSync(join(src, file), 'utf8');
+    for (const word of ['window.print', 'beforeprint', 'afterprint', "matchMedia('print')", 'print(']) {
+      const n = text.split(word).length - 1;
+      if (n) tally(calls, `${word} in ${file.replace(/\\/g, '/')}`, n);
+    }
+  }
+  t.diagnostic(`calls into the platform's print in the shell's source: ${show(calls)}`);
+  for (const file of ['panes/SheetPane.tsx', 'panes/Companions.tsx', 'panes/References.tsx']) {
+    const text = readFileSync(join(src, file), 'utf8');
+    const fromUi = [...text.matchAll(/import\s*\{([^}]*)\}\s*from '@incudo\/ui'/g)].flatMap((m) => m[1]!.split(',').map((x) => x.trim()).filter((x) => x && !x.startsWith('type ')));
+    t.diagnostic(
+      `${file}: from @incudo/ui ${fromUi.join(', ') || 'nothing but types'}; sanitizes content's HTML: ${/sanitizeDescriptionHtml\(/.test(text) ? 'yes' : 'no'}; ` +
+        `an <input>: ${/<input\b/.test(text) ? 'yes' : 'no'}; class names ${[...new Set([...text.matchAll(/className="([^"]+)"/g)].map((m) => m[1]!))].join(', ')}`,
+    );
+  }
+  const app = readFileSync(join(src, 'App.tsx'), 'utf8');
+  const sheetBlock = /\{pane === 'sheet' && \([\s\S]*?<\/>\s*\)\}/.exec(app)?.[0] ?? '';
+  t.diagnostic(`what App.tsx draws around the Sheet: ${[...sheetBlock.matchAll(/<([A-Za-z]+)[\s>]/g)].map((m) => m[1]).join(' ')}; always above it: header, nav`);
+});
