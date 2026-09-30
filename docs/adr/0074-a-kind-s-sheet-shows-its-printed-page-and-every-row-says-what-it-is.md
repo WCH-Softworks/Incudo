@@ -148,6 +148,10 @@ from a player character whose sheet had shown it nowhere else until decision 4, 
 number with no reason beside it. So the hint is left unread and measured, and reading it (with `alt`, `usage` and
 `action`, which a play sheet wants) is its own decision once the sheet shows what each hidden element does.
 
+> **Amended by [ADR 0076](./0076-content-s-sheet-hints-are-read-every-description-kept-chosen-by-the-level-the-element-gates-at.md)**
+> (2026-09-30): the hints are read. A section declares `omitHidden` to leave hidden elements out (5e: the feature and
+> proficiency lists), so the header and Senses keep what they list, Darkvision included.
+
 ## What this does not do
 
 - **Mark which saves and skills are proficient.** The totals are right and every row is shown; which proficiency makes

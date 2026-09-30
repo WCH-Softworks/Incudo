@@ -362,7 +362,9 @@ text for reference too, offered first what its own elements print, and a library
 0071, 0072). **A creature a character holds is shown as its own stat block, its numbers derived from the character** (ADR
 0073). **Each kind's sheet shows its printed page: a player character's saves, skills, modifiers and the spell slots it casts
 with, an NPC's first line and printed dice, a Cairn character's entered scores** (ADR 0074). **The Sheet can be exported
-as text: "Export sheet as text…" writes it as Markdown that reads as plain text** (ADR 0075).
+as text: "Export sheet as text…" writes it as Markdown that reads as plain text** (ADR 0075). **A feature on the Sheet and
+in the export is content's own sheet line, at the level its class reads, its numbers filled: "Rage (Bonus Action; 3/Long
+Rest): …"** (ADR 0076).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -768,11 +770,10 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     The test works every sample's from Aurora's own `<sum>` and the book (682 rows agree, 0 differ; the 38 something else
     adds to are held to their three terms). Content spells one expertise id `…_SLEIGHT_OF_HAND` with underscores and the
     rest without, so the check ignores underscores. Never describe these as verified against Aurora.
-  - **Content's `<sheet>` hints are parsed and read by nothing, on purpose** (`display="false"` on 1,779 elements, 2 to 12
-    listed per sample, and `alt`, `usage`, `action`): Aurora hid Darkvision and Tough because its sheet showed their
-    effect elsewhere. Reading them is its own decision.
+  - ~~**Content's `<sheet>` hints are parsed and read by nothing, on purpose**~~ Read since ADR 0076 (below): a section
+    declares `omitHidden` to honour `display="false"`, and 5e's header and Senses do not, so Darkvision stays.
   - The oracle is identical before and after. **Not done:** a proficiency mark on a save or skill; levels per class;
-    hit dice, death saves, inspiration, personality, attacks; the `<sheet>` hints; the Build pane's "Progress" number on a
+    hit dice, death saves, inspiration, personality, attacks; ~~the `<sheet>` hints~~ (ADR 0076); the Build pane's "Progress" number on a
     level-less kind. Driven in the browser build (a Cairn character too) and the Tauri window on Windows (a packed sample
     and a built NPC, the file read back from disk, reopened with the source off); not with real input, Cairn not in the
     window, and not on macOS or Linux.
@@ -815,6 +816,59 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     Driven in the browser build (exports compared byte for byte with the tests' and with the source off) and the Tauri
     window on Windows (no source ever added; the native menu item and the real save dialog, by window messages); not with
     real input, not the dialog's replace prompt or Cancel, and not on macOS or Linux.
+- **Content's sheet hints are read: every description kept, and the one shown chosen by the level its element gates at**
+  ([ADR 0076](docs/adr/0076-content-s-sheet-hints-are-read-every-description-kept-chosen-by-the-level-the-element-gates-at.md)).
+  Groundwork for Phase 5's PDF and print layout. Things to know before touching it:
+  - **Measured by `tools/verify/src/sheet-hints.test.ts`**, which also asserts what holds against any corpus: 5,984
+    elements carry a `<sheet>`; 220 write two to five `<description>`s gated by `level=` (332 gates), 11 of them a usage
+    and 1 an action of their own; `usage` is a count per rest or a resource's name, `action` Action, Bonus Action,
+    Reaction or Attack but for 8; `alt` (1,014) and `name` (9) are a shorter name; `{{stat}}` placeholders, some with
+    `:half:up`. Sheet text is feature text: 302 of 341 shown features carry one, no proficiency, spell, language or
+    background does. Aurora's save records nothing of its sheet, so **nothing here has a referee**.
+  - **The importer kept only the first description** (the sixth silently dropped construct, a bugfix to the frozen
+    package). `SheetHints.descriptions` (`{ text, level?, usage?, action? }[]`, file order) keeps them all; `description`
+    stays the first text, and **a reader finding no `descriptions` treats `description` as the one ungated one**, so a
+    save written before shows its first text at every level until saved again with the source loaded. The content cache
+    stores raw XML, so a cached source picks it up on its next load.
+  - **The level is `DerivedCharacter.gateLevels`** (held element → what `trackLevelReader` gives it after the fixed
+    point: its class track's level, else the character's progression), published by the engine and never recomputed.
+    `CompanionDerivation.gateLevels` too. It is in `summarize()`: a property of the character and what it embeds, so the
+    self-containment, rebuild and reopen tests compare it, and every builder rebuild of a sample agrees with its import.
+    One sample separates class level from character level (sample 17's Font of Magic): "consistent with", never
+    "verified".
+  - **Core reads, ui writes.** `packages/core/src/sheet-hints.ts`: `sheetDescriptions`, `sheetDescriptionAt` (highest
+    gate at or below; ungated from 0; the later of two at one level), `sheetPlaceholders` (the one reader of `{{…}}`).
+    `expression.ts` exports `halfReference`, the `:half` reading `statNumber` uses, so nothing copies it.
+    `packages/ui/src/sheet.ts` `fillPlaceholders`: a published stat by `formatStatValue` unsigned, a half through core's
+    `evaluateExpr`, a value escaped inside the HTML-ish text, an unpublished stat written "—" and named in
+    `SheetListedElement.unfilled` and counted in `SheetView.unfilled` (0 on the samples).
+  - **`SheetListedElement` gains `sheetName`, `text`, `usage`, `action`, `unfilled`, each only when content wrote
+    one**, so an element with no hints is listed exactly as before. `text` keeps **one line per line content wrote**
+    (824 of 4,753 descriptions are bullet lines that HTML would run together), trimmed, blank lines dropped. A
+    description's own usage and action replace the sheet's.
+  - **`omitHidden` on a sheet section** (system format, optional, `formatVersion` 1; the validator refuses it beside no
+    types). 5e declares it on the player character's Features & Traits and Proficiencies and the NPC's and legendary
+    creature's Feats and Features and Proficiencies and Conditions; **never on a Character header, Senses, or a stat
+    block's Traits, Actions and Reactions** (a held creature's included): `display="false"` is on every race and class,
+    and on "Primal Bond", which the 2024 book prints in the beast's stat block. **A hidden element a section lists anyway
+    is named with no line** (found in the Tauri window: a 2014 class's header read its sheet text). 188 hidden elements
+    leave Features & Traits on the samples and 10 Proficiencies; 46 header entries are named without their line.
+  - **`listedName` and `listedUsage`** (`sheet-document.ts`) are the one wording of "**Rage** (Bonus Action; 3/Long Rest)":
+    the pane (`Companions.tsx` `ListedElement`, the text through the shell sanitizer with `white-space: pre-line`) and
+    the export both call them. The export bolds a name only when content writes it a line and writes each line of the
+    text as a line of the item ending in two spaces.
+  - **ADR 0075's personal-text check exempts content's own words**: Aurora copies a background feature's description into
+    every save's freeform, and the sheet now shows content's copy (four samples read as leaking). A freeform value of 20
+    characters or more that a held element writes itself is not counted.
+  - Tests: `packages/core/src/sheet-hints.test.ts`, `engine.test.ts`, `packages/ui/src/sheet-hints.test.ts`,
+    `parse-elements.test.ts`, `schemas.test.ts` and the corpus assertions in `sheet-hints.test.ts`, each case failing
+    under its named perturbation. The oracle is identical before and after.
+  - **Not done:** spells, proficiencies and backgrounds described on the sheet (content writes no sheet text for them); a
+    reason beside a number a hidden feature moved (Tough); counting uses (Phase 6); an NPC's or held creature's lines
+    driven in either build. Driven in the browser build (samples 17 and 11, 17 reopened with the source off, exports byte
+    for byte the tests'; before the hidden-line fix) and the Tauri window on Windows (samples 02 and 17 packed outside it,
+    no source ever added, exported from the native menu through the real save dialog, byte for byte the tests'); not with
+    real input, not importing in the window, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1473,7 +1527,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074 and 0075 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075 and 0076 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
@@ -1506,13 +1560,15 @@ Three things Phase 1 changed that are easy to trip over:
   this project *is* Aurora content — but it is why a missing kind grant warns rather than errors.
   The last three arrived with the bag: Aurora's inventory proxies, which only a real
   `<equipment>` block names.
-- **Five Aurora constructs were being silently dropped**: element-level `<supports>`
+- **Six Aurora constructs were being silently dropped**: element-level `<supports>`
   (3,611 blocks — *every* support tag in the corpus), element-level `<requirements>` (1,845),
   `<append>` (171), `equipped=` (79, none of which is `"true"`, all read as `false` — fixed by
-  ADR 0021), and `<spellcasting><list>` (17, fixed by ADR 0030 — the tag
-  `$(spellcasting:list)` needs, which had never reached the engine). Every one was found by
-  counting what the corpus contains rather than by reading the format. See
-  docs/AURORA-FORMAT.md.
+  ADR 0021), `<spellcasting><list>` (17, fixed by ADR 0030 — the tag
+  `$(spellcasting:list)` needs, which had never reached the engine), and a `<sheet>`'s later
+  `<description>`s (320 in 220 sheets, gated by `level=`, 11 carrying a usage or action of their own —
+  fixed by ADR 0076). Every one was found by counting what the corpus contains rather than by
+  reading the format. See docs/AURORA-FORMAT.md, which also counts the inline list items and so
+  calls the `<sheet>` one the seventh.
 
 **The builder has no current step** (ADR 0017). `CharacterBuilder` publishes `decisions` — one
 flat, always-current list — and `steps` is a grouping with `available`/`blockedBy`, not a

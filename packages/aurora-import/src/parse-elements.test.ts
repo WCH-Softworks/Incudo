@@ -1,5 +1,5 @@
 /**
- * The elements parser, on the six constructs it used to walk straight past.
+ * The elements parser, on the seven constructs it used to walk straight past.
  *
  * All six were found by pointing the differential verification at real saves and then
  * counting what the corpus actually contains: 3,611 element-level `<supports>` blocks, 1,845
@@ -9,6 +9,9 @@
  * background's suggested Personality Trait, Ideal, Bond, Flaw, and similar). None were being
  * read; the first meant no `<select supports="…">` had ever matched anything, and the last
  * meant every one of those 346 selects offered nothing at all.
+ *
+ * The seventh (ADR 0076), found by counting alone because no save records a sheet, is a `<sheet>`'s later
+ * `<description>`s: 220 sheets write two to five, gated by level, and only the first was kept.
  */
 
 import { test } from 'node:test';

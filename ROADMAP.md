@@ -1286,8 +1286,7 @@ the kind machinery is not decorative.*
       things in, and a 5e sentence under Cairn's score editor. Driven in the browser build and in the Tauri window on
       Windows, saved files reopened with the source off. **Not done:** a mark on the saves and skills a character is
       proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice, death saves, inspiration,
-      personality and attacks; reading content's `<sheet>` hints (`display="false"` on 1,779 elements, and `alt`,
-      `usage` and `action`), which Aurora honoured because its sheet showed each hidden element's effect elsewhere; a
+      personality and attacks; ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
       stat block laid out as a stat block; the "Progress" number a level-less Cairn character is shown on Build; Cairn in
       the Tauri window; macOS and Linux.
 
@@ -1322,6 +1321,26 @@ pane draws and every export renders: the PDF and the print layout start from it,
       own); a shortcut (a Ctrl+Shift chord has to be found by pressing real keys in the Windows window); feature
       descriptions, personality, notes, the bag and prepared spells, none of which the Sheet shows; the save dialog's
       replace prompt and Cancel, not exercised for an export in the window; macOS and Linux.
+- [x] **Content's sheet hints are read: a feature's sheet line, at its level, filled**
+      ([ADR 0076](./docs/adr/0076-content-s-sheet-hints-are-read-every-description-kept-chosen-by-the-level-the-element-gates-at.md)).
+      Groundwork for the PDF and the print layout, which lay out the lines this gives them. Measured first: content's
+      `<sheet>` is feature text, short, and fully fillable from what a derivation publishes, and **the importer kept only
+      its first `<description>`**: 220 sheets write two to five, gated by `level=`, so 320 were dropped (a sixth silently
+      dropped construct, fixed as a bugfix; a save written before reads its one text at every level). The text shown is
+      the one for the level the element's own rules read, which the derivation now publishes (`gateLevels`: a class
+      feature's class level, not the character's; the one sample that separates them agrees). `{{stat}}` is filled as the
+      sheet writes the stat, `:half` read by the engine's own code; nothing unpublished on the samples. The Sheet and the
+      Markdown export show "**Rage** (Bonus Action; 3/Long Rest): …", keeping the lines content wrote. A section may
+      declare `omitHidden` (system format): 5e's feature and proficiency lists leave out what content marks
+      `display="false"` (188 and 10 on the samples: Spellcasting, subclass placeholders, Tough), the header and Senses
+      keep theirs, and a hidden element a section lists anyway is named without its line (found in the Tauri window: a
+      2014 class's header read its sheet text). A stat block's traits keep "Primal Bond", which the book prints. No oracle
+      row moved; no character format change. Driven in the browser build (two samples, one reopened with the source off,
+      exports byte for byte the tests') and the Tauri window on Windows (two samples with no source ever added, exported
+      from the native menu through the real save dialog, byte for byte the tests'). **Not done:** spells, proficiencies
+      and backgrounds described on the sheet (content writes no sheet text for them); a reason beside a number a hidden
+      feature moved (Tough); counting uses (Phase 6); an NPC's or held creature's sheet lines driven in either build;
+      macOS and Linux.
 - [ ] "Content has been updated — refresh?" flow, diffing recorded source versions against
       available ones and showing what would change before touching the character
 - [ ] Print layout

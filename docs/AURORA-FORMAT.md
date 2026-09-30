@@ -63,11 +63,14 @@ anyway.
 
 ### Constructs that are easy to miss, and were
 
-There are six of them now. Every one was read past in silence, none of them errored, and
+There are seven of them now. Every one was read past in silence, none of them errored, and
 every one was found the same way — by counting what the corpus contains rather than by
 reading the format. Three are below, `equipped=` follows them, the fifth is
-`<spellcasting><list>` in the `supports` section further down, and the sixth is a `<select>`'s
-own nested `<item>`s, right after this list. The first is the expensive one.
+`<spellcasting><list>` in the `supports` section further down, the sixth is a `<select>`'s
+own nested `<item>`s, right after this list, and the seventh is a `<sheet>`'s later
+`<description>`s, under "Deliberate simplifications in the importer" below. The first is the expensive one.
+(CLAUDE.md's list leaves out the inline items, which are an element-count finding there, and so
+calls the `<sheet>` one the sixth, as ADR 0076 does.)
 
 **`<supports>` is a child of `<element>`, not of `<rules>`.** The corpus contains 3,611 of
 them and **not one** inside `<rules>` — so an importer that only looks inside `<rules>` ends
@@ -392,8 +395,17 @@ namespaced string keys verbatim — inventing a typed schema for 5e stats would 
   inside an XML comment is content switching the embed off, and is not one. The markup is XML:
   `<h4 />` is an empty heading, which the shell writes open and closed before an HTML parser
   sees it.
-- `<sheet>` is display metadata (`display`, `alt`, `usage`, `action`). Kept as-is, interpreted
-  by the system definition's sheet layout.
+- `<sheet>` is display metadata (`display`, `alt`, `usage`, `action`, and one to five
+  `<description>`s, each with its own optional `level`, `usage` and `action`) — ADR 0076. **The
+  importer kept only the first description until 2026-09-30**: 220 sheets write two to five,
+  gated by `level=`, and 320 descriptions (and the 11 that carry a usage or action of their own,
+  Rage's "Unlimited" at 20) were dropped. `SheetHints.descriptions` keeps them all in file order;
+  `description` stays the first one's text, and a save written before reads that as the one
+  description at every level. The description shown is the highest `level` at or below the level
+  the element's own rules read (its class's, else the character's), and `{{stat}}` placeholders
+  in it are filled from the derivation. `display="false"` means "not in the feature list", not
+  "not on the sheet": it is on every race and class too, so a sheet section says whether it
+  honours it (`omitHidden`). Nothing derives from any of it.
 - Aurora has undocumented app-side behaviour for certain IDs (`ID_INTERNAL_*` are helpers that
   the app itself generates). `core/internal.xml` in AuroraLegacy exists precisely to patch around
   this. Incudo treats them as ordinary elements — the importer flags any it cannot resolve.
