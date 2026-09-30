@@ -1959,12 +1959,15 @@ ul.browse-categories {
     }
   }
 
+  /* The first page of each, with no margin at its head and no name. `!important`, because the name's own rule comes
+     later in the document (the Sheet renders it) and Chromium lets a later @page rule's margin box win over an earlier
+     :first one whatever the page selectors: measured in the window, the name printed on page 1 without it. */
   @page sheet-named:first {
     margin-top: 0;
     padding-top: 10mm;
 
     @top-left {
-      content: none;
+      content: none !important;
     }
   }
 
@@ -1991,7 +1994,7 @@ ul.browse-categories {
     padding-top: 10mm;
 
     @top-left {
-      content: none;
+      content: none !important;
     }
   }
 

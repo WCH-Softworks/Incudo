@@ -497,6 +497,8 @@ function printBlocks(css: string): string {
 }
 
 interface PageRule {
+  /** Where the rule is in the document: the stylesheet's rules, then the one the Sheet renders. */
+  order: number;
   declarations: Map<string, string>;
   boxes: Map<string, Map<string, string>>;
 }
@@ -516,11 +518,12 @@ const MARGIN_BOX = /@([a-z-]+)\s*\{((?:"(?:[^"\\]|\\.)*"|[^}"])*)\}/g;
 /** Page selector (`''` for every page, `name`, `name:first`, `:first`) → its rules in source order. */
 function pageRules(css: string): Map<string, PageRule[]> {
   const rules = new Map<string, PageRule[]>();
+  let order = 0;
   for (const block of pageBlocks(css)) {
     const boxes = new Map<string, Map<string, string>>();
     for (const m of block.body.matchAll(MARGIN_BOX)) boxes.set(m[1]!, declarationsOf(m[2]!));
     const list = rules.get(block.selector) ?? [];
-    list.push({ declarations: declarationsOf(block.body.replace(MARGIN_BOX, '')), boxes });
+    list.push({ order: order++, declarations: declarationsOf(block.body.replace(MARGIN_BOX, '')), boxes });
     rules.set(block.selector, list);
   }
   return rules;
@@ -529,11 +532,18 @@ function pageRules(css: string): Map<string, PageRule[]> {
 type Edge = 'top' | 'right' | 'bottom' | 'left';
 const EDGES: Edge[] = ['top', 'right', 'bottom', 'left'];
 
-/** A printed page as the rules that apply to it make it, in cascade order (later wins). */
-function resolvePage(rules: PageRule[]): { margins: Record<Edge, string>; padding: string | undefined; boxes: Map<string, Map<string, string>> } {
+/**
+ * A printed page as the rules that apply to it make it. **In document order, whatever the page selectors**, with
+ * `!important` above that: measured in Chromium 154 (ADR 0078), an `@page name` rule later in the document gave page 1 a
+ * margin box an earlier `@page name:first` set to `none`, and only `!important` held it. The spec ranks `:first` above a
+ * bare name; resolving by the spec here would pass the rules that printed the name on page 1.
+ */
+function resolvePage(applying: PageRule[]): { margins: Record<Edge, string>; padding: string | undefined; boxes: Map<string, Map<string, string>> } {
   const margins: Record<Edge, string> = { top: 'unset', right: 'unset', bottom: 'unset', left: 'unset' };
   let padding: string | undefined;
   const boxes = new Map<string, Map<string, string>>();
+  const important = new Set<string>();
+  const rules = [...applying].sort((a, b) => a.order - b.order);
   for (const rule of rules) {
     for (const [property, value] of rule.declarations) {
       if (property === 'margin') {
@@ -544,7 +554,13 @@ function resolvePage(rules: PageRule[]): { margins: Record<Edge, string>; paddin
     }
     for (const [name, declarations] of rule.boxes) {
       const merged = boxes.get(name) ?? new Map<string, string>();
-      for (const [property, value] of declarations) merged.set(property, value);
+      for (const [property, value] of declarations) {
+        const key = `${name} ${property}`;
+        const isImportant = /!important$/.test(value);
+        if (important.has(key) && !isImportant) continue;
+        if (isImportant) important.add(key);
+        merged.set(property, value.replace(/\s*!important$/, ''));
+      }
       boxes.set(name, merged);
     }
   }
