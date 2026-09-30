@@ -364,7 +364,8 @@ text for reference too, offered first what its own elements print, and a library
 with, an NPC's first line and printed dice, a Cairn character's entered scores** (ADR 0074). **The Sheet can be exported
 as text: "Export sheet as text…" writes it as Markdown that reads as plain text** (ADR 0075). **A feature on the Sheet and
 in the export is content's own sheet line, at the level its class reads, its numbers filled: "Rage (Bonus Action; 3/Long
-Rest): …"** (ADR 0076).
+Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platform's own dialog, its sections in two columns**
+(ADR 0077).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -875,6 +876,38 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     the tests') and the Tauri window on Windows (samples 02, 17, 08 and 11 and the NPC packed outside it, no source ever
     added, exported from the native menu through the real save dialog, byte for byte the tests'); not with real input,
     not importing in the window, and not on macOS or Linux.
+- **A printed sheet is the Sheet pane under print rules, its sections flowing in two columns**
+  ([ADR 0077](docs/adr/0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)).
+  Phase 5's print layout. Things to know before touching it:
+  - **Measured by `tools/verify/src/print-layout.test.ts`** (report-only lines, plus assertions): a sample's sheet is 109
+    to 233 lines before wrapping, an NPC's 27 to 61; kept texts run to 6,014 characters with tables twelve columns wide.
+    **A section's shape is not stable**: Worn & Wielded and Senses change between "short figures" and not on 7 and 5 of
+    the 30 samples, which is why nothing classifies sections.
+  - **No second renderer.** The `@media print` block at the end of `apps/desktop/src/styles.css` lays out what the Sheet
+    pane already draws from `sheetDocument`; content's HTML is made safe only by the shell's DOM sanitizer, so a print
+    renderer in `packages/ui` could not show it. The block is last in the file on purpose: its light colour tokens win
+    over the dark scheme's by source order.
+  - **What it undoes**: `.app` one window tall with overflow hidden and `.pane` scrolling (a print would be cut at the
+    fold); the header, the Sheet's bar, the name `<input>` and the lede's element count (`.sheet-element-count`) are
+    hidden; the dark scheme's text colours. The name prints from `.sheet-print-title`, which is `SheetDocument.title`
+    (the name trimmed, else `UNNAMED_CHARACTER`, now in `sheet-document.ts`; the Markdown's heading reads it too).
+  - **Sections flow in `.sheet-flow`** (sections, then held creatures; `columns: 2`); kept texts sit outside it and start
+    a page (`break-before: page`), their tables shown whole. **A whole section is not kept unbroken**: that left pages
+    half empty (a long list moves on rather than breaking). Kept whole: `dl`, a listed element, a creature's section, a
+    `.hint`, and a section that lists no elements, chosen by `:has()` on what it holds, never by name. Not a whole
+    creature: kept whole, the Owl left the Companions heading alone at a page's foot.
+  - **"Print sheet…"** (`print-sheet`, Sheet only, File menu below the text export and on the Sheet's bar) calls
+    `window.print()`; Tauri documents it for every platform and wry's `print()` on Windows is that call. While printing
+    the page is titled with the character (`beforeprint`/`afterprint`, which `Page.printToPDF` fires too), so the dialog's
+    header and "Save as PDF" name the character. **No shortcut**: Ctrl+P waits for real keys pressed in the Windows
+    window, and until then the app claims no P chord.
+  - **Driving it**: `window.print()` holds the page until WebView2's preview closes; the preview is a DevTools target of
+    its own (`edge://print/`), so a drive cancels it there. A drive that looks for "the page" must pick the app's URL,
+    not the first page target.
+  - The oracle is identical before and after. Driven in the Tauri window on Windows (34 packed characters, no source ever
+    added, printed to A4 PDF: every word of the text export in order, nothing clipped; the native menu item and the
+    button opening the preview) and in headless Edge on the dev server (the same pages and words); not with real input,
+    not to a physical printer, not in a headed browser's dialog, and not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1533,7 +1566,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075 and 0076 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076 and 0077 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

@@ -1,6 +1,7 @@
 # 0077 — A printed sheet is the Sheet pane under a print stylesheet, and its sections flow in columns
 
-**Status:** Proposed · 2026-09-30 · answers Phase 5's "Print layout" · builds on
+**Status:** Accepted · 2026-09-30 (proposed the same day) · implemented the same day, with what building it decided in
+decision 8 · answers Phase 5's "Print layout" · builds on
 [0012](./0012-self-contained-saves.md), [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
 [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -155,6 +156,8 @@ suggests name the character rather than the app.
   sample's Proficiencies) breaks, as a preference allows.
 - **The same rule lays out a stat block.** An NPC's sections flow the same way and come to under a page.
 
+(Built differently in one respect: a whole section is not kept unbroken. Decision 8.)
+
 No system format field and no view-model classification. The measured instability is the reason: a classification by
 shape moves two sections between treatments from sheet to sheet, and a classification by name puts a game's names in
 the shell.
@@ -162,7 +165,8 @@ the shell.
 ### 5. The three parts break where a reader expects
 
 - **Held creatures follow the character in the same flow**, each kept whole (at most 731 characters on the samples), so
-  a familiar does not cost a page of its own.
+  a familiar does not cost a page of its own. (Built: each creature's *sections* are kept whole, not the creature.
+  Decision 8.)
 - **Kept texts start a new page, in one column**: they are content's pages, up to 6,014 characters with tables twelve
   columns wide, which half a page cannot hold. A kept text may break between its blocks; a table row never splits.
 
@@ -176,7 +180,8 @@ no port is added. It needs no library and no content.
 **Ctrl+P is the proposed shortcut**, claimed everywhere and run only on the Sheet, so pressing it on Build no longer
 prints a clipped Build pane. It is kept only if **real keys pressed in the Windows window** reach the page (ADR 0038:
 WebView2 took Ctrl+Shift+S before the page ever saw it); if WebView2 takes Ctrl+P, the command has no shortcut, and
-Ctrl+P prints the Sheet through WebView2's own preview under the same stylesheet.
+Ctrl+P prints the Sheet through WebView2's own preview under the same stylesheet. (Built with no shortcut: the keys
+could not be pressed. Decision 8.)
 
 ### 7. ADR 0076's "Primal Bond" cost stays open, with no per-section flag
 
@@ -184,6 +189,31 @@ A layout reads the same document the pane and the export read, so it loses the s
 3 of the 364 stat-block features, 0 on the samples. A flag saying which sections want a hidden element's line would be
 a system format field for three elements that no sample holds. It is added when a sample or a user's own file shows
 the cost, and the print stylesheet does not change that decision.
+
+### 8. What building it decided (2026-09-30)
+
+- **A section may break; what fits is kept whole.** Decision 4 kept every section unbroken, and the first sample printed
+  in the window showed what that costs: Features & Traits (up to 4,388 characters) and Proficiencies (up to 85 names)
+  each jumped to a fresh page and left the one before half empty, four pages where three held everything. `break-inside:
+  avoid` is a preference only in name: a block too tall for the space left moves on before it breaks. So the units kept
+  whole are the ones that fit: a grid of rows (`dl`, the scores or the eighteen skills), a listed element with its lines
+  (at most 972 characters), a creature's section, a sentence under a heading, and **a section that lists no elements**,
+  which is a heading, a sentence and a grid and never a column long. That last one is chosen with `:has()` on what the
+  section holds (`.sheet-section:not(:has(.sheet-elements))`, the creatures' part and the kept texts excepted), not by
+  its name, and it is what stops the Skills heading ending one column with its numbers starting the next. Headings,
+  and a section's sentence, never end a column (`break-after: avoid`).
+- **A creature is not kept whole.** Its stat block runs a column (each printed line is a row), and kept whole the Owl
+  left the Companions heading alone at the foot of a page. Its sections are kept whole instead.
+- **The name is printed as a heading beside the field it is edited in** (`.sheet-print-title`, hidden on screen), and
+  the lede's element count is a `span` of its own so print can drop it and keep the kind.
+- **No shortcut.** Ctrl+P could not be pressed with real keys in the window: another application held the foreground,
+  and taking it for real input was not this work's to do. So, as decision 6 said, the command has none, and the app
+  claims no P chord, leaving the platform's own print alone. Pressing Ctrl+P on the Sheet and on Build with real keys is
+  what adding it needs.
+- **`window.print()` holds the page while WebView2's preview is open**: the page answers nothing until the dialog closes.
+  The preview is a DevTools target of its own (`edge://print/`), which is how a drive can read or cancel it without the
+  keyboard. It opens on the printer's own paper; the PDFs below are A4.
+- **`beforeprint` and `afterprint` fire for `Page.printToPDF` as for the dialog**, so the title swap holds for both.
 
 ## What this does not do
 
@@ -218,34 +248,53 @@ the cost, and the print stylesheet does not change that decision.
   dialog `window.print()` opens is WebView2's own print preview.
 - **A flag for "Primal Bond".** Decision 7.
 
-## Evidence (planned)
+## Evidence
 
-Nothing below has been run for this ADR yet except the measurement. Each test will name the perturbation that fails it.
+On AuroraLegacy/elements at `c28ce6c` and the thirty samples. Every perturbation named here was run (patched, run,
+restored) and failed the test that names it.
 
-- `tools/verify/src/print-layout.test.ts`: the measurement above, committed and run on the commit before anything here;
-  then, what holds against any corpus, for every sample, every creature as an NPC and a Legendary Creature, a character
-  keeping every text and a Cairn character: the document's `title` is the Markdown's first heading. And, reading the
-  stylesheet as source as the measurement does, that under `@media print` the window bound is undone on `.app` and
-  `.pane`, the header, bar and lede are not printed, the light tokens are set, a kept text's overflow is visible, kept
-  texts break before a page and sit in one column, sections, rows, listed elements, printed lines and creatures avoid
-  breaking inside, and the name prints as text. Perturbations: each of those rules removed, one at a time. **What this
-  cannot show** is that a page prints right: it holds the rules to being written, and the drives below hold the page.
-- `packages/ui/src/sheet-document.test.ts`: `title` for a blank, a spaced and a markup-named character, and the Markdown
-  reading it. Perturbation: the Markdown computing its own fallback again with a different word; the title not trimmed.
-- `packages/ui/src/commands.test.ts`: `print-sheet` on the Sheet only, without a library or content, not behind a dialog,
-  below "Export sheet as text…"; Ctrl+P claimed on every pane and run only on the Sheet (if kept). Perturbations: the
-  command enabled on Build; Ctrl+P not claimed off the Sheet.
-- **The oracle's thirty-sample table identical** before and after (`INCUDO_ORACLE_SNAPSHOT` on the base commit,
-  `INCUDO_ORACLE_BASELINE` after, same checkout, no `.env.local`), with one difference removed from a copy of the snapshot
-  to prove the comparison live. Nothing here touches a derivation, so any difference is a mistake.
-- **Printed in the Tauri window on Windows**, over the debug port with `Page.printToPDF` (the page as its print
-  stylesheet lays it out): a two-class sample holding a creature, a single-class caster, an NPC on the Triceratops and a
-  Legendary Creature, a player character keeping the longest kept text and a twelve-column grid, and a Cairn character.
-  Each PDF's text, extracted, holds **every word of the Markdown export in the same order within each part**, so nothing
-  is cut by the window, a column or a table; its page count is reported beside the measured lines; the same printed with
-  the window in the dark scheme has dark text. Then the command, from the native menu and from the Sheet's bar, opening
-  WebView2's print dialog, seen; Ctrl+P pressed with **real keys** (not an injected event) on the Sheet and on Build.
-- **Printed in the browser build**: the same characters through Chromium's print preview and "Save as PDF", compared
-  with the window's.
-- **Not planned:** macOS and Linux, where Tauri's `print()` and a GTK or macOS dialog would be seen for the first time;
-  a physical printer.
+| what | held by | perturbation that fails it |
+|---|---|---|
+| the measurement above, committed and run on the commit before anything here; since then, for every sample, every creature as an NPC and a Legendary Creature, a Cairn character and an unnamed one, the document's `title` is the Markdown's first heading | `tools/verify/src/print-layout.test.ts` | a blank name left blank |
+| under `@media print`, read as source: `.app` and `.pane` grow; the header, the bar, the name field and the element count are hidden; the title is shown (and hidden on screen); light tokens; two columns; a grid, a listed element, a creature's section and a section listing no elements kept whole, **a whole section not**; headings kept with what follows; kept texts on a page of their own with tables shown whole; `.sheet-text`'s line breaks untouched. The Sheet pane draws the title from the document, the count as its own span, and the sections and creatures inside the flow, the kept texts outside it | `print-layout.test.ts` | each, one at a time: the app left one window tall; the pane left scrolling; the header printed; the count printed; the title not shown; the dark text left; no columns; **a whole section kept unbroken**; a section of rows allowed to split; kept texts on the sheet's page; a kept table cut at the edge; the pane printing the name as written; the creatures outside the flow |
+| `title`: trimmed, "Unnamed character" when blank, the name as written kept beside it, and read by the Markdown | `packages/ui/src/sheet-document.test.ts` | the Markdown computing its own heading again; the title not trimmed |
+| `print-sheet`: on the Sheet only, needing no library, content or save dialog, not behind a dialog, below "Export sheet as text…", no shortcut and no P chord claimed | `packages/ui/src/commands.test.ts` | the command enabled on every pane |
+
+**What the tests cannot show** is that a page prints right: they hold the rules to being written. The drives below held
+the pages.
+
+- **Printed in the Tauri window on Windows**, a fresh WebView2 profile, the library a scratch folder of 34 characters
+  packed by the repository's own `packCharacter` (the thirty samples; an NPC on the Triceratops and a Legendary Creature
+  on the Tyrannosaurus Rex; a player character keeping the longest kept text, Maneuver Options, and a 2024 stat block
+  with the twelve-column grid; a Cairn character), **no content source ever added**. Each opened from the library and
+  shown on the Sheet by DOM clicks over the debug port, then checked under print media emulation and printed with
+  `Page.printToPDF` on A4:
+  - **Every word of the Markdown export, in the same order, and no other**, for all 34: the printed page's text has as
+    many words as the export (1,102 of 1,102 for a Wizard / Rogue / Warlock holding an Owl; 183 for the NPC), so nothing
+    is cut by the window, a column or a table and nothing but the sheet is printed.
+  - **Nothing clips**: no element in the printed page has content larger than its box.
+  - **Pages**: the samples 2 to 4 (twelve on 2, sixteen on 3, two on 4), where the measurement's lines before wrapping
+    said two to five one line a line; the NPC and the Legendary Creature 1; the kept texts 2 pages after the sheet's 1;
+    Cairn 1. Read as images: the scores, combat, saves and skills side by side on the first page, kept texts on their own
+    page at full width with the twelve-column grid whole. **Before decision 8** the Wizard / Rogue / Warlock printed on 4
+    pages with half of two of them empty.
+  - **Dark scheme**: emulated, the printed text is black and a section's sentence `#4a4a4f`, where the screen's is
+    `#e6e6e9`.
+  - **Title**: `beforeprint` saw the page titled with the character, `afterprint` with "Incudo".
+- **The command in the window**: the native File menu, read with Win32, lists "Print sheet…" below "Export sheet as
+  text…", greyed on the library and enabled on the Sheet. `WM_COMMAND` on it opened WebView2's print preview (captured
+  with `PrintWindow`, the window behind another application): the sheet in two columns, the app's chrome gone, the
+  character's name in the dialog's header, "Total: 3 sheets of paper" for a Paladin / Sorcerer. Cancelled through the
+  preview's own DevTools target; the page then answered again, having seen both print events. The Sheet bar's button
+  opened the same preview.
+- **Printed in the browser build**: headless Edge on the dev server, an origin-private folder standing in for the folder
+  picker, five of the same characters (three samples, the NPC and the character keeping the long texts): **the same page
+  counts and the same words** as the window.
+- **The oracle's thirty-sample table is identical** before and after (`INCUDO_ORACLE_SNAPSHOT` on the ADR's commit,
+  `INCUDO_ORACLE_BASELINE` after, same checkout, the variables set on the command so `.env.local` is not read), and a
+  copy of the snapshot with one difference removed fails, so the comparison was live. Nothing here touches a derivation.
+- `npm run typecheck` exits 0; `npm test` passes 1,215 of 1,216, the one skipped being the check that the system `unzip`
+  agrees a container is a zip, which this environment has no `unzip` for.
+- **Not exercised:** real keyboard or mouse input, and so Ctrl+P (decision 8); a physical printer; WebView2's "Print
+  using system dialog"; Chromium's visible print dialog and "Save as PDF" in a headed browser (the browser build was
+  printed headless); macOS and Linux, where Tauri's `print()` and a GTK or macOS dialog would be seen for the first time.

@@ -1344,7 +1344,21 @@ pane draws and every export renders: the PDF and the print layout start from it,
       stat block prints is named without its line (three Tasha's "Primal Bond"s, which no sample holds); macOS and Linux.
 - [ ] "Content has been updated — refresh?" flow, diffing recorded source versions against
       available ones and showing what would change before touching the character
-- [ ] Print layout
+- [x] **Print layout: "Print sheet…" prints the Sheet through the platform's own dialog**
+      ([ADR 0077](./docs/adr/0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)).
+      Measured first: a sample's sheet is 109 to 233 lines before wrapping, an NPC's 27 to 61; the shell had no print rule
+      at all, and would have printed it one window tall, with the app's chrome, a name field for a title and, in the dark
+      scheme, light grey text. The print layout is print rules over the Sheet pane, which already draws the one document and
+      nothing else, not a second renderer (content's HTML is made safe only by the shell's DOM sanitizer). The sections
+      and held creatures flow down two columns, laid out by what they hold and never by name: a layout by shape would have
+      moved Worn & Wielded and Senses between treatments from one character to the next. Kept texts start a page of their
+      own. The document gained its `title`, which the Markdown export reads too. Printed to PDF in the Tauri window on
+      Windows for the thirty samples, the creature characters, a character keeping the longest texts and Cairn, no source
+      ever added: every word of the text export in order and nothing clipped, samples on 2 to 4 A4 pages, an NPC on 1; the
+      native menu item and the Sheet's button open WebView2's print preview; the browser build prints the same. What did
+      not work first: keeping every section whole, which left pages half empty. No oracle row moved; no system or character
+      format change. **Not done:** a shortcut (Ctrl+P waits for real keys pressed in the Windows window); a stat block drawn
+      as the book prints it; a physical printer; macOS and Linux.
 
 ---
 
