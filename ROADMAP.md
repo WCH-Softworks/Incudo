@@ -1338,7 +1338,11 @@ pane draws and every export renders: the PDF and the print layout start from it,
         setter names; 5e's Character section reads "Paladin 3 (3d10)", "Sorcerer 3 (3d6)" on the Sheet, the print and the
         text export (ADR 0079 decision 9; all 29 classes in the corpus carry a die, and the 40 classes of the thirty
         samples read as the derivation and the class element say)
-  - [ ] "Export sheet as PDF…" in the Windows window, with paper in the print options step
+  - [x] **"Export sheet as PDF…" in the Windows window, with paper in the print options step**: the print options step
+        offers A4 or Letter (the first from the user's languages, then the last chosen) and writes what "Print sheet…"
+        prints through WebView2's `PrintToPdfStream`, no print dialog, saved where the user says; no such command where
+        no PDF writer exists (ADR 0079 decision 10; driven in the Windows window: A4 and Letter at their sizes, the
+        print's page counts, every word of the text export, a Cancel writing nothing)
   - [ ] "Fill the official sheet…": the user's copy kept and recognised, the field map shipped with the 5e system, what
         does not fit named in the result line
 - [x] **Plain-text / Markdown export: "Export sheet as text…" writes the Sheet as Markdown that reads as plain text**

@@ -194,6 +194,15 @@ leaving the library at one file and the next Ctrl+S still raising the rename pro
 conflict. The bytes the browser wrote open in the CLI. **Not verified:** macOS and Linux; the native
 browser save dialog; and a Firefox or Safari tab.
 
+## A PDF without the print dialog (Windows)
+
+"Export sheet as PDF…" (ADR 0079) is the third command in `src-tauri/src/lib.rs`, `print_to_pdf`: a paper size in,
+the PDF's bytes out, from WebView2's `PrintToPdfStream` with zero margins, backgrounds and no header or footer, reached
+through the webview Tauri hands a command. It writes nothing to disk; the page saves the bytes through the dialog
+plugin's `save`, as a copy and the text export do. It needs no capability (an app's own commands are allowed), and
+`webview2-com` and `windows` are the versions wry already builds. On macOS and Linux the command says it is Windows only,
+and the page offers no such command there: "Print sheet…" and its dialog's "Save as PDF" are the PDF.
+
 ## Two capabilities, opposite widths, and why
 
 `dialog` and `fs` joined `http` when the library arrived (and `dialog:allow-save` when a copy could be saved), and the filesystem scope is as narrow

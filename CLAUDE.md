@@ -989,6 +989,13 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     it, of the die core's `trackDie` reads off the setter (`dN` only, through `dieSides`). `listedAside` writes it first:
     "Paladin 3 (3d10)". The form's total ("3d10 + 3d6") is the filler's to add up, not the Sheet's. 5e's `pc` Character
     section declares `"trackDie": "hd"`; `hit-dice.test.ts` holds every sample's classes to the derivation and `hd`.
+  - **"Export sheet as PDF…" is built** (decision 10), the Windows window only. A `PdfWriter` port (`core/platform.ts`):
+    paper in, bytes out, nothing written; `exportSheetPdf` then saves through `FileSaver`. The Tauri writer is the Rust
+    command `print_to_pdf` (WebView2 `PrintToPdfStream`, margins 0, no headers, via `with_webview`). The paper is
+    `PrintOptions.paper`, offered only when the step's target is `'pdf'`; `printRendering(…, 'pdf')` adds `@page { size }`
+    and the shell puts the target back to `'print'` afterwards. **Where there is no writer there is no command**:
+    `menuModel(os, absentCommands(…))` leaves it out, the Sheet's bar has no button. Driven in the window by window
+    messages and the debug port only; the save dialog is `#32770` "Export this character's sheet as PDF".
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

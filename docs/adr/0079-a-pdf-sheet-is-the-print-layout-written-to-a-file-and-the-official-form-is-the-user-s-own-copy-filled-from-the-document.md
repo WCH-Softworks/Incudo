@@ -1,6 +1,6 @@
 # 0079 — A PDF sheet is the print layout written to a file, and the official form is the user's own copy, filled from the document
 
-**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7), a spell's level and prepared mark and hit dice per class on 2026-10-01 (decisions 8 and 9) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
+**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7), a spell's level and prepared mark and hit dice per class on 2026-10-01 (decisions 8 and 9), "Export sheet as PDF…" the same day (decision 10) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
 · builds on [0012](./0012-self-contained-saves.md), [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
 [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -385,6 +385,55 @@ folder for the folder picker, six samples packed by `packCharacter` and opened w
 "Wizard 4 (4d6)", a Cleric 20's "Cleric 20 (20d8)" and a 2024 Ranger's "Ranger 5 (5d10)"; the six text exports (through a
 stand-in save picker) are byte for byte the tests' Markdown, and A4 PDFs printed with `Page.printToPDF` carry every word of
 them and every class line. Not in the Tauri window.
+
+### 10. What building it decided: "Export sheet as PDF…" (2026-10-01)
+
+Decisions 1 and 2, built. No measurement came first: decision 2 already said what the platform offers, and the window was
+the measurement.
+
+- **A port, `PdfWriter`** (`core/platform.ts`, beside `FileSaver`): a paper size in inches in, the page's PDF bytes out,
+  nothing written. It decides nothing but the paper: margins are zero so the page's own print rules (ADR 0078) place
+  everything, and the platform prints no header or footer. `exportSheetPdf` (`packages/ui/src/sheet-export.ts`) asks it
+  for the bytes, then asks `FileSaver` where, so the user names the file and a cancel is an answer; a writer that fails
+  opens no save dialog.
+- **The Windows window's writer is a Rust command, `print_to_pdf`** (`src-tauri/src/lib.rs`): WebView2's
+  `ICoreWebView2_16::PrintToPdfStream`, print settings from `ICoreWebView2Environment6::CreatePrintSettings` (the paper,
+  portrait, margins 0, scale 1, backgrounds on, headers and footers off), reached through Tauri's `with_webview`, the stream
+  read and handed back as raw bytes (`tauri::ipc::Response`). `webview2-com` 0.38 and `windows` 0.61 (`Win32_System_Com`)
+  are what wry already builds, so nothing new is compiled. It is the shell's third command and its second that is more than
+  a transport line; ADR 0001's "the Rust side stays small" is kept by it deciding nothing about a sheet. Elsewhere it
+  answers that it is Windows only. The page uses it only where `navigator`'s platform is Windows in the Tauri build.
+- **The paper is a print option** (`PrintOptions.paper`, `'a4' | 'letter'`, remembered with the others and parsed field by
+  field), offered only when the step leads to a PDF (`printOptionsView(document, options, 'pdf')`, which also says
+  "Export sheet as PDF" and "Export…"). A print still leaves the paper to the dialog. A first PDF is offered Letter when the
+  user's first language naming a region names one CLDR gives Letter (US, Canada, Mexico, the Philippines and nine others),
+  A4 otherwise (`paperForLocales`); after that, the one last chosen.
+- **The paper reaches the page as a rule**: `printRendering(…, 'pdf')` puts `@page { size: … }` before the running name's
+  rule, and the shell takes the target back to `'print'` once the PDF is written or cancelled, so a later print is the
+  dialog's paper again. The PDF is written from an effect after the render that closed the step and put the choices on the
+  Sheet, as the print dialog is (ADR 0078).
+- **The command, `export-sheet-pdf`**, "Export sheet as PDF…", below Print in the File menu, no shortcut (the text export's
+  reason), enabled on the Sheet where the shell can write a PDF and save a file and no export is in flight. **A shell with
+  no PDF writer has no such command** (decision 2), not a greyed one: `menuModel(os, absent)` leaves it out and tidies the
+  separators (`absentCommands`), and the Sheet's bar shows no button. In the browser build nothing changes.
+
+Evidence: `packages/ui/src/print-options.test.ts`, `sheet-document.test.ts` and `commands.test.ts`, each failing under its
+named perturbations (a print given a size, a PDF given none or the other paper's, a paper offered on the way to a print,
+the paper not remembered, a known paper of an inherited name accepted, the first regional language not deciding, a script
+subtag hiding the region, the writer not handed the paper, a failed writer still opening the dialog, the writer's absence
+not checked by the command, separators not tidied, an absent command greyed rather than left out);
+`tools/verify/src/print-layout.test.ts` now holds that both commands open the step through one opener that prints nothing.
+`cargo check` builds the command with no warning. **Driven in the Tauri window on Windows** (a fresh WebView2 profile, a
+scratch library of six samples packed by `packCharacter`, no content source; no real keystrokes or mouse): the menu item,
+fired by window message, opened the step, offering Letter first (the window's language is en-US); A4 then Letter were
+chosen over the debug port; the system's save dialog, titled "Export this character's sheet as PDF", was answered by
+window messages. The three-class sample on Letter with no running items: 4 pages of 612 × 792 pt, no page numbers, the
+name once. The Paladin/Sorcerer on A4 with both: 3 pages of 594.96 × 841.92 pt, "Page N of 3" and the name on each later
+page, no date, title or address of the platform's. Both page counts are the print's (decision 1's measurement), and every
+word of each sample's text export is in its PDF (pdftotext's reading of a non-breaking hyphen aside). The PDF took under
+0.2 s. The step remembered A4 for the next export; a Cancel in the save dialog wrote nothing, kept the note on the bar,
+and took the paper rule off the page; "Print sheet…" still opens its step with no paper. Not driven: real keys and mouse,
+a WebView2 Runtime too old for `ICoreWebView2_16` (the command says to update it), the replace prompt, macOS and Linux.
 
 ## What this does not do
 
