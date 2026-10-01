@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://incudo.dev/schemas/form-map.schema.json",
+  "title": "Incudo form map",
+  "description": "Which field of a published PDF form takes what from the sheet document (ADR 0079 decision 5). A form map is shipped beside a system's system.json, in its forms/ folder, and is not part of the system format: no public API is promised until a second form exists. It describes the form (its field names and types) and never contains it; the form is the user's own copy (decision 3).",
+  "type": "object",
+  "required": ["formatVersion", "id", "name", "publisher", "download", "system", "kinds", "encoding", "fields", "fill"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "formatVersion": { "const": 1 },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "patternDescription": "must be lowercase letters, digits and hyphens"
+    },
+    "name": { "type": "string", "minLength": 1, "description": "What the form is called in a sentence: \"the 2014 fillable character sheet\"." },
+    "publisher": { "type": "string", "minLength": 1 },
+    "download": { "type": "string", "pattern": "^https://", "patternDescription": "must be an https:// address", "description": "The page the user downloads the form from in their own browser." },
+    "system": { "type": "string", "minLength": 1 },
+    "kinds": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "encoding": { "enum": ["WinAnsi"], "description": "What the form's font can write." },
+    "fields": {
+      "type": "object",
+      "description": "Every field the form has, by its exact name (spaces included) and type. A copy is recognised by these.",
+      "additionalProperties": { "enum": ["text", "check", "button"] }
+    },
+    "fill": { "type": "array", "items": { "$ref": "#/$defs/rule" } }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "required": ["section"],
+      "additionalProperties": false,
+      "properties": { "section": { "type": "string", "minLength": 1 } }
+    },
+    "row": {
+      "type": "object",
+      "required": ["section", "stat"],
+      "additionalProperties": false,
+      "properties": {
+        "section": { "type": "string", "minLength": 1 },
+        "stat": { "type": "string", "minLength": 1, "description": "A row's stat; {block} is the block's name, {n} a table's key." }
+      }
+    },
+    "list": {
+      "type": "object",
+      "required": ["section"],
+      "additionalProperties": false,
+      "properties": {
+        "section": { "type": "string", "minLength": 1 },
+        "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "joinedList": {
+      "type": "object",
+      "required": ["section", "join"],
+      "additionalProperties": false,
+      "properties": {
+        "section": { "type": "string", "minLength": 1 },
+        "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "join": { "type": "string" }
+      }
+    },
+    "field": { "type": "string", "minLength": 1 },
+    "rule": {
+      "oneOf": [
+        {
+          "type": "object", "required": ["field", "value"], "additionalProperties": false,
+          "properties": { "field": { "$ref": "#/$defs/field" }, "value": { "const": "name" } }
+        },
+        {
+          "type": "object", "required": ["field", "row"], "additionalProperties": false,
+          "properties": {
+            "field": { "$ref": "#/$defs/field" },
+            "row": { "$ref": "#/$defs/row" },
+            "part": { "enum": ["value", "beside"] },
+            "skip": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        {
+          "type": "object", "required": ["field", "mark"], "additionalProperties": false,
+          "properties": { "field": { "$ref": "#/$defs/field" }, "mark": { "$ref": "#/$defs/row" } }
+        },
+        {
+          "type": "object", "required": ["field", "block"], "additionalProperties": false,
+          "properties": { "field": { "$ref": "#/$defs/field" }, "block": { "$ref": "#/$defs/section" } }
+        },
+        {
+          "type": "object", "required": ["field", "list"], "additionalProperties": false,
+          "properties": { "field": { "$ref": "#/$defs/field" }, "list": { "$ref": "#/$defs/joinedList" } }
+        },
+        {
+          "type": "object", "required": ["field", "dice"], "additionalProperties": false,
+          "properties": { "field": { "$ref": "#/$defs/field" }, "dice": { "$ref": "#/$defs/list" } }
+        },
+        {
+          "type": "object", "required": ["fields", "rows"], "additionalProperties": false,
+          "properties": {
+            "fields": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/field" } },
+            "rows": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/row" } },
+            "skip": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        {
+          "type": "object", "required": ["flow", "list"], "additionalProperties": false,
+          "properties": {
+            "flow": {
+              "type": "object", "required": ["fields", "capacity"], "additionalProperties": false,
+              "properties": {
+                "fields": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/field" } },
+                "capacity": {
+                  "type": "array", "minItems": 1,
+                  "items": {
+                    "type": "object", "required": ["lines", "perLine", "fontSize"], "additionalProperties": false,
+                    "properties": { "lines": { "type": "integer", "minimum": 1 }, "perLine": { "type": "integer", "minimum": 1 }, "fontSize": { "type": "number", "exclusiveMinimum": 0 } }
+                  }
+                }
+              }
+            },
+            "list": { "$ref": "#/$defs/joinedList" }
+          }
+        },
+        {
+          "type": "object", "required": ["table"], "additionalProperties": false,
+          "properties": {
+            "table": {
+              "type": "object", "required": ["sources", "fields"], "additionalProperties": false,
+              "properties": {
+                "sources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/row" } },
+                "fields": { "type": "object", "additionalProperties": { "$ref": "#/$defs/field" } }
+              }
+            }
+          }
+        },
+        {
+          "type": "object", "required": ["groups"], "additionalProperties": false,
+          "properties": {
+            "groups": {
+              "type": "object", "required": ["section", "levels"], "additionalProperties": false,
+              "properties": {
+                "section": { "type": "string", "minLength": 1 },
+                "levels": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object", "required": ["lines"], "additionalProperties": false,
+                    "properties": {
+                      "lines": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/field" } },
+                      "prepared": { "type": "array", "items": { "$ref": "#/$defs/field" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

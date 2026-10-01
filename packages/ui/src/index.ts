@@ -38,6 +38,8 @@ export * from './sheet-document.ts';
 export * from './sheet-markdown.ts';
 export * from './sheet-export.ts';
 export * from './print-options.ts';
+export * from './form-fill.ts';
+export * from './official-sheet.ts';
 export * from './html-markdown.ts';
 export * from './equip-step.ts';
 export * from './description.ts';

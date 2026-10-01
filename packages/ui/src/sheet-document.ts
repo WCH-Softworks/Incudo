@@ -55,6 +55,21 @@ export function listedUsage(element: Pick<SheetListedElement, 'action' | 'usage'
 }
 
 /**
+ * A listed element's head as one line: its name, then what follows it (`listedAside`), the unmet prerequisites, and what
+ * using it takes (`listedUsage`), each in parentheses: "Rage (Bonus Action; 3/Long Rest)", "Paladin 3 (3d10)". The
+ * Markdown export writes it so (escaping each part and bolding the name it is given) and a form filler writes it plain.
+ */
+export function listedHead(
+  element: SheetListedElement,
+  name: string = listedName(element),
+  escape: (text: string) => string = (text) => text,
+): string {
+  const aside = listedAside(element);
+  const usage = listedUsage(element);
+  return `${name}${aside !== undefined ? ` (${escape(aside)})` : ''}${element.prerequisitesUnmet ? ` (${PREREQUISITES_UNMET})` : ''}${usage !== undefined ? ` (${escape(usage)})` : ''}`;
+}
+
+/**
  * What a sheet writes in parentheses after a row's value: what the section shows beside it and the row's mark (ADR
  * 0079), "18 (+4)", "+7 (expertise)", or nothing. The pane and every export word a row this way.
  */
