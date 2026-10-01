@@ -1615,9 +1615,14 @@ deliberately **not** fixed:
   will not be. Same for the portrait bytes a grid holds in memory. ADR 0027 names the
   mitigation (a summary and thumbnail cache keyed by path and mtime) and deliberately does not
   build it.
-- **Nothing moves a recorded source version.** ADR 0028's `moved` state is computed and shown,
-  and the "refresh this character against the newer source" flow it points at does not exist,
-  so a character says a source has moved until someone builds that.
+- **~~Nothing moves a recorded source version.~~** Fixed ([ADR 0082](docs/adr/0082-a-refresh-compares-what-a-character-carries-with-what-its-sources-load-and-shows-the-sheet-it-would-make.md)),
+  and the version turned out to say nothing: AuroraLegacy's index has been 0.0.1 since 2023. A refresh is offered when
+  the open character's embedded copies differ from what its sources load (`contentChanges`, `packages/ui/src/content-refresh.ts`),
+  reviewed as the Sheet it would make (the sheet document built twice), and applied all or nothing: every copy the sources
+  define replaced, every other kept, choices untouched, `refreshSourceRefs` moving the recorded versions, the file changed
+  on Save. Asked only of the character on screen: a library card still reaches for no content. `content-refresh.test.ts`
+  measures it against an older checkout named by `INCUDO_BASE_CORPUS_INDEX` and holds that no sample saved against
+  today's content is offered one.
 - **~~A draft reloaded with no source enabled has lost its file's embedded content.~~** Fixed
   ([ADR 0066](docs/adr/0066-the-draft-keeps-what-the-shell-held-beside-the-character.md)), and it was worse than
   recorded: the library entry went too, so the next Save wrote a *second* file embedding nothing. The draft now keeps

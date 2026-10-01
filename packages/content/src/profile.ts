@@ -252,8 +252,8 @@ export function compareSourceRefs(
  * **An existing ref is never modified.** Not its version, not its name. The recorded version
  * is what this character was built against, and re-stamping it with whatever the profile says
  * today is exactly the "makes the warning permanently impossible to fire" alternative ADR 0028
- * rejected. Moving one is what a deliberate refresh is for — and that flow does not exist yet,
- * so a character that outlives a source update keeps saying so until someone builds it.
+ * rejected. Moving one is what a deliberate refresh is for: `refreshSourceRefs`, called by the
+ * refresh flow (ADR 0082), which is decided by the content and not by these versions.
  */
 export function recordSourceRefs(
   existing: readonly SourceRef[],

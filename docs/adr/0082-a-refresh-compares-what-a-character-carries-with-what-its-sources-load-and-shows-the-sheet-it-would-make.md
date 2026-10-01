@@ -1,6 +1,6 @@
 # 0082 — A refresh compares what a character carries with what its sources load, and shows the sheet it would make
 
-**Status:** Accepted · 2026-10-01 · answers Phase 5's "Content has been updated — refresh?" flow · amends
+**Status:** Accepted · 2026-10-01 · built the same day · answers Phase 5's "Content has been updated — refresh?" flow · amends
 [0028](./0028-sources-are-a-profile-characters-carry-an-allowlist.md) (what says a source "moved") · builds on
 [0012](./0012-self-contained-saves.md), [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
 [0050](./0050-an-update-check-asks-every-cached-file-and-a-refresh-keeps-what-it-cannot-reach.md),
@@ -104,3 +104,23 @@ open does (so the draft keeps it, ADR 0066), and **the file only on Save**: unti
 | what | held by |
 |---|---|
 | the samples saved against an older corpus, compared with today's: versions, differing and missing elements, what a refresh changes | `tools/verify/src/content-refresh.test.ts`, report-only before this record, with `INCUDO_BASE_CORPUS_INDEX` |
+| no sample saved against today's content is offered a refresh, an element only the save has counting as kept | `tools/verify/src/content-refresh.test.ts`, against any corpus |
+| what changed and what is kept, the content a refresh leaves, the offer's count, the review built from two sheets (rows and listed elements, removed ones included) | `packages/ui/src/content-refresh.test.ts` |
+| recorded sources brought up to the profile, a ref the profile no longer has kept | `packages/content/src/profile.test.ts` |
+| the command: live on Build and the Sheet while there are updates, not during a load or behind a dialog | `packages/ui/src/commands.test.ts` |
+
+Each test was checked by breaking what it holds: comparing where an element came from, reading a kept copy as changed,
+dropping kept copies from a refresh, building "before" with the sources in front, leaving removed elements out of the
+review. The corpus test first compared against the corpus with the save's own generated elements layered in, which the
+app's loaded content never has, and did not notice a kept copy read as changed; it compares against the corpus alone.
+
+**Driven in the browser build** (headless Edge on the dev server, every click injected over the debug port, an
+origin-private folder as the library, today's AuroraLegacy added from the Sources pane's suggestion and loaded from
+GitHub, 14,320 elements). Two samples packed against the April 2026 checkout: the one with no difference showed no line;
+the Paladin/Sorcerer showed "Your sources have changed 5 of the elements this character was saved with." on Build and the
+Sheet. Its review listed Channel Divinity added to Features & Traits and eight firearm proficiencies to Proficiencies, the
+five changed elements by name, and the save-only multiclass marker and the old `Laster Pistol` proficiency as kept.
+Refresh listed Channel Divinity and the Laser Pistol proficiency on the Sheet, removed the line and said to save. A page
+reload kept the refreshed character (no line, content loaded); reopening the unsaved file offered the refresh again (the
+undo); refreshed and saved, the file reopened with no line. Not now hid the line on both panes until the character was
+opened again. Not in the Tauri window, which this flow has nothing particular to.

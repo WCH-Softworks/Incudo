@@ -1389,8 +1389,16 @@ pane draws and every export renders: the PDF and the print layout start from it,
       counted nowhere. **Not done:** spells, proficiencies and backgrounds described on the sheet (content writes no sheet
       text for them); a reason beside a number a hidden feature moved (Tough); counting uses (Phase 6); a hidden trait a
       stat block prints is named without its line (three Tasha's "Primal Bond"s, which no sample holds); macOS and Linux.
-- [ ] "Content has been updated — refresh?" flow, diffing recorded source versions against
-      available ones and showing what would change before touching the character
+- [x] **"Content has been updated — refresh?": a character whose sources changed what it carries is offered a refresh,
+      reviewed as the Sheet it would make** ([ADR 0082](./docs/adr/0082-a-refresh-compares-what-a-character-carries-with-what-its-sources-load-and-shows-the-sheet-it-would-make.md)).
+      Measured first against older checkouts of AuroraLegacy/elements: the index's version was 0.0.1 then and now, so
+      recorded versions say nothing, while 81 (April 2026) to 410 (August 2024) of the samples' embedded elements differ
+      today and a refresh would add held elements and, against the older one, move armour class, scores and skills. So
+      the open character's copies are compared with what its sources load; Build and the Sheet offer a review, which
+      lists the Sheet's rows and listed elements that would change and the elements changed or kept; Refresh takes up the
+      sources' definitions, keeps every copy they lack, leaves choices alone, moves the recorded versions, and reaches
+      the file on Save. Driven in the browser build: a sample saved against April 2026's content, today's AuroraLegacy
+      loaded; the review, the refresh, a reload, the unsaved file still offering it, Save and reopen, Not now.
 - [x] **Print layout: "Print sheet…" prints the Sheet through the platform's own dialog**
       ([ADR 0077](./docs/adr/0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)).
       Measured first: a sample's sheet is 109 to 233 lines before wrapping, an NPC's 27 to 61; the shell had no print rule
