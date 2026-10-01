@@ -1,6 +1,7 @@
 # 0078 — A print is chosen in a step of the app's own, and no edge of the page is left to the dialog
 
-**Status:** Proposed · 2026-09-30 · amends [0077](./0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)
+**Status:** Accepted · 2026-09-30 (proposed the same day) · implemented the same day, with what building it decided in
+decision 6 · amends [0077](./0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)
 (decisions 6 and 8, and "What this does not do") · answers Phase 5's "Print options of the app's own, then the platform's
 print dialog; and nothing of the web page on paper" · builds on
 [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
@@ -194,6 +195,39 @@ the kind, so one remembered choice means the same thing on every sheet that has 
 character measured) then reads "Page 1 of 1": CSS cannot ask how many pages there are before it prints a box, and
 leaving the number off where there is one page would take a second rule the platform does not have.
 
+### 6. What building it decided (2026-09-30)
+
+- **The name's rule must beat nothing, so the first page's box is `!important`.** Printed in the window, the first build put
+  the name at the head of page 1 too. `@page sheet-named-numbered:first` does match the first page (a box added there
+  prints), but its `content: none` lost to `@page sheet-named-numbered { @top-left { content: "…" } }`, the name's rule,
+  which the Sheet renders in the page and so comes later in the document than the stylesheet. Chromium 154 let the later
+  rule win whatever the page selectors, where the spec ranks `:first` above a bare name; only `!important` held. The first
+  page's `margin-top: 0` needs nothing, since it comes after the named page's margin in the same stylesheet. The test
+  resolves pages the way Chromium was seen to, in document order with `!important` above it, and **resolving them by the
+  spec passed the rules that printed the name on page 1**.
+- **Three named pages, one per combination with a running item** (`sheet-numbered`, `sheet-named`,
+  `sheet-named-numbered`), chosen by `page:` on `.sheet` with the classes; with neither, the default page. The name's
+  rule names the page it is for (`printPageName`), never every page: on the default page, whose head has no margin, a box
+  prints at the paper's edge (measured). The named page leans on that rule: forced onto `sheet-named` without it, the
+  dialog printed its date and title in the head margin. `printRendering` gives the class and the rule together.
+- **`window.print()` is called after the render that closed the step**, from an effect, not in the Print handler: there
+  the platform would print the step on top of the sheet, and the Sheet still carrying the choices before. The step's own
+  close runs in a child's effect, which React runs first. Print and Cancel both go through `finishPrintStep`, which writes
+  only on Print, so "not on Cancel" is a test in `packages/ui` and not a promise of the shell's.
+- **The step reads the remembered choices afresh each time it opens**, and a remembered omission of a part the sheet lacks
+  is kept, not dropped: dropping it on every print of a sheet without creatures would forget "leave out held creatures" as
+  soon as it was made. A remembered set that would leave out every part a sheet has prints its own sections. A part a
+  sheet lacks has no class.
+- **The character's own sections are called "The character's own sections"** in the step, written in the view-model: the
+  document labels the other two parts and not this one. The parts group is headed "Print".
+- **With the character's own sections left out and no creatures printed, what it keeps starts under the title** (no page
+  break before it), or the first page would carry the title alone.
+- **The boxes are 8 pt** in the page's own font family, written out (`system-ui, …`): a margin box is outside the page's
+  elements, and custom properties were not relied on there.
+- The App's source check (`print-sheet` opens the step, one `window.print()` call, after the step's Print, the step modal)
+  is in `tools/verify/src/print-layout.test.ts`, beside the other reads of the shell's source, not in `commands.test.ts`,
+  which reads no shell; `commands.test.ts` holds the modal claim.
+
 ## What this does not do
 
 - **Choose paper, orientation, scale, copies or which pages.** The platform's dialog still does, as ADR 0077 said.
@@ -231,27 +265,57 @@ leaving the number off where there is one page would take a second rule the plat
 - **The parts as system format fields** ("print this section in the options"). The parts are the document's, and a kind
   already declares whether it has creatures or kept texts.
 
-## Evidence (planned)
+## Evidence
 
-What this ADR's commit rests on is the measurement above: `tools/verify/src/print-options.test.ts` (report-only, committed and run
-before this record) and the drive below. What building it must show, each perturbation run (patched, run,
-restored) and failing the test that names it:
+On AuroraLegacy/elements at `c28ce6c` and the thirty samples. Every perturbation named here was run (patched, run,
+restored) and failed the test that names it.
 
 | what | held by | perturbation that fails it |
 |---|---|---|
-| the step offers only the parts the document has, never none, and labels them with the document's own labels | `packages/ui/src/print-options.test.ts` | a parts group on a sheet with only its own sections; the last part allowed to be unticked; a label written as a game noun |
+| the step offers only the parts the document has, never none, and labels them with the document's own labels | `packages/ui/src/print-options.test.ts` | a parts group on a sheet with only its own sections; the last part allowed to be unticked; a label written as a game noun; a remembered part offered on a sheet without it |
 | the classes name exactly the omitted parts and the running items | the same | an omitted part left without its class |
-| `cssString` escapes a quote, a backslash, a line break and a control character, and the generated rule holds nothing but the name | the same | a name `A "B" \ C` breaking the rule |
-| remembered choices: written on Print, not on Cancel, read on open, applied only where a part exists, a garbage value falling back part by part | the same, over a `MemoryStorage` | a write on Cancel; a remembered part forcing its checkbox onto a sheet without it |
-| for every sample, creature character and the Cairn character, the parts offered are the parts the document has | `tools/verify/src/print-options.test.ts`, gaining that assertion | a part offered that the document lacks |
-| under `@media print`, read as source: `@page` with no margin and padding; for each running-item combination, every edge of every page has no margin or a margin box with content, the first page included; a class hides each part the view-model can omit | `tools/verify/src/print-layout.test.ts` | `:first` keeping its top margin (the date and title on page 1, as measured); an empty box; a part's class with no rule |
-| `print-sheet` opens the step, not the dialog; modal while open; Ctrl+P claimed and runs nothing then | `packages/ui/src/commands.test.ts` and the component's handler read as source | the command calling `window.print()` directly |
+| `cssString` escapes a quote, a backslash, a line break and a control character, and the generated rule holds nothing but the name | the same | a name `A "B" \ C` written into the rule unescaped |
+| remembered choices: written on Print, not on Cancel, read on open, applied only where a part exists, a garbage value falling back field by field | the same, over a `MemoryStorage` | a write on Cancel |
+| for every sample (as saved and keeping what it is offered), every creature as an NPC and as a Legendary Creature, and the Cairn character, the parts offered are the parts the document has | `tools/verify/src/print-options.test.ts`, gaining that assertion | the kept texts offered on every sheet. (Offered whenever the document has a `references` part at all fails nothing: the document never has an empty one.) |
+| under `@media print`, read as source: `@page` with no margin and padding; for each running-item combination, every edge of the first and a later page has no margin or a margin box drawing in it, no box sits on an edge without a margin, numbers and the name are where chosen, every box sets its font; a class hides each part the view-model can omit; the Sheet carries the classes and the name's rule | `tools/verify/src/print-layout.test.ts` | `:first` keeping its top margin; an empty box; a part's class with no rule; a margin on the default page; **the first page's box without `!important`** (decision 6) |
+| `print-sheet` opens the step, not the dialog; modal while open; Ctrl+P claimed and runs nothing then | `packages/ui/src/commands.test.ts`, and `print-layout.test.ts` reading `App.tsx` | the command calling `window.print()` directly |
 
-Driven in the Tauri window on Windows, a fresh WebView2 profile and a scratch library of the same 35 characters packed
-by `packCharacter`, no source added: every combination of parts and running items printed with `Page.printToPDF` and
-`displayHeaderFooter: true`, read back as text: no date, no address, the app's numbers and name where chosen, and every
-word of the Markdown export of the parts printed. The preview opened from the step's Print: the headers option absent
-for every combination. Real keys and paper only if the maintainer gives the window for it. Not on macOS or Linux.
+**What the tests cannot show** is that a page prints right. The drive below held the pages.
+
+- **Printed in the Tauri window on Windows**, a fresh WebView2 profile, the library a scratch folder of 36 characters
+  packed by the repository's own `packCharacter` (the thirty samples; the two samples offered a text to keep, keeping it;
+  an NPC on the Triceratops and a Legendary Creature on the Tyrannosaurus Rex; a player character keeping the longest kept
+  text and a 2024 stat block; a Cairn character), **no content source ever added**. Each opened from the library and shown
+  on the Sheet by DOM clicks over the debug port; the step opened from the Sheet bar's button, its checkboxes set by
+  clicks, and its Print pressed. **109 prints**: every character with all running items and with none; the 8 with more
+  than one part also with each running item alone and with every proper subset of its parts left out; the Cairn character
+  with the name alone too. So the name-only combination, which the measurement did not cover, printed on 9 characters.
+- **Every print went through WebView2's preview**, opened by the step's Print and read through its own DevTools target:
+  **the headers-and-footers option (`header-footer-checkbox`) absent in all 109**. A control, a scratch `@page` margin
+  injected over the debug port, made it appear, so the check is live. Cancelled there, the page answered again.
+- **Then `Page.printToPDF` on A4 with `displayHeaderFooter: true`**, which prints what the dialog prints by default, read
+  back as text and as positioned runs (a small reader of the PDF's own text runs): **no date, no title, no address on any
+  page of any print**; "Page *i* of *n*" in the foot margin of every page exactly when chosen, and nothing there otherwise;
+  the name in the head margin of every page after the first exactly when chosen, never on page 1; everything else inside
+  10 mm of every edge. **Every word of the Markdown export of the parts printed, and no other**, but for one thing the
+  platform does: a kept table's header row is repeated at the top of the next page when the table breaks across one (10
+  prints, one header each, a `<thead>` printing as it should). Two controls, a box put on page 1's head and a plain margin,
+  were caught by the same check, the second printing the date, `http://localhost:5173/` and "1/2".
+- **Pages**: the running items move no page count on any of the 36 (2 pages on 12 characters, 3 on 17, 4 on 2, 5 and 6
+  on one each, 1 on the creature characters and Cairn). Left out: a held creature saves a page on 2 of the 5 that hold one
+  (Samples 03 and 08); the kept texts save 2 on each of the three characters keeping any; the character's own sections, 1 to 3 pages, the kept
+  texts then starting under the title.
+- **Cancel, Escape, the record and Ctrl+P in the window**: Cancel and a `cancel` event on the dialog (what Escape raises;
+  injected, not a real key) closed the step, wrote nothing to `print/options` and called no print; an injected Ctrl+P
+  while the step was open was claimed (`defaultPrevented`) and printed nothing. The record read
+  `{"omit":["companions","references"],"pageNumbers":false,"runningName":false}` after the drive, and the next sheet
+  with creatures and a kept text opened with both unticked and its own sections greyed, the last part left.
+- **The native menu**: File's "Print sheet…" (`Ctrl+P` printed beside it), sent `WM_COMMAND`, opened the step.
+- **The oracle cannot move**: nothing in `packages/core`, `packages/content`, `packages/aurora-import`, `systems` or
+  `schemas` changed from the commit before this record's work to the last of it; the derivation is untouched.
+- `npm run typecheck` exits 0; `npm test` passes 1,232 of 1,232.
+- **Not exercised:** real keys and a real mouse (the window was not given for it), paper (no printer was used), the
+  dialog's Margins list, the browser build, and macOS and Linux.
 
 ### The drive this record was written from (2026-09-30)
 

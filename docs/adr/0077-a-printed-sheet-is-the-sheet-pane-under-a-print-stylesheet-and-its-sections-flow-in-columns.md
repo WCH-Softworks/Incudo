@@ -10,7 +10,10 @@ decision 8 · answers Phase 5's "Print layout" · builds on
 [0074](./0074-a-kind-s-sheet-shows-its-printed-page-and-every-row-says-what-it-is.md),
 [0075](./0075-a-text-export-is-the-sheet-document-written-as-markdown-that-reads-as-plain-text.md),
 [0076](./0076-content-s-sheet-hints-are-read-every-description-kept-chosen-by-the-level-the-element-gates-at.md) ·
-**format:** none (no system or character format change); one field on the sheet document (`title`)
+**format:** none (no system or character format change); one field on the sheet document (`title`) ·
+**amended** by [0078](./0078-a-print-is-chosen-in-a-step-of-the-app-s-own-and-no-edge-of-the-page-is-left-to-the-dialog.md):
+"Print sheet…" first opens a print options step, and no edge of the page is left to the dialog's headers and footers
+(decisions 6 and 8)
 
 ## Context
 
@@ -212,7 +215,8 @@ the cost, and the print stylesheet does not change that decision.
   stands, claimed on every pane.
 - **The print dialog's headers and footers are on by default**: the date, the page's title (the character's, decision
   3), its address (`localhost:5173` in the dev build) and the page number. They are the dialog's option, as decision 6
-  said paper, margins and headers are, and nothing here turns them off. The spooler names a job, and "Save as PDF" a file
+  said paper, margins and headers are, and nothing here turns them off *(amended by ADR 0078: no edge
+  of the page is left for them, and the dialog no longer offers them)*. The spooler names a job, and "Save as PDF" a file
   (`Sample 17.pdf`), after the character.
 - **`window.print()` holds the page while WebView2's preview is open**: the page answers nothing until the dialog closes.
   The preview is a DevTools target of its own (`edge://print/`), which is how a drive can read or cancel it without the
@@ -228,7 +232,8 @@ the cost, and the print stylesheet does not change that decision.
 - **The PDF sheet.** Phase 5's other item: a fillable official sheet is a PDF form, not a page; a "clean Incudo sheet"
   may turn out to be this page printed to PDF (the browser's dialog offers it, and WebView2's `PrintToPdf` could do it
   without one on Windows). That is the PDF item's decision.
-- **Choose paper, margins, headers or scale.** Those are the print dialog's, and a user's.
+- **Choose paper, margins, headers or scale.** Those are the print dialog's, and a user's. *(Margins and headers: amended by
+  ADR 0078.)*
 - **A print preview inside the app**, or printing from any pane but the Sheet.
 - **Anything the Sheet does not show**: proficiency marks, levels per class, hit dice, personality, notes, the bag, prepared
   spells (ADRs 0074 and 0075 list them).

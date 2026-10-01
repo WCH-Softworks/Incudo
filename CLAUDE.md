@@ -365,7 +365,8 @@ with, an NPC's first line and printed dice, a Cairn character's entered scores**
 as text: "Export sheet as text…" writes it as Markdown that reads as plain text** (ADR 0075). **A feature on the Sheet and
 in the export is content's own sheet line, at the level its class reads, its numbers filled: "Rage (Bonus Action; 3/Long
 Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platform's own dialog, its sections in two columns**
-(ADR 0077).
+(ADR 0077), **after a step of the app's own choosing its parts, page numbers and the name on later pages, and with no edge
+of the page the dialog can write its date and address in** (ADR 0078).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -908,7 +909,38 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     added, printed to A4 PDF: every word of the text export in order, nothing clipped; the native menu item and the
     button and real Ctrl+P opening the preview, printed from it to a real printer and saved as PDF with the layout intact)
     and in headless Edge on the dev server (the same pages and words); not in a headed browser's dialog, and not on macOS
-    or Linux. The dialog's default header and footer print the page's address; that is the dialog's option.
+    or Linux. ~~The dialog's default header and footer print the page's address; that is the dialog's option.~~ Not since
+    ADR 0078, below.
+- **"Print sheet…" first opens a print options step, and no edge of a printed page is left to the dialog**
+  ([ADR 0078](docs/adr/0078-a-print-is-chosen-in-a-step-of-the-app-s-own-and-no-edge-of-the-page-is-left-to-the-dialog.md),
+  amending ADR 0077). Things to know before touching it:
+  - **Measured first** (`tools/verify/src/print-options.test.ts`, report-only lines, plus one assertion since): 25 of the
+    30 samples, every creature character and Cairn have only their own sections; a held creature costs no page, a kept text
+    costs pages. In WebView2 (Chromium 154) **the dialog prints its date, title, address and number in any edge with a
+    margin and no margin box drawing in it, and offers its headers-and-footers option only while some edge does**: with
+    none, the option is not in the dialog at all, so nothing can put them back. A page number needs a margin (only a
+    margin box prints one).
+  - **`packages/ui/src/print-options.ts` is the view-model**, reading the sheet document only: parts offered only when
+    the document has more than one, never all unticked, labelled with the document's own labels ("The character's own
+    sections" is the view-model's); `printRendering` gives the Sheet's root `print-omit-<part>`, `print-page-numbers`,
+    `print-running-name` and **one `@page` rule carrying the name** (`cssString` escapes it), since a margin box cannot
+    read the page. Remembered per user in `Storage` under `print/options`, written by `finishPrintStep` on Print only,
+    read afresh when the step opens, falling back field by field; a remembered omission of a part a sheet lacks is kept.
+    Never in `character.json`.
+  - **`print-sheet` opens the step** (`PrintOptions.tsx`, modal: every command off, Ctrl+P claimed and run by nothing);
+    its Print calls `window.print()` **from an effect after the render that closed it**, so the step is not printed and
+    the classes are on the Sheet. `App.tsx` has exactly one `window.print()` call; `print-layout.test.ts` holds that.
+  - **The print rules**: `@page { margin: 0; padding: 10mm }`; three named pages (`sheet-numbered`, `sheet-named`,
+    `sheet-named-numbered`) chosen by `page:` on `.sheet` with the classes, each giving an edge a 10 mm margin only with
+    its box (8 pt, the page's font, muted), the first page of a named one no head margin. **`content: none !important`
+    on that first page's box is load-bearing**: Chromium let the name's rule, later in the document, beat `:first`
+    whatever the page selectors, and the name printed on page 1. `print-layout.test.ts` resolves pages in document order
+    with `!important` above it, as measured, not by the spec's specificity, which passed the broken rules.
+  - Driven in the Tauri window on Windows: 109 prints of 36 packed characters, no source added, through the step and
+    WebView2's preview (no headers option in any; a scratch margin made it appear) and to PDF with the dialog's headers on:
+    no date, title or address, numbers and the name only where chosen, every word of the export of the parts printed (a
+    kept table's `<thead>` repeats on the next page, which is Chromium's). Running items move no page count. Not with real
+    keys, mouse or paper, not in the browser build, not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -1567,7 +1599,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076 and 0077 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077 and 0078 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

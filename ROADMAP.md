@@ -1360,7 +1360,7 @@ pane draws and every export renders: the PDF and the print layout start from it,
       the browser build prints the same. What did not work first: keeping every section whole, which left pages half
       empty. No oracle row moved; no system or character format change. **Not done:** a stat block drawn as the book
       prints it; turning off the dialog's default header and footer (they print the page's address); macOS and Linux.
-- [ ] **Print options of the app's own, then the platform's print dialog; and nothing of the web page on paper.**
+- [x] **Print options of the app's own, then the platform's print dialog; and nothing of the web page on paper.**
       Seen on paper (2026-09-30): the print dialog's default headers and footers put the date and time at the top of
       every page and the page's address and a page number at the bottom (`localhost:5173` in the dev build; an installed
       build would print `tauri.localhost`). ADR 0077 left them to the dialog; the maintainer's call is that a sheet should
@@ -1387,6 +1387,12 @@ pane draws and every export renders: the PDF and the print layout start from it,
     two things above: with no margin the dialog does not offer its headers-and-footers option at all, so it cannot put
     them back; and a page number needs a margin, since only a margin box prints one. So every edge of the page gets
     either no margin or a margin carrying the app's own box.
+  - **Built** (2026-09-30), ADR 0078 accepted: the step, remembered per user; no margin by default and a margin only
+    under the app's own page number or name. Printed in the Windows window 109 times (36 characters, every combination of
+    running items, every choice of parts), through the preview (no headers option in any) and to PDF with the dialog's
+    headers on (no date, title or address on any page). Building it found that Chromium lets a later `@page` rule beat
+    `:first`, which put the name on page 1; held with `!important` and a test that resolves pages as Chromium does. Not
+    yet on paper or with real keys, and not on macOS or Linux (the item below).
 - [ ] **"Print sheet…" on macOS and Linux: does it print at all?** Open until the maintainer's macOS and Linux
       environments exist. The command calls `window.print()`, which Tauri's own documentation says works on every
       platform. But the same documentation says Tauri's Rust `print()` is only supported on macOS, and the wry version
