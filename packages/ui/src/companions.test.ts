@@ -116,7 +116,7 @@ test('a held creature is its name, what gave it, and its sections read against i
   ]);
   assert.deepEqual(ox!.sections.find((s) => s.id === 'senses')!.printed.map((l) => l.text), ['keen smell']);
   assert.equal(ox!.sections.find((s) => s.id === 'senses')!.description, 'As printed.');
-  assert.deepEqual(ox!.sections.find((s) => s.id === 'deeds')!.elements, [{ elementId: 'BITE', name: 'Bite' }]);
+  assert.deepEqual(ox!.sections.find((s) => s.id === 'deeds')!.elements, [{ elementId: 'BITE', name: 'Bite', type: 'Deed' }]);
   assert.deepEqual(ox!.notes, []);
 });
 
@@ -168,7 +168,7 @@ test('a creature\'s sheet lines are filled from its own scope, and what nothing 
   const shown = companionsView(deriveCharacter(character, sys, local, { kind }), kind, local)!;
   const lineOf = (n: number) => shown.creatures[n]!.sections.find((s) => s.id === 'deeds')!.elements[0]!;
   assert.deepEqual(shown.creatures.map((c) => c.name), ['Dog', 'Wolf']);
-  assert.deepEqual(lineOf(0), { elementId: 'HOWL', name: 'Howl', text: 'Guards +3, reach —.', usage: '3/Day', unfilled: ['pet:nowhere'] });
+  assert.deepEqual(lineOf(0), { elementId: 'HOWL', name: 'Howl', type: 'Deed', text: 'Guards +3, reach —.', usage: '3/Day', unfilled: ['pet:nowhere'] });
   assert.equal(lineOf(1).text, 'Guards +5, reach —.');
   assert.deepEqual(shown.creatures.map((c) => c.unfilled), [1, 1]);
 });

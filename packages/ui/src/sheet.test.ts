@@ -143,13 +143,13 @@ test('a value is written as text, a signed number or a number, and a missing one
 // (the charm, held last, is of the section's first type).
 test("a section lists what the sheet may list, by its types' order, marks what is unmet, and one with nothing is left out", () => {
   assert.deepEqual(section('gear')!.elements, [
-    { elementId: 'CHARM', name: 'Charm' },
-    { elementId: 'RUNE', name: 'Rune' },
-    { elementId: 'LAMP', name: 'Lamp' },
+    { elementId: 'CHARM', name: 'Charm', type: 'Charm' },
+    { elementId: 'RUNE', name: 'Rune', type: 'Gadget' },
+    { elementId: 'LAMP', name: 'Lamp', type: 'Gadget' },
   ]);
   assert.equal(section('empty'), undefined);
   const marked = sheet(new Set(['LAMP'])).sections.find((s) => s.id === 'gear')!;
-  assert.deepEqual(marked.elements[2], { elementId: 'LAMP', name: 'Lamp', prerequisitesUnmet: true });
+  assert.deepEqual(marked.elements[2], { elementId: 'LAMP', name: 'Lamp', type: 'Gadget', prerequisitesUnmet: true });
   assert.equal(sheet().kindName, 'Tinker');
 });
 
@@ -158,7 +158,7 @@ test('the builder publishes the sheet, marking what the user added with its prer
   const character = { ...tinker(), formatVersion: 5 as const, additions: ['GEM'] };
   const state = new CharacterBuilder(character, system(), index).getState();
   const gear = state.sheet.sections.find((s) => s.id === 'gear')!;
-  assert.deepEqual(gear.elements.find((e) => e.elementId === 'GEM'), { elementId: 'GEM', name: 'Gem', prerequisitesUnmet: true });
+  assert.deepEqual(gear.elements.find((e) => e.elementId === 'GEM'), { elementId: 'GEM', name: 'Gem', type: 'Gadget', prerequisitesUnmet: true });
   assert.equal(state.sheet.elementCount, state.derived.elements.length);
 });
 
@@ -305,4 +305,18 @@ test("a section that writes a track's dice lists the track's root with its count
   boltIndex.add(bolt);
   const boltView = sheetView(deriveCharacter({ ...character, choices: [{ ruleKey: 'build/gear', elementIds: ['CHARM'] }] }, sys, boltIndex, { kind }), kind);
   assert.deepEqual(boltView.sections.find((s) => s.id === 'who')!.elements.map((e) => [e.progress, e.dice]), [[4, undefined]]);
+});
+
+// ADR 0079. Fails if a listed element's type is left out (a form filler could not tell a class from a race in one
+// section), if a section does not say which declared section it came from, or if a per-block section does not name its
+// block (its id names it too, but only as the system spells the id).
+test("a section names the section it came from and its block, and a listed element its type", () => {
+  const view = sheet();
+  const gear = view.sections.find((s) => s.id === 'gear')!;
+  assert.equal(gear.section, 'gear');
+  assert.equal(gear.block, undefined);
+  assert.deepEqual(gear.elements.map((e) => [e.name, e.type]), [['Charm', 'Charm'], ['Rune', 'Gadget'], ['Lamp', 'Gadget']]);
+  const runes = view.sections.filter((s) => s.section === 'runes');
+  assert.deepEqual(runes.map((s) => s.block), ['Runesmith']);
+  assert.notEqual(runes[0]!.id, 'runes');
 });

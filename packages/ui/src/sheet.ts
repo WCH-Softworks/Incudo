@@ -75,6 +75,11 @@ export function rowMark(value: number | undefined, per: number | undefined, labe
 export interface SheetListedElement {
   elementId: ElementId;
   name: string;
+  /**
+   * Its element type, as content names it: what a reader of the document tells a section's kinds of element apart by (a
+   * form filler putting a race in one box and a class in another, ADR 0079). Always set by `sheetSections`.
+   */
+  type?: string;
   prerequisitesUnmet?: true;
   /** The shorter name content gives it on a sheet ("Turn Undead"), when that differs from its name. */
   sheetName?: string;
@@ -116,6 +121,12 @@ export interface SheetListedElement {
 export interface SheetSectionView {
   id: string;
   label: string;
+  /**
+   * The id of the sheet section this came from, and the casting block it is for when that section is `perBlock` (whose
+   * `id` then names the block too): what a reader of the document finds a section and a block by (ADR 0079).
+   */
+  section?: string;
+  block?: string;
   description?: string;
   rows: SheetRow[];
   printed: PrintedSheetLine[];
@@ -313,6 +324,7 @@ export function sheetSections(
         return {
           elementId: e.id,
           name: e.name,
+          type: e.type,
           ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}),
           ...sheetHintsOf(e, source),
           ...(progress !== undefined ? { progress } : {}),
@@ -325,6 +337,8 @@ export function sheetSections(
       views.push({
         id: rendering.id,
         label: rendering.label,
+        section: section.id,
+        ...(rendering.blockName !== undefined ? { block: rendering.blockName } : {}),
         ...(rendering.description !== undefined ? { description: rendering.description } : {}),
         rows,
         printed: rendering.printed,

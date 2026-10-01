@@ -57,12 +57,13 @@ test('the text shown is the one for the level the element gates at, with its own
   assert.deepEqual(listed([gadget], { G: 1 })[0], {
     elementId: 'G',
     name: 'G',
+    type: 'Gadget',
     text: 'At first, +3.',
     usage: '3/Long Rest',
     action: 'Bonus Action',
   });
-  assert.deepEqual(listed([gadget], { G: 4 })[0], { elementId: 'G', name: 'G', text: 'From three, d8.', usage: '3/Long Rest', action: 'Action' });
-  assert.deepEqual(listed([gadget], { G: 5 })[0], { elementId: 'G', name: 'G', text: 'From five.', usage: 'Unlimited', action: 'Bonus Action' });
+  assert.deepEqual(listed([gadget], { G: 4 })[0], { elementId: 'G', name: 'G', type: 'Gadget', text: 'From three, d8.', usage: '3/Long Rest', action: 'Action' });
+  assert.deepEqual(listed([gadget], { G: 5 })[0], { elementId: 'G', name: 'G', type: 'Gadget', text: 'From five.', usage: 'Unlimited', action: 'Bonus Action' });
   assert.equal(listed([gadget])[0]!.text, 'At first, +3.', 'an element the derivation gives no level reads its ungated text');
 });
 
@@ -118,12 +119,12 @@ test('a hidden element a section lists anyway is named, with no sheet line', () 
   // Fails with the hint read only for leaving elements out: a header would read "Paladin: A holy warrior bound to …",
   // the line content wrote for a feature list it keeps the class out of (found by running it on a 2014 sample).
   const klass = element('Paladin', 'Gadget', { display: false, alt: 'Holy Warrior', usage: '1/Day', description: 'A holy warrior bound to a sacred oath.' });
-  assert.deepEqual(listed([klass]), [{ elementId: 'Paladin', name: 'Paladin', sheetName: 'Holy Warrior' }]);
+  assert.deepEqual(listed([klass]), [{ elementId: 'Paladin', name: 'Paladin', type: 'Gadget', sheetName: 'Holy Warrior' }]);
 });
 
 test('an element with no hints is listed as it was', () => {
   // Fails with any field written for an element content writes nothing for.
-  assert.deepEqual(listed([element('PLAIN', 'Gadget')]), [{ elementId: 'PLAIN', name: 'PLAIN' }]);
+  assert.deepEqual(listed([element('PLAIN', 'Gadget')]), [{ elementId: 'PLAIN', name: 'PLAIN', type: 'Gadget' }]);
   assert.equal(listedUsage({}), undefined);
   assert.equal(listedUsage({ usage: '2/Day' }), '2/Day');
   assert.equal(listedUsage({ action: 'Reaction', usage: '2/Day' }), 'Reaction; 2/Day');
