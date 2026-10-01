@@ -21,7 +21,7 @@ import {
   type Setter,
 } from '@incudo/core';
 
-import { formatStatValue, sheetView } from './sheet.ts';
+import { formatStatValue, rowMark, sheetView } from './sheet.ts';
 import { CharacterBuilder } from './use-character-builder.ts';
 
 function element(id: string, name: string, setters: Record<string, string> = {}, extra: Partial<Element> = {}): Element {
@@ -48,6 +48,10 @@ function system(): GameSystem {
       },
       { name: 'luck', label: 'Luck', default: -1, signed: true },
       { name: 'untitled', default: 3 },
+      { name: 'knack', default: 2 },
+      { name: 'grit:knack', default: 4 },
+      { name: 'luck:knack', default: 2 },
+      { name: 'untitled:knack', default: 6 },
     ],
     characterKinds: [
       {
@@ -68,6 +72,7 @@ function system(): GameSystem {
           sections: [
             { id: 'scores', label: 'Scores', stats: ['grit'], beside: '{stat}:mod' },
             { id: 'other', label: 'Other', stats: ['luck', 'untitled'] },
+            { id: 'marked', label: 'Marked', stats: ['grit', 'luck', 'untitled', 'knack'], mark: { stat: '{stat}:knack', per: 'knack', labels: ['handy', 'deft'] } },
             { id: 'runes', label: 'Runes', perBlock: true, stats: ['{name}:dc', '{name}:bonus', '{name}:raw'] },
             { id: 'gear', label: 'Gear', types: ['Charm', 'Gadget'] },
             { id: 'empty', label: 'Empty', types: ['Nothing'] },
@@ -155,4 +160,31 @@ test('the builder publishes the sheet, marking what the user added with its prer
   const gear = state.sheet.sections.find((s) => s.id === 'gear')!;
   assert.deepEqual(gear.elements.find((e) => e.elementId === 'GEM'), { elementId: 'GEM', name: 'Gem', prerequisitesUnmet: true });
   assert.equal(state.sheet.elementCount, state.derived.elements.length);
+});
+
+// ADR 0079. Fails if a section's `mark` is not read (no row is marked), if the count is not taken against `per` (grit's 4
+// would read as four), if more multiples than labels do not read as the last label (untitled's 6 has no mark), or if
+// a row whose mark stat is not published is marked (knack has no "knack:knack").
+test('a row is marked by how many times its mark stat holds the per stat, the last label for any more', () => {
+  assert.deepEqual(
+    section('marked')!.rows.map((r) => [r.stat, r.mark]),
+    [
+      ['grit', { label: 'deft', count: 2 }],
+      ['luck', { label: 'handy', count: 1 }],
+      ['untitled', { label: 'deft', count: 3 }],
+      ['knack', undefined],
+    ],
+  );
+  assert.equal(section('scores')!.rows[0]!.mark, undefined, 'a section with no mark marks nothing');
+});
+
+// Fails if a part of a multiple is read as one (a half reads "handy"), if a per of 0 divides (Infinity marks everything),
+// or if a value that is a whole multiple written as a float is floored below it.
+test('rowMark counts whole multiples only, and nothing against a per of zero or no labels', () => {
+  assert.equal(rowMark(1, 2, ['a']), undefined);
+  assert.equal(rowMark(5, 0, ['a']), undefined);
+  assert.equal(rowMark(5, undefined, ['a']), undefined);
+  assert.equal(rowMark(4, 2, []), undefined);
+  assert.deepEqual(rowMark(0.3 * 3, 0.3, ['a', 'b', 'c']), { label: 'c', count: 3 });
+  assert.deepEqual(rowMark(7, 3, ['a', 'b']), { label: 'b', count: 2 });
 });

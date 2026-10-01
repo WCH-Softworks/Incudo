@@ -314,6 +314,17 @@ test('beside names a stat per row, with {stat} for the row, aligned with the row
   assert.equal(plain.beside, undefined, 'no beside declared, none published');
 });
 
+// ADR 0079. Fails if `mark` is not published, if `{stat}` is not substituted, or if it is not kept aligned with the rows
+// `showWhen` keeps (the second row reads the dropped row's mark stat).
+test('mark names a stat per row, with {stat} for the row, aligned with the rows showWhen keeps', () => {
+  const mark = { stat: '{stat}:knack', per: 'knack', labels: ['handy'] };
+  const [rendered] = renderSheetSection({ id: 'm', label: 'M', stats: ['grit', 'wile', 'nerve'], showWhen: '{stat}', mark }, [], reader({ grit: 14, wile: 0, nerve: 9 }));
+  assert.deepEqual(rendered!.mark, ['grit:knack', 'nerve:knack']);
+  const [block] = renderSheetSection({ id: 'b', label: 'B', perBlock: true, stats: ['{name}:dc'], mark: { ...mark, stat: '{stat}:{ability}' } }, [{ name: 'Runesmith', attributes: { ability: 'Grit' } }], reader());
+  assert.deepEqual(block!.mark, ['runesmith:dc:grit']);
+  assert.equal(renderSheetSection({ id: 'p', label: 'P', stats: ['grit'] }, [], reader({ grit: 14 }))[0]!.mark, undefined);
+});
+
 // Fails if a perBlock section's `beside` does not resolve the block's placeholders, or if `entries` names the
 // substituted key rather than the pattern the row came from (a label is looked up by the pattern).
 test('beside and entries in a perBlock section resolve the block and keep the pattern', () => {

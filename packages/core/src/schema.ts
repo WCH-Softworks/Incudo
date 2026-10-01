@@ -20,6 +20,7 @@ import {
   progressionStat,
   resolveCharacterKind,
   type GameSystem,
+  type SheetSectionDef,
 } from './system.ts';
 import { parseRequirements } from './requirements.ts';
 import { parseSupports, supportsInterpolations } from './supports.ts';
@@ -491,6 +492,7 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         }
         // What a row shows beside it is a stat the scope has, or the row reads a blank (ADR 0074).
         const scopeStats = new Set([...statNames, ...(companions.stats ?? []).map((s) => s.name.toLowerCase())]);
+        errors.push(...markErrors(section, scopeStats, `${where}.companions.sheet`));
         for (const stat of section.stats ?? []) {
           const beside = section.beside?.split('{stat}').join(stat).toLowerCase();
           if (beside !== undefined && !scopeStats.has(beside)) {
@@ -564,6 +566,7 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       if (section.omitHidden && !section.types?.length) {
         errors.push({ path: `${where}.sheet`, message: `section "${section.id}" leaves out hidden elements and lists none` });
       }
+      errors.push(...markErrors(section, statNames, `${where}.sheet`));
       for (const stat of section.stats ?? []) {
         // What a row shows beside it (ADR 0074) must be published as the row must be, or it reads a blank.
         const beside = section.beside?.split('{stat}').join(stat).toLowerCase();
@@ -607,6 +610,26 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
  * Render errors for a terminal or an error panel. One line each, path first, because the
  * person reading this is looking at the JSON file and needs to know where to click.
  */
+/**
+ * A section's `mark` (ADR 0079): it counts multiples of a stat the kind declares, has something to call one, and reads a
+ * stat per row. The row's own stat is not required to be declared: content supplies it (5e's `<skill>:proficiency` is
+ * contributed and never declared for a player character), as it does for `showWhen`.
+ */
+function markErrors(section: SheetSectionDef, statNames: ReadonlySet<string>, path: string): SchemaError[] {
+  const mark = section.mark;
+  if (!mark) return [];
+  const errors: SchemaError[] = [];
+  if (!statNames.has(mark.per.toLowerCase())) {
+    errors.push({ path, message: `section "${section.id}" counts its marks in "${mark.per}", which is not declared by the system or by this kind` });
+  }
+  if (!mark.stat.includes('{stat}')) {
+    errors.push({ path, message: `section "${section.id}" reads every row's mark from "${mark.stat}", which names no {stat}` });
+  }
+  if (!mark.labels.length) errors.push({ path, message: `section "${section.id}" has a mark with nothing to call it` });
+  if (!section.stats?.length) errors.push({ path, message: `section "${section.id}" marks rows and shows none` });
+  return errors;
+}
+
 export function formatSchemaErrors(errors: SchemaError[], limit = 25): string[] {
   const lines = errors.slice(0, limit).map((e) => (e.path ? `${e.path}: ${e.message}` : e.message));
   if (errors.length > limit) lines.push(`… and ${errors.length - limit} more`);

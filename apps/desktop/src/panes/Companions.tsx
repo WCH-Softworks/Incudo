@@ -8,7 +8,7 @@
 
 import { useMemo } from 'react';
 
-import { listedName, listedUsage, PREREQUISITES_UNMET, type SheetDocument, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
+import { listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
 
 import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
 
@@ -27,7 +27,7 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
               <dt>{row.label}</dt>
               <dd>
                 {row.value}
-                {row.beside !== undefined && <span className="sheet-beside"> ({row.beside})</span>}
+                {rowAside(row) !== undefined && <span className="sheet-beside"> ({rowAside(row)})</span>}
               </dd>
             </div>
           ))}

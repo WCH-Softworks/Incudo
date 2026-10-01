@@ -207,6 +207,32 @@ test('a system that would throw at load fails validation instead', async () => {
     [],
   );
 
+  // ADR 0079: a mark counts multiples of a declared stat, reads a stat per row, has a label, and marks rows a section
+  // shows. Fails if the check is removed (the first), or `mark` is left out of the schema (the last: an unknown field).
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], mark: { stat: 'vigour', per: 'nope', labels: [] } }] })),
+    ),
+    [
+      'characterKinds[0].sheet.sections[0].mark.labels: must not be empty',
+    ],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], mark: { stat: 'vigour', per: 'nope', labels: ['x'] } }] })),
+    ),
+    [
+      'characterKinds[0].sheet: section "s" counts its marks in "nope", which is not declared by the system or by this kind',
+      `characterKinds[0].sheet: section "s" reads every row's mark from "vigour", which names no {stat}`,
+    ],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], mark: { stat: '{stat}:pb', per: 'vigour', labels: ['x'] } }] })),
+    ),
+    [],
+  );
+
   // ADR 0076: a section that leaves hidden elements out must list some, and the flag is a boolean. Fails if the check
   // is removed (the first), or `omitHidden` is left out of the schema (every one: an unknown field).
   assert.deepEqual(

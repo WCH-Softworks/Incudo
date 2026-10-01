@@ -879,6 +879,30 @@
           "minLength": 1,
           "description": "A stat shown beside each row's value (ADR 0074). `{stat}` stands for the row's own key, as in showWhen: \"{stat}:modifier\" shows a score's modifier beside it. In a perBlock section the block's placeholders resolve too. It must name a stat the kind publishes."
         },
+        "mark": {
+          "type": "object",
+          "description": "A mark on each row, read as how many times one stat holds another (ADR 0079): a player character's save or skill marked proficient or with expertise, read from how many proficiency bonuses its proficiency stat holds. What the multiples mean is the system's; the engine counts. A row whose stat holds none, or whose `per` reads 0, has no mark; more multiples than labels read as the last label.",
+          "required": ["stat", "per", "labels"],
+          "additionalProperties": false,
+          "properties": {
+            "stat": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The stat each row's mark is read from, as a row template: `{stat}` stands for the row's own key, as in showWhen and beside. Content supplies it, so it need not be declared."
+            },
+            "per": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The stat whose multiples are counted. It must be declared by the system or the kind."
+            },
+            "labels": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "What one, two, … multiples are called, shown beside the row's value: [\"proficient\", \"expertise\"]."
+            }
+          }
+        },
         "omitHidden": {
           "type": "boolean",
           "description": "Leave out a listed element whose own sheet hints say not to show it (Aurora's <sheet display=\"false\">, ADR 0076). Content marks a feature that way when its effect is shown elsewhere or a choice beside it names it better, and also every race and class, which a header names: so a section that lists features declares it and one that names what a character is does not. The element is still held, derived and saved. Only meaningful beside types."

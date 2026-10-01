@@ -870,12 +870,26 @@ export interface SheetSectionDef {
    */
   beside?: string;
   /**
+   * A mark on each row, read as how many times one stat holds another — ADR 0079. `stat` is a row template like `beside`
+   * (`"{stat}:proficiency"`); `per` the stat it counts multiples of (`"proficiency"`); `labels` what one, two, … multiples
+   * are called (`["proficient", "expertise"]`). A row whose stat holds none, or whose `per` reads 0, has no mark; more
+   * multiples than labels read as the last. What the multiples mean is the system's: the engine counts.
+   */
+  mark?: SheetMarkDef;
+  /**
    * Leave out a listed element whose own sheet hints say not to show it (`display: false`) — ADR 0076. Content marks a
    * feature that way when its effect is shown elsewhere or a choice beside it names it better (Spellcasting, a subclass
    * placeholder, Tough), and also every race and class, which a header names: so it is a section's to honour, and one
    * that names what a character is declares none. The element is still held, derived and saved.
    */
   omitHidden?: boolean;
+}
+
+/** A row's mark: how many times `stat` (a row template) holds `per`, called by `labels` — ADR 0079. */
+export interface SheetMarkDef {
+  stat: string;
+  per: StatKey;
+  labels: string[];
 }
 
 /** One line of printed text a sheet section shows from a held element's setter — ADR 0062. */
@@ -927,6 +941,8 @@ export interface SheetSectionRendering {
   entries: StatKey[];
   /** For each of `stats`, the stat shown beside it, when the section declares `beside` — ADR 0074. */
   beside?: StatKey[];
+  /** For each of `stats`, the stat its mark is read from, when the section declares `mark` — ADR 0079. */
+  mark?: StatKey[];
 }
 
 /**
@@ -947,7 +963,7 @@ export function renderSheetSection(
     const key = template.split('{stat}').join(stat);
     return block ? substituteBlockPlaceholders(key, block) : key;
   };
-  // Each row is its key and the section entry it came from, kept together so `entries` and `beside` stay aligned.
+  // Each row is its key and the section entry it came from, kept together so `entries`, `beside` and `mark` stay aligned.
   const shown = (rows: Array<[StatKey, StatKey]>, block?: DeclaredBlock) => {
     const when = section.showWhen;
     const kept =
@@ -959,10 +975,12 @@ export function renderSheetSection(
             return value !== undefined && value !== 0;
           });
     const beside = section.beside;
+    const mark = section.mark?.stat;
     return {
       stats: kept.map(([stat]) => stat),
       entries: kept.map(([, entry]) => entry),
       ...(beside !== undefined ? { beside: kept.map(([stat]) => named(beside, stat, block) ?? '') } : {}),
+      ...(mark !== undefined ? { mark: kept.map(([stat]) => named(mark, stat, block) ?? '') } : {}),
     };
   };
   const described = section.description !== undefined ? { description: section.description } : {};

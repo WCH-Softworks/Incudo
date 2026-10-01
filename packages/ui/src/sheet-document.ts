@@ -15,7 +15,7 @@ import type { Character, ElementId } from '@incudo/core';
 
 import type { ReferenceRow, ReferencesState } from './references.ts';
 import type { CompanionsView } from './companions.ts';
-import type { SheetListedElement, SheetSectionView, SheetView } from './sheet.ts';
+import type { SheetListedElement, SheetRow, SheetSectionView, SheetView } from './sheet.ts';
 
 /** What is written beside an element the user added whose prerequisites are unmet (ADR 0064). */
 export const PREREQUISITES_UNMET = 'prerequisites not met';
@@ -32,6 +32,15 @@ export function listedName(element: Pick<SheetListedElement, 'name' | 'sheetName
 export function listedUsage(element: Pick<SheetListedElement, 'action' | 'usage'>): string | undefined {
   const parts = [element.action, element.usage].filter((part): part is string => part !== undefined && part !== '');
   return parts.length ? parts.join('; ') : undefined;
+}
+
+/**
+ * What a sheet writes in parentheses after a row's value: what the section shows beside it and the row's mark (ADR
+ * 0079), "18 (+4)", "+7 (expertise)", or nothing. The pane and every export word a row this way.
+ */
+export function rowAside(row: Pick<SheetRow, 'beside' | 'mark'>): string | undefined {
+  const parts = [row.beside, row.mark?.label].filter((part): part is string => part !== undefined && part !== '');
+  return parts.length ? parts.join(', ') : undefined;
 }
 
 /** The title of a character whose name is blank. */

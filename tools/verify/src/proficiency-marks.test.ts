@@ -17,14 +17,17 @@
  * - **Whether a row's mark would differ from its value**: a row whose value moves by something other than the modifier
  *   and the proficiency (Jack of All Trades, a magic item) still marks only what proficiency gives.
  *
- * Report-only (ADR 0042) on the commit before the marks were built.
+ * Report-only (ADR 0042) on the commit before the marks were built. Asserted since (ADR 0079, against any corpus): on
+ * every sample, a player character's save and skill rows in the sheet document carry a mark exactly when their
+ * proficiency stat holds the bonus, with its count, and the system's label for it. Perturbed: a mark read from the row's
+ * value, or from `…:misc`, fails it (Jack of All Trades would be marked).
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { resolveCharacterKind, type DerivedCharacter } from '@incudo/core';
-import { CharacterBuilder, newCharacterOfKind } from '@incudo/ui';
+import { CharacterBuilder, newCharacterOfKind, sheetDocument } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
@@ -90,10 +93,24 @@ test('the samples: a save or skill row\'s proficiency, as multiples of the bonus
   const held = fresh();
   let sheets = 0;
   let creatures = 0;
+  const wrongMarks: string[] = [];
+  const marked = new Map<string, number>();
   for (const sample of samplesWhere(() => true)) {
     const run = await runOracle(samplePath(sample), elements, 'sample');
     readRows(own, sample.id, run.derived);
     sheets++;
+    // What the sheet document marks, against the derivation: the count of bonuses, and the system's label for it.
+    const doc = sheetDocument(new CharacterBuilder(run.imported.character, run.system, run.elements).getState());
+    const bonus = run.derived.stats.get('proficiency')?.value ?? 0;
+    for (const section of doc.sections.filter((x) => x.id === 'saves' || x.id === 'skills')) {
+      const labels = section.id === 'saves' ? ['proficient'] : ['proficient', 'expertise'];
+      for (const row of section.rows) {
+        const count = Math.floor((run.derived.stats.get(`${row.stat}:proficiency`)?.value ?? 0) / bonus);
+        const want = count >= 1 ? { label: labels[Math.min(count, labels.length) - 1]!, count } : undefined;
+        if (JSON.stringify(row.mark) !== JSON.stringify(want)) wrongMarks.push(`${sample.id} ${row.stat}: ${JSON.stringify(row.mark)}, want ${JSON.stringify(want)}`);
+        if (row.mark) marked.set(row.mark.label, (marked.get(row.mark.label) ?? 0) + 1);
+      }
+    }
     for (const companion of run.derived.companions ?? []) {
       creatures++;
       readRows(held, `${sample.id} ${companion.elementId}`, { ...run.derived, stats: companion.stats } as DerivedCharacter, 'companion:');
@@ -102,6 +119,8 @@ test('the samples: a save or skill row\'s proficiency, as multiples of the bonus
   assert.ok(sheets > 0, 'samples were read');
   report(t, 'samples', own, sheets);
   report(t, 'creatures the samples hold, in their scope', held, creatures);
+  t.diagnostic(`samples: rows the sheet document marks: ${show(marked)}`);
+  assert.deepEqual(wrongMarks, [], 'every save and skill row is marked as its proficiency stat reads');
 });
 
 test('every creature as an NPC: its rows, as multiples of its bonus', { skip: corpusSkip }, async (t: Diagnostic) => {

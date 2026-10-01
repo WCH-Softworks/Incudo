@@ -40,6 +40,23 @@ export interface SheetRow {
   label: string;
   value: string;
   beside?: string;
+  /**
+   * What the row is marked, when the section declares a mark and the row has one (ADR 0079): "proficient", "expertise".
+   * `count` is how many times the mark's stat holds its `per`, at least 1.
+   */
+  mark?: { label: string; count: number };
+}
+
+/**
+ * A row's mark (ADR 0079): how many whole times `value` holds `per`, called by the label for that many, the last label
+ * standing for any more. None when it holds none or `per` is not a positive number.
+ */
+export function rowMark(value: number | undefined, per: number | undefined, labels: readonly string[]): SheetRow['mark'] {
+  if (value === undefined || per === undefined || !(per > 0) || !labels.length) return undefined;
+  // A ratio of whole numbers written as a float (14 / 7) is read whole; measured, every row reads 0, 1 or 2.
+  const count = Math.floor(value / per + 1e-9);
+  if (count < 1) return undefined;
+  return { label: labels[Math.min(count, labels.length) - 1]!, count };
 }
 
 /**
@@ -219,11 +236,14 @@ export function sheetSections(
         // A per-block row is keyed by content (`wizard:spellcasting:dc`); what it is lives on the pattern it came from.
         const def = rendering.blockName !== undefined ? blockStats.get(rendering.entries[at]!.toLowerCase()) : stats.get(stat.toLowerCase());
         const besideKey = rendering.beside?.[at];
+        const markKey = rendering.mark?.[at];
+        const mark = markKey && section.mark ? rowMark(resolved(markKey)?.value, resolved(section.mark.per)?.value, section.mark.labels) : undefined;
         return {
           stat,
           label: def?.label ?? stat,
           value: formatStatValue(resolved(stat), def?.signed === true),
           ...(besideKey ? { beside: formatStatValue(resolved(besideKey), stats.get(besideKey.toLowerCase())?.signed === true) } : {}),
+          ...(mark ? { mark } : {}),
         };
       });
       // In the order the section names its types, as a printed sheet's header reads race, class, background; within a

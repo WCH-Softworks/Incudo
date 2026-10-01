@@ -17,6 +17,7 @@ import {
   NO_KEPT_TEXT,
   PREREQUISITES_UNMET,
   referenceEntry,
+  rowAside,
   sheetDocument,
   UNNAMED_CHARACTER,
   type SheetDocumentSource,
@@ -35,8 +36,8 @@ const sheet: SheetView = {
       label: 'Scores',
       description: 'What the tinker is made of.',
       rows: [
-        { stat: 'grit', label: 'Grit', value: '14', beside: '+2' },
-        { stat: 'luck', label: 'Luck', value: '-1' },
+        { stat: 'grit', label: 'Grit', value: '14', beside: '+2', mark: { label: 'deft', count: 2 } },
+        { stat: 'luck', label: 'Luck', value: '-1', mark: { label: 'handy_*', count: 1 } },
       ],
       printed: [],
       elements: [
@@ -130,8 +131,8 @@ test('the Markdown: title, kind, a heading per section, one list of rows, elemen
       '',
       'What the tinker is made of.',
       '',
-      '- Grit: 14 (+2)',
-      '- Luck: -1',
+      '- Grit: 14 (+2, deft)',
+      '- Luck: -1 (handy\\_\\*)',
       '- Wrench',
       `- Spanner\\_of\\_\\*Doom\\* (${PREREQUISITES_UNMET})`,
       '',
@@ -235,4 +236,13 @@ test('a cancel is an answer, a failed write is reported, and no dialog means no 
   none.unavailableReason = 'No dialog here.';
   assert.deepEqual(await exportSheet(none, sheetDocument(source)), { status: 'failed', message: 'No dialog here.' });
   assert.equal(none.saved.length, 0);
+});
+
+// ADR 0079. Fails if the mark is left out of what follows a value, if the two are not joined in one pair of parentheses,
+// or if a row with neither gets empty ones.
+test("what follows a row's value is what is beside it and its mark, or nothing", () => {
+  assert.equal(rowAside({ beside: '+2', mark: { label: 'deft', count: 2 } }), '+2, deft');
+  assert.equal(rowAside({ mark: { label: 'handy', count: 1 } }), 'handy');
+  assert.equal(rowAside({ beside: '+2' }), '+2');
+  assert.equal(rowAside({}), undefined);
 });

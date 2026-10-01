@@ -2,7 +2,7 @@
  * The sheet document written as Markdown that reads as plain text — ADR 0075.
  *
  * One renderer of `sheetDocument`, beside the Sheet pane: the character's name as the title, its kind under it, each
- * section a heading with one list of what it shows (rows as "Label: value (beside)", listed elements by name, printed
+ * section a heading with one list of what it shows (rows as "Label: value (beside, mark)", listed elements by name, printed
  * lines as "Label: text", in the pane's order), each held creature and each kept element a heading of its own, and a
  * kept element's text read from its HTML (`htmlToMarkdown`). Nothing but what the document holds, and nothing it holds
  * but the pane's element count, which counts internal elements and says nothing on paper.
@@ -12,7 +12,7 @@
  */
 
 import { escapeLineStart, escapeMarkdown, htmlToMarkdown } from './html-markdown.ts';
-import { listedName, listedUsage, PREREQUISITES_UNMET, type SheetDocument } from './sheet-document.ts';
+import { listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument } from './sheet-document.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
 
 export function sheetMarkdown(document: SheetDocument): string {
@@ -69,7 +69,10 @@ export function sheetMarkdown(document: SheetDocument): string {
 function sectionItems(section: SheetSectionView): string[] {
   const e = escapeMarkdown;
   return [
-    ...section.rows.map((row) => `${e(row.label)}: ${e(row.value)}${row.beside !== undefined ? ` (${e(row.beside)})` : ''}`),
+    ...section.rows.map((row) => {
+      const aside = rowAside(row);
+      return `${e(row.label)}: ${e(row.value)}${aside !== undefined ? ` (${e(aside)})` : ''}`;
+    }),
     ...section.elements.map(elementItem),
     ...section.printed.map((line) => `${e(line.label)}: ${e(line.text)}`),
   ];

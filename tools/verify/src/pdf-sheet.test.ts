@@ -19,7 +19,7 @@
  * - **filled**: the document holds a value for it, for this character.
  * - **empty**: the document would fill it, and this character has nothing there (no alignment chosen, no spells).
  * - **not in the document**: nothing the Sheet shows says it. Where the character or its derivation does hold it (the
- *   proficiency marks, an imported save's personality text, the prepared lists), the report says so: those are things a
+ *   an imported save's personality text, the prepared lists), the report says so: those are things a
  *   form export would have to read from outside the document, which ADR 0075 decision 1 rules out for every renderer.
  *
  * And where the form's shape does not fit: a level with more spells than the form has lines, a second casting block on
@@ -116,9 +116,9 @@ const OFFICIAL_2014: Box[] = [
   { page: 1, name: 'ability scores and modifiers', text: 12, checks: 0, read: (d) => (d.section('abilities')?.rows.every((r) => r.beside) ? 'filled' : 'absent') },
   { page: 1, name: 'proficiency bonus', text: 1, checks: 0, read: (d) => rowsFilled(d, 'combat', ['proficiency']) },
   { page: 1, name: 'saving throws', text: 6, checks: 0, read: (d) => rowsFilled(d, 'saves', ABILITIES.map((a) => `${a}:save`)) },
-  { page: 1, name: 'saving throw proficiency marks', text: 0, checks: 6 },
+  { page: 1, name: 'saving throw proficiency marks', text: 0, checks: 6, read: (d) => (d.section('saves')?.rows.some((r) => r.mark) ? 'filled' : 'empty') },
   { page: 1, name: 'skills', text: 18, checks: 0, read: (d) => rowsFilled(d, 'skills', SKILLS) },
-  { page: 1, name: 'skill proficiency marks', text: 0, checks: 18 },
+  { page: 1, name: 'skill proficiency marks', text: 0, checks: 18, read: (d) => (d.section('skills')?.rows.some((r) => r.mark) ? 'filled' : 'empty') },
   { page: 1, name: 'passive Perception', text: 1, checks: 0, read: (d) => rowsFilled(d, 'senses', ['perception:passive']) },
   { page: 1, name: 'armour class, initiative, speed', text: 3, checks: 0, read: (d) => rowsFilled(d, 'combat', ['ac', 'initiative', 'speed']) },
   { page: 1, name: 'hit point maximum', text: 1, checks: 0, read: (d) => rowsFilled(d, 'combat', ['hp']) },
@@ -316,7 +316,7 @@ test('the samples against the 2014 fillable sheet: what the sheet document fills
     const values = readings.map((r) => r.chars.get(b.name) ?? 0);
     t.diagnostic(`${b.name}: characters a sample would write ${range(values)}; the box holds about ${b.holds} at 7 pt; samples over it ${values.filter((v) => v > b.holds!).length}`);
   }
-  t.diagnostic(`held outside the document: proficiency marks in the derivation per sample ${range(readings.map((r) => r.proficiencyMarks))} (the form has 24 boxes for them); prepared spells recorded on ${readings.filter((r) => r.prepared).length} samples, ${range(readings.filter((r) => r.prepared).map((r) => r.prepared))} each; personal text (freeform) on ${readings.filter((r) => r.freeformKeys.length).length} samples, what it holds ${freeformFamilies(readings)}; a portrait on ${readings.filter((r) => r.hasPortrait).length}`);
+  t.diagnostic(`proficiency marks in the derivation per sample ${range(readings.map((r) => r.proficiencyMarks))}, which the document carries since ADR 0079 decision 6 (the form has 24 boxes for them); held outside the document: prepared spells recorded on ${readings.filter((r) => r.prepared).length} samples, ${range(readings.filter((r) => r.prepared).map((r) => r.prepared))} each; personal text (freeform) on ${readings.filter((r) => r.freeformKeys.length).length} samples, what it holds ${freeformFamilies(readings)}; a portrait on ${readings.filter((r) => r.hasPortrait).length}`);
   const outside = new Set(readings.flatMap((r) => [...r.outside]));
   t.diagnostic(`characters the form's font (Helvetica, WinAnsi, not embedded) cannot write: on ${readings.filter((r) => r.outside.size).length} samples, ${[...outside].map((c) => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(' ') || 'none'}`);
 });
