@@ -977,6 +977,13 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     `trackStatPattern` names and only when that element contributed it (a single-class character's implicit track, ADR
     0044, included; never recomputed from `advancement`). `listedName` writes "Paladin 3". 5e's `pc` Character section
     declares it; `class-levels.test.ts` holds every sample's split.
+  - **A spell's level and prepared mark are built** (decision 8): a sheet section may declare `group` (a setter it lists
+    by, named like a candidate note; core's `sheetGroup`, `compareSheetGroups`) and `preparedMark` (what always and chosen
+    are called; core's `preparedState` reads `DerivedCharacter.preparation` across every block, always first). Such a
+    section **also lists what a prepared list holds and the character does not**: a list preparer's spells are embedded
+    and never seeded (ADR 0046), and 50 of the samples' 94 chosen spells were on no sheet; `sheetView` takes a lookup, the
+    builder's index. `listedAside` writes "Level 1, prepared". 5e's `pc` Spells section declares both;
+    `spell-levels.test.ts` holds every sample's list and marks to the derivation.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

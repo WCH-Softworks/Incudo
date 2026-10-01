@@ -1,6 +1,6 @@
 # 0079 — A PDF sheet is the print layout written to a file, and the official form is the user's own copy, filled from the document
 
-**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
+**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7), a spell's level and prepared mark on 2026-10-01 (decision 8) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
 · builds on [0012](./0012-self-contained-saves.md), [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
 [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -291,6 +291,60 @@ three-class sample, "Rogue 4", "Wizard 4" for the interleaved one and "Ranger 5"
 Triceratops NPC unchanged; the text exports (through a stand-in save picker) and A4 PDFs printed with `Page.printToPDF`
 carry the same words. Not in the Tauri window.
 
+### 8. What building it decided: a spell's level and prepared mark (2026-10-01)
+
+**A spell's level and whether it is prepared** (decision 4's third item), measured first by
+`tools/verify/src/spell-levels.test.ts` (report-only on the commit before them, on AuroraLegacy/elements at `c28ce6c`): over
+the thirty samples, 20 have a Spells section and it listed 261 spells, every one with a `level` setter reading a whole
+number from 0 to 5. There are 15 preparing blocks (ADR 0046). Their 29 always-prepared spells were all listed; of their 94
+chosen ones, **50 were on no sheet**: a block preparing from a list (Cleric, Druid, Paladin, Artificer) records spells the
+derivation does not hold, because `Character.prepared` is embedded and never seeded. A Cleric 20's eleven prepared spells
+were nowhere but the Build pane. One sample prepares two spells in two blocks: its Wizard's book holds Magic Missile and
+Thunderwave and the Wizard prepared them, and its Artificer always prepares them. The
+section listed spells in the order held, by level then name on only 3 of the 20.
+
+- **A sheet section may declare `group`** (system format, optional; `formatVersion` stays 1): a setter its listed elements
+  are grouped by, and what a group is called (`label` with `{value}`, `labels` for exact values, as `candidateNotes` names a
+  spell's level in a picker). Core's `sheetGroup` reads the setter (case ignored) and `compareSheetGroups` orders groups
+  by their values with digits read as numbers ("2" before "10"). The section then lists by group, by name within one, and
+  what is in no group last, in the order held. `SheetListedElement.group` is `{ value, label }`; the value is what a form
+  filler places by.
+- **A sheet section may declare `preparedMark`**: what an element is called when content always prepares it and when the
+  player chose it. Core's `preparedState` reads `DerivedCharacter.preparation` across every block, `always` before
+  `chosen`, never what a block cannot prepare (`unavailable` counts for nothing, as in the limit): a spell listed once is
+  prepared if any block prepares it. `SheetListedElement.prepared` is `{ label, always }`. **Such a section also lists what
+  a prepared list holds and the character does not** (`preparedListIds`), looked up through the builder's index, where a
+  save's embedded content comes first, so a save with no source lists them too. Not a derivation change: they are listed,
+  never held.
+- **`listedAside`** (`sheet-document.ts`) is the one wording of what follows a listed element's name, "Level 1, prepared",
+  "Cantrip", beside `listedName`, `listedUsage` and `rowAside`; the pane, so the print, and the Markdown export call it.
+- **The validator refuses** a group on a section listing nothing; a prepared mark on a kind with no `preparation`, on a
+  section whose types leave out the kind's `preparation.elementType`, and in a creature's stat block, whose scope publishes
+  no preparation.
+- **5e's `pc` declares both on its Spells section**: `level`, "Level {value}", "Cantrip" for 0; "always prepared" and
+  "prepared". Nothing derives differently, and the system definition is not embedded in a save (ADR 0022), so every save
+  shows them; the oracle cannot move.
+
+Evidence: `spell-levels.test.ts` now asserts, against any corpus, that every sample's Spells section lists exactly what it
+holds and what its prepared lists hold, once each, every spell grouped by its level setter, in level order, and marked
+exactly as `preparedState` reads the derivation, and that the text export lists each so; it fails with either of 5e's
+declarations removed, and with the builder's lookup removed. On the samples: 311 spells listed (the 50 added), levels 0 to 9,
+29 always prepared and 92 prepared (the two spells prepared in two blocks counted once). `packages/core/src/system.test.ts`,
+`preparation.test.ts`, `packages/ui/src/sheet.test.ts`, `sheet-document.test.ts` and `tools/verify/src/schemas.test.ts`
+each fail under their named perturbations (exact labels not tried first, the setter matched by case, groups compared as
+text, name order within a group dropped, the grouping or the lookup unread, the two labels swapped, a section without the
+declaration marking, `chosen` read before `always`, the aside left out of the Markdown or its parts reordered, each
+validator check removed, either field left out of the schema). The PDF coverage test reads the form's spells by level and
+its 92 prepared boxes from the document: the boxes go from "not in the document" to filled on 9 samples and in part on 4
+(a level with more spells than lines has no box for the rest); fields never in the document go from 143 to 51 on every
+sample, the median filled stays 180 (the most is 278), and five samples now have a level with more spells than the form
+has lines, one more than before because a Paladin's prepared spells are listed. Driven in the browser build (headless Edge
+on the dev server, every click injected over the debug port, an origin-private folder for the folder picker, five samples
+packed by `packCharacter` and opened with no content source): the Sheet reads "Bane (Level 1, prepared)", "Bless (Level 1,
+always prepared)" and "Thaumaturgy (Cantrip)", a Cleric 20's prepared spells through "Mass Heal (Level 9, prepared)", the
+Wizard/Artificer's Magic Missile once, as always prepared (the stronger of its two marks); the five text exports (through a stand-in save picker) are byte
+for byte the tests' Markdown, and A4 PDFs printed with `Page.printToPDF` carry every spell line. Not in the Tauri window.
+
 ## What this does not do
 
 - **Ship, download, or cache from the network the official sheet.** Decision 3.
@@ -332,6 +386,7 @@ On AuroraLegacy/elements at `c28ce6c` and the thirty samples.
 | what | held by |
 |---|---|
 | what the derivation publishes as each class's level, against the samples' split | `tools/verify/src/class-levels.test.ts`, report-only before decision 7, asserting since |
+| each listed spell's level setter, the prepared lists per block, spells prepared in two blocks, the Spells section's order | `tools/verify/src/spell-levels.test.ts`, report-only before decision 8, asserting since |
 | the 2014 form's boxes and counts (334 fields: 210 text, 124 check boxes; 100 spell lines), and for the samples what the document fills, fills in part, leaves empty and never holds; where the form's shape does not fit; characters outside WinAnsi; what the NPC, Legendary Creature and Cairn documents hold | `tools/verify/src/pdf-sheet.test.ts`, report-only (ADR 0042), committed before this record; it asserts only that the listed boxes add up to the form's counts and that samples were read |
 
 - **The official PDFs** were downloaded once with the maintainer's leave into a scratch folder outside the repository, read
