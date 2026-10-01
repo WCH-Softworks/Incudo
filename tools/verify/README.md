@@ -57,6 +57,7 @@ names a person's machine, and version-control history is permanent.
 | `INCUDO_ORACLE_SNAPSHOT=<file>` | Write every save's differences to a file. |
 | `INCUDO_ORACLE_BASELINE=<file>` | **Fail on any difference** from a snapshot written earlier. Snapshot on the base, baseline on your change, same `.corpus/` commit: only an engine change can move it. |
 | `INCUDO_OFFICIAL_SHEET=<file>` | Your own copy of the official 2014 fillable character sheet, for `official-sheet.test.ts` to fill (ADR 0079). Never committed; skipped when unset. **Once set, a missing file fails.** |
+| `INCUDO_BASE_CORPUS_INDEX=<file>`, `INCUDO_BASE_CORPUS_ROOT=<dir>` | An older checkout of AuroraLegacy/elements for `content-refresh.test.ts` to import the samples against, as if saved then (ADR 0082). Skipped when unset. **Once set, a missing file fails.** |
 
 ## Rules for this folder
 

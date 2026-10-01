@@ -144,3 +144,23 @@ export function requireOfficialSheet(): string {
   );
   return officialSheet;
 }
+
+/**
+ * An older checkout of the official corpus to measure a content refresh against (ADR 0082): the samples are imported
+ * against it, as if saved then, and compared with today's. A checkout of AuroraLegacy/elements at an older commit, read
+ * in the `repository` layout. With nothing named the measurement is skipped; named and missing fails.
+ */
+const baseIndex = process.env['INCUDO_BASE_CORPUS_INDEX'] ?? '';
+const baseRoot = process.env['INCUDO_BASE_CORPUS_ROOT'] ?? (baseIndex ? dirname(baseIndex) : '');
+
+/** Why the refresh measurement is not running, or `false` when it should. */
+export const baseCorpusSkip: string | false = baseIndex
+  ? false
+  : 'no older corpus: set INCUDO_BASE_CORPUS_INDEX to an older checkout of AuroraLegacy/elements (tools/verify/README.md)';
+
+/** The older corpus, failing rather than skipping when it was named and is not there. */
+export function requireBaseCorpus(): CorpusLocation {
+  assert.ok(baseIndex, baseCorpusSkip || 'no older corpus is named');
+  assert.ok(existsSync(baseIndex), 'INCUDO_BASE_CORPUS_INDEX names a file that does not exist. Failing rather than skipping.');
+  return { index: baseIndex, layout: 'repository', root: baseRoot };
+}
