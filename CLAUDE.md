@@ -968,6 +968,11 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     wording of what follows a value ("+7 (expertise)"), read by the pane and the Markdown. 5e's `pc` declares it on Saving
     Throws and Skills; content puts expertise in the `double` bucket and Jack of All Trades in `…:misc`, which is why a
     mark reads `…:proficiency` and never the row's value. The mark's row stat need not be declared (content supplies it).
+  - **Levels per class are built** (decision 7): a sheet section may declare `trackProgress`, and a listed element a track
+    is rooted on carries `SheetListedElement.progress`, read by core's `trackProgress` from the stat the progression's
+    `trackStatPattern` names and only when that element contributed it (a single-class character's implicit track, ADR
+    0044, included; never recomputed from `advancement`). `listedName` writes "Paladin 3". 5e's `pc` Character section
+    declares it; `class-levels.test.ts` holds every sample's split.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

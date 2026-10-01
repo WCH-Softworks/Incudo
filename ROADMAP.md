@@ -1318,7 +1318,9 @@ pane draws and every export renders: the PDF and the print layout start from it,
   - [x] **save and skill proficiency marks**: a sheet section's `mark` counts how many proficiency bonuses a row's
         proficiency stat holds; 5e's Saving Throws and Skills read "+7 (expertise)" on the Sheet, the print and the text
         export (ADR 0079 decision 6; 203 proficient and 10 expertise rows on the samples, all matching the derivation)
-  - [ ] levels per class (8 multiclass samples)
+  - [x] **levels per class**: a sheet section's `trackProgress` writes a listed class with the count its track publishes;
+        5e's Character section reads "Paladin 3", "Sorcerer 3" on the Sheet, the print and the text export (ADR 0079
+        decision 7; the 40 classes of the thirty samples, all as the split, single-class ones from their implicit track)
   - [ ] a spell's level and its prepared mark (the form is by level; 92 prepared boxes)
   - [ ] hit dice per class
   - [ ] "Export sheet as PDF…" in the Windows window, with paper in the print options step

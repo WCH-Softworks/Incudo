@@ -1,6 +1,6 @@
 # 0079 — A PDF sheet is the print layout written to a file, and the official form is the user's own copy, filled from the document
 
-**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks the same day (decision 6) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
+**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
 · builds on [0012](./0012-self-contained-saves.md), [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
 [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -178,7 +178,8 @@ show it too. In that order, each its own change and its own measurement:
 - **Save and skill proficiency marks**: a row says whether the character is proficient (and has expertise), from the
   `…:proficiency` stats the derivation already publishes. ADR 0074 listed it as not done.
 - **Levels per class**: the Character section names each class with its level, from `advancement`; "Paladin 2 / Sorcerer 4"
-  fills the form's one line and reads better on every sheet.
+  fills the form's one line and reads better on every sheet. *(Built from what the derivation publishes per track, not
+  from `advancement`, which a single-class character does not record: decision 7.)*
 - **A spell's level, and whether it is prepared**: a listed spell carries its level (its element's setter) and a prepared
   mark (`Character.prepared` and always-prepared, ADR 0046), so a sheet can list spells by level as the 2014 and 2024 sheets
   both do.
@@ -251,6 +252,45 @@ packed before the change): the Sheet reads "Stealth +10 (expertise)" and "+5 (pr
 proficient, the Triceratops nothing, and the printed PDFs carry the same words on the same page counts as before. Not in
 the Tauri window.
 
+### 7. What building it decided: levels per class (2026-09-30)
+
+**Levels per class** (decision 4's second item), measured first by `tools/verify/src/class-levels.test.ts` (report-only on
+the commit before them, on AuroraLegacy/elements at `c28ce6c`): over the thirty samples, 22 single-class and 8 multiclass,
+every one of the 40 classes held has a track stat, `level:<name>` as the progression's `trackStatPattern` names it, whose one
+contribution is the class element; it agrees with the manifest's split on all 40, with `gateLevels` on all 40, and the
+counts add up to the character level on all thirty. A single-class character publishes its count from its implicit track
+(ADR 0044 decision 5), so `advancement`, which it does not record (ADR 0036), is not needed, and nothing is recomputed. The
+Character section already listed the classes in the order first taken, the interleaved Rogue/Wizard included.
+
+- **A sheet section may declare `trackProgress`** (system format, optional boolean; `formatVersion` stays 1): a listed
+  element a track is rooted on carries that track's count. Core's `trackProgress(progression, element, stats)` reads the
+  stat `trackStatKey` names and returns its value **only when that element contributed it**, so a stat content writes
+  under the same name, or an element that merely shares a track's name, reads as none. The kind already said where a
+  track's count is (`trackStatPattern`); the section says where it is shown. No game noun in core or `packages/ui`.
+- **`SheetListedElement.progress`** holds it (`sheetSections` reads the kind's progression through
+  `SheetVocabulary.progression`; a creature's scope passes none). **`listedName` writes it after the name the sheet gives
+  the element**, "Paladin 3", so the pane, the print and the Markdown export name it one way. Joining the classes into the
+  form's one line ("Paladin 3 / Sorcerer 3") is the form filler's, decision 5.
+- **The validator refuses** `trackProgress` on a section listing no types, on a kind whose progression publishes no
+  track count (no `trackStatPattern`), and in a creature's stat block, which has no tracks of its own.
+- **5e's `pc` declares it on its Character section.** Not the NPC or the Legendary Creature, whose progression is a rating
+  with no tracks. Nothing derives differently, and the system definition is not embedded in a save (ADR 0022), so every
+  save shows its levels; the oracle cannot move.
+
+Evidence: `class-levels.test.ts` now asserts, against any corpus, that every sample's Character section names its classes
+with the levels its split took, first taken first, and that the text export lists each; it fails with 5e's declaration
+removed. `packages/core/src/system.test.ts`, `packages/ui/src/sheet.test.ts`, `sheet-document.test.ts` and
+`tools/verify/src/schemas.test.ts` each fail under their named perturbations (a stat not contributed by the element read
+as its count, the track looked up other than as `trackStatKey` names it, the progression not handed to the sections, the
+section's flag unread, the count left out of the name, the validator's check removed). The PDF coverage test reads the
+form's class and level line from the document's listed classes: filled on all thirty, where the 8 multiclass samples were
+"in part"; fields filled a sample go from a median of 179 to 180. Driven in the browser build (headless Edge on the dev
+server, every click injected over the debug port, an origin-private folder for the folder picker, six characters packed by
+`packCharacter` and opened with no content source): the Sheet reads "Wizard 4", "Paladin 3", "Fighter 3" for the
+three-class sample, "Rogue 4", "Wizard 4" for the interleaved one and "Ranger 5" for a single-class 2024 one, the
+Triceratops NPC unchanged; the text exports (through a stand-in save picker) and A4 PDFs printed with `Page.printToPDF`
+carry the same words. Not in the Tauri window.
+
 ## What this does not do
 
 - **Ship, download, or cache from the network the official sheet.** Decision 3.
@@ -291,6 +331,7 @@ On AuroraLegacy/elements at `c28ce6c` and the thirty samples.
 
 | what | held by |
 |---|---|
+| what the derivation publishes as each class's level, against the samples' split | `tools/verify/src/class-levels.test.ts`, report-only before decision 7, asserting since |
 | the 2014 form's boxes and counts (334 fields: 210 text, 124 check boxes; 100 spell lines), and for the samples what the document fills, fills in part, leaves empty and never holds; where the form's shape does not fit; characters outside WinAnsi; what the NPC, Legendary Creature and Cairn documents hold | `tools/verify/src/pdf-sheet.test.ts`, report-only (ADR 0042), committed before this record; it asserts only that the listed boxes add up to the form's counts and that samples were read |
 
 - **The official PDFs** were downloaded once with the maintainer's leave into a scratch folder outside the repository, read
