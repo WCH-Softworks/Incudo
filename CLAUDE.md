@@ -939,8 +939,18 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   - Driven in the Tauri window on Windows: 109 prints of 36 packed characters, no source added, through the step and
     WebView2's preview (no headers option in any; a scratch margin made it appear) and to PDF with the dialog's headers on:
     no date, title or address, numbers and the name only where chosen, every word of the export of the parts printed (a
-    kept table's `<thead>` repeats on the next page, which is Chromium's). Running items move no page count. Not with real
-    keys, mouse or paper, not in the browser build, not on macOS or Linux.
+    kept table's `<thead>` repeats on the next page, which is Chromium's). Running items move no page count.
+  - **Driven again with real keys, a real mouse and paper** (the same day): Ctrl+P opens nothing on Build, the step on the
+    Sheet, nothing a second time; real Escape and Cancel print and record nothing; boxes toggle, the last part is greyed,
+    Tab cycles inside the step, and **Enter on any box prints** (Print… is the form's submit). No headers option in the
+    preview for all four running-item combinations; on A4 paper (both items, and neither) and saved as PDF through the
+    real save dialog, nothing of the dialog, the app's items exactly where chosen, every word of the export. Remembered
+    across characters and a window restart.
+  - **The preview's Margins list undoes decision 4**: Minimum or Custom brings the headers option back (ticked), Custom
+    with room at the head prints the dialog's date and title on page 1 and the app's page numbers are lost, and the preview
+    remembers the choice for the next print. It opens on Default, which is what the rules hold for; no print rule was found
+    that holds against it (a no-break space in page 1's head box did not), so nothing changed. Not in the browser build,
+    not on macOS or Linux.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

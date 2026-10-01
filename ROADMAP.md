@@ -1391,8 +1391,14 @@ pane draws and every export renders: the PDF and the print layout start from it,
     under the app's own page number or name. Printed in the Windows window 109 times (36 characters, every combination of
     running items, every choice of parts), through the preview (no headers option in any) and to PDF with the dialog's
     headers on (no date, title or address on any page). Building it found that Chromium lets a later `@page` rule beat
-    `:first`, which put the name on page 1; held with `!important` and a test that resolves pages as Chromium does. Not
-    yet on paper or with real keys, and not on macOS or Linux (the item below).
+    `:first`, which put the name on page 1; held with `!important` and a test that resolves pages as Chromium does.
+  - **Driven with real keys, a real mouse and paper** (2026-09-30): the step, Ctrl+P, Escape and Tab behave as designed
+    (Enter on any box prints, Print… being the form's submit); A4 paper and a PDF saved through the real dialog carry
+    nothing of the dialog and the app's items where chosen; the choices survive a restart. **One limit found**: the
+    preview's own Margins list (Minimum, Custom) brings the headers option back, can print the dialog's date and title on
+    page 1 and drops the app's page numbers, and is remembered by the preview. It opens on Default, which the rules hold
+    for; nothing in the page was found to hold against it (ADR 0078, "What this does not do"). Not on macOS or Linux (the
+    item below).
 - [ ] **"Print sheet…" on macOS and Linux: does it print at all?** Open until the maintainer's macOS and Linux
       environments exist. The command calls `window.print()`, which Tauri's own documentation says works on every
       platform. But the same documentation says Tauri's Rust `print()` is only supported on macOS, and the wry version
