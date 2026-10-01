@@ -21,10 +21,11 @@ import {
   type Character,
   type Element,
   type GameSystem,
+  type RequirementContext,
   type Rule,
 } from '@incudo/core';
 import { CharacterBuilder } from './use-character-builder.ts';
-import { equipAdmits, planEquipAdd, planEquipRemove } from './equip-step.ts';
+import { equipAdmits, equipOffer, planEquipAdd, planEquipRemove, requirementConcerns } from './equip-step.ts';
 
 function element(id: string, type: string, extra: Partial<Element> = {}): Element {
   return {
@@ -227,4 +228,40 @@ test('taking back drops the answers it closed, and a swap keeps the answer of wh
   assert.equal(choices.some((c) => c.ruleKey === 'EXTRA/select:Charm'), false, 'the charm answer went with its item');
   assert.equal(held(b, 'CHARM'), false);
   assert.deepEqual(choices.find((c) => c.ruleKey === 'OLD/select:Keepsake')?.elementIds, ['T2'], 'the replaced knack keeps its answer');
+});
+
+// ADR 0081. A context where the character publishes `level:tinker` 1 and `level:juggler` 0, and holds HELD.
+const holder: RequirementContext = {
+  hasElement: (id) => id === 'HELD',
+  statNumber: (stat) => (stat === 'level:tinker' ? 1 : 0),
+  statString: () => undefined,
+  hasFlag: () => false,
+};
+
+// Fails if a term is read as whether it holds rather than whether it names something held (a level 1 tinker's
+// `>= 4` would read false), if a term under a `not` counts (`!HELD` would read true), if an `or` or `and` is not
+// looked into, or if a stat published at 0 counts.
+test('a requirement concerns the character when a term outside a not names a stat it has or an element it holds', () => {
+  assert.equal(requirementConcerns(parseRequirements('[level:tinker:4]'), holder), true);
+  assert.equal(requirementConcerns(parseRequirements('[level:juggler:1]'), holder), false);
+  assert.equal(requirementConcerns(parseRequirements('HELD'), holder), true);
+  assert.equal(requirementConcerns(parseRequirements('!HELD'), holder), false);
+  assert.equal(requirementConcerns(parseRequirements('OTHER||[level:tinker:9]'), holder), true);
+  assert.equal(requirementConcerns(parseRequirements('OTHER,[level:juggler:2]'), holder), false);
+  assert.equal(requirementConcerns(undefined, holder), false);
+});
+
+// Fails if `gatedOnHeld` is not read (the juggler's switch and the ungated one are offered), if it is read without
+// being declared (the plain step loses them), or if an element is kept for an ungated grant.
+test('a step gated on what the character has offers only what one of its grants is gated on', () => {
+  const gated = (id: string, requirements?: string): Element =>
+    element(id, 'Gadget', {
+      setters: shelf('Switches'),
+      rules: [{ ...grant(`${id}_FEATURE`), ...(requirements ? { requirements: parseRequirements(requirements) } : {}) }],
+    });
+  const index = new MapElementIndex();
+  index.addAll([gated('A_TINKER', '[level:tinker:4]'), gated('B_HELD', 'HELD'), gated('C_JUGGLER', '[level:juggler:1]'), gated('D_PLAIN')]);
+  const step = { id: 'switches', label: 'Switches', types: ['Gadget'], equip: { setter: 'shelf', values: ['Switches'] } };
+  assert.deepEqual(equipOffer({ ...step, equip: { ...step.equip, gatedOnHeld: true } }, index, holder), ['A_TINKER', 'B_HELD']);
+  assert.deepEqual(equipOffer(step, index, holder), ['A_TINKER', 'B_HELD', 'C_JUGGLER', 'D_PLAIN']);
 });

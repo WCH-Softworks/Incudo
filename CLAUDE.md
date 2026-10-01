@@ -670,6 +670,10 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     `removeAddition`); taking comes second and drops nothing, so a replaced feature's answer waits for it. Taking equips
     a carried entry of the element if there is one; taking back removes an entry that records nothing else and only
     unequips one with a quantity, slot, attunement, adornment, name or notes. The pane renders it as any set.
+  - **Since ADR 0081 an equip step may declare `gatedOnHeld`**: it offers an element only when one of its grants is
+    gated (a term outside a `not`) on a stat the character publishes above zero or an element it holds
+    (`requirementConcerns`, `equip-step.ts`); not whether it holds, so a Fighter 1 sees its level 4 feature. 5e's step
+    declares it, so it offers nothing before a class and a class only its own; `optional-feature-offer.test.ts` holds it.
   - **`InventoryDef.hiddenSetter`** (5e: `inventory-hidden`): `sheetListedElements` (core) leaves such an item off the
     sheet's lists; still held, derived and saved. The Sheet pane reads through it.
   - **`BuilderState.withdrawn`** names what ADR 0071 withdrew and its granters; Build lists it under "Not held" (an

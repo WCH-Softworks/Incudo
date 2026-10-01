@@ -13,7 +13,8 @@
  * offering another class's feature). Then a character with no class, a two-class character, and a Beast Master.
  *
  * Report-only (ADR 0042) on the commit before the step was narrowed. The rule is written here as well as in the product
- * so the measurement does not depend on it.
+ * so the measurement does not depend on it. Since ADR 0081 the last test asserts, through the builder and against any
+ * corpus, that the step offers nothing before a class and only the class's own features after.
  */
 
 import { test } from 'node:test';
@@ -108,4 +109,27 @@ test('optional class features a rule of "gated on what the character has" would 
     if (subclass) b.choose(subclass.id, [beastMaster.id]);
     t.diagnostic(`Ranger 3: Primal Companion offered ${before ? 'before' : 'not before'} the subclass, ${offered(b).some((f) => /Primal Companion/.test(f.name)) ? 'and' : 'and not'} once Beast Master is chosen${subclass ? '' : ' (no decision offered it)'}`);
   }
+});
+
+// ADR 0081. Fails if 5e's step loses `gatedOnHeld` (every class is offered all of them, and so is a character with no
+// class), or if the builder offers from anything but `equipOffer`.
+test("the optional class features step offers nothing before a class, and a class only its own", { skip: corpusSkip }, async () => {
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await realElements();
+  const offer = (b: CharacterBuilder): string[] => b.getState().decisions.find((d) => d.stepId === 'optional-features')?.candidates ?? [];
+  const fresh = (classId?: string): CharacterBuilder => {
+    const c = newCharacterOfKind(system, 'pc');
+    const b = new CharacterBuilder(c, system, elements);
+    if (classId) b.choose('build/class', [classId]);
+    return b;
+  };
+  assert.deepEqual(offer(fresh()), [], 'no class, no offer');
+  let offered = 0;
+  for (const cls of elements.byType('Class')) {
+    const own = `level:${cls.name.toLowerCase()}`;
+    const ids = offer(fresh(cls.id));
+    offered += ids.length;
+    for (const id of ids) assert.ok(classStats(elements.get(id)!).has(own), `${cls.name} (${cls.source}) is offered ${elements.get(id)!.name}`);
+  }
+  assert.ok(offered > 0, 'some class is offered some feature');
 });

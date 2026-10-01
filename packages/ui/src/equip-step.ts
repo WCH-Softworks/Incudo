@@ -13,6 +13,8 @@
 
 import {
   evaluateRequirements,
+  type GrantRule,
+  type RequirementExpr,
   newInstanceId,
   removeInventoryEntry,
   setInventoryEntry,
@@ -43,14 +45,44 @@ export function equipAdmits(step: BuildStepDef, element: Element): boolean {
 }
 
 /**
+ * Whether a term of a requirement, not under a `not`, names something the character has: a stat it publishes above
+ * zero, or an element it holds — ADR 0081. Not whether the requirement holds: a Fighter 1 has `level:fighter`, so a
+ * feature gated on `level:fighter >= 4` concerns it now and gives it something at 4.
+ */
+export function requirementConcerns(expr: RequirementExpr | undefined, context: RequirementContext): boolean {
+  if (!expr) return false;
+  switch (expr.kind) {
+    case 'and':
+    case 'or':
+      return expr.children.some((child) => requirementConcerns(child, context));
+    case 'has':
+      return context.hasElement(expr.id);
+    case 'atLeast':
+      return context.statNumber(expr.stat) > 0;
+    default:
+      return false;
+  }
+}
+
+/** Whether one of an element's grants is gated on something the character has (`gatedOnHeld`, ADR 0081). */
+export function grantsConcern(element: Element, context: RequirementContext): boolean {
+  return element.rules.some((rule): boolean => rule.kind === 'grant' && requirementConcerns((rule as GrantRule).requirements, context));
+}
+
+/**
  * What the step could put on the character: every element it admits, from `elements` (the offered view, ADR 0049, so a
- * book switched off offers nothing), whose own requirements hold, as any step's offer is filtered. By name. What the
- * character already holds is the caller's to leave out, as it is for a set of choices.
+ * book switched off offers nothing), whose own requirements hold, as any step's offer is filtered, and, when the step
+ * says so, one of whose grants concerns the character (ADR 0081). By name. What the character already holds is the
+ * caller's to leave out, as it is for a set of choices.
  */
 export function equipOffer(step: BuildStepDef, elements: ElementIndex, context: RequirementContext): ElementId[] {
+  const gated = step.equip?.gatedOnHeld === true;
   return step.types
     .flatMap((type) => elements.byType(type))
-    .filter((element) => equipAdmits(step, element) && evaluateRequirements(element.requirements, context))
+    .filter(
+      (element) =>
+        equipAdmits(step, element) && evaluateRequirements(element.requirements, context) && (!gated || grantsConcern(element, context)),
+    )
     .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
     .map((element) => element.id);
 }

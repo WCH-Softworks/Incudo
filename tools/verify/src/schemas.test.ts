@@ -252,6 +252,12 @@ test('a system that would throw at load fails validation instead', async () => {
     ['characterKinds[0].sheet.sections[0].omitHidden: must be a boolean, not a string'],
   );
 
+  // ADR 0081: `gatedOnHeld` is a boolean on an equip step. Fails if it is left out of the schema (both: an unknown field).
+  const equipStep = (gatedOnHeld: unknown) =>
+    broken((s) => (s.characterKinds[0]!.buildSteps = [{ id: 'one', label: 'One', types: ['Widget'], equip: { setter: 'kind', values: ['x'], gatedOnHeld: gatedOnHeld as boolean } }]));
+  assert.deepEqual(await errorsFor(equipStep(true)), []);
+  assert.deepEqual(await errorsFor(equipStep('yes')), ['characterKinds[0].buildSteps[0].equip.gatedOnHeld: must be a boolean, not a string']);
+
   // ADR 0080: what a new character starts with is an answer to a set, no id twice and none blank. Fails if the check is
   // removed (the first two), or `initial` is left out of the schema (the third: an unknown field).
   const step = (extra: Record<string, unknown>) =>

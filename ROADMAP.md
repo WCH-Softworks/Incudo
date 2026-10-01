@@ -1059,6 +1059,11 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       clicks over the debug port, the saved file read back from disk with no source). **Not done:** a general bag editor;
       saying which items give a character anything; the other hidden item families (climb speeds, feat unlockers, the
       companion and familiar selections); macOS and Linux not driven.
+- [x] **Optional class features follow the class**
+      ([ADR 0081](./docs/adr/0081-an-equip-step-may-offer-only-what-is-gated-on-what-the-character-has.md)). An equip step
+      may declare `gatedOnHeld`: an item is offered only when one of its grants is gated on a stat the character publishes
+      or an element it holds. 5e's step offers nothing before a class, then that class's features (1 to 7 per class),
+      each class's to a multiclass character, and Primal Companion once Beast Master is chosen.
 
 ---
 

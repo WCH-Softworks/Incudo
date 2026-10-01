@@ -747,6 +747,13 @@ export interface EquipStepDef {
   setter: string;
   /** The values that admit an element, compared ignoring case. */
   values: string[];
+  /**
+   * Offer only an element one of whose grants is gated on something the character has — ADR 0081: a term, not under a
+   * `not`, naming a stat the character publishes above zero or an element it holds. 5e's optional class features gate
+   * each grant on their class's level (`level:ranger >= 1`) or on a subclass, so a character is offered its own
+   * classes' features once it has a class, and none before. An element with no gated grant is never offered.
+   */
+  gatedOnHeld?: boolean;
 }
 
 /**

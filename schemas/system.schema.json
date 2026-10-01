@@ -781,6 +781,10 @@
               "minItems": 1,
               "items": { "type": "string", "minLength": 1 },
               "description": "The values that admit an element, compared ignoring case."
+            },
+            "gatedOnHeld": {
+              "type": "boolean",
+              "description": "Offer only an element one of whose grants is gated on something the character has (ADR 0081): a term, not under a `not`, naming a stat the character publishes above zero or an element it holds. 5e's optional class features gate their grants on their class's level, so a character is offered its own classes' features once it has a class, and none before."
             }
           }
         },
