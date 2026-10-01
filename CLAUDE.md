@@ -963,6 +963,11 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
   - **It is filled from the sheet document only** (ADR 0075's rule), which grows first: proficiency marks, levels per class,
     spell levels and prepared marks, hit dice. The field map is the 5e system's data; the filler in `packages/ui` names no
     game; the PDF library is in `apps/desktop`.
+  - **Proficiency marks are built** (decision 6): a sheet section may declare `mark: { stat, per, labels }`, a row
+    template counted in multiples of `per`; `SheetRow.mark` is `{ label, count }` (`rowMark`), and `rowAside` is the one
+    wording of what follows a value ("+7 (expertise)"), read by the pane and the Markdown. 5e's `pc` declares it on Saving
+    Throws and Skills; content puts expertise in the `double` bucket and Jack of All Trades in `…:misc`, which is why a
+    mark reads `…:proficiency` and never the row's value. The mark's row stat need not be declared (content supplies it).
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

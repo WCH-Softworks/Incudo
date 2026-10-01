@@ -1,6 +1,6 @@
 # 0079 — A PDF sheet is the print layout written to a file, and the official form is the user's own copy, filled from the document
 
-**Status:** Accepted · 2026-09-30 (proposed the same day) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
+**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks the same day (decision 6) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
 · builds on [0012](./0012-self-contained-saves.md), [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
 [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -207,6 +207,49 @@ the form's own "additional features & traits" box on page 2; anything else that 
 past a level's lines, proficiencies past their box) is left off the form, and the export's result line names what was left
 off and says Incudo's own sheet has it. A character the form's font cannot write is named the same way, never dropped
 silently.
+
+### 6. What building it decided (2026-09-30)
+
+**Proficiency marks** (decision 4's first item), measured first by `tools/verify/src/proficiency-marks.test.ts`
+(report-only on the commit before them, on AuroraLegacy/elements at `c28ce6c`):
+
+| rows | the row's `…:proficiency` over `proficiency` | ratio and contributions disagree | something else added (`…:misc`) |
+|---|---|---|---|
+| the thirty samples, 720 | 0 on 507, **1 on 203** (all bucket `proficiency`), **2 on 10** (`proficiency` and `double`) | 0 | 27 (Jack of All Trades and the like) |
+| the creatures five samples hold, in their scope, 120 | 0 on 110, 1 on 8, 2 on 2 | 0 | 0 |
+| every creature as an NPC, 3,384 | 0 on 3,084, 1 on 268, 2 on 32 | 0 | 0 |
+
+Content writes a proficiency as the bonus into the row's `…:proficiency` and expertise as a second one in the `double`
+bucket; Jack of All Trades' half bonus goes to `…:misc`. So a mark is a count, and the engine never needs the word:
+
+- **A sheet section may declare `mark`** (system format, optional; `formatVersion` stays 1): `stat`, a row template
+  (`"{stat}:proficiency"`), `per`, the stat counted (`"proficiency"`), and `labels`, what one, two, … are called.
+  `renderSheetSection` publishes each row's mark stat aligned with the rows `showWhen` keeps, block placeholders resolved,
+  as it does `beside`. The validator refuses a `per` the kind does not declare, a `stat` with no `{stat}`, no labels, and a
+  mark on a section with no rows. **The row's own stat is not required to be declared**: content supplies 5e's
+  `<skill>:proficiency`, which `pc` never declares, and declaring 24 stats would add them to every derivation's summary for
+  no reader.
+- **`SheetRow.mark`** is `{ label, count }`, only when the row holds at least one whole multiple and `per` is positive
+  (`rowMark`, `packages/ui/src/sheet.ts`); more multiples than labels read as the last label. **`rowAside`**
+  (`sheet-document.ts`) is the one wording of what follows a value, "+7 (expertise)", "18 (+4)", beside and mark joined in
+  one pair of parentheses; the pane and the Markdown both call it, so the print shows it too.
+- **5e's `pc` declares it on Saving Throws (`["proficient"]`) and Skills (`["proficient", "expertise"]`).** Not on the NPC,
+  the Legendary Creature or a held creature's stat block, though measured clean on all three: a book's stat block prints
+  proficient skills and saves only (`showWhen` already does) and marks none. A declaration away when a sheet wants it.
+- Nothing derives differently: the system definition is not embedded in a save (ADR 0022), so every save, those written
+  before this included, shows its marks. The oracle cannot move (no derivation changed).
+
+Evidence: `tools/verify/src/proficiency-marks.test.ts` now asserts, against any corpus, that every sample's save and skill
+rows carry a mark exactly when and as the derivation's proficiency stat reads (203 proficient, 10 expertise), and fails
+when the mark is read from the row's value instead; `packages/core/src/system.test.ts`, `packages/ui/src/sheet.test.ts`,
+`sheet-document.test.ts` and `tools/verify/src/schemas.test.ts` each fail under their named perturbations (the mark not
+published, not aligned with `showWhen`, not counted against `per`, not clamped to the last label, a zero `per` dividing,
+the mark left out of a row's wording, the validator removed). The PDF coverage test now counts the 24 mark boxes as
+filled on all thirty samples: fields filled a sample go from a median of 155 to 179, and 143 are never in the document.
+Driven in the browser build (headless Edge on the dev server, every click injected over the debug port, six characters
+packed before the change): the Sheet reads "Stealth +10 (expertise)" and "+5 (proficient)" where the samples are
+proficient, the Triceratops nothing, and the printed PDFs carry the same words on the same page counts as before. Not in
+the Tauri window.
 
 ## What this does not do
 
