@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { FileSaveOptions, FileSaver, SavedFile } from '@incudo/core';
+import type { FileSaveOptions, FileSaver, PaperSize, PdfWriter, SavedFile } from '@incudo/core';
 
 import type { CompanionsView } from './companions.ts';
 import type { ReferenceRow } from './references.ts';
@@ -25,7 +25,7 @@ import {
   UNNAMED_CHARACTER,
   type SheetDocumentSource,
 } from './sheet-document.ts';
-import { exportSheet } from './sheet-export.ts';
+import { exportSheet, exportSheetPdf } from './sheet-export.ts';
 import { sheetMarkdown } from './sheet-markdown.ts';
 import type { SheetView } from './sheet.ts';
 
@@ -276,4 +276,58 @@ test("a listed element's track dice lead what follows its name", () => {
   assert.equal(listedDice({}), undefined);
   assert.equal(listedAside({ dice: { count: 12, sides: 6 }, group: { value: '1', label: 'Tier 1' } }), '12d6, Tier 1');
   assert.equal(listedAside({ dice: { count: 1, sides: 8 } }), '1d8');
+});
+
+// --- the PDF export (ADR 0079) -----------------------------------------------------------------------
+
+class FakePdfWriter implements PdfWriter {
+  available = true;
+  unavailableReason?: string;
+  asked: PaperSize[] = [];
+  answer: Uint8Array | Error = new Uint8Array([37, 80, 68, 70]);
+  async write(paper: PaperSize): Promise<Uint8Array> {
+    this.asked.push(paper);
+    if (this.answer instanceof Error) throw this.answer;
+    return this.answer;
+  }
+}
+
+// Fails if the paper is not handed to the writer, if the writer's bytes are not what is saved, if the file is not named
+// after the character as a .pdf, or if the result carries more than a name.
+test('a PDF export asks the writer for the page on the paper chosen and saves its bytes, named after the character', async () => {
+  const writer = new FakePdfWriter();
+  const saver = new FakeSaver();
+  saver.answer = { name: 'nyx.pdf' };
+  const paper = { widthInches: 8.5, heightInches: 11 };
+  const result = await exportSheetPdf(writer, saver, sheetDocument({ ...source, character: { name: 'Nyx Évora' } }), paper);
+  assert.deepEqual(result, { status: 'saved', file: { name: 'nyx.pdf' } });
+  assert.deepEqual(writer.asked, [paper]);
+  const [{ bytes, options }] = saver.saved as [{ bytes: Uint8Array; options: FileSaveOptions }];
+  assert.deepEqual([...bytes], [37, 80, 68, 70]);
+  assert.equal(options.suggestedName, 'nyx-evora.pdf');
+  assert.deepEqual(options.extensions, ['pdf']);
+});
+
+// Fails if a writer that failed still opens the save dialog, if no writer or no dialog is not reported in its own words,
+// or if a cancel is reported as a failure.
+test('a PDF that cannot be written asks for no file, and a cancel is an answer', async () => {
+  const paper = { widthInches: 8.5, heightInches: 11 };
+  const failing = new FakePdfWriter();
+  failing.answer = new Error('This WebView2 cannot print to PDF.');
+  const saver = new FakeSaver();
+  assert.deepEqual(await exportSheetPdf(failing, saver, sheetDocument(source), paper), { status: 'failed', message: 'This WebView2 cannot print to PDF.' });
+  assert.equal(saver.saved.length, 0);
+  const none = new FakePdfWriter();
+  none.available = false;
+  none.unavailableReason = 'Windows only.';
+  assert.deepEqual(await exportSheetPdf(none, saver, sheetDocument(source), paper), { status: 'failed', message: 'Windows only.' });
+  assert.equal(none.asked.length, 0);
+  const noDialog = new FakeSaver();
+  noDialog.available = false;
+  noDialog.unavailableReason = 'No dialog here.';
+  const writer = new FakePdfWriter();
+  assert.deepEqual(await exportSheetPdf(writer, noDialog, sheetDocument(source), paper), { status: 'failed', message: 'No dialog here.' });
+  assert.equal(writer.asked.length, 0);
+  saver.answer = null;
+  assert.deepEqual(await exportSheetPdf(new FakePdfWriter(), saver, sheetDocument(source), paper), { status: 'cancelled' });
 });

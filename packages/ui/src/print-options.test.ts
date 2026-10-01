@@ -15,6 +15,8 @@ import {
   DEFAULT_PRINT_OPTIONS,
   finishPrintStep,
   OWN_SECTIONS_LABEL,
+  PAPERS,
+  paperForLocales,
   parsePrintOptions,
   printOptionsView,
   printPartsOf,
@@ -22,6 +24,7 @@ import {
   PRINT_OPTIONS_KEY,
   readPrintOptions,
   withPageNumbers,
+  withPaper,
   withPrintPart,
   withRunningName,
   type PrintOptions,
@@ -86,13 +89,13 @@ test('the last part chosen stays chosen', () => {
   options = withPrintPart(options, withCreature, 'companions', false);
   assert.deepEqual(options.omit, ['sections']);
   // A remembered set leaving out every part this sheet has prints its own sections.
-  const remembered: PrintOptions = { omit: ['sections', 'companions'], pageNumbers: true, runningName: true };
+  const remembered: PrintOptions = { omit: ['sections', 'companions'], pageNumbers: true, runningName: true, paper: 'a4' };
   assert.deepEqual(printOptionsView(withCreature, remembered).options.omit, ['companions']);
   assert.deepEqual(printOptionsView(own, remembered).options.omit, ['companions']);
 });
 
 test('a part a sheet lacks is never offered and a remembered omission of it is kept for the next sheet that has it', () => {
-  const remembered: PrintOptions = { omit: ['companions'], pageNumbers: true, runningName: true };
+  const remembered: PrintOptions = { omit: ['companions'], pageNumbers: true, runningName: true, paper: 'a4' };
   // Fails if the remembered omission puts a checkbox onto a sheet with no creatures.
   assert.deepEqual(printOptionsView(keeping, remembered).parts!.choices.map((c) => c.part), ['sections', 'references']);
   assert.deepEqual(printRendering(remembered, keeping).classes, ['print-page-numbers', 'print-running-name']);
@@ -151,7 +154,8 @@ class CountingStorage extends MemoryStorage {
 test('remembered: written on Print, not on Cancel, and read when the step opens', async () => {
   const storage = new CountingStorage();
   assert.deepEqual(await readPrintOptions(storage), DEFAULT_PRINT_OPTIONS);
-  const chosen = withPageNumbers(withPrintPart(DEFAULT_PRINT_OPTIONS, all, 'references', false), false);
+  // The paper too (ADR 0079): fails if it is left out of what is written, and the next PDF is offered the default again.
+  const chosen = withPaper(withPageNumbers(withPrintPart(DEFAULT_PRINT_OPTIONS, all, 'references', false), false), 'letter');
   // Fails if Cancel writes: what was in force stays in force, and nothing is stored.
   assert.deepEqual(await finishPrintStep(storage, 'cancel', chosen, DEFAULT_PRINT_OPTIONS), DEFAULT_PRINT_OPTIONS);
   assert.equal(storage.writes, 0);
@@ -166,9 +170,16 @@ test('a stored value that does not parse falls back to the defaults, field by fi
   assert.deepEqual(parsePrintOptions('not json'), DEFAULT_PRINT_OPTIONS);
   assert.deepEqual(parsePrintOptions('[1,2]'), DEFAULT_PRINT_OPTIONS);
   // A part nobody knows is not left out; the known one is.
-  assert.deepEqual(parsePrintOptions('{"omit":["spells","references"],"pageNumbers":false}'), { omit: ['references'], pageNumbers: false, runningName: true });
+  assert.deepEqual(parsePrintOptions('{"omit":["spells","references"],"pageNumbers":false}'), { omit: ['references'], pageNumbers: false, runningName: true, paper: 'a4' });
   // A field of the wrong shape is the default's, and the others are kept.
-  assert.deepEqual(parsePrintOptions('{"omit":"companions","pageNumbers":"no","runningName":false}'), { omit: [], pageNumbers: true, runningName: false });
+  assert.deepEqual(parsePrintOptions('{"omit":"companions","pageNumbers":"no","runningName":false}'), { omit: [], pageNumbers: true, runningName: false, paper: 'a4' });
+  // A paper nobody offers, or one of an inherited name, is the default's; a known one is kept.
+  assert.equal(parsePrintOptions('{"paper":"a3"}').paper, 'a4');
+  assert.equal(parsePrintOptions('{"paper":"toString"}').paper, 'a4');
+  assert.equal(parsePrintOptions('{"paper":"letter"}').paper, 'letter');
+  // The defaults a shell passes are what a missing field falls back to (the user's languages' paper).
+  assert.equal(parsePrintOptions('{"pageNumbers":false}', { ...DEFAULT_PRINT_OPTIONS, paper: 'letter' }).paper, 'letter');
+  assert.equal((await readPrintOptions(new MemoryStorage(), { ...DEFAULT_PRINT_OPTIONS, paper: 'letter' })).paper, 'letter');
   // A storage that cannot be read is the defaults.
   const broken: Storage = {
     read: () => Promise.reject(new Error('no')),
@@ -177,4 +188,50 @@ test('a stored value that does not parse falls back to the defaults, field by fi
     list: () => Promise.resolve([]),
   };
   assert.deepEqual(await readPrintOptions(broken), DEFAULT_PRINT_OPTIONS);
+});
+
+// ADR 0079. Fails if the step offers a paper on its way to the print dialog (whose paper it is), offers none for a PDF,
+// marks the wrong one chosen, or keeps the print's heading and button.
+test('the step leading to a PDF offers the paper and says it exports; on the way to a print it does not', () => {
+  const print = printOptionsView(own, DEFAULT_PRINT_OPTIONS);
+  assert.equal(print.paper, undefined);
+  assert.equal(print.submit, 'Print…');
+  const pdf = printOptionsView(own, withPaper(DEFAULT_PRINT_OPTIONS, 'letter'), 'pdf');
+  assert.deepEqual(pdf.paper!.choices.map((c) => [c.paper, c.chosen]), [['a4', false], ['letter', true]]);
+  assert.equal(pdf.heading, 'Export sheet as PDF');
+  assert.equal(pdf.submit, 'Export…');
+  assert.notEqual(pdf.lede, print.lede);
+  // The paper is kept through every other choice, and remembered with them.
+  assert.equal(withPrintPart(withPaper(DEFAULT_PRINT_OPTIONS, 'letter'), all, 'companions', false).paper, 'letter');
+  assert.equal(pdf.options.paper, 'letter');
+});
+
+// ADR 0079 decision 1: a PDF's paper reaches the page as a page rule, a print's does not. Fails if a print gets a size
+// (the dialog's paper would be overridden), a PDF gets none or the other paper's, or the size and the name's rule are not
+// both there when both apply.
+test("a PDF's page rules carry the paper's size before the name's rule; a print's carry no size", () => {
+  assert.equal(printRendering(withPaper(DEFAULT_PRINT_OPTIONS, 'letter'), own).pageRule, '@page sheet-named-numbered { @top-left { content: "Nyx"; } }');
+  assert.equal(
+    printRendering(withPaper(DEFAULT_PRINT_OPTIONS, 'letter'), own, 'pdf').pageRule,
+    '@page { size: 8.5in 11in; }\n@page sheet-named-numbered { @top-left { content: "Nyx"; } }',
+  );
+  assert.equal(printRendering(withRunningName(DEFAULT_PRINT_OPTIONS, false), own, 'pdf').pageRule, '@page { size: 210mm 297mm; }');
+  assert.deepEqual(printRendering(withRunningName(DEFAULT_PRINT_OPTIONS, false), own, 'pdf').classes, ['print-page-numbers']);
+  // The size the PDF writer is given is the page rule's, in inches.
+  assert.ok(Math.abs(PAPERS.a4.size.widthInches - 8.2677) < 1e-4 && Math.abs(PAPERS.a4.size.heightInches - 11.6929) < 1e-4);
+  assert.deepEqual(PAPERS.letter.size, { widthInches: 8.5, heightInches: 11 });
+});
+
+// Fails if the first language naming a region does not decide (en-GB before en-US is A4), if a language with no region
+// decides, if a script subtag hides the region, or if a region is matched other than as a whole subtag.
+test('a first PDF is offered Letter where the user\'s first regional language uses it, A4 elsewhere', () => {
+  assert.equal(paperForLocales(['en-US']), 'letter');
+  assert.equal(paperForLocales(['pt-BR', 'en-US']), 'a4');
+  assert.equal(paperForLocales(['en', 'es-MX']), 'letter');
+  assert.equal(paperForLocales(['zh-Hant-TW']), 'a4');
+  assert.equal(paperForLocales(['es-Latn-CO']), 'letter');
+  assert.equal(paperForLocales(['en_ca']), 'letter');
+  assert.equal(paperForLocales(['de', 'fr']), 'a4');
+  assert.equal(paperForLocales(['en-USX']), 'a4');
+  assert.equal(paperForLocales([]), 'a4');
 });

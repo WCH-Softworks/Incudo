@@ -212,6 +212,30 @@ export interface FileSaver {
   save(bytes: Uint8Array, options: FileSaveOptions): Promise<SavedFile | null>;
 }
 
+/** A paper's size, in inches: the unit the platforms' print settings take. */
+export interface PaperSize {
+  widthInches: number;
+  heightInches: number;
+}
+
+/**
+ * The page on screen written as a PDF with no print dialog — ADR 0079 decision 2, for "Export sheet as PDF…".
+ *
+ * It writes **what the page prints now**: the caller has already put its print choices on the page, and the page's own
+ * print rules lay it out (ADR 0077/0078), so this decides nothing but the paper. Margins are zero, so the page's rules
+ * place everything, and the platform prints no header or footer of its own. Bytes out, and nothing written anywhere:
+ * the caller saves them through {@link FileSaver}, so the user names the file. A shell with no way to do it says so and
+ * offers no command for it; "Print sheet…" and its dialog's "Save as PDF" are the PDF there.
+ */
+export interface PdfWriter {
+  /** False where this shell cannot write a PDF without the print dialog. */
+  readonly available: boolean;
+  /** Why, when `available` is false. Shown verbatim, so write it for the user. */
+  readonly unavailableReason?: string;
+  /** The page as it prints, on paper of this size. Throws when the platform could not write it. */
+  write(paper: PaperSize): Promise<Uint8Array>;
+}
+
 /**
  * Files the user drops on the window — ADR 0056, for adding Aurora elements files as sources.
  *

@@ -44,6 +44,7 @@ export const COMMAND_IDS = [
   'save-copy',
   'export-sheet',
   'print-sheet',
+  'export-sheet-pdf',
   'import-aurora',
   'choose-library-folder',
   'refresh-library',
@@ -111,6 +112,10 @@ export const COMMANDS: readonly CommandDef[] = [
   // (ADR 0078). Ctrl+P is every platform's print chord, and claimed on every pane it stops the platform printing
   // whichever pane is showing; while the step is open it is claimed and runs nothing, as for any dialog.
   { id: 'print-sheet', label: 'Print sheet…', shortcut: { key: 'p', primary: true } },
+  // The print written to a file with no dialog (ADR 0079): the same options step, with a paper. Below Print, since it is
+  // the print. No shortcut, for the text export's reason. Only where the shell can write a PDF (`pdfAvailable`); where it
+  // cannot, the menu leaves it out (`menuModel`'s `absent`) and "Print sheet…" and its dialog are the PDF.
+  { id: 'export-sheet-pdf', label: 'Export sheet as PDF…' },
   // No shortcut: Ctrl+I is italic in every text field and Ctrl+Shift+I is developer tools.
   { id: 'import-aurora', label: 'Import from Aurora…' },
   { id: 'choose-library-folder', label: 'Choose library folder…' },
@@ -138,6 +143,7 @@ export const MENUS: MenuLayout = [
       'save-copy',
       'export-sheet',
       'print-sheet',
+      'export-sheet-pdf',
       null,
       'import-aurora',
       null,
@@ -181,6 +187,8 @@ export interface CommandContext {
   copying: boolean;
   /** A sheet is being exported. */
   exporting: boolean;
+  /** The shell can write the page as a PDF with no print dialog (ADR 0079). */
+  pdfAvailable: boolean;
 }
 
 /** The launcher, or the moment before anything has loaded: every command is unavailable. */
@@ -199,6 +207,7 @@ export const NO_WORKSPACE: CommandContext = {
   saverAvailable: false,
   copying: false,
   exporting: false,
+  pdfAvailable: false,
 };
 
 /**
@@ -248,6 +257,9 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   // On the Sheet, which is what prints (ADR 0077). The options step is the app's and the dialog the platform's, so it
   // needs no library, no content and no save dialog; it prints what is on screen, not a file.
   'print-sheet': (c) => c.pane === 'sheet',
+  // The print as a file (ADR 0079): on the Sheet, whose bar prints "Exported the sheet as …", where the shell can write a
+  // PDF and show a save dialog, and not while an export is in flight.
+  'export-sheet-pdf': (c) => c.pane === 'sheet' && c.pdfAvailable && c.saverAvailable && !c.exporting,
   // Its report is printed on the library screen, so that is where it can be started.
   'import-aurora': (c) => c.pane === 'library' && !c.importing && importBlock(c) === undefined,
   // Settings holds this one, but the first-run dialog and the library screen do too.
@@ -380,11 +392,14 @@ export interface MenuModel {
  * registered one, and in the Tauri window on Windows it never ran: WebView2 gives the page the
  * key and the host's accelerator table never sees it, so Ctrl+2 reached the page, matched nothing
  * there and did nothing. See ADR 0037.
+ *
+ * `absent` names commands this shell does not have at all, which are left out rather than greyed: "Export sheet as PDF…"
+ * where no PDF writer exists (ADR 0079 decision 2). A separator left with nothing on one side goes too.
  */
-export function menuModel(os: Os): MenuModel[] {
+export function menuModel(os: Os, absent: readonly CommandId[] = []): MenuModel[] {
   return MENUS.map((menu) => ({
     label: menu.label,
-    entries: menu.items.map((item): MenuEntry => {
+    entries: tidySeparators(menu.items.filter((item) => item === null || !absent.includes(item))).map((item): MenuEntry => {
       if (item === null) return { kind: 'separator' };
       const command = COMMANDS.find((candidate) => candidate.id === item)!;
       return {
@@ -395,6 +410,22 @@ export function menuModel(os: Os): MenuModel[] {
       };
     }),
   }));
+}
+
+/** Separators with a command on both sides: none leading, trailing or doubled. */
+function tidySeparators(items: ReadonlyArray<CommandId | null>): Array<CommandId | null> {
+  const out: Array<CommandId | null> = [];
+  for (const item of items) {
+    if (item === null && (out.length === 0 || out[out.length - 1] === null)) continue;
+    out.push(item);
+  }
+  if (out[out.length - 1] === null) out.pop();
+  return out;
+}
+
+/** The commands a shell does not have: what `menuModel` leaves out. */
+export function absentCommands(capabilities: { pdfAvailable: boolean }): CommandId[] {
+  return capabilities.pdfAvailable ? [] : ['export-sheet-pdf'];
 }
 
 // --- the port -------------------------------------------------------------------------------

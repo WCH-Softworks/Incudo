@@ -11,13 +11,17 @@
  * items) and, for the name, one generated `@page` rule, since a margin box cannot read the page's markup. No second
  * renderer (ADR 0077 decision 1).
  *
+ * "Export sheet as PDF…" opens the same step (ADR 0079 decision 1): a PDF is the print, written to a file, so its parts,
+ * page numbers and running name are the same choices, and the step offers one more, the paper, which reaches the page as
+ * a `@page` size rule and the PDF writer as a size. A print leaves the paper to the platform's dialog, as before.
+ *
  * The choices are remembered per user, in `Storage` under `PRINT_OPTIONS_KEY`, written when Print is pressed and never on
  * Cancel. Not per character: a paper preference is no input to a derivation (ADR 0006) and would raise a printed
  * character's format and travel with the file. A remembered omission of a part a sheet does not have is kept for the next
  * sheet that has it, and does nothing here.
  */
 
-import type { Storage } from '@incudo/core';
+import type { PaperSize, Storage } from '@incudo/core';
 
 import type { SheetDocument } from './sheet-document.ts';
 
@@ -26,6 +30,32 @@ export type PrintPart = 'sections' | 'companions' | 'references';
 
 export const PRINT_PARTS: readonly PrintPart[] = ['sections', 'companions', 'references'];
 
+/** The papers a PDF is written on. A print's paper is the platform dialog's. */
+export type Paper = 'a4' | 'letter';
+
+export const PAPERS: Readonly<Record<Paper, { label: string; css: string; size: PaperSize }>> = {
+  a4: { label: 'A4 (210 × 297 mm)', css: '210mm 297mm', size: { widthInches: 210 / 25.4, heightInches: 297 / 25.4 } },
+  letter: { label: 'Letter (8.5 × 11 in)', css: '8.5in 11in', size: { widthInches: 8.5, heightInches: 11 } },
+};
+
+/** What the step leads to: the platform's print dialog, or a PDF written with no dialog (ADR 0079). */
+export type PrintTarget = 'print' | 'pdf';
+
+const LETTER_REGIONS = new Set(['BZ', 'CA', 'CL', 'CO', 'CR', 'GT', 'MX', 'NI', 'PA', 'PH', 'PR', 'SV', 'US', 'VE']);
+
+/**
+ * The paper a first PDF is offered, from the user's languages: Letter where the first language naming a region names one
+ * that uses it (the regions CLDR gives Letter), A4 everywhere else and when none names a region. Only a first guess: the
+ * choice made in the step is remembered.
+ */
+export function paperForLocales(locales: readonly string[]): Paper {
+  for (const locale of locales) {
+    const region = /^[a-z]{2,3}(?:[-_][a-z]{4})?[-_]([a-z]{2})(?:[-_]|$)/i.exec(locale)?.[1]?.toUpperCase();
+    if (region) return LETTER_REGIONS.has(region) ? 'letter' : 'a4';
+  }
+  return 'a4';
+}
+
 /** What is chosen. Parts are recorded as left out, so a part a sheet gains later prints unless it was left out before. */
 export interface PrintOptions {
   omit: PrintPart[];
@@ -33,10 +63,12 @@ export interface PrintOptions {
   pageNumbers: boolean;
   /** The character's name at the head of every page after the first. */
   runningName: boolean;
+  /** The paper a PDF is written on; a print does not read it. */
+  paper: Paper;
 }
 
-/** Every part, page numbers, and the name on later pages. */
-export const DEFAULT_PRINT_OPTIONS: PrintOptions = { omit: [], pageNumbers: true, runningName: true };
+/** Every part, page numbers, the name on later pages, and A4 unless the user's languages say otherwise (`paperForLocales`). */
+export const DEFAULT_PRINT_OPTIONS: PrintOptions = { omit: [], pageNumbers: true, runningName: true, paper: 'a4' };
 
 /** Where the remembered choices are kept, one record per user. */
 export const PRINT_OPTIONS_KEY = 'print/options';
@@ -57,13 +89,23 @@ export interface PrintToggle {
   chosen: boolean;
 }
 
+export interface PaperChoice {
+  paper: Paper;
+  label: string;
+  chosen: boolean;
+}
+
 export interface PrintOptionsView {
   heading: string;
   lede: string;
+  /** What the step's button says: it prints, or it exports. */
+  submit: string;
   /** Absent when the sheet has only its own sections: one part that cannot be left out is not a choice. */
   parts?: { label: string; choices: PrintPartChoice[] };
   pageNumbers: PrintToggle;
   runningName: PrintToggle;
+  /** Only when the step leads to a PDF: a print's paper is the dialog's. */
+  paper?: { label: string; choices: PaperChoice[] };
   /** The options as this sheet reads them: what Print would record and print. */
   options: PrintOptions;
 }
@@ -94,16 +136,26 @@ export function normalizePrintOptions(options: PrintOptions, document: SheetDocu
     omit: kept.length > 0 ? omit : omit.filter((part) => part !== 'sections'),
     pageNumbers: options.pageNumbers,
     runningName: options.runningName,
+    paper: options.paper,
   };
 }
 
-export function printOptionsView(document: SheetDocument, options: PrintOptions): PrintOptionsView {
+export function printOptionsView(document: SheetDocument, options: PrintOptions, target: PrintTarget = 'print'): PrintOptionsView {
   const normal = normalizePrintOptions(options, document);
   const parts = printPartsOf(document);
   const chosen = parts.filter((part) => !normal.omit.includes(part));
   return {
-    heading: 'Print sheet',
-    lede: 'Choose what goes on the page. The printer, paper and copies are chosen in the print dialog that follows.',
+    ...(target === 'pdf'
+      ? {
+          heading: 'Export sheet as PDF',
+          lede: 'Choose what goes on the page and the paper. The file is named in the save dialog that follows.',
+          submit: 'Export…',
+        }
+      : {
+          heading: 'Print sheet',
+          lede: 'Choose what goes on the page. The printer, paper and copies are chosen in the print dialog that follows.',
+          submit: 'Print…',
+        }),
     ...(parts.length > 1
       ? {
           parts: {
@@ -119,6 +171,14 @@ export function printOptionsView(document: SheetDocument, options: PrintOptions)
       : {}),
     pageNumbers: { label: 'Page numbers at the foot of each page', chosen: normal.pageNumbers },
     runningName: { label: "The character's name at the top of each page after the first", chosen: normal.runningName },
+    ...(target === 'pdf'
+      ? {
+          paper: {
+            label: 'Paper',
+            choices: (Object.keys(PAPERS) as Paper[]).map((paper) => ({ paper, label: PAPERS[paper].label, chosen: normal.paper === paper })),
+          },
+        }
+      : {}),
     options: normal,
   };
 }
@@ -140,6 +200,10 @@ export function withRunningName(options: PrintOptions, runningName: boolean): Pr
   return { ...options, runningName };
 }
 
+export function withPaper(options: PrintOptions, paper: Paper): PrintOptions {
+  return { ...options, paper };
+}
+
 // --- what the Sheet is given ------------------------------------------------------------------
 
 /** The named page the Sheet prints on, for each combination of running items; the default page when there are none. */
@@ -153,25 +217,30 @@ export function printPageName(options: Pick<PrintOptions, 'pageNumbers' | 'runni
 export interface PrintRendering {
   /** For the Sheet's root. They mean something only under the print rules. */
   classes: string[];
-  /** A `@page` rule carrying the character's name, when it prints on later pages; nothing else is in it. */
+  /**
+   * The `@page` rules the page needs beyond the stylesheet's: the paper's size for a PDF, and one carrying the character's
+   * name when it prints on later pages. Absent when neither.
+   */
   pageRule?: string;
 }
 
 /**
  * What the Sheet is given for a print: a class per omitted part it has (`print-omit-<part>`) and per running item
- * (`print-page-numbers`, `print-running-name`), and the name's rule. The stylesheet does the rest.
+ * (`print-page-numbers`, `print-running-name`), the name's rule, and for a PDF the paper's size (a print's paper is the
+ * dialog's). The stylesheet does the rest.
  */
-export function printRendering(options: PrintOptions, document: SheetDocument): PrintRendering {
+export function printRendering(options: PrintOptions, document: SheetDocument, target: PrintTarget = 'print'): PrintRendering {
   const normal = normalizePrintOptions(options, document);
   const parts = printPartsOf(document);
   const classes = parts.filter((part) => normal.omit.includes(part)).map((part) => `print-omit-${part}`);
   if (normal.pageNumbers) classes.push('print-page-numbers');
   if (normal.runningName) classes.push('print-running-name');
   const page = printPageName(normal);
-  return {
-    classes,
-    ...(normal.runningName ? { pageRule: `@page ${page} { @top-left { content: ${cssString(document.title)}; } }` } : {}),
-  };
+  const rules = [
+    ...(target === 'pdf' ? [`@page { size: ${PAPERS[normal.paper].css}; }`] : []),
+    ...(normal.runningName ? [`@page ${page} { @top-left { content: ${cssString(document.title)}; } }`] : []),
+  ];
+  return { classes, ...(rules.length ? { pageRule: rules.join('\n') } : {}) };
 }
 
 /**
@@ -196,7 +265,7 @@ export function cssString(text: string): string {
  * Read a stored record, falling back to the default field by field: a field of the wrong shape is the default's, and a
  * part the view-model does not know is not left out. Nothing that does not parse is an error; it is the defaults.
  */
-export function parsePrintOptions(text: string | null): PrintOptions {
+export function parsePrintOptions(text: string | null, defaults: PrintOptions = DEFAULT_PRINT_OPTIONS): PrintOptions {
   let value: unknown;
   try {
     value = text === null ? undefined : JSON.parse(text);
@@ -204,21 +273,25 @@ export function parsePrintOptions(text: string | null): PrintOptions {
     value = undefined;
   }
   const record = typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-  const omit = Array.isArray(record.omit) ? PRINT_PARTS.filter((part) => (record.omit as unknown[]).includes(part)) : DEFAULT_PRINT_OPTIONS.omit;
+  const omit = Array.isArray(record.omit) ? PRINT_PARTS.filter((part) => (record.omit as unknown[]).includes(part)) : defaults.omit;
   const flag = (field: unknown, fallback: boolean): boolean => (typeof field === 'boolean' ? field : fallback);
   return {
     omit: [...omit],
-    pageNumbers: flag(record.pageNumbers, DEFAULT_PRINT_OPTIONS.pageNumbers),
-    runningName: flag(record.runningName, DEFAULT_PRINT_OPTIONS.runningName),
+    pageNumbers: flag(record.pageNumbers, defaults.pageNumbers),
+    runningName: flag(record.runningName, defaults.runningName),
+    paper: typeof record.paper === 'string' && Object.hasOwn(PAPERS, record.paper) ? (record.paper as Paper) : defaults.paper,
   };
 }
 
-/** The remembered choices, or the defaults when nothing is stored or the storage cannot be read. */
-export async function readPrintOptions(storage: Storage): Promise<PrintOptions> {
+/**
+ * The remembered choices, or the defaults when nothing is stored or the storage cannot be read. A shell passes defaults
+ * with the paper its user's languages suggest (`paperForLocales`).
+ */
+export async function readPrintOptions(storage: Storage, defaults: PrintOptions = DEFAULT_PRINT_OPTIONS): Promise<PrintOptions> {
   try {
-    return parsePrintOptions(await storage.read(PRINT_OPTIONS_KEY));
+    return parsePrintOptions(await storage.read(PRINT_OPTIONS_KEY), defaults);
   } catch {
-    return parsePrintOptions(null);
+    return parsePrintOptions(null, defaults);
   }
 }
 
@@ -247,6 +320,7 @@ export async function writePrintOptions(storage: Storage, options: PrintOptions)
     omit: PRINT_PARTS.filter((part) => options.omit.includes(part)),
     pageNumbers: options.pageNumbers,
     runningName: options.runningName,
+    paper: options.paper,
   };
   await storage.write(PRINT_OPTIONS_KEY, JSON.stringify(record));
 }

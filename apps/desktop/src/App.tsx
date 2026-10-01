@@ -54,10 +54,13 @@ import {
   addContentFiles,
   describeCommand,
   exportSheet,
+  exportSheetPdf,
   finishPrintStep,
   importAuroraSavesIntoLibrary,
   importBlock,
   DEFAULT_PRINT_OPTIONS,
+  PAPERS,
+  paperForLocales,
   printOptionsView,
   printRendering,
   readPrintOptions,
@@ -65,6 +68,7 @@ import {
   saveCopy,
   sheetDocument,
   withPageNumbers,
+  withPaper,
   withPrintPart,
   withRunningName,
   writeDraftOrigin,
@@ -73,6 +77,7 @@ import {
   type Destination,
   type LibraryEntry,
   type PrintOptions,
+  type PrintTarget,
   type WorkingCharacter,
 } from '@incudo/ui';
 
@@ -410,6 +415,11 @@ function Shell({
   const [printDraft, setPrintDraft] = useState<PrintOptions | null>(null);
   // Set by the step's Print: the platform's dialog opens once the Sheet carries the choices and the step has closed.
   const [printRequested, setPrintRequested] = useState(false);
+  // Where the step leads (ADR 0079): the print dialog, or a PDF written with no dialog. A PDF's paper is on the page only
+  // while it is written, so a later print is the dialog's paper again.
+  const [printTarget, setPrintTarget] = useState<PrintTarget>('print');
+  // Set by the step's Export: the PDF is written once the Sheet carries the choices and the paper, and the step has closed.
+  const [pdfRequested, setPdfRequested] = useState(false);
 
   /** The Aurora import: what it is doing, and what it did. Cleared by the user, not a timer. */
   const [importing, setImporting] = useState(false);
@@ -920,12 +930,18 @@ function Shell({
    * "Print sheet…" opens the print options step (ADR 0078), with the remembered choices read afresh; its Print then opens
    * the platform's own dialog. Nothing here decides what the step offers: `printOptionsView` does.
    */
-  const printSheet = useCallback((): void => {
-    void readPrintOptions(platform.storage).then((remembered) => {
+  const openPrintStep = useCallback((target: PrintTarget): void => {
+    // A first PDF's paper is the one the user's languages suggest; after that, the one last chosen (ADR 0079).
+    const defaults = { ...DEFAULT_PRINT_OPTIONS, paper: paperForLocales(navigator.languages ?? [navigator.language]) };
+    void readPrintOptions(platform.storage, defaults).then((remembered) => {
+      setPrintTarget(target);
       setPrintOptions(remembered);
       setPrintDraft(remembered);
     });
   }, []);
+  const printSheet = useCallback((): void => openPrintStep('print'), [openPrintStep]);
+  /** "Export sheet as PDF…": the same step, with a paper, leading to a PDF written with no dialog (ADR 0079). */
+  const exportPdfStep = useCallback((): void => openPrintStep('pdf'), [openPrintStep]);
 
   /** The step's two answers. Print records the choices and prints; Cancel records nothing and prints nothing. */
   const finishPrint = useCallback(
@@ -934,9 +950,11 @@ function Shell({
       const next = await finishPrintStep(platform.storage, answer, printDraft, printOptions);
       setPrintOptions(next);
       setPrintDraft(null);
-      if (answer === 'print') setPrintRequested(true);
+      if (answer === 'cancel') setPrintTarget('print');
+      else if (printTarget === 'pdf') setPdfRequested(true);
+      else setPrintRequested(true);
     },
-    [printDraft, printOptions],
+    [printDraft, printOptions, printTarget],
   );
 
   // The platform's dialog, after the render that closed the step and put the choices on the Sheet: the step's own close
@@ -948,8 +966,29 @@ function Shell({
     window.print();
   }, [printRequested]);
 
-  const printView = useMemo(() => (printDraft === null ? null : printOptionsView(document, printDraft)), [document, printDraft]);
-  const printing = useMemo(() => printRendering(printOptions, document), [printOptions, document]);
+  // The PDF, after the render that closed the step and put the choices and the paper on the Sheet, as the print dialog
+  // waits for (ADR 0079). Written first, then saved where the user says; the paper's rule comes off the page afterwards.
+  useEffect(() => {
+    if (!pdfRequested) return;
+    setPdfRequested(false);
+    setExporting(true);
+    void exportSheetPdf(platform.pdf, platform.saver, document, PAPERS[printOptions.paper].size)
+      .then((result) => {
+        if (result.status === 'saved') setExportNote(`Exported the sheet as ${result.file.name}.`);
+        else if (result.status === 'failed') setExportNote(`Could not export the sheet as PDF. ${result.message}`);
+        // Cancelled: an answer. The note that was on screen stays.
+      })
+      .finally(() => {
+        setExporting(false);
+        setPrintTarget('print');
+      });
+  }, [pdfRequested, document, printOptions.paper]);
+
+  const printView = useMemo(
+    () => (printDraft === null ? null : printOptionsView(document, printDraft, printTarget)),
+    [document, printDraft, printTarget],
+  );
+  const printing = useMemo(() => printRendering(printOptions, document, printTarget), [printOptions, document, printTarget]);
 
   // While the Sheet prints, the page is titled with the character, so a print dialog's header and the name "Save as PDF"
   // suggests read the character rather than the app (ADR 0077 decision 3). Put back afterwards. `window.document`, since
@@ -1023,6 +1062,7 @@ function Shell({
     saverAvailable: platform.saver.available,
     copying,
     exporting,
+    pdfAvailable: platform.pdf.available,
   });
 
   const handlers: CommandHandlers = {
@@ -1031,6 +1071,7 @@ function Shell({
     'save-copy': () => void copyToFile(),
     'export-sheet': () => void exportToFile(),
     'print-sheet': printSheet,
+    'export-sheet-pdf': exportPdfStep,
     'import-aurora': () => void importFromAurora(),
     'choose-library-folder': () => void chooseFolder(),
     'refresh-library': () => void library.refresh(),
@@ -1167,7 +1208,11 @@ function Shell({
       {pane === 'sheet' && (
         <>
           <div className="pane-bar">
-            <span className="status">Print this page, or write it to a Markdown (.md) text file.</span>
+            <span className="status">
+              {platform.pdf.available
+                ? 'Print this page, or write it to a PDF or a Markdown (.md) text file.'
+                : 'Print this page, or write it to a Markdown (.md) text file.'}
+            </span>
             <button type="button" onClick={printSheet} title={describeCommand('print-sheet', commands.os)}>
               Print sheet…
             </button>
@@ -1183,6 +1228,16 @@ function Shell({
             >
               Export sheet as text…
             </button>
+            {platform.pdf.available && (
+              <button
+                type="button"
+                onClick={exportPdfStep}
+                disabled={!platform.saver.available || exporting}
+                title={describeCommand('export-sheet-pdf', commands.os)}
+              >
+                Export sheet as PDF…
+              </button>
+            )}
             {exportNote && <span className="status">{exportNote}</span>}
           </div>
           <SheetPane builder={builder} document={document} print={printing} />
@@ -1238,6 +1293,7 @@ function Shell({
         onPart={(part, chosen) => setPrintDraft((draft) => draft && withPrintPart(draft, document, part, chosen))}
         onPageNumbers={(chosen) => setPrintDraft((draft) => draft && withPageNumbers(draft, chosen))}
         onRunningName={(chosen) => setPrintDraft((draft) => draft && withRunningName(draft, chosen))}
+        onPaper={(paper) => setPrintDraft((draft) => draft && withPaper(draft, paper))}
         onPrint={() => void finishPrint('print')}
         onCancel={() => void finishPrint('cancel')}
       />

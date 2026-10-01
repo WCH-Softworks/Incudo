@@ -21,6 +21,12 @@ serde = { version = "1", features = ["derive"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 
+# "Export sheet as PDF…" (ADR 0079): WebView2's PrintToPdfStream, reached through the webview Tauri hands a command. The
+# versions wry already builds, so nothing new is compiled; `Win32_System_Com` is for reading the stream it answers with.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows = { version = "0.61", features = ["Win32_System_Com"] }
+
 [profile.release]
 codegen-units = 1
 lto = true

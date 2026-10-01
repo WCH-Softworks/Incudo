@@ -15,6 +15,7 @@
  * | `CharacterStore` | `dialog` + `fs` plugins         | File System Access API             |
  * | `FilePicker`     | `dialog` + `fs` plugins         | `showOpenFilePicker`               |
  * | `FileSaver`      | `dialog` + `fs` plugins         | `showSaveFilePicker`               |
+ * | `PdfWriter`      | `print_to_pdf` (Windows only)   | none                               |
  * | `FileDrop`       | the webview's drag-drop event   | `drop` on the window               |
  * | `ZipCodec`      | `CompressionStream`             | `CompressionStream`                |
  * | `CommandHost`    | a native menu (mouse only)      | none                               |
@@ -47,6 +48,8 @@ import type {
   FileSaveOptions,
   FileSaver,
   LibraryEntryRef,
+  PaperSize,
+  PdfWriter,
   PickedFile,
   SavedFile,
   Storage,
@@ -54,7 +57,7 @@ import type {
   ZipCompressor,
 } from '@incudo/core';
 import { createZipCodec } from '@incudo/core';
-import { menuModel } from '@incudo/ui';
+import { absentCommands, menuModel } from '@incudo/ui';
 import type { CommandHost, CommandId, InstalledMenu, Os, ResolvedCommand } from '@incudo/ui';
 import type { MenuItem as TauriMenuItem, Submenu as TauriSubmenu } from '@tauri-apps/api/menu';
 
@@ -747,6 +750,42 @@ class BrowserFileSaver implements FileSaver {
   }
 }
 
+/**
+ * The page written as a PDF with no print dialog, in the Tauri window on Windows — ADR 0079 decision 2. The Rust command
+ * `print_to_pdf` (`src-tauri/src/lib.rs`) asks WebView2's `PrintToPdfStream` for the page as it prints now, on the paper
+ * given, and hands the bytes back as an `ArrayBuffer`. Nothing is written to disk here: the caller saves the bytes
+ * through the save port.
+ */
+class TauriPdfWriter implements PdfWriter {
+  readonly available = true;
+
+  async write(paper: PaperSize): Promise<Uint8Array> {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const bytes = await invoke<ArrayBuffer>('print_to_pdf', { widthInches: paper.widthInches, heightInches: paper.heightInches });
+    return new Uint8Array(bytes);
+  }
+}
+
+/**
+ * No PDF without the print dialog here: the browser build, and the Tauri window on macOS and Linux until those are seen
+ * (ADR 0079 decision 2). The command is left out of the menu and the Sheet's bar; "Print sheet…" and its dialog's "Save
+ * as PDF" are the PDF.
+ */
+class UnavailablePdfWriter implements PdfWriter {
+  readonly available = false;
+  readonly unavailableReason = 'A PDF is written without the print dialog only in the Windows app. Print the sheet and choose "Save as PDF".';
+  async write(): Promise<Uint8Array> {
+    throw new Error(this.unavailableReason);
+  }
+}
+
+/** The one platform `print_to_pdf` is built for, so far. */
+function onWindows(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  return /^win/i.test(nav.userAgentData?.platform ?? nav.platform ?? '');
+}
+
 /** No save dialog here, and it says why — the same posture as `UnavailableFilePicker`. */
 class UnavailableFileSaver implements FileSaver {
   readonly available = false;
@@ -893,6 +932,12 @@ function detectOs(): Os {
  */
 class TauriCommandHost implements CommandHost {
   readonly os: Os = detectOs();
+  /** Commands this window does not have, left out of its menu rather than greyed (`absentCommands`). */
+  private readonly absent: readonly CommandId[];
+
+  constructor(absent: readonly CommandId[]) {
+    this.absent = absent;
+  }
 
   async install(run: (id: CommandId) => void): Promise<InstalledMenu | null> {
     try {
@@ -900,7 +945,7 @@ class TauriCommandHost implements CommandHost {
       const items = new Map<CommandId, TauriMenuItem>();
 
       const submenus: TauriSubmenu[] = [];
-      for (const menu of menuModel(this.os)) {
+      for (const menu of menuModel(this.os, this.absent)) {
         const entries = [];
         for (const entry of menu.entries) {
           if (entry.kind === 'separator') {
@@ -995,6 +1040,8 @@ export interface DesktopPlatform {
   files: FilePicker;
   /** Writing one file somewhere the user chooses — "Save a copy…". */
   saver: FileSaver;
+  /** The page as a PDF with no print dialog — "Export sheet as PDF…" (ADR 0079). The Windows window only. */
+  pdf: PdfWriter;
   /** Files dropped on the window: Aurora elements files added as sources (ADR 0056). */
   drops: FileDrop;
   zip: ZipCodec;
@@ -1025,15 +1072,18 @@ export function createDesktopPlatform(): DesktopPlatform {
       ? new BrowserFileSaver()
       : new UnavailableFileSaver();
 
+  const pdf = tauri && onWindows() ? new TauriPdfWriter() : new UnavailablePdfWriter();
+
   return {
     fetcher: new DesktopFetcher(),
     storage,
     characters,
     files,
     saver,
+    pdf,
     drops: tauri ? new TauriFileDrop() : new BrowserFileDrop(),
     zip,
-    commands: tauri ? new TauriCommandHost() : new BrowserCommandHost(),
+    commands: tauri ? new TauriCommandHost(absentCommands({ pdfAvailable: pdf.available })) : new BrowserCommandHost(),
     shell: tauri ? 'tauri' : 'browser',
   };
 }

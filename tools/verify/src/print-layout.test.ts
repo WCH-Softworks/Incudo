@@ -645,8 +645,11 @@ test('the print rules: no edge of a page left to the dialog, and the parts the s
   // Calls, not mentions: a comment may name it.
   const prints = [...app.matchAll(/^\s*window\.print\(\);/gm)].length;
   if (prints !== 1) problems.push(`App: window.print() called ${prints} times; only after the step's Print`);
-  const handler = /const printSheet = useCallback\(([\s\S]*?)\n  \}, \[/.exec(app)?.[1] ?? '';
+  // "Print sheet…" and "Export sheet as PDF…" (ADR 0079) both open the step, through one opener that prints nothing.
+  const handler = /const openPrintStep = useCallback\(([\s\S]*?)\n  \}, \[/.exec(app)?.[1] ?? '';
   if (!handler || /window\.print/.test(handler)) problems.push("App: \"Print sheet…\" opens the platform's dialog without the step");
+  if (!/const printSheet = useCallback\(\(\): void => openPrintStep\('print'\)/.test(app)) problems.push('App: "Print sheet…" does not open the step');
+  if (!/const exportPdfStep = useCallback\(\(\): void => openPrintStep\('pdf'\)/.test(app)) problems.push('App: "Export sheet as PDF…" does not open the step');
   if (!/if \(!printRequested\) return;[\s\S]{0,80}window\.print\(\)/.test(app)) problems.push("App: the platform's dialog does not wait for the step's Print");
   if (!/printDraft !== null \|\|/.test(app)) problems.push('App: the step is not modal');
 

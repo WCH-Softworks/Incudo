@@ -1,20 +1,22 @@
 /**
- * The print options step, before the platform's print dialog — ADR 0078.
+ * The print options step, before the platform's print dialog (ADR 0078) or a PDF written with no dialog (ADR 0079).
  *
  * Renders `printOptionsView` (`packages/ui/src/print-options.ts`) and computes nothing: which parts are offered, their
- * labels, which one cannot be unticked and every sentence are decided there. Print hands the choices back and the shell
- * then opens the platform's dialog; Cancel, and Escape, close it and print nothing.
+ * labels, which one cannot be unticked, whether a paper is offered and every sentence are decided there. Its button hands
+ * the choices back and the shell then opens the platform's dialog or writes the PDF; Cancel, and Escape, close it and do
+ * nothing.
  */
 
 import { useEffect, useRef } from 'react';
 
-import type { PrintOptionsView, PrintPart } from '@incudo/ui';
+import type { Paper, PrintOptionsView, PrintPart } from '@incudo/ui';
 
 export function PrintOptionsDialog({
   view,
   onPart,
   onPageNumbers,
   onRunningName,
+  onPaper,
   onPrint,
   onCancel,
 }: {
@@ -23,6 +25,7 @@ export function PrintOptionsDialog({
   onPart: (part: PrintPart, chosen: boolean) => void;
   onPageNumbers: (chosen: boolean) => void;
   onRunningName: (chosen: boolean) => void;
+  onPaper: (paper: Paper) => void;
   onPrint: () => void;
   onCancel: () => void;
 }): React.JSX.Element {
@@ -82,9 +85,20 @@ export function PrintOptionsDialog({
               {view.runningName.label}
             </label>
           </fieldset>
+          {view.paper && (
+            <fieldset>
+              <legend>{view.paper.label}</legend>
+              {view.paper.choices.map((choice) => (
+                <label key={choice.paper}>
+                  <input type="radio" name="paper" checked={choice.chosen} onChange={() => onPaper(choice.paper)} />
+                  {choice.label}
+                </label>
+              ))}
+            </fieldset>
+          )}
           <div className="row">
             <button type="submit" className="on">
-              Print…
+              {view.submit}
             </button>
             <button type="button" onClick={onCancel}>
               Cancel

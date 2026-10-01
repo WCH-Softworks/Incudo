@@ -13,6 +13,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  absentCommands,
   COMMANDS,
   COMMAND_IDS,
   MENUS,
@@ -50,6 +51,7 @@ const READY: CommandContext = {
   saverAvailable: true,
   copying: false,
   exporting: false,
+  pdfAvailable: true,
 };
 
 function enabledIn(context: CommandContext): Set<CommandId> {
@@ -563,4 +565,50 @@ test('labels are plain text: no ADR numbers, no internal names', () => {
     assert.doesNotMatch(command.label, /[a-z][A-Z]/, `${command.label} reads like an identifier`);
   }
   for (const menu of MENUS) assert.match(menu.label, /^[A-Z][a-z]+$/);
+});
+
+// --- the sheet as a PDF (ADR 0079) ------------------------------------------------------------------
+
+test('a PDF export is live on the sheet only, where the shell writes PDFs and saves files, and not twice at once', () => {
+  // Fails if the rule ignores the writer (the browser build would offer it), the save dialog, an export in flight or a
+  // dialog in front, or names another pane.
+  assert.ok(enabledIn({ ...READY, pane: 'sheet' }).has('export-sheet-pdf'));
+  for (const pane of ['library', 'build', 'sources', 'browse', 'settings'] as Destination[]) {
+    assert.ok(!enabledIn({ ...READY, pane }).has('export-sheet-pdf'), pane);
+  }
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', pdfAvailable: false }).has('export-sheet-pdf'));
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', saverAvailable: false }).has('export-sheet-pdf'));
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', exporting: true }).has('export-sheet-pdf'));
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', modal: true }).has('export-sheet-pdf'));
+  // Like the text export it needs no library and no content.
+  const bare = { ...READY, pane: 'sheet' as const, library: 'no-location' as const, contentLoaded: false, hasEnabledSource: false };
+  assert.ok(enabledIn(bare).has('export-sheet-pdf'));
+});
+
+test('a PDF export sits below Print in the File menu, with no shortcut, and a shell with no PDF writer has no such item', () => {
+  const file = MENUS.find((menu) => menu.label === 'File')!;
+  assert.equal(file.items.indexOf('export-sheet-pdf'), file.items.indexOf('print-sheet') + 1);
+  const entries = menuModel('other').flatMap((menu) => menu.entries);
+  const entry = entries.find((e) => e.kind === 'command' && e.id === 'export-sheet-pdf') as { label: string; shortcut?: string };
+  assert.equal(entry.label, 'Export sheet as PDF…');
+  assert.equal(entry.shortcut, undefined);
+  // Fails if an absent command is greyed rather than left out, or if leaving one out leaves the rest of the menu changed.
+  assert.deepEqual(absentCommands({ pdfAvailable: true }), []);
+  assert.deepEqual(absentCommands({ pdfAvailable: false }), ['export-sheet-pdf']);
+  const without = menuModel('other', absentCommands({ pdfAvailable: false })).flatMap((menu) => menu.entries);
+  assert.equal(without.some((e) => e.kind === 'command' && e.id === 'export-sheet-pdf'), false);
+  assert.deepEqual(without, entries.filter((e) => !(e.kind === 'command' && e.id === 'export-sheet-pdf')));
+});
+
+test('a menu leaving commands out keeps no separator at an edge or beside another', () => {
+  // Fails if separators are not tidied: leaving out every command of a group would leave two in a row.
+  const group = ['import-aurora'] as CommandId[];
+  const file = menuModel('other', group).find((menu) => menu.label === 'File')!.entries;
+  file.forEach((entry, index) => {
+    if (entry.kind === 'separator') {
+      assert.ok(index > 0 && index < file.length - 1, 'not at an edge');
+      assert.notEqual(file[index - 1]!.kind, 'separator', 'not doubled');
+    }
+  });
+  assert.equal(file.filter((e) => e.kind === 'separator').length, 2);
 });
