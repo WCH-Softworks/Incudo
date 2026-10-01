@@ -1303,8 +1303,8 @@ Sheet shows, its creatures and kept text included, is one document (`packages/ui
 pane draws and every export renders: the PDF and the print layout start from it, not from the pane.*
 
 - [ ] **PDF character sheet: Incudo's own sheet as a PDF, and the official 2014 form filled into the user's own copy.**
-      **Proposed as [ADR 0079](./docs/adr/0079-a-pdf-sheet-is-the-print-layout-written-to-a-file-and-the-official-form-is-the-user-s-own-copy-filled-from-the-document.md)**
-      (2026-09-30), measured first (`tools/verify/src/pdf-sheet.test.ts`, the official sheets read outside the repository, the
+      **[ADR 0079](./docs/adr/0079-a-pdf-sheet-is-the-print-layout-written-to-a-file-and-the-official-form-is-the-user-s-own-copy-filled-from-the-document.md),
+      accepted 2026-09-30**, measured first (`tools/verify/src/pdf-sheet.test.ts`, the official sheets read outside the repository, the
       print layout printed to PDF in headless Edge). The maintainer's calls: Incudo's PDF is the print layout, not a layout of
       its own; it is written without the print dialog, on Windows first (WebView2's `PrintToPdfStream`, so the preview's
       Margins list cannot undo the page rules), with A4 or Letter chosen in the print options step; the official form is

@@ -1,6 +1,6 @@
 # 0079 — A PDF sheet is the print layout written to a file, and the official form is the user's own copy, filled from the document
 
-**Status:** Proposed · 2026-09-30 · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
+**Status:** Accepted · 2026-09-30 (proposed the same day) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
 · builds on [0012](./0012-self-contained-saves.md), [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
 [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
