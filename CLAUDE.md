@@ -366,7 +366,7 @@ as text: "Export sheet as text…" writes it as Markdown that reads as plain tex
 in the export is content's own sheet line, at the level its class reads, its numbers filled: "Rage (Bonus Action; 3/Long
 Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platform's own dialog, its sections in two columns**
 (ADR 0077), **after a step of the app's own choosing its parts, page numbers and the name on later pages, and with no edge
-of the page the dialog can write its date and address in** (ADR 0078).
+of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079).
 Not started: the mobile shell (only its `platform.ts` contract exists).
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
@@ -956,7 +956,7 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     that holds against it (a no-break space in page 1's head box did not), so nothing changed. Not in the browser build,
     not on macOS or Linux.
 
-- **A PDF sheet is decided and being built** ([ADR 0079](docs/adr/0079-a-pdf-sheet-is-the-print-layout-written-to-a-file-and-the-official-form-is-the-user-s-own-copy-filled-from-the-document.md),
+- **A PDF sheet is built** ([ADR 0079](docs/adr/0079-a-pdf-sheet-is-the-print-layout-written-to-a-file-and-the-official-form-is-the-user-s-own-copy-filled-from-the-document.md),
   accepted). Things to know before touching it:
   - **Incudo's own PDF is the print layout**, written without the print dialog through WebView2's `PrintToPdfStream` on
     Windows first, behind a port; elsewhere "Print sheet…" and "Save as PDF" stay the PDF. No PDF renderer of its own.
@@ -996,6 +996,17 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     and the shell puts the target back to `'print'` afterwards. **Where there is no writer there is no command**:
     `menuModel(os, absentCommands(…))` leaves it out, the Sheet's bar has no button. Driven in the window by window
     messages and the debug port only; the save dialog is `#32770` "Export this character's sheet as PDF".
+  - **"Fill the official sheet…" is built** (decision 11). **The form is never committed, shipped or downloaded**; the user
+    picks their own copy, kept under `forms/<map id>` in `Storage`, recognised by exactly its fields (`recogniseForm`; bytes
+    differ between copies, and one measured copy did). The map is a file beside the system,
+    `systems/dnd5e/forms/official-2014.json`, with its own schema (`schemas/form-map.schema.json`), **not** the system format;
+    `checkFormMap` is the one checker. `formValues` (`packages/ui/src/form-fill.ts`) reads only the document (which grew
+    `SheetListedElement.type` and `SheetSectionView.section`/`block`) and names what it leaves off; `listedHead` is the one
+    plain wording of a listed element's head. pdf-lib is in `apps/desktop/src/official-form.ts` only, exported as
+    `@incudo/desktop/official-form` so the tests fill with the same code. Flowed boxes are written at a fixed 7 pt (the
+    form's auto size writes 22 pt or shrinks to 8), and the 2014 form's fields mostly inherit the form's default
+    appearance, which `setFontSize` refuses. `official-sheet.test.ts` fills a stand-in form built from the map's field list
+    in CI, and your own copy when `INCUDO_OFFICIAL_SHEET` in `.env.local` names it.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

@@ -1,6 +1,6 @@
 # 0079 — A PDF sheet is the print layout written to a file, and the official form is the user's own copy, filled from the document
 
-**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7), a spell's level and prepared mark and hit dice per class on 2026-10-01 (decisions 8 and 9), "Export sheet as PDF…" the same day (decision 10) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
+**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7), a spell's level and prepared mark and hit dice per class on 2026-10-01 (decisions 8 and 9), "Export sheet as PDF…" and "Fill the official sheet…" the same day (decisions 10 and 11): built · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
 · builds on [0012](./0012-self-contained-saves.md), [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
 [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -435,6 +435,70 @@ word of each sample's text export is in its PDF (pdftotext's reading of a non-br
 and took the paper rule off the page; "Print sheet…" still opens its step with no paper. Not driven: real keys and mouse,
 a WebView2 Runtime too old for `ICoreWebView2_16` (the command says to update it), the replace prompt, macOS and Linux.
 
+### 11. What building it decided: "Fill the official sheet…" (2026-10-01)
+
+Decisions 3 and 5, built. The maintainer's calls when it was built: **the map is a file beside the system, not a system
+format field**; **pdf-lib 1.17.1** (MIT) writes the form; and a copy of the form the maintainer had already downloaded
+could be read to write the map and drive the app, with a local test filling it when `.env.local` names it.
+
+**That copy was not the one measured above, and was recognised anyway.** It is 355,826 bytes where the measured file was
+388,396, with another hash; its fields are the same 334 by name and type, created in 2014. A recogniser by bytes would
+have refused it; decision 3's recognition by fields is what the form actually varies by.
+
+- **The sheet document grew twice more** (decision 4's rule): a listed element carries its `type`, and a section the
+  `section` it came from and, for a per-block one, its `block`. The form puts race, class and background in separate boxes
+  that the document lists in one section, and one casting block's name in a box of its own.
+- **A form map** (`schemas/form-map.schema.json`; 5e's is `systems/dnd5e/forms/official-2014.json`) names every field of
+  the form by name and type (what a copy is recognised by) and lists fill rules: a row's value or beside, a mark, a block's
+  name, listed names by type, their dice added die by die, rows into a run of lines, a list flowing through boxes of a
+  given capacity at a fixed size, a table by level from the first source that has rows, and groups onto lines with
+  prepared boxes. Not the system format: no public API is promised until a second form exists, and a user's own system
+  cannot ship a form yet. The shell loads it with `checkFormMap`, which adds what a schema cannot say (a field the form
+  lacks, the wrong type, written twice), and the tests call the same function.
+- **5e's map was derived from the copy's field geometry** in a scratch script, not committed: spell lines ordered under
+  each level's slot box, every prepared box paired with the line beside it, save and skill boxes with their rows, and the
+  four large boxes' capacities at 7 pt from their sizes. It agrees with the measurement above (8, 12, 13, 13, 13, 9, 9, 9,
+  7, 7 lines; 92 boxes). The map holds field names and numbers only.
+- **`formValues(document, map)`** (`packages/ui/src/form-fill.ts`) names no game and reads only the document. What does not
+  fit is a sentence in `leftOff`, never shrunk or dropped: a list past its last box, spells past a level's lines, a second
+  casting block, a second source of slots, and a character outside WinAnsi (written "?"). Features continue into page 2's
+  box; proficiencies, measured to overflow on 29 of 30, are left off past their one box, as decided, and the result line
+  says Incudo's own sheet has them. **A flowed box is written at a fixed 7 pt**: pdf-lib's automatic size wrote a short
+  proficiency list at 22 pt and shrank a long feature list to 8; the capacity is what fits at 7.
+- **The copy is kept** in `Storage` under `forms/<map id>` (base64, beside `sources/files/`, never under a cache prefix),
+  chosen with the file picker and kept only once `recogniseForm` accepts its fields; it is recognised again before every
+  fill and never changed. **Filling** (`apps/desktop/src/official-form.ts`, pdf-lib, no Tauri or DOM) clears every field
+  first, writes the values, draws their appearances in Helvetica so the file reads the same in every viewer, and leaves it
+  a form the user can edit. **Found on the real copy, not the stand-in:** 323 of its fields have no default appearance of
+  their own and inherit the form's (`/Helv 0 Tf 0 g`), which pdf-lib's `setFontSize` refuses; such a field is given the
+  form's font at the flow's size. The stand-in now reproduces it.
+- **The step** ("Fill the official sheet…", below the PDF export, no shortcut) says Incudo neither includes nor downloads
+  the form, shows the download page with a Copy button (the window still has no way to open the user's browser), and
+  offers Choose your copy, Remove copy and Fill and save. Available on the Sheet where the character's system ships a form
+  for its kind and a file can be saved, in both builds (pdf-lib is plain JavaScript). The filled sheet is saved through
+  `FileSaver` as `<name>-official-sheet.pdf`; the Sheet's bar names it and what was left off.
+
+Evidence: `packages/ui/src/form-fill.test.ts`, `official-sheet.test.ts`, `commands.test.ts` and `sheet.test.ts`, each
+failing under its named perturbations (a stat matched by case, a list not filtered by type, repeats taking a line, a flow
+dropping its rest silently, a second source or block not named, the encoding not checked, recognition ignoring a field
+count, a field written twice accepted, dice not largest first, the space between words not counted, the copy under a
+cache prefix). `tools/verify/src/official-sheet.test.ts`: the map checks and agrees with the counts above; every sample's
+values match its own document (the name, "Paladin 3 / Sorcerer 3", the dice, every mark and prepared box with a line,
+every spell on a line or counted in a note, every casting block past the first named); a stand-in form built from the
+map's field list alone (blank Letter pages, junk typed in, the form's inherited appearance) is recognised, a form with a
+trimmed field name is not, and every sample's fill reads back exactly, with appearances and the flow's size, the stand-in
+unchanged. Breaking the size fallback, the clearing, or the prepared-box condition fails it. On the samples: 56 to 115
+fields filled (median 74, counting each line and box); left off on 29 samples proficiencies past their box, on 4 spells
+past a level's lines (1 of them cantrips), and across the multiclass samples 9 casting blocks past the first and 1
+second table of slots (a pact-magic one beside the shared pool). **With a real copy named**
+the same holds for all thirty, the copy unchanged, and the fullest flowed box draws 87% of the lines its height holds.
+**Driven in the Windows window** (debug port and window messages only, a fresh profile, no source): the menu item opened
+the step; an Incudo PDF was refused ("This PDF has no form fields…"); the real copy, chosen in the native open dialog, was
+kept; Fill and save wrote a 588 KB PDF through the native save dialog, the bar reading what was left off; read back, 78
+fields and 16 boxes held the three-class sample's values, and flattened, the drawn text sat in the form's boxes; Remove
+copy forgot it. Not exercised: real keys and mouse, the browser build, a reader other than pdf-lib and pdftotext opening
+the filled file, macOS and Linux.
+
 ## What this does not do
 
 - **Ship, download, or cache from the network the official sheet.** Decision 3.
@@ -477,6 +541,7 @@ On AuroraLegacy/elements at `c28ce6c` and the thirty samples.
 |---|---|
 | what the derivation publishes as each class's level, against the samples' split | `tools/verify/src/class-levels.test.ts`, report-only before decision 7, asserting since |
 | each listed spell's level setter, the prepared lists per block, spells prepared in two blocks, the Spells section's order | `tools/verify/src/spell-levels.test.ts`, report-only before decision 8, asserting since |
+| the 5e form map against the form's measured counts; every sample's form values against its own document and what it leaves off; a stand-in form built from the map's field list, filled for every sample and read back; a user's own copy, when named, the same and every flowed box within its height | `tools/verify/src/official-sheet.test.ts`, asserting since decision 11 |
 | every class's `hd` setter in the corpus and on the samples, the two editions' dice, the track's count against the split, what else names hit dice, the multiclass samples' dice | `tools/verify/src/hit-dice.test.ts`, report-only before decision 9, asserting since |
 | the 2014 form's boxes and counts (334 fields: 210 text, 124 check boxes; 100 spell lines), and for the samples what the document fills, fills in part, leaves empty and never holds; where the form's shape does not fit; characters outside WinAnsi; what the NPC, Legendary Creature and Cairn documents hold | `tools/verify/src/pdf-sheet.test.ts`, report-only (ADR 0042), committed before this record; it asserts only that the listed boxes add up to the form's counts and that samples were read |
 

@@ -1311,7 +1311,7 @@ NPC's export is its stat block and a player character's its page, with nothing k
 Sheet shows, its creatures and kept text included, is one document (`packages/ui/src/sheet-document.ts`, ADR 0075) that the
 pane draws and every export renders: the PDF and the print layout start from it, not from the pane.*
 
-- [ ] **PDF character sheet: Incudo's own sheet as a PDF, and the official 2014 form filled into the user's own copy.**
+- [x] **PDF character sheet: Incudo's own sheet as a PDF, and the official 2014 form filled into the user's own copy.**
       **[ADR 0079](./docs/adr/0079-a-pdf-sheet-is-the-print-layout-written-to-a-file-and-the-official-form-is-the-user-s-own-copy-filled-from-the-document.md),
       accepted 2026-09-30**, measured first (`tools/verify/src/pdf-sheet.test.ts`, the official sheets read outside the repository, the
       print layout printed to PDF in headless Edge). The maintainer's calls: Incudo's PDF is the print layout, not a layout of
@@ -1343,8 +1343,13 @@ pane draws and every export renders: the PDF and the print layout start from it,
         prints through WebView2's `PrintToPdfStream`, no print dialog, saved where the user says; no such command where
         no PDF writer exists (ADR 0079 decision 10; driven in the Windows window: A4 and Letter at their sizes, the
         print's page counts, every word of the text export, a Cancel writing nothing)
-  - [ ] "Fill the official sheet…": the user's copy kept and recognised, the field map shipped with the 5e system, what
-        does not fit named in the result line
+  - [x] **"Fill the official sheet…": the user's copy kept and recognised, the field map shipped with the 5e system, what
+        does not fit named in the result line**: a form map beside 5e's `system.json` (`forms/official-2014.json`, its own
+        schema, not the system format) names the 2014 sheet's 334 fields and which takes what from the sheet document;
+        `formValues` in `packages/ui` fills them knowing no game; pdf-lib in `apps/desktop` writes a copy of the user's
+        kept copy, recognised by its fields; proficiencies past their box, spells past a level's lines and a second casting
+        block are named in the result line (ADR 0079 decision 11; every sample against its own document, a stand-in form
+        in CI, a real copy locally; driven in the Windows window)
 - [x] **Plain-text / Markdown export: "Export sheet as text…" writes the Sheet as Markdown that reads as plain text**
       ([ADR 0075](./docs/adr/0075-a-text-export-is-the-sheet-document-written-as-markdown-that-reads-as-plain-text.md)).
       Measured first, over the thirty samples, every creature as an NPC and a legendary creature, and Cairn: the Sheet's
