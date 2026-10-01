@@ -50,6 +50,7 @@ export const COMMAND_IDS = [
   'choose-library-folder',
   'refresh-library',
   'reload-sources',
+  'review-content-updates',
   'change-system',
 ] as const;
 
@@ -126,6 +127,8 @@ export const COMMANDS: readonly CommandDef[] = [
   // needs both. Ctrl+Shift+R is a hard reload, so L for library.
   { id: 'refresh-library', label: 'Refresh library', shortcut: { key: 'l', primary: true, shift: true } },
   { id: 'reload-sources', label: 'Reload content sources' },
+  // What a refresh of the open character would change, then the refresh itself (ADR 0082). No shortcut.
+  { id: 'review-content-updates', label: 'Review content updates…' },
   { id: 'change-system', label: 'Change system' },
 ];
 
@@ -154,6 +157,7 @@ export const MENUS: MenuLayout = [
       'choose-library-folder',
       'refresh-library',
       'reload-sources',
+      'review-content-updates',
       null,
       'change-system',
     ],
@@ -195,6 +199,8 @@ export interface CommandContext {
   pdfAvailable: boolean;
   /** The character's system ships a form for its kind (ADR 0079): the 5e player character's 2014 sheet. */
   formAvailable: boolean;
+  /** The open character's copies differ from what its sources load now (ADR 0082). */
+  contentUpdates: boolean;
 }
 
 /** The launcher, or the moment before anything has loaded: every command is unavailable. */
@@ -215,6 +221,7 @@ export const NO_WORKSPACE: CommandContext = {
   exporting: false,
   pdfAvailable: false,
   formAvailable: false,
+  contentUpdates: false,
 };
 
 /**
@@ -276,6 +283,8 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   'choose-library-folder': (c) => c.library !== 'unavailable',
   'refresh-library': (c) => c.library === 'ready' && !c.libraryBusy,
   'reload-sources': (c) => c.hasEnabledSource && !c.contentBusy,
+  // Where the line offering it is shown, Build and the Sheet, and only while there is something to refresh (ADR 0082).
+  'review-content-updates': (c) => (c.pane === 'build' || c.pane === 'sheet') && c.contentUpdates && !c.contentBusy,
   'change-system': () => true,
 };
 

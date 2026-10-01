@@ -23,7 +23,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { BundleElementIndex, collectCharacterContent, deriveCharacter, LayeredElementIndex, resolveCharacterKind, type Element } from '@incudo/core';
+import {
+  BundleElementIndex,
+  collectCharacterContent,
+  containerElementIndex,
+  deriveCharacter,
+  LayeredElementIndex,
+  readCharacterContainer,
+  resolveCharacterKind,
+  type Element,
+} from '@incudo/core';
+import { contentChanges, packCharacter, refreshNotice } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadCorpus } from './corpus.ts';
@@ -92,4 +102,26 @@ test('the samples, saved against an older corpus: what a refresh against today\'
   t.diagnostic(`what differs: ${[...parts].sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p} ${n}`).join(', ')}`);
   t.diagnostic(`a refresh would gain ${gainedTotal} held elements, lose ${lostTotal}, and move ${statsMoved} stats across the samples`);
   for (const line of lines) t.diagnostic(`  ${line}`);
+});
+
+// ADR 0082: an offer is news only when a source changed something. Fails if a character saved against the content
+// loaded now is offered a refresh: a definition that does not survive the save read as a change, or an element only the
+// save has (Aurora's generated ones) read as changed rather than kept, would put the offer on every imported character.
+test("a character saved against today's content is offered no refresh", { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
+  t.diagnostic(corpusProvenance());
+  const now = await realElements();
+  let read = 0;
+  for (const sample of samplesWhere(() => true)) {
+    const run = await runOracle(samplePath(sample), now, 'sample');
+    const packed = packCharacter(run.imported.character, run.system, run.elements, { generator: 'test', extraIds: run.imported.extraIds });
+    const { container } = readCharacterContainer(packed.files);
+    assert.ok(container, `${sample.id}: the save reads back`);
+    // Against what the app loads: the corpus, without the elements Aurora made up for this save, which only the save has.
+    const changes = contentChanges(containerElementIndex(container), now);
+    assert.deepEqual(changes.changed.map((e) => e.id), [], `${sample.id}: copies that read as changed`);
+    assert.equal(refreshNotice(changes), undefined, `${sample.id}: offered a refresh`);
+    read++;
+  }
+  assert.ok(read > 0, 'samples were read');
+  t.diagnostic(`${read} samples saved and reopened against the same content: no refresh offered`);
 });

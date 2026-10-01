@@ -739,6 +739,17 @@ dialog.official-sheet code {
   word-break: break-all;
 }
 
+/* A review can list dozens of elements (ADR 0082): it scrolls inside the window rather than past it. */
+dialog.content-refresh {
+  max-height: 85vh;
+  overflow: auto;
+}
+
+dialog.content-refresh h3 {
+  margin: 14px 0 4px;
+  font-size: 13px;
+}
+
 dialog.ask .row {
   margin-bottom: 0;
   justify-content: flex-end;

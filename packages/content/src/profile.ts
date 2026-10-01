@@ -274,6 +274,20 @@ export function recordSourceRefs(
   return refs;
 }
 
+/**
+ * A character's recorded sources brought up to the profile — ADR 0082: what a deliberate refresh does, the one move of a
+ * recorded version ADR 0028 left for it. A ref the profile has takes its name, version and mode; a ref it does not have
+ * is kept as recorded, since it is the only clue to where that content came from.
+ */
+export function refreshSourceRefs(refs: readonly SourceRef[], profile: readonly ConfiguredSource[]): SourceRef[] {
+  return refs.map((ref) => {
+    const configured = profile.find((source) => source.id === ref.id || source.url === ref.id);
+    if (!configured) return ref;
+    const version = configured.version ?? ref.version;
+    return { id: ref.id, name: configured.name, ...(version !== undefined ? { version } : {}), mode: configured.mode };
+  });
+}
+
 function isConfigured(value: unknown): value is ConfiguredSource {
   const source = value as ConfiguredSource;
   return !!source && typeof source.id === 'string' && typeof source.url === 'string';

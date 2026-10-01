@@ -8,6 +8,7 @@ import {
   SOURCE_PROFILE_KEY,
   compareSourceRefs,
   recordSourceRefs,
+  refreshSourceRefs,
   sourcesForSystem,
   unassignedSources,
 } from './profile.ts';
@@ -224,4 +225,25 @@ test('moving a source swaps it with its neighbour in the same system and leaves 
 
   await profile.save();
   assert.deepEqual((await SourceProfile.load(storage)).sources.map((s) => s.name), ['b', 'cairn', 'c', 'a'], 'and it is what is saved');
+});
+
+// ADR 0082. Fails if a refresh leaves a recorded version where it was (the deliberate move ADR 0028 left for it), takes a
+// name or mode from anywhere but the profile, drops or rewrites a ref the profile no longer has, or matches a ref only by
+// id when the profile knows the source by its URL.
+test('a refresh brings recorded sources up to the profile and keeps what the profile no longer has', () => {
+  const profile = [
+    { id: CORE, url: CORE, name: 'Core', enabled: true, mode: 'download' as const, version: '2.0', addedAt: '2026-01-01' },
+    { id: 'other-id', url: 'https://example.test/extra.index', name: 'Extra', enabled: true, mode: 'stream' as const, addedAt: '2026-01-01' },
+  ];
+  const refs: SourceRef[] = [
+    { id: CORE, name: 'old core', version: '1.0', mode: 'stream' },
+    { id: 'https://example.test/extra.index', name: 'Extra', version: '0.3' },
+    { id: 'https://example.test/gone.index', name: 'Gone', version: '0.1' },
+  ];
+  assert.deepEqual(refreshSourceRefs(refs, profile), [
+    { id: CORE, name: 'Core', version: '2.0', mode: 'download' },
+    { id: 'https://example.test/extra.index', name: 'Extra', version: '0.3', mode: 'stream' },
+    { id: 'https://example.test/gone.index', name: 'Gone', version: '0.1' },
+  ]);
+  assert.equal(compareSourceRefs(refreshSourceRefs(refs, profile), profile)[0]!.state, 'present');
 });

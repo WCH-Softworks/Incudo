@@ -53,6 +53,7 @@ const READY: CommandContext = {
   exporting: false,
   pdfAvailable: true,
   formAvailable: true,
+  contentUpdates: true,
 };
 
 function enabledIn(context: CommandContext): Set<CommandId> {
@@ -638,4 +639,20 @@ test('filling the official sheet sits below the PDF export in the File menu, wit
     .find((e) => e.kind === 'command' && e.id === 'fill-official-sheet') as { label: string; shortcut?: string };
   assert.equal(entry.label, 'Fill the official sheet…');
   assert.equal(entry.shortcut, undefined);
+});
+
+// --- content updates (ADR 0082) ----------------------------------------------------------------------------
+
+test('reviewing content updates is live on Build and the Sheet while the open character has some', () => {
+  // Fails if the rule ignores whether there is anything to refresh, a load in flight, or a dialog in front, or names
+  // another pane.
+  for (const pane of ['build', 'sheet'] as Destination[]) assert.ok(enabledIn({ ...READY, pane }).has('review-content-updates'), pane);
+  for (const pane of ['library', 'sources', 'browse', 'settings'] as Destination[]) {
+    assert.ok(!enabledIn({ ...READY, pane }).has('review-content-updates'), pane);
+  }
+  assert.ok(!enabledIn({ ...READY, pane: 'build', contentUpdates: false }).has('review-content-updates'));
+  assert.ok(!enabledIn({ ...READY, pane: 'build', contentBusy: true }).has('review-content-updates'));
+  assert.ok(!enabledIn({ ...READY, pane: 'build', modal: true }).has('review-content-updates'));
+  const file = MENUS.find((menu) => menu.label === 'File')!;
+  assert.equal(file.items.indexOf('review-content-updates'), file.items.indexOf('reload-sources') + 1);
 });

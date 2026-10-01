@@ -23,6 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  BundleElementIndex,
   LayeredElementIndex,
   MapElementIndex,
   type ElementIndex,
@@ -38,6 +39,7 @@ import {
   removeSource,
   sourcesForSystem,
   unassignedSources,
+  refreshSourceRefs,
   type ConfiguredSource,
   type RefreshReport,
   type SourceMode,
@@ -56,6 +58,11 @@ import {
   exportSheet,
   exportSheetPdf,
   finishPrintStep,
+  contentChanges,
+  refreshDocuments,
+  refreshedElements,
+  refreshNotice,
+  refreshReview,
   formValues,
   keepFormCopy,
   officialSheetFileName,
@@ -115,6 +122,7 @@ import { BuilderPane } from './panes/BuilderPane.tsx';
 import { SheetPane } from './panes/SheetPane.tsx';
 import { PrintOptionsDialog } from './panes/PrintOptions.tsx';
 import { OfficialSheetDialog } from './panes/OfficialSheet.tsx';
+import { RefreshDialog, RefreshLine } from './panes/ContentRefresh.tsx';
 import { SettingsPane } from './panes/SettingsPane.tsx';
 import { BrowsePane, NEW_BROWSE_VIEW, type BrowseView } from './panes/BrowsePane.tsx';
 import { loadSources, type LoadProgress, type LoadedContent } from './content.ts';
@@ -440,6 +448,9 @@ function Shell({
   const [officialKept, setOfficialKept] = useState<{ name: string } | null>(null);
   const [officialProblem, setOfficialProblem] = useState<string | undefined>(undefined);
   const [officialBusy, setOfficialBusy] = useState(false);
+  // A content refresh (ADR 0082): the review open, and the offer set aside for this character's content as it is now.
+  const [refreshOpen, setRefreshOpen] = useState(false);
+  const [refreshDismissed, setRefreshDismissed] = useState(false);
 
   /** The Aurora import: what it is doing, and what it did. Cleared by the user, not a timer. */
   const [importing, setImporting] = useState(false);
@@ -518,6 +529,16 @@ function Shell({
   }, [working.embedded, content]);
 
   const { builder, state } = useBuilder(working.character, system, elements);
+
+  // What the open character carries against what its sources load now (ADR 0082). Only with both: listing and opening
+  // never reach for content, and with no source loaded there is nothing to compare with.
+  const changes = useMemo(
+    () => (working.embedded && content ? contentChanges(working.embedded, content.elements) : null),
+    [working.embedded, content],
+  );
+  const notice = changes ? refreshNotice(changes) : undefined;
+  // "Not now" lasts until the character's content or the sources change.
+  useEffect(() => setRefreshDismissed(false), [working.embedded, content]);
   // What the Sheet shows, as one value: the pane draws it and the text export writes it (ADR 0075).
   const document = useMemo(() => sheetDocument(state), [state]);
 
@@ -1098,6 +1119,28 @@ function Shell({
     [officialOpen, formMap, officialKept, officialProblem],
   );
 
+  // The review: the Sheet built twice, asked only while it is open (ADR 0082 decision 2).
+  const review = useMemo(() => {
+    if (!refreshOpen || !changes || !working.embedded || !content) return null;
+    const { before, after } = refreshDocuments(state.character, system, working.embedded, content.elements);
+    return refreshReview(before, after, changes);
+  }, [refreshOpen, changes, working.embedded, content, state.character, system]);
+
+  /**
+   * Take up the sources' definitions (ADR 0082 decision 3): every copy they define replaced, every other kept, the
+   * character's recorded sources brought up to the profile and nothing else of it touched. Handed over as `working`, as an
+   * open is, so the draft keeps it (ADR 0066); the file changes on Save.
+   */
+  const applyRefresh = useCallback((): void => {
+    if (!working.embedded || !content) return;
+    const character = state.character.sources
+      ? { ...state.character, sources: refreshSourceRefs(state.character.sources, mySources) }
+      : state.character;
+    setWorking({ ...working, character, embedded: new BundleElementIndex(refreshedElements(working.embedded, content.elements)) });
+    setRefreshOpen(false);
+    setSaveNote('Refreshed against your sources. Save to keep it in the file.');
+  }, [working, content, state.character, mySources]);
+
   const printView = useMemo(
     () => (printDraft === null ? null : printOptionsView(document, printDraft, printTarget)),
     [document, printDraft, printTarget],
@@ -1161,6 +1204,7 @@ function Shell({
     renamePrompt !== null ||
     printDraft !== null ||
     officialOpen ||
+    refreshOpen ||
     (pane === 'library' && libraryState.status === 'no-location' && !askDismissed);
   const resolved = resolveCommands({
     workspace: true,
@@ -1179,6 +1223,7 @@ function Shell({
     exporting,
     pdfAvailable: platform.pdf.available,
     formAvailable: formMap !== undefined,
+    contentUpdates: notice !== undefined,
   });
 
   const handlers: CommandHandlers = {
@@ -1189,6 +1234,7 @@ function Shell({
     'print-sheet': printSheet,
     'export-sheet-pdf': exportPdfStep,
     'fill-official-sheet': openOfficialSheet,
+    'review-content-updates': () => setRefreshOpen(true),
     'import-aurora': () => void importFromAurora(),
     'choose-library-folder': () => void chooseFolder(),
     'refresh-library': () => void library.refresh(),
@@ -1314,6 +1360,9 @@ function Shell({
             </button>
             {saveNote && <span className="status">{saveNote}</span>}
           </div>
+          {notice && !refreshDismissed && (
+            <RefreshLine notice={notice} onReview={() => setRefreshOpen(true)} onDismiss={() => setRefreshDismissed(true)} />
+          )}
           <BuilderPane
             builder={builder}
             state={state}
@@ -1367,6 +1416,9 @@ function Shell({
             )}
             {exportNote && <span className="status">{exportNote}</span>}
           </div>
+          {notice && !refreshDismissed && (
+            <RefreshLine notice={notice} onReview={() => setRefreshOpen(true)} onDismiss={() => setRefreshDismissed(true)} />
+          )}
           <SheetPane builder={builder} document={document} print={printing} />
         </>
       )}
@@ -1415,6 +1467,7 @@ function Shell({
           onDismissFileResults={() => setFileResults(null)}
         />
       )}
+      <RefreshDialog review={review} onRefresh={applyRefresh} onClose={() => setRefreshOpen(false)} />
       <OfficialSheetDialog
         view={officialView}
         busy={officialBusy}
