@@ -1334,7 +1334,10 @@ pane draws and every export renders: the PDF and the print layout start from it,
         what the prepared lists hold, listing a list preparer's prepared spells too, which no sheet showed; 5e's Spells
         section reads "Bless (Level 1, always prepared)", cantrips first, on the Sheet, the print and the text export (ADR
         0079 decision 8; 311 spells on the samples, 29 always prepared and 92 prepared, all matching the derivation)
-  - [ ] hit dice per class
+  - [x] **hit dice per class**: a sheet section's `trackDie` writes a listed class with its track's count of the die its
+        setter names; 5e's Character section reads "Paladin 3 (3d10)", "Sorcerer 3 (3d6)" on the Sheet, the print and the
+        text export (ADR 0079 decision 9; all 29 classes in the corpus carry a die, and the 40 classes of the thirty
+        samples read as the derivation and the class element say)
   - [ ] "Export sheet as PDF…" in the Windows window, with paper in the print options step
   - [ ] "Fill the official sheet…": the user's copy kept and recognised, the field map shipped with the 5e system, what
         does not fit named in the result line

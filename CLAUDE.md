@@ -984,6 +984,11 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     and never seeded (ADR 0046), and 50 of the samples' 94 chosen spells were on no sheet; `sheetView` takes a lookup, the
     builder's index. `listedAside` writes "Level 1, prepared". 5e's `pc` Spells section declares both;
     `spell-levels.test.ts` holds every sample's list and marks to the derivation.
+  - **Hit dice per class are built** (decision 9): a sheet section may declare `trackDie` (a setter, beside `trackProgress`),
+    and a listed track root carries `SheetListedElement.dice` (`{ count, sides }`): the track's count, as decision 7 reads
+    it, of the die core's `trackDie` reads off the setter (`dN` only, through `dieSides`). `listedAside` writes it first:
+    "Paladin 3 (3d10)". The form's total ("3d10 + 3d6") is the filler's to add up, not the Sheet's. 5e's `pc` Character
+    section declares `"trackDie": "hd"`; `hit-dice.test.ts` holds every sample's classes to the derivation and `hd`.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:

@@ -1,6 +1,6 @@
 # 0079 — A PDF sheet is the print layout written to a file, and the official form is the user's own copy, filled from the document
 
-**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7), a spell's level and prepared mark on 2026-10-01 (decision 8) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
+**Status:** Accepted · 2026-09-30 (proposed the same day) · being built: decision 4's proficiency marks and levels per class the same day (decisions 6 and 7), a spell's level and prepared mark and hit dice per class on 2026-10-01 (decisions 8 and 9) · answers Phase 5's "PDF character sheet (fillable official sheet + a clean Incudo sheet)"
 · builds on [0012](./0012-self-contained-saves.md), [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
 [0038](./0038-a-copy-goes-through-a-save-port-and-changes-nothing-else.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -345,6 +345,47 @@ always prepared)" and "Thaumaturgy (Cantrip)", a Cleric 20's prepared spells thr
 Wizard/Artificer's Magic Missile once, as always prepared (the stronger of its two marks); the five text exports (through a stand-in save picker) are byte
 for byte the tests' Markdown, and A4 PDFs printed with `Page.printToPDF` carry every spell line. Not in the Tauri window.
 
+### 9. What building it decided: hit dice per class (2026-10-01)
+
+**Hit dice** (decision 4's fourth item), measured first by `tools/verify/src/hit-dice.test.ts` (report-only on the commit
+before them, on AuroraLegacy/elements at `c28ce6c`): all 29 `Class` elements in the corpus carry an `hd` setter, every one a
+`dN` die (d6 4, d8 17, d10 6, d12 2), and no other element carries one. Over the thirty samples, the 40 classes held read d6
+9 times, d8 16, d10 12 and d12 3; the 11 classes held in both editions read the same die in each; and the track's count
+(decision 7) agrees with the split on every class, so a class's hit dice are its count of its die. Nothing else in content
+names or adds to hit dice but Durable's `durable:hd:bonus`, a bonus to what a die regains when spent, which is play state.
+Of the 8 multiclass samples, 3 have two classes sharing a die (a Paladin 3 / Ranger 3 has 6d10).
+
+- **A sheet section may declare `trackDie`** (system format, optional string; `formatVersion` stays 1): the setter naming
+  the die a listed element's track adds once per count. Core's `trackDie(element, setter)` reads it (case ignored, as a
+  group's setter is) as a `dN` value through `dieSides`, the one parsing rule ADR 0044's `setter` expression uses, and a
+  value that is not one reads as none. The count is the track's, as decision 7 reads it from what the derivation published;
+  nothing is recomputed from `advancement`.
+- **`SheetListedElement.dice`** is `{ count, sides }`, only beside a positive `progress` and a die. **`listedDice`** writes
+  it "3d10", and `listedAside` puts it first in what follows the name, so the pane, the print and the Markdown export read
+  "Paladin 3 (3d10)". The form's total line ("3d10 + 3d6", dice of one size added) is the form filler's to compose from
+  the listed classes, as joining the classes into "Paladin 3 / Sorcerer 3" is (decision 5); the Sheet does not repeat it.
+- **The validator refuses** `trackDie` on a section that writes no track count (no `trackProgress`), and in a creature's
+  stat block, which has no tracks; the schema refuses it blank.
+- **5e's `pc` declares `"trackDie": "hd"` on its Character section.** Nothing derives differently, and the system
+  definition is not embedded in a save (ADR 0022), so every save shows its hit dice; the oracle cannot move.
+
+Evidence: `hit-dice.test.ts` now asserts, against any corpus, that every sample's Character section writes each class with
+its track's count of the die its element's `hd` names, on the Sheet and in the text export (40 classes on 30 samples); it
+fails with 5e's declaration removed. `class-levels.test.ts` reads a class's export line through `listedAside`.
+`packages/core/src/system.test.ts`, `packages/ui/src/sheet.test.ts`, `sheet-document.test.ts` and
+`tools/verify/src/schemas.test.ts` each fail under their named perturbations (the setter matched by case, a missing or
+non-die value read as 0 or as a die, the section's field unread, a count of one in place of the track's, a section without
+it writing dice, the dice left out of the wording or after the group, count and die swapped, each validator check removed,
+the field left out of the schema or allowed blank). The PDF coverage test splits the form's two hit dice fields: the total
+is read from the document on all thirty (the multiclass samples read "3d10 + 3d6", "6d10 + 4d6", "6d10",
+…), the dice remaining is play state; fields never in the document go from 51 to 50, the median filled from 180 to 181.
+Driven in the browser build (headless Edge on the dev server, every click injected over the debug port, an origin-private
+folder for the folder picker, six samples packed by `packCharacter` and opened with no content source): the Sheet reads
+"Paladin 3 (3d10)", "Sorcerer 3 (3d6)", the three-class sample's "Fighter 3 (3d10)", the interleaved one's "Rogue 4 (4d8)",
+"Wizard 4 (4d6)", a Cleric 20's "Cleric 20 (20d8)" and a 2024 Ranger's "Ranger 5 (5d10)"; the six text exports (through a
+stand-in save picker) are byte for byte the tests' Markdown, and A4 PDFs printed with `Page.printToPDF` carry every word of
+them and every class line. Not in the Tauri window.
+
 ## What this does not do
 
 - **Ship, download, or cache from the network the official sheet.** Decision 3.
@@ -387,6 +428,7 @@ On AuroraLegacy/elements at `c28ce6c` and the thirty samples.
 |---|---|
 | what the derivation publishes as each class's level, against the samples' split | `tools/verify/src/class-levels.test.ts`, report-only before decision 7, asserting since |
 | each listed spell's level setter, the prepared lists per block, spells prepared in two blocks, the Spells section's order | `tools/verify/src/spell-levels.test.ts`, report-only before decision 8, asserting since |
+| every class's `hd` setter in the corpus and on the samples, the two editions' dice, the track's count against the split, what else names hit dice, the multiclass samples' dice | `tools/verify/src/hit-dice.test.ts`, report-only before decision 9, asserting since |
 | the 2014 form's boxes and counts (334 fields: 210 text, 124 check boxes; 100 spell lines), and for the samples what the document fills, fills in part, leaves empty and never holds; where the form's shape does not fit; characters outside WinAnsi; what the NPC, Legendary Creature and Cairn documents hold | `tools/verify/src/pdf-sheet.test.ts`, report-only (ADR 0042), committed before this record; it asserts only that the listed boxes add up to the form's counts and that samples were read |
 
 - **The official PDFs** were downloaded once with the maintainer's leave into a scratch folder outside the repository, read
