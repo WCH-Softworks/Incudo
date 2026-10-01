@@ -14,6 +14,7 @@ import type { FileSaveOptions, FileSaver, SavedFile } from '@incudo/core';
 import type { CompanionsView } from './companions.ts';
 import type { ReferenceRow } from './references.ts';
 import {
+  listedAside,
   listedName,
   NO_KEPT_TEXT,
   PREREQUISITES_UNMET,
@@ -44,6 +45,7 @@ const sheet: SheetView = {
       elements: [
         { elementId: 'G1', name: 'Wrench', progress: 3 },
         { elementId: 'G2', name: 'Spanner_of_*Doom*', prerequisitesUnmet: true },
+        { elementId: 'G3', name: 'Zap', group: { value: '1', label: 'Tier_1' }, prepared: { label: 'packed', always: false } },
       ],
     },
     {
@@ -136,6 +138,7 @@ test('the Markdown: title, kind, a heading per section, one list of rows, elemen
       '- Luck: -1 (handy\\_\\*)',
       '- Wrench 3',
       `- Spanner\\_of\\_\\*Doom\\* (${PREREQUISITES_UNMET})`,
+      '- Zap (Tier\\_1, packed)',
       '',
       '## First Line',
       '',
@@ -254,4 +257,13 @@ test("a listed element rooting a track is called with the track's count, after t
   assert.equal(listedName({ name: 'Paladin', progress: 3 }), 'Paladin 3');
   assert.equal(listedName({ name: 'The Tinkerer', sheetName: 'Tinker', progress: 12 }), 'Tinker 12');
   assert.equal(listedName({ name: 'Wrench' }), 'Wrench');
+});
+
+// ADR 0079. Fails if a listed element's group or prepared mark is left out of its wording (the Markdown above reads "Zap"),
+// if the two are in the other order, or if an element with neither gets empty parentheses.
+test("what follows a listed element's name is its group and its prepared mark, or nothing", () => {
+  assert.equal(listedAside({ group: { value: '1', label: 'Level 1' }, prepared: { label: 'prepared', always: false } }), 'Level 1, prepared');
+  assert.equal(listedAside({ group: { value: '0', label: 'Cantrip' } }), 'Cantrip');
+  assert.equal(listedAside({ prepared: { label: 'always prepared', always: true } }), 'always prepared');
+  assert.equal(listedAside({}), undefined);
 });

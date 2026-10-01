@@ -19,14 +19,18 @@
  *   per block, so a mark read from every block at once is right only if no spell answers differently in two.
  * - **How the Spells section orders spells today**: whether it is already by level, by name, or the order held.
  *
- * Report-only (ADR 0042): `ℹ` lines, nothing asserted but that samples were read.
+ * Report-only (ADR 0042) on the commit before the marks were built. Since then the last test asserts, against any corpus,
+ * that every sample's Spells section lists what it holds and what its prepared lists hold, each spell with its level
+ * setter as its group, in group order, and marked exactly as the derivation's preparation reads it, on the Sheet and in
+ * the text export: the section's `group` and `preparedMark` (5e's system definition) write them, and removing either
+ * fails it.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { ElementId } from '@incudo/core';
-import { CharacterBuilder, sheetDocument } from '@incudo/ui';
+import { compareSheetGroups, preparedListIds, preparedState, type ElementId } from '@incudo/core';
+import { CharacterBuilder, listedAside, listedName, sheetDocument, sheetMarkdown } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
@@ -135,4 +139,40 @@ test('the samples: what a listed spell\'s level and prepared mark would read', {
     `the Spells section's order today, samples with two or more: by level then name ${order.byLevelThenName}, by level only ${order.byLevel}, by name only ${order.byName}, neither ${order.neither}` +
       `${orderExamples.length ? ` (${orderExamples.join('; ')})` : ''}`,
   );
+});
+
+test("every sample's sheet reads each spell's level and prepared mark as the derivation does", { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
+  t.diagnostic(corpusProvenance());
+  const elements = await realElements();
+  let samples = 0;
+  let spells = 0;
+  const marks = { always: 0, chosen: 0 };
+  for (const sample of samplesWhere(() => true)) {
+    const run = await runOracle(samplePath(sample), elements, 'sample');
+    const derived = run.derived;
+    const doc = sheetDocument(new CharacterBuilder(run.imported.character, run.system, run.elements).getState());
+    const listed = doc.sections.find((s) => s.id === 'spells')?.elements ?? [];
+    // What it holds and what its prepared lists hold, once each.
+    const want = new Set([
+      ...derived.elements.filter((e) => e.type === 'Spell').map((e) => e.id),
+      ...preparedListIds(derived.preparation).filter((id) => run.elements.get(id)?.type === 'Spell'),
+    ]);
+    assert.deepEqual(new Set(listed.map((e) => e.elementId)), want, `${sample.id}: the Spells section lists what is held and prepared`);
+    assert.equal(listed.length, want.size, `${sample.id}: each spell once`);
+    const markdown = sheetMarkdown(doc);
+    for (const [at, e] of listed.entries()) {
+      spells++;
+      const level = run.elements.get(e.elementId)?.setters.level?.value.trim();
+      assert.equal(e.group?.value, level || undefined, `${sample.id} ${e.name}: its level`);
+      if (at > 0) assert.ok(compareSheetGroups(listed[at - 1]!.group, e.group) <= 0, `${sample.id} ${e.name}: listed by level`);
+      const state = preparedState(derived.preparation, e.elementId);
+      assert.equal(e.prepared === undefined ? undefined : e.prepared.always ? 'always' : 'chosen', state, `${sample.id} ${e.name}: its prepared mark`);
+      if (state) marks[state]++;
+      const aside = listedAside(e);
+      assert.ok(markdown.includes(`- ${listedName(e)}${aside ? ` (${aside})` : ''}\n`), `${sample.id}: the export lists ${listedName(e)} (${aside})`);
+    }
+    samples++;
+  }
+  assert.ok(samples > 0, 'samples were read');
+  t.diagnostic(`${samples} samples; ${spells} spells listed with their level; ${marks.always} always prepared, ${marks.chosen} prepared`);
 });

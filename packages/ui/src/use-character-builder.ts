@@ -1605,7 +1605,14 @@ export class CharacterBuilder {
       references: referencesState(this.character, this.kind, this.elements, derived.elements),
       companions: companionsView(derived, this.kind, this.elements),
       // What the user added whose prerequisites are not met (ADR 0064) is on the sheet like anything held, and marked.
-      sheet: sheetView(derived, this.kind, new Set(additions.rows.filter((row) => !row.prerequisitesMet).map((row) => row.elementId))),
+      // A list preparer's prepared spells are not held (ADR 0046) and are listed with the rest (ADR 0079): looked up here,
+      // where a save's embedded content comes first.
+      sheet: sheetView(
+        derived,
+        this.kind,
+        new Set(additions.rows.filter((row) => !row.prerequisitesMet).map((row) => row.elementId)),
+        (id) => this.elements.get(id),
+      ),
       focusedId: this.focusedId,
     };
   }

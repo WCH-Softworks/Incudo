@@ -149,7 +149,7 @@ const OFFICIAL_2014: Box[] = [
   { page: 3, name: 'spell slots per level', text: 9, checks: 0, read: (d) => (d.doc.sections.some((s) => s.id.includes('slots') && s.rows.length) ? 'filled' : 'empty') },
   { page: 3, name: 'slots expended per level', text: 9, checks: 0 },
   { page: 3, name: 'spells, by level', text: 100, checks: 0, read: (d) => fit(d, 'spells, by level', listed(d, 'spells')) },
-  { page: 3, name: 'spell prepared marks', text: 0, checks: 92 },
+  { page: 3, name: 'spell prepared marks', text: 0, checks: 92, read: (d) => fit(d, 'spell prepared marks', d.section('spells')?.elements.some((e) => e.prepared) ? 'filled' : 'empty') },
 ];
 
 test('the 2014 fillable sheet as listed here has the form\'s 334 fields', () => {
@@ -213,11 +213,11 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
   const builder = new CharacterBuilder(run.imported.character, run.system, run.elements);
   const doc = sheetDocument(builder.getState());
   const section = (sid: string) => doc.sections.find((s) => s.id === sid);
-  // Spells by level: the document lists names only, so the level is read from the element, which a form export could not.
+  // Spells by level, as the document groups them (ADR 0079): a spell's group is its level.
   const perLevel = new Array<number>(10).fill(0);
   let unknownSpellLevels = 0;
   for (const e of section('spells')?.elements ?? []) {
-    const level = Number(run.elements.get(e.elementId)?.setters.level?.value);
+    const level = e.group ? Number(e.group.value) : NaN;
     if (Number.isInteger(level) && level >= 0 && level <= 9) perLevel[level]!++;
     else unknownSpellLevels++;
   }
@@ -234,6 +234,8 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
   const partial = new Set<string>();
   if (blocks > 1) partial.add('spellcasting class, ability, save DC, attack bonus');
   if (overSpellLines.length) partial.add('spells, by level');
+  // A prepared box is on a levelled spell's line: a spell past its level's lines has no box either. Cantrips have none.
+  if (perLevel.some((n, level) => level > 0 && n > SPELL_LINES[level]!)) partial.add('spell prepared marks');
   for (const b of OFFICIAL_2014) if (b.holds && (chars.get(b.name) ?? 0) > b.holds) partial.add(b.name);
 
   const classes = (section('identity')?.elements ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Class');
@@ -319,14 +321,14 @@ test('the samples against the 2014 fillable sheet: what the sheet document fills
   t.diagnostic(`class and level: ${readings.filter((r) => r.classLine).length} of ${n} samples read their classes with levels; the ${multiclass.length} multiclass: ${multiclass.map((r) => `${r.id} ${r.classLine ?? '(none)'}`).join('; ')}`);
   t.diagnostic(`casting blocks per sample (the form has one): ${range(readings.map((r) => r.blocks))}; samples with more than one ${readings.filter((r) => r.blocks > 1).length}`);
   const over = readings.filter((r) => r.overSpellLines.length);
-  t.diagnostic(`spells: samples with a level holding more spells than the form has lines ${over.length}${over.length ? ` (${over.map((r) => `${r.id}: ${r.overSpellLines.join(', ')}`).join('; ')})` : ''}; spells with no level setter ${readings.reduce((a, r) => a + r.unknownSpellLevels, 0)}`);
-  t.diagnostic(`spell levels are not in the document: the Spells section lists names, and filling the form by level reads each element`);
+  t.diagnostic(`spells: samples with a level holding more spells than the form has lines ${over.length}${over.length ? ` (${over.map((r) => `${r.id}: ${r.overSpellLines.join(', ')}`).join('; ')})` : ''}; spells listed with no level ${readings.reduce((a, r) => a + r.unknownSpellLevels, 0)}`);
+  t.diagnostic(`spell levels and prepared marks are in the document since ADR 0079 decision 8: a listed spell's group is its level, and its mark what the prepared lists hold`);
   t.diagnostic(`weapons carried per sample (the form has three lines) ${range(readings.map((r) => r.weapons))}; samples with more than three ${readings.filter((r) => r.weapons > 3).length}`);
   for (const b of OFFICIAL_2014.filter((x) => x.holds && x.read)) {
     const values = readings.map((r) => r.chars.get(b.name) ?? 0);
     t.diagnostic(`${b.name}: characters a sample would write ${range(values)}; the box holds about ${b.holds} at 7 pt; samples over it ${values.filter((v) => v > b.holds!).length}`);
   }
-  t.diagnostic(`proficiency marks in the derivation per sample ${range(readings.map((r) => r.proficiencyMarks))}, which the document carries since ADR 0079 decision 6 (the form has 24 boxes for them); held outside the document: prepared spells recorded on ${readings.filter((r) => r.prepared).length} samples, ${range(readings.filter((r) => r.prepared).map((r) => r.prepared))} each; personal text (freeform) on ${readings.filter((r) => r.freeformKeys.length).length} samples, what it holds ${freeformFamilies(readings)}; a portrait on ${readings.filter((r) => r.hasPortrait).length}`);
+  t.diagnostic(`proficiency marks in the derivation per sample ${range(readings.map((r) => r.proficiencyMarks))}, which the document carries since ADR 0079 decision 6 (the form has 24 boxes for them); prepared spells recorded on ${readings.filter((r) => r.prepared).length} samples, ${range(readings.filter((r) => r.prepared).map((r) => r.prepared))} each, which the document marks since decision 8 (92 boxes); held outside the document: personal text (freeform) on ${readings.filter((r) => r.freeformKeys.length).length} samples, what it holds ${freeformFamilies(readings)}; a portrait on ${readings.filter((r) => r.hasPortrait).length}`);
   const outside = new Set(readings.flatMap((r) => [...r.outside]));
   t.diagnostic(`characters the form's font (Helvetica, WinAnsi, not embedded) cannot write: on ${readings.filter((r) => r.outside.size).length} samples, ${[...outside].map((c) => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(' ') || 'none'}`);
 });

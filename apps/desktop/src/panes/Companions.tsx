@@ -8,7 +8,7 @@
 
 import { useMemo } from 'react';
 
-import { listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
+import { listedAside, listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
 
 import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
 
@@ -61,11 +61,13 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
  */
 function ListedElement({ element }: { element: SheetListedElement }): React.JSX.Element {
   const usage = listedUsage(element);
+  const aside = listedAside(element);
   const html = useMemo(() => (element.text ? sanitizeDescriptionHtml(element.text) : ''), [element.text]);
   const name = listedName(element);
   return (
     <li>
       {usage !== undefined || html ? <strong>{name}</strong> : name}
+      {aside !== undefined && <span className="sheet-beside"> ({aside})</span>}
       {element.prerequisitesUnmet && <span className="hint"> ({PREREQUISITES_UNMET})</span>}
       {usage !== undefined && <span className="sheet-usage"> ({usage})</span>}
       {html && (

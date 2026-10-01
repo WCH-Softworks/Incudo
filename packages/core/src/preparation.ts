@@ -179,3 +179,20 @@ export function derivePreparation(
   }
   return out;
 }
+
+/**
+ * Whether a character's prepared lists hold an element — ADR 0079, for a sheet's mark: `always` when any block keeps it
+ * on its list (content's marker), else `chosen` when any block counts it as the player's, else nothing. A recorded entry
+ * the block cannot prepare (`unavailable`) counts for nothing, here as in the limit. Read from every block at once: a
+ * sheet lists an element once, and one prepared by two blocks is prepared.
+ */
+export function preparedState(preparation: readonly PreparedBlock[], id: ElementId): 'always' | 'chosen' | undefined {
+  if (preparation.some((block) => block.always.includes(id))) return 'always';
+  if (preparation.some((block) => block.chosen.includes(id))) return 'chosen';
+  return undefined;
+}
+
+/** Every element a character's prepared lists hold (always, then chosen, block by block), once each — ADR 0079. */
+export function preparedListIds(preparation: readonly PreparedBlock[]): ElementId[] {
+  return [...new Set(preparation.flatMap((block) => [...block.always, ...block.chosen]))];
+}

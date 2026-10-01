@@ -31,6 +31,15 @@ export function listedName(element: Pick<SheetListedElement, 'name' | 'sheetName
 }
 
 /**
+ * What a sheet writes in parentheses after a listed element's name: its group and its prepared mark (ADR 0079), "Level 1,
+ * prepared", "Cantrip", either alone, or nothing. The pane and every export word a listed element this way.
+ */
+export function listedAside(element: Pick<SheetListedElement, 'group' | 'prepared'>): string | undefined {
+  const parts = [element.group?.label, element.prepared?.label].filter((part): part is string => part !== undefined && part !== '');
+  return parts.length ? parts.join(', ') : undefined;
+}
+
+/**
  * What using a listed element takes and how often, as a sheet writes it beside the name: "Bonus Action; 3/Long Rest",
  * either alone, or nothing when content says neither (ADR 0076).
  */

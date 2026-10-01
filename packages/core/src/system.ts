@@ -904,6 +904,61 @@ export interface SheetSectionDef {
    * types, on a kind whose progression names a `trackStatPattern`.
    */
   trackProgress?: boolean;
+  /**
+   * Group the listed elements by a setter they carry, in its order — ADR 0079: a player character's spells are listed
+   * cantrips first, then level 1, level 2, …, each called "Cantrip", "Level 1" (`labels` before `label`, as a candidate
+   * note is). Within a group, by name; an element without the setter after every group, in the order held. Only
+   * meaningful beside types.
+   */
+  group?: SheetGroupDef;
+  /**
+   * Mark a listed element the character's prepared lists hold — ADR 0079, from what the derivation publishes as
+   * `preparation` (ADR 0046): `always` for what content keeps on a list, `chosen` for what the player put on one and
+   * counts. The section also lists what a list holds and the character does not (a list preparer prepares from every
+   * spell it could hold, which the derivation does not seed). Only meaningful beside types that include the kind's
+   * `preparation.elementType`.
+   */
+  preparedMark?: SheetPreparedMarkDef;
+}
+
+/** How a section groups what it lists: by a setter, called by `label` with `{value}`, or by `labels` exactly — ADR 0079. */
+export interface SheetGroupDef {
+  setter: string;
+  label: string;
+  labels?: Record<string, string>;
+}
+
+/** What a prepared element is called on a sheet: one content always prepares, and one the player chose — ADR 0079. */
+export interface SheetPreparedMarkDef {
+  always: string;
+  chosen: string;
+}
+
+/** A listed element's group (ADR 0079): its setter's value as written, trimmed, and what the group is called. */
+export interface SheetGroup {
+  value: string;
+  label: string;
+}
+
+/**
+ * The group a listed element is in — ADR 0079: the setter `def` names (matched ignoring case), called by its exact
+ * label when `labels` has one, else `label` with `{value}` filled. None when the element does not carry it or it is blank.
+ */
+export function sheetGroup(element: Pick<Element, 'setters'>, def: SheetGroupDef): SheetGroup | undefined {
+  const wanted = def.setter.trim().toLowerCase();
+  const setter = Object.entries(element.setters).find(([name]) => name.trim().toLowerCase() === wanted)?.[1];
+  const value = setter?.value.trim();
+  if (!value) return undefined;
+  return { value, label: def.labels?.[value] ?? def.label.replaceAll('{value}', value) };
+}
+
+/**
+ * The order of two groups (ADR 0079): their values as text with the digits in them read as numbers ("2" before "10"); an
+ * element in no group after every one.
+ */
+export function compareSheetGroups(a: SheetGroup | undefined, b: SheetGroup | undefined): number {
+  if (!a || !b) return a ? -1 : b ? 1 : 0;
+  return a.value.localeCompare(b.value, undefined, { numeric: true });
 }
 
 /** A row's mark: how many times `stat` (a row template) holds `per`, called by `labels` — ADR 0079. */

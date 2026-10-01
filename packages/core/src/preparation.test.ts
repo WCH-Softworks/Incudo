@@ -21,6 +21,8 @@ import {
   parseSupports,
   preparationPool,
   preparedElementIds,
+  preparedListIds,
+  preparedState,
   readCharacterContainer,
   setPrepared,
   type Character,
@@ -348,4 +350,20 @@ test('perturbation: without the embed a prepared element is unavailable on reope
   const content = collectCharacterContent(withoutPrepared, corpus);
   const derived = deriveCharacter(character, system(), new BundleElementIndex(content.elements));
   assert.deepEqual(derived.preparation[0]?.unavailable, ['B']);
+});
+
+// ADR 0079. Fails if a sheet's mark reads `chosen` before `always` (the Bolt, always in one block and chosen in another,
+// reads chosen), if it counts what a block cannot prepare (the Dud reads chosen), if it reads only the first block (the
+// Ward, chosen in the second, reads none), or if the list of what is prepared repeats an element two blocks hold.
+test("a sheet's prepared mark reads every block, always before chosen, and never what a block cannot prepare", () => {
+  const block = (key: string, always: string[], chosen: string[], unavailable: string[] = []) => ({
+    key, name: key, limit: 9, mode: 'list' as const, always, held: [], chosen, unavailable, over: 0,
+  });
+  const preparation = [block('orange', ['BOLT'], ['LAMP'], ['DUD']), block('lemon', [], ['BOLT', 'WARD'])];
+  assert.equal(preparedState(preparation, 'BOLT'), 'always');
+  assert.equal(preparedState(preparation, 'LAMP'), 'chosen');
+  assert.equal(preparedState(preparation, 'WARD'), 'chosen');
+  assert.equal(preparedState(preparation, 'DUD'), undefined);
+  assert.equal(preparedState([], 'BOLT'), undefined);
+  assert.deepEqual(preparedListIds(preparation), ['BOLT', 'LAMP', 'WARD']);
 });

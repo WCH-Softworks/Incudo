@@ -15,6 +15,8 @@ import {
   orderBuildSteps,
   buildStepCycles,
   trackProgress,
+  sheetGroup,
+  compareSheetGroups,
   type BuildStepDef,
   type GameSystem,
 } from './system.ts';
@@ -440,4 +442,23 @@ test("a track's count is the stat its pattern names, and only when the track's r
   assert.equal(trackProgress(progression, { id: 'NOBODY', name: 'Nobody' }, stats), undefined);
   assert.equal(trackProgress({ kind: 'level', min: 1, max: 20 }, { id: 'TINKER', name: 'Tinker' }, stats), undefined);
   assert.equal(trackProgress({ kind: 'none' }, { id: 'TINKER', name: 'Tinker' }, stats), undefined);
+});
+
+// ADR 0079. Fails if an exact label is not tried before the template (level 0 reads "Level 0"), if the setter is matched
+// by case (the " Level " setter reads none), if a blank value makes a group, or if groups compare as text (10 before 2)
+// or put an element in no group first.
+test("a listed element's group is its setter's value, named, and groups order as numbers", () => {
+  const def = { setter: 'level', label: 'Level {value}', labels: { '0': 'Cantrip' } };
+  const setters = (value: string, name = 'level') => ({ setters: { [name]: { value } } });
+  assert.deepEqual(sheetGroup(setters(' 3 '), def), { value: '3', label: 'Level 3' });
+  assert.deepEqual(sheetGroup(setters('0'), def), { value: '0', label: 'Cantrip' });
+  assert.deepEqual(sheetGroup(setters('2', ' Level '), def), { value: '2', label: 'Level 2' });
+  assert.equal(sheetGroup(setters('  '), def), undefined);
+  assert.equal(sheetGroup({ setters: {} }, def), undefined);
+  const g = (value: string) => ({ value, label: value });
+  assert.ok(compareSheetGroups(g('2'), g('10')) < 0);
+  assert.ok(compareSheetGroups(g('b'), g('a')) > 0);
+  assert.ok(compareSheetGroups(g('9'), undefined) < 0);
+  assert.ok(compareSheetGroups(undefined, g('0')) > 0);
+  assert.equal(compareSheetGroups(undefined, undefined), 0);
 });

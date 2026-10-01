@@ -1032,6 +1032,70 @@ test('a preparation declaration is checked before the app loads it (ADR 0046)', 
   );
 });
 
+// ADR 0079: a section grouping what it lists lists something, and one marking prepared elements lists what its kind
+// prepares, on a kind that prepares, and never in a creature's stat block. Fails if any check is removed (its case reads
+// no error), or `group` or `preparedMark` is left out of the schema (every case: an unknown field).
+test("a section's group and prepared mark are checked before the app loads it (ADR 0079)", async () => {
+  const preparation = {
+    blockAttribute: 'prepare',
+    limit: '{name}:gizmo:allow',
+    elementType: 'Widget',
+    listFilter: '$(gizmo:charge)',
+    heldFilter: '$(gizmo:charge)',
+  };
+  const group = { setter: 'tier', label: 'Tier {value}', labels: { '0': 'Trinket' } };
+  const preparedMark = { always: 'bolted on', chosen: 'packed' };
+  const prepares = (s: GameSystem, section: Record<string, unknown>) => {
+    s.elementTypes.push({ name: 'Gadget' });
+    const kind = s.characterKinds[0]!;
+    kind.elementTypes = ['Widget', 'Gadget'];
+    kind.blockFilters = [{ key: 'gizmo:charge', tagsFromStats: ['{name}:gizmo:charge:*'], fillFrom: 1 }];
+    kind.preparation = preparation;
+    kind.sheet = { sections: [{ id: 's', label: 'S', ...section } as never] };
+  };
+
+  assert.deepEqual(await errorsFor(broken((s) => prepares(s, { types: ['Widget'], group, preparedMark }))), []);
+  assert.deepEqual(await errorsFor(broken((s) => prepares(s, { stats: ['vigour'], group }))), [
+    'characterKinds[0].sheet: section "s" groups listed elements and lists none',
+  ]);
+  assert.deepEqual(await errorsFor(broken((s) => prepares(s, { types: ['Gadget'], preparedMark }))), [
+    'characterKinds[0].sheet: section "s" marks prepared elements and does not list "Widget", what this kind prepares',
+  ]);
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        prepares(s, { types: ['Widget'], preparedMark });
+        delete s.characterKinds[0]!.preparation;
+      }),
+    ),
+    ['characterKinds[0].sheet: section "s" marks prepared elements, and this kind prepares nothing (no preparation)'],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        prepares(s, { types: ['Widget'] });
+        s.characterKinds[0]!.companions = {
+          types: ['Gadget'],
+          sheet: [
+            { id: 'c', label: 'C', types: ['Gadget'], preparedMark },
+            { id: 'd', label: 'D', stats: ['vigour'], group },
+          ],
+        };
+      }),
+    ),
+    [
+      `characterKinds[0].companions.sheet: the section "c" marks prepared elements, which a creature's stat block has none of`,
+      'characterKinds[0].companions.sheet: the section "d" groups listed elements and lists none',
+    ],
+  );
+  assert.deepEqual(await errorsFor(broken((s) => prepares(s, { types: ['Widget'], group: { setter: 'tier' } }))), [
+    'characterKinds[0].sheet.sections[0].group.label: is required',
+  ]);
+  assert.deepEqual(await errorsFor(broken((s) => prepares(s, { types: ['Widget'], preparedMark: { always: 'x', chosen: '' } }))), [
+    'characterKinds[0].sheet.sections[0].preparedMark.chosen: must not be empty',
+  ]);
+});
+
 test('the shipped 5e kind declares its preparation', async () => {
   const [, raw] = (await shippedSystems()).find(([name]) => name === 'dnd5e') ?? [];
   const pc = (raw as GameSystem).characterKinds.find((k) => k.id === 'pc')!;

@@ -16,10 +16,14 @@
 
 import {
   collectDeclaredBlocks,
+  compareSheetGroups,
   evaluateExpr,
   halfReference,
+  preparedListIds,
+  preparedState,
   renderSheetSection,
   sheetDescriptionAt,
+  sheetGroup,
   sheetListedElements,
   sheetPlaceholders,
   trackProgress,
@@ -27,10 +31,12 @@ import {
   type DerivedCharacter,
   type Element,
   type ElementId,
+  type PreparedBlock,
   type PrintedSheetLine,
   type Progression,
   type ResolvedCharacterKind,
   type ResolvedStat,
+  type SheetGroup,
   type SheetReader,
   type SheetSectionDef,
   type StatDef,
@@ -88,6 +94,16 @@ export interface SheetListedElement {
    * "Paladin 3". What the derivation published, never recomputed.
    */
   progress?: number;
+  /**
+   * The group it is listed in, when its section groups (`group`, ADR 0079): a spell's level, `{ value: "0", label:
+   * "Cantrip" }`. The section lists its elements in group order.
+   */
+  group?: SheetGroup;
+  /**
+   * Whether the character's prepared lists hold it, when its section marks them (`preparedMark`, ADR 0079): `always`
+   * when content keeps it on a list, else the player's choice; `label` is what the system calls that.
+   */
+  prepared?: { label: string; always: boolean };
 }
 
 /** One section with nothing left to decide. */
@@ -121,6 +137,16 @@ export interface SheetSource {
    * element it does not name reads its ungated text.
    */
   gateLevels?: ReadonlyMap<ElementId, number>;
+  /**
+   * What the character's prepared lists hold (`DerivedCharacter.preparation`, ADR 0046), for a section that marks them
+   * (ADR 0079). A creature's scope has none.
+   */
+  preparation?: readonly PreparedBlock[];
+  /**
+   * An element by id, for what a prepared list holds and the derivation does not (a list preparer's spells): the
+   * builder's index, which puts a save's embedded content first. Without it such an element is not listed.
+   */
+  lookup?: (id: ElementId) => Element | undefined;
 }
 
 /**
@@ -259,19 +285,34 @@ export function sheetSections(
       // type, in the order the character holds them.
       // A section that says so leaves out what content hides from a sheet's lists (ADR 0076); one naming what the
       // character is (race, class) does not, since content hides those too.
-      const elements = listed
+      // A section marking prepared elements also lists what a prepared list holds and the character does not (ADR
+      // 0079): a list preparer prepares from every spell it could hold, and the derivation seeds none of them (ADR 0046).
+      const preparation = section.preparedMark ? (source.preparation ?? []) : [];
+      const listedIds = new Set(listed.map((e) => e.id));
+      const unheld = preparedListIds(preparation)
+        .filter((id) => !listedIds.has(id))
+        .flatMap((id) => source.lookup?.(id) ?? []);
+      const shown = [...listed, ...unheld]
         .filter((e) => rendering.types.includes(e.type) && !(section.omitHidden && e.sheet?.display === false))
-        .sort((a, b) => rendering.types.indexOf(a.type) - rendering.types.indexOf(b.type))
-        .map((e): SheetListedElement => {
-          const progress = section.trackProgress && vocabulary.progression ? trackProgress(vocabulary.progression, e, source.stats) : undefined;
-          return {
-            elementId: e.id,
-            name: e.name,
-            ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}),
-            ...sheetHintsOf(e, source),
-            ...(progress !== undefined ? { progress } : {}),
-          };
-        });
+        .map((e) => ({ element: e, group: section.group ? sheetGroup(e, section.group) : undefined }))
+        .sort((a, b) => rendering.types.indexOf(a.element.type) - rendering.types.indexOf(b.element.type));
+      // A grouping section lists by group, then by name, and what is in no group after, in the order held (ADR 0079).
+      if (section.group) {
+        shown.sort((a, b) => compareSheetGroups(a.group, b.group) || (a.group && b.group ? a.element.name.localeCompare(b.element.name) : 0));
+      }
+      const elements = shown.map(({ element: e, group }): SheetListedElement => {
+        const progress = section.trackProgress && vocabulary.progression ? trackProgress(vocabulary.progression, e, source.stats) : undefined;
+        const prepared = section.preparedMark ? preparedState(preparation, e.id) : undefined;
+        return {
+          elementId: e.id,
+          name: e.name,
+          ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}),
+          ...sheetHintsOf(e, source),
+          ...(progress !== undefined ? { progress } : {}),
+          ...(group ? { group } : {}),
+          ...(prepared ? { prepared: { label: section.preparedMark![prepared], always: prepared === 'always' } } : {}),
+        };
+      });
       if (!rows.length && !rendering.printed.length && !elements.length) continue;
       views.push({
         id: rendering.id,
@@ -290,10 +331,15 @@ export function sheetSections(
  * The character's own sheet: its kind's sections against its derivation, listing every held element but what its kind
  * keeps off the sheet (ADR 0072), and marking what the user added with its prerequisites unmet (ADR 0064).
  */
-export function sheetView(derived: DerivedCharacter, kind: ResolvedCharacterKind, unmet: ReadonlySet<ElementId> = new Set()): SheetView {
+export function sheetView(
+  derived: DerivedCharacter,
+  kind: ResolvedCharacterKind,
+  unmet: ReadonlySet<ElementId> = new Set(),
+  lookup?: (id: ElementId) => Element | undefined,
+): SheetView {
   const sections = sheetSections(
     kind.sheet.sections,
-    derived,
+    lookup ? { ...derived, lookup } : derived,
     { stats: kind.stats, blockStats: kind.blockStats, progression: kind.progression },
     sheetListedElements(derived.elements, kind),
     unmet,

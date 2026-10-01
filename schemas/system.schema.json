@@ -920,6 +920,31 @@
           "type": "boolean",
           "description": "Write a listed element a track is rooted on with that track's count (ADR 0079): a player character's classes read \"Paladin 3\", \"Sorcerer 3\". The count is the stat the progression's trackStatPattern names, as the derivation publishes it, and only when that element contributed it. Only meaningful beside types, on a kind whose progression names a trackStatPattern; not in a creature's stat block."
         },
+        "group": {
+          "type": "object",
+          "description": "Group the listed elements by a setter they carry, in its order (ADR 0079): a player character's spells listed cantrips first, then by level, each called \"Cantrip\", \"Level 1\". Groups are ordered by their values as text, digits read as numbers (2 before 10); within a group by name; an element without the setter after every group, in the order held. Only meaningful beside types.",
+          "required": ["setter", "label"],
+          "additionalProperties": false,
+          "properties": {
+            "setter": { "type": "string", "minLength": 1, "description": "The setter whose value groups an element, matched ignoring case." },
+            "label": { "type": "string", "minLength": 1, "description": "What a group is called, with {value} standing for the setter's value: \"Level {value}\"." },
+            "labels": {
+              "type": "object",
+              "additionalProperties": { "type": "string", "minLength": 1 },
+              "description": "Exact-value names, tried before label: { \"0\": \"Cantrip\" }."
+            }
+          }
+        },
+        "preparedMark": {
+          "type": "object",
+          "description": "Mark a listed element the character's prepared lists hold (ADR 0079), from what the derivation publishes as its preparation (ADR 0046): always for what content keeps on a list, chosen for what the player put on one and counts. The section also lists what a list holds and the character does not. Only meaningful beside types that include the kind's preparation elementType, on a kind that declares preparation; not in a creature's stat block.",
+          "required": ["always", "chosen"],
+          "additionalProperties": false,
+          "properties": {
+            "always": { "type": "string", "minLength": 1, "description": "What an element content always prepares is called: \"always prepared\"." },
+            "chosen": { "type": "string", "minLength": 1, "description": "What an element the player prepared is called: \"prepared\"." }
+          }
+        },
         "showWhen": {
           "type": "string",
           "minLength": 1,

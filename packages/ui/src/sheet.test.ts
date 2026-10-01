@@ -21,7 +21,7 @@ import {
   type Setter,
 } from '@incudo/core';
 
-import { formatStatValue, rowMark, sheetView } from './sheet.ts';
+import { formatStatValue, rowMark, sheetSections, sheetView } from './sheet.ts';
 import { CharacterBuilder } from './use-character-builder.ts';
 
 function element(id: string, name: string, setters: Record<string, string> = {}, extra: Partial<Element> = {}): Element {
@@ -220,4 +220,51 @@ test("a section that writes a track's count lists the track's root with what the
   const who = view.sections.find((s) => s.id === 'who')!;
   assert.deepEqual(who.elements.map((e) => [e.name, e.progress]), [['Charm', 4], ['Lamp', undefined], ['Named', undefined]]);
   assert.equal(view.sections.find((s) => s.id === 'gear')!.elements[0]!.progress, undefined);
+});
+
+// ADR 0079. A section of Gadgets grouped by tier and marking what two prepared lists hold, one of them naming a gadget
+// the character does not hold (found through the lookup). Fails if the group is not read (no labels, held order), if
+// groups sort as text (tier 10 before tier 2) or within one other than by name, if what is in no group is not last, if
+// an unheld prepared gadget is not listed (or listed without a lookup), if `always` and `chosen` swap labels, if a
+// section without `preparedMark` marks anything, or if a recorded entry the block cannot prepare is marked.
+test('a section groups what it lists by a setter and marks what the prepared lists hold, listing what they hold and the character does not', () => {
+  const held = [
+    element('ZAP', 'Zap', { tier: '2' }),
+    element('ARC', 'Arc', { tier: '10' }),
+    element('ODD', 'Odd'),
+    element('BUZZ', 'Buzz', { tier: '2' }),
+    element('PIP', 'Pip', { tier: '0' }),
+    element('DUD', 'Dud', { tier: '1' }),
+  ];
+  const unheld = element('HUM', 'Hum', { tier: '1' });
+  const preparation = [
+    { key: 'orange', name: 'Orange', limit: 3, mode: 'list' as const, always: ['ZAP'], held: [], chosen: ['HUM'], unavailable: ['DUD'], over: 0 },
+    { key: 'lemon', name: 'Lemon', limit: 3, mode: 'held' as const, always: [], held: ['ARC'], chosen: ['ARC'], unavailable: [], over: 0 },
+  ];
+  const sections = [
+    {
+      id: 'list', label: 'List', types: ['Gadget'],
+      group: { setter: 'tier', label: 'Tier {value}', labels: { '0': 'Trinket' } },
+      preparedMark: { always: 'bolted on', chosen: 'packed' },
+    },
+    { id: 'plain', label: 'Plain', types: ['Gadget'] },
+  ];
+  const source = { stats: new Map<string, ResolvedStat>(), elements: held, preparation, lookup: (id: string) => (id === 'HUM' ? unheld : undefined) };
+  const [list, plain] = sheetSections(sections, source, { stats: [], blockStats: [] });
+  assert.deepEqual(
+    list!.elements.map((e) => [e.name, e.group?.label, e.prepared?.label, e.prepared?.always]),
+    [
+      ['Pip', 'Trinket', undefined, undefined],
+      ['Dud', 'Tier 1', undefined, undefined],
+      ['Hum', 'Tier 1', 'packed', false],
+      ['Buzz', 'Tier 2', undefined, undefined],
+      ['Zap', 'Tier 2', 'bolted on', true],
+      ['Arc', 'Tier 10', 'packed', false],
+      ['Odd', undefined, undefined, undefined],
+    ],
+  );
+  assert.deepEqual(plain!.elements.map((e) => e.name), ['Zap', 'Arc', 'Odd', 'Buzz', 'Pip', 'Dud']);
+  assert.ok(plain!.elements.every((e) => e.group === undefined && e.prepared === undefined));
+  const [noLookup] = sheetSections(sections, { ...source, lookup: undefined }, { stats: [], blockStats: [] });
+  assert.ok(!noLookup!.elements.some((e) => e.name === 'Hum'));
 });

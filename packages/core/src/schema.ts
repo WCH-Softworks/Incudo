@@ -506,6 +506,13 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         if (section.trackProgress) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" writes a track's count, which a creature's stat block has none of` });
         }
+        // Nor prepared lists of its own (ADR 0079): its scope publishes none.
+        if (section.preparedMark) {
+          errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" marks prepared elements, which a creature's stat block has none of` });
+        }
+        if (section.group && !section.types?.length) {
+          errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" groups listed elements and lists none` });
+        }
         // What a row shows beside it is a stat the scope has, or the row reads a blank (ADR 0074).
         const scopeStats = new Set([...statNames, ...(companions.stats ?? []).map((s) => s.name.toLowerCase())]);
         errors.push(...markErrors(section, scopeStats, `${where}.companions.sheet`));
@@ -590,6 +597,18 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         }
         if (resolved.progression.kind === 'none' || !resolved.progression.trackStatPattern) {
           errors.push({ path: `${where}.sheet`, message: `section "${section.id}" writes a track's count, and this kind's progression publishes none (no trackStatPattern)` });
+        }
+      }
+      // A group and a prepared mark are written beside listed elements (ADR 0079), and a prepared mark only of what the
+      // kind's prepared lists hold: a section of other types, or a kind that prepares nothing, would never show one.
+      if (section.group && !section.types?.length) {
+        errors.push({ path: `${where}.sheet`, message: `section "${section.id}" groups listed elements and lists none` });
+      }
+      if (section.preparedMark) {
+        if (!resolved.preparation) {
+          errors.push({ path: `${where}.sheet`, message: `section "${section.id}" marks prepared elements, and this kind prepares nothing (no preparation)` });
+        } else if (!section.types?.includes(resolved.preparation.elementType)) {
+          errors.push({ path: `${where}.sheet`, message: `section "${section.id}" marks prepared elements and does not list "${resolved.preparation.elementType}", what this kind prepares` });
         }
       }
       errors.push(...markErrors(section, statNames, `${where}.sheet`));

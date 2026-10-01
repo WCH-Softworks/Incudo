@@ -463,7 +463,7 @@
           { "id": "spellcasting", "label": "Spellcasting", "perBlock": true, "stats": ["{name}:spellcasting:dc", "{name}:spellcasting:attack"] },
           { "id": "slots", "label": "Spell Slots", "description": "Shared by the character's spellcasting classes.", "stats": ["spellcasting:slots:1", "spellcasting:slots:2", "spellcasting:slots:3", "spellcasting:slots:4", "spellcasting:slots:5", "spellcasting:slots:6", "spellcasting:slots:7", "spellcasting:slots:8", "spellcasting:slots:9"], "showWhen": "{stat}" },
           { "id": "block-slots", "label": "Spell Slots", "perBlock": true, "stats": ["{name}:spellcasting:table:1", "{name}:spellcasting:table:2", "{name}:spellcasting:table:3", "{name}:spellcasting:table:4", "{name}:spellcasting:table:5", "{name}:spellcasting:table:6", "{name}:spellcasting:table:7", "{name}:spellcasting:table:8", "{name}:spellcasting:table:9"], "showWhen": "{stat}" },
-          { "id": "spells", "label": "Spells", "types": ["Spell"] },
+          { "id": "spells", "label": "Spells", "types": ["Spell"], "group": { "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }, "preparedMark": { "always": "always prepared", "chosen": "prepared" } },
           { "id": "inventory", "label": "Inventory", "types": ["Item", "Weapon", "Armor", "Magic Item"] }
         ]
       }

@@ -12,7 +12,7 @@
  */
 
 import { escapeLineStart, escapeMarkdown, htmlToMarkdown } from './html-markdown.ts';
-import { listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument } from './sheet-document.ts';
+import { listedAside, listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument } from './sheet-document.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
 
 export function sheetMarkdown(document: SheetDocument): string {
@@ -86,8 +86,9 @@ function sectionItems(section: SheetSectionView): string[] {
 function elementItem(element: SheetListedElement): string {
   const e = escapeMarkdown;
   const usage = listedUsage(element);
+  const aside = listedAside(element);
   const name = usage !== undefined || element.text !== undefined ? `**${e(listedName(element))}**` : e(listedName(element));
-  const head = `${name}${element.prerequisitesUnmet ? ` (${PREREQUISITES_UNMET})` : ''}${usage !== undefined ? ` (${e(usage)})` : ''}`;
+  const head = `${name}${aside !== undefined ? ` (${e(aside)})` : ''}${element.prerequisitesUnmet ? ` (${PREREQUISITES_UNMET})` : ''}${usage !== undefined ? ` (${e(usage)})` : ''}`;
   const lines = (element.text ?? '')
     .split('\n')
     .map((line) => htmlToMarkdown(line).replace(/\s*\n\s*/g, ' ').trim())
