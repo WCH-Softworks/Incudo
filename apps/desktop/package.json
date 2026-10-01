@@ -4,6 +4,9 @@
   "private": true,
   "description": "Incudo desktop shell (Tauri + React). Layout and platform I/O only.",
   "type": "module",
+  "exports": {
+    "./official-form": "./src/official-form.ts"
+  },
   "scripts": {
     "dev": "node scripts/check-port.mjs && vite",
     "build": "vite build",
@@ -20,6 +23,7 @@
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-fs": "^2.5.2",
+    "pdf-lib": "1.17.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

@@ -45,6 +45,7 @@ export const COMMAND_IDS = [
   'export-sheet',
   'print-sheet',
   'export-sheet-pdf',
+  'fill-official-sheet',
   'import-aurora',
   'choose-library-folder',
   'refresh-library',
@@ -116,6 +117,8 @@ export const COMMANDS: readonly CommandDef[] = [
   // the print. No shortcut, for the text export's reason. Only where the shell can write a PDF (`pdfAvailable`); where it
   // cannot, the menu leaves it out (`menuModel`'s `absent`) and "Print sheet…" and its dialog are the PDF.
   { id: 'export-sheet-pdf', label: 'Export sheet as PDF…' },
+  // The user's own copy of a published form, filled from the sheet (ADR 0079 decision 3). No shortcut, as the exports.
+  { id: 'fill-official-sheet', label: 'Fill the official sheet…' },
   // No shortcut: Ctrl+I is italic in every text field and Ctrl+Shift+I is developer tools.
   { id: 'import-aurora', label: 'Import from Aurora…' },
   { id: 'choose-library-folder', label: 'Choose library folder…' },
@@ -144,6 +147,7 @@ export const MENUS: MenuLayout = [
       'export-sheet',
       'print-sheet',
       'export-sheet-pdf',
+      'fill-official-sheet',
       null,
       'import-aurora',
       null,
@@ -189,6 +193,8 @@ export interface CommandContext {
   exporting: boolean;
   /** The shell can write the page as a PDF with no print dialog (ADR 0079). */
   pdfAvailable: boolean;
+  /** The character's system ships a form for its kind (ADR 0079): the 5e player character's 2014 sheet. */
+  formAvailable: boolean;
 }
 
 /** The launcher, or the moment before anything has loaded: every command is unavailable. */
@@ -208,6 +214,7 @@ export const NO_WORKSPACE: CommandContext = {
   copying: false,
   exporting: false,
   pdfAvailable: false,
+  formAvailable: false,
 };
 
 /**
@@ -260,6 +267,9 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   // The print as a file (ADR 0079): on the Sheet, whose bar prints "Exported the sheet as …", where the shell can write a
   // PDF and show a save dialog, and not while an export is in flight.
   'export-sheet-pdf': (c) => c.pane === 'sheet' && c.pdfAvailable && c.saverAvailable && !c.exporting,
+  // On the Sheet, whose bar prints what was filled and left off, for a character whose kind has a form, where a filled
+  // copy can be saved; not while an export is in flight. Choosing the copy is inside the step, which says when it cannot.
+  'fill-official-sheet': (c) => c.pane === 'sheet' && c.formAvailable && c.saverAvailable && !c.exporting,
   // Its report is printed on the library screen, so that is where it can be started.
   'import-aurora': (c) => c.pane === 'library' && !c.importing && importBlock(c) === undefined,
   // Settings holds this one, but the first-run dialog and the library screen do too.

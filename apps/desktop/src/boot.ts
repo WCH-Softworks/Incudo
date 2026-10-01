@@ -15,16 +15,19 @@ import {
   type Character,
   type GameSystem,
   type SchemaBundle,
+  type JsonSchema,
   type SchemaError,
   type Storage,
 } from '@incudo/core';
-import { newCharacterOfKind, readDraftOrigin, type WorkingCharacter } from '@incudo/ui';
+import { checkFormMap, newCharacterOfKind, readDraftOrigin, type FormMap, type WorkingCharacter } from '@incudo/ui';
 
 import systemSchema from '@repo/schemas/system.schema.json';
 import characterSchema from '@repo/schemas/character.schema.json';
 import manifestSchema from '@repo/schemas/manifest.schema.json';
 import dnd5e from '@repo/systems/dnd5e/system.json';
 import cairn from '@repo/systems/cairn/system.json';
+import formMapSchema from '@repo/schemas/form-map.schema.json';
+import dnd5eOfficial2014 from '@repo/systems/dnd5e/forms/official-2014.json';
 
 /**
  * Every system definition that ships with the app, in the order the launcher offers them.
@@ -76,6 +79,23 @@ export function loadShippedSystems(): ShippedSystems {
     }
   }
   return { systems, failures };
+}
+
+/**
+ * The form maps shipped beside the systems (ADR 0079 decision 5): which field of a published form takes what from the
+ * sheet. A map is not part of the system format; it is read here, checked by the same `checkFormMap` the tests call, and
+ * one that does not check is left out and logged, which leaves its command unavailable rather than filling a form wrong.
+ */
+const SHIPPED_FORMS: unknown[] = [dnd5eOfficial2014];
+
+export function loadShippedForms(): FormMap[] {
+  const maps: FormMap[] = [];
+  for (const candidate of SHIPPED_FORMS) {
+    const result = checkFormMap(candidate, formMapSchema as JsonSchema);
+    if (result.value) maps.push(result.value);
+    else console.error('A shipped form map does not check and is left out.', result.errors);
+  }
+  return maps;
 }
 
 /** Where the launcher's answer is kept between launches — ADR 0031. */

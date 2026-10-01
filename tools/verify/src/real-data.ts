@@ -122,3 +122,25 @@ export function realElements(): Promise<SizedIndex> {
   loaded ??= loadCorpus(requireCorpus()).then((corpus) => corpus.library.elements as SizedIndex);
   return loaded;
 }
+
+/**
+ * The user's own copy of the official 2014 fillable character sheet, when `INCUDO_OFFICIAL_SHEET` names it (ADR 0079
+ * decision 3). The form is never committed, downloaded or shipped; a person who has a copy may point the local test at
+ * it, and with nothing named that test is skipped. Named and missing fails.
+ */
+const officialSheet = process.env['INCUDO_OFFICIAL_SHEET'] ?? '';
+
+/** Why the test that fills a real copy of the official sheet is not running, or `false` when it should. */
+export const officialSheetSkip: string | false = officialSheet
+  ? false
+  : 'no copy of the official sheet: set INCUDO_OFFICIAL_SHEET in .env.local to your own downloaded copy (never committed)';
+
+/** The copy, failing rather than skipping when it was named and is not there. */
+export function requireOfficialSheet(): string {
+  assert.ok(officialSheet, officialSheetSkip || 'no copy of the official sheet is named');
+  assert.ok(
+    existsSync(officialSheet),
+    'INCUDO_OFFICIAL_SHEET names a file that does not exist. Failing rather than skipping: a check that skips on a mistyped path passes on nothing.',
+  );
+  return officialSheet;
+}

@@ -52,6 +52,7 @@ const READY: CommandContext = {
   copying: false,
   exporting: false,
   pdfAvailable: true,
+  formAvailable: true,
 };
 
 function enabledIn(context: CommandContext): Set<CommandId> {
@@ -611,4 +612,30 @@ test('a menu leaving commands out keeps no separator at an edge or beside anothe
     }
   });
   assert.equal(file.filter((e) => e.kind === 'separator').length, 2);
+});
+
+// --- the official sheet (ADR 0079) ----------------------------------------------------------------------
+
+test('filling the official sheet is live on the sheet of a kind with a form, where a copy can be saved', () => {
+  // Fails if the rule ignores the form (an NPC would be offered it), the save dialog, an export in flight or a dialog in
+  // front, or names another pane. It needs no PDF writer: the browser build fills too.
+  assert.ok(enabledIn({ ...READY, pane: 'sheet' }).has('fill-official-sheet'));
+  assert.ok(enabledIn({ ...READY, pane: 'sheet', pdfAvailable: false }).has('fill-official-sheet'));
+  for (const pane of ['library', 'build', 'sources', 'browse', 'settings'] as Destination[]) {
+    assert.ok(!enabledIn({ ...READY, pane }).has('fill-official-sheet'), pane);
+  }
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', formAvailable: false }).has('fill-official-sheet'));
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', saverAvailable: false }).has('fill-official-sheet'));
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', exporting: true }).has('fill-official-sheet'));
+  assert.ok(!enabledIn({ ...READY, pane: 'sheet', modal: true }).has('fill-official-sheet'));
+});
+
+test('filling the official sheet sits below the PDF export in the File menu, with no shortcut', () => {
+  const file = MENUS.find((menu) => menu.label === 'File')!;
+  assert.equal(file.items.indexOf('fill-official-sheet'), file.items.indexOf('export-sheet-pdf') + 1);
+  const entry = menuModel('other')
+    .flatMap((menu) => menu.entries)
+    .find((e) => e.kind === 'command' && e.id === 'fill-official-sheet') as { label: string; shortcut?: string };
+  assert.equal(entry.label, 'Fill the official sheet…');
+  assert.equal(entry.shortcut, undefined);
 });

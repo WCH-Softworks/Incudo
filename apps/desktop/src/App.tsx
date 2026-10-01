@@ -56,6 +56,14 @@ import {
   exportSheet,
   exportSheetPdf,
   finishPrintStep,
+  formValues,
+  keepFormCopy,
+  officialSheetFileName,
+  officialSheetResult,
+  officialSheetView,
+  readFormCopy,
+  recogniseForm,
+  removeFormCopy,
   importAuroraSavesIntoLibrary,
   importBlock,
   DEFAULT_PRINT_OPTIONS,
@@ -78,11 +86,13 @@ import {
   type LibraryEntry,
   type PrintOptions,
   type PrintTarget,
+  type FormMap,
   type WorkingCharacter,
 } from '@incudo/ui';
 
 import {
   loadDraft,
+  loadShippedForms,
   loadShippedSystems,
   newCharacter,
   readChosenSystem,
@@ -92,6 +102,9 @@ import {
   type SystemFailure,
 } from './boot.ts';
 import { createDesktopPlatform } from './platform.ts';
+
+/** The form maps shipped beside the systems (ADR 0079), read once. */
+const SHIPPED_FORMS: FormMap[] = loadShippedForms();
 import { useBuilder } from './use-builder.ts';
 import { useLibrary } from './use-library.ts';
 import { useCommandHost, type CommandBinder, type CommandHandlers } from './use-commands.ts';
@@ -101,6 +114,7 @@ import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
 import { BuilderPane } from './panes/BuilderPane.tsx';
 import { SheetPane } from './panes/SheetPane.tsx';
 import { PrintOptionsDialog } from './panes/PrintOptions.tsx';
+import { OfficialSheetDialog } from './panes/OfficialSheet.tsx';
 import { SettingsPane } from './panes/SettingsPane.tsx';
 import { BrowsePane, NEW_BROWSE_VIEW, type BrowseView } from './panes/BrowsePane.tsx';
 import { loadSources, type LoadProgress, type LoadedContent } from './content.ts';
@@ -420,6 +434,12 @@ function Shell({
   const [printTarget, setPrintTarget] = useState<PrintTarget>('print');
   // Set by the step's Export: the PDF is written once the Sheet carries the choices and the paper, and the step has closed.
   const [pdfRequested, setPdfRequested] = useState(false);
+  // "Fill the official sheet…" (ADR 0079 decision 3): the step, which copy is kept, why a copy or a fill was refused,
+  // and whether a copy is being read or a sheet filled. `null` kept while the step is closed or none is kept.
+  const [officialOpen, setOfficialOpen] = useState(false);
+  const [officialKept, setOfficialKept] = useState<{ name: string } | null>(null);
+  const [officialProblem, setOfficialProblem] = useState<string | undefined>(undefined);
+  const [officialBusy, setOfficialBusy] = useState(false);
 
   /** The Aurora import: what it is doing, and what it did. Cleared by the user, not a timer. */
   const [importing, setImporting] = useState(false);
@@ -984,6 +1004,100 @@ function Shell({
       });
   }, [pdfRequested, document, printOptions.paper]);
 
+  // The form this character's kind fills, if its system ships one (ADR 0079 decision 5): the 5e player character's.
+  const formMap = useMemo(
+    () => SHIPPED_FORMS.find((map) => map.system === system.id && map.kinds.includes(state.character.kind)),
+    [system.id, state.character.kind],
+  );
+
+  const openOfficialSheet = useCallback((): void => {
+    if (!formMap) return;
+    setOfficialProblem(undefined);
+    void readFormCopy(platform.storage, formMap.id).then((kept) => {
+      setOfficialKept(kept ? { name: kept.name } : null);
+      setOfficialOpen(true);
+    });
+  }, [formMap]);
+
+  /** The user's copy, chosen in the platform's picker, kept only once it is recognised as the form by its fields. */
+  const chooseOfficialCopy = useCallback(async (): Promise<void> => {
+    if (!formMap) return;
+    if (!platform.files.available) {
+      setOfficialProblem(platform.files.unavailableReason ?? 'This platform cannot open a file.');
+      return;
+    }
+    setOfficialBusy(true);
+    try {
+      const [picked] = await platform.files.pick({ title: 'Choose your copy of the official sheet', extensions: ['pdf'], label: 'PDF', multiple: false });
+      if (!picked) return;
+      const { readFormFields } = await import('./official-form.ts');
+      const recognised = recogniseForm(await readFormFields(picked.bytes), formMap);
+      if (!recognised.ok) {
+        setOfficialProblem(recognised.reason);
+        return;
+      }
+      await keepFormCopy(platform.storage, formMap.id, { name: picked.name, bytes: picked.bytes });
+      setOfficialKept({ name: picked.name });
+      setOfficialProblem(undefined);
+    } catch (error) {
+      setOfficialProblem(error instanceof Error ? error.message : String(error));
+    } finally {
+      setOfficialBusy(false);
+    }
+  }, [formMap]);
+
+  const removeOfficialCopy = useCallback(async (): Promise<void> => {
+    if (!formMap) return;
+    await removeFormCopy(platform.storage, formMap.id);
+    setOfficialKept(null);
+    setOfficialProblem(undefined);
+  }, [formMap]);
+
+  /**
+   * Fill a copy of the kept form from the sheet on screen and save it where the user says. The kept copy is recognised
+   * again first, as a user's system is revalidated on every load: what was kept is not trusted for ever.
+   */
+  const fillOfficialSheet = useCallback(async (): Promise<void> => {
+    if (!formMap) return;
+    setOfficialBusy(true);
+    setExporting(true);
+    try {
+      const kept = await readFormCopy(platform.storage, formMap.id);
+      if (!kept) {
+        setOfficialKept(null);
+        setOfficialProblem("Incudo's copy of the sheet is gone. Choose your copy again.");
+        return;
+      }
+      const { fillForm, readFormFields } = await import('./official-form.ts');
+      const recognised = recogniseForm(await readFormFields(kept.bytes), formMap);
+      if (!recognised.ok) {
+        setOfficialProblem(recognised.reason);
+        return;
+      }
+      const values = formValues(document, formMap);
+      const bytes = await fillForm(kept.bytes, values);
+      const file = await platform.saver.save(bytes, {
+        suggestedName: officialSheetFileName(document.name),
+        title: 'Save the filled official sheet',
+        extensions: ['pdf'],
+        label: 'PDF',
+      });
+      if (!file) return;
+      setExportNote(officialSheetResult(file.name, values));
+      setOfficialOpen(false);
+    } catch (error) {
+      setOfficialProblem(`Could not fill the sheet. ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setOfficialBusy(false);
+      setExporting(false);
+    }
+  }, [formMap, document]);
+
+  const officialView = useMemo(
+    () => (officialOpen && formMap ? officialSheetView(formMap, officialKept, officialProblem) : null),
+    [officialOpen, formMap, officialKept, officialProblem],
+  );
+
   const printView = useMemo(
     () => (printDraft === null ? null : printOptionsView(document, printDraft, printTarget)),
     [document, printDraft, printTarget],
@@ -1046,6 +1160,7 @@ function Shell({
   const modal =
     renamePrompt !== null ||
     printDraft !== null ||
+    officialOpen ||
     (pane === 'library' && libraryState.status === 'no-location' && !askDismissed);
   const resolved = resolveCommands({
     workspace: true,
@@ -1063,6 +1178,7 @@ function Shell({
     copying,
     exporting,
     pdfAvailable: platform.pdf.available,
+    formAvailable: formMap !== undefined,
   });
 
   const handlers: CommandHandlers = {
@@ -1072,6 +1188,7 @@ function Shell({
     'export-sheet': () => void exportToFile(),
     'print-sheet': printSheet,
     'export-sheet-pdf': exportPdfStep,
+    'fill-official-sheet': openOfficialSheet,
     'import-aurora': () => void importFromAurora(),
     'choose-library-folder': () => void chooseFolder(),
     'refresh-library': () => void library.refresh(),
@@ -1238,6 +1355,16 @@ function Shell({
                 Export sheet as PDF…
               </button>
             )}
+            {formMap && (
+              <button
+                type="button"
+                onClick={openOfficialSheet}
+                disabled={!platform.saver.available || exporting}
+                title={describeCommand('fill-official-sheet', commands.os)}
+              >
+                Fill the official sheet…
+              </button>
+            )}
             {exportNote && <span className="status">{exportNote}</span>}
           </div>
           <SheetPane builder={builder} document={document} print={printing} />
@@ -1288,6 +1415,14 @@ function Shell({
           onDismissFileResults={() => setFileResults(null)}
         />
       )}
+      <OfficialSheetDialog
+        view={officialView}
+        busy={officialBusy}
+        onChoose={() => void chooseOfficialCopy()}
+        onRemove={() => void removeOfficialCopy()}
+        onFill={() => void fillOfficialSheet()}
+        onClose={() => setOfficialOpen(false)}
+      />
       <PrintOptionsDialog
         view={printView}
         onPart={(part, chosen) => setPrintDraft((draft) => draft && withPrintPart(draft, document, part, chosen))}

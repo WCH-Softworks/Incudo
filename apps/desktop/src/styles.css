@@ -734,6 +734,11 @@ dialog.print-options label {
   margin: 4px 0;
 }
 
+/* The form's download page, copied rather than opened (ADR 0079): a long address wraps inside the step. */
+dialog.official-sheet code {
+  word-break: break-all;
+}
+
 dialog.ask .row {
   margin-bottom: 0;
   justify-content: flex-end;
