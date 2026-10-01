@@ -130,11 +130,14 @@ export function newCharacterOfKind(system: GameSystem, kindId: string, name = 'N
   const kind = resolveCharacterKind(system, kindId);
   // A kind whose progression a creature prints records none, so the creature chosen says where it starts
   // and a value the DM types replaces it (ADR 0060). Every other kind starts where its progression does.
-  if (progressCanBePrinted(kind)) return createCharacter(system.id, kind.id, { name, progress: null });
-  return createCharacter(system.id, kind.id, {
-    name,
-    progress: clampProgress(kind.progression, initialProgress(kind.progression)),
-  });
+  const character = progressCanBePrinted(kind)
+    ? createCharacter(system.id, kind.id, { name, progress: null })
+    : createCharacter(system.id, kind.id, { name, progress: clampProgress(kind.progression, initialProgress(kind.progression)) });
+  // What a set step starts a new character with is recorded as its answer, the user's from here on (ADR 0080).
+  for (const step of kind.buildSteps) {
+    if (step.multiple && step.initial?.length) character.choices.push({ ruleKey: `build/${step.id}`, elementIds: [...step.initial] });
+  }
+  return character;
 }
 
 /** How many kept names a library card lists before it counts the rest. */

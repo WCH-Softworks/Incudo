@@ -434,6 +434,10 @@ before any code, both touching a public API:
         **Found while doing it:** the Human Variant is a `Race Variant` that a Human offers
         through its own select, not something a Race list ever drew — the ADR's sentence about
         "every race list" was wrong about where it lives, right about why it was missing.
+  - [x] **A new character starts with feats and multiclassing on**
+        ([ADR 0080](./docs/adr/0080-a-set-step-may-name-what-a-new-character-starts-with.md)). A set step may declare
+        `initial`, written into a new character as its recorded answer and the user's to change from then on; a character
+        that records none (every save before this, every import) still means none. 5e's options step declares the two.
         **Open, and left visible:** the overlay's `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is an
         `Option`, so it is offered, and **nothing reads it** — 0 of 740 files, and the class
         control is deliberately not gated on it (ADR 0036). Ticking it does nothing, which is

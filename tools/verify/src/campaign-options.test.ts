@@ -22,7 +22,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createCharacter, validateGameSystem, type ElementIndex, type GameSystem } from '@incudo/core';
-import { CharacterBuilder } from '@incudo/ui';
+import { CharacterBuilder, newCharacterOfKind } from '@incudo/ui';
 
 import { loadSchemas } from './node-system.ts';
 import { corpusSkip, realElements } from './real-data.ts';
@@ -30,6 +30,7 @@ import { corpusSkip, realElements } from './real-data.ts';
 const skip = corpusSkip;
 
 const FEATS = 'ID_INTERNAL_OPTION_ALLOW_FEATS';
+const MULTICLASSING = 'ID_INTERNAL_OPTION_ALLOW_MULTICLASSING';
 const CUSTOM_ASI = 'ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI';
 
 async function fiveE(): Promise<GameSystem> {
@@ -150,4 +151,22 @@ test('options an import already holds read as chosen, and can be changed', { ski
   b.choose('build/options', [CUSTOM_ASI]);
   assert.ok(!b.getState().derived.elementIds.has(FEATS));
   assert.ok(b.getState().derived.elementIds.has(CUSTOM_ASI));
+});
+
+// ADR 0080. Fails if 5e's options step loses its `initial` (a new character holds neither), or if the builder does not
+// read the recorded set as the step's answer (they would not read as chosen, and unticking would not take feats away).
+test('a new player character starts with feats and multiclassing on, and either can be switched off', { skip }, async () => {
+  const system = await fiveE();
+  const elements = await realElements();
+  const character = newCharacterOfKind(system, 'pc');
+  character.progress = 4;
+  const b = new CharacterBuilder(character, system, elements);
+  assert.deepEqual(b.getState().picks.find((p) => p.stepId === 'options')?.chosen, [FEATS, MULTICLASSING]);
+  assert.ok(b.getState().derived.elementIds.has(FEATS) && b.getState().derived.elementIds.has(MULTICLASSING));
+  b.choose('build/class', ['ID_WOTC_PHB_CLASS_FIGHTER']);
+  const offered = () => b.getState().decisions.find((d) => /Improvement Option \(Fighter 4\)/i.test(d.label))!.candidates.length;
+  assert.equal(offered(), 2, 'the feat is offered beside the improvement');
+  b.choose('build/options', [MULTICLASSING]);
+  assert.equal(offered(), 1, 'with feats switched off, only the improvement');
+  assert.ok(!b.getState().derived.elementIds.has(FEATS));
 });

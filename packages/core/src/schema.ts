@@ -225,6 +225,18 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           message: `step "${step.id}" is both required and multiple; a set that may be empty cannot be required`,
         });
       }
+      // What a new character starts with is an answer to a set (ADR 0080): refused on any other step, twice, or blank.
+      if (step.initial !== undefined) {
+        if (!step.multiple) {
+          errors.push({ path: `${where}.buildSteps`, message: `step "${step.id}" names what a new character starts with, and is not a set (multiple)` });
+        }
+        const seen = new Set<string>();
+        for (const id of step.initial) {
+          if (id.trim() === '') errors.push({ path: `${where}.buildSteps`, message: `step "${step.id}" starts a new character with a blank id` });
+          else if (seen.has(id)) errors.push({ path: `${where}.buildSteps`, message: `step "${step.id}" starts a new character with "${id}" twice` });
+          seen.add(id);
+        }
+      }
       // A pick is of one and a set of any number (ADR 0068): the same refusal, for the same reason.
       if (step.pick && step.multiple) {
         errors.push({

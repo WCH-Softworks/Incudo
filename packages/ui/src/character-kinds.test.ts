@@ -37,7 +37,10 @@ const system: GameSystem = {
       name: 'Hero',
       default: true,
       progression: { kind: 'level', min: 1, max: 20 },
-      buildSteps: [],
+      buildSteps: [
+        { id: 'rules', label: 'Rules', types: [], multiple: true, initial: ['RULE_A', 'RULE_B'] },
+        { id: 'quirks', label: 'Quirks', types: [], multiple: true },
+      ],
       sheet: { sections: [] },
     },
     { id: 'elder', name: 'Elder Beast', extends: 'beast' },
@@ -164,4 +167,15 @@ test("a library card names what a character keeps, under its kind's label, and c
   assert.equal(libraryEntryReferences(keeping, { kind: 'ghost', references: named('Kraken') }), 'For reference: Kraken');
   assert.equal(libraryEntryReferences(keeping, { kind: 'beast' }), undefined);
   assert.equal(libraryEntryReferences(keeping, { kind: 'beast', references: [] }), undefined);
+});
+
+// ADR 0080. Fails if `newCharacterOfKind` does not write a set step's `initial` (the hero records nothing), writes it
+// under a key other than the step's own (the builder would not read it as the set's answer), shares the system's array
+// (an edit to one character would change the next), or records an answer for a step that names none.
+test("a new character records what each set step starts it with, as that step's own answer", () => {
+  const hero = newCharacterOfKind(system, 'hero');
+  assert.deepEqual(hero.choices, [{ ruleKey: 'build/rules', elementIds: ['RULE_A', 'RULE_B'] }]);
+  hero.choices[0]!.elementIds.pop();
+  assert.deepEqual(newCharacterOfKind(system, 'hero').choices[0]!.elementIds, ['RULE_A', 'RULE_B']);
+  assert.deepEqual(newCharacterOfKind(system, 'beast').choices, []);
 });

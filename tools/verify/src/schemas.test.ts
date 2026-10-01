@@ -252,6 +252,19 @@ test('a system that would throw at load fails validation instead', async () => {
     ['characterKinds[0].sheet.sections[0].omitHidden: must be a boolean, not a string'],
   );
 
+  // ADR 0080: what a new character starts with is an answer to a set, no id twice and none blank. Fails if the check is
+  // removed (the first two), or `initial` is left out of the schema (the third: an unknown field).
+  const step = (extra: Record<string, unknown>) =>
+    broken((s) => (s.characterKinds[0]!.buildSteps = [{ id: 'one', label: 'One', types: ['Widget'], ...extra }]));
+  assert.deepEqual(await errorsFor(step({ initial: ['A'] })), [
+    'characterKinds[0].buildSteps: step "one" names what a new character starts with, and is not a set (multiple)',
+  ]);
+  assert.deepEqual(await errorsFor(step({ multiple: true, initial: ['A', 'A', ' '] })), [
+    'characterKinds[0].buildSteps: step "one" starts a new character with "A" twice',
+    'characterKinds[0].buildSteps: step "one" starts a new character with a blank id',
+  ]);
+  assert.deepEqual(await errorsFor(step({ multiple: true, initial: ['A', 'B'] })), []);
+
   // ADR 0079: a section writing a track's count lists elements, on a kind whose progression publishes one, and never in a
   // creature's stat block. Fails if either check is removed (the first), or `trackProgress` is left out of the schema
   // (every one: an unknown field).

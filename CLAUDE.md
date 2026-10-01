@@ -1020,8 +1020,8 @@ computes nothing. Things to know before touching it:
   which control is open).
 - **Gated on what content declares and nothing else:** the class's own `requirements` plus its
   `<multiclass>` block's, through the engine's own requirement context. Not gated, deliberately:
-  `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` (0 of 740 files reference it, and campaign options
-  cannot be switched on yet), the *current* class's prerequisite (content never states it, so the
+  `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` (0 of 740 files reference it; since ADR 0080 a new character starts with
+  it on, and whether switching it off should gate multiclassing is still undecided), the *current* class's prerequisite (content never states it, so the
   builder is more permissive than the Player's Handbook), and *when* a score was met (the engine
   has no time axis). 28 of 29 classes have a block; the UA Mystic does not and is listed as
   unavailable rather than hidden.
@@ -1635,7 +1635,9 @@ ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 002
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is
-read from its own key only, where a race is read by what it holds (`top-level-pick.ts`); the overlay's
+read from its own key only, where a race is read by what it holds (`top-level-pick.ts`); **since ADR 0080 a set step
+may declare `initial`, which `newCharacterOfKind` writes into a new character as its recorded answer** (5e: feats and
+multiclassing on), never read again, so a character recording no answer still means none; the overlay's
 `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is offered and **nothing reads it** — left visible, see the
 ADR's status note; and `aurora verify` cannot see any of it, so the evidence is
 `tools/verify/src/campaign-options.test.ts` and perturbation.

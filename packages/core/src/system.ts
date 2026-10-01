@@ -686,6 +686,12 @@ export interface BuildStepDef {
    */
   multiple?: boolean;
   /**
+   * What a new character starts with in this set — ADR 0080. Written into the character as its recorded answer when it
+   * is created (`newCharacterOfKind`), and the user's from then on; a character never reads it again, so one that
+   * records no answer still means none. Only on a `multiple` step.
+   */
+  initial?: ElementId[];
+  /**
    * This step is a pick of one even though it is not `required` — ADR 0068. Offered like a required step's pick, but
    * never blocking, so it can be skipped (ADR 0033) and a character can be finished without it: an NPC's creature,
    * which an NPC built by hand beside a stat block printed only as prose has none of. Without it, a step that is not
