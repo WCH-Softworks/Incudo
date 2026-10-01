@@ -952,6 +952,18 @@ Not started: the mobile shell (only its `platform.ts` contract exists).
     that holds against it (a no-break space in page 1's head box did not), so nothing changed. Not in the browser build,
     not on macOS or Linux.
 
+- **A PDF sheet is proposed, not built** ([ADR 0079](docs/adr/0079-a-pdf-sheet-is-the-print-layout-written-to-a-file-and-the-official-form-is-the-user-s-own-copy-filled-from-the-document.md),
+  Proposed). Things to know before touching it:
+  - **Incudo's own PDF is the print layout**, written without the print dialog through WebView2's `PrintToPdfStream` on
+    Windows first, behind a port; elsewhere "Print sheet…" and "Save as PDF" stay the PDF. No PDF renderer of its own.
+  - **The official 2014 form is never shipped, committed or downloaded by Incudo**, not even in a test: its notice permits
+    personal photocopying only, and both D&D Beyond's and Wizards' terms forbid unauthorised software reaching the service.
+    The user downloads it from a link and points Incudo at their copy. `tools/verify/src/pdf-sheet.test.ts` describes its
+    boxes in its own words; the 2024 sheet has no form fields.
+  - **It is filled from the sheet document only** (ADR 0075's rule), which grows first: proficiency marks, levels per class,
+    spell levels and prepared marks, hit dice. The field map is the 5e system's data; the filler in `packages/ui` names no
+    game; the PDF library is in `apps/desktop`.
+
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
 
