@@ -27,7 +27,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { trackStatKey } from '@incudo/core';
-import { CharacterBuilder, listedName, sheetDocument, sheetMarkdown } from '@incudo/ui';
+import { CharacterBuilder, listedAside, listedName, sheetDocument, sheetMarkdown } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
@@ -109,7 +109,11 @@ test("every sample's sheet reads its class split, on the Sheet and in the text e
     const want = [...splitLevels(sample)].map(([name, levels]) => `${name} ${levels}`);
     assert.deepEqual(classes.map((e) => listedName(e).toLowerCase()), want, `${sample.id}: the Character section's classes`);
     const markdown = sheetMarkdown(doc);
-    for (const e of classes) assert.ok(markdown.includes(`- ${listedName(e)}\n`), `${sample.id}: the export lists ${listedName(e)}`);
+    // Followed by what the sheet writes after it, its hit dice since ADR 0079 decision 9 (hit-dice.test.ts holds those).
+    for (const e of classes) {
+      const aside = listedAside(e);
+      assert.ok(markdown.includes(`- ${listedName(e)}${aside ? ` (${aside})` : ''}\n`), `${sample.id}: the export lists ${listedName(e)}`);
+    }
     read++;
   }
   assert.ok(read > 0, 'samples were read');

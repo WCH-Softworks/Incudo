@@ -16,13 +16,16 @@
  *   stat rule or another setter whose name says hit dice, a sheet placeholder reading one.
  * - **How the multiclass samples would read**, and which of their classes share a die (a total line would add those).
  *
- * Report-only (ADR 0042): `ℹ` lines, nothing asserted but that samples were read.
+ * Report-only (ADR 0042) on the commit before the dice were built. Since then the last test asserts, against any corpus,
+ * that every sample's sheet writes each class with its track's count of the die its `hd` names, on the Sheet and in the
+ * text export: the Character section's `trackDie` (5e's system definition) is what writes them, and removing it fails it.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { trackProgress } from '@incudo/core';
+import { dieSides, trackProgress } from '@incudo/core';
+import { CharacterBuilder, listedAside, listedName, sheetDocument, sheetMarkdown } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
@@ -127,4 +130,32 @@ test("the samples: what each held class's hit dice would read", { skip: corpusSk
   t.diagnostic(`dice per class (the track's count) against the split: ${countDiffers.length} differ${countDiffers.length ? ` (${countDiffers.join('; ')})` : ''}`);
   t.diagnostic(`multiclass samples: ${multiclassLines.length}, ${sharing} with two classes sharing a die`);
   for (const line of multiclassLines) t.diagnostic(`  ${line}`);
+});
+
+test("every sample's sheet writes each class's hit dice, on the Sheet and in the text export", { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
+  t.diagnostic(corpusProvenance());
+  const elements = await realElements();
+  let read = 0;
+  let classes = 0;
+  for (const sample of samplesWhere(() => true)) {
+    const run = await runOracle(samplePath(sample), elements, 'sample');
+    const doc = sheetDocument(new CharacterBuilder(run.imported.character, run.system, run.elements).getState());
+    const listed = (doc.sections.find((s) => s.id === 'identity')?.elements ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Class');
+    assert.equal(listed.length, splitLevels(sample).size, `${sample.id}: the Character section lists every class`);
+    const markdown = sheetMarkdown(doc);
+    for (const e of listed) {
+      const element = run.derived.elements.find((x) => x.id === e.elementId)!;
+      // What the derivation published as the track's count, and the die the class element names.
+      const count = trackProgress(run.derived.kind.progression, element, run.derived.stats);
+      const sides = dieSides(element.setters.hd?.value);
+      assert.ok(count !== undefined && count > 0 && sides > 0, `${sample.id} ${e.name}: a count and a die`);
+      assert.deepEqual(e.dice, { count, sides }, `${sample.id} ${e.name}: its hit dice`);
+      assert.equal(listedAside(e), `${count}d${sides}`, `${sample.id} ${e.name}: what follows its name`);
+      assert.ok(markdown.includes(`- ${listedName(e)} (${count}d${sides})\n`),`${sample.id}: the export lists ${listedName(e)} (${count}d${sides})`);
+      classes++;
+    }
+    read++;
+  }
+  assert.ok(read > 0, 'samples were read');
+  t.diagnostic(`${read} samples write the hit dice of their ${classes} classes`);
 });

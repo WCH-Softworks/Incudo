@@ -30,12 +30,18 @@ export function listedName(element: Pick<SheetListedElement, 'name' | 'sheetName
   return element.progress !== undefined ? `${name} ${element.progress}` : name;
 }
 
+/** A listed element's dice as a sheet writes them (ADR 0079), "3d10", or nothing. */
+export function listedDice(element: Pick<SheetListedElement, 'dice'>): string | undefined {
+  return element.dice ? `${element.dice.count}d${element.dice.sides}` : undefined;
+}
+
 /**
- * What a sheet writes in parentheses after a listed element's name: its group and its prepared mark (ADR 0079), "Level 1,
- * prepared", "Cantrip", either alone, or nothing. The pane and every export word a listed element this way.
+ * What a sheet writes in parentheses after a listed element's name: its track's dice, its group and its prepared mark
+ * (ADR 0079), "3d10", "Level 1, prepared", "Cantrip", any alone, or nothing. The pane and every export word a listed
+ * element this way.
  */
-export function listedAside(element: Pick<SheetListedElement, 'group' | 'prepared'>): string | undefined {
-  const parts = [element.group?.label, element.prepared?.label].filter((part): part is string => part !== undefined && part !== '');
+export function listedAside(element: Pick<SheetListedElement, 'dice' | 'group' | 'prepared'>): string | undefined {
+  const parts = [listedDice(element), element.group?.label, element.prepared?.label].filter((part): part is string => part !== undefined && part !== '');
   return parts.length ? parts.join(', ') : undefined;
 }
 

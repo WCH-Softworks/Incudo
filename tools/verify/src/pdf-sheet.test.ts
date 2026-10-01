@@ -97,6 +97,11 @@ interface Read {
    * the sheet names it with its level, joined; absent when a listed class carries no level.
    */
   classLine?: string;
+  /**
+   * The form's hit dice total as the document gives it (ADR 0079): the dice of each class the Character section lists,
+   * added die by die, largest die first, "3d10 + 3d6"; absent when a listed class carries none.
+   */
+  hitDice?: string;
   /** What does not fit the form's shape for this character, by box name. */
   partial: Set<string>;
 }
@@ -128,7 +133,8 @@ const OFFICIAL_2014: Box[] = [
   { page: 1, name: 'armour class, initiative, speed', text: 3, checks: 0, read: (d) => rowsFilled(d, 'combat', ['ac', 'initiative', 'speed']) },
   { page: 1, name: 'hit point maximum', text: 1, checks: 0, read: (d) => rowsFilled(d, 'combat', ['hp']) },
   { page: 1, name: 'current and temporary hit points', text: 2, checks: 0 },
-  { page: 1, name: 'hit dice', text: 2, checks: 0 },
+  { page: 1, name: 'hit dice total', text: 1, checks: 0, read: (d) => (d.hitDice ? 'filled' : 'absent') },
+  { page: 1, name: 'hit dice remaining', text: 1, checks: 0 },
   { page: 1, name: 'death saves', text: 0, checks: 6 },
   { page: 1, name: 'personality, ideals, bonds, flaws', text: 4, checks: 0 },
   { page: 1, name: 'three weapons: name', text: 3, checks: 0, read: (d) => (['primary', 'secondary'].some((s) => (d.row('worn', s) ?? 'none') !== 'none') ? 'filled' : 'empty') },
@@ -201,6 +207,7 @@ interface SampleReading {
   weapons: number;
   multiclass: boolean;
   classLine?: string;
+  hitDice?: string;
   chars: Map<string, number>;
   freeformKeys: string[];
   prepared: number;
@@ -240,9 +247,11 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
 
   const classes = (section('identity')?.elements ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Class');
   const classLine = classes.length && classes.every((e) => e.progress !== undefined) ? classes.map(listedName).join(' / ') : undefined;
+  const hitDice = classes.length && classes.every((e) => e.dice) ? diceTotal(classes.map((e) => e.dice!)) : undefined;
   const read: Read = {
     doc,
     ...(classLine ? { classLine } : {}),
+    ...(hitDice ? { hitDice } : {}),
     section,
     row: (sid, stat) => section(sid)?.rows.find((r) => r.stat === stat)?.value,
     lists: (sid, types) => (section(sid)?.elements ?? []).some((e) => types.includes(run.elements.get(e.elementId)?.type ?? '')),
@@ -270,6 +279,7 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
     weapons,
     multiclass,
     ...(classLine ? { classLine } : {}),
+    ...(hitDice ? { hitDice } : {}),
     chars,
     freeformKeys: Object.keys(character.freeform ?? {}).filter((k) => (character.freeform[k] ?? '').trim() !== ''),
     prepared: Object.values(character.prepared ?? {}).reduce((n, list) => n + list.length, 0),
@@ -277,6 +287,13 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
     hasPortrait: Boolean(character.assets?.portrait),
     outside: outsideWinAnsi(doc),
   };
+}
+
+/** Dice added die by die, largest die first: "3d10 + 3d6", "6d10". */
+function diceTotal(dice: Array<{ count: number; sides: number }>): string {
+  const by = new Map<number, number>();
+  for (const d of dice) by.set(d.sides, (by.get(d.sides) ?? 0) + d.count);
+  return [...by].sort((a, b) => b[0] - a[0]).map(([sides, count]) => `${count}d${sides}`).join(' + ');
 }
 
 /** The importer's personal text, by what it is (its key's first word), and on how many samples. */
@@ -319,6 +336,7 @@ test('the samples against the 2014 fillable sheet: what the sheet document fills
 
   const multiclass = readings.filter((r) => r.multiclass);
   t.diagnostic(`class and level: ${readings.filter((r) => r.classLine).length} of ${n} samples read their classes with levels; the ${multiclass.length} multiclass: ${multiclass.map((r) => `${r.id} ${r.classLine ?? '(none)'}`).join('; ')}`);
+  t.diagnostic(`hit dice total: ${readings.filter((r) => r.hitDice).length} of ${n} samples read it from their classes' dice; the ${multiclass.length} multiclass: ${multiclass.map((r) => `${r.id} ${r.hitDice ?? '(none)'}`).join('; ')}`);
   t.diagnostic(`casting blocks per sample (the form has one): ${range(readings.map((r) => r.blocks))}; samples with more than one ${readings.filter((r) => r.blocks > 1).length}`);
   const over = readings.filter((r) => r.overSpellLines.length);
   t.diagnostic(`spells: samples with a level holding more spells than the form has lines ${over.length}${over.length ? ` (${over.map((r) => `${r.id}: ${r.overSpellLines.join(', ')}`).join('; ')})` : ''}; spells listed with no level ${readings.reduce((a, r) => a + r.unknownSpellLevels, 0)}`);

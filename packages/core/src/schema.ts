@@ -506,6 +506,9 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         if (section.trackProgress) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" writes a track's count, which a creature's stat block has none of` });
         }
+        if (section.trackDie !== undefined) {
+          errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" writes a track's dice, which a creature's stat block has no tracks for` });
+        }
         // Nor prepared lists of its own (ADR 0079): its scope publishes none.
         if (section.preparedMark) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" marks prepared elements, which a creature's stat block has none of` });
@@ -598,6 +601,10 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         if (resolved.progression.kind === 'none' || !resolved.progression.trackStatPattern) {
           errors.push({ path: `${where}.sheet`, message: `section "${section.id}" writes a track's count, and this kind's progression publishes none (no trackStatPattern)` });
         }
+      }
+      // A track's dice are its count of a die (ADR 0079), so a section writing them writes the count.
+      if (section.trackDie !== undefined && !section.trackProgress) {
+        errors.push({ path: `${where}.sheet`, message: `section "${section.id}" writes a track's dice and not its count (no trackProgress)` });
       }
       // A group and a prepared mark are written beside listed elements (ADR 0079), and a prepared mark only of what the
       // kind's prepared lists hold: a section of other types, or a kind that prepares nothing, would never show one.

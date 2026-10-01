@@ -15,6 +15,7 @@ import type { CompanionsView } from './companions.ts';
 import type { ReferenceRow } from './references.ts';
 import {
   listedAside,
+  listedDice,
   listedName,
   NO_KEPT_TEXT,
   PREREQUISITES_UNMET,
@@ -43,7 +44,7 @@ const sheet: SheetView = {
       ],
       printed: [],
       elements: [
-        { elementId: 'G1', name: 'Wrench', progress: 3 },
+        { elementId: 'G1', name: 'Wrench', progress: 3, dice: { count: 3, sides: 10 } },
         { elementId: 'G2', name: 'Spanner_of_*Doom*', prerequisitesUnmet: true },
         { elementId: 'G3', name: 'Zap', group: { value: '1', label: 'Tier_1' }, prepared: { label: 'packed', always: false } },
       ],
@@ -136,7 +137,7 @@ test('the Markdown: title, kind, a heading per section, one list of rows, elemen
       '',
       '- Grit: 14 (+2, deft)',
       '- Luck: -1 (handy\\_\\*)',
-      '- Wrench 3',
+      '- Wrench 3 (3d10)',
       `- Spanner\\_of\\_\\*Doom\\* (${PREREQUISITES_UNMET})`,
       '- Zap (Tier\\_1, packed)',
       '',
@@ -266,4 +267,13 @@ test("what follows a listed element's name is its group and its prepared mark, o
   assert.equal(listedAside({ group: { value: '0', label: 'Cantrip' } }), 'Cantrip');
   assert.equal(listedAside({ prepared: { label: 'always prepared', always: true } }), 'always prepared');
   assert.equal(listedAside({}), undefined);
+});
+
+// ADR 0079. Fails if a listed element's dice are left out of its wording (the Markdown above reads "Wrench 3"), if they
+// follow the group or prepared mark rather than lead, or if the count and die are written the other way round.
+test("a listed element's track dice lead what follows its name", () => {
+  assert.equal(listedDice({ dice: { count: 3, sides: 10 } }), '3d10');
+  assert.equal(listedDice({}), undefined);
+  assert.equal(listedAside({ dice: { count: 12, sides: 6 }, group: { value: '1', label: 'Tier 1' } }), '12d6, Tier 1');
+  assert.equal(listedAside({ dice: { count: 1, sides: 8 } }), '1d8');
 });

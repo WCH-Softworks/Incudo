@@ -301,6 +301,32 @@ test('a system that would throw at load fails validation instead', async () => {
   );
 });
 
+// ADR 0079: a section writing a track's dice writes its count, and never in a creature's stat block. Fails if either check
+// is removed (its case reads no error), or `trackDie` is left out of the schema (every case: an unknown field) or allowed
+// blank.
+test("a section's track dice are checked before the app loads it (ADR 0079)", async () => {
+  const tracked = (s: GameSystem, section: Record<string, unknown>) => {
+    s.characterKinds[0]!.progression = { kind: 'level', min: 1, max: 20, trackStatPattern: 'level:{name}' };
+    s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', types: ['Widget'], ...section } as never] };
+  };
+  assert.deepEqual(await errorsFor(broken((s) => tracked(s, { trackProgress: true, trackDie: 'hd' }))), []);
+  assert.deepEqual(await errorsFor(broken((s) => tracked(s, { trackDie: 'hd' }))), [
+    `characterKinds[0].sheet: section "s" writes a track's dice and not its count (no trackProgress)`,
+  ]);
+  assert.deepEqual(await errorsFor(broken((s) => tracked(s, { trackProgress: true, trackDie: '' }))), [
+    'characterKinds[0].sheet.sections[0].trackDie: must not be empty',
+  ]);
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        tracked(s, { trackProgress: true });
+        s.characterKinds[0]!.companions = { types: ['Widget'], sheet: [{ id: 'c', label: 'C', types: ['Widget'], trackDie: 'hd' }] };
+      }),
+    ),
+    [`characterKinds[0].companions.sheet: the section "c" writes a track's dice, which a creature's stat block has no tracks for`],
+  );
+});
+
 test('structural mistakes get messages a non-programmer can act on', async () => {
   assert.deepEqual(await errorsFor(broken((s) => ((s as unknown as Record<string, unknown>)['formatVersion'] = 2))), [
     'formatVersion: must be 1',

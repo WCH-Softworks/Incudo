@@ -14,7 +14,7 @@
 
 import type { DeclaredBlock, Element, ElementId, ElementType, StatKey } from './model.ts';
 import { declaredBlocks } from './model.ts';
-import type { StatExpr } from './expression.ts';
+import { dieSides, type StatExpr } from './expression.ts';
 import { parseRequirements, type RequirementExpr } from './requirements.ts';
 import { NEVER_MATCHES, parseSupports, type SupportsExpr } from './supports.ts';
 
@@ -905,6 +905,13 @@ export interface SheetSectionDef {
    */
   trackProgress?: boolean;
   /**
+   * The setter naming the die a listed element's track adds once per count — ADR 0079: a player character's classes
+   * read "Paladin 3 (3d10)", the track's count (`trackProgress`) of the die the class's `hd` names. The die is read as a
+   * `dN` value (`trackDie`), the one parsing rule ADR 0044's `setter` expression uses; a value that is not one reads as
+   * none. Only meaningful beside `trackProgress`.
+   */
+  trackDie?: string;
+  /**
    * Group the listed elements by a setter they carry, in its order — ADR 0079: a player character's spells are listed
    * cantrips first, then level 1, level 2, …, each called "Cantrip", "Level 1" (`labels` before `label`, as a candidate
    * note is). Within a group, by name; an element without the setter after every group, in the order held. Only
@@ -1219,6 +1226,17 @@ export function trackProgress(
   const stat = stats.get(key.toLowerCase());
   if (!stat || !stat.contributions.some((c) => c.from === element.id)) return undefined;
   return stat.value;
+}
+
+/**
+ * The face count of the die `setter` names on `element` (matched ignoring case, as a group's setter is) — ADR 0079: a
+ * class's `hd` of `d10` is 10. None when the element does not carry it or its value is not a `dN` die.
+ */
+export function trackDie(element: Pick<Element, 'setters'>, setter: string): number | undefined {
+  const wanted = setter.trim().toLowerCase();
+  const value = Object.entries(element.setters).find(([name]) => name.trim().toLowerCase() === wanted)?.[1]?.value;
+  const sides = dieSides(value);
+  return sides > 0 ? sides : undefined;
 }
 
 /** ADR 0010 — official systems record the licence of the material they describe. */

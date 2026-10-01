@@ -26,6 +26,7 @@ import {
   sheetGroup,
   sheetListedElements,
   sheetPlaceholders,
+  trackDie,
   trackProgress,
   type BlockStatDef,
   type DerivedCharacter,
@@ -94,6 +95,11 @@ export interface SheetListedElement {
    * "Paladin 3". What the derivation published, never recomputed.
    */
   progress?: number;
+  /**
+   * The track's dice, when its section writes them (`trackDie`, ADR 0079): its count of the die the element's setter
+   * names, 3 and 10 in "Paladin 3 (3d10)". Only beside `progress`, and only when the count is positive and the setter a die.
+   */
+  dice?: { count: number; sides: number };
   /**
    * The group it is listed in, when its section groups (`group`, ADR 0079): a spell's level, `{ value: "0", label:
    * "Cantrip" }`. The section lists its elements in group order.
@@ -302,6 +308,7 @@ export function sheetSections(
       }
       const elements = shown.map(({ element: e, group }): SheetListedElement => {
         const progress = section.trackProgress && vocabulary.progression ? trackProgress(vocabulary.progression, e, source.stats) : undefined;
+        const sides = section.trackDie !== undefined && progress !== undefined && progress > 0 ? trackDie(e, section.trackDie) : undefined;
         const prepared = section.preparedMark ? preparedState(preparation, e.id) : undefined;
         return {
           elementId: e.id,
@@ -309,6 +316,7 @@ export function sheetSections(
           ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}),
           ...sheetHintsOf(e, source),
           ...(progress !== undefined ? { progress } : {}),
+          ...(sides !== undefined ? { dice: { count: progress!, sides } } : {}),
           ...(group ? { group } : {}),
           ...(prepared ? { prepared: { label: section.preparedMark![prepared], always: prepared === 'always' } } : {}),
         };

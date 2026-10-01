@@ -268,3 +268,41 @@ test('a section groups what it lists by a setter and marks what the prepared lis
   const [noLookup] = sheetSections(sections, { ...source, lookup: undefined }, { stats: [], blockStats: [] });
   assert.ok(!noLookup!.elements.some((e) => e.name === 'Hum'));
 });
+
+// ADR 0079. The same rank-4 Tinker holding one Charm, its implicit track, whose `die` setter reads d8, and a Lamp whose
+// `die` reads d6 and roots no track. Fails if a section's `trackDie` is not read (the Charm has no dice), if the dice are
+// not the track's count (they read 1d8, or the Lamp gets some), if the setter is not read through `trackDie` (a Bolt whose
+// die reads "8" gets 4d8), or if a section without it writes dice (Gear).
+test("a section that writes a track's dice lists the track's root with its count of the die its setter names", () => {
+  const sys = system();
+  const base = sys.characterKinds[0]!;
+  sys.stats.push({ name: 'rank', default: 0 });
+  sys.characterKinds[0] = {
+    ...base,
+    progression: { kind: 'level', min: 1, max: 10, stat: 'rank', trackStatPattern: 'rank:{name}', trackType: 'Charm' },
+    sheet: {
+      sections: [
+        { id: 'who', label: 'Who', types: ['Charm', 'Gadget'], trackProgress: true, trackDie: 'die' },
+        { id: 'gear', label: 'Gear', types: ['Charm'], trackProgress: true },
+      ],
+    },
+  };
+  const dieCharm = element('CHARM', 'Charm', { die: 'd8' }, { type: 'Charm' });
+  const dieLamp = element('LAMP', 'Lamp', { die: 'd6' });
+  const local = new MapElementIndex();
+  for (const e of [dieLamp, dieCharm]) local.add(e);
+  const character = createCharacter('test', 'tinker');
+  character.progress = 4;
+  character.choices = [{ ruleKey: 'build/gear', elementIds: ['LAMP', 'CHARM'] }];
+  const kind = resolveCharacterKind(sys, 'tinker');
+  const view = sheetView(deriveCharacter(character, sys, local, { kind }), kind);
+  const who = view.sections.find((s) => s.id === 'who')!;
+  assert.deepEqual(who.elements.map((e) => [e.name, e.progress, e.dice]), [['Charm', 4, { count: 4, sides: 8 }], ['Lamp', undefined, undefined]]);
+  assert.equal(view.sections.find((s) => s.id === 'gear')!.elements[0]!.dice, undefined);
+
+  const bolt = element('CHARM', 'Charm', { die: '8' }, { type: 'Charm' });
+  const boltIndex = new MapElementIndex();
+  boltIndex.add(bolt);
+  const boltView = sheetView(deriveCharacter({ ...character, choices: [{ ruleKey: 'build/gear', elementIds: ['CHARM'] }] }, sys, boltIndex, { kind }), kind);
+  assert.deepEqual(boltView.sections.find((s) => s.id === 'who')!.elements.map((e) => [e.progress, e.dice]), [[4, undefined]]);
+});

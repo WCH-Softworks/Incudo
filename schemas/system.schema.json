@@ -920,6 +920,11 @@
           "type": "boolean",
           "description": "Write a listed element a track is rooted on with that track's count (ADR 0079): a player character's classes read \"Paladin 3\", \"Sorcerer 3\". The count is the stat the progression's trackStatPattern names, as the derivation publishes it, and only when that element contributed it. Only meaningful beside types, on a kind whose progression names a trackStatPattern; not in a creature's stat block."
         },
+        "trackDie": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The setter naming the die a listed element's track adds once per count (ADR 0079): a player character's classes read \"Paladin 3 (3d10)\", the track's count of the die the class's hd names. A value that is not a dN die reads as none. Only beside trackProgress; not in a creature's stat block."
+        },
         "group": {
           "type": "object",
           "description": "Group the listed elements by a setter they carry, in its order (ADR 0079): a player character's spells listed cantrips first, then by level, each called \"Cantrip\", \"Level 1\". Groups are ordered by their values as text, digits read as numbers (2 before 10); within a group by name; an element without the setter after every group, in the order held. Only meaningful beside types.",

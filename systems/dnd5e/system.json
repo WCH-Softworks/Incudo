@@ -451,7 +451,7 @@
 
       "sheet": {
         "sections": [
-          { "id": "identity", "label": "Character", "types": ["Race", "Sub Race", "Race Variant", "Class", "Archetype", "Background", "Background Variant", "Alignment", "Deity"], "trackProgress": true },
+          { "id": "identity", "label": "Character", "types": ["Race", "Sub Race", "Race Variant", "Class", "Archetype", "Background", "Background Variant", "Alignment", "Deity"], "trackProgress": true, "trackDie": "hd" },
           { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "beside": "{stat}:modifier" },
           { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency", "level"] },
           { "id": "saves", "label": "Saving Throws", "description": "The ability modifier, plus the proficiency bonus for a saving throw the character is proficient in (listed under Proficiencies).", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"] , "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"] } },

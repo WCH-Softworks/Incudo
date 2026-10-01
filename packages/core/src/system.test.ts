@@ -14,6 +14,7 @@ import {
   resolveCharacterKind,
   orderBuildSteps,
   buildStepCycles,
+  trackDie,
   trackProgress,
   sheetGroup,
   compareSheetGroups,
@@ -461,4 +462,14 @@ test("a listed element's group is its setter's value, named, and groups order as
   assert.ok(compareSheetGroups(g('9'), undefined) < 0);
   assert.ok(compareSheetGroups(undefined, g('0')) > 0);
   assert.equal(compareSheetGroups(undefined, undefined), 0);
+});
+
+// ADR 0079. Fails if the setter is matched by case (`HD` reads none), if a value that is not a die reads as one (`10`,
+// `2d6`, `d`), or if a missing setter reads 0 rather than none.
+test("a track's die is the face count of the dN its setter names, and nothing else", () => {
+  const with_ = (value: string) => ({ setters: { HD: { value } } });
+  assert.equal(trackDie(with_('d10'), 'hd'), 10);
+  assert.equal(trackDie(with_(' D6 '), ' hd '), 6);
+  for (const value of ['10', '2d6', 'd', '', 'd0']) assert.equal(trackDie(with_(value), 'hd'), undefined, value);
+  assert.equal(trackDie({ setters: {} }, 'hd'), undefined);
 });
