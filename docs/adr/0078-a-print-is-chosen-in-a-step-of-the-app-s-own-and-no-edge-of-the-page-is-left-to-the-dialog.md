@@ -1,7 +1,7 @@
 # 0078 — A print is chosen in a step of the app's own, and no edge of the page is left to the dialog
 
 **Status:** Accepted · 2026-09-30 (proposed the same day) · implemented the same day, with what building it decided in
-decision 6 · amends [0077](./0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)
+decision 6 · driven with real keys, a real mouse and paper the same day (Evidence) · amends [0077](./0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)
 (decisions 6 and 8, and "What this does not do") · answers Phase 5's "Print options of the app's own, then the platform's
 print dialog; and nothing of the web page on paper" · builds on
 [0037](./0037-a-command-is-data-the-page-owns-the-keyboard.md),
@@ -98,7 +98,8 @@ Three things follow, and the first corrects the roadmap:
   in the dialog. So "the dialog's own checkbox can still put them back" (the roadmap's words) does not hold in WebView2:
   a user cannot put them back with it. Whether choosing Minimum or Custom in the dialog's Margins list (it lists
   Default, None, Minimum, Custom, with Default selected) brings it back was not exercised: DOM clicks did not change the
-  list's selection.
+  list's selection. *(Exercised later the same day with a real mouse: both bring it back; see the Evidence's drive with
+  real input.)*
 - **A page number needs a margin**: the only way Chromium prints one is `counter(page)` in a margin box, and a margin box
   lives in the margin. With no margin the box is not drawn (the number) or is drawn at the edge (the name). So "no margin"
   and "the sheet prints its own page numbers" are not one rule but two: an edge either has no margin, or has a margin
@@ -232,6 +233,10 @@ leaving the number off where there is one page would take a second rule the plat
 
 - **Choose paper, orientation, scale, copies or which pages.** The platform's dialog still does, as ADR 0077 said.
 - **Put the dialog's headers and footers back.** Decision 4, and decided: no option for them.
+- **Hold against the dialog's own Margins list.** Choosing Minimum or Custom there overrides the page's margins: the
+  headers option comes back, Custom with room at the head prints the dialog's date and title on page 1, and the app's
+  page numbers are lost; the preview then remembers that choice (measured, the drive with real input). Default, which
+  the preview opens on, is what decision 4 holds for.
 - **Print without the platform's dialog**, or save a PDF without it (WebView2's `PrintToPdf`, Windows only). Phase 5's
   PDF item decides that.
 - **Remember choices per character**, or skip the step ("don't ask again"). The step is one click; a way to skip it is a
@@ -314,8 +319,60 @@ restored) and failed the test that names it.
 - **The oracle cannot move**: nothing in `packages/core`, `packages/content`, `packages/aurora-import`, `systems` or
   `schemas` changed from the commit before this record's work to the last of it; the derivation is untouched.
 - `npm run typecheck` exits 0; `npm test` passes 1,232 of 1,232.
-- **Not exercised:** real keys and a real mouse (the window was not given for it), paper (no printer was used), the
-  dialog's Margins list, the browser build, and macOS and Linux.
+- **With real keys, a real mouse and paper** (a second drive the same day, below): everything above held, and the
+  dialog's Margins list was found to undo decision 4 when a user changes it (below and in "What this does not do").
+- **Not exercised:** the browser build, and macOS and Linux.
+
+### The drive with real input (2026-09-30)
+
+In the Tauri window on Windows (WebView2, Chromium 154), a fresh WebView2 profile, the library a scratch folder of 33
+characters packed by `packCharacter` (the thirty samples; Samples 01 and 03 also keeping the one text each is offered,
+Sample 03 so holding all three parts; the NPC on the Triceratops), no content source ever added. Every key was a real
+keystroke (`SendKeys`, the window checked to be the foreground before each) and every click a real mouse click
+(`SetCursorPos` and `mouse_event`), in the page, in the step and in WebView2's preview; the debug port only read state.
+
+- **Ctrl+P**: on Build, claimed (`defaultPrevented`) and nothing opened, neither the step nor the preview; on the Sheet,
+  the step and no preview; a second Ctrl+P while the step was open, claimed and nothing; **Escape** (a real key) closed
+  the step, printed nothing and wrote nothing to `print/options`. Cancel clicked did the same.
+- **The step**: clicking a box or its label toggled it, and Space did; with two parts unticked the last was greyed and a
+  click on it changed nothing, and ticking another part freed it. Focus opens on the first box and Tab runs the parts,
+  page numbers, name, Print…, Cancel, then wraps to the first box (the modal keeps it); Shift+Tab goes back. **Enter on
+  Print… prints, and so does Enter on any box**: Print… is the form's submit button, so Enter anywhere in the step is
+  Print. Kept as the dialog convention it is. A one-part sheet (Sample 01, the Triceratops) showed no parts group.
+- **The preview, Default margins**: no "Headers and footers" option with both running items (Samples 03 and 01), page
+  numbers only, the name only, and neither (the Triceratops), with Save as PDF and with the printer as destination.
+  Leaving held creatures out of Sample 03 took it from 6 sheets to 5.
+- **The preview's Margins list** (Default, None, Minimum, Custom), with the mouse, on Sample 03 with both running items:
+  **Minimum and Custom both bring the headers option back, ticked.** Saved as PDF (Letter) and read as positioned text
+  runs:
+
+  | the dialog's margins | the dialog's date, title, address, number | the app's page number | the name on later pages |
+  |---|---|---|---|
+  | Default | none | foot of every page, 3.7 mm above the edge | head of pages 2 to 6, 6.1 mm down; not page 1 |
+  | Minimum (0 for Save as PDF) | none | at the paper's edge (1.1 mm) | at the paper's edge (3.7 mm) |
+  | Custom as offered (top 0.19 to 0.32 in, bottom 0) | none | **not printed** | yes, 5.3 mm down |
+  | Custom, 0.5 in at the top and sides | **date and title at the head of page 1**, where the sheet draws nothing | **not printed** | yes, 7.7 mm down |
+
+  In every Custom print the content ran to the paper's foot (to 277.8 mm of 279.4): the page's own margin and padding
+  give way to the dialog's numbers. A scratch rule giving page 1's head box a no-break space instead of `none` (injected
+  over the debug port, not committed) did not stop the date and title. **The preview remembers its margins**: after a
+  print or a save with Minimum or Custom, the next print opened with the same choice (and the same destination and
+  paper); after a Cancel in the preview it opened on Default (seen once). So decision 4 holds while the dialog's
+  margins are Default, which is how it opens, and a user who picks other margins there gets the dialog's furniture back
+  on the first page and loses the app's page numbers until they pick Default again. The Margins list is the dialog's (ADR
+  0077 decision 8), and no print rule was found that holds against it; nothing was changed.
+- **Paper**, on a network inkjet printer, A4, Default margins, each job confirmed first: Sample 01 (three pages, both
+  running items) and the Triceratops (one page, neither). As read off the paper: "Page *i* of 3" at the foot of every
+  page and "Sample 01" at the head of pages 2 and 3 only; the Triceratops page bare at every edge; no date, title,
+  address or page number from the dialog on either; nothing cut off. The spooler named each job after the character.
+- **Save as PDF through the real save dialog** (the file name typed with real keys, to a scratch path), Sample 03 keeping
+  everything, both running items, Default margins: as the Default row above, and **every word of the Markdown export of
+  the sheet is in the PDF, the only other words the running items** ("Page *i* of 6" six times, the name five).
+- **Remembered choices**: the record is written by the step's Print even when the preview is then cancelled (decision
+  5's "when Print is pressed"); the Triceratops print's choices (both running items off) opened the step on Sample 03;
+  changed and cancelled (mouse and Escape), the step reopened as recorded; and after closing the window (its close
+  button, clicked) and starting it again on the same profile, the step opened with the recorded choices
+  (`{"omit":["companions"],"pageNumbers":false,"runningName":true}`: Companions unticked, numbers off, the name on).
 
 ### The drive this record was written from (2026-09-30)
 
