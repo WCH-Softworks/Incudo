@@ -22,11 +22,13 @@ import {
   sheetDescriptionAt,
   sheetListedElements,
   sheetPlaceholders,
+  trackProgress,
   type BlockStatDef,
   type DerivedCharacter,
   type Element,
   type ElementId,
   type PrintedSheetLine,
+  type Progression,
   type ResolvedCharacterKind,
   type ResolvedStat,
   type SheetReader,
@@ -81,6 +83,11 @@ export interface SheetListedElement {
   action?: string;
   /** The stats its text, usage or action names and nothing publishes, each written as "—" in their place. */
   unfilled?: string[];
+  /**
+   * The count of the track it roots, when its section writes one (`trackProgress`, ADR 0079): a class's level, 3 in
+   * "Paladin 3". What the derivation published, never recomputed.
+   */
+  progress?: number;
 }
 
 /** One section with nothing left to decide. */
@@ -124,6 +131,8 @@ export interface SheetSource {
 export interface SheetVocabulary {
   stats: readonly StatDef[];
   blockStats: readonly BlockStatDef[];
+  /** Where a track's count is published, for a section that writes one (ADR 0079). A creature's scope has none. */
+  progression?: Progression;
 }
 
 /**
@@ -253,12 +262,16 @@ export function sheetSections(
       const elements = listed
         .filter((e) => rendering.types.includes(e.type) && !(section.omitHidden && e.sheet?.display === false))
         .sort((a, b) => rendering.types.indexOf(a.type) - rendering.types.indexOf(b.type))
-        .map((e): SheetListedElement => ({
-          elementId: e.id,
-          name: e.name,
-          ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}),
-          ...sheetHintsOf(e, source),
-        }));
+        .map((e): SheetListedElement => {
+          const progress = section.trackProgress && vocabulary.progression ? trackProgress(vocabulary.progression, e, source.stats) : undefined;
+          return {
+            elementId: e.id,
+            name: e.name,
+            ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}),
+            ...sheetHintsOf(e, source),
+            ...(progress !== undefined ? { progress } : {}),
+          };
+        });
       if (!rows.length && !rendering.printed.length && !elements.length) continue;
       views.push({
         id: rendering.id,
@@ -281,7 +294,7 @@ export function sheetView(derived: DerivedCharacter, kind: ResolvedCharacterKind
   const sections = sheetSections(
     kind.sheet.sections,
     derived,
-    { stats: kind.stats, blockStats: kind.blockStats },
+    { stats: kind.stats, blockStats: kind.blockStats, progression: kind.progression },
     sheetListedElements(derived.elements, kind),
     unmet,
   );

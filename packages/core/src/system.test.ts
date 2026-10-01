@@ -14,6 +14,7 @@ import {
   resolveCharacterKind,
   orderBuildSteps,
   buildStepCycles,
+  trackProgress,
   type BuildStepDef,
   type GameSystem,
 } from './system.ts';
@@ -423,4 +424,20 @@ test('a sheet lists every held element but the items its kind names a hidden set
   assert.deepEqual(sheetListedElements(elements, { inventory }).map((e) => e.id), ['ROPE', 'KNIFE']);
   assert.equal(sheetListedElements(elements, { inventory: { ...inventory, hiddenSetter: undefined } }).length, 4);
   assert.equal(sheetListedElements(elements, {}).length, 4);
+});
+
+// ADR 0079. Fails if the count is read from a stat the element did not contribute (a stat that merely shares the name
+// reads 9), if the stat is looked up other than as `trackStatKey` names the track (the padded " Tinker " reads none), or
+// if a progression with no `trackStatPattern` reads one.
+test("a track's count is the stat its pattern names, and only when the track's root contributed it", () => {
+  const progression = { kind: 'level' as const, min: 1, max: 20, trackStatPattern: 'rank:{name}' };
+  const stats = new Map([
+    ['rank:tinker', { value: 3, contributions: [{ value: 3, from: 'TINKER' }] }],
+    ['rank:juggler', { value: 9, contributions: [{ value: 9, from: 'SOMETHING_ELSE' }] }],
+  ]);
+  assert.equal(trackProgress(progression, { id: 'TINKER', name: ' Tinker ' }, stats), 3);
+  assert.equal(trackProgress(progression, { id: 'JUGGLER', name: 'Juggler' }, stats), undefined);
+  assert.equal(trackProgress(progression, { id: 'NOBODY', name: 'Nobody' }, stats), undefined);
+  assert.equal(trackProgress({ kind: 'level', min: 1, max: 20 }, { id: 'TINKER', name: 'Tinker' }, stats), undefined);
+  assert.equal(trackProgress({ kind: 'none' }, { id: 'TINKER', name: 'Tinker' }, stats), undefined);
 });

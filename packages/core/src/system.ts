@@ -883,6 +883,14 @@ export interface SheetSectionDef {
    * that names what a character is declares none. The element is still held, derived and saved.
    */
   omitHidden?: boolean;
+  /**
+   * Write a listed element a track is rooted on with that track's count — ADR 0079: a player character's Character
+   * section reads "Paladin 3", "Sorcerer 3". The count is what the derivation publishes under the progression's
+   * `trackStatPattern` (ADR 0015), a single-class character's from its implicit track (ADR 0044), and only when the
+   * track's root contributed it (`trackProgress`); nothing is recomputed from `advancement`. Only meaningful beside
+   * types, on a kind whose progression names a `trackStatPattern`.
+   */
+  trackProgress?: boolean;
 }
 
 /** A row's mark: how many times `stat` (a row template) holds `per`, called by `labels` — ADR 0079. */
@@ -1126,6 +1134,23 @@ export type Progression =
 export function trackStatKey(progression: Progression, elementName: string): string | undefined {
   if (progression.kind === 'none' || !progression.trackStatPattern) return undefined;
   return progression.trackStatPattern.replace(TRACK_NAME_PLACEHOLDER, elementName.trim().toLowerCase());
+}
+
+/**
+ * The count of the track rooted on `element`, as the derivation published it — ADR 0079: the stat `trackStatKey` names,
+ * when that element is what contributed it. A stat of the same name contributed by anything else (content writing a
+ * `level:<name>` of its own, an element merely sharing the name) is not a track's count, and reads as none.
+ */
+export function trackProgress(
+  progression: Progression,
+  element: Pick<Element, 'id' | 'name'>,
+  stats: ReadonlyMap<string, { value: number; contributions: ReadonlyArray<{ from?: ElementId }> }>,
+): number | undefined {
+  const key = trackStatKey(progression, element.name);
+  if (key === undefined) return undefined;
+  const stat = stats.get(key.toLowerCase());
+  if (!stat || !stat.contributions.some((c) => c.from === element.id)) return undefined;
+  return stat.value;
 }
 
 /** ADR 0010 — official systems record the licence of the material they describe. */

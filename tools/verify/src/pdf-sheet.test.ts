@@ -92,6 +92,11 @@ interface Read {
   row: (id: string, stat: string) => string | undefined;
   /** Whether the section lists an element of one of these types (read from the index only to name the type). */
   lists: (id: string, types: string[]) => boolean;
+  /**
+   * The form's one "class & level" line as the document gives it (ADR 0079): each class the Character section lists, as
+   * the sheet names it with its level, joined; absent when a listed class carries no level.
+   */
+  classLine?: string;
   /** What does not fit the form's shape for this character, by box name. */
   partial: Set<string>;
 }
@@ -106,7 +111,7 @@ const fit = (d: Read, name: string, v: Verdict): Verdict => (v === 'filled' && d
 /** The 2014 fillable sheet's boxes, in this file's words. Field counts sum to the form's 210 text and 124 check boxes. */
 const OFFICIAL_2014: Box[] = [
   { page: 1, name: 'character name', text: 1, checks: 0, read: (d) => (d.doc.name.trim() ? 'filled' : 'empty') },
-  { page: 1, name: 'class and level', text: 1, checks: 0, read: (d) => fit(d, 'class and level', d.lists('identity', ['Class']) && d.row('combat', 'level') ? 'filled' : 'absent') },
+  { page: 1, name: 'class and level', text: 1, checks: 0, read: (d) => fit(d, 'class and level', d.classLine ? 'filled' : 'absent') },
   { page: 1, name: 'background', text: 1, checks: 0, read: (d) => ofType(d, ['Background']) },
   { page: 1, name: 'player name', text: 1, checks: 0 },
   { page: 1, name: 'race', text: 1, checks: 0, read: (d) => ofType(d, ['Race']) },
@@ -195,6 +200,7 @@ interface SampleReading {
   unknownSpellLevels: number;
   weapons: number;
   multiclass: boolean;
+  classLine?: string;
   chars: Map<string, number>;
   freeformKeys: string[];
   prepared: number;
@@ -226,13 +232,15 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
   ]);
 
   const partial = new Set<string>();
-  if (multiclass) partial.add('class and level');
   if (blocks > 1) partial.add('spellcasting class, ability, save DC, attack bonus');
   if (overSpellLines.length) partial.add('spells, by level');
   for (const b of OFFICIAL_2014) if (b.holds && (chars.get(b.name) ?? 0) > b.holds) partial.add(b.name);
 
+  const classes = (section('identity')?.elements ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Class');
+  const classLine = classes.length && classes.every((e) => e.progress !== undefined) ? classes.map(listedName).join(' / ') : undefined;
   const read: Read = {
     doc,
+    ...(classLine ? { classLine } : {}),
     section,
     row: (sid, stat) => section(sid)?.rows.find((r) => r.stat === stat)?.value,
     lists: (sid, types) => (section(sid)?.elements ?? []).some((e) => types.includes(run.elements.get(e.elementId)?.type ?? '')),
@@ -259,6 +267,7 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
     unknownSpellLevels,
     weapons,
     multiclass,
+    ...(classLine ? { classLine } : {}),
     chars,
     freeformKeys: Object.keys(character.freeform ?? {}).filter((k) => (character.freeform[k] ?? '').trim() !== ''),
     prepared: Object.values(character.prepared ?? {}).reduce((n, list) => n + list.length, 0),
@@ -306,7 +315,8 @@ test('the samples against the 2014 fillable sheet: what the sheet document fills
     t.diagnostic(`page ${b.page} · ${b.name} (${b.text} text, ${b.checks} check): ${verdict}`);
   }
 
-  t.diagnostic(`class and level: ${readings.filter((r) => r.multiclass).length} multiclass samples, whose levels per class the document does not hold (it has the character level and the class names)`);
+  const multiclass = readings.filter((r) => r.multiclass);
+  t.diagnostic(`class and level: ${readings.filter((r) => r.classLine).length} of ${n} samples read their classes with levels; the ${multiclass.length} multiclass: ${multiclass.map((r) => `${r.id} ${r.classLine ?? '(none)'}`).join('; ')}`);
   t.diagnostic(`casting blocks per sample (the form has one): ${range(readings.map((r) => r.blocks))}; samples with more than one ${readings.filter((r) => r.blocks > 1).length}`);
   const over = readings.filter((r) => r.overSpellLines.length);
   t.diagnostic(`spells: samples with a level holding more spells than the form has lines ${over.length}${over.length ? ` (${over.map((r) => `${r.id}: ${r.overSpellLines.join(', ')}`).join('; ')})` : ''}; spells with no level setter ${readings.reduce((a, r) => a + r.unknownSpellLevels, 0)}`);

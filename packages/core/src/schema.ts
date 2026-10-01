@@ -490,6 +490,10 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         if (section.omitHidden && !section.types?.length) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" leaves out hidden elements and lists none` });
         }
+        // A creature's scope has no tracks of its own to count (ADR 0079).
+        if (section.trackProgress) {
+          errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" writes a track's count, which a creature's stat block has none of` });
+        }
         // What a row shows beside it is a stat the scope has, or the row reads a blank (ADR 0074).
         const scopeStats = new Set([...statNames, ...(companions.stats ?? []).map((s) => s.name.toLowerCase())]);
         errors.push(...markErrors(section, scopeStats, `${where}.companions.sheet`));
@@ -565,6 +569,16 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       // Leaving hidden elements out of a section that lists none says nothing (ADR 0076).
       if (section.omitHidden && !section.types?.length) {
         errors.push({ path: `${where}.sheet`, message: `section "${section.id}" leaves out hidden elements and lists none` });
+      }
+      // A track's count is read where the progression publishes it (ADR 0079): beside listed elements, and only on a kind
+      // whose progression names the stat.
+      if (section.trackProgress) {
+        if (!section.types?.length) {
+          errors.push({ path: `${where}.sheet`, message: `section "${section.id}" writes a track's count beside listed elements and lists none` });
+        }
+        if (resolved.progression.kind === 'none' || !resolved.progression.trackStatPattern) {
+          errors.push({ path: `${where}.sheet`, message: `section "${section.id}" writes a track's count, and this kind's progression publishes none (no trackStatPattern)` });
+        }
       }
       errors.push(...markErrors(section, statNames, `${where}.sheet`));
       for (const stat of section.stats ?? []) {

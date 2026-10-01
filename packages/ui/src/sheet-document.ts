@@ -20,9 +20,14 @@ import type { SheetListedElement, SheetRow, SheetSectionView, SheetView } from '
 /** What is written beside an element the user added whose prerequisites are unmet (ADR 0064). */
 export const PREREQUISITES_UNMET = 'prerequisites not met';
 
-/** What a listed element is called on a sheet: the shorter name content gives it there (ADR 0076), else its name. */
-export function listedName(element: Pick<SheetListedElement, 'name' | 'sheetName'>): string {
-  return element.sheetName ?? element.name;
+/**
+ * What a listed element is called on a sheet: the shorter name content gives it there (ADR 0076), else its name, with
+ * the count of the track it roots when its section writes one, "Paladin 3" (ADR 0079). The pane and every export name
+ * an element this way.
+ */
+export function listedName(element: Pick<SheetListedElement, 'name' | 'sheetName' | 'progress'>): string {
+  const name = element.sheetName ?? element.name;
+  return element.progress !== undefined ? `${name} ${element.progress}` : name;
 }
 
 /**

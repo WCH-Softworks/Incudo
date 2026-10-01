@@ -907,6 +907,10 @@
           "type": "boolean",
           "description": "Leave out a listed element whose own sheet hints say not to show it (Aurora's <sheet display=\"false\">, ADR 0076). Content marks a feature that way when its effect is shown elsewhere or a choice beside it names it better, and also every race and class, which a header names: so a section that lists features declares it and one that names what a character is does not. The element is still held, derived and saved. Only meaningful beside types."
         },
+        "trackProgress": {
+          "type": "boolean",
+          "description": "Write a listed element a track is rooted on with that track's count (ADR 0079): a player character's classes read \"Paladin 3\", \"Sorcerer 3\". The count is the stat the progression's trackStatPattern names, as the derivation publishes it, and only when that element contributed it. Only meaningful beside types, on a kind whose progression names a trackStatPattern; not in a creature's stat block."
+        },
         "showWhen": {
           "type": "string",
           "minLength": 1,

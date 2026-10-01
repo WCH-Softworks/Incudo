@@ -188,3 +188,36 @@ test('rowMark counts whole multiples only, and nothing against a per of zero or 
   assert.deepEqual(rowMark(0.3 * 3, 0.3, ['a', 'b', 'c']), { label: 'c', count: 3 });
   assert.deepEqual(rowMark(7, 3, ['a', 'b']), { label: 'b', count: 2 });
 });
+
+// ADR 0079. A kind whose progression publishes a track's count as `rank:{name}`, and a character of rank 4 holding one
+// Charm, its implicit track. Fails if sheetView does not hand sections the kind's progression (nothing is counted), if a
+// section's `trackProgress` is not read (the Charm reads no count), if a section without it writes one (Gear reads 4),
+// or if an element merely sharing a track stat's name is counted (the Lamp, whose `rank:lamp` content wrote, reads 7).
+test("a section that writes a track's count lists the track's root with what the derivation published", () => {
+  const sys = system();
+  const base = sys.characterKinds[0]!;
+  sys.stats.push({ name: 'rank', default: 0 });
+  sys.characterKinds[0] = {
+    ...base,
+    progression: { kind: 'level', min: 1, max: 10, stat: 'rank', trackStatPattern: 'rank:{name}', trackType: 'Charm' },
+    sheet: {
+      sections: [
+        { id: 'who', label: 'Who', types: ['Charm', 'Gadget'], trackProgress: true },
+        { id: 'gear', label: 'Gear', types: ['Charm'] },
+      ],
+    },
+  };
+  const named = element('NAMED', 'Named', {}, { rules: [{ kind: 'stat', key: 'rank', name: 'rank:lamp', value: num(7) }] });
+  const local = new MapElementIndex();
+  for (const e of [lamp, charm, named]) local.add(e);
+  const character = createCharacter('test', 'tinker');
+  character.progress = 4;
+  character.choices = [{ ruleKey: 'build/gear', elementIds: ['LAMP', 'CHARM', 'NAMED'] }];
+  const kind = resolveCharacterKind(sys, 'tinker');
+  const derived = deriveCharacter(character, sys, local, { kind });
+  assert.equal(derived.stats.get('rank:lamp')?.value, 7, 'content wrote a stat sharing the Lamp\'s track name');
+  const view = sheetView(derived, kind);
+  const who = view.sections.find((s) => s.id === 'who')!;
+  assert.deepEqual(who.elements.map((e) => [e.name, e.progress]), [['Charm', 4], ['Lamp', undefined], ['Named', undefined]]);
+  assert.equal(view.sections.find((s) => s.id === 'gear')!.elements[0]!.progress, undefined);
+});

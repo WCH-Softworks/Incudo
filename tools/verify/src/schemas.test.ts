@@ -251,6 +251,35 @@ test('a system that would throw at load fails validation instead', async () => {
     ),
     ['characterKinds[0].sheet.sections[0].omitHidden: must be a boolean, not a string'],
   );
+
+  // ADR 0079: a section writing a track's count lists elements, on a kind whose progression publishes one, and never in a
+  // creature's stat block. Fails if either check is removed (the first), or `trackProgress` is left out of the schema
+  // (every one: an unknown field).
+  assert.deepEqual(
+    await errorsFor(broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], trackProgress: true }] }))),
+    [
+      `characterKinds[0].sheet: section "s" writes a track's count beside listed elements and lists none`,
+      `characterKinds[0].sheet: section "s" writes a track's count, and this kind's progression publishes none (no trackStatPattern)`,
+    ],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.progression = { kind: 'level', min: 1, max: 20, trackStatPattern: 'level:{name}' };
+        s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', types: ['Widget'], trackProgress: true }] };
+      }),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.progression = { kind: 'level', min: 1, max: 20, trackStatPattern: 'level:{name}' };
+        s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', types: ['Widget'], trackProgress: 1 as unknown as boolean }] };
+      }),
+    ),
+    ['characterKinds[0].sheet.sections[0].trackProgress: must be a boolean, not a number'],
+  );
 });
 
 test('structural mistakes get messages a non-programmer can act on', async () => {

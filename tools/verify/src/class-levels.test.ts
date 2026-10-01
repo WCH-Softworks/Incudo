@@ -18,14 +18,16 @@
  * - **The order the Character section lists the classes in**, against the split's first-taken order.
  * - **Whether the counts add up to the character level.**
  *
- * Report-only (ADR 0042) on the commit before the levels were built.
+ * Report-only (ADR 0042) on the commit before the levels were built. Since then the last test asserts, against any
+ * corpus, that every sample's sheet names its classes with the levels its split took, in the order first taken: the
+ * Character section's `trackProgress` (5e's system definition) is what writes them, and removing it fails it.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { trackStatKey } from '@incudo/core';
-import { CharacterBuilder, sheetDocument } from '@incudo/ui';
+import { CharacterBuilder, listedName, sheetDocument, sheetMarkdown } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
@@ -93,4 +95,23 @@ test('the samples: what the derivation publishes as each class\'s level', { skip
   t.diagnostic(`track stats summed against the character level: ${sumDiffers.length} differ${sumDiffers.length ? ` (${sumDiffers.join('; ')})` : ''}`);
   t.diagnostic(`Character section's class order against the order first taken: ${orderDiffers.length} differ${orderDiffers.length ? ` (${orderDiffers.join('; ')})` : ''}`);
   for (const line of multiclassLines) t.diagnostic(`multiclass ${line}`);
+});
+
+test("every sample's sheet reads its class split, on the Sheet and in the text export", { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
+  t.diagnostic(corpusProvenance());
+  const elements = await realElements();
+  let read = 0;
+  for (const sample of samplesWhere(() => true)) {
+    const run = await runOracle(samplePath(sample), elements, 'sample');
+    const doc = sheetDocument(new CharacterBuilder(run.imported.character, run.system, run.elements).getState());
+    const classes = (doc.sections.find((s) => s.id === 'identity')?.elements ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Class');
+    // The split by class, first taken first, each class as its element is named: a 2024 class shares its 2014 name.
+    const want = [...splitLevels(sample)].map(([name, levels]) => `${name} ${levels}`);
+    assert.deepEqual(classes.map((e) => listedName(e).toLowerCase()), want, `${sample.id}: the Character section's classes`);
+    const markdown = sheetMarkdown(doc);
+    for (const e of classes) assert.ok(markdown.includes(`- ${listedName(e)}\n`), `${sample.id}: the export lists ${listedName(e)}`);
+    read++;
+  }
+  assert.ok(read > 0, 'samples were read');
+  t.diagnostic(`${read} samples read their class split`);
 });

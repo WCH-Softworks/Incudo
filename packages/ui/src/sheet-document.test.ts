@@ -14,6 +14,7 @@ import type { FileSaveOptions, FileSaver, SavedFile } from '@incudo/core';
 import type { CompanionsView } from './companions.ts';
 import type { ReferenceRow } from './references.ts';
 import {
+  listedName,
   NO_KEPT_TEXT,
   PREREQUISITES_UNMET,
   referenceEntry,
@@ -41,7 +42,7 @@ const sheet: SheetView = {
       ],
       printed: [],
       elements: [
-        { elementId: 'G1', name: 'Wrench' },
+        { elementId: 'G1', name: 'Wrench', progress: 3 },
         { elementId: 'G2', name: 'Spanner_of_*Doom*', prerequisitesUnmet: true },
       ],
     },
@@ -133,7 +134,7 @@ test('the Markdown: title, kind, a heading per section, one list of rows, elemen
       '',
       '- Grit: 14 (+2, deft)',
       '- Luck: -1 (handy\\_\\*)',
-      '- Wrench',
+      '- Wrench 3',
       `- Spanner\\_of\\_\\*Doom\\* (${PREREQUISITES_UNMET})`,
       '',
       '## First Line',
@@ -245,4 +246,12 @@ test("what follows a row's value is what is beside it and its mark, or nothing",
   assert.equal(rowAside({ mark: { label: 'handy', count: 1 } }), 'handy');
   assert.equal(rowAside({ beside: '+2' }), '+2');
   assert.equal(rowAside({}), undefined);
+});
+
+// ADR 0079. Fails if a track's count is left out of what a listed element is called (the Markdown above reads "Wrench"
+// too), if it is put before the shorter name, or if an element with none gets a trailing space or a 0.
+test("a listed element rooting a track is called with the track's count, after the name the sheet gives it", () => {
+  assert.equal(listedName({ name: 'Paladin', progress: 3 }), 'Paladin 3');
+  assert.equal(listedName({ name: 'The Tinkerer', sheetName: 'Tinker', progress: 12 }), 'Tinker 12');
+  assert.equal(listedName({ name: 'Wrench' }), 'Wrench');
 });
