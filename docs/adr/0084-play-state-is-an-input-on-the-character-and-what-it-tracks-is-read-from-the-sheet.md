@@ -99,7 +99,37 @@ thirty samples:
 
 ## What was built
 
-Filled in below as each part landed.
+- `core`: `Character.play` and `PlayState`, `setPlayState` (drops zeros, raises to 8), format 8 in the schema and
+  `LATEST_CHARACTER_FORMAT_VERSION`, the validator's format check; `PlayDef`, `RestDef`, `TrackerDef`, `RestoreDef`,
+  `ConditionsDef` on a kind, resolved along `extends`, with `checkPlay`'s referential checks; `replaceContainerCharacter`.
+  No game noun.
+- `packages/ui`: `play.ts` (`playView`, `readUsage`, the five edits, and the wording every screen shares: `playValue`,
+  `playTemporaryText`, `playRestNote`, `restEffects`); `BuilderState.play` and the builder's `adjustPlay`,
+  `setPlaySpent`, `setPlayTemporary`, `setPlayCondition` and `rest`, which keep the derivation; `CharacterLibrary.record`.
+- `systems/dnd5e/system.json`: decision 5's declarations for `pc`, `npc` and `legendary`.
+- `apps/mobile`: Sheet and Play tabs on a character, `PlayPanel.tsx`, and the writer (`useRecorder` in `App.tsx`).
+- `apps/desktop`: `PlayPanel.tsx` on the Sheet pane, hidden in print.
+- Tests: `packages/ui/src/play.test.ts` (each case naming the perturbation that fails it; six were run and fail as
+  named), `character-library.test.ts` (`record` keeps every other byte and honours the conflict check),
+  `tools/verify/src/schemas.test.ts` (format 8; every `checkPlay` refusal), and `tools/verify/src/play-state.test.ts`:
+  the report above, and, against any corpus, every sample's hit points, slot rows and uses equal to its sheet's, a play
+  edit deriving nothing, and the play view equal after a pack and a reopen with no source (30 samples, 284 trackers;
+  removing 5e's block-slot or uses tracker fails it). The oracle and every sheet test are unchanged.
+
+## Driven
+
+- **Phone**, the Pixel 9 Pro emulator in Expo Go, by `adb` taps: three samples packed in Node were added through
+  Android's picker. A Wizard 3 / Rogue 3 / Warlock 3: 5 temporary hit points, 12 lost (53 to 46, the temporary ones
+  first), a pool slot and a pact slot spent, Prone set; a short rest asked "Gives back: Spell Slots — Warlock" and gave
+  back only that; each edit was written within a second (the app's dev log). Left and reopened: the same play.
+  Exported to a folder and read in Node: `content.json` byte-identical to the file added, `character.json` format 8 with
+  the play, no container problem, and the same sheet checksum the phone logged. A Barbarian 5: Rage spent, one
+  exhaustion, a long rest gave both back and the file recorded no play.
+- **Desktop**, the browser build with an origin-private folder as the library: that exported file opened to the same
+  play on the Sheet; 10 more lost, saved to the library, opened again from it at 36 of 53; a long rest asked about hit
+  points and slots, gave them back, and left Prone.
+- **Not driven:** the Tauri window, a real phone, iOS, the conflict refusal on a device (held by the library test), and
+  an NPC or legendary creature in either app (held by the system validator only).
 
 ## Consequences
 

@@ -368,8 +368,8 @@ in the export is content's own sheet line, at the level its class reads, its num
 Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platform's own dialog, its sections in two columns**
 (ADR 0077), **after a step of the app's own choosing its parts, page numbers and the name on later pages, and with no edge
 of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079).
-**The phone app runs and shows a character's sheet, read-only** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
-Phase 6's first item and the read half of its second. Things to know before touching it:
+**The phone app runs and shows a character's sheet, and plays it (ADR 0084, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
+Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
 - **`apps/mobile` is a workspace** (Expo SDK 57, React Native 0.86, React 19.2, run in Expo Go). The install went from
   45 packages and 6 s to 519 and 69 s; `workspace.test.ts` asserts it is in. The desktop keeps React 19.3 nested;
@@ -394,6 +394,33 @@ Phase 6's first item and the read half of its second. Things to know before touc
   file ("name (1).incu", reported as such). Expo Go's floating tools button sits over the header's right corner; switch
   it off in its menu before tapping Export in a drive.
 - **No icon or splash**: Expo's stand in, a marked gap (`brand/`'s tile is undecided). Never generate one.
+
+**A character is played on the phone and the desktop alike, and what is spent is an input on it**
+([ADR 0084](docs/adr/0084-play-state-is-an-input-on-the-character-and-what-it-tracks-is-read-from-the-sheet.md)),
+the play half of Phase 6's second item. Things to know before touching it:
+
+- **Measured first** (`tools/verify/src/play-state.test.ts`): Aurora's saves record no play state (`<slots>` are totals),
+  so the frozen importer drops nothing; 632 of content's 968 usage hints are a count per rest or per day.
+- **`Character.play`** (`{ spent?, temporary?, conditions? }`, keyed by tracker) is an input in ADR 0006's sense, in
+  `character.json`, **format 8 only when recorded** (`setPlayState`; zeros never written). Never a derivation seed,
+  never embedded, not in `summarize()`. A recorded key no tracker shows is kept.
+- **A kind's `play`** (system format, optional, replaced along `extends`) declares rests (with `usage` templates such as
+  `"{count}/Long Rest"`), trackers and conditions. A tracker reads its maximum from exactly one of `stat`, `rows` (a sheet
+  section's rows, per block), `dice` (a section's `trackDie`), `uses` (listed elements whose filled usage reads as a
+  rest's template) or `max`. `checkPlay` (schema.ts) refuses names nothing declares. Core and `packages/ui` name no rest,
+  resource or condition: 5e's are in `systems/dnd5e/system.json` (pact magic back on a short rest by
+  `restoresWhen` on `{name}:spellcasting:solo`).
+- **`playView` (`packages/ui/src/play.ts`) reads every maximum off `SheetView`**, never recomputes one, and the edits
+  (`adjustPlay`, `setPlaySpent`, `setPlayTemporary`, `setPlayCondition`, `restPlay`) are pure. The builder's methods of the
+  same names **keep the derivation** (`playEdit` patches the cached state; `play-state.test.ts` holds `derived` to the
+  same object). Wording both apps use is there too (`playValue`, `playRestNote`, `restEffects`).
+- **The phone writes at once**: `CharacterLibrary.record` replaces `character.json` and the manifest's name, `updated` and
+  checksum (`replaceContainerCharacter`, core) and nothing else, under ADR 0027's conflict check; `useRecorder` in
+  `apps/mobile/src/App.tsx` debounces half a second and flushes on leaving. The desktop's Sheet has a Play section
+  (hidden in print) and saves with Save.
+- **The sheet document is unchanged**: play is not in it, so exports and the phone/desktop sheet checksum are untouched.
+- In dev builds the phone logs `[incudo] play <file>: <play json>` after each write. Driven on the emulator and in the
+  browser build; not in the Tauri window, on a real phone or iOS, and no NPC played in either app.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
@@ -439,7 +466,7 @@ Phase 6's first item and the read half of its second. Things to know before touc
   one. Nothing downgrades. The validator refuses either field below 3. The frozen importer and every PC are untouched.
   *(Since ADR 0063 a character that records `customFeatures` is **4**, and since ADR 0064 one that records `additions` is
   **5**, and since ADR 0065 one with a custom feature that records its `type` is **6**, and since ADR 0068 one that
-  records `references` is **7**; `LATEST_CHARACTER_FORMAT_VERSION` is 7.)*
+  records `references` is **7**, and since ADR 0084 one that records `play` is **8**; `LATEST_CHARACTER_FORMAT_VERSION` is 8.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any

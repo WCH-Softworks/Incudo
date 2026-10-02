@@ -1476,11 +1476,21 @@ pane draws and every export renders: the PDF and the print layout start from it,
       at 800 values and 14.75 MB, twenty keys over 255 bytes; 16.9 MB written in 14.5 s on the emulator), the library the
       app's own folder with files added through the document picker (`CharacterLibrary.add`, unchanged bytes), DEFLATE
       by fflate in the shell. `core` gained nothing.
-- [ ] Character sheet — **read and play** first; building second.
+- [x] Character sheet — **read and play** first; building second.
       **Read is built** (ADR 0083): the sheet document drawn natively, content's HTML through `htmlToBlocks`, which reads
       every corpus text to the same words as the text export. Five samples opened on the emulator with no source gave
-      a sheet byte-identical to the desktop's for the same file. Not yet: play (tracking hit points, slots and uses),
-      the maintainer's own phone, iOS.
+      a sheet byte-identical to the desktop's for the same file.
+      **Play is built** ([ADR 0084](./docs/adr/0084-play-state-is-an-input-on-the-character-and-what-it-tracks-is-read-from-the-sheet.md)).
+      Measured first: Aurora's saves record no play state at all, and 632 of content's 968 usage hints are a count per
+      rest or per day. What is spent is `Character.play`, an input in `character.json` (format 8, only when recorded);
+      what is tracked and what a rest gives back is the kind's `play` in the system definition, every maximum read off
+      the sheet (hit points with temporary ones, hit dice, both slot sections with pact magic back on a short rest,
+      limited uses, Ki, Focus, Sorcery and Psi points, superiority dice, inspiration, death saves, exhaustion, and
+      fourteen conditions as names). The phone writes each edit back to the library file at once, rewriting only
+      `character.json` and the manifest; the desktop's Sheet shows and edits the same view and saves it with Save. The
+      sheet document and every export are unchanged. Driven on the emulator and in the browser build, the same file
+      both ways. Not yet: the maintainer's own phone, iOS, the Tauri window; spending a pool from the features that name
+      it ("Channel Divinity"), per-turn uses.
 - [ ] Full build flow
 - [ ] Import/export via share sheet and file picker.
       **Built** (ADR 0083): import through the file picker (`CharacterLibrary.add`), and export from the sheet's header,
