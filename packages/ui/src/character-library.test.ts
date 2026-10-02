@@ -442,6 +442,45 @@ test('a library with nowhere chosen yet is a first run, not an error', async () 
   assert.deepEqual(library.getState().problems, []);
 });
 
+// --- adding a picked file (ADR 0083) -----------------------------------------
+
+test('a picked container is written unchanged, named after its file, and opens', async () => {
+  const [library, store] = await libraryWith(hero('Aelin'));
+  const files = containerFor(hero('Vesper'));
+  const added = await library.add(files, 'Vesper of the Marsh.incu');
+  // Fails if the files are repacked (the manifest's bytes would change) or the name comes from the character.
+  assert.deepEqual(added, { ok: true, entry: { name: 'vesper-of-the-marsh.incu', form: 'zip' } });
+  assert.deepEqual(store.entries.get('vesper-of-the-marsh.incu')?.files, files);
+  assert.deepEqual(library.getState().entries.map((entry) => entry.title).sort(), ['Aelin', 'Vesper']);
+  assert.equal((await library.open('vesper-of-the-marsh.incu'))?.character.name, 'Vesper');
+});
+
+test('a picked container whose name is taken gets a free one, and nothing is overwritten', async () => {
+  const [library, store] = await libraryWith(hero('Aelin'));
+  const before = store.entries.get('aelin.incu')!.files;
+  const added = await library.add(containerFor(hero('Another')), 'AELIN.incu');
+  // Fails if the existing file is written over, case ignored as a file system on a phone may.
+  assert.deepEqual(added, { ok: true, entry: { name: 'aelin-2.incu', form: 'zip' } });
+  assert.equal(store.entries.get('aelin.incu')!.files, before);
+});
+
+test('files that are not a character are refused with a sentence, and nothing is written', async () => {
+  const [library, store] = await libraryWith(hero('Aelin'));
+  const added = await library.add(new Map([['notes.txt', new TextEncoder().encode('hello')]]), 'notes.incu');
+  assert.equal(added.ok, false);
+  assert.match(!added.ok ? added.message : '', /^"notes\.incu" is not an Incudo character/);
+  assert.deepEqual([...store.entries.keys()], ['aelin.incu']);
+});
+
+test('adding needs a library, as saving does', async () => {
+  const none = new CharacterLibrary(new NoStore());
+  await none.restore();
+  assert.deepEqual(await none.add(containerFor(hero()), 'aelin.incu'), { ok: false, message: 'This browser cannot open a folder.' });
+  const unchosen = new CharacterLibrary(new FakeStore(null));
+  await unchosen.restore();
+  assert.equal((await unchosen.add(containerFor(hero()), 'aelin.incu')).ok, false);
+});
+
 // --- the system filter (ADR 0031) ------------------------------------------
 
 /** The other system in these tests. Same shape, different id — the library never reads more. */

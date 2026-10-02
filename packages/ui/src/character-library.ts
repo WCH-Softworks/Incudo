@@ -201,6 +201,9 @@ export type SaveResult =
     }
   | { ok: false; reason: 'conflict' | 'failed'; message: string };
 
+/** What adding a picked container to the library gave: the entry it was written as, or why nothing was. */
+export type AddResult = { ok: true; entry: LibraryEntryRef } | { ok: false; message: string };
+
 export interface PackOptions {
   /**
    * The configured sources, which is what turns an element's origin into the version a
@@ -503,6 +506,33 @@ export class CharacterLibrary {
   remove = async (entry: LibraryEntryRef): Promise<void> => {
     await this.store.remove(entry);
     await this.refresh();
+  };
+
+  /**
+   * Put a container the user picked from elsewhere into the library, as it is — ADR 0083.
+   *
+   * On a phone the library is the app's own folder, which the user cannot copy a file into, so a `.incu` that arrives
+   * (from a download, a chat, a cloud drive) comes in through this. Its files are written **unchanged**, never repacked:
+   * repacking would derive nothing differently but would restamp the manifest, and the point is that the file opens on
+   * the phone as it does on the desktop. It is named after the file it came from, made free as a save's name is, and
+   * written in the zip form. Files that do not read as a character are refused with a sentence and nothing is written.
+   */
+  add = async (files: ContainerFiles, fileName: string): Promise<AddResult> => {
+    if (!this.store.available) return { ok: false, message: this.store.unavailableReason ?? 'No library.' };
+    if (!this.state.location) return { ok: false, message: 'No library folder has been chosen yet.' };
+    const { container, problems } = readCharacterContainer(files);
+    if (!container) {
+      const why = problems.find((problem) => problem.level === 'error')?.message;
+      return { ok: false, message: `"${fileName}" is not an Incudo character${why ? `: ${why}` : '.'}` };
+    }
+    const entry: LibraryEntryRef = { name: this.freeName(fileName.replace(/\.incu$/i, ''), 'zip'), form: 'zip' };
+    try {
+      await this.store.write(entry, files);
+    } catch (error) {
+      return { ok: false, message: `Could not write "${entry.name}": ${messageOf(error)}` };
+    }
+    await this.refresh();
+    return { ok: true, entry };
   };
 
   /**
