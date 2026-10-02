@@ -10,7 +10,7 @@ when something here looks odd, the ADR usually says why.
 ## Commands
 
 ```bash
-npm install            # ~25s. If it starts pulling Expo, apps/mobile got added to workspaces — don't.
+npm install            # ~70s, 519 packages: Expo is in, since apps/mobile became a workspace (ADR 0083).
 npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, start here.
                        # Opens on the character library; pick a folder to see anything in it.
 npm run desktop:app    # the real Tauri window — needs Rust. Builds now; the icon arrived.
@@ -19,6 +19,7 @@ npm run corpus:sync    # fetch/fast-forward the official AuroraLegacy/elements i
 npm test               # node --test, no build step. Includes the real-content suite below once
                        # `.corpus/` exists; without it those tests skip and say to run corpus:sync.
 npm run fixtures:rebuild   # regenerate tools/verify/fixtures/aelin/ after a format change
+npm run mobile         # the phone app's dev server (Expo Go); mobile:android opens it on an emulator or USB phone
 ```
 
 **There is no CLI, and none should be added**
@@ -367,7 +368,27 @@ in the export is content's own sheet line, at the level its class reads, its num
 Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platform's own dialog, its sections in two columns**
 (ADR 0077), **after a step of the app's own choosing its parts, page numbers and the name on later pages, and with no edge
 of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079).
-Not started: the mobile shell (only its `platform.ts` contract exists).
+**The phone app runs and shows a character's sheet, read-only** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
+Phase 6's first item and the read half of its second. Things to know before touching it:
+
+- **`apps/mobile` is a workspace** (Expo SDK 57, React Native 0.86, React 19.2, run in Expo Go). The install went from
+  45 packages and 6 s to 519 and 69 s; `workspace.test.ts` asserts it is in. The desktop keeps React 19.3 nested;
+  `metro.config.cjs` pins `react` to the app's copy and maps `@repo/systems` and `@repo/schemas` as Vite does. The
+  package is an ES module (so `tools/verify` can import `@incudo/mobile/zip`), hence the `.cjs` Metro config.
+- **`apps/mobile/src/platform.ts` is the only Expo-aware file**: `Storage` is one SQLite table (measured: a download is
+  800 values, 14.75 MB, twenty keys over 255 bytes), the library is the app's own `library/` folder (the maintainer's
+  choice; a picked folder is later), files come in through `File.pickFileAsync` and `CharacterLibrary.add`, which writes
+  the picked container **unchanged**. DEFLATE is fflate in `src/zip.ts`, held to the desktop's zip by `mobile-zip.test.ts`.
+- **The sheet is `sheetDocument` drawn natively** (`SheetView.tsx`, computing nothing). Content's HTML goes through
+  `htmlToBlocks` (`packages/ui`), which shares `html-tree.ts` with the Markdown export; `tools/verify`'s
+  `html-blocks.test.ts` holds both to the same words over all 15,671 corpus texts.
+- **Hermes, measured on the emulator**: UTF-8 `TextDecoder`, `TextEncoder`, `\p{…}`, `URL` and `localeCompare` (same
+  order as Node) work; `CompressionStream` is absent; **`TextDecoder('utf-16le')` throws**, which `content-files.ts` will
+  meet when a phone adds a UTF-16 Aurora file.
+- **Driven on the Pixel 9 Pro emulator in Expo Go by `adb`**: five samples packed in Node, added through Android's
+  picker, opened with no source; in dev builds the sheet screen logs `[incudo] sheet <file>: <n> characters, sha256 <…>`
+  of `sheetMarkdown`, and all five equalled Node's. Not run: a real phone, iOS, a development or release build.
+- **No icon or splash**: Expo's stand in, a marked gap (`brand/`'s tile is undecided). Never generate one.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
@@ -1670,7 +1691,7 @@ deliberately **not** fixed:
   `systems/dnd5e/system.json` with `manual` as its only method (a monster's scores are printed,
   not bought). Left unwritten while the phase is about a PC.
 
-ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077 and 0078 are implemented, and so is **0032**: a build step may declare `multiple: true`
+ADRs 0007, 0009, 0012, 0014, 0015, 0016, 0017, 0018, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0046, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077, 0078 and 0083 are implemented, and so is **0032**: a build step may declare `multiple: true`
 and is then published as a non-blocking, skippable *set* (`OpenDecision.multiple`,
 `SettledPick.multiple`), recorded under `build/<stepId>`. 5e's `options` step is the first — campaign
 options, found by type (`Option`) with no id named. Three things to know before touching it: a set is

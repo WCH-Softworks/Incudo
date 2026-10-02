@@ -1465,12 +1465,22 @@ pane draws and every export renders: the PDF and the print layout start from it,
 
 ---
 
-## Phase 6 — Mobile app ⬜
+## Phase 6 — Mobile app 🟡
 
 *Deliberately after the desktop builder: the shared core must be proven first.*
 
-- [ ] Expo shell, navigation, storage
-- [ ] Character sheet — **read and play** first; building second
+- [x] **Expo shell, navigation, storage**
+      ([ADR 0083](./docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)).
+      Expo SDK 57 in Expo Go, `apps/mobile` a workspace (the install went from 45 packages and 6 s to 519 and 69 s,
+      measured), React Navigation's native stack, `Storage` as one SQLite table (a full AuroraLegacy download measured
+      at 800 values and 14.75 MB, twenty keys over 255 bytes; 16.9 MB written in 14.5 s on the emulator), the library the
+      app's own folder with files added through the document picker (`CharacterLibrary.add`, unchanged bytes), DEFLATE
+      by fflate in the shell. `core` gained nothing.
+- [ ] Character sheet — **read and play** first; building second.
+      **Read is built** (ADR 0083): the sheet document drawn natively, content's HTML through `htmlToBlocks`, which reads
+      every corpus text to the same words as the text export. Five samples opened on the emulator with no source gave
+      a sheet byte-identical to the desktop's for the same file. Not yet: play (tracking hit points, slots and uses),
+      the maintainer's own phone, iOS.
 - [ ] Full build flow
 - [ ] Import/export via share sheet and file picker
 - [ ] Download mode as the default on metered connections
