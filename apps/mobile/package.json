@@ -3,21 +3,35 @@
   "version": "0.0.1",
   "private": true,
   "description": "Incudo mobile shell (Expo). Layout and platform I/O only.",
+  "type": "module",
   "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./zip": "./src/zip.ts"
+  },
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios"
+    "android": "expo start --android",
+    "ios": "expo start --ios"
   },
   "dependencies": {
-    "@incudo/core": "*",
-    "@incudo/content": "*",
     "@incudo/aurora-import": "*",
+    "@incudo/content": "*",
+    "@incudo/core": "*",
     "@incudo/ui": "*",
-    "expo": "~51.0.0",
-    "expo-file-system": "~17.0.0",
-    "react": "18.2.0",
-    "react-native": "0.74.5"
+    "@react-navigation/native": "^7.5.0",
+    "@react-navigation/native-stack": "^7.20.0",
+    "expo": "~57.0.26",
+    "expo-file-system": "~57.0.7",
+    "expo-sqlite": "~57.0.3",
+    "expo-status-bar": "~57.0.1",
+    "fflate": "0.8.3",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0"
   },
-  "comment": "Not installed yet — ROADMAP Phase 4. Pin versions when the shell work starts."
+  "devDependencies": {
+    "@types/react": "~19.2.0"
+  }
 }

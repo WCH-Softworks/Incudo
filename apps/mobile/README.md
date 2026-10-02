@@ -1,20 +1,44 @@
 # Incudo mobile
 
-Expo (React Native). **Not scaffolded yet** — this is ROADMAP Phase 4, deliberately after
-the desktop builder so the shared core is proven first.
+Expo (React Native), SDK 57, run in Expo Go. ROADMAP Phase 6; the choices and the numbers behind them are
+[ADR 0083](../../docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md).
 
-`src/platform.ts` is already here because it is the contract with the shared packages.
+What it does today: a library of characters kept in the app's own folder, a file added to it through the system's
+document picker, and a character's sheet, read-only, opened from the file alone with no content source (ADR 0012).
 
-## Order of work
+## Running it
 
-1. **Sheet first.** Reading and playing a character on a phone is the common case; building
-   one on a phone is not. Ship the sheet, then the builder.
-2. Download mode is the default here — see [ADR 0004](../../docs/adr/0004-live-vs-downloaded-content.md).
-3. `MobileStorage` is intentionally left throwing rather than stubbed with AsyncStorage:
-   downloaded content is megabytes, and shipping the wrong storage backend by accident is
-   worse than a clear error.
+```bash
+npm run mobile
+```
+
+starts the dev server; scan its QR code with Expo Go on a phone on the same network. With an Android emulator running
+(or a phone connected by USB with debugging on), and `ANDROID_HOME` pointing at the Android SDK:
+
+```bash
+npm run mobile:android
+```
+
+opens it there, installing Expo Go the first time. To try a character, save it as a `.incu` on the desktop, put the file
+somewhere the phone's file picker reaches (its Downloads, a cloud drive), and tap "Add a character file…".
+
+## What lives where
+
+- `src/platform.ts` is the only file that knows it runs in Expo: storage (one SQLite table), the library folder, the
+  file picker and the fetcher.
+- `src/zip.ts` is DEFLATE for the `.incu` container (fflate); `tools/verify`'s `mobile-zip.test.ts` holds it to the
+  desktop's zip under Node.
+- Everything a screen shows comes from `packages/ui`: `CharacterLibrary`, `CharacterBuilder`, `sheetDocument`, and
+  `htmlToBlocks` for content's text. The screens compute nothing.
+
+## Not yet
+
+- **No icon or splash image.** Expo's own stand in. The logo's tile is an open design decision (`brand/`); this is a
+  marked gap, not an oversight, and no artwork is to be generated for it.
+- Building a character, downloading content, sharing a file out, download mode as the default (ADR 0004): Phase 6's
+  later items.
+- iOS has never been built or run; nothing here is Android-only by design, but nothing has been seen there.
 
 ## Exit criteria
 
-The same `.incu` file opens identically on desktop and mobile, and `@incudo/core`
-still has zero platform-specific code.
+The same `.incu` file opens identically on desktop and mobile, and `@incudo/core` still has zero platform-specific code.

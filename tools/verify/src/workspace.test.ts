@@ -84,17 +84,22 @@ test('no package entry point requires a build step', async () => {
   }
 });
 
-test('the mobile app stays out of the workspaces, and apps are listed by name', async () => {
+test('both shells are workspaces, and apps are listed by name', async () => {
   const root = await readPackage(join(repoRoot(), 'package.json'));
   const workspaces = root.workspaces ?? [];
 
   // This used to assert `['packages/*', 'tools/*']` exactly, on the grounds that both app
   // package.json files declared Expo and Tauri "for shells that do not exist". The desktop
-  // shell exists now, so it is in — and the reason the rule existed was always Expo, not apps
-  // in general: React Native's dependency tree is the ~700 MB, and ROADMAP Phase 4 is the
-  // earliest anything needs it. Measured when apps/desktop went in: 45 packages, ~7 seconds.
-  assert.ok(workspaces.includes('apps/desktop'), 'the desktop shell is a real workspace now');
-  assert.ok(!workspaces.includes('apps/mobile'), 'mobile pulls Expo and nothing needs it yet');
+  // shell went in first (45 packages, ~7 seconds), and this asserted mobile stayed out, because
+  // the reason for the rule was always Expo, not apps in general: nothing needed it yet.
+  //
+  // ROADMAP Phase 6 needs it (ADR 0083), and the cost was measured on a clean `npm install`
+  // before and after on one Windows machine: 45 packages, 6 seconds and 99 MB of node_modules
+  // became 519 packages, 69 seconds and 467 MB. The "~700 MB" this file used to quote was a
+  // guess made before anything was installed. A contributor who never opens the phone app pays it
+  // too; that is the trade ADR 0083 records.
+  assert.ok(workspaces.includes('apps/desktop'), 'the desktop shell is a workspace');
+  assert.ok(workspaces.includes('apps/mobile'), 'the mobile shell is a workspace (ADR 0083)');
 
   // Listed by name rather than by glob, which is what keeps the line above true: `apps/*`
   // would silently re-admit mobile the day someone runs `npm install`.

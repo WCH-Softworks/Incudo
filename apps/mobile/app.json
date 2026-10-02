@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Incudo",
+    "slug": "incudo",
+    "version": "0.0.1",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["android", "ios"]
+  }
+}

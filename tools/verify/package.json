@@ -13,6 +13,8 @@
     "@incudo/content": "*",
     "@incudo/core": "*",
     "pdf-lib": "1.17.1",
-    "@incudo/desktop": "*"
+    "@incudo/desktop": "*",
+    "@incudo/mobile": "*",
+    "fflate": "0.8.3"
   }
 }
