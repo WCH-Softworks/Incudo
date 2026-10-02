@@ -16,7 +16,8 @@
  * arrives as classes on the root, which mean something only in print, and as one `@page` rule carrying the name.
  */
 
-import type { CharacterBuilder, PrintRendering, SheetDocument } from '@incudo/ui';
+import type { CharacterBuilder, PlayView, PrintRendering, SheetDocument } from '@incudo/ui';
+import { PlayPanel } from './PlayPanel.tsx';
 import { ReferenceText } from './References.tsx';
 import { Companions, SheetRows } from './Companions.tsx';
 
@@ -24,11 +25,14 @@ export function SheetPane({
   builder,
   document,
   print,
+  play,
 }: {
   builder: CharacterBuilder;
   document: SheetDocument;
   /** What the next print uses: `printRendering` of the choices in force. */
   print: PrintRendering;
+  /** What playing the character keeps track of (ADR 0084), when its kind declares any. Not part of the document. */
+  play?: PlayView;
 }): React.JSX.Element {
   return (
     <main className={['pane', 'sheet', ...print.classes].join(' ')}>
@@ -45,6 +49,8 @@ export function SheetPane({
         {document.kindName}
         <span className="sheet-element-count"> · {document.elementCount} elements</span>
       </p>
+
+      {play && <PlayPanel builder={builder} view={play} />}
 
       <div className="sheet-flow">
         {document.sections.map((section) => (

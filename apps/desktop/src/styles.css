@@ -473,6 +473,45 @@ ul.problems li.error {
   border-bottom: 1px solid var(--line);
 }
 
+/* Play (ADR 0084): what is spent, above the sheet and never printed. */
+.play-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 4px 24px;
+}
+.play-group h4 {
+  margin: 8px 0 4px;
+}
+.play-tracker,
+.play-amount {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+.play-label {
+  flex: 1;
+}
+.play-tracker button {
+  min-width: 2em;
+}
+.play-big {
+  font-size: 1.4em;
+}
+.play-amount input {
+  width: 6em;
+}
+.play-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.play-rests {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 /* Printed lines (a stat block's senses, languages) are sentences, not numbers: one per row. */
 .sheet-printed {
   flex-direction: column;
@@ -2063,7 +2102,8 @@ ul.browse-categories {
   header,
   .pane-bar,
   .sheet-name,
-  .sheet-element-count {
+  .sheet-element-count,
+  .play-panel {
     display: none;
   }
 

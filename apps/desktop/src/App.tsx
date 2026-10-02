@@ -1419,7 +1419,7 @@ function Shell({
           {notice && !refreshDismissed && (
             <RefreshLine notice={notice} onReview={() => setRefreshOpen(true)} onDismiss={() => setRefreshDismissed(true)} />
           )}
-          <SheetPane builder={builder} document={document} print={printing} />
+          <SheetPane builder={builder} document={document} print={printing} {...(state.play ? { play: state.play } : {})} />
         </>
       )}
       {pane === 'browse' && (
