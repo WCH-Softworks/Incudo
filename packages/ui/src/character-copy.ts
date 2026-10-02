@@ -33,7 +33,7 @@ import type {
 } from '@incudo/core';
 import type { ConfiguredSource } from '@incudo/content';
 
-import { packCharacter, suggestedFileName } from './character-library.ts';
+import { packCharacter, suggestedFileName, type CharacterLibrary } from './character-library.ts';
 
 export interface CopyOptions {
   /** The configured sources, so the copy records the versions the character was built against. */
@@ -96,6 +96,48 @@ export async function saveCopy(
       elementCount: packed.content.elements.length,
       unresolved: packed.content.unresolved,
     };
+  } catch (error) {
+    return { status: 'failed', message: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/** What handing a library file on gave: the name the platform reports, or a cancel, or why it failed. */
+export type ExportEntryResult =
+  | { status: 'saved'; file: SavedFile }
+  | { status: 'cancelled' }
+  | { status: 'failed'; message: string };
+
+/**
+ * A library entry handed on as the file it is — ADR 0083: to a place the user picks, or to whatever a share sheet
+ * offers, depending on the saver the shell passes.
+ *
+ * Unlike {@link saveCopy} nothing is repacked: the entry's own files are zipped again as they are, so the file that
+ * leaves is the character the library holds, its manifest's dates and embedded content untouched, and it opens elsewhere
+ * exactly as it does here. That is what a shell with no editor wants (a phone's read-only sheet). It is offered under
+ * the entry's own name, whatever the character is called.
+ */
+export async function exportEntry(
+  saver: FileSaver,
+  zip: ZipCodec,
+  library: Pick<CharacterLibrary, 'files'>,
+  name: string,
+): Promise<ExportEntryResult> {
+  if (!saver.available) {
+    return { status: 'failed', message: saver.unavailableReason ?? 'This platform cannot save a file.' };
+  }
+  try {
+    // Read and zipped before the platform is asked anything, as a copy is packed first: a file that cannot be read is
+    // reported without the user having chosen where it would have gone.
+    const files = await library.files(name);
+    if (!files) return { status: 'failed', message: `"${name}" is not in the library.` };
+    const bytes = await zip.zip(files);
+    const file = await saver.save(bytes, {
+      suggestedName: /\.incu$/i.test(name) ? name : `${name}.incu`,
+      title: 'Export this character',
+      extensions: ['incu'],
+      label: 'Incudo character',
+    });
+    return file ? { status: 'saved', file } : { status: 'cancelled' };
   } catch (error) {
     return { status: 'failed', message: error instanceof Error ? error.message : String(error) };
   }

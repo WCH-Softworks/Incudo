@@ -42,7 +42,7 @@ import {
 } from '@incudo/core';
 import type { ConfiguredSource } from '@incudo/content';
 
-import { saveCopy } from './character-copy.ts';
+import { exportEntry, saveCopy } from './character-copy.ts';
 import { CharacterLibrary, packCharacter, suggestedFileName } from './character-library.ts';
 
 // --- fakes ------------------------------------------------------------------------------------
@@ -413,4 +413,56 @@ test('packCharacter is the one path: the library and a copy embed the same conte
     packed.files,
     packCharacterContainer(character, packed.content, { now: '2026-01-02T00:00:00.000Z' }),
   );
+});
+
+// --- handing a library file on unchanged (ADR 0083) --------------------------------------------
+
+async function libraryHolding(character: Character): Promise<[CharacterLibrary, SpyStore, string]> {
+  const store = new SpyStore();
+  const library = new CharacterLibrary(store);
+  await library.restore();
+  const saved = await library.save(character, testSystem(), corpus(), { generator: 'export' });
+  assert.ok(saved.ok);
+  return [library, store, saved.entry.name];
+}
+
+test('an exported entry is the library file as it is, offered under its own name', async () => {
+  const [library, store, name] = await libraryHolding(hero('Aelin'));
+  const saver = new FakeSaver();
+  const result = await exportEntry(saver, zip, library, name);
+  assert.deepEqual(result, { status: 'saved', file: { name: 'chosen.incu' } });
+  // Fails if the entry is repacked (a save restamps the manifest) or offered under the character's name.
+  sameFiles(await zip.unzip(saver.calls[0]!.bytes), store.entries.get(name)!);
+  assert.equal(saver.calls[0]!.options.suggestedName, name);
+  assert.deepEqual(saver.calls[0]!.options.extensions, ['incu']);
+});
+
+test('exporting writes nothing into the library', async () => {
+  const [library, store, name] = await libraryHolding(hero('Aelin'));
+  const before = store.log.length;
+  await exportEntry(new FakeSaver(), zip, library, name);
+  assert.deepEqual(store.log.slice(before), [`read ${name}`]);
+});
+
+test('a cancel is an answer, a failure a sentence, and an unknown name is never offered to the platform', async () => {
+  const [library, , name] = await libraryHolding(hero('Aelin'));
+  const cancelling = new FakeSaver();
+  cancelling.answer = null;
+  assert.deepEqual(await exportEntry(cancelling, zip, library, name), { status: 'cancelled' });
+
+  const failing = new FakeSaver();
+  failing.answer = new Error('No room on the device.');
+  assert.deepEqual(await exportEntry(failing, zip, library, name), { status: 'failed', message: 'No room on the device.' });
+
+  const unasked = new FakeSaver();
+  assert.deepEqual(await exportEntry(unasked, zip, library, 'nobody.incu'), {
+    status: 'failed',
+    message: '"nobody.incu" is not in the library.',
+  });
+  assert.equal(unasked.calls.length, 0);
+
+  const none = new FakeSaver();
+  none.available = false;
+  none.unavailableReason = 'Sharing is not available here.';
+  assert.deepEqual(await exportEntry(none, zip, library, name), { status: 'failed', message: 'Sharing is not available here.' });
 });

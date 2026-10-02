@@ -509,6 +509,15 @@ export class CharacterLibrary {
   };
 
   /**
+   * A listed entry's files as they are in the folder, for handing the file on unchanged (`exportEntry`, ADR 0083).
+   * Undefined when the name is not listed; throws when the read does, as `open` does.
+   */
+  files = async (name: string): Promise<ContainerFiles | undefined> => {
+    const listed = this.state.entries.find((entry) => entry.name === name);
+    return listed ? this.store.read({ name: listed.name, form: listed.form }) : undefined;
+  };
+
+  /**
    * Put a container the user picked from elsewhere into the library, as it is — ADR 0083.
    *
    * On a phone the library is the app's own folder, which the user cannot copy a file into, so a `.incu` that arrives
