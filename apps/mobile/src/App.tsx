@@ -1,13 +1,14 @@
 /**
- * The phone app: a library and a read-only sheet — ROADMAP Phase 6's first two items, ADR 0083.
+ * The phone app: a library, a sheet, and playing it — ROADMAP Phase 6's first two items, ADRs 0083 and 0084.
  *
  * Two screens on a native stack (React Navigation), so Android's back gesture and button do what a user expects. What a
  * screen shows comes from `packages/ui`: `CharacterLibrary` lists and adds characters, `CharacterBuilder` and
- * `sheetDocument` make the sheet. Nothing here derives anything, and opening a character reaches for no content source
- * (ADR 0012): the file carries what it needs.
+ * `sheetDocument` make the sheet, and the builder's `play` is what playing it keeps track of. Nothing here derives
+ * anything, and opening a character reaches for no content source (ADR 0012): the file carries what it needs. A play
+ * edit is written back to the library file at once (`CharacterLibrary.record`), as a pencil mark on a paper sheet is.
  */
 
-import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,7 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import { strToU8 } from 'fflate';
 import { useColorScheme } from 'react-native';
 
-import { sha256Hex, type FileSaver, type GameSystem } from '@incudo/core';
+import { sha256Hex, type Character, type FileSaver, type GameSystem } from '@incudo/core';
 import {
   CharacterBuilder,
   CharacterLibrary,
@@ -31,6 +32,7 @@ import {
 
 import { loadShippedSystems } from './boot.ts';
 import { MobileCharacterStore, MobileFilePicker, MobileFolderSaver, MobileShareSaver } from './platform.ts';
+import { PlayPanel } from './PlayPanel.tsx';
 import { SheetView } from './SheetView.tsx';
 import { usePalette } from './theme.ts';
 import { createMobileZipCodec } from './zip.ts';
@@ -170,7 +172,7 @@ function cardLine(entry: LibraryEntry, systems: readonly GameSystem[]): string {
 
 // --- the sheet --------------------------------------------------------------------------------------------------
 
-type Opened = { document: SheetDocument } | { error: string };
+type Opened = { builder: CharacterBuilder; readAt?: string } | { error: string };
 
 function SheetScreen({ route, navigation }: NativeStackScreenProps<Screens, 'Sheet'>) {
   const { library, systems, folderSaver, shareSaver, zip } = usePlatform();
@@ -228,14 +230,112 @@ function SheetScreen({ route, navigation }: NativeStackScreenProps<Screens, 'She
       </View>
     );
   }
+  return <OpenedSheet builder={opened.builder} readAt={opened.readAt} name={name} message={message} setMessage={setMessage} />;
+}
+
+/** An opened character: its sheet, and playing it when its kind has anything to play. */
+function OpenedSheet({
+  builder,
+  readAt,
+  name,
+  message,
+  setMessage,
+}: {
+  builder: CharacterBuilder;
+  readAt?: string;
+  name: string;
+  message: { text: string; failed: boolean } | null;
+  setMessage: (message: { text: string; failed: boolean } | null) => void;
+}) {
+  const { library } = usePlatform();
+  const palette = usePalette();
+  const state = useSyncExternalStore(builder.subscribe, builder.getState);
+  const [tab, setTab] = useState<'sheet' | 'play'>('sheet');
+  // A play edit makes a new state and leaves the sheet's parts as they were, so the document is made again only when
+  // one of them moves.
+  const { sheet, companions, references } = state;
+  const characterName = state.character.name;
+  const document = useMemo<SheetDocument>(
+    () => sheetDocument({ character: { name: characterName }, sheet, references, ...(companions ? { companions } : {}) }),
+    [sheet, companions, references, characterName],
+  );
+  useRecorder(library, name, state.character, readAt, (text) => setMessage({ text, failed: true }));
+
+  const play = state.play;
   return (
-    <ScrollView style={{ backgroundColor: palette.background }}>
+    <ScrollView style={{ backgroundColor: palette.background }} keyboardShouldPersistTaps="handled">
+      {play ? (
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {(['sheet', 'play'] as const).map((id) => (
+            <Pressable
+              key={id}
+              onPress={() => setTab(id)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === id }}
+              style={[styles.tab, { borderColor: palette.accent, backgroundColor: tab === id ? palette.accent : palette.background }]}
+            >
+              <Text style={[styles.tabText, { color: tab === id ? palette.background : palette.accent }]}>{id === 'sheet' ? 'Sheet' : 'Play'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
       {message ? (
         <Text style={[styles.body, styles.notice, { color: message.failed ? palette.danger : palette.muted }]}>{message.text}</Text>
       ) : null}
-      <SheetView document={opened.document} />
+      {play && tab === 'play' ? (
+        <PlayPanel
+          view={play}
+          actions={{ adjust: builder.adjustPlay, setTemporary: builder.setPlayTemporary, setCondition: builder.setPlayCondition, rest: builder.rest }}
+        />
+      ) : (
+        <SheetView document={document} />
+      )}
     </ScrollView>
   );
+}
+
+/**
+ * Write each play edit back to the library file (ADR 0084): half a second after the last one, and at once when the
+ * screen is left. Writes run one after another, each expecting the `updated` the one before it wrote, so a file changed
+ * elsewhere meanwhile is refused (ADR 0027) and nothing more is written until the character is opened again.
+ */
+function useRecorder(library: CharacterLibrary, name: string, character: Character, readAt: string | undefined, fail: (text: string) => void): void {
+  const opened = useRef(character);
+  const expected = useRef(readAt);
+  const pending = useRef<Character | null>(null);
+  const stopped = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const failRef = useRef(fail);
+  failRef.current = fail;
+
+  const [flush] = useState(() => (): void => {
+    clearTimeout(timer.current);
+    const next = pending.current;
+    pending.current = null;
+    if (!next || stopped.current) return;
+    queue.current = queue.current.then(async () => {
+      if (stopped.current) return;
+      const result = await library.record(name, next, expected.current);
+      if (result.ok) {
+        expected.current = result.updatedAt;
+        if (__DEV__) console.log(`[incudo] play ${name}: ${JSON.stringify(next.play ?? {})}`);
+      } else {
+        stopped.current = true;
+        failRef.current(`Could not save what changed in play: ${result.message} Open the character again to keep playing.`);
+      }
+    });
+  });
+
+  useEffect(() => {
+    if (character === opened.current) return;
+    pending.current = character;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(flush, 500);
+  }, [character, flush]);
+
+  // Leaving the screen writes what is still waiting.
+  useEffect(() => flush, [flush]);
 }
 
 /**
@@ -248,13 +348,14 @@ async function openSheet(library: CharacterLibrary, systems: readonly GameSystem
     if (!opened) return { error: `"${name}" did not open as a character.` };
     const system = systems.find((candidate) => candidate.id === opened.character.systemId);
     if (!system) return { error: `This character is for a game this app does not have (${opened.character.systemId}).` };
-    const document = sheetDocument(new CharacterBuilder(opened.character, system, opened.elements).getState());
+    const builder = new CharacterBuilder(opened.character, system, opened.elements);
+    const document = sheetDocument(builder.getState());
     if (__DEV__) {
       // A checksum of the sheet as the text export writes it, to compare with the desktop's for the same file (ADR 0083).
       const markdown = sheetMarkdown(document);
       console.log(`[incudo] sheet ${name}: ${markdown.length} characters, sha256 ${sha256Hex(strToU8(markdown))}`);
     }
-    return { document };
+    return { builder, ...(opened.entry.updatedAt !== undefined ? { readAt: opened.entry.updatedAt } : {}) };
   } catch (error) {
     return { error: `"${name}" could not be opened: ${error instanceof Error ? error.message : String(error)}` };
   }
@@ -271,4 +372,7 @@ const styles = StyleSheet.create({
   small: { fontSize: 13 },
   headerAction: { fontSize: 16, fontWeight: '600' },
   notice: { paddingHorizontal: 16, paddingTop: 12 },
+  tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12 },
+  tab: { flex: 1, borderWidth: 1, borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
+  tabText: { fontSize: 15, fontWeight: '600' },
 });
