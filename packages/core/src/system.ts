@@ -1387,8 +1387,94 @@ export interface CharacterKindDef {
    * scope, and a creature it holds is held as any other element.
    */
   companions?: CompanionsDef;
+  /**
+   * What playing a character of this kind keeps track of, and what a rest gives back — ADR 0084. Replaced rather than
+   * merged along an `extends` chain, like `companions`. A kind without it has nothing to play, and a `play` recorded
+   * on such a character is kept and shown nowhere.
+   */
+  play?: PlayDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
+}
+
+/**
+ * What a kind's characters spend in play and get back — ADR 0084.
+ *
+ * Every maximum is one the sheet already shows: a stat, the rows of a sheet section, the dice a section writes beside a
+ * track, or a listed element's usage as content writes it ("3/Long Rest"). Nothing here is derived that the sheet does
+ * not derive. Core names no rest, stat or condition: the system says all of them.
+ */
+export interface PlayDef {
+  /** The rests a character may take, in the order offered. */
+  rests?: RestDef[];
+  /** What is kept track of, in the order shown. */
+  trackers?: TrackerDef[];
+  /** The conditions a character may be under: names to set and clear, never rules. */
+  conditions?: ConditionsDef;
+}
+
+/** One kind of rest — ADR 0084. */
+export interface RestDef {
+  /** Named by trackers' `restores` and other rests' `includes`. */
+  id: string;
+  /** User-facing: "Long Rest". */
+  label: string;
+  /** Rests this one also is, by id: a long rest gives back what a short one does. Followed transitively. */
+  includes?: string[];
+  /**
+   * How a listed element's usage reads when this rest gives it back, `{count}` standing for how many: "{count}/Long
+   * Rest". Read against the usage as the sheet writes it, placeholders filled, whole and ignoring case.
+   */
+  usage?: string[];
+}
+
+/** What a rest gives back of a tracker — ADR 0084. Neither `amount` nor `fraction`: all of it. */
+export interface RestoreDef {
+  rest: string;
+  /** This many, from each tracker. */
+  amount?: number;
+  /**
+   * This share of the maximum of every tracker one declaration makes, rounded down, given back in the order they are
+   * shown: half a character's hit dice, across its classes.
+   */
+  fraction?: number;
+  /** At least this many, with `fraction`. */
+  minimum?: number;
+}
+
+/** One thing kept track of in play, or one per row or listed element of a sheet section — ADR 0084. */
+export interface TrackerDef {
+  /** Unique within the kind, with no "/": the recorded key, or the first part of each key it makes. */
+  id: string;
+  /** User-facing. A stat tracker defaults to the stat's label; a section's trackers are headed by the section's. */
+  label?: string;
+  /** Exactly one of these says where the maximum comes from. A stat the character publishes above zero. */
+  stat?: string;
+  /** Every row a sheet section shows above zero, per block for a `perBlock` section, keyed `<id>/<row stat>`. */
+  rows?: string;
+  /** The dice a sheet section writes beside each track it lists (`trackDie`), keyed `<id>/<element id>`. */
+  dice?: string;
+  /** The listed elements of these sheet sections whose usage reads as a rest's, keyed `<id>/<element id>`. */
+  uses?: string[];
+  /** A fixed maximum. */
+  max?: number;
+  /** It records how many there are, not how many are spent: shown as a count, and a rest takes away. */
+  counts?: boolean;
+  /** User-facing name of a temporary amount it spends before itself ("Temporary Hit Points"). */
+  temporary?: string;
+  /** What each rest gives back. A `uses` tracker is given back by the rest its usage reads as. */
+  restores?: RestoreDef[];
+  /**
+   * For a `rows` tracker over a `perBlock` section: a block that publishes `stat` above zero (`{name}` the block's
+   * name) is given back by `restores` instead.
+   */
+  restoresWhen?: { stat: string; restores: RestoreDef[] };
+}
+
+/** The conditions a kind's characters may be under — ADR 0084. Labels only: a condition changes no number. */
+export interface ConditionsDef {
+  label?: string;
+  names: string[];
 }
 
 /** How a kind holds the features its user writes — ADR 0063. */
@@ -1499,6 +1585,8 @@ export interface ResolvedCharacterKind {
   references?: ReferencesDef;
   /** The creatures a character of this kind holds, each derived in a scope of its own — ADR 0073. */
   companions?: CompanionsDef;
+  /** What playing a character of this kind keeps track of — ADR 0084. */
+  play?: PlayDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
   buildSteps: BuildStepDef[];
@@ -1687,6 +1775,7 @@ export function resolveCharacterKind(
   let additions: AdditionsDef | undefined;
   let references: ReferencesDef | undefined;
   let companions: CompanionsDef | undefined;
+  let play: PlayDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
@@ -1715,6 +1804,7 @@ export function resolveCharacterKind(
     if (layer.additions !== undefined) additions = layer.additions;
     if (layer.references !== undefined) references = layer.references;
     if (layer.companions !== undefined) companions = layer.companions;
+    if (layer.play !== undefined) play = layer.play;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
@@ -1744,6 +1834,7 @@ export function resolveCharacterKind(
     additions,
     references,
     companions,
+    play,
     candidateNotes,
     buildSteps,
     sheet,

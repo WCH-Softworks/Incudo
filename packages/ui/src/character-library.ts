@@ -21,6 +21,7 @@ import {
   collectCharacterContent,
   packCharacterContainer,
   readCharacterContainer,
+  replaceContainerCharacter,
   resolveCharacterKind,
   type Character,
   type CharacterStore,
@@ -200,6 +201,9 @@ export type SaveResult =
       unresolved: ElementId[];
     }
   | { ok: false; reason: 'conflict' | 'failed'; message: string };
+
+/** What writing a character back into its file gave: the manifest's new `updated`, or why nothing was written. */
+export type RecordResult = { ok: true; updatedAt: string } | { ok: false; reason: 'conflict' | 'failed'; message: string };
 
 /** What adding a picked container to the library gave: the entry it was written as, or why nothing was. */
 export type AddResult = { ok: true; entry: LibraryEntryRef } | { ok: false; message: string };
@@ -542,6 +546,32 @@ export class CharacterLibrary {
     }
     await this.refresh();
     return { ok: true, entry };
+  };
+
+  /**
+   * Write a character back into the library file it was opened from, with nothing else in the file rewritten — ADR
+   * 0084. A phone records play this way: the content, the assets and every other manifest field keep their bytes
+   * (`replaceContainerCharacter`), never repacked, so the file it opens next is the one it was handed with a new
+   * `character.json`. Refused, as a save is (ADR 0027), when the file's `updated` is no longer `expectUpdatedAt`.
+   * Only that entry is read again: a scan of the whole folder on every tap would read every character in it.
+   */
+  record = async (name: string, character: Character, expectUpdatedAt?: string): Promise<RecordResult> => {
+    const listed = this.state.entries.find((entry) => entry.name === name);
+    if (!listed) return { ok: false, reason: 'failed', message: `"${name}" is not in the library.` };
+    const ref: LibraryEntryRef = { name: listed.name, form: listed.form };
+    try {
+      const conflict = await this.conflictOn(ref, expectUpdatedAt);
+      if (conflict) return { ok: false, reason: 'conflict', message: conflict };
+      const files = replaceContainerCharacter(await this.store.read(ref), character);
+      if (!files) return { ok: false, reason: 'failed', message: `"${name}" has no manifest to update.` };
+      await this.store.write(ref, files);
+      const entry = this.describe(ref, files);
+      this.scanned = this.scanned.map((e) => (e.name === name ? entry : e));
+      this.patch(this.partition(this.scanned));
+      return { ok: true, updatedAt: entry.updatedAt ?? '' };
+    } catch (error) {
+      return { ok: false, reason: 'failed', message: messageOf(error) };
+    }
   };
 
   /**

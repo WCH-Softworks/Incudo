@@ -353,6 +353,38 @@ export function packCharacterContainer(
   return files;
 }
 
+/**
+ * A character container with its character replaced and nothing else rewritten — ADR 0084.
+ *
+ * `content.json` and every asset keep their bytes; the manifest keeps every field but `name`, `updated` (the
+ * character's `updatedAt`, else `now`) and the character's checksum. What a phone writes back after a play edit: the
+ * file it was handed, holding a new `character.json`, never repacked, because repacking would collect content again
+ * from an index that is only the file's own. Undefined when the files hold no manifest to update.
+ */
+export function replaceContainerCharacter(files: ContainerFiles, character: Character, now: string = new Date().toISOString()): ContainerFiles | undefined {
+  const manifestBytes = files.get(MANIFEST_PATH);
+  if (!manifestBytes) return undefined;
+  let manifest: ContainerManifest;
+  try {
+    manifest = JSON.parse(decodeText(manifestBytes)) as ContainerManifest;
+  } catch {
+    return undefined;
+  }
+  const characterBytes = encodeJson(character);
+  const next: ContainerFiles = new Map(files);
+  next.set(CHARACTER_PATH, characterBytes);
+  next.set(
+    MANIFEST_PATH,
+    encodeJson({
+      ...manifest,
+      name: character.name,
+      integrity: { ...(manifest.integrity ?? {}), [CHARACTER_PATH]: integrityOf(characterBytes) },
+      updated: character.updatedAt ?? now,
+    }),
+  );
+  return next;
+}
+
 /** The same tree for a standalone content bundle — a `.incuset`. */
 export function packContentBundle(
   elements: Element[],

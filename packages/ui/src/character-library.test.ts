@@ -18,6 +18,7 @@ import {
   createCharacter,
   MapElementIndex,
   packCharacterContainer,
+  readCharacterContainer,
   resolveCharacterKind,
   setChoice,
   setReferenced,
@@ -639,4 +640,44 @@ test('an entry names what the character keeps from the save itself, and one keep
     { elementId: 'ID_GONE', name: 'ID_GONE' },
   ]);
   assert.equal('references' in entries.find((e) => e.title === 'Aelin')!, false);
+});
+
+// --- writing play back (ADR 0084) ------------------------------------------------------------------------------
+
+test('recording a character writes its character.json and manifest, and every other byte of the file stays', async () => {
+  // Fails if `record` repacks (content.json would be collected again, and an asset not handed in would be lost), or
+  // leaves the manifest's checksum of character.json stale (the file would open with a warning).
+  const portrait = new Map([['assets/portrait.png', new Uint8Array([137, 80, 78, 71])]]);
+  const store = new FakeStore();
+  const before = containerFor(hero(), portrait);
+  await store.write({ name: 'aelin.incu', form: 'zip' }, before);
+  const library = new CharacterLibrary(store);
+  await library.restore();
+  const opened = await library.open('aelin.incu');
+  const played = { ...opened!.character, formatVersion: 8 as const, play: { spent: { hp: 3 } }, updatedAt: '2026-03-01T00:00:00.000Z' };
+  const result = await library.record('aelin.incu', played, '2026-01-02T00:00:00.000Z');
+  assert.deepEqual(result, { ok: true, updatedAt: '2026-03-01T00:00:00.000Z' });
+  const after = store.entries.get('aelin.incu')!.files;
+  assert.deepEqual([...after.keys()].sort(), [...before.keys()].sort());
+  for (const path of before.keys()) {
+    if (path === 'character.json' || path === 'manifest.json') continue;
+    assert.deepEqual(after.get(path), before.get(path), `${path} keeps its bytes`);
+  }
+  const reread = readCharacterContainer(after);
+  assert.deepEqual(reread.problems, []);
+  assert.deepEqual(reread.container?.character.play, { spent: { hp: 3 } });
+  assert.equal(library.getState().entries[0]!.updatedAt, '2026-03-01T00:00:00.000Z', 'the entry is read again');
+});
+
+test('recording over a file that changed outside Incudo is refused, as a save is', async () => {
+  // Fails if `record` skips the conflict check (a desktop's edit synced to the phone would be overwritten by a tap).
+  const [library, store] = await libraryWith(hero());
+  const theirs = hero();
+  theirs.updatedAt = '2026-06-01T00:00:00.000Z';
+  await store.write({ name: 'aelin.incu', form: 'zip' }, containerFor(theirs));
+  const result = await library.record('aelin.incu', { ...hero(), formatVersion: 8, play: { spent: { hp: 1 } } }, '2026-01-02T00:00:00.000Z');
+  assert.equal(result.ok, false);
+  assert.equal(!result.ok && result.reason, 'conflict');
+  assert.equal(readCharacterContainer(store.entries.get('aelin.incu')!.files).container?.character.play, undefined);
+  assert.equal((await library.record('nobody.incu', hero())).ok, false);
 });

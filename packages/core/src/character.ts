@@ -106,7 +106,7 @@ export interface Character {
    * 1 before an inventory existed, 2 since (ADR 0024), 3 for a character that records no `progress` or
    * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063), 5 for one that
    * records `additions` (ADR 0064), 6 for one with a custom feature held as a type other than its kind's default (ADR 0065),
-   * 7 for one that records `references` (ADR 0068). Readers accept all seven. A new character is written at 2, and only a write that needs more raises it
+   * 7 for one that records `references` (ADR 0068), 8 for one that records `play` (ADR 0084). Readers accept all eight. A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -250,11 +250,32 @@ export interface Character {
    * because a reader of 6 would drop it without a word.
    */
   references?: ElementId[];
+  /**
+   * What playing the character has spent and suffers, as the table left it — ADR 0084: hit points lost, slots and uses
+   * spent, temporary hit points, conditions. An input like `rolls`: no formula produces how much damage a character
+   * took. Never a derivation seed and never embedded content; what each key's maximum is, and what a rest gives back,
+   * is the kind's `play` read against the sheet. Absent when nothing is spent; only format 8 records it, because a
+   * reader of 7 would drop it without a word.
+   */
+  play?: PlayState;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+/**
+ * What playing a character has recorded — ADR 0084. Every key is a tracker's, as the kind's `play` names it
+ * (`hp`, `slots/spellcasting:slots:1`, `uses/<element id>`): core reads none of them.
+ */
+export interface PlayState {
+  /** How much of each tracker is spent (or, for a tracker that counts, how many there are). Never 0: absent is 0. */
+  spent?: Record<string, number>;
+  /** A temporary amount a tracker spends before itself, by its key. Never 0. */
+  temporary?: Record<string, number>;
+  /** The conditions the character is under, by the names the kind declares, in the order set. */
+  conditions?: string[];
+}
 
 /** A feature the user wrote for one character — ADR 0063. */
 export interface CustomFeature {
@@ -291,9 +312,10 @@ export const CHARACTER_FORMAT_VERSION = 2;
 /**
  * The newest version a reader accepts — ADR 0060, ADR 0063, ADR 0064. A character with no `progress` or with
  * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` at least 5, one with a
- * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), and nothing else is raised.
+ * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), one with `play` 8 (ADR
+ * 0084), and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 7;
+export const LATEST_CHARACTER_FORMAT_VERSION = 8;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -486,6 +508,27 @@ export function setReferenced(character: Character, elementId: ElementId, refere
   const next = referenced ? [...current, elementId] : current.filter((id) => id !== elementId);
   const { references: _previous, ...rest } = character;
   const written: Character = next.length ? { ...raiseFormatVersion(rest, 7), references: next } : rest;
+  return { ...written, updatedAt: new Date().toISOString() };
+}
+
+/**
+ * Record what playing the character has spent — ADR 0084. Zeros, empty maps and an empty condition list are dropped,
+ * so a character with nothing spent records no `play` at all; recording any raises it to format 8, and clearing it
+ * leaves the version where it is. Returns the character unchanged when nothing differs.
+ */
+export function setPlayState(character: Character, play: PlayState): Character {
+  const counts = (record: Record<string, number> | undefined): Record<string, number> | undefined => {
+    const kept = Object.entries(record ?? {}).filter(([, value]) => Number.isFinite(value) && value > 0);
+    return kept.length ? Object.fromEntries(kept.map(([key, value]) => [key, Math.floor(value)])) : undefined;
+  };
+  const spent = counts(play.spent);
+  const temporary = counts(play.temporary);
+  const conditions = play.conditions?.length ? [...new Set(play.conditions)] : undefined;
+  const next: PlayState = { ...(spent ? { spent } : {}), ...(temporary ? { temporary } : {}), ...(conditions ? { conditions } : {}) };
+  const empty = !spent && !temporary && !conditions;
+  if (JSON.stringify(empty ? undefined : next) === JSON.stringify(character.play)) return character;
+  const { play: _previous, ...rest } = character;
+  const written: Character = empty ? rest : { ...raiseFormatVersion(rest, 8), play: next };
   return { ...written, updatedAt: new Date().toISOString() };
 }
 

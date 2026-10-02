@@ -117,6 +117,7 @@ import { additionOptions, additionsState, type AdditionOption, type AdditionsSta
 import { referenceOptions, referencesState, type ReferencesState } from './references.ts';
 import { companionsView, type CompanionsView } from './companions.ts';
 import { sheetView, type SheetView } from './sheet.ts';
+import { adjustPlay, playView, restPlay, setPlayCondition, setPlaySpent, setPlayTemporary, type PlayView } from './play.ts';
 import {
   equipOffer,
   equipTaken,
@@ -322,6 +323,11 @@ export interface BuilderState {
    * out — ADR 0074. What the user added with its prerequisites unmet is marked, as `additions` says.
    */
   sheet: SheetView;
+  /**
+   * What playing the character keeps track of, read from `sheet` and the kind's `play` — ADR 0084. Undefined when the
+   * kind declares no play.
+   */
+  play?: PlayView;
   /**
    * What the derivation withdrew because its own requirements are false (ADR 0071), named — ADR 0072. Taking a feature
    * that replaces another withdraws the other, and Build lists it here rather than letting it disappear.
@@ -1154,6 +1160,34 @@ export class CharacterBuilder {
     ]);
   }
 
+  // --- play (ADR 0084) ---------------------------------------------------------------------------------------------
+
+  /** Spend some of a tracker, or give some back (`adjustPlay`). */
+  adjustPlay = (key: string, delta: number): void => this.playEdit((view) => adjustPlay(this.character, view, key, delta));
+  /** Set what a tracker has spent, or counts, outright (`setPlaySpent`). */
+  setPlaySpent = (key: string, spent: number): void => this.playEdit((view) => setPlaySpent(this.character, view, key, spent));
+  /** Set a tracker's temporary amount (`setPlayTemporary`). */
+  setPlayTemporary = (key: string, value: number): void => this.playEdit((view) => setPlayTemporary(this.character, view, key, value));
+  /** Set or clear a condition (`setPlayCondition`). */
+  setPlayCondition = (name: string, on: boolean): void => this.playEdit((view) => setPlayCondition(this.character, view, name, on));
+  /** Take a rest (`restPlay`). */
+  rest = (restId: string): void => this.playEdit((view) => restPlay(this.character, view, restId));
+
+  /**
+   * A play edit. Play is not a derivation input (ADR 0084), so nothing derived can move: the state is kept and only the
+   * character and the play view are made again, which keeps a tap on a phone from re-deriving the character.
+   */
+  private playEdit(edit: (view: PlayView) => Character): void {
+    const state = this.getState();
+    if (!state.play) return;
+    const next = edit(state.play);
+    if (next === this.character) return;
+    this.character = next;
+    const play = playView({ character: next, kind: this.kind, derived: state.derived, sheet: state.sheet });
+    this.cached = { ...state, character: next, ...(play ? { play } : {}) };
+    for (const listener of this.listeners) listener();
+  }
+
   private invalidate(): void {
     this.cached = undefined;
     for (const listener of this.listeners) listener();
@@ -1582,6 +1616,16 @@ export class CharacterBuilder {
     });
 
     const additions = additionsState(this.character, derived, this.kind, this.system, this.elements);
+    // What the user added whose prerequisites are not met (ADR 0064) is on the sheet like anything held, and marked.
+    // A list preparer's prepared spells are not held (ADR 0046) and are listed with the rest (ADR 0079): looked up here,
+    // where a save's embedded content comes first.
+    const sheet = sheetView(
+      derived,
+      this.kind,
+      new Set(additions.rows.filter((row) => !row.prerequisitesMet).map((row) => row.elementId)),
+      (id) => this.elements.get(id),
+    );
+    const play = playView({ character: this.character, kind: this.kind, derived, sheet });
     return {
       character: this.character,
       derived,
@@ -1604,15 +1648,8 @@ export class CharacterBuilder {
       withdrawn: withdrawnRows(derived, this.elements),
       references: referencesState(this.character, this.kind, this.elements, derived.elements),
       companions: companionsView(derived, this.kind, this.elements),
-      // What the user added whose prerequisites are not met (ADR 0064) is on the sheet like anything held, and marked.
-      // A list preparer's prepared spells are not held (ADR 0046) and are listed with the rest (ADR 0079): looked up here,
-      // where a save's embedded content comes first.
-      sheet: sheetView(
-        derived,
-        this.kind,
-        new Set(additions.rows.filter((row) => !row.prerequisitesMet).map((row) => row.elementId)),
-        (id) => this.elements.get(id),
-      ),
+      sheet,
+      ...(play ? { play } : {}),
       focusedId: this.focusedId,
     };
   }

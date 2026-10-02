@@ -20,6 +20,7 @@ import {
   progressionStat,
   resolveCharacterKind,
   type GameSystem,
+  type PlayDef,
   type SheetSectionDef,
 } from './system.ts';
 import { parseRequirements } from './requirements.ts';
@@ -77,6 +78,54 @@ export function validateManifest(
   return result(manifest, errors);
 }
 
+/** The referential checks of a kind's `play` (ADR 0084): every name it uses is declared, and each tracker says one thing. */
+function checkPlay(play: PlayDef | undefined, sections: readonly SheetSectionDef[], where: string): SchemaError[] {
+  const errors: SchemaError[] = [];
+  if (!play) return errors;
+  const rests = new Set<string>();
+  for (const rest of play.rests ?? []) {
+    if (rests.has(rest.id)) errors.push({ path: `${where}.play.rests`, message: `declares the rest "${rest.id}" twice` });
+    rests.add(rest.id);
+  }
+  for (const rest of play.rests ?? []) {
+    for (const id of rest.includes ?? []) {
+      if (!rests.has(id)) errors.push({ path: `${where}.play.rests`, message: `"${rest.id}" includes "${id}", which is not a declared rest` });
+    }
+  }
+  const byId = new Map(sections.map((section) => [section.id, section]));
+  const ids = new Set<string>();
+  for (const tracker of play.trackers ?? []) {
+    const at = `${where}.play.trackers`;
+    if (ids.has(tracker.id)) errors.push({ path: at, message: `declares the tracker "${tracker.id}" twice` });
+    ids.add(tracker.id);
+    const sources = [tracker.stat, tracker.rows, tracker.dice, tracker.uses, tracker.max].filter((source) => source !== undefined);
+    if (sources.length !== 1) {
+      errors.push({ path: at, message: `"${tracker.id}" names ${sources.length} of stat, rows, dice, uses and max, and must name one` });
+    }
+    for (const section of [tracker.rows, tracker.dice, ...(tracker.uses ?? [])]) {
+      if (section !== undefined && !byId.has(section)) {
+        errors.push({ path: at, message: `"${tracker.id}" reads the sheet section "${section}", which the kind does not declare` });
+      }
+    }
+    if (tracker.dice !== undefined && byId.get(tracker.dice) && byId.get(tracker.dice)!.trackDie === undefined) {
+      errors.push({ path: at, message: `"${tracker.id}" reads dice from "${tracker.dice}", which writes none (trackDie)` });
+    }
+    if (tracker.restoresWhen && !(tracker.rows !== undefined && byId.get(tracker.rows)?.perBlock)) {
+      errors.push({ path: at, message: `"${tracker.id}" has restoresWhen, which only a rows tracker over a perBlock section reads` });
+    }
+    if (tracker.uses && tracker.restores) {
+      errors.push({ path: at, message: `"${tracker.id}" reads uses, which the rest their usage names gives back; it takes no restores` });
+    }
+    for (const restore of [...(tracker.restores ?? []), ...(tracker.restoresWhen?.restores ?? [])]) {
+      if (!rests.has(restore.rest)) errors.push({ path: at, message: `"${tracker.id}" is given back by "${restore.rest}", which is not a declared rest` });
+      if (restore.amount !== undefined && restore.fraction !== undefined) {
+        errors.push({ path: at, message: `"${tracker.id}" gives back both an amount and a fraction on "${restore.rest}"` });
+      }
+    }
+  }
+  return errors;
+}
+
 function result<T>(value: T, errors: SchemaError[]): ValidationResult<T> {
   return { valid: errors.length === 0, value: errors.length === 0 ? value : undefined, errors };
 }
@@ -111,6 +160,10 @@ function checkCharacterReferences(character: Character): SchemaError[] {
   // A reference is dropped by a reader of 6 (ADR 0068).
   if (character.formatVersion < 7 && character.references !== undefined) {
     errors.push({ path: 'references', message: 'is recorded only from format 7' });
+  }
+  // Play state is dropped by a reader of 7 (ADR 0084).
+  if (character.formatVersion < 8 && character.play !== undefined) {
+    errors.push({ path: 'play', message: 'is recorded only from format 8' });
   }
   const featureIds = new Set<string>();
   for (const [i, feature] of (character.customFeatures ?? []).entries()) {
@@ -469,6 +522,10 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         errors.push({ path: `${where}.references.types`, message: `names "${type}", which the system's elementTypes does not declare` });
       }
     }
+
+    // What play keeps track of names rests and sheet sections; one naming nothing would track or give back nothing,
+    // and nothing would say why (ADR 0084).
+    errors.push(...checkPlay(resolved.play, resolved.sheet.sections, where));
 
     // A creature type nothing declares is never held, and a scope setter on a type that is not a creature reads an
     // element the scope does not show: both are a typo nobody would see at runtime (ADR 0073).

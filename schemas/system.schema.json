@@ -440,6 +440,7 @@
             "sheet": { "type": "array", "items": { "$ref": "#/$defs/sheetSection" }, "description": "The sections of a creature's stat block, read against its scope." }
           }
         },
+        "play": { "$ref": "#/$defs/play" },
         "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },
         "repeatableSetter": {
           "type": "string",
@@ -453,6 +454,67 @@
         },
         "buildSteps": { "type": "array", "items": { "$ref": "#/$defs/buildStep" } },
         "sheet": { "$ref": "#/$defs/sheet" }
+      }
+    },
+
+    "play": {
+      "description": "What playing a character of this kind keeps track of, and what a rest gives back (ADR 0084). Every maximum is one the sheet already shows: a stat, a sheet section's rows, the dice a section writes beside a track, or a listed element's usage as content writes it. What is spent is the character's play state (Character.play), an input. A kind without it has nothing to play. Replaced rather than merged along an extends chain.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rests": {
+          "type": "array",
+          "description": "The rests a character may take, in the order offered.",
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1, "description": "User-facing: \"Long Rest\"." },
+              "includes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Rests this one also is, by id, followed transitively: a long rest gives back what a short one does." },
+              "usage": { "type": "array", "items": { "type": "string", "pattern": "\\{count\\}" }, "description": "How a listed element's usage reads when this rest gives it back, {count} for how many: \"{count}/Long Rest\". Matched whole, ignoring case, against the usage as the sheet writes it." }
+            }
+          }
+        },
+        "trackers": {
+          "type": "array",
+          "description": "What is kept track of, in the order shown. Each names exactly one of stat, rows, dice, uses and max.",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "pattern": "^[^/]+$", "description": "The recorded key, or the first part of each key it makes." },
+              "label": { "type": "string", "minLength": 1 },
+              "stat": { "type": "string", "minLength": 1, "description": "A stat the character publishes above zero is the maximum." },
+              "rows": { "type": "string", "minLength": 1, "description": "Every row this sheet section shows above zero, per block for a perBlock section." },
+              "dice": { "type": "string", "minLength": 1, "description": "The dice this sheet section writes beside each track it lists (it declares trackDie)." },
+              "uses": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "The listed elements of these sheet sections whose usage reads as a rest's usage." },
+              "max": { "type": "integer", "minimum": 1, "description": "A fixed maximum." },
+              "counts": { "type": "boolean", "description": "It records how many there are, not how many are spent: shown as a count, and a rest takes away." },
+              "temporary": { "type": "string", "minLength": 1, "description": "User-facing name of a temporary amount spent before the tracker." },
+              "restores": { "type": "array", "items": { "type": "object", "required": ["rest"], "additionalProperties": false, "properties": { "rest": { "type": "string", "minLength": 1, "description": "A rest's id." }, "amount": { "type": "integer", "minimum": 1, "description": "This many, from each tracker." }, "fraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "This share of the maximum of every tracker one declaration makes, rounded down, given back in the order shown." }, "minimum": { "type": "integer", "minimum": 1, "description": "At least this many, with fraction." } }, "description": "What a rest gives back of a tracker: all of it when neither amount nor fraction is given." } },
+              "restoresWhen": {
+                "type": "object",
+                "required": ["stat", "restores"],
+                "additionalProperties": false,
+                "description": "For a rows tracker over a perBlock section: a block publishing this stat above zero ({name} the block's name) is given back by these restores instead.",
+                "properties": { "stat": { "type": "string", "minLength": 1 }, "restores": { "type": "array", "items": { "type": "object", "required": ["rest"], "additionalProperties": false, "properties": { "rest": { "type": "string", "minLength": 1, "description": "A rest's id." }, "amount": { "type": "integer", "minimum": 1, "description": "This many, from each tracker." }, "fraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "This share of the maximum of every tracker one declaration makes, rounded down, given back in the order shown." }, "minimum": { "type": "integer", "minimum": 1, "description": "At least this many, with fraction." } }, "description": "What a rest gives back of a tracker: all of it when neither amount nor fraction is given." } } }
+              }
+            }
+          }
+        },
+        "conditions": {
+          "type": "object",
+          "required": ["names"],
+          "additionalProperties": false,
+          "description": "The conditions a character may be under: names to set and clear. A condition changes no number.",
+          "properties": {
+            "label": { "type": "string", "minLength": 1 },
+            "names": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+          }
+        }
       }
     },
 

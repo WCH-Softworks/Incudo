@@ -400,7 +400,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 8 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 9 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -526,6 +526,42 @@ test('a reference type the system does not declare is caught before the app load
   ]);
 });
 
+test('a play declaration naming a rest, a section or a source it does not have is caught before the app loads it — ADR 0084', async () => {
+  // Fails if `checkPlay` is removed or loses a check: each broken name below would track or give back nothing, silently.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [], 'the shipped declaration is valid');
+  const pc = system.characterKinds.find((k) => k.id === 'pc')!;
+  const play = pc.play!;
+  pc.play = {
+    ...play,
+    rests: [...play.rests!, { id: 'long', label: 'Again' }, { id: 'nap', label: 'Nap', includes: ['siesta'] }],
+    trackers: [
+      ...play.trackers!,
+      { id: 'hp', stat: 'hp' },
+      { id: 'both', stat: 'hp', max: 3 },
+      { id: 'nowhere', rows: 'slotz' },
+      { id: 'no-dice', dice: 'abilities' },
+      { id: 'when', stat: 'hp', restoresWhen: { stat: 'x', restores: [] } },
+      { id: 'used', uses: ['features'], restores: [{ rest: 'long' }] },
+      { id: 'dawn', max: 1, restores: [{ rest: 'dawn' }, { rest: 'long', amount: 1, fraction: 0.5 }] },
+    ],
+  };
+  const at = 'characterKinds[0].play';
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [
+    { path: `${at}.rests`, message: 'declares the rest "long" twice' },
+    { path: `${at}.rests`, message: '"nap" includes "siesta", which is not a declared rest' },
+    { path: `${at}.trackers`, message: 'declares the tracker "hp" twice' },
+    { path: `${at}.trackers`, message: '"both" names 2 of stat, rows, dice, uses and max, and must name one' },
+    { path: `${at}.trackers`, message: '"nowhere" reads the sheet section "slotz", which the kind does not declare' },
+    { path: `${at}.trackers`, message: '"no-dice" reads dice from "abilities", which writes none (trackDie)' },
+    { path: `${at}.trackers`, message: '"when" has restoresWhen, which only a rows tracker over a perBlock section reads' },
+    { path: `${at}.trackers`, message: '"used" reads uses, which the rest their usage names gives back; it takes no restores' },
+    { path: `${at}.trackers`, message: '"dawn" is given back by "dawn", which is not a declared rest' },
+    { path: `${at}.trackers`, message: '"dawn" gives back both an amount and a fraction on "long"' },
+  ]);
+});
+
 test('an inventory validates as instances, and a duplicate instance id does not', async () => {
   const schemas = await loadSchemas();
   const character = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -544,9 +580,15 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 8 } as unknown as Character, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 9 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8' },
   ]);
+  // Play state (ADR 0084) is recorded only from format 8, whole positive counts only. Fails if the format check in
+  // `checkCharacterReferences` is removed, or if the schema's `minimum` is.
+  const play = { spent: { hp: 7, 'uses/ID_X': 1 }, temporary: { hp: 5 }, conditions: ['Prone'] };
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 8, play }, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...character, play }, schemas).errors, [{ path: 'play', message: 'is recorded only from format 8' }]);
+  assert.equal(validateCharacter({ ...character, formatVersion: 8, play: { spent: { hp: 0 } } }, schemas).valid, false);
 
   // The check no JSON Schema can express: an instance id is an address, so two entries
   // sharing one is a file where editing an item changes a different item (ADR 0024).

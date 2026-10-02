@@ -449,6 +449,34 @@
         { "id": "details", "label": "Details", "types": ["Alignment", "Deity"] }
       ],
 
+      "play": {
+        "rests": [
+          { "id": "short", "label": "Short Rest", "usage": ["{count}/Short Rest", "{count}/Short or Long Rest", "{count}/Long or Short Rest"] },
+          { "id": "long", "label": "Long Rest", "includes": ["short"], "usage": ["{count}/Long Rest", "{count}/Long Rest.", "{count}/Day"] }
+        ],
+        "trackers": [
+          { "id": "hp", "stat": "hp", "label": "Hit Points", "temporary": "Temporary Hit Points", "restores": [{ "rest": "long" }] },
+          { "id": "hit-dice", "dice": "identity", "label": "Hit Dice", "restores": [{ "rest": "long", "fraction": 0.5, "minimum": 1 }] },
+          { "id": "slots", "rows": "slots", "restores": [{ "rest": "long" }] },
+          { "id": "block-slots", "rows": "block-slots", "restores": [{ "rest": "long" }],
+            "restoresWhen": { "stat": "{name}:spellcasting:solo", "restores": [{ "rest": "short" }] } },
+          { "id": "uses", "uses": ["features"], "label": "Limited Uses" },
+          { "id": "ki", "stat": "ki:points", "label": "Ki Points", "restores": [{ "rest": "short" }] },
+          { "id": "focus", "stat": "monks focus:points", "label": "Focus Points", "restores": [{ "rest": "short" }] },
+          { "id": "sorcery", "stat": "sorcery-points", "label": "Sorcery Points", "restores": [{ "rest": "long" }] },
+          { "id": "sorcery-2024", "stat": "sorcery points:amount", "label": "Sorcery Points", "restores": [{ "rest": "long" }] },
+          { "id": "superiority", "stat": "superiority dice:amount", "label": "Superiority Dice", "restores": [{ "rest": "short" }] },
+          { "id": "psi", "stat": "psi-points", "label": "Psi Points", "restores": [{ "rest": "long" }] },
+          { "id": "inspiration", "label": "Inspiration", "max": 1, "counts": true },
+          { "id": "death-successes", "label": "Death Save Successes", "max": 3, "counts": true, "restores": [{ "rest": "short" }] },
+          { "id": "death-failures", "label": "Death Save Failures", "max": 3, "counts": true, "restores": [{ "rest": "short" }] },
+          { "id": "exhaustion", "label": "Exhaustion", "max": 6, "counts": true, "restores": [{ "rest": "long", "amount": 1 }] }
+        ],
+        "conditions": {
+          "label": "Conditions",
+          "names": ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious"]
+        }
+      },
       "sheet": {
         "sections": [
           { "id": "identity", "label": "Character", "types": ["Race", "Sub Race", "Race Variant", "Class", "Archetype", "Background", "Background Variant", "Alignment", "Deity"], "trackProgress": true, "trackDie": "hd" },
@@ -601,6 +629,21 @@
         { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
       ],
 
+      "play": {
+        "rests": [
+          { "id": "short", "label": "Short Rest", "usage": ["{count}/Short Rest", "{count}/Short or Long Rest", "{count}/Long or Short Rest"] },
+          { "id": "long", "label": "Long Rest", "includes": ["short"], "usage": ["{count}/Long Rest", "{count}/Long Rest.", "{count}/Day"] }
+        ],
+        "trackers": [
+          { "id": "hp", "stat": "hp", "label": "Hit Points", "temporary": "Temporary Hit Points", "restores": [{ "rest": "long" }] },
+          { "id": "uses", "uses": ["traits", "actions", "reactions", "features"], "label": "Limited Uses" },
+          { "id": "exhaustion", "label": "Exhaustion", "max": 6, "counts": true, "restores": [{ "rest": "long", "amount": 1 }] }
+        ],
+        "conditions": {
+          "label": "Conditions",
+          "names": ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious"]
+        }
+      },
       "sheet": {
         "sections": [
           { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"],
@@ -669,6 +712,23 @@
         { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
       ],
 
+      "play": {
+        "rests": [
+          { "id": "turn", "label": "Start of Its Turn" },
+          { "id": "short", "label": "Short Rest", "usage": ["{count}/Short Rest", "{count}/Short or Long Rest", "{count}/Long or Short Rest"] },
+          { "id": "long", "label": "Long Rest", "includes": ["short"], "usage": ["{count}/Long Rest", "{count}/Long Rest.", "{count}/Day"] }
+        ],
+        "trackers": [
+          { "id": "hp", "stat": "hp", "label": "Hit Points", "temporary": "Temporary Hit Points", "restores": [{ "rest": "long" }] },
+          { "id": "legendary", "stat": "legendary actions", "label": "Legendary Actions", "restores": [{ "rest": "turn" }] },
+          { "id": "uses", "uses": ["traits", "actions", "reactions", "features", "legendary"], "label": "Limited Uses" },
+          { "id": "exhaustion", "label": "Exhaustion", "max": 6, "counts": true, "restores": [{ "rest": "long", "amount": 1 }] }
+        ],
+        "conditions": {
+          "label": "Conditions",
+          "names": ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious"]
+        }
+      },
       "sheet": {
         "sections": [
           { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"],
