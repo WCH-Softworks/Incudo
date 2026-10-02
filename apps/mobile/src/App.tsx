@@ -8,7 +8,7 @@
  */
 
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,11 +16,12 @@ import { StatusBar } from 'expo-status-bar';
 import { strToU8 } from 'fflate';
 import { useColorScheme } from 'react-native';
 
-import { sha256Hex, type GameSystem } from '@incudo/core';
+import { sha256Hex, type FileSaver, type GameSystem } from '@incudo/core';
 import {
   CharacterBuilder,
   CharacterLibrary,
   describeKindAndProgress,
+  exportEntry,
   libraryEntryProgress,
   sheetDocument,
   sheetMarkdown,
@@ -29,7 +30,7 @@ import {
 } from '@incudo/ui';
 
 import { loadShippedSystems } from './boot.ts';
-import { MobileCharacterStore, MobileFilePicker } from './platform.ts';
+import { MobileCharacterStore, MobileFilePicker, MobileFolderSaver, MobileShareSaver } from './platform.ts';
 import { SheetView } from './SheetView.tsx';
 import { usePalette } from './theme.ts';
 import { createMobileZipCodec } from './zip.ts';
@@ -44,6 +45,9 @@ const Stack = createNativeStackNavigator<Screens>();
 interface Platform {
   library: CharacterLibrary;
   picker: MobileFilePicker;
+  /** Where "Export" can send a file: a folder the user picks, or the share sheet. */
+  folderSaver: FileSaver;
+  shareSaver: FileSaver;
   zip: ReturnType<typeof createMobileZipCodec>;
   systems: GameSystem[];
 }
@@ -63,6 +67,8 @@ export function App() {
     return {
       library: new CharacterLibrary(new MobileCharacterStore(zip)),
       picker: new MobileFilePicker(),
+      folderSaver: new MobileFolderSaver(),
+      shareSaver: new MobileShareSaver(),
       zip,
       systems: loadShippedSystems().systems,
     };
@@ -166,21 +172,47 @@ function cardLine(entry: LibraryEntry, systems: readonly GameSystem[]): string {
 
 type Opened = { document: SheetDocument } | { error: string };
 
-function SheetScreen({ route }: NativeStackScreenProps<Screens, 'Sheet'>) {
-  const { library, systems } = usePlatform();
+function SheetScreen({ route, navigation }: NativeStackScreenProps<Screens, 'Sheet'>) {
+  const { library, systems, folderSaver, shareSaver, zip } = usePlatform();
   const palette = usePalette();
   const [opened, setOpened] = useState<Opened | null>(null);
+  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  const name = route.params.name;
+
+  // The file as it is in the library, unchanged (`exportEntry`): to a folder the user picks, or to the share sheet.
+  useEffect(() => {
+    const send = async (saver: FileSaver, saving: boolean): Promise<void> => {
+      setMessage(null);
+      const result = await exportEntry(saver, zip, library, name);
+      if (result.status === 'failed') setMessage({ text: `Could not export the character: ${result.message}`, failed: true });
+      // The share sheet says nothing of what was chosen, so only a save to a folder reports where the file went.
+      else if (result.status === 'saved' && saving) setMessage({ text: `Saved as "${result.file.name}".`, failed: false });
+    };
+    const choose = (): void =>
+      Alert.alert('Export this character', 'Its .incu file, as it is in this app.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Share…', onPress: () => void send(shareSaver, false) },
+        { text: 'Save to a folder…', onPress: () => void send(folderSaver, true) },
+      ]);
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable onPress={choose} accessibilityRole="button" hitSlop={12}>
+          <Text style={[styles.headerAction, { color: palette.accent }]}>Export</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, library, zip, folderSaver, shareSaver, name, palette.accent]);
 
   useEffect(() => {
     let live = true;
     void (async () => {
-      const result = await openSheet(library, systems, route.params.name);
+      const result = await openSheet(library, systems, name);
       if (live) setOpened(result);
     })();
     return () => {
       live = false;
     };
-  }, [library, systems, route.params.name]);
+  }, [library, systems, name]);
 
   if (!opened) {
     return (
@@ -198,6 +230,9 @@ function SheetScreen({ route }: NativeStackScreenProps<Screens, 'Sheet'>) {
   }
   return (
     <ScrollView style={{ backgroundColor: palette.background }}>
+      {message ? (
+        <Text style={[styles.body, styles.notice, { color: message.failed ? palette.danger : palette.muted }]}>{message.text}</Text>
+      ) : null}
       <SheetView document={opened.document} />
     </ScrollView>
   );
@@ -234,4 +269,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 17, fontWeight: '600' },
   body: { fontSize: 15, lineHeight: 21 },
   small: { fontSize: 13 },
+  headerAction: { fontSize: 16, fontWeight: '600' },
+  notice: { paddingHorizontal: 16, paddingTop: 12 },
 });

@@ -1482,7 +1482,10 @@ pane draws and every export renders: the PDF and the print layout start from it,
       a sheet byte-identical to the desktop's for the same file. Not yet: play (tracking hit points, slots and uses),
       the maintainer's own phone, iOS.
 - [ ] Full build flow
-- [ ] Import/export via share sheet and file picker
+- [ ] Import/export via share sheet and file picker.
+      **Built** (ADR 0083): import through the file picker (`CharacterLibrary.add`), and export from the sheet's header,
+      to a folder the user picks or through the share sheet, of the library file unchanged (`exportEntry`). Not yet:
+      receiving a file shared *to* the app.
 - [ ] Download mode as the default on metered connections
 
 **Exit criteria:** the same `.incu` file opens identically on desktop and mobile, and

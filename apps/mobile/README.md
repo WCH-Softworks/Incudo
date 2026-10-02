@@ -4,7 +4,8 @@ Expo (React Native), SDK 57, run in Expo Go. ROADMAP Phase 6; the choices and th
 [ADR 0083](../../docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md).
 
 What it does today: a library of characters kept in the app's own folder, a file added to it through the system's
-document picker, and a character's sheet, read-only, opened from the file alone with no content source (ADR 0012).
+document picker, a character's sheet, read-only, opened from the file alone with no content source (ADR 0012), and
+**Export** on the sheet, which saves the character's file to a folder the user picks or hands it to the share sheet.
 
 ## Running it
 
@@ -35,8 +36,8 @@ somewhere the phone's file picker reaches (its Downloads, a cloud drive), and ta
 
 - **No icon or splash image.** Expo's own stand in. The logo's tile is an open design decision (`brand/`); this is a
   marked gap, not an oversight, and no artwork is to be generated for it.
-- Building a character, downloading content, sharing a file out, download mode as the default (ADR 0004): Phase 6's
-  later items.
+- Building a character, downloading content, receiving a file shared to the app, download mode as the default
+  (ADR 0004): Phase 6's later items.
 - iOS has never been built or run; nothing here is Android-only by design, but nothing has been seen there.
 
 ## Exit criteria

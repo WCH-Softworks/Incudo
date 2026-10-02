@@ -106,6 +106,28 @@ system.
 folder-form container (a phone writes and adds only `.incu` files); a file whose name Android's picker reports
 differently from its display name (the emulator's Downloads gave the real name).
 
+## Export, added the same day
+
+The sheet's header has **Export**, which asks "Save to a folder…" or "Share…" (the maintainer's request: the file leaves
+the app's own folder by the user's choice).
+
+- **What leaves is the library file unchanged.** `exportEntry` (`packages/ui/src/character-copy.ts`) reads the entry's
+  files through `CharacterLibrary.files` and zips them as they are, offered under the entry's own name; the desktop's
+  `saveCopy` repacks a character being edited, which a read-only sheet has no reason to. Tests hold it to the library's
+  files, to reading and nothing else, and to a cancel, a failure and an unknown name never reaching the platform.
+- **Two `FileSaver`s, one port.** `MobileFolderSaver`: the system's folder picker (`Directory.pickDirectoryAsync`),
+  then a new file in it. Android's provider never replaces: a taken name becomes "name (1).incu", and that is the name
+  reported. The type handed over is `application/octet-stream`, because `application/zip` makes the provider append
+  ".zip". `MobileShareSaver`: the file written to the app's cache and offered through `expo-sharing`; the sheet says
+  nothing of what was chosen, so only a save to a folder prints where the file went.
+- **Driven on the emulator** (`adb` taps): saved to Documents as `sample-04.incu`, pulled back and read as the same three
+  files, byte for byte, as the file that was added; saved again as "sample-04 (1).incu", the first untouched; a declined
+  folder grant and a cancelled picker wrote nothing and printed nothing; the share sheet offered `sample-04.incu` to
+  Drive, Gmail and Quick Share, and was dismissed without sending. Android asks to allow the app into a folder every
+  time one is picked; the picker opens on the last folder for the rest of the session.
+- Not done: receiving a file shared *to* the app (the other half of Phase 6's import/export item), exporting the sheet
+  as text or PDF from the phone.
+
 ## Consequences
 
 - A contributor's `npm install` is about ten times what it was. Nothing under `node --test` needs Expo.

@@ -10,10 +10,11 @@
  * | `Storage`        | one SQLite table, through `expo-sqlite`                   |
  * | `CharacterStore` | a `library` folder in the app's own documents, `expo-file-system` |
  * | `FilePicker`     | the system's document picker, through `expo-file-system`  |
+ * | `FileSaver`      | two: a folder the user picks, or the share sheet (`expo-sharing`) |
  * | `ZipCodec`       | fflate (`zip.ts`): Hermes has no `CompressionStream`      |
  *
- * Not here yet, and said so rather than stubbed: `FileSaver` (sharing a file out, ROADMAP Phase 6's import/export item),
- * `FileDrop`, `PdfWriter` and `CommandHost`, which a phone has no use for in a read-only sheet.
+ * Not here, and said so rather than stubbed: `FileDrop`, `PdfWriter` and `CommandHost`, which a phone has no use for in
+ * a read-only sheet.
  *
  * **Why SQLite for `Storage`, measured** (`tools/verify`'s `mobile-runtime.test.ts`): a full AuroraLegacy download is
  * 800 values and 14.75 MB of text, the largest 585 KB, and twenty of its keys are longer than 255 bytes. A file per key
@@ -22,12 +23,14 @@
  * IndexedDB, holds all of it with nothing invented.
  *
  * **Why the library is the app's own folder** (the maintainer's choice, ADR 0083): it is always there and needs no
- * permission. A file arrives through the picker and is copied in (`CharacterLibrary.add`); one leaves through an
- * export the user points at a place or a share, which is a later item. A folder the user picks (Android's Storage
- * Access Framework) is ADR 0027's library more literally, and is left for later rather than ruled out.
+ * permission. A file arrives through the picker and is copied in (`CharacterLibrary.add`); one leaves through the
+ * export, to a folder the user picks or through the share sheet (`exportEntry`, the two savers below). Keeping the
+ * library itself in a folder the user picks (Android's Storage Access Framework) is ADR 0027's library more literally,
+ * and is left for later rather than ruled out.
  */
 
 import { Directory, File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import * as SQLite from 'expo-sqlite';
 
 import type {
@@ -37,8 +40,11 @@ import type {
   FetchResult,
   FilePickOptions,
   FilePicker,
+  FileSaveOptions,
+  FileSaver,
   LibraryEntryRef,
   PickedFile,
+  SavedFile,
   Storage,
   ZipCodec,
 } from '@incudo/core';
@@ -164,6 +170,71 @@ export class MobileCharacterStore implements CharacterStore {
   async remove(entry: LibraryEntryRef): Promise<void> {
     const target = entry.form === 'zip' ? new File(this.root(), entry.name) : new Directory(this.root(), entry.name);
     if (target.exists) target.delete();
+  }
+}
+
+/**
+ * What both savers hand the platform. Not `application/zip`: Android's document provider appends ".zip" to a name whose
+ * extension does not match its type, and nothing on a phone knows `.incu`.
+ */
+const INCU_MIME = 'application/octet-stream';
+
+/** The picker's cancel, which `expo-file-system` throws rather than returns. */
+function isCancel(error: unknown): boolean {
+  const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown };
+  return /cancel/i.test(String(code ?? '')) || /cancel/i.test(String(message ?? ''));
+}
+
+/**
+ * "Save to a folder…": a folder the user picks through the system's own picker, and a new file in it.
+ *
+ * The provider never replaces a file: a name already taken comes back as "name (1).incu", and what is returned is the
+ * name it really wrote, as the port asks. The folder is remembered for the session only, so the picker opens there next
+ * time; nothing about it is stored.
+ */
+export class MobileFolderSaver implements FileSaver {
+  readonly available = true;
+  private lastFolder: string | undefined;
+
+  async save(bytes: Uint8Array, options: FileSaveOptions): Promise<SavedFile | null> {
+    let folder: Directory;
+    try {
+      folder = await Directory.pickDirectoryAsync(this.lastFolder);
+    } catch (error) {
+      if (isCancel(error)) return null;
+      throw error;
+    }
+    this.lastFolder = folder.uri;
+    const file = folder.createFile(options.suggestedName, INCU_MIME);
+    file.write(bytes);
+    return { name: file.name };
+  }
+}
+
+/**
+ * "Share…": the system's share sheet, offering the file to whatever the user has installed (a chat, a mail, a cloud
+ * drive, "Save to Files" on iOS).
+ *
+ * The sheet says neither what was chosen nor whether anything was, so this returns the name it offered, as the port
+ * allows. The file is written to the app's cache first and left there until the next share replaces it: an app the user
+ * picked may read it after the sheet has closed.
+ */
+export class MobileShareSaver implements FileSaver {
+  readonly available = true;
+
+  async save(bytes: Uint8Array, options: FileSaveOptions): Promise<SavedFile | null> {
+    const outbox = new Directory(Paths.cache, 'share');
+    if (outbox.exists) outbox.delete();
+    outbox.create({ intermediates: true });
+    const file = new File(outbox, options.suggestedName);
+    file.create();
+    file.write(bytes);
+    await Sharing.shareAsync(file.uri, {
+      mimeType: INCU_MIME,
+      UTI: 'public.data',
+      ...(options.title ? { dialogTitle: options.title } : {}),
+    });
+    return { name: options.suggestedName };
   }
 }
 

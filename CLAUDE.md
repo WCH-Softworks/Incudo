@@ -388,6 +388,11 @@ Phase 6's first item and the read half of its second. Things to know before touc
 - **Driven on the Pixel 9 Pro emulator in Expo Go by `adb`**: five samples packed in Node, added through Android's
   picker, opened with no source; in dev builds the sheet screen logs `[incudo] sheet <file>: <n> characters, sha256 <…>`
   of `sheetMarkdown`, and all five equalled Node's. Not run: a real phone, iOS, a development or release build.
+- **Export** (the sheet's header): "Save to a folder…" or "Share…", both `FileSaver`s in `platform.ts`, through
+  `exportEntry`, which hands on the library file **unchanged** (never `saveCopy`, which repacks). The type is
+  `application/octet-stream` on purpose: `application/zip` makes Android append ".zip". The provider never replaces a
+  file ("name (1).incu", reported as such). Expo Go's floating tools button sits over the header's right corner; switch
+  it off in its menu before tapping Export in a drive.
 - **No icon or splash**: Expo's stand in, a marked gap (`brand/`'s tile is undecided). Never generate one.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
