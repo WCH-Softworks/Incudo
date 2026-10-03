@@ -29,6 +29,13 @@ import {
   settledSteps,
   slotOptions,
   stepStatus,
+  ADDITIONS_HEADING,
+  CUSTOM_FEATURES_HEADING,
+  holderGrantSections,
+  holderGrantsHeading,
+  holderGrantsHint,
+  holderGrantStatus,
+  holderGrantsUnseenNote,
   withSlot,
   withoutSlot,
 } from '@incudo/ui';
@@ -321,59 +328,41 @@ export function BuilderPane({
             0061, ADR 0067). Grouped by the element that gives them, and within that by the heading the
             builder names, in the order it lists them.
           */}
-          {[...new Set(holderGrants.map((grant) => grant.from))].map((from) => (
+          {holderGrantSections(holderGrants, (id) => elements.get(id) !== undefined).map(({ from, groups }) => (
             <section key={from} className="holder-grants">
-              <h2>From {nameOf(from)}</h2>
-              <p className="hint">
-                These come with the creature. Remove any this character does not have; a removed one
-                can be given back here.
-              </p>
-              {[...new Set(holderGrants.filter((g) => g.from === from).map((g) => g.group))]
-                .map((group) => {
-                  const listed = holderGrants.filter((g) => g.from === from && g.group === group);
-                  // A removed element is not saved (ADR 0061), so a save opened with no content has only its
-                  // id, and giving it back needs the content it came from. One line says so for all of them.
-                  const unseen = listed.filter((g) => elements.get(g.elementId) === undefined).length;
-                  return (
-                  <div key={group} className="settled">
-                    <div className="decision-head">
-                      <span className="label">{group || 'Other'}</span>
-                    </div>
-                    <ul className="holder-grant-list">
-                      {listed
-                        .filter((g) => elements.get(g.elementId) !== undefined)
-                        .map((grant) => (
-                          <li key={grant.elementId} className={grant.removed ? 'removed' : ''}>
-                            <span className="name">{candidateLabel(grant.elementId)}</span>
-                            {grant.removed ? (
-                              <>
-                                <span className="hint">
-                                  {grant.held ? ' removed, but also chosen or given by something else' : ' removed'}
-                                </span>
-                                <button type="button" className="link" onClick={() => builder.restoreGranted(grant.elementId)}>
-                                  Give back
-                                </button>
-                              </>
-                            ) : (
-                              <button type="button" className="link" onClick={() => builder.removeGranted(grant.elementId)}>
-                                Remove
-                              </button>
-                            )}
-                          </li>
-                        ))}
-                      {unseen > 0 && (
-                        <li className="removed">
-                          <span className="hint">
-                            {unseen === 1
-                              ? 'One more was removed. Load the content it came from to see it or give it back.'
-                              : `${unseen} more were removed. Load the content they came from to see them or give them back.`}
-                          </span>
-                        </li>
-                      )}
-                    </ul>
+              <h2>{holderGrantsHeading(nameOf(from))}</h2>
+              <p className="hint">{holderGrantsHint(nameOf(from))}</p>
+              {groups.map((group) => (
+                <div key={group.label} className="settled">
+                  <div className="decision-head">
+                    <span className="label">{group.label}</span>
                   </div>
-                  );
-                })}
+                  <ul className="holder-grant-list">
+                    {group.rows.map((grant) => (
+                      <li key={grant.elementId} className={grant.removed ? 'removed' : ''}>
+                        <span className="name">{candidateLabel(grant.elementId)}</span>
+                        {grant.removed ? (
+                          <>
+                            <span className="hint"> {holderGrantStatus(grant)}</span>
+                            <button type="button" className="link" onClick={() => builder.restoreGranted(grant.elementId)}>
+                              Give back
+                            </button>
+                          </>
+                        ) : (
+                          <button type="button" className="link" onClick={() => builder.removeGranted(grant.elementId)}>
+                            Remove
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                    {group.unseen > 0 && (
+                      <li className="removed">
+                        <span className="hint">{holderGrantsUnseenNote(group.unseen)}</span>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              ))}
             </section>
           ))}
 
@@ -384,7 +373,7 @@ export function BuilderPane({
           */}
           {state.customFeatures.available && (
             <section className="custom-features">
-              <h2>Your own features</h2>
+              <h2>{CUSTOM_FEATURES_HEADING}</h2>
               <CustomFeatures state={state} builder={builder} />
             </section>
           )}
@@ -395,7 +384,7 @@ export function BuilderPane({
           */}
           {state.additions.available && (
             <section className="additions-section">
-              <h2>Added to this character</h2>
+              <h2>{ADDITIONS_HEADING}</h2>
               <Additions state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} />
             </section>
           )}

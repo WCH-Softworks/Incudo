@@ -22,6 +22,8 @@ import {
   type ResolvedCharacterKind,
 } from '@incudo/core';
 
+import { PREREQUISITES_UNMET } from './sheet-document.ts';
+
 /** A type that may be added, named as the system names a list of them. */
 export interface AdditionType {
   type: string;
@@ -146,4 +148,38 @@ export function additionOptions(
     }
   }
   return out;
+}
+
+/** The heading the section is shown under. */
+export const ADDITIONS_HEADING = 'Added to this character';
+
+/** What the add list says when a type has nothing left to offer. */
+export const NO_ADDITION_OPTIONS = 'Nothing of this type is loaded that the character does not already have.';
+
+/** The type choice that offers every type the kind lists at once. */
+export const ALL_ADDITION_TYPES = 'All of these';
+
+/** A group of added rows, under the label the system gives a list of that type. */
+export interface AdditionGroup {
+  label: string;
+  rows: AddedRow[];
+}
+
+/**
+ * What was added, grouped as a screen lists it: under each type the kind lists, in its order, then anything of another
+ * type (not loaded, or no longer allowed) under "Other". Empty groups are left out.
+ */
+export function additionGroups(state: Pick<AdditionsState, 'types' | 'rows'>): AdditionGroup[] {
+  const listed = new Set(state.types.map((t) => t.type));
+  const groups: AdditionGroup[] = state.types.map((t) => ({
+    label: t.label,
+    rows: state.rows.filter((row) => row.type === t.type),
+  }));
+  groups.push({ label: 'Other', rows: state.rows.filter((row) => !listed.has(row.type)) });
+  return groups.filter((group) => group.rows.length > 0);
+}
+
+/** An option's line in the add list: its label, and that its prerequisites do not hold when they do not. */
+export function additionOptionLabel(label: string, option: Pick<AdditionOption, 'prerequisitesMet'>): string {
+  return option.prerequisitesMet ? label : `${label} · ${PREREQUISITES_UNMET}`;
 }

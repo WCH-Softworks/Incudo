@@ -7,7 +7,15 @@
  */
 
 import { useMemo, useState } from 'react';
-import { referenceEntry, type BuilderState, type CharacterBuilder, type SheetDocumentReference } from '@incudo/ui';
+import {
+  NO_REFERENCE_OPTIONS,
+  referenceEntry,
+  referenceSuggestionNote,
+  REFERENCE_SUGGESTIONS_HINT,
+  type BuilderState,
+  type CharacterBuilder,
+  type SheetDocumentReference,
+} from '@incudo/ui';
 import type { ElementId, ElementIndex } from '@incudo/core';
 
 import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
@@ -65,7 +73,7 @@ export function References({
       {/* What the character's own elements print that it could keep (ADR 0070), decided in packages/ui. */}
       {references.suggestions.length > 0 && (
         <div className="reference-suggestions">
-          <p className="hint">Printed in what this character has:</p>
+          <p className="hint">{REFERENCE_SUGGESTIONS_HINT}</p>
           <ul className="references">
             {references.suggestions.map((suggestion) => (
               <li key={suggestion.elementId}>
@@ -75,7 +83,7 @@ export function References({
                     Keep
                   </button>
                 </div>
-                <p className="hint">In {suggestion.printedIn.join(', ')}</p>
+                <p className="hint">{referenceSuggestionNote(suggestion)}</p>
               </li>
             ))}
           </ul>
@@ -91,7 +99,7 @@ export function References({
             </button>
           </div>
           {options.length === 0 ? (
-            <p className="hint">Nothing loaded can be kept here that the character does not already keep.</p>
+            <p className="hint">{NO_REFERENCE_OPTIONS}</p>
           ) : (
             <CandidatePicker
               candidates={options}

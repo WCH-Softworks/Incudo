@@ -8,7 +8,15 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { BuilderState, CharacterBuilder } from '@incudo/ui';
+import {
+  additionGroups,
+  additionOptionLabel,
+  PREREQUISITES_UNMET,
+  ALL_ADDITION_TYPES,
+  NO_ADDITION_OPTIONS,
+  type BuilderState,
+  type CharacterBuilder,
+} from '@incudo/ui';
 import type { ElementId, ElementIndex } from '@incudo/core';
 
 import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
@@ -34,25 +42,19 @@ export function Additions({
     () => (adding ? builder.additionOptionsFor(type || undefined) : []),
     [adding, type, builder, state],
   );
-  const unmet = useMemo(() => new Set(options.filter((o) => !o.prerequisitesMet).map((o) => o.elementId)), [options]);
-  const optionLabel = (id: ElementId): string =>
-    unmet.has(id) ? `${candidateLabel(id)} · prerequisites not met` : candidateLabel(id);
+  const byId = useMemo(() => new Map(options.map((o) => [o.elementId, o])), [options]);
+  const optionLabel = (id: ElementId): string => {
+    const option = byId.get(id);
+    return option ? additionOptionLabel(candidateLabel(id), option) : candidateLabel(id);
+  };
 
   return (
     <>
       {additions.description && <p className="hint">{additions.description}</p>}
 
       {/* Grouped under the types as the system names a list of them; anything of another type (not loaded, or no
-          longer allowed) last. */}
-      {[...additions.types, { type: undefined, label: 'Other' }]
-        .map((group) => ({
-          ...group,
-          rows: additions.rows.filter((row) =>
-            group.type === undefined ? !additions.types.some((t) => t.type === row.type) : row.type === group.type,
-          ),
-        }))
-        .filter((group) => group.rows.length > 0)
-        .map((group) => (
+          longer allowed) last (`additionGroups`). */}
+      {additionGroups(additions).map((group) => (
         <div key={group.label} className="settled">
           <div className="decision-head">
             <span className="label">{group.label}</span>
@@ -78,7 +80,7 @@ export function Additions({
                   </div>
                 </div>
               )}
-              {!row.prerequisitesMet && <span className="tag open">prerequisites not met</span>}
+              {!row.prerequisitesMet && <span className="tag open">{PREREQUISITES_UNMET}</span>}
               {row.note && <p className="hint">{row.note}</p>}
             </li>
           ))}
@@ -97,7 +99,7 @@ export function Additions({
                     {t.label}
                   </option>
                 ))}
-                <option value="">All of these</option>
+                <option value="">{ALL_ADDITION_TYPES}</option>
               </select>
             </label>
             <button type="button" className="link" onClick={() => setAdding(false)}>
@@ -105,7 +107,7 @@ export function Additions({
             </button>
           </div>
           {options.length === 0 ? (
-            <p className="hint">Nothing of this type is loaded that the character does not already have.</p>
+            <p className="hint">{NO_ADDITION_OPTIONS}</p>
           ) : (
             <CandidatePicker
               // Keyed on the type so the search box starts empty for each list.

@@ -8,7 +8,19 @@
  */
 
 import type { BuilderState, CharacterBuilder, CustomFeatureView } from '@incudo/ui';
-import { customLineOnStat, newCustomStatLine } from '@incudo/ui';
+import {
+  CUSTOM_FEATURES_HINT,
+  customFeatureLines,
+  customFeatureTypeChoices,
+  customLineOnStat,
+  customLineWithMode,
+  customStatGroups,
+  customStatSettable,
+  newCustomStatLine,
+  NEW_CUSTOM_FEATURE_NAME,
+  withCustomLine,
+  withoutCustomLine,
+} from '@incudo/ui';
 import type { CustomStatLine } from '@incudo/core';
 
 export function CustomFeatures({
@@ -21,15 +33,11 @@ export function CustomFeatures({
   const { customFeatures } = state;
   return (
     <>
-      <p className="hint">
-        A feature of your own for this character, listed on its sheet. Each line adds to a number or sets it; a
-        feature can also be only a name and a description. A number typed in the entry steps replaces what a feature
-        sets. Features are saved with the character.
-      </p>
+      <p className="hint">{CUSTOM_FEATURES_HINT}</p>
       {customFeatures.features.map((feature) => (
         <Feature key={feature.id} feature={feature} state={state} builder={builder} />
       ))}
-      <button type="button" onClick={() => builder.addCustomFeature('New feature')}>
+      <button type="button" onClick={() => builder.addCustomFeature(NEW_CUSTOM_FEATURE_NAME)}>
         Add a feature
       </button>
     </>
@@ -45,11 +53,11 @@ function Feature({
   state: BuilderState;
   builder: CharacterBuilder;
 }): React.JSX.Element {
-  const { stats, types } = state.customFeatures;
-  const lines: CustomStatLine[] = feature.lines.map(({ stat, mode, value }) => ({ stat, mode, value }));
+  const { stats } = state.customFeatures;
+  const lines: CustomStatLine[] = customFeatureLines(feature);
   const write = (next: CustomStatLine[]) => builder.updateCustomFeature(feature.id, { stats: next });
-  const change = (at: number, line: CustomStatLine) => write(lines.map((l, i) => (i === at ? line : l)));
-  const settable = (stat: string) => stats.find((s) => s.stat === stat)?.settable ?? false;
+  const change = (at: number, line: CustomStatLine) => write(withCustomLine(lines, at, line));
+  const typeChoices = customFeatureTypeChoices(state.customFeatures, feature);
 
   const addLine = () => {
     const line = newCustomStatLine(stats, state.derived);
@@ -66,15 +74,14 @@ function Feature({
           onChange={(event) => builder.updateCustomFeature(feature.id, { name: event.target.value })}
         />
       </label>
-      {(types.length > 1 || feature.typeNote) && (
+      {typeChoices.length > 0 && (
         <label className="custom-feature-type">
           Listed under
           <select
             value={feature.type}
             onChange={(event) => builder.updateCustomFeature(feature.id, { type: event.target.value })}
           >
-            {feature.typeNote && <option value={feature.type}>{feature.typeLabel}</option>}
-            {types.map((t) => (
+            {typeChoices.map((t) => (
               <option key={t.type} value={t.type}>
                 {t.label}
               </option>
@@ -105,25 +112,23 @@ function Feature({
                 >
                   {line.status === 'unknown' && <option value={line.stat}>{line.label}</option>}
                   {/* Grouped as the sheet groups them: two stats may share a label (an ability and its save). */}
-                  {[...new Set(stats.map((s) => s.group))].map((group) => (
+                  {customStatGroups(stats).map(({ group, stats: grouped }) => (
                     <optgroup key={group} label={group}>
-                      {stats
-                        .filter((s) => s.group === group)
-                        .map((s) => (
-                          <option key={s.stat} value={s.stat}>
-                            {s.label}
-                          </option>
-                        ))}
+                      {grouped.map((s) => (
+                        <option key={s.stat} value={s.stat}>
+                          {s.label}
+                        </option>
+                      ))}
                     </optgroup>
                   ))}
                 </select>
                 <select
                   aria-label="How"
                   value={line.mode}
-                  onChange={(event) => change(at, { ...lines[at]!, mode: event.target.value === 'set' ? 'set' : 'add' })}
+                  onChange={(event) => change(at, customLineWithMode(lines[at]!, event.target.value === 'set' ? 'set' : 'add', stats))}
                 >
                   <option value="add">adds</option>
-                  <option value="set" disabled={!settable(line.stat)}>
+                  <option value="set" disabled={!customStatSettable(stats, line.stat)}>
                     sets it to
                   </option>
                 </select>
@@ -136,7 +141,7 @@ function Feature({
                     change(at, { ...lines[at]!, value: Number(event.target.value) });
                   }}
                 />
-                <button type="button" className="link" onClick={() => write(lines.filter((_, i) => i !== at))}>
+                <button type="button" className="link" onClick={() => write(withoutCustomLine(lines, at))}>
                   Remove
                 </button>
               </div>

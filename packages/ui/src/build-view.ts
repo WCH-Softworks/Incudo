@@ -11,7 +11,7 @@ import type { ElementId, StatDef } from '@incudo/core';
 
 import { scoreLabel, type ClassOption, type ScoreShortfall } from './multiclass.ts';
 import type { PreparedItem } from './preparation.ts';
-import type { BuilderState, BuilderStep, OpenDecision, SettledPick } from './use-character-builder.ts';
+import type { BuilderState, BuilderStep, HolderGrant, OpenDecision, SettledPick } from './use-character-builder.ts';
 
 /**
  * What slot `index` of an answered decision may hold instead: its own answer, anything no other slot holds, and anything
@@ -100,4 +100,71 @@ export function classOptionGroups(options: readonly ClassOption[]): {
 /** A prepared list's line for one spell: "Shield (Level 1)". */
 export function preparedItemText(item: PreparedItem): string {
   return item.note ? `${item.name} (${item.note})` : item.name;
+}
+
+/** One heading of what a held element gives: its rows that can be shown, and how many more nothing loaded declares. */
+export interface HolderGrantGroup {
+  /** The heading: `HolderGrant.group`, or "Other". */
+  label: string;
+  /** What can be shown and taken away or given back, in the builder's order. */
+  rows: HolderGrant[];
+  /**
+   * How many removed ones nothing loaded declares. A removed element is not saved (ADR 0061), so a file opened with no
+   * content has only its id, and giving it back needs the content it came from.
+   */
+  unseen: number;
+}
+
+/** What one held element gives, grouped under the headings the builder names. */
+export interface HolderGrantSection {
+  from: ElementId;
+  groups: HolderGrantGroup[];
+}
+
+/**
+ * What held elements give (ADRs 0061, 0067), as a screen lists it: by the element that gives it, in the order the
+ * builder lists them, and within that by heading. `known` says whether loaded or embedded content declares an id.
+ */
+export function holderGrantSections(
+  grants: readonly HolderGrant[],
+  known: (id: ElementId) => boolean,
+): HolderGrantSection[] {
+  return [...new Set(grants.map((grant) => grant.from))].map((from) => {
+    const own = grants.filter((grant) => grant.from === from);
+    return {
+      from,
+      groups: [...new Set(own.map((grant) => grant.group))].map((group) => {
+        const listed = own.filter((grant) => grant.group === group);
+        return {
+          label: group || 'Other',
+          rows: listed.filter((grant) => known(grant.elementId)),
+          unseen: listed.filter((grant) => !known(grant.elementId)).length,
+        };
+      }),
+    };
+  });
+}
+
+/** The heading of what `name` gives. */
+export function holderGrantsHeading(name: string): string {
+  return `From ${name}`;
+}
+
+/** What a section of what `name` gives says first. */
+export function holderGrantsHint(name: string): string {
+  return `These come with ${name}. Remove any this character does not have; a removed one can be given back here.`;
+}
+
+/** What a row says beside its name: nothing while it is given, else that it was removed and whether it is held anyway. */
+export function holderGrantStatus(grant: Pick<HolderGrant, 'removed' | 'held'>): string | undefined {
+  if (!grant.removed) return undefined;
+  return grant.held ? 'removed, but also chosen or given by something else' : 'removed';
+}
+
+/** The line for removed ones nothing loaded declares, or nothing when there are none. */
+export function holderGrantsUnseenNote(unseen: number): string | undefined {
+  if (unseen <= 0) return undefined;
+  return unseen === 1
+    ? 'One more was removed. Load the content it came from to see it or give it back.'
+    : `${unseen} more were removed. Load the content they came from to see them or give them back.`;
 }

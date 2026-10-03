@@ -165,3 +165,70 @@ export function customLineOnStat(
   if (line.mode === 'add') return { ...line, stat };
   return newCustomStatLine(stats, derived, stat) ?? { ...line, stat };
 }
+
+/** The heading the section is shown under. */
+export const CUSTOM_FEATURES_HEADING = 'Your own features';
+
+/** What the section says first. */
+export const CUSTOM_FEATURES_HINT =
+  'A feature of your own for this character, listed on its sheet. Each line adds to a number or sets it; a feature can ' +
+  'also be only a name and a description. A number typed in the entry steps replaces what a feature sets. Features ' +
+  'are saved with the character.';
+
+/** The name a feature is given when it is added, before the user names it. */
+export const NEW_CUSTOM_FEATURE_NAME = 'New feature';
+
+/** A feature's lines as the character records them, without what the view adds. */
+export function customFeatureLines(feature: Pick<CustomFeatureView, 'lines'>): CustomStatLine[] {
+  return feature.lines.map(({ stat, mode, value }) => ({ stat, mode, value }));
+}
+
+/** The lines with line `at` replaced. */
+export function withCustomLine(lines: readonly CustomStatLine[], at: number, line: CustomStatLine): CustomStatLine[] {
+  return lines.map((l, i) => (i === at ? line : l));
+}
+
+/** The lines with line `at` taken out. */
+export function withoutCustomLine(lines: readonly CustomStatLine[], at: number): CustomStatLine[] {
+  return lines.filter((_, i) => i !== at);
+}
+
+/**
+ * A line switched to adding or to setting. A stat that may not be set (it is worked out from other numbers) keeps the
+ * line as it is when asked to set; a set keeps its number when it becomes an add.
+ */
+export function customLineWithMode(
+  line: CustomStatLine,
+  mode: CustomStatLine['mode'],
+  stats: readonly CustomFeatureStat[],
+): CustomStatLine {
+  if (mode === 'set' && !customStatSettable(stats, line.stat)) return line;
+  return { ...line, mode };
+}
+
+/** Whether a line on `stat` may set it. */
+export function customStatSettable(stats: readonly CustomFeatureStat[], stat: string): boolean {
+  return stats.find((s) => s.stat.toLowerCase() === stat.toLowerCase())?.settable ?? false;
+}
+
+/** The stats a line may name, grouped as the sheet groups them, in the kind's order. */
+export function customStatGroups(stats: readonly CustomFeatureStat[]): { group: string; stats: CustomFeatureStat[] }[] {
+  return [...new Set(stats.map((s) => s.group))].map((group) => ({ group, stats: stats.filter((s) => s.group === group) }));
+}
+
+/** A stat on one line of a list that is not grouped: "Strength (Saving Throws)", or the label alone when it is its group's. */
+export function customStatChoiceLabel(stat: Pick<CustomFeatureStat, 'label' | 'group'>): string {
+  return stat.group && stat.group !== stat.label ? `${stat.label} (${stat.group})` : stat.label;
+}
+
+/**
+ * Where a feature may be listed, as a choice shows it: the kind's types, and first the one it records when the kind does
+ * not list it, named as `typeLabel` names it. Empty when there is nothing to choose (one type, and that one recorded).
+ */
+export function customFeatureTypeChoices(
+  state: Pick<CustomFeaturesState, 'types'>,
+  feature: Pick<CustomFeatureView, 'type' | 'typeLabel' | 'typeNote'>,
+): CustomFeatureType[] {
+  if (state.types.length <= 1 && !feature.typeNote) return [];
+  return [...(feature.typeNote ? [{ type: feature.type, label: feature.typeLabel }] : []), ...state.types];
+}

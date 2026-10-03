@@ -190,3 +190,14 @@ export function referenceOptions(
     .sort((a, b) => a.name.localeCompare(b.name) || (a.source ?? '').localeCompare(b.source ?? '') || a.id.localeCompare(b.id))
     .map((element) => element.id);
 }
+
+/** What the suggestions are introduced with. */
+export const REFERENCE_SUGGESTIONS_HINT = 'Printed in what this character has:';
+
+/** What the keep list says when there is nothing left to keep. */
+export const NO_REFERENCE_OPTIONS = 'Nothing loaded can be kept here that the character does not already keep.';
+
+/** Where a suggestion is printed: "In Summon Beast, Find Familiar". */
+export function referenceSuggestionNote(suggestion: Pick<ReferenceSuggestion, 'printedIn'>): string {
+  return `In ${suggestion.printedIn.join(', ')}`;
+}
