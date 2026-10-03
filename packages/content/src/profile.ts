@@ -49,6 +49,13 @@ export interface ConfiguredSource {
   /** ADR 0029: `download` fetches when added, `stream` fetches when first used. */
   mode: SourceMode;
   /**
+   * How what was fetched is kept — ADR 0085. `converted` (the default, and what an absent value means): parsed once into
+   * Incudo's own form and loaded from that, quicker to load and somewhat larger. `files`: each file's text as it came,
+   * parsed on every load (ADR 0029's cache), smaller and slower. A file the user added (`kind: 'file'`) is its own copy
+   * and is kept as it was given either way.
+   */
+  keep?: SourceKeep;
+  /**
    * This came from the system definition's `suggestedSources` and that definition vouched
    * for it — carried so a view can show the badge without re-reading the system. A claim by
    * whoever wrote the system, not a check by Incudo; see `SuggestedSource.official`.
@@ -72,6 +79,14 @@ export interface ConfiguredSource {
   /** What it contributed the last time it was loaded, so the UI can say. */
   fileCount?: number;
   elementCount?: number;
+}
+
+/** How a source's fetched content is kept — ADR 0085. */
+export type SourceKeep = 'converted' | 'files';
+
+/** Whether a source keeps its content converted (the default) rather than as the files it fetched. */
+export function keepsConverted(source: Pick<ConfiguredSource, 'keep' | 'kind'>): boolean {
+  return source.kind !== 'file' && source.keep !== 'files';
 }
 
 export interface SourceProfileData {
@@ -141,6 +156,7 @@ export class SourceProfile {
       official: options.official,
       excluded: options.excluded?.length ? options.excluded : undefined,
       kind: options.kind,
+      ...(options.keep ? { keep: options.keep } : {}),
       addedAt: options.addedAt ?? new Date().toISOString(),
     };
     this.entries.push(source);

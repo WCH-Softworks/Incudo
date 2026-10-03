@@ -85,8 +85,9 @@ class Host implements Fetcher {
   }
 }
 
+/** Kept as files: these cases are about the raw cache and its ETags. A converted source is `converted-source.test.ts`'s. */
 function configured(): ConfiguredSource {
-  return new SourceProfile(new MemoryStorage()).add(INDEX_URL, { mode: 'stream' });
+  return new SourceProfile(new MemoryStorage()).add(INDEX_URL, { mode: 'stream', keep: 'files' });
 }
 
 async function load(source: ConfiguredSource, host: Host, storage: MemoryStorage): Promise<ContentLibrary> {

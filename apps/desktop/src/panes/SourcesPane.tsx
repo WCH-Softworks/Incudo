@@ -30,7 +30,7 @@ import {
 import type { GameSystem, PickedFile, SuggestedSource } from '@incudo/core';
 import { describeContentFiles, partsView, togglePart, type ContentFileResult, type PartView } from '@incudo/ui';
 
-import { type LoadProgress, type LoadedContent } from '../content.ts';
+import { type LoadProgress, type LoadedContent } from '@incudo/content';
 
 export interface SourcesActions {
   add: (url: string, mode: SourceMode, options?: Partial<ConfiguredSource>) => Promise<void>;

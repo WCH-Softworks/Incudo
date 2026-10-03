@@ -217,7 +217,8 @@ test('a refresh fetches only the parts in use, and prunes the cached copies of t
     },
   };
   const storage = new MemoryStorage();
-  const configured = { id: 'https://h/top.index', url: 'https://h/top.index', name: 'Top', enabled: true, mode: 'download' as const, addedAt: '' };
+  // Kept as files, so the prune is seen on the raw copies; a converted source drops them when it converts (ADR 0085).
+  const configured = { id: 'https://h/top.index', url: 'https://h/top.index', name: 'Top', enabled: true, mode: 'download' as const, keep: 'files' as const, addedAt: '' };
 
   // Everything cached first, as a source loaded before any part was switched off.
   await new ContentLibrary().loadSource(composeSource(configured, { fetcher, storage }), configured.url);

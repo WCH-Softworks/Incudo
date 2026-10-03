@@ -125,7 +125,7 @@ import { OfficialSheetDialog } from './panes/OfficialSheet.tsx';
 import { RefreshDialog, RefreshLine } from './panes/ContentRefresh.tsx';
 import { SettingsPane } from './panes/SettingsPane.tsx';
 import { BrowsePane, NEW_BROWSE_VIEW, type BrowseView } from './panes/BrowsePane.tsx';
-import { loadSources, type LoadProgress, type LoadedContent } from './content.ts';
+import { loadSources, type LoadProgress, type LoadedContent } from '@incudo/content';
 
 type Pane = Destination;
 

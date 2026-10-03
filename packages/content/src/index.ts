@@ -7,3 +7,5 @@ export * from './profile.ts';
 export * from './compose.ts';
 export * from './parts.ts';
 export * from './file-source.ts';
+export * from './load-sources.ts';
+export * from './converted-source.ts';
