@@ -92,6 +92,17 @@ export class MobileStorage implements Storage {
     await (await this.open()).runAsync('DELETE FROM kv WHERE key = ?', key);
   }
 
+  /** One transaction: a conversion's hundreds of values in one commit instead of one each (ADR 0085). */
+  async apply(changes: ReadonlyArray<readonly [key: string, value: string | null]>): Promise<void> {
+    const db = await this.open();
+    await db.withTransactionAsync(async () => {
+      for (const [key, value] of changes) {
+        if (value === null) await db.runAsync('DELETE FROM kv WHERE key = ?', key);
+        else await db.runAsync('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', key, value);
+      }
+    });
+  }
+
   async list(prefix: string): Promise<string[]> {
     const db = await this.open();
     // The prefix as a range, as the desktop's IndexedDB reads it: `￿` sorts above every character a key holds, and

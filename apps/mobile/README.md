@@ -4,8 +4,11 @@ Expo (React Native), SDK 57, run in Expo Go. ROADMAP Phase 6; the choices and th
 [ADR 0083](../../docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md).
 
 What it does today: a library of characters kept in the app's own folder, a file added to it through the system's
-document picker, a character's sheet, read-only, opened from the file alone with no content source (ADR 0012), and
-**Export** on the sheet, which saves the character's file to a folder the user picks or hands it to the share sheet.
+document picker, a character's sheet opened from the file alone with no content source (ADR 0012), playing it (ADR
+0084), **Export** on the sheet, which saves the character's file to a folder the user picks or hands it to the share
+sheet, and **building**: New character and Edit open the build (ADR 0086), which loads the content added under
+**Content** (the game's suggested source, downloaded in full and kept converted or as files, ADR 0085) and saves with
+Save.
 
 ## Running it
 
@@ -25,8 +28,10 @@ somewhere the phone's file picker reaches (its Downloads, a cloud drive), and ta
 
 ## What lives where
 
-- `src/platform.ts` is the only file that knows it runs in Expo: storage (one SQLite table), the library folder, the
-  file picker and the fetcher.
+- `src/platform.ts` is the only file that knows it runs in Expo: storage (one SQLite table, with a batched `apply`), the
+  library folder, the file picker and the fetcher.
+- `src/BuildScreen.tsx`, `BuildView.tsx`, `BuildParts.tsx` and `Picker.tsx` draw the build; `ContentScreen.tsx` the
+  sources. They render `CharacterBuilder`, `ContentSources` and `build-view.ts` from `packages/ui` and compute nothing.
 - `src/zip.ts` is DEFLATE for the `.incu` container (fflate); `tools/verify`'s `mobile-zip.test.ts` holds it to the
   desktop's zip under Node.
 - Everything a screen shows comes from `packages/ui`: `CharacterLibrary`, `CharacterBuilder`, `sheetDocument`, and
@@ -36,8 +41,9 @@ somewhere the phone's file picker reaches (its Downloads, a cloud drive), and ta
 
 - **No icon or splash image.** Expo's own stand in. The logo's tile is an open design decision (`brand/`); this is a
   marked gap, not an oversight, and no artwork is to be generated for it.
-- Building a character, downloading content, receiving a file shared to the app, download mode as the default
-  (ADR 0004): Phase 6's later items.
+- Receiving a file shared to the app, download mode as the default on metered connections (ADR 0004): Phase 6's later
+  items. On the build: an index URL of the user's own as a source, the class split editor, features of the user's own,
+  additions and references (the desktop has them all).
 - iOS has never been built or run; nothing here is Android-only by design, but nothing has been seen there.
 
 ## Exit criteria

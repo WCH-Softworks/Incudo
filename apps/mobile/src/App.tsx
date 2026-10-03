@@ -1,16 +1,17 @@
 /**
- * The phone app: a library, a sheet, and playing it — ROADMAP Phase 6's first two items, ADRs 0083 and 0084.
+ * The phone app: a library, a sheet, playing it, and building one — ROADMAP Phase 6, ADRs 0083, 0084 and 0086.
  *
- * Two screens on a native stack (React Navigation), so Android's back gesture and button do what a user expects. What a
+ * Screens on a native stack (React Navigation), so Android's back gesture and button do what a user expects. What a
  * screen shows comes from `packages/ui`: `CharacterLibrary` lists and adds characters, `CharacterBuilder` and
- * `sheetDocument` make the sheet, and the builder's `play` is what playing it keeps track of. Nothing here derives
- * anything, and opening a character reaches for no content source (ADR 0012): the file carries what it needs. A play
- * edit is written back to the library file at once (`CharacterLibrary.record`), as a pencil mark on a paper sheet is.
+ * `sheetDocument` make the sheet, the builder's `play` is what playing it keeps track of, and `ContentSources` is the
+ * content a build loads. Nothing here derives anything, and opening a character reaches for no content source (ADR
+ * 0012): the file carries what it needs; only the Build screen asks for content. A play edit is written back to the
+ * library file at once (`CharacterLibrary.record`), as a pencil mark on a paper sheet is; a build edit is saved with Save.
  */
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer, useFocusEffect } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -21,6 +22,8 @@ import { sha256Hex, type Character, type FileSaver, type GameSystem } from '@inc
 import {
   CharacterBuilder,
   CharacterLibrary,
+  ContentSources,
+  characterKindChoices,
   describeKindAndProgress,
   exportEntry,
   libraryEntryProgress,
@@ -31,50 +34,48 @@ import {
 } from '@incudo/ui';
 
 import { loadShippedSystems } from './boot.ts';
-import { MobileCharacterStore, MobileFilePicker, MobileFolderSaver, MobileShareSaver } from './platform.ts';
+import { BuildScreen } from './BuildScreen.tsx';
+import { ContentScreen } from './ContentScreen.tsx';
+import { PlatformContext, usePlatform, type Platform, type Screens } from './context.ts';
+import { Button } from './controls.tsx';
+import { MobileCharacterStore, MobileFetcher, MobileFilePicker, MobileFolderSaver, MobileShareSaver, MobileStorage } from './platform.ts';
 import { PlayPanel } from './PlayPanel.tsx';
 import { SheetView } from './SheetView.tsx';
 import { usePalette } from './theme.ts';
 import { createMobileZipCodec } from './zip.ts';
 
-type Screens = {
-  Library: undefined;
-  Sheet: { name: string; title: string };
-};
-
 const Stack = createNativeStackNavigator<Screens>();
-
-interface Platform {
-  library: CharacterLibrary;
-  picker: MobileFilePicker;
-  /** Where "Export" can send a file: a folder the user picks, or the share sheet. */
-  folderSaver: FileSaver;
-  shareSaver: FileSaver;
-  zip: ReturnType<typeof createMobileZipCodec>;
-  systems: GameSystem[];
-}
-
-const PlatformContext = createContext<Platform | null>(null);
-
-function usePlatform(): Platform {
-  const platform = useContext(PlatformContext);
-  if (!platform) throw new Error('No platform: App renders the screens inside its provider.');
-  return platform;
-}
 
 export function App() {
   const scheme = useColorScheme();
   const platform = useMemo<Platform>(() => {
     const zip = createMobileZipCodec();
+    const systems = loadShippedSystems().systems;
     return {
       library: new CharacterLibrary(new MobileCharacterStore(zip)),
       picker: new MobileFilePicker(),
       folderSaver: new MobileFolderSaver(),
       shareSaver: new MobileShareSaver(),
       zip,
-      systems: loadShippedSystems().systems,
+      systems,
+      sources: new ContentSources({ fetcher: new MobileFetcher(), storage: new MobileStorage() }, systems),
     };
   }, []);
+
+  // In development, how long each content load took, to compare with ADRs 0085 and 0086's measurements.
+  useEffect(() => {
+    if (!__DEV__) return;
+    let started: number | undefined;
+    return platform.sources.subscribe(() => {
+      const state = platform.sources.getState();
+      if (state.loading && started === undefined) started = Date.now();
+      else if (!state.loading && started !== undefined) {
+        const counts = Object.entries(state.loaded).map(([id, loaded]) => `${id} ${loaded.elementCount} elements`).join(', ');
+        console.log(`[incudo] content loaded in ${Date.now() - started} ms: ${counts || 'nothing'}${state.message ? `; ${state.message}` : ''}`);
+        started = undefined;
+      }
+    });
+  }, [platform]);
 
   return (
     <SafeAreaProvider>
@@ -83,6 +84,9 @@ export function App() {
           <Stack.Navigator>
             <Stack.Screen name="Library" component={LibraryScreen} options={{ title: 'Characters' }} />
             <Stack.Screen name="Sheet" component={SheetScreen} options={({ route }) => ({ title: route.params.title })} />
+            <Stack.Screen name="Build" component={BuildScreen} options={({ route }) => ({ title: route.params.title })} />
+            <Stack.Screen name="NewCharacter" component={NewCharacterScreen} options={{ title: 'New character' }} />
+            <Stack.Screen name="Content" component={ContentScreen} options={{ title: 'Content' }} />
           </Stack.Navigator>
         </NavigationContainer>
         <StatusBar style="auto" />
@@ -102,6 +106,17 @@ function LibraryScreen({ navigation }: NativeStackScreenProps<Screens, 'Library'
   useEffect(() => {
     void library.restore();
   }, [library]);
+
+  useEffect(() => {
+    navigation.setOptions({ headerRight: () => <Button label="Content" kind="link" onPress={() => navigation.navigate('Content')} /> });
+  }, [navigation]);
+
+  // A character saved from the Build screen comes back listed.
+  useFocusEffect(
+    useCallback(() => {
+      if (library.getState().status === 'ready') void library.refresh();
+    }, [library]),
+  );
 
   const addFile = async (): Promise<void> => {
     setMessage(null);
@@ -129,6 +144,7 @@ function LibraryScreen({ navigation }: NativeStackScreenProps<Screens, 'Library'
       >
         <Text style={[styles.buttonText, { color: palette.background }]}>Add a character file…</Text>
       </Pressable>
+      <Button label="New character" onPress={() => navigation.navigate('NewCharacter')} />
       {message ? <Text style={[styles.body, { color: palette.muted }]}>{message}</Text> : null}
       {state.busy ? <ActivityIndicator color={palette.accent} /> : null}
       {state.problems.map((problem) => (
@@ -163,6 +179,36 @@ function LibraryScreen({ navigation }: NativeStackScreenProps<Screens, 'Library'
   );
 }
 
+// --- a new character ---------------------------------------------------------------------------------------------
+
+/** Every kind of every game the app has, as the desktop's chooser offers them (`characterKindChoices`). */
+function NewCharacterScreen({ navigation }: NativeStackScreenProps<Screens, 'NewCharacter'>) {
+  const { systems } = usePlatform();
+  const palette = usePalette();
+  return (
+    <ScrollView style={{ backgroundColor: palette.background }} contentContainerStyle={styles.screen}>
+      {systems.map((system) => (
+        <View key={system.id} style={{ gap: 8 }}>
+          <Text style={[styles.cardTitle, { color: palette.text }]} accessibilityRole="header">
+            {system.name}
+          </Text>
+          {characterKindChoices(system).map((kind) => (
+            <Pressable
+              key={kind.id}
+              onPress={() => navigation.replace('Build', { systemId: system.id, kindId: kind.id, title: kind.name })}
+              style={({ pressed }) => [styles.card, { backgroundColor: palette.surface, opacity: pressed ? 0.7 : 1 }]}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.cardTitle, { color: palette.text }]}>{kind.name}</Text>
+              {kind.description ? <Text style={[styles.body, { color: palette.muted }]}>{kind.description}</Text> : null}
+            </Pressable>
+          ))}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 /** "Player Character · Level 5", or what the card can say when the character's system is not one this app has. */
 function cardLine(entry: LibraryEntry, systems: readonly GameSystem[]): string {
   const system = systems.find((candidate) => candidate.id === entry.systemId);
@@ -182,7 +228,7 @@ function SheetScreen({ route, navigation }: NativeStackScreenProps<Screens, 'She
   const name = route.params.name;
 
   // The file as it is in the library, unchanged (`exportEntry`): to a folder the user picks, or to the share sheet.
-  useEffect(() => {
+  const chooseExport = useCallback((): void => {
     const send = async (saver: FileSaver, saving: boolean): Promise<void> => {
       setMessage(null);
       const result = await exportEntry(saver, zip, library, name);
@@ -190,31 +236,31 @@ function SheetScreen({ route, navigation }: NativeStackScreenProps<Screens, 'She
       // The share sheet says nothing of what was chosen, so only a save to a folder reports where the file went.
       else if (result.status === 'saved' && saving) setMessage({ text: `Saved as "${result.file.name}".`, failed: false });
     };
-    const choose = (): void =>
-      Alert.alert('Export this character', 'Its .incu file, as it is in this app.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Share…', onPress: () => void send(shareSaver, false) },
-        { text: 'Save to a folder…', onPress: () => void send(folderSaver, true) },
-      ]);
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable onPress={choose} accessibilityRole="button" hitSlop={12}>
-          <Text style={[styles.headerAction, { color: palette.accent }]}>Export</Text>
-        </Pressable>
-      ),
-    });
-  }, [navigation, library, zip, folderSaver, shareSaver, name, palette.accent]);
+    Alert.alert('Export this character', 'Its .incu file, as it is in this app.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Share…', onPress: () => void send(shareSaver, false) },
+      { text: 'Save to a folder…', onPress: () => void send(folderSaver, true) },
+    ]);
+  }, [library, zip, folderSaver, shareSaver, name]);
 
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      const result = await openSheet(library, systems, name);
-      if (live) setOpened(result);
-    })();
-    return () => {
-      live = false;
-    };
-  }, [library, systems, name]);
+  const header = useMemo(
+    () => ({ chooseExport, edit: () => navigation.navigate('Build', { name, title: route.params.title }) }),
+    [chooseExport, navigation, name, route.params.title],
+  );
+
+  // Opened each time the screen is shown, so a character saved from the Build screen reads as saved (ADR 0086).
+  useFocusEffect(
+    useCallback(() => {
+      let live = true;
+      void (async () => {
+        const result = await openSheet(library, systems, name);
+        if (live) setOpened(result);
+      })();
+      return () => {
+        live = false;
+      };
+    }, [library, systems, name]),
+  );
 
   if (!opened) {
     return (
@@ -230,7 +276,19 @@ function SheetScreen({ route, navigation }: NativeStackScreenProps<Screens, 'She
       </View>
     );
   }
-  return <OpenedSheet builder={opened.builder} readAt={opened.readAt} name={name} message={message} setMessage={setMessage} />;
+  return (
+    <OpenedSheet
+      // A file opened again (after an edit was saved) is a new character for the play writer, expecting its new `updated`.
+      key={opened.readAt ?? ''}
+      builder={opened.builder}
+      readAt={opened.readAt}
+      name={name}
+      message={message}
+      setMessage={setMessage}
+      header={header}
+      navigation={navigation}
+    />
+  );
 }
 
 /** An opened character: its sheet, and playing it when its kind has anything to play. */
@@ -240,12 +298,16 @@ function OpenedSheet({
   name,
   message,
   setMessage,
+  header,
+  navigation,
 }: {
   builder: CharacterBuilder;
   readAt?: string;
   name: string;
   message: { text: string; failed: boolean } | null;
   setMessage: (message: { text: string; failed: boolean } | null) => void;
+  header: { chooseExport: () => void; edit: () => void };
+  navigation: NativeStackScreenProps<Screens, 'Sheet'>['navigation'];
 }) {
   const { library } = usePlatform();
   const palette = usePalette();
@@ -259,7 +321,23 @@ function OpenedSheet({
     () => sheetDocument({ character: { name: characterName }, sheet, references, ...(companions ? { companions } : {}) }),
     [sheet, companions, references, characterName],
   );
-  useRecorder(library, name, state.character, readAt, (text) => setMessage({ text, failed: true }));
+  const settle = useRecorder(library, name, state.character, readAt, (text) => setMessage({ text, failed: true }));
+
+  // Edit waits for any play edit still being written, so the Build screen opens the file as it is (ADR 0086).
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={styles.headerActions}>
+          <Pressable onPress={() => void settle().then(header.edit)} accessibilityRole="button" hitSlop={12}>
+            <Text style={[styles.headerAction, { color: palette.accent }]}>Edit</Text>
+          </Pressable>
+          <Pressable onPress={header.chooseExport} accessibilityRole="button" hitSlop={12}>
+            <Text style={[styles.headerAction, { color: palette.accent }]}>Export</Text>
+          </Pressable>
+        </View>
+      ),
+    });
+  }, [navigation, settle, header, palette.accent]);
 
   const play = state.play;
   return (
@@ -299,7 +377,13 @@ function OpenedSheet({
  * screen is left. Writes run one after another, each expecting the `updated` the one before it wrote, so a file changed
  * elsewhere meanwhile is refused (ADR 0027) and nothing more is written until the character is opened again.
  */
-function useRecorder(library: CharacterLibrary, name: string, character: Character, readAt: string | undefined, fail: (text: string) => void): void {
+function useRecorder(
+  library: CharacterLibrary,
+  name: string,
+  character: Character,
+  readAt: string | undefined,
+  fail: (text: string) => void,
+): () => Promise<void> {
   const opened = useRef(character);
   const expected = useRef(readAt);
   const pending = useRef<Character | null>(null);
@@ -336,6 +420,13 @@ function useRecorder(library: CharacterLibrary, name: string, character: Charact
 
   // Leaving the screen writes what is still waiting.
   useEffect(() => flush, [flush]);
+
+  // Write what is waiting now, and resolve once every write has landed.
+  const [settle] = useState(() => async (): Promise<void> => {
+    flush();
+    await queue.current;
+  });
+  return settle;
 }
 
 /**
@@ -371,6 +462,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, lineHeight: 21 },
   small: { fontSize: 13 },
   headerAction: { fontSize: 16, fontWeight: '600' },
+  headerActions: { flexDirection: 'row', gap: 20 },
   notice: { paddingHorizontal: 16, paddingTop: 12 },
   tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12 },
   tab: { flex: 1, borderWidth: 1, borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
