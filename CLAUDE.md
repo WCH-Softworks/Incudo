@@ -368,7 +368,7 @@ in the export is content's own sheet line, at the level its class reads, its num
 Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platform's own dialog, its sections in two columns**
 (ADR 0077), **after a step of the app's own choosing its parts, page numbers and the name on later pages, and with no edge
 of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079).
-**The phone app runs and shows a character's sheet, and plays it (ADR 0084, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
+**The phone app runs and shows a character's sheet, plays it (ADR 0084, below), and builds and edits one (ADR 0086, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
 - **`apps/mobile` is a workspace** (Expo SDK 57, React Native 0.86, React 19.2, run in Expo Go). The install went from
@@ -421,6 +421,35 @@ the play half of Phase 6's second item. Things to know before touching it:
 - **The sheet document is unchanged**: play is not in it, so exports and the phone/desktop sheet checksum are untouched.
 - In dev builds the phone logs `[incudo] play <file>: <play json>` after each write. Driven on the emulator and in the
   browser build; not in the Tauri window, on a real phone or iOS, and no NPC played in either app.
+
+**A source is kept converted into Incudo's own form, and a phone builds with the desktop's builder**
+([ADR 0085](docs/adr/0085-a-source-is-kept-converted-into-incudo-s-own-form-and-loaded-from-that.md),
+[ADR 0086](docs/adr/0086-a-phone-builds-and-edits-with-the-desktop-s-builder-its-content-loaded-when-a-build-opens.md)).
+Things to know before touching either:
+
+- **`ConfiguredSource.keep`: `converted` (the default, also when absent) or `files`.** Converted, each index and file a
+  load read is stored as the parser returned it, **one value per file** under `content/<source>/.converted/<url>`, and its
+  raw XML removed; the next load reads that first (`ConvertingContentSource`, `composeForLoad`, `packages/content`) and
+  converts only what came from behind it. One value for the whole source was tried first: 20 s for `expo-sqlite` to read
+  21 MB back. Files, not a flat element list: the library folds appends across sources by file, and a converted load is
+  held identical to a parsed one on the real corpus (`tools/verify/src/converted-source.test.ts`). Each value records
+  `CONVERTER_VERSION`; a guard test hashes `aurora-import`'s parsing files, and when it fails, decide whether the same XML
+  now parses differently (bump the version) and record the hash. A refresh converts again; one reaching nothing changes
+  nothing. A refresh of a converted source downloads in full (no raw copy to answer a 304 with).
+- **`Storage.apply(changes)` is optional** (`core`, `applyChanges` falls back): the phone's SQLite measured about 40 ms a
+  statement alone, so a conversion is one transaction there. The desktop's and Node's storage do not implement it yet.
+- **`loadSources` is `packages/content`'s now** (moved from `apps/desktop/src/content.ts`); the desktop and the phone call it.
+- **The phone's content is `ContentSources`** (`packages/ui/src/content-sources.ts`): the profile, a system's suggested
+  source added in download mode, switched, kept either way, refreshed, removed **with its cache**, and loaded once per set of
+  sources, only when a Build screen asks. `restore` publishes once; the Build screen's effect depended on a list it
+  published every call and rendered in a loop (found on the emulator, held by a test).
+- **Build and Edit are one phone screen** (`BuildScreen.tsx`, rendering `BuildView`, memoized: a load's progress redrew
+  the whole build and cost 18 s). Save is `saveEdit` (`packages/ui/src/edit-session.ts`) through `CharacterLibrary.save`
+  under ADR 0027's conflict check; leaving unsaved asks. The sheet reopens its file on focus and Edit waits for play
+  writes. Wording both shells share is `build-view.ts`; the desktop's panes call it too. Not on the phone yet: features
+  of the user's own, additions, references, the class split editor, a source of the user's own.
+- Driven on the emulator: a character built and a sample edited, exported, and read in Node to the phone's sheet
+  checksum. Measured there: AuroraLegacy loads in 2.3 s converted, 6.6 s as files, 82 s from the network.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:

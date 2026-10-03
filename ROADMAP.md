@@ -1491,7 +1491,20 @@ pane draws and every export renders: the PDF and the print layout start from it,
       sheet document and every export are unchanged. Driven on the emulator and in the browser build, the same file
       both ways. Not yet: the maintainer's own phone, iOS, the Tauri window; spending a pool from the features that name
       it ("Channel Divinity"), per-turn uses.
-- [ ] Full build flow
+- [x] **Full build flow** ([ADR 0086](./docs/adr/0086-a-phone-builds-and-edits-with-the-desktop-s-builder-its-content-loaded-when-a-build-opens.md)).
+      Measured first (`mobile-build.test.ts`, and a probe on the emulator): a load of AuroraLegacy was 82 s from the
+      network and 15 s from the raw cache on the phone, and no corpus file reaches the UTF-16 decoder Hermes lacks. Asked
+      about that 15 s, the maintainer chose to **convert a source into Incudo's own form** ([ADR 0085](./docs/adr/0085-a-source-is-kept-converted-into-incudo-s-own-form-and-loaded-from-that.md)),
+      with keeping the files as the choice for sparing space, on both apps: one value per file, written in one batch, a
+      later load on the phone 2.3 s converted against 6.6 s from the files, and identical elements and diagnostics on the
+      real corpus. The phone's Content screen adds the game's suggested source in full; New character and a sheet's Edit
+      open one Build screen (decisions, a searchable picker, choices made, scores, hit points, class levels, prepared
+      lists, books, skipped and not held), loading content when it opens, saved with Save and asking before leaving
+      unsaved. Shared wording and rules moved to `packages/ui` (`build-view.ts`, `content-sources.ts`, `edit-session.ts`)
+      and the desktop's panes call them. Driven on the emulator: a character built from nothing and a sample edited, both
+      saved, exported and read in Node with the desktop's code to the phone's own sheet checksum. **Not yet:** a source of
+      the user's own on the phone, features of the user's own, additions, references and the class split editor there;
+      an NPC or Cairn character built on the phone; a real phone; iOS.
 - [ ] Import/export via share sheet and file picker.
       **Built** (ADR 0083): import through the file picker (`CharacterLibrary.add`), and export from the sheet's header,
       to a folder the user picks or through the share sheet, of the library file unchanged (`exportEntry`). Not yet:
