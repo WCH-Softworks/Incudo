@@ -8,7 +8,7 @@
  * say come from `build-view.ts`. Nothing here decides what a value costs, which class may be taken, or what is preparable.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import type { ElementId, ResolvedCharacterKind, StatDef } from '@incudo/core';
@@ -71,6 +71,51 @@ export function NumberField({
       placeholderTextColor={palette.muted}
       accessibilityLabel={label}
       style={[styles.number, { width, color: palette.text, borderColor: palette.border }]}
+    />
+  );
+}
+
+/**
+ * A line of text written to the builder a moment after typing stops and when the field is left: every write re-derives
+ * the character. `multiline` for a description.
+ */
+export function DraftField({
+  value: name,
+  onCommit,
+  label,
+  multiline,
+  placeholder,
+}: {
+  value: string;
+  onCommit: (value: string) => void;
+  label: string;
+  multiline?: boolean;
+  placeholder?: string;
+}) {
+  const palette = usePalette();
+  const [draft, setDraft] = useState(name);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => setDraft(name), [name]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const commit = (value: string): void => {
+    clearTimeout(timer.current);
+    if (value !== name) onCommit(value);
+  };
+  return (
+    <TextInput
+      value={draft}
+      onChangeText={(value) => {
+        setDraft(value);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => commit(value), 400);
+      }}
+      onBlur={() => commit(draft)}
+      onSubmitEditing={() => commit(draft)}
+      multiline={multiline}
+      placeholder={placeholder}
+      placeholderTextColor={palette.muted}
+      style={[styles.text, multiline && styles.multiline, { color: palette.text, borderColor: palette.border }]}
+      accessibilityLabel={label}
     />
   );
 }
@@ -419,4 +464,6 @@ const styles = StyleSheet.create({
   small: { paddingVertical: 6, paddingHorizontal: 12 },
   search: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16 },
   book: { flexWrap: 'nowrap' },
+  text: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 17 },
+  multiline: { fontSize: 15, minHeight: 64, textAlignVertical: 'top' },
 });

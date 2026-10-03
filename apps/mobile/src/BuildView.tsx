@@ -3,16 +3,19 @@
  *
  * ADR 0017's shape, in one column: no current step and nothing to go back to. What is outstanding is `decisions`, each
  * answered where it is; what was answered is `picks`, each still changeable; the parts that are not elements (scores, hit
- * points, class levels, prepared lists, books) sit after them. A renderer of `BuilderState`: every word both shells say
+ * points, class levels, prepared lists, books), what a held element gives, features of the user's own, additions and
+ * references (`BuildExtras.tsx`) sit after them. A renderer of `BuilderState`: every word both shells say
  * is `build-view.ts`'s, every tap a builder method, and choosing an element is the full-screen `Picker`.
  */
 
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { memo, useCallback, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { ElementId, ElementIndex } from '@incudo/core';
 import {
+  ADDITIONS_HEADING,
   candidateLabel,
+  CUSTOM_FEATURES_HEADING,
   decisionTags,
   formatProgress,
   progressLabel,
@@ -26,7 +29,8 @@ import {
   type OpenDecision,
 } from '@incudo/ui';
 
-import { BooksView, BudgetView, ClassLevelsView, HitPointsView, NumberField, PreparedView } from './BuildParts.tsx';
+import { BooksView, BudgetView, ClassLevelsView, DraftField, HitPointsView, NumberField, PreparedView } from './BuildParts.tsx';
+import { AdditionsView, CustomFeaturesView, HolderGrantsView, ReferencesView } from './BuildExtras.tsx';
 import { Body, Button, Card, Heading, Row, Tag } from './controls.tsx';
 import { Picker, type PickerRequest } from './Picker.tsx';
 import { usePalette } from './theme.ts';
@@ -135,6 +139,24 @@ export const BuildView = memo(function BuildView({
         </>
       ) : null}
 
+      {/* Not decisions: nothing is owed. What a held element gives, features of the user's own and what the user added,
+          in the desktop's order (ADR 0086's second pass). */}
+      <HolderGrantsView state={state} builder={builder} elements={elements} nameOf={nameOf} labelOf={labelOf} />
+
+      {state.customFeatures.available ? (
+        <>
+          <Heading>{CUSTOM_FEATURES_HEADING}</Heading>
+          <CustomFeaturesView state={state} builder={builder} pick={setRequest} />
+        </>
+      ) : null}
+
+      {state.additions.available ? (
+        <>
+          <Heading>{ADDITIONS_HEADING}</Heading>
+          <AdditionsView state={state} builder={builder} labelOf={labelOf} pick={setRequest} />
+        </>
+      ) : null}
+
       {classLevels?.classLevels ? (
         <>
           <Heading>Classes</Heading>
@@ -173,6 +195,13 @@ export const BuildView = memo(function BuildView({
         <>
           <Heading>Books</Heading>
           <BooksView list={publications} builder={builder} />
+        </>
+      ) : null}
+
+      {state.references.available ? (
+        <>
+          <Heading>{state.references.label}</Heading>
+          <ReferencesView state={state} builder={builder} labelOf={labelOf} pick={setRequest} />
         </>
       ) : null}
 
@@ -227,29 +256,7 @@ export const BuildView = memo(function BuildView({
  * character, which on a phone is tens of milliseconds a time: once per keystroke it lags the keyboard.
  */
 function NameField({ name, onCommit }: { name: string; onCommit: (name: string) => void }) {
-  const palette = usePalette();
-  const [draft, setDraft] = useState(name);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => setDraft(name), [name]);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const commit = (value: string): void => {
-    clearTimeout(timer.current);
-    if (value !== name) onCommit(value);
-  };
-  return (
-    <TextInput
-      value={draft}
-      onChangeText={(value) => {
-        setDraft(value);
-        clearTimeout(timer.current);
-        timer.current = setTimeout(() => commit(value), 400);
-      }}
-      onBlur={() => commit(draft)}
-      onSubmitEditing={() => commit(draft)}
-      style={[styles.input, { color: palette.text, borderColor: palette.border }]}
-      accessibilityLabel="Name"
-    />
-  );
+  return <DraftField value={name} onCommit={onCommit} label="Name" />;
 }
 
 /** A value already set, shown and changed behind one tap so the list stays short. */
@@ -335,7 +342,6 @@ const styles = StyleSheet.create({
   page: { padding: 16, gap: 10 },
   field: { gap: 4 },
   fieldLabel: { fontSize: 13 },
-  input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 17 },
   stepLabel: { fontWeight: '600', minWidth: 90 },
   settled: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 6 },
   decisionLabel: { fontSize: 16, fontWeight: '700', flexShrink: 1 },

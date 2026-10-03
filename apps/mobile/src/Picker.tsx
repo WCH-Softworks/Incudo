@@ -26,6 +26,8 @@ export interface PickerRequest {
   current?: ElementId;
   /** Labels that say more than the element's own, for some options (a class's unmet minimum). */
   labels?: ReadonlyMap<ElementId, string>;
+  /** False when the options are not elements (a written feature's stats), so there is no text to show. */
+  details?: boolean;
 }
 
 export function Picker({
@@ -103,7 +105,9 @@ function PickerBody({
                   {item.id === request.current ? ' (chosen)' : ''}
                 </Text>
               </Pressable>
-              <Button label={open === item.id ? 'Hide' : 'Details'} kind="link" onPress={() => setOpen(open === item.id ? null : item.id)} />
+              {request.details === false ? null : (
+                <Button label={open === item.id ? 'Hide' : 'Details'} kind="link" onPress={() => setOpen(open === item.id ? null : item.id)} />
+              )}
             </View>
             {open === item.id ? <Details id={item.id} elements={elements} /> : null}
           </View>
