@@ -98,7 +98,7 @@ export async function loadSources(
       // does not exist.
       await writeVersionStamp(platform.storage, source.id, report.index.version);
       // Converted once the load is in, from what it read (ADR 0085): the next load parses nothing.
-      await composed.finish(report.index.version);
+      await composed.finish();
     } catch (error) {
       loaded.push({
         id: source.id,

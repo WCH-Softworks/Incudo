@@ -26,15 +26,19 @@ converted, and this should have been the choice from the start; a user conservat
 | a full AuroraLegacy load on the Pixel 9 Pro emulator, Expo Go, through `loadSources` with the phone's ports (a probe run once, not committed) | cold, from the network: **82 s**, 740 files, 14,545 elements, 0 errors; again from the SQLite cache: **15 s**; the JS heap 16 → 60 MB; the process about 310 MB PSS; a fresh player character's builder 90–270 ms, one pick 80–85 ms |
 | `TextDecoder('utf-16le')`, which Hermes lacks (ADR 0083) | not reached: the network path decodes in the fetcher, and no corpus file is UTF-16 (`mobile-build.test.ts`: 804 UTF-8, 14 UTF-8 with a BOM) |
 | the loaded index as JSON, in Node | 19.9 MB, `JSON.parse` 120 ms, against 0.8–3.7 s for the XML load |
-| `tools/verify/src/converted-source.test.ts`, the corpus kept each way, in Node | kept as files 14.7 MB in 801 values; converted **19.9 MB in 2 values**; a later load 576 ms from the files, **291 ms** from the conversion; the converted load's elements, in order and in full, and its warnings and errors **identical** to the files' |
+| `tools/verify/src/converted-source.test.ts`, the corpus kept each way, in Node | kept as files 14.7 MB in 801 values; converted **19.8 MB in 801 values**; a later load 1.5 s from the files, **0.6 s** from the conversion; the converted load's elements, in order and in full, and its warnings and errors **identical** to the files' |
+| the first version on the phone: the whole conversion as **one** 21 MB value | `expo-sqlite` read it back in **20 s** (the parse took 0.75 s more); writing a conversion one value at a time spent 65 s in 1,600 statements, about 40 ms each, one commit apiece |
 
 ## Decisions
 
 1. **A source is converted, by default.** After a load, what it read (every index and file, as `parseAuroraIndex` and
-   `parseAuroraElements` returned them, each file with its `<append>`s and diagnostics) is written as one JSON value under
-   the source's cache prefix (`content/<source>/.converted`), and the raw files it replaces are removed. The next load reads
-   the conversion first; anything it does not hold (a part switched back on, a file a failed load missed) comes from the raw
-   cache or the network, and the conversion is written again.
+   `parseAuroraElements` returned them, each file with its `<append>`s and diagnostics) is written as JSON under the
+   source's cache prefix, **one value per index or file** (`content/<source>/.converted/<url>`), and the raw file each
+   replaces is removed. The next load reads the conversion first; anything it does not hold (a part switched back on, a
+   file a failed load missed) comes from the raw cache or the network, and only that is converted and written. One value
+   for the whole source was built first and measured on the phone (above): reading it back took longer than parsing the
+   files. All of a conversion's writes and removals go to `Storage.apply` where the platform has it (an optional method
+   on the port, decision 7).
 
 2. **Files, not a flat list of elements.** `ContentLibrary` folds appends across sources (ADR 0051), reports what a source
    refers to and nothing declares (ADR 0052) and what two sources both define (ADR 0054), all by the files each source
@@ -52,7 +56,7 @@ converted, and this should have been the choice from the start; a user conservat
    0046). What can make a conversion wrong is the importer parsing the same XML differently (ADR 0076 read descriptions it had
    dropped). So a conversion records `CONVERTER_VERSION`, one written by another is not read, and the source is converted
    again from the network. A guard test hashes the importer's parsing files and fails when they change, asking whether the
-   version should move.
+   version should move. Each value records the version, so a bump reconverts file by file.
 
 5. **A refresh converts again.** It falls back to the conversion, then the raw files, for what it cannot reach (ADR 0050),
    records everything it read and writes it as the new conversion, unless it reached nothing at all, in which case it
@@ -64,11 +68,15 @@ converted, and this should have been the choice from the start; a user conservat
    loaded, carrying Aurora's index structure, never a file a user picks or shares. Exporting a converted source as a file
    is Phase 7's (systems and content as a user surface), and will start from this shape.
 
+7. **`Storage` gains an optional `apply(changes)`**, several writes and removals in one commit, and `applyChanges` in
+   `core` uses it where it is there and writes one at a time where it is not. The phone's `MobileStorage` implements it
+   as one SQLite transaction. The desktop's IndexedDB and Node's storage do not yet: nothing measured there needs it.
+
 ## What was built
 
 - `packages/content`: `load-sources.ts` (moved from `apps/desktop/src/content.ts`, `loadSources` now taking
-  `ComposeOptions`), `converted-source.ts` (`ConvertedContentSource`, `RecordingContentSource`, `readConverted`,
-  `writeConversion`, `convertedKey`, `CONVERTER_VERSION`), `composeForLoad` and the converted layers in `compose.ts`, the
+  `ComposeOptions`), `converted-source.ts` (`ConvertedContentSource`, `ConvertingContentSource`, `readConverted`,
+  `removeConversion`, `convertedPrefix`, `convertedKey`, `CONVERTER_VERSION`); `Storage.apply` and `applyChanges` in `core`, `composeForLoad` and the converted layers in `compose.ts`, the
   refresh's conversion, `keep` and `keepsConverted` in `profile.ts`.
 - Tests: `packages/content/src/converted-source.test.ts` (each case naming the perturbation that fails it: the second load
   touches no network and loads the same; the raw copies go; an append is folded once; `files` writes none and removes an old
@@ -78,7 +86,7 @@ converted, and this should have been the choice from the start; a user conservat
 
 ## Consequences
 
-- A converted AuroraLegacy takes about 20 MB where its files took 15. A user who would rather spare the space keeps the
+- A converted AuroraLegacy takes about 20 MB where its files took 15, in the same number of values. A user who would rather spare the space keeps the
   files and pays a parse per load.
 - Every existing desktop profile becomes converted on its next load, and its raw files are removed then.
 - Converting a load costs one serialisation and one large write, once per change; a load answered wholly from the
@@ -93,3 +101,16 @@ In the browser build on Windows (the dev server, IndexedDB as `Storage`): Aurora
 line (fetched again, since its files had gone with the conversion): a reload **5.0 s**. Back to "Converted": converted
 on that load from the files, a reload **1.7 s**. No console errors. The desktop's add row and each source's line carry
 the choice ("Converted" / "Files") with one sentence saying what each costs.
+
+On the Pixel 9 Pro emulator in Expo Go (Android 16, 3 GB, another app's memory swapped beside it), AuroraLegacy through
+the phone's Content screen and Build screen (ADR 0086), times from the app's own development log:
+
+| | kept as files | converted |
+|---|---|---|
+| downloaded in full from the network | 82–83 s | 40 s (a refresh: the download, then one batched conversion) |
+| made from the other form on the device | — | 15.5 s from the files kept |
+| a later load, the Build screen open, after a restart | 6.6 s, 6.8 s | **2.3 s, 2.4 s** |
+
+The process took about 330–350 MB (PSS) with the content loaded. Two things the phone found that Node did not: the
+single-value conversion's 20 s read, and the Build screen drawing itself again for each progress report of a load (20 s
+for the same converted load before the build view was memoized).

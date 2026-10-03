@@ -70,9 +70,10 @@ export class ContentSources {
     for (const listener of this.listeners) listener();
   }
 
-  /** Read the profile. Loads nothing. */
+  /** Read the profile, once; later calls change nothing (and publish nothing). Loads no content. */
   restore = async (): Promise<void> => {
-    this.profile ??= await SourceProfile.load(this.platform.storage);
+    if (this.profile) return;
+    this.profile = await SourceProfile.load(this.platform.storage);
     this.patch({ ready: true, sources: [...this.profile.sources] });
   };
 
@@ -171,7 +172,14 @@ export class ContentSources {
     const loading = (async () => {
       this.patch({ loading: { systemId }, message: undefined });
       try {
-        const loaded = await loadSources(enabled, this.platform, (progress) => this.patch({ loading: { systemId, progress } }));
+        // Progress at most five times a second: every listener renders on a patch, and a load reports every file.
+        let reported = 0;
+        const loaded = await loadSources(enabled, this.platform, (progress) => {
+          const now = Date.now();
+          if (now - reported < 200 && progress.loaded < progress.total) return;
+          reported = now;
+          this.patch({ loading: { systemId, progress } });
+        });
         const profile = await this.current();
         for (const source of loaded.sources) {
           if (source.failed) continue;

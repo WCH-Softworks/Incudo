@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { MemoryStorage, type FetchResult, type Fetcher, type GameSystem } from '@incudo/core';
-import { SourceProfile, cachePrefix, convertedKey } from '@incudo/content';
+import { SourceProfile, cachePrefix, convertedPrefix } from '@incudo/content';
 
 import { ContentSources } from './content-sources.ts';
 
@@ -41,7 +41,7 @@ test('a suggested source is added under its system, downloaded and loaded, and o
   assert.ok(sources.getState().loaded['game']?.elements.get('ID_WIDGET'));
   assert.equal(sources.suggestionsFor('game').length, 0);
   assert.deepEqual(sources.sourcesFor('other'), [], "another system's sources are its own (ADR 0031)");
-  assert.ok(await storage.read(convertedKey(INDEX)), 'kept converted as chosen (ADR 0085)');
+  assert.ok((await storage.list(convertedPrefix(INDEX))).length > 0, 'kept converted as chosen (ADR 0085)');
   const saved = await SourceProfile.load(storage);
   assert.equal(saved.find(INDEX)?.elementCount, 1, 'the profile records what it contributed');
 });
@@ -86,6 +86,19 @@ test('choosing how a source is kept loads it again that way', async () => {
   const sources = new ContentSources({ fetcher: new Host(), storage }, systems);
   await sources.add('game', systems[0]!.suggestedSources![0]!, 'converted');
   await sources.setKeep(INDEX, 'files');
-  assert.equal(await storage.read(convertedKey(INDEX)), null);
+  assert.deepEqual(await storage.list(convertedPrefix(INDEX)), []);
   assert.ok(sources.getState().loaded['game']?.elements.get('ID_WIDGET'));
+});
+
+test('restoring again publishes nothing', async () => {
+  // Perturbation: `restore` patching a new `sources` array every call made the phone's Build screen, whose effect
+  // restores and then depends on the sources it reads, render in a loop until React stopped it.
+  const sources = new ContentSources({ fetcher: new Host(), storage: new MemoryStorage() }, systems);
+  await sources.restore();
+  const before = sources.getState();
+  let published = 0;
+  sources.subscribe(() => published++);
+  await sources.restore();
+  assert.equal(published, 0);
+  assert.equal(sources.getState(), before);
 });

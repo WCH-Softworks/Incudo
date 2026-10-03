@@ -40,6 +40,25 @@ export interface Storage {
   write(key: string, value: string): Promise<void>;
   remove(key: string): Promise<void>;
   list(prefix: string): Promise<string[]>;
+  /**
+   * Several writes and removals at once (`null` removes), where the platform can make them one commit — ADR 0085. A
+   * source's conversion is hundreds of them, and the phone's SQLite measured about 40 ms a statement on its own. A
+   * storage without it is written one change at a time (`applyChanges`).
+   */
+  apply?(changes: ReadonlyArray<readonly [key: string, value: string | null]>): Promise<void>;
+}
+
+/** Write and remove `changes` through `storage.apply` where it has one, else one at a time, in order. */
+export async function applyChanges(
+  storage: Storage,
+  changes: ReadonlyArray<readonly [key: string, value: string | null]>,
+): Promise<void> {
+  if (!changes.length) return;
+  if (storage.apply) return storage.apply(changes);
+  for (const [key, value] of changes) {
+    if (value === null) await storage.remove(key);
+    else await storage.write(key, value);
+  }
 }
 
 /**

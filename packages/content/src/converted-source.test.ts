@@ -8,11 +8,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { MemoryStorage, type FetchResult, type Fetcher } from '@incudo/core';
+import { MemoryStorage, type FetchResult, type Fetcher, type Storage } from '@incudo/core';
 
 import { cacheKey } from './http-source.ts';
 import { cachePrefix, refreshSource } from './compose.ts';
-import { CONVERTER_VERSION, convertedKey, readConverted } from './converted-source.ts';
+import { CONVERTER_VERSION, convertedKey, convertedPrefix, readConverted } from './converted-source.ts';
 import { loadSources } from './load-sources.ts';
 import { SourceProfile, type ConfiguredSource, type SourceKeep } from './profile.ts';
 
@@ -76,12 +76,12 @@ test('a converted source loads from its conversion the second time, and loads th
 });
 
 test('the conversion replaces the raw files it was made from', async () => {
-  // Perturbation: not removing the raw copies in `writeConversion` keeps every file twice.
+  // Perturbation: not removing the raw copies in `finish` keeps every file twice.
   const storage = new MemoryStorage();
   const source = configured();
   await load(source, storage, new ContentFetcher());
   const keys = await storage.list(cachePrefix(source.id));
-  assert.ok(keys.includes(convertedKey(source.id)));
+  assert.equal(keys.filter((key) => key.startsWith(convertedPrefix(source.id))).length, 3, 'the index and both files');
   assert.equal(keys.filter((key) => key.startsWith(cacheKey(source.id, ''))).filter((key) => !key.includes('/.')).length, 0);
 });
 
@@ -107,23 +107,24 @@ test('a source kept as files writes no conversion, and drops one left from befor
   await load(configured(), storage, fetcher);
   const files = configured('files');
   await load(files, storage, fetcher);
-  assert.equal(await storage.read(convertedKey(files.id)), null);
+  assert.deepEqual(await storage.list(convertedPrefix(files.id)), []);
   fetcher.offline = true;
   assert.equal((await loadSources([files], { fetcher, storage })).errors.length, 0, 'the raw files are back');
 });
 
 test('a conversion written by another converter is not read', async () => {
-  // Perturbation: `readConverted` not comparing `converter` would answer from the old one, fetching nothing.
+  // Perturbation: `readEntry` not comparing `converter` would answer from the old one, fetching nothing.
   const storage = new MemoryStorage();
   const fetcher = new ContentFetcher();
   const source = configured();
   await load(source, storage, fetcher);
-  const stored = JSON.parse((await storage.read(convertedKey(source.id)))!);
-  await storage.write(convertedKey(source.id), JSON.stringify({ ...stored, converter: CONVERTER_VERSION + 1 }));
+  const key = convertedKey(source.id, 'https://example.test/widgets.xml');
+  const stored = JSON.parse((await storage.read(key))!);
+  await storage.write(key, JSON.stringify({ ...stored, converter: CONVERTER_VERSION + 1 }));
   fetcher.requested.length = 0;
   await load(source, storage, fetcher);
-  assert.equal(fetcher.requested.length, 3, 'converted again from the network');
-  assert.equal((await readConverted(storage, source.id))?.converter, CONVERTER_VERSION);
+  assert.deepEqual(fetcher.requested, ['https://example.test/widgets.xml'], 'that file converted again from the network, and only it');
+  assert.equal(JSON.parse((await storage.read(key))!).converter, CONVERTER_VERSION);
 });
 
 test('a refresh converts again, and a file it cannot reach is kept from the conversion', async () => {
@@ -140,4 +141,35 @@ test('a refresh converts again, and a file it cannot reach is kept from the conv
   assert.deepEqual(Object.keys(converted!.files).sort(), ['https://example.test/extras.xml', 'https://example.test/widgets.xml']);
   fetcher.offline = true;
   assert.deepEqual(await load(source, storage, fetcher), before);
+});
+
+test('a load that fetched one file converts that file and writes nothing else', async () => {
+  // Perturbation: `finish` writing every answer, converted or not, rewrites the whole source on every load.
+  const storage = new MemoryStorage();
+  const fetcher = new ContentFetcher();
+  const source = configured();
+  await load(source, storage, fetcher);
+  const writes: string[] = [];
+  const write = storage.write.bind(storage);
+  storage.write = async (key, value) => {
+    writes.push(key);
+    return write(key, value);
+  };
+  await load(source, storage, fetcher);
+  assert.deepEqual(writes.filter((key) => key.includes('/.converted/')), []);
+});
+
+test('a conversion is written as one batch where the storage takes one', async () => {
+  // Perturbation: `finish` writing one value at a time ignores `apply`, which on the phone is 1,600 commits (ADR 0085).
+  const storage = new MemoryStorage();
+  const batches: number[] = [];
+  (storage as Storage).apply = async (changes) => {
+    batches.push(changes.length);
+    for (const [key, value] of changes) {
+      if (value === null) await storage.remove(key);
+      else await storage.write(key, value);
+    }
+  };
+  await load(configured(), storage, new ContentFetcher());
+  assert.deepEqual(batches, [6], 'three values written and three raw copies removed, together');
 });

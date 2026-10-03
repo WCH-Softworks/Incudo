@@ -19,7 +19,7 @@ import { LayeredContentSource } from './layered-source.ts';
 import { ContentLibrary } from './library.ts';
 import { partsFilter } from './parts.ts';
 import { keepsConverted, type ConfiguredSource } from './profile.ts';
-import { ConvertedContentSource, RecordingContentSource, convertedKey, writeConversion } from './converted-source.ts';
+import { ConvertedContentSource, ConvertingContentSource, convertedKey, convertedPrefix, removeConversion } from './converted-source.ts';
 import { compareVersions, type ContentSource, type FileRef, type UpdateStatus } from './source.ts';
 
 /** As many requests in flight as a load makes (ADR 0029): polite to a host doing this for free. */
@@ -50,52 +50,42 @@ export function versionStampKey(sourceId: string): string {
  * flip".
  */
 export function composeSource(source: ConfiguredSource, options: ComposeOptions): ContentSource {
-  return composeLayers(source, options).source;
+  return composeForLoad(source, options).source;
 }
 
-function composeLayers(
+/**
+ * The source a load reads, and what to do once the load is done — ADR 0085.
+ *
+ * A source kept converted answers from its conversion first (`ConvertingContentSource`), and the raw cache and the
+ * network answer only what is not converted yet; `finish` converts that. A source kept as files is ADR 0029's
+ * cache → network, and `finish` removes any conversion left from when it was kept converted, so switching back is
+ * honoured on the next load.
+ */
+export function composeForLoad(
   source: ConfiguredSource,
   options: ComposeOptions,
-): { source: ContentSource; converted?: ConvertedContentSource } {
+): { source: ContentSource; finish: () => Promise<void> } {
   // A file the user added is its own copy, read from storage and never from a network (ADR 0056).
-  if (isFileSource(source)) return { source: new FileContentSource(source.id, options.storage) };
+  if (isFileSource(source)) return { source: new FileContentSource(source.id, options.storage), finish: async () => undefined };
   const http = new HttpContentSource({
     id: source.id,
     fetcher: options.fetcher,
     writeThrough: options.storage,
     resolveByName: options.resolveByName,
   });
-  const cached = new CachedContentSource(source.id, options.storage);
-  // A converted source reads its conversion first (ADR 0085); the raw cache behind it answers only what was fetched
-  // since, and is emptied again when the load is converted.
-  if (!keepsConverted(source)) return { source: new LayeredContentSource(source.id, [cached, http], http) };
-  const converted = new ConvertedContentSource(source.id, options.storage);
-  return { source: new LayeredContentSource(source.id, [converted, cached, http], http), converted };
-}
-
-/**
- * The source a load reads, and what to do once the load is done — ADR 0085. For a source kept converted, `finish`
- * writes the conversion when anything came from elsewhere than the stored one; for a source kept as files, it removes
- * any conversion left from when it was kept converted, so switching back is honoured on the next load.
- */
-export function composeForLoad(
-  source: ConfiguredSource,
-  options: ComposeOptions,
-): { source: ContentSource; finish: (version: string | undefined) => Promise<void> } {
-  const layers = composeLayers(source, options);
-  if (!layers.converted) {
-    return {
-      source: layers.source,
-      finish: async () => {
-        if (!isFileSource(source)) await options.storage.remove(convertedKey(source.id));
-      },
-    };
+  const behind = new LayeredContentSource(source.id, [new CachedContentSource(source.id, options.storage), http], http);
+  if (!keepsConverted(source)) {
+    return { source: behind, finish: () => removeConversion(options.storage, source.id) };
   }
-  const recorder = new RecordingContentSource(layers.source, layers.converted);
+  const converting = new ConvertingContentSource(
+    options.storage,
+    behind,
+    new ConvertedContentSource(source.id, options.storage),
+  );
   return {
-    source: recorder,
-    finish: async (version) => {
-      await writeConversion(options.storage, recorder, source.url, version);
+    source: converting,
+    finish: async () => {
+      await converting.finish();
     },
   };
 }
@@ -298,13 +288,12 @@ export async function refreshSource(source: ConfiguredSource, options: ComposeOp
 
   // The parts the user switched off are not fetched, and the prune below removes them like a file upstream stopped naming
   // (ADR 0055): the refresh keeps what the load uses.
-  // Recorded, so a converted source is converted again from what the refresh read (ADR 0085). `fresh` is not asked:
-  // everything a refresh reads is new to the conversion it replaces.
-  const recorder = new RecordingContentSource(refreshing, new ConvertedContentSource(source.id, new EmptyStorage()));
+  // Kept, so a converted source is converted again from everything the refresh read (ADR 0085).
+  const recorder = new ConvertingContentSource(options.storage, refreshing, undefined);
   const report = await new ContentLibrary().loadSource(recorder, source.url, { include: partsFilter(source) });
 
   const keep = new Set<string>([versionStampKey(source.id)]);
-  if (keepsConverted(source)) keep.add(convertedKey(source.id));
+  if (keepsConverted(source)) for (const url of touched) keep.add(convertedKey(source.id, url));
   for (const url of touched) {
     keep.add(cacheKey(source.id, url));
     keep.add(etagKey(source.id, url));
@@ -313,14 +302,12 @@ export async function refreshSource(source: ConfiguredSource, options: ComposeOp
   for (const key of await options.storage.list(cachePrefix(source.id))) {
     if (keep.has(key)) continue;
     await options.storage.remove(key);
-    if (!key.startsWith(etagPrefix(source.id))) removed++;
+    if (!key.startsWith(etagPrefix(source.id)) && !key.startsWith(convertedPrefix(source.id))) removed++;
   }
 
   await writeVersionStamp(options.storage, source.id, report.index.version);
   // Not when nothing was reached: a refresh with no network changes nothing, a converted source included.
-  if (keepsConverted(source) && http.stats.fetched + http.stats.unchanged > 0) {
-    await writeConversion(options.storage, recorder, source.url, report.index.version);
-  }
+  if (keepsConverted(source) && http.stats.fetched + http.stats.unchanged > 0) await recorder.finish();
   return {
     fetched: http.stats.fetched,
     unchanged: http.stats.unchanged,
@@ -342,18 +329,6 @@ export async function evictSourceCache(storage: Storage, sourceId: string): Prom
   const keys = await storage.list(cachePrefix(sourceId));
   for (const key of keys) await storage.remove(key);
   return keys.length;
-}
-
-/** Storage holding nothing: a recorder's view of "no stored conversion", so every answer counts as fresh. */
-class EmptyStorage implements Storage {
-  async read(): Promise<string | null> {
-    return null;
-  }
-  async write(): Promise<void> {}
-  async remove(): Promise<void> {}
-  async list(): Promise<string[]> {
-    return [];
-  }
 }
 
 /** For a caller that wants to know whether a particular file is already local. */

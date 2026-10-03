@@ -16,7 +16,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { MemoryStorage, sha256Hex, type FetchResult, type Fetcher } from '@incudo/core';
-import { CONVERTER_VERSION, cachePrefix, convertedKey, loadSources, type ConfiguredSource, type SourceKeep } from '@incudo/content';
+import { CONVERTER_VERSION, cachePrefix, convertedPrefix, loadSources, type ConfiguredSource, type SourceKeep } from '@incudo/content';
 
 import { LocalMirrorFetcher, OfflineFetcher } from './node-platform.ts';
 import { repoRoot } from './node-system.ts';
@@ -92,7 +92,7 @@ test('a converted source loads what the files load, and the second time reads no
   assert.equal(fromFiles.elements, fromDisk.elements);
 
   const prefix = cachePrefix(location.index);
-  const conversion = (await converted.read(convertedKey(location.index)))!.length;
+  const conversion = await storedSize(converted, convertedPrefix(location.index));
   t.diagnostic(`${fromDisk.count} elements; first load from disk ${fromDisk.ms} ms, converting ${converting.ms} ms`);
   t.diagnostic(`a later load: from the files kept ${fromFiles.ms} ms, from the conversion ${fromConversion.ms} ms`);
   t.diagnostic(
