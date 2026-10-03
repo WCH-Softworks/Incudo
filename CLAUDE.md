@@ -446,8 +446,13 @@ Things to know before touching either:
 - **Build and Edit are one phone screen** (`BuildScreen.tsx`, rendering `BuildView`, memoized: a load's progress redrew
   the whole build and cost 18 s). Save is `saveEdit` (`packages/ui/src/edit-session.ts`) through `CharacterLibrary.save`
   under ADR 0027's conflict check; leaving unsaved asks. The sheet reopens its file on focus and Edit waits for play
-  writes. Wording both shells share is `build-view.ts`; the desktop's panes call it too. Not on the phone yet: features
-  of the user's own, additions, references, the class split editor, a source of the user's own.
+  writes. Wording both shells share is `build-view.ts`; the desktop's panes call it too. **Second pass**
+  (`BuildExtras.tsx`): what a creature gives, features of the user's own, additions and references, worded and grouped by
+  `holderGrantSections` and its siblings (`build-view.ts`), `additionGroups`, `customLineWithMode` and the rest of
+  `custom-features.ts`, `referenceSuggestionNote`; `build-sections.test.ts` holds them. A written feature's line is one row
+  (stat through the `Picker` with `details: false`, Adds | Sets, number, Remove: the maintainer's choice). Not on the phone
+  yet: the class split editor, a source of the user's own. A phone Save of a player character took 5–10 s on the
+  emulator, and Back during it asks as if unsaved; not looked into.
 - Driven on the emulator: a character built and a sample edited, exported, and read in Node to the phone's sheet
   checksum. Measured there: AuroraLegacy loads in 2.3 s converted, 6.6 s as files, 82 s from the network.
 

@@ -1502,9 +1502,14 @@ pane draws and every export renders: the PDF and the print layout start from it,
       lists, books, skipped and not held), loading content when it opens, saved with Save and asking before leaving
       unsaved. Shared wording and rules moved to `packages/ui` (`build-view.ts`, `content-sources.ts`, `edit-session.ts`)
       and the desktop's panes call them. Driven on the emulator: a character built from nothing and a sample edited, both
-      saved, exported and read in Node with the desktop's code to the phone's own sheet checksum. **Not yet:** a source of
-      the user's own on the phone, features of the user's own, additions, references and the class split editor there;
-      an NPC or Cairn character built on the phone; a real phone; iOS.
+      saved, exported and read in Node with the desktop's code to the phone's own sheet checksum. **Second pass** (ADR
+      0086, same ADR): what a creature gives (removed and given back), features of the user's own (each line a row of
+      the stat, Adds or Sets, the number, the maintainer's choice), additions (a full-screen picker per type, an unmet
+      prerequisite marked) and references, their grouping and wording moved to `packages/ui` for both shells. Driven:
+      an NPC built on a Wolf with a trait removed and a written "Godspeed: Speed 60", a player character given a feat
+      it does not qualify for and a kept stat block, both exported to the phone's sheet checksum in Node. **Not yet:**
+      a source of the user's own on the phone, the class split editor there; a Cairn character built on the phone; a
+      real phone; iOS.
 - [ ] Import/export via share sheet and file picker.
       **Built** (ADR 0083): import through the file picker (`CharacterLibrary.add`), and export from the sheet's header,
       to a folder the user picks or through the share sheet, of the library file unchanged (`exportEntry`). Not yet:

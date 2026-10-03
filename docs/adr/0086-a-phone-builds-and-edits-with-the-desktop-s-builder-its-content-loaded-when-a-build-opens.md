@@ -58,7 +58,7 @@ the raw cache 15 s, the JS heap 16 → 60 MB; a player character's builder made 
    list, a full-screen searchable picker with each option's own text a tap away, choices made (each slot changeable, a
    set's removable), ability scores by every method, hit points per level, class levels (adding a level in any class, and
    changing what a level went to), prepared lists, books, skipped decisions (Reconsider) and what is not held. **Left for a
-   second pass** (the desktop has each): features of the user's own and what a creature gives (ADRs 0061, 0063, 0067),
+   second pass** (the desktop has each; the first four are built since, see "The second pass" below): features of the user's own and what a creature gives (ADRs 0061, 0063, 0067),
    additions (ADR 0064), references (ADRs 0068, 0070), the class split editor (ADR 0045's other input; adding and changing
    levels covers multiclassing), the progress control's "use the creature's" link.
 
@@ -109,6 +109,51 @@ of ADR 0085.
 **Not run:** a real phone, iOS, a development or release build; an NPC, a legendary creature or a Cairn adventurer built
 on the phone (each opens, and its parts are the same renderers); a source refreshed or removed with the network off; a
 Save refused as a conflict on a device (held by `edit-session.test.ts`).
+
+## The second pass
+
+Decision 4's first four are on the phone (2026-10-03): what a held element gives (ADRs 0061, 0067), features of the user's
+own (ADRs 0063, 0065), additions (ADR 0064) and references (ADRs 0068, 0070). Still left: the class split editor and the
+progress control's "use the creature's" link.
+
+- **One more question for the maintainer: how a written feature's line is edited on a small screen.** Their choice: each
+  line is a row in the feature's card, the stat's name a link that opens the full-screen picker over the stats (searchable,
+  each labelled with its sheet section, "Armor Class (Stat Block)", and no Details, since a stat has no text), an Adds |
+  Sets pair (Sets disabled on a stat that is worked out), the number, and Remove. The other option was a screen per line.
+- **What the desktop's panes kept to themselves moved to `packages/ui`**, and both shells call it: `holderGrantSections`,
+  `holderGrantsHeading`, `holderGrantsHint`, `holderGrantStatus`, `holderGrantsUnseenNote` (`build-view.ts`);
+  `additionGroups`, `additionOptionLabel` and the add list's sentences (`additions.ts`, the unmet words being the
+  sheet's `PREREQUISITES_UNMET`); `referenceSuggestionNote` and the keep list's sentences (`references.ts`);
+  `customFeatureLines`, `withCustomLine`, `withoutCustomLine`, `customLineWithMode` (which refuses a set on a stat that may
+  not be set, so neither shell writes one the engine would add on top of), `customStatGroups`, `customStatChoiceLabel`,
+  `customFeatureTypeChoices` and the section's sentences (`custom-features.ts`). `build-sections.test.ts` names the
+  perturbation that fails each case. The holder-grants hint names the giver ("These come with Wolf.") rather than "the
+  creature", since `packages/ui` names no game noun.
+- **The phone's `BuildExtras.tsx`** renders the four parts, after Choices made and before Classes in the desktop's order,
+  references after Books. An addition is chosen type by type (a button per type the kind lists, and "All of these"), each
+  opening the full-screen `Picker`, its options asked of the builder only then; a kept reference's text is behind Show,
+  drawn by `htmlToBlocks` as the sheet's is. `DraftField` (the name field's debounce, now with `multiline`) moved to
+  `BuildParts.tsx` for a feature's name and description.
+
+**Driven** on the Pixel 9 Pro emulator in Expo Go, by `adb` taps:
+
+- **An NPC:** a Wolf through the picker's search; From Wolf listed Keen Hearing and Smell, Pack Tactics and Bite; Bite
+  removed ("removed", Give back) and given back, Pack Tactics removed; a feature named "Godspeed", listed under Traits,
+  described, a line added (Armor Class, set to 13, the wolf's own), moved to Speed through the stat picker (set to 40, the
+  wolf's own), 60 typed, Adds and Sets toggled (the 60 kept); saved; the sheet read Speed 60.
+- **A player character** (the dwarf fighter built in the first pass): Feats, searched "elven", offered as "Elven Accuracy
+  — Xanathar's Guide to Everything · prerequisites not met", added, listed under Feats with the tag and the note, and in
+  Problems; Choose from your content, "kraken", the 2025 Monster Manual's prose stat block kept, its text shown under Show
+  (the table drawn); renamed and saved.
+- **The same file on both:** both exported through the phone's folder picker and read in Node with the desktop's code and
+  no content source: the sheet's SHA-256 equal to what the phone logged for each, and the files record the removed grant
+  and the written feature (format 4) and the addition and the reference (format 7).
+- On the desktop's browser build: the Additions pane's add list renders through the shared wording (193 options marked
+  "prerequisites not met" for a fresh character), no console errors.
+
+**Found by driving, not fixed:** a Save of the player character took 5–10 s on the emulator (the NPC's well under 4), and
+pressing Back while it runs raises the "Save this character?" prompt, since the session is not yet the saved one; choosing
+Save there saved again without a conflict. Where the time goes was not measured.
 
 ## Consequences
 
