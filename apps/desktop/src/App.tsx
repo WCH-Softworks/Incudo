@@ -692,6 +692,13 @@ function Shell({
         profile.current?.update(id, { mode });
         await persist();
       },
+      // Reloaded at once, so the source is converted, or its conversion dropped, while the user watches (ADR 0085). A
+      // source kept as files whose files went with its conversion fetches them again.
+      setKeep: async (id, keep) => {
+        profile.current?.update(id, { keep });
+        await persist();
+        await reload();
+      },
       move: async (id, direction) => {
         // ADR 0054: the order is which source is used when two define the same id, the later one. Moved among this
         // system's sources only, and reloaded only when the order of the enabled ones changed, which is all a load reads.

@@ -85,3 +85,11 @@ converted, and this should have been the choice from the start; a user conservat
   conversion writes nothing.
 - The element's `origin` is stored for each of the 14,545 elements; it is the same within a file and could be left out
   and restored on read, if space is measured to matter.
+
+## Driven
+
+In the browser build on Windows (the dev server, IndexedDB as `Storage`): AuroraLegacy added from the suggestion with
+"Converted", 28.8 s cold, 14,545 elements from 740 files; a page reload ready in **2.0 s**. Switched to "Files" on its
+line (fetched again, since its files had gone with the conversion): a reload **5.0 s**. Back to "Converted": converted
+on that load from the files, a reload **1.7 s**. No console errors. The desktop's add row and each source's line carry
+the choice ("Converted" / "Files") with one sentence saying what each costs.

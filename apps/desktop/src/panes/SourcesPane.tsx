@@ -24,6 +24,8 @@ import {
   type MissingContent,
   type RefreshReport,
   type SourceMode,
+  type SourceKeep,
+  keepsConverted,
   type SourceOverlap,
   type UpdateStatus,
 } from '@incudo/content';
@@ -48,6 +50,8 @@ export interface SourcesActions {
   rename: (id: string, name: string) => Promise<void>;
   setEnabled: (id: string, enabled: boolean) => Promise<void>;
   setMode: (id: string, mode: SourceMode) => Promise<void>;
+  /** Keep what was fetched converted or as the files it came as, and reload — ADR 0085. */
+  setKeep: (id: string, keep: SourceKeep) => Promise<void>;
   /** Swap with the neighbour above or below among this system's sources — ADR 0054. */
   move: (id: string, direction: 'up' | 'down') => Promise<void>;
   checkForUpdates: (id: string) => Promise<void>;
@@ -123,6 +127,7 @@ export function SourcesPane({
   );
   const [url, setUrl] = useState('');
   const [mode, setMode] = useState<SourceMode>('stream');
+  const [keep, setKeep] = useState<SourceKeep>('converted');
   const [failure, setFailure] = useState<string | null>(null);
   /** A source about to be added with some of its parts chosen first (ADR 0055): what to add it with once they are. */
   const [choosing, setChoosing] = useState<{ url: string; options?: Partial<ConfiguredSource> } | null>(null);
@@ -130,7 +135,7 @@ export function SourcesPane({
   async function add(target: string, options?: Partial<ConfiguredSource>): Promise<void> {
     setFailure(null);
     try {
-      await actions.add(target.trim(), mode, options);
+      await actions.add(target.trim(), mode, { ...options, keep });
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
     }
@@ -221,6 +226,7 @@ export function SourcesPane({
           <option value="stream">Stream</option>
           <option value="download">Download</option>
         </select>
+        <KeepSelect value={keep} disabled={busy} label="How to keep it" onChange={setKeep} />
         <button type="button" onClick={() => void add(url)} disabled={busy || !url.trim()}>
           {busy ? 'Loading…' : 'Add'}
         </button>
@@ -237,6 +243,11 @@ export function SourcesPane({
         keeps it the same way, so it is offline after that too. Both fetch every file the
         source lists, less any part you switch off, because building a character offers choices
         from all of them. Nothing is fetched again until you ask.
+      </p>
+      <p className="hint">
+        <strong>Converted</strong> keeps what was fetched in Incudo's own form, which loads quickly and takes somewhat
+        more space. <strong>Files</strong> keeps the files as they came, which takes less space and is read again every
+        time content loads.
       </p>
 
       {/* ADR 0055: the parts are read from the source's indexes, before any of its content is loaded. */}
@@ -535,6 +546,13 @@ function SourceRow({
             <option value="stream">Stream</option>
             <option value="download">Download</option>
           </select>
+        )}
+        {!file && (
+          <KeepSelect
+            value={keepsConverted(source) ? 'converted' : 'files'}
+            label={`How to keep ${source.name}`}
+            onChange={(keep) => void actions.setKeep(source.id, keep)}
+          />
         )}
       </div>
 
@@ -912,5 +930,25 @@ function PartItem({
         </ul>
       </details>
     </li>
+  );
+}
+
+/** Converted or as files — ADR 0085. The words are the hint's under "Add a source by URL". */
+function KeepSelect({
+  value,
+  label,
+  disabled,
+  onChange,
+}: {
+  value: SourceKeep;
+  label: string;
+  disabled?: boolean;
+  onChange: (keep: SourceKeep) => void;
+}): React.JSX.Element {
+  return (
+    <select value={value} disabled={disabled} aria-label={label} onChange={(event) => onChange(event.target.value as SourceKeep)}>
+      <option value="converted">Converted</option>
+      <option value="files">Files</option>
+    </select>
   );
 }
