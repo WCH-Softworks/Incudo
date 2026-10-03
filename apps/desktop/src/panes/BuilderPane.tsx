@@ -21,7 +21,17 @@ import type {
   SettledPick,
   DeclinedDecision,
 } from '@incudo/ui';
-import { candidateLabel as describeCandidate, formatProgress, progressLabel } from '@incudo/ui';
+import {
+  candidateLabel as describeCandidate,
+  decisionTags,
+  formatProgress,
+  progressLabel,
+  settledSteps,
+  slotOptions,
+  stepStatus,
+  withSlot,
+  withoutSlot,
+} from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
 import { BudgetEditor, CompactBudget } from './BudgetEditor.tsx';
@@ -70,14 +80,7 @@ export function BuilderPane({
   const classLevelsStep = steps.find((step) => step.classLevels);
 
   /** Budgeted or per-level-roll steps with nothing outstanding — still editable, see below. */
-  const settled = steps.filter(
-    (step) =>
-      (step.budget &&
-        !decisions.some((decision) => decision.kind === 'budget' && decision.stepId === step.id)) ||
-      (step.hitPoints &&
-        step.hitPoints.levels.length > 0 &&
-        !decisions.some((decision) => decision.kind === 'hitpoints' && decision.stepId === step.id)),
-  );
+  const settled = settledSteps(state);
 
   return (
     <main className="pane builder">
@@ -194,11 +197,9 @@ export function BuilderPane({
                     </span>
                   ))}
                 {step.available ? (
-                  <span className={step.complete ? 'tag done' : 'tag open'}>
-                    {step.complete ? 'complete' : `${step.openCount} open`}
-                  </span>
+                  <span className={step.complete ? 'tag done' : 'tag open'}>{stepStatus(step)}</span>
                 ) : (
-                  <span className="tag blocked">needs {step.blockedBy.join(', ')}</span>
+                  <span className="tag blocked">{stepStatus(step)}</span>
                 )}
                 {step.budget && (
                   <span className="tag">
@@ -542,18 +543,12 @@ function Decision({
     <>
       <div className="decision-head">
         <span className="label">{decision.label}</span>
-        {!decision.blocking && <span className="tag">optional</span>}
-        {/* A set has no count to run down — "3 left" of optional rules would say the opposite. */}
-        {!decision.multiple && (
-          <span className="tag open">
-            {decision.remaining > 0 ? `${decision.remaining} left` : 'all recorded'}
+        {/* "optional", "2 left" (never for a set), "opened at 4" in the granting element's own track (ADR 0015). */}
+        {decisionTags(decision).map((tag) => (
+          <span key={tag} className={/ left$|^all recorded$/.test(tag) ? 'tag open' : 'tag'}>
+            {tag}
           </span>
-        )}
-        {decision.openedAt !== undefined && (
-          // The level in the *granting element's own track*, not the character's total — on a
-          // Rogue 5 / Wizard 3 a wizard rule's level 3 means wizard 3 (ADR 0015).
-          <span className="tag">opened at {decision.openedAt}</span>
-        )}
+        ))}
         {decision.from && <span className="from">from {nameOf(decision.from)}</span>}
         {/*
           Only where declining means anything (ADR 0033) — a blocking decision has no Skip
@@ -683,12 +678,7 @@ function SettledPickEditor({
   return (
     <div className="settled-slots">
       {pick.chosen.map((id, index) => {
-        const options = pick.candidates.filter(
-          (candidate) =>
-            candidate === id ||
-            !pick.chosen.includes(candidate) ||
-            pick.repeatable.includes(candidate),
-        );
+        const options = slotOptions(pick, index);
         return (
           <ChosenCandidate
             key={index}
@@ -696,20 +686,12 @@ function SettledPickEditor({
             elements={elements}
             candidateLabel={candidateLabel}
             options={options}
-            onChange={(next) => {
-              const chosen = [...pick.chosen];
-              chosen[index] = next;
-              builder.choose(pick.ruleKey, chosen);
-            }}
+            onChange={(next) => builder.choose(pick.ruleKey, withSlot(pick, index, next))}
             // Only for a set, which the view-model says: taking back one member of it writes the
             // rest, and the last one leaves the decision open again.
             onRemove={
               pick.multiple
-                ? () =>
-                    builder.choose(
-                      pick.ruleKey,
-                      pick.chosen.filter((_, at) => at !== index),
-                    )
+                ? () => builder.choose(pick.ruleKey, withoutSlot(pick, index))
                 : undefined
             }
           />

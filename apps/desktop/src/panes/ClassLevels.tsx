@@ -17,33 +17,9 @@
  */
 
 import { useState } from 'react';
-import { scoreLabel } from '@incudo/ui';
-import type { ClassLevelState, ClassOption, ClassSegment, CharacterBuilder, ScoreShortfall } from '@incudo/ui';
+import { classOptionGroups, shortfallText, unavailableReason } from '@incudo/ui';
+import type { ClassLevelState, ClassOption, ClassSegment, CharacterBuilder } from '@incudo/ui';
 import type { ElementId, StatDef } from '@incudo/core';
-
-/** "Charisma 13 (you have 10)", with "or" between the ways a block can be met. */
-function shortfallText(flag: ScoreShortfall[][], stats: ReadonlyArray<StatDef>): string {
-  return flag
-    .map((terms) =>
-      terms.map((term) => `${scoreLabel(stats, term.stat)} ${term.needs} (you have ${term.has})`).join(' and '),
-    )
-    .join(' or ');
-}
-
-/** What to say beside a class that cannot be taken. The wording is the shell's; the reason is data. */
-function unavailableReason(
-  option: ClassOption,
-  candidateLabel: (id: ElementId) => string,
-): string | undefined {
-  if (option.eligible) return undefined;
-  if (option.unavailable === 'no-multiclass-rules') return 'cannot be taken as an additional class';
-  // Named, not "requirements not met": the ability score in the prerequisite text may be one the
-  // character has, and reading it as the reason would be wrong.
-  if (option.unavailable === 'excluded' && option.excludedBy) {
-    return `cannot be combined with ${candidateLabel(option.excludedBy)}`;
-  }
-  return option.prerequisite ? `needs ${option.prerequisite}` : 'requirements not met';
-}
 
 /** `<option>`s in three groups, so a class you already have and one you may add read differently. */
 function ClassOptions({
@@ -55,9 +31,7 @@ function ClassOptions({
   candidateLabel: (id: ElementId) => string;
   stats: ReadonlyArray<StatDef>;
 }): React.JSX.Element {
-  const taken = options.filter((option) => option.taken);
-  const available = options.filter((option) => !option.taken && option.eligible);
-  const unavailable = options.filter((option) => !option.taken && !option.eligible);
+  const { taken, available, unavailable } = classOptionGroups(options);
   return (
     <>
       {taken.length > 0 && (

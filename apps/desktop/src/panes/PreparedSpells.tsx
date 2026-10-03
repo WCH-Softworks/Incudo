@@ -12,15 +12,10 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { CharacterBuilder, PreparationRow, PreparedItem } from '@incudo/ui';
+import { preparedItemText, type CharacterBuilder, type PreparationRow } from '@incudo/ui';
 import type { ElementId, ElementIndex } from '@incudo/core';
 
 import { CandidatePicker } from './CandidatePicker.tsx';
-
-/** "Fireball (Level 3)": the item's name and the system's note, when there is one. */
-function itemText(item: PreparedItem): string {
-  return item.note ? `${item.name} (${item.note})` : item.name;
-}
 
 export function PreparedSpells({
   rows,
@@ -102,7 +97,7 @@ function PreparedBlockRow({
           <p className="hint">These do not count against the limit.</p>
           <ul>
             {row.always.map((item) => (
-              <li key={item.id}>{itemText(item)}</li>
+              <li key={item.id}>{preparedItemText(item)}</li>
             ))}
           </ul>
         </div>
@@ -112,7 +107,7 @@ function PreparedBlockRow({
         <ul className="prepared-list">
           {row.chosen.map((item) => (
             <li key={item.id}>
-              <span>{itemText(item)}</span>
+              <span>{preparedItemText(item)}</span>
               <button type="button" onClick={() => builder.unprepare(row.key, item.id)}>
                 Take off
               </button>
@@ -130,7 +125,7 @@ function PreparedBlockRow({
           <ul className="prepared-list">
             {row.unavailable.map((item) => (
               <li key={item.id}>
-                <span>{itemText(item)}</span>
+                <span>{preparedItemText(item)}</span>
                 <button type="button" onClick={() => builder.unprepare(row.key, item.id)}>
                   Take off
                 </button>

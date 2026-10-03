@@ -46,3 +46,6 @@ export * from './html-markdown.ts';
 export * from './html-blocks.ts';
 export * from './equip-step.ts';
 export * from './description.ts';
+export * from './build-view.ts';
+export * from './content-sources.ts';
+export * from './edit-session.ts';
