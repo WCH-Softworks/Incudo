@@ -1891,6 +1891,17 @@ Expertise offers `ID_EXPERTISE_SKILL_ACROBATICS`, whose requirement is the *diff
 not. **`aurora verify` cannot see any of this** — it compares elements a character chose, not
 ones it was offered — so a green run is not evidence; perturbation in `engine.test.ts` is.
 
+**What an offered candidate would grant in turn is marked, not left out** ([ADR 0091](docs/adr/0091-an-offer-that-would-give-what-the-character-already-has-is-marked-and-the-system-says-which-types.md)).
+A Sailor background for an Elf who has Perception is still offered; its picker row reads "The character already has
+Perception". A kind declares which types are worth naming (`candidateOverlaps`; 5e's `pc`: Proficiency and Language, not
+Size, Spell, Vision or internal markers, as measured by `tools/verify/src/candidate-overlaps.test.ts`). The walk
+(`packages/ui/src/candidate-overlaps.ts`) follows content's grants without deriving, skipping one gated above the level
+the candidate is taken at or whose requirements are false against the character (203 overlaps in the samples exist only
+if they are not read). **A settled slot is judged without its own answer** (`overlapsFor(ruleKey, slot)`, one
+derivation), or everything the answer gives reads as redundant. Asked for when a picker opens (`overlapNotesFor`), never
+carried in the state; the desktop's `CandidatePicker` and the phone's `Picker` show the line and compute nothing. Display
+only. The 2014 replacement proficiency is a separate, open question.
+
 **A slot publishes a set of tags, and `equipped=` is evaluated** (ADR 0025, step 4). A character
 kind declares its `inventory`: which slots exist, what stat each publishes into, which setters
 become tags, and which setter marks attunement. Core says none of `body`, `armor`, `primary`,

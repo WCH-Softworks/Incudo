@@ -1175,11 +1175,20 @@ its original text with a pointer here.*
       so the record walks the indexes rather than counting what the load read. Driven in the browser build; not in the
       Tauri window, on the phone (which shows no missing content yet) or on macOS and Linux. Seen and not fixed: two quick
       toggles start two desktop reloads, and the slower first can finish last.
-- [ ] **Mark an offer whose proficiency the character already has** (the maintainer's request, 2026-10-05). When a
+- [x] **Mark an offer whose proficiency the character already has** (the maintainer's request, 2026-10-05). When a
       candidate in a build step (a background, say) would grant a proficiency the character already has from another
       choice (an Elf's Perception), the picker marks it, so the player sees what is redundant before choosing. A pool's
       own candidates already leave out what the character holds; this is about what a candidate grants in turn. Whether
       the replacement proficiency the 2014 rules allow is then offered is a separate question.
+      **Done** ([ADR 0091](./docs/adr/0091-an-offer-that-would-give-what-the-character-already-has-is-marked-and-the-system-says-which-types.md)).
+      Measured first (`candidate-overlaps.test.ts`, every decision of the thirty samples): what an offered candidate would
+      give again is mostly proficiencies (3,548), then sizes, internal markers, languages (209), spells and senses. A kind
+      now declares which types are worth naming (`candidateOverlaps`; 5e's player character: Proficiency and Language),
+      and the picker shows "The character already has Perception" under such a candidate, on the desktop and the phone. The
+      walk follows a candidate's grants through content, gated by level and by requirements read against the character
+      (203 overlaps exist only if requirements are ignored, nearly all Tasha's customised origin); a settled slot is judged
+      without its own answer. A fresh 2014 Elf sees 13 of 118 backgrounds marked. Display only. Driven in the browser build;
+      not on the phone or in the Tauri window. Still open: the 2014 replacement proficiency.
 
 ---
 
