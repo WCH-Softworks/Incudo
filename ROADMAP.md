@@ -1077,11 +1077,15 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
         Equipment" table row, "Choose A, B or C", where the last is gold alone (the Fighter's (C) 155 GP); all 31 core
         background files write an "Equipment:" line (a 2024 one, "Assemble a package worth 50 GP"); a handful more in
         Eberron, Tasha's, Ravnica and Unearthed Arcana. No `<select>`, `<grant>` or setter carries any of it, and a
-        character has no field for money (Aurora's saves record `<currency>`, which the importer drops). So before code:
-        an ADR deciding where the packages come from (prose is never parsed elsewhere in Incudo; a data file beside the
-        system, as the official form's field map is, is one option; a user's own file another), what a "gold
-        equivalent" is when a 2014 class prints none, and how money is recorded on a character (a format change, and
-        whether an import fills it from `<currency>`).
+        character has no field for money (Aurora's saves record `<currency>`, which the importer drops). **Decided in
+        [ADR 0087](./docs/adr/0087-starting-equipment-is-a-data-file-beside-the-system-and-money-is-counted-in-the-units-the-system-declares.md)**
+        (the maintainer chose the data file): packages live in `systems/dnd5e/starting-equipment.json` beside the system,
+        keyed by class and background id, each an option list (a package of item lines and *(a)* / *(b)* choices and
+        filtered picks, fixed coins, or a wealth roll); the 2014 per-class wealth roll is the book's rule and sits in each
+        class's entry, rolled by `packages/ui` and recorded in `rolls`; only the first class gives a package; what is
+        taken is written once into the bag and the purse, and taken back only while untouched. Money is
+        `Character.money`, counts per unit the kind declares (5e: cp, sp, ep, gp, pp), format 9; an import reads
+        `<currency>`. Not built.
   - [ ] **Inventory management at any point**, not only while building: add any item from loaded content to the bag,
         remove it, change quantity, equip and unequip it into the kind's slots, attune (the limit shown, never refused,
         as `over-attuned` already is), attach a magic item to a host, rename an instance and write notes; and spend or

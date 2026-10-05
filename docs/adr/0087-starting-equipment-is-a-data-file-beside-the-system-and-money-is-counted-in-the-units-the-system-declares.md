@@ -1,0 +1,137 @@
+# 0087 — Starting equipment is a data file beside the system, and money is counted in the units the system declares
+
+**Status:** Accepted · 2026-10-05 · not yet built · answers the first half of ROADMAP Phase 3's "Starting equipment, and
+an inventory the player manages" and the money its second half spends · builds on
+[0005](./0005-aurora-import.md), [0006](./0006-derived-character-state.md),
+[0007](./0007-native-formats.md), [0008](./0008-aurora-compatibility-frozen.md),
+[0012](./0012-self-contained-saves.md), [0019](./0019-recorded-rolls-are-readable.md),
+[0024](./0024-inventory-is-a-list-of-instances.md), [0072](./0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md),
+[0079](./0079-a-pdf-sheet-is-the-print-layout-written-to-a-file-and-the-official-form-is-the-user-s-own-copy-filled-from-the-document.md)
+· **format:** a new file beside the system with its own schema (not the system format); system, one optional field on a
+kind's `inventory` (`formatVersion` stays 1); character, `money`, **format 9** only when recorded
+
+## Context
+
+The bag is modelled, imported, derived and saved (ADRs 0024 to 0026), armour class and attunement read it, and nothing
+in either app puts an item in it. 5e's `equipment` build step declares item types and nothing to choose, so it heads no
+decision and always reads complete. A character built in Incudo starts with an empty bag and keeps it.
+
+The maintainer asked for a full step in which a character takes its class's starting items or the gold they are worth,
+and for an inventory the player manages at any point after. This ADR is the first: where starting equipment comes from,
+how the gold alternative is reckoned, and how money is recorded. The inventory editor is the roadmap item's second part
+and gets its own ADR when it is built.
+
+**Measured** (AuroraLegacy/elements, `.corpus/` at the time of writing):
+
+- **Content states starting equipment only as prose.** All 29 `Class` elements and all 118 `Background` elements
+  describe it in their description, and no `<select>`, `<grant>` or setter carries any of it. The 2014 Player's
+  Handbook's classes write "You start with the following equipment" as lines of *(a)* / *(b)* alternatives ("(a) a
+  martial weapon and a shield or (b) two martial weapons"), and none offers gold. The 2024 book's 12 write a "Starting
+  Equipment" table row, "Choose A, B or C", where the last is gold alone (the Fighter's (C) 155 GP). A 2014 background
+  lists its items and a pouch of coins ("a belt pouch containing 15 gp"); a 2024 one is a package or 50 GP.
+- **The 2014 gold alternative is a book rule content does not carry.** The Player's Handbook gives each class a starting
+  wealth roll (a number of d4s, most of them multiplied by 10, in gold) in its equipment chapter, not in the class. That
+  table is in no corpus file. Classes introduced later in other books follow the same approach: the book that adds the
+  class states its starting equipment and its wealth.
+- **Items carry what they are and what they cost.** A weapon's category is a support tag
+  (`ID_INTERNAL_WEAPON_CATEGORY_MARTIAL_MELEE`), so "a martial weapon" is a filter the engine already reads; 2,264 of
+  the 2,889 item elements carry `<set name="cost" currency="gp|sp|cp">`; an equipment pack is an element of its own
+  (`ID_WOTC_ITEM_DUNGEONEERS_PACK`).
+- **A character records no money.** Aurora's saves write `<currency>` with five counts (copper, silver, electrum, gold,
+  platinum), and the importer drops them. All thirty sample saves record 0 in every one, so no save referees a reading.
+
+## Decision
+
+1. **Starting equipment is a data file beside the system**, `systems/<id>/starting-equipment.json`, with its own schema
+   (`schemas/starting-equipment.schema.json`) and one checker, as the official form's field map is (ADR 0079): not the
+   system format, and no public API promised for it yet. It is part of the system and not of Incudo's code: the packages
+   and the wealth rule are the book's, so they live with the rest of what the system says about the game, and core and
+   `packages/ui` name no class, item or coin. Prose is still never parsed (ADR 0005): the file is written by a person from
+   the book and checked against the corpus by a test.
+
+2. **The file is keyed by element id**, one entry per class or background it covers (`"for": "ID_WOTC_PHB_CLASS_FIGHTER"`),
+   so the 2014 and 2024 Fighters are two entries, as they are two classes. An entry is a list of **options, of which the
+   character takes exactly one**:
+   - **a package**: lines, in the order the book prints them. A line is a list of items (an element id and a quantity),
+     **or** a choice between such lists (the 2014 *(a)* / *(b)*), **or** a pick of *n* items matching a filter written in
+     the engine's own `supports` language over the item types ("a martial weapon": the martial category tags), offered
+     through the character's offered view (ADR 0049). A package may also carry coins ("15 gp").
+   - **coins**: a fixed amount in the system's units (the 2024 "(C) 155 GP"; a 2024 background's 50 GP).
+   - **wealth**: a roll, the dice in the system's notation and a multiplier and a unit (the 2014 Fighter's 5d4 × 10 gp;
+     the Monk's 5d4 with no multiplier). **This is where the book's per-class gold rule goes**: it is per class, so it sits
+     in that class's entry beside its package, and a later book's class gets an entry with its own. A roll is made by
+     `packages/ui`'s dice (ADR 0019: core never rolls) and **recorded in `Character.rolls`** (ADR 0007) under the step's
+     key, so no redraw rerolls it and the sheet can say what was rolled.
+
+   A 2014 class is therefore two options, its package (each *(a)* / *(b)* line answered) and its wealth roll; a 2024 class
+   is three, A, B and C. Which a book offers is the file's to say; the step offers what the entry lists and nothing else.
+
+3. **5e's `equipment` step becomes the starting equipment step**: one decision for the first class and one for the
+   background, each offering its entry's options. Only the **first** class has one: the Player's Handbook gives a character
+   who multiclasses no starting equipment from a later class. A class or background the file has no entry for (a user's
+   own content, a book not yet written in) says so in a sentence and offers nothing; it does not block, and the inventory
+   editor is the way in. The step is skippable, as a set is (ADR 0033), for a table that hands out equipment itself.
+
+4. **Taking an option writes inputs, never derivations.** The bag and money are inputs (ADR 0006); what a package gives is
+   written into them once, the way the equip step writes a bag entry (ADR 0072), and the answer is recorded under
+   `build/equipment/…` so the step reads settled and a sheet or card can say what was taken:
+   - each item becomes a bag entry; one that fits a free slot of the kind's inventory is **equipped**, in the order the
+     package lists it (armour, then a shield, then weapons into hands), and the rest are carried. The user changes either
+     afterwards.
+   - each entry it adds records where it came from (`origin: "build/equipment"`), and coins are added to `money`.
+   - **Taking it back** (or taking another option) removes the entries still marked with that origin and subtracts the
+     coins it added, **only while the bag still holds every entry it added and the money still covers its coins**. Once
+     the player has sold, dropped or spent part of it, the step says the package has been used and leaves the bag alone:
+     guessing which purchase replaced which starting item is the guess ADR 0005 rules out.
+
+5. **Money is counted in units the system declares.** A kind's `inventory` may declare `currency`: a list of units, each
+   with an id, a label and its value in the smallest unit. 5e declares five: copper (cp, 1), silver (sp, 10), electrum
+   (ep, 50), gold (gp, 100), platinum (pp, 1,000). Core names none. `Character.money` is a map from unit id to a whole,
+   non-negative count, an input in the same family as `inventory`; it is written only when some unit is non-zero, and only
+   then is the character **format 9** (the validator refuses `money` below 9, a unit the kind does not declare, and a
+   count that is not a whole non-negative number). Counts are kept per unit as the player holds them, never folded into
+   one total: change is made only when the player asks the inventory editor to (its ADR). An item's `cost` setter names
+   its unit by the same ids, which is what buying will read.
+
+6. **An Aurora import reads `<currency>`.** The five counts go to the five units by a fixed table in
+   `packages/aurora-import`, written only when one is non-zero. It is a dropped construct being read, the same kind of
+   bugfix to the frozen importer as the `<sheet>` descriptions (ADR 0076) and the multiclass dice (ADR 0044), and not new
+   support: the save already says it. No sample records a coin, so a generic fixture holds it.
+
+7. **A save embeds what its packages gave**, as it embeds everything in its bag (ADR 0012), and records which option it
+   took; it never embeds `starting-equipment.json`, which is the system's, as `system.json` is. A save opened with no
+   source reads the same bag and money; the step's offer needs the file and the content, a library card does not.
+
+## What this does not do
+
+- **The inventory editor**: adding, removing, buying, selling, attuning, making change. Phase 3's item's second part.
+- **A user's own packages.** A user-added system is a `system.json` and nothing beside it (ADR 0031); a user's content
+  file cannot carry a package. Both wait for the system-as-surface and homebrew phases (7 and 8).
+- **Point-buy-style "assemble a package worth 50 GP"** with prices checked: a 2024 background's option is coins, and
+  spending them is the editor's.
+- **Trinkets** and other rolled-for items a background or the book offers: a line may name a specific item; a random table
+  is not modelled here.
+
+## Alternatives considered
+
+- **Packages in `system.json`.** The system format is a public API users author (ADR 0011), and a field naming hundreds of
+  corpus ids would make every user's system carry, or be refused for lacking, data about one content set. A separate file
+  keeps the format small and lets the packages be redrafted without a format decision, as the form map was.
+- **Parsing the prose.** 29 classes in two shapes and 118 backgrounds in more. Ruled out by ADR 0005 as everywhere else:
+  a parse that reads "a martial weapon" one way in one file and another in the next fails silently.
+- **Packages as content (`.incuset` or an Aurora file of grants).** A grant is permanent and derived; starting equipment
+  is a one-time write into an input the player then owns. And the wealth rule is a rule of the book, not an element.
+- **A single gold total.** The book and Aurora both count coins per unit, items are priced in gp, sp and cp, and electrum
+  exists to be awkward. A total would lose what the player is actually carrying.
+- **Deriving the starting bag from the recorded choice** (so a changed choice rewrites it). The bag is something the player
+  edits from the first session on; a derived starting bag would either overwrite their edits or need a second, edited
+  copy beside it. Writing once and refusing to undo once used is the honest version.
+
+## Consequences
+
+- The 5e system gains a file a person writes from the books, entry by entry, starting with the Player's Handbooks' 24
+  classes and the core backgrounds; a test in `tools/verify` holds every id in it to the corpus, reports each class and
+  background in the corpus it does not cover, and checks each wealth roll and coin amount names a declared unit.
+- A character built in Incudo can start with a bag and a purse, so its armour class and attunement mean something from
+  level 1 without an import.
+- Character format 9 is written only by a character that holds money.
