@@ -479,7 +479,8 @@ before any code, both touching a public API:
       the first three can be checked against Aurora and the last two cannot. It is the same
       piece of work as the armour class below, and it came first. **All five are done**, and
       step 3 was the last point at which Aurora could referee. The remaining inventory work is
-      UI: nothing here puts a bag on a screen.
+      UI: nothing here puts a bag on a screen. That is an open item of its own now, with starting
+      equipment, at the end of Phase 3.
   - [x] **Step 1 — the model** ([ADR 0024](./docs/adr/0024-inventory-is-a-list-of-instances.md)).
         `Character.inventory` is a list of *instances*, `character.json`'s `formatVersion` is 2,
         and the container embeds every entry's element with the carried ones included. Nothing
@@ -1064,6 +1065,31 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       may declare `gatedOnHeld`: an item is offered only when one of its grants is gated on a stat the character publishes
       or an element it holds. 5e's step offers nothing before a class, then that class's features (1 to 7 per class),
       each class's to a multiclass character, and Primal Companion once Beast Master is chosen.
+- [ ] **Starting equipment, and an inventory the player manages** (the maintainer's request, 2026-10-05). The bag is
+      modelled, imported, derived and saved (the five inventory steps in Phase 2), and armour class and attunement read
+      it, but nothing in either app puts an item in it: a character built in Incudo starts empty and stays empty, and
+      5e's "Equipment" build step is a heading with nothing to choose, so it always reads complete. Two parts:
+  - [ ] **A starting equipment step**, a full step of the build: the character takes its class's starting items **or**
+        the gold they are worth instead, and its background's, and what it takes lands in the bag (equipped where it is
+        worn or wielded). **Measured before planning it, and it decides the design:** content states starting equipment
+        only as prose, never as rules. The 2014 Player's Handbook's 12 classes write "You start with the following
+        equipment" as lines of *(a)* / *(b)* alternatives and no gold option; the 2024 book's 12 write a "Starting
+        Equipment" table row, "Choose A, B or C", where the last is gold alone (the Fighter's (C) 155 GP); all 31 core
+        background files write an "Equipment:" line (a 2024 one, "Assemble a package worth 50 GP"); a handful more in
+        Eberron, Tasha's, Ravnica and Unearthed Arcana. No `<select>`, `<grant>` or setter carries any of it, and a
+        character has no field for money (Aurora's saves record `<currency>`, which the importer drops). So before code:
+        an ADR deciding where the packages come from (prose is never parsed elsewhere in Incudo; a data file beside the
+        system, as the official form's field map is, is one option; a user's own file another), what a "gold
+        equivalent" is when a 2014 class prints none, and how money is recorded on a character (a format change, and
+        whether an import fills it from `<currency>`).
+  - [ ] **Inventory management at any point**, not only while building: add any item from loaded content to the bag,
+        remove it, change quantity, equip and unequip it into the kind's slots, attune (the limit shown, never refused,
+        as `over-attuned` already is), attach a magic item to a host, rename an instance and write notes; and spend or
+        receive money once it is recorded. The model and the engine are there (`setInventoryEntry`, ADRs 0024 to 0026);
+        what is missing is the view-model in `packages/ui` and a screen in both shells, the desktop and the phone. Also
+        say which items give the character anything, which ADR 0072 left undone.
+      **Exit:** a character built from nothing in either app takes a class's package or its gold, then buys, equips and
+      attunes items later; its armour class and attunement follow; the file opens identically on the other app.
 
 ---
 
