@@ -56,12 +56,18 @@ export function CandidatePicker({
   candidates,
   elements,
   candidateLabel,
+  notes,
   onSelect,
 }: {
   candidates: ElementId[];
   elements: ElementIndex;
   /** A candidate's display text — name plus the book it came from, where one is recorded. */
   candidateLabel: (id: ElementId) => string;
+  /**
+   * A line under some candidates, worded by the view-model: what one would give that the character already has
+   * (`overlapNote`). Not part of the label, so a search does not match it.
+   */
+  notes?: ReadonlyMap<ElementId, string>;
   onSelect: (id: ElementId) => void;
 }): React.JSX.Element {
   const [query, setQuery] = useState('');
@@ -104,6 +110,7 @@ export function CandidatePicker({
                   }}
                 >
                   {option.label}
+                  {notes?.has(option.id) && <span className="picker-note">{notes.get(option.id)}</span>}
                 </button>
                 {!preview.canHover && (
                   <button
@@ -137,6 +144,7 @@ export function ChosenCandidate({
   elements,
   candidateLabel,
   options,
+  notesFor,
   onChange,
   onRemove,
 }: {
@@ -145,6 +153,8 @@ export function ChosenCandidate({
   candidateLabel: (id: ElementId) => string;
   /** What this slot could hold instead, `id` included — a `SettledPick.candidates`, filtered. */
   options: ElementId[];
+  /** The picker's notes, asked for only once "Change" is pressed: working them out costs a derivation. */
+  notesFor?: () => ReadonlyMap<ElementId, string>;
   /** Absent where the answer is taken back rather than changed — an element added to the character. */
   onChange?: (id: ElementId) => void;
   /** Given only where an answer may be taken back — a member of a set, never a race. */
@@ -152,6 +162,8 @@ export function ChosenCandidate({
 }): React.JSX.Element {
   const [changing, setChanging] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // Asked once per opening of the picker, not on every render of a settled card.
+  const [notes, setNotes] = useState<ReadonlyMap<ElementId, string> | undefined>(undefined);
   // Called before the early return below: hooks cannot be skipped by the `changing` branch.
   const preview = useCandidatePreview(elements, candidateLabel);
 
@@ -161,6 +173,7 @@ export function ChosenCandidate({
         candidates={options}
         elements={elements}
         candidateLabel={candidateLabel}
+        notes={notes}
         onSelect={(next) => {
           onChange(next);
           setChanging(false);
@@ -189,6 +202,7 @@ export function ChosenCandidate({
             aria-describedby={preview.describedBy(id)}
             onClick={() => {
               preview.close();
+              setNotes(notesFor?.());
               setChanging(true);
             }}
           >

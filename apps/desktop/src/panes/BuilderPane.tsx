@@ -14,6 +14,7 @@
  * pick is not somewhere you go, it is something on screen that still has a control.
  */
 
+import { useMemo } from 'react';
 import type {
   CharacterBuilder,
   BuilderState,
@@ -527,6 +528,11 @@ function Decision({
   budget: BuilderState['steps'][number]['budget'];
   hitPoints: BuilderState['steps'][number]['hitPoints'];
 }): React.JSX.Element {
+  // What each candidate would give that the character already has, worked out once per state of the decision.
+  const notes = useMemo(
+    () => (decision.candidates.length ? builder.overlapNotesFor(decision.id) : undefined),
+    [builder, decision],
+  );
   return (
     <>
       <div className="decision-head">
@@ -610,6 +616,7 @@ function Decision({
               candidates={decision.candidates}
               elements={elements}
               candidateLabel={candidateLabel}
+              notes={notes}
               onSelect={(id) => {
                 // `choose` replaces the whole recorded list, so a slot that fills one at a
                 // time has to send it what is already there plus the new one — never just
@@ -674,6 +681,7 @@ function SettledPickEditor({
             elements={elements}
             candidateLabel={candidateLabel}
             options={options}
+            notesFor={() => builder.overlapNotesFor(pick.ruleKey, index)}
             onChange={(next) => builder.choose(pick.ruleKey, withSlot(pick, index, next))}
             // Only for a set, which the view-model says: taking back one member of it writes the
             // rest, and the last one leaves the decision open again.

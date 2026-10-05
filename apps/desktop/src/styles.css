@@ -1386,6 +1386,13 @@ table.budget-rows input[type='number'] {
   overflow-wrap: anywhere;
 }
 
+/* What a candidate would give that the character already has, under its name. */
+.picker-note {
+  display: block;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
 .picker-choose:hover {
   background: var(--bg-sunken);
 }

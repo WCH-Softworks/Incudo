@@ -26,6 +26,8 @@ export interface PickerRequest {
   current?: ElementId;
   /** Labels that say more than the element's own, for some options (a class's unmet minimum). */
   labels?: ReadonlyMap<ElementId, string>;
+  /** A line under some options, worded by the view-model: what one would give that the character already has. */
+  notes?: ReadonlyMap<ElementId, string>;
   /** False when the options are not elements (a written feature's stats), so there is no text to show. */
   details?: boolean;
 }
@@ -104,6 +106,9 @@ function PickerBody({
                   {item.label}
                   {item.id === request.current ? ' (chosen)' : ''}
                 </Text>
+                {request.notes?.has(item.id) ? (
+                  <Text style={[styles.note, { color: palette.muted }]}>{request.notes.get(item.id)}</Text>
+                ) : null}
               </Pressable>
               {request.details === false ? null : (
                 <Button label={open === item.id ? 'Hide' : 'Details'} kind="link" onPress={() => setOpen(open === item.id ? null : item.id)} />
@@ -139,6 +144,7 @@ const styles = StyleSheet.create({
   optionHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   choose: { flex: 1, paddingVertical: 4 },
   label: { fontSize: 16 },
+  note: { fontSize: 13, paddingTop: 2 },
   empty: { padding: 16, fontSize: 15 },
   details: { paddingTop: 8 },
 });

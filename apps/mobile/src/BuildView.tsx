@@ -134,6 +134,7 @@ export const BuildView = memo(function BuildView({
                       title: pick.label,
                       options: slotOptions(pick, index),
                       current: id,
+                      notes: builder.overlapNotesFor(pick.ruleKey, index),
                       onPick: (next) => builder.choose(pick.ruleKey, withSlot(pick, index, next)),
                     })
                   }
@@ -320,7 +321,14 @@ function DecisionView({
           kind="primary"
           // `choose` replaces the whole list, so a select filling one slot at a time sends what it holds plus the new one
           // (ADR 0032); `chosen` is empty for a pick, so this is "replace" there.
-          onPress={() => pick({ title: decision.label, options: decision.candidates, onPick: (id) => builder.choose(decision.id, [...decision.chosen, id]) })}
+          onPress={() =>
+            pick({
+              title: decision.label,
+              options: decision.candidates,
+              notes: builder.overlapNotesFor(decision.id),
+              onPick: (id) => builder.choose(decision.id, [...decision.chosen, id]),
+            })
+          }
         />
       </>
     );
