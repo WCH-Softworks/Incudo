@@ -1,6 +1,6 @@
 # 0036 — A level is spent on a class by writing two records, and the builder gates only what content declares
 
-**Status:** Accepted · 2026-09-18 · builds on [0015](./0015-class-levels.md),
+**Status:** Accepted · 2026-09-18 · decision 4 amended by [0088](./0088-a-per-level-step-may-name-the-option-that-allows-another-class.md) (the campaign option now gates a new class) · builds on [0015](./0015-class-levels.md),
 [0017](./0017-open-decisions-not-steps.md), [0019](./0019-recorded-rolls-are-readable.md) ·
 **no system-format change** (`formatVersion` stays 1; the one edit to `systems/dnd5e/system.json`
 is six declared stats)

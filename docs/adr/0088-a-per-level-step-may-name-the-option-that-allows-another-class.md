@@ -90,8 +90,17 @@ content's, and the importer is frozen (ADR 0008); a rule written into an element
 ## Evidence
 
 `packages/ui/src/multiclass.test.ts` (off: an untaken class is `multiclassing-off`, a taken one stays eligible, the state
-names the option; on, or no `multiclassWhen`: as before), `packages/ui/src/use-character-builder.test.ts` (`addLevel`,
-`setLevelClass` and `applySplit` refuse a new class while off and accept the held ones; unticking on a multiclass character
-changes nothing derived), `packages/ui/src/build-view.test.ts` (the grouping and the sentences),
+names the option; on, or no `multiclassWhen`: as before; `addLevel`, `setLevelClass` and `applySplit` refuse a new class
+while off and accept the held ones; unticking on a multiclass character changes nothing derived; no options recorded reads
+as off), `packages/ui/src/build-view.test.ts` (the grouping and the sentences),
 `tools/verify/src/schemas.test.ts` (the validator's refusal) and `tools/verify/src/multiclass-option.test.ts` (the samples,
-and a new 5e character through the builder with the option unticked). Each fails under its named perturbation.
+and a new 5e character through the builder with the option unticked). Each fails under its named perturbation: the gate
+removed, the held-class split exception removed, the option read as never held, `multiclassWhen` taken out of 5e's system,
+the validator's check removed, and the option taken out of one multiclass sample.
+
+The real-corpus tests that built a multiclass character from a bare `createCharacter`, which records no options; they now tick
+the option first, and the rebuild of every sample replays its options before its class, as a player would.
+
+Driven in the browser build: a Fighter 1 / Wizard 1 with Multiclassing removed from its options keeps both classes, is
+offered only those two, and shows the flag; with level 2 moved back to Fighter it shows the single-class sentence. Not
+driven on the phone or in the Tauri window.

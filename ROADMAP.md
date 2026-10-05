@@ -438,7 +438,7 @@ before any code, both touching a public API:
         ([ADR 0080](./docs/adr/0080-a-set-step-may-name-what-a-new-character-starts-with.md)). A set step may declare
         `initial`, written into a new character as its recorded answer and the user's to change from then on; a character
         that records none (every save before this, every import) still means none. 5e's options step declares the two.
-        **Open, and left visible:** the overlay's `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is an
+        **Open, and left visible (closed 2026-10-05 by ADR 0088, below):** the overlay's `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is an
         `Option`, so it is offered, and **nothing reads it** — 0 of 740 files, and the class
         control is deliberately not gated on it (ADR 0036). Ticking it does nothing, which is
         misleading on screen. Not fixed by naming an id in the builder: either the class control
@@ -1109,12 +1109,19 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
 inside them rather than as items of their own. The first four were buried in Phase 2, which stays closed; each keeps
 its original text with a pointer here.*
 
-- [ ] **"Allow multiclassing" does what it says.** *Buried in Phase 2's ADR 0080 sub-item.* Campaign options list the
+- [x] **"Allow multiclassing" does what it says.** *Buried in Phase 2's ADR 0080 sub-item.* Campaign options list the
       overlay's `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING`, a new character starts with it on (ADR 0080), and nothing reads
       it (0 of 740 files; the class control is deliberately not gated on it, ADR 0036): unticked, Build still adds a
       second class, which is misleading on screen. Multiclassing stays; the item is that switching the option off is
       honoured. What the class control does then, and what a character that already has two classes shows, touch ADR
       0036's gate and want an ADR.
+      **Done** ([ADR 0088](./docs/adr/0088-a-per-level-step-may-name-the-option-that-allows-another-class.md)): a per-level
+      step may name the option that allows another class (`multiclassWhen`, the shape of `levelRoll.fixedWhen`), and 5e's
+      names this one. Off, a class the character has no level in is unavailable and both apps say so once in the option's
+      own name; a character already holding two classes keeps them and is flagged, never changed; one that records no
+      options reads as off (ADR 0080). Measured first: 9 of the 30 samples record the option, all 8 multiclass ones among
+      them, so no import is flagged and the 21 without it are offered no second class, as Aurora's screen does. Driven in
+      the browser build; not on the phone, not in the Tauri window.
 - [ ] **Choices that no longer apply stop counting.** *Buried in Phase 2's multiclassing item and this phase's ADR 0071
       item.* Picks of a class whose levels went away, and picks a lowered level no longer opens (a Wizard 5 lowered to 3
       keeps its level 4 improvement), stay in `choices` and still seed the derivation (ADR 0036), so the character keeps

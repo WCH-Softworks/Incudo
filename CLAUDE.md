@@ -1145,10 +1145,16 @@ computes nothing. Things to know before touching it:
   — which is also what repairs a character an earlier build left holding both. Measured on the
   oracle and in the running app; `aurora verify` cannot see it (it compares chosen elements, not
   which control is open).
-- **Gated on what content declares and nothing else:** the class's own `requirements` plus its
-  `<multiclass>` block's, through the engine's own requirement context. Not gated, deliberately:
-  `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` (0 of 740 files reference it; since ADR 0080 a new character starts with
-  it on, and whether switching it off should gate multiclassing is still undecided), the *current* class's prerequisite (content never states it, so the
+- **Gated on what content declares, and on the one option the system names:** the class's own `requirements` plus its
+  `<multiclass>` block's, through the engine's own requirement context, and since
+  [ADR 0088](docs/adr/0088-a-per-level-step-may-name-the-option-that-allows-another-class.md) the step's `multiclassWhen`
+  (5e: `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING`, which no content file reads): while the character does not hold it, a
+  class it has no level in is `unavailable: 'multiclassing-off'`, `ClassLevelState.allowedBy` names the option, and a
+  character already holding two classes keeps them, flagged by `multiclassOffNote` (`build-view.ts`) and never changed.
+  A character recording no options reads as off (ADR 0080), so a real-corpus test building a multiclass character from
+  `createCharacter` ticks `build/options` first. Measured: all 8 multiclass samples record the option and the 21
+  single-class samples without it are offered no second class (`multiclass-option.test.ts`). `applySplit` still takes
+  a split of the classes already held while it is off. Not gated, deliberately: the *current* class's prerequisite (content never states it, so the
   builder is more permissive than the Player's Handbook), and *when* a score was met (the engine
   has no time axis). 28 of 29 classes have a block; the UA Mystic does not and is listed as
   unavailable rather than hidden.
@@ -1769,8 +1775,8 @@ options, found by type (`Option`) with no id named. Three things to know before 
 read from its own key only, where a race is read by what it holds (`top-level-pick.ts`); **since ADR 0080 a set step
 may declare `initial`, which `newCharacterOfKind` writes into a new character as its recorded answer** (5e: feats and
 multiclassing on), never read again, so a character recording no answer still means none; the overlay's
-`ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is offered and **nothing reads it** — left visible, see the
-ADR's status note; and `aurora verify` cannot see any of it, so the evidence is
+`ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` is offered, and since ADR 0088 the class control reads it through the levels
+step's `multiclassWhen` (no content does); and `aurora verify` cannot see any of it, so the evidence is
 `tools/verify/src/campaign-options.test.ts` and perturbation.
 0033 lets a non-blocking decision be skipped (`decline`, `reconsider`) as its own recorded input;
 0034 ranks Open decisions by a step's declared `priority` rather than by a hardcoded rule. Neither

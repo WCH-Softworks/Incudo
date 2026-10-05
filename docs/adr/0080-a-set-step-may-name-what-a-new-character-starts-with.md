@@ -41,7 +41,9 @@ cases, not to say what tables use, so they are not evidence either way.
 ## Not decided here
 
 Whether `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING` should gate multiclassing (ADR 0036 left it unread on purpose). Now
-that a character can have it off deliberately, it could; that is its own change.
+that a character can have it off deliberately, it could; that is its own change. *(Decided by
+[ADR 0088](./0088-a-per-level-step-may-name-the-option-that-allows-another-class.md): it gates a class the character has no
+level in, named by 5e's levels step.)*
 
 ## Evidence
 
