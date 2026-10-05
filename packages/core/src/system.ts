@@ -292,6 +292,16 @@ export interface CandidateNoteDef {
   labels?: Record<string, string>;
 }
 
+/**
+ * Which types a picker names when an offered candidate would give the character one it already holds — a background's
+ * skill proficiency for an Elf who has it from its race. Display only: nothing is refused or derived from it. A type
+ * nobody chooses or reads on its own (an internal marker) is held twice harmlessly, so the system says which are worth
+ * naming. A kind that declares none marks nothing.
+ */
+export interface CandidateOverlapsDef {
+  types: ElementType[];
+}
+
 /** One `:`-delimited segment — what a `*` in a `tagsFromStats` pattern captures. */
 const STAT_SEGMENT = '[^:]+';
 
@@ -1347,6 +1357,11 @@ export interface CharacterKindDef {
    */
   candidateNotes?: CandidateNoteDef[];
   /**
+   * Which types a picker names when a candidate would give one the character already holds. Replaced rather than merged
+   * along an `extends` chain, like `candidateNotes`.
+   */
+  candidateOverlaps?: CandidateOverlapsDef;
+  /**
    * The setter an element carries to say it may be taken more than once — ADR 0035. Replaced
    * rather than merged along an `extends` chain, like `trackStats`. A kind that names none
    * treats every element as taken at most once, which is what the engine did before.
@@ -1597,6 +1612,8 @@ export interface ResolvedCharacterKind {
   play?: PlayDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
+  /** Which types a picker names when a candidate would give one already held; undefined when none. */
+  candidateOverlaps?: CandidateOverlapsDef;
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -1785,6 +1802,7 @@ export function resolveCharacterKind(
   let companions: CompanionsDef | undefined;
   let play: PlayDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
+  let candidateOverlaps: CandidateOverlapsDef | undefined;
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -1814,6 +1832,7 @@ export function resolveCharacterKind(
     if (layer.companions !== undefined) companions = layer.companions;
     if (layer.play !== undefined) play = layer.play;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
+    if (layer.candidateOverlaps !== undefined) candidateOverlaps = layer.candidateOverlaps;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -1844,6 +1863,7 @@ export function resolveCharacterKind(
     companions,
     play,
     candidateNotes,
+    candidateOverlaps,
     buildSteps,
     sheet,
   };

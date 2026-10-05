@@ -442,6 +442,15 @@
         },
         "play": { "$ref": "#/$defs/play" },
         "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },
+        "candidateOverlaps": {
+          "type": "object",
+          "required": ["types"],
+          "additionalProperties": false,
+          "description": "Which types a picker names when an offered candidate would give the character one it already holds: a background's skill proficiency for a race that has it. Display only; nothing is refused or derived from it. A kind that declares none marks nothing. Replaced rather than merged along an extends chain.",
+          "properties": {
+            "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "Element types worth naming; each must be declared in elementTypes." }
+          }
+        },
         "repeatableSetter": {
           "type": "string",
           "minLength": 1,

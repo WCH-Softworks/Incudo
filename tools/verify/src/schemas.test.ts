@@ -498,6 +498,19 @@ test('an addable type the system does not declare is caught before the app loads
   ]);
 });
 
+test('a type a picker marks that the system does not declare is caught before the app loads it', async () => {
+  // Fails if the referential check is removed: no candidate would ever be marked with it, and nothing would say why.
+  // Fails too if the schema refuses the field, or the shipped declaration stops validating.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [], 'the shipped declaration is valid');
+  const pc = system.characterKinds.find((k) => k.id === 'pc')!;
+  pc.candidateOverlaps = { types: [...pc.candidateOverlaps!.types, 'Proficiancy'] };
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [
+    { path: 'characterKinds[0].candidateOverlaps.types', message: `names "Proficiancy", which the system's elementTypes does not declare` },
+  ]);
+});
+
 test('only format 7 may record references, each once — ADR 0068', async () => {
   // Fails if the schema refuses the field or accepts an id twice, or if the referential check stops refusing a
   // reference in a file that claims 6 (a reader of 6 would drop it, and the NPC would lose its stat block).

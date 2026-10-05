@@ -529,6 +529,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         errors.push({ path: `${where}.references.types`, message: `names "${type}", which the system's elementTypes does not declare` });
       }
     }
+    // A type nothing declares would mark nothing, and nothing would say why.
+    for (const type of resolved.candidateOverlaps?.types ?? []) {
+      if (!typeNames.has(type)) {
+        errors.push({ path: `${where}.candidateOverlaps.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+      }
+    }
 
     // What play keeps track of names rests and sheet sections; one naming nothing would track or give back nothing,
     // and nothing would say why (ADR 0084).

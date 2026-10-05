@@ -53,6 +53,7 @@ import {
   type StatKey,
 } from '@incudo/core';
 
+import { candidateOverlaps, overlapNotes, type CandidateOverlaps } from './candidate-overlaps.ts';
 import {
   budgetRollKey,
   canExpressValue,
@@ -697,6 +698,35 @@ export class CharacterBuilder {
    */
   additionOptionsFor = (type?: string): AdditionOption[] =>
     additionOptions(this.getState().derived, this.kind, this.elements, type);
+
+  /**
+   * Which candidates of a decision would give something the character already has, and what, of the types the kind
+   * names (`candidateOverlaps`). With no `slot`, an open decision's candidates against the character as it stands; with
+   * one, a settled pick's candidates against the character with that slot's answer taken out, so what the answer itself
+   * gives does not read as redundant. Computed on request, when a picker opens: a settled slot costs a derivation.
+   * Empty for a kind that names no types, a decision that is not open, or a slot nothing fills.
+   */
+  overlapsFor = (ruleKey: string, slot?: number): CandidateOverlaps => {
+    if (!this.kind.candidateOverlaps?.types.length) return new Map();
+    const state = this.getState();
+    if (slot === undefined) {
+      const decision = state.decisions.find((open) => open.id === ruleKey);
+      if (!decision || !decision.candidates.length) return new Map();
+      return candidateOverlaps(decision.candidates, state.derived, this.kind, this.elements, {
+        level: candidateLevel(ruleKey, state.derived),
+      });
+    }
+    const pick = state.picks.find((settled) => settled.ruleKey === ruleKey);
+    if (!pick || slot < 0 || slot >= pick.chosen.length) return new Map();
+    const rest = pick.chosen.filter((_, index) => index !== slot);
+    const without = setChoice(this.character, ruleKey, rest);
+    const held = deriveCharacter(without, this.system, this.elements, { kind: this.kind });
+    return candidateOverlaps(pick.candidates, held, this.kind, this.elements, { level: candidateLevel(ruleKey, held) });
+  };
+
+  /** `overlapsFor` worded: the line a picker shows under each marked candidate (`overlapNote`). */
+  overlapNotesFor = (ruleKey: string, slot?: number): Map<ElementId, string> =>
+    overlapNotes(this.overlapsFor(ruleKey, slot), this.elements);
 
   /**
    * Keep an element from loaded content beside the character as a reference — ADR 0068. Refused, writing nothing, for
@@ -1731,4 +1761,13 @@ function applyWrites(character: Character, writes: BudgetWrite[]): Character {
     next = write.value === undefined ? clearBase(next, write.stat) : setBaseStat(next, write.stat, write.value);
   }
   return next;
+}
+
+/**
+ * The level a decision's candidate would be taken at, for the grants it follows: the track level of the element whose
+ * select it is, else (a top-level pick, `build/…`) the character's own progression.
+ */
+function candidateLevel(ruleKey: string, derived: DerivedCharacter): number {
+  const owner = ruleKey.slice(0, ruleKey.indexOf('/'));
+  return derived.gateLevels.get(owner) ?? derived.progress.value;
 }

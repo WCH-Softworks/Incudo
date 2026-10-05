@@ -443,6 +443,8 @@
         { "types": ["Spell"], "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }
       ],
 
+      "candidateOverlaps": { "types": ["Proficiency", "Language"] },
+
       "elementTypes": [
         "Race", "Sub Race", "Race Variant", "Racial Trait",
         "Class", "Multiclass", "Class Feature", "Archetype", "Archetype Feature",
