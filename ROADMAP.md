@@ -444,6 +444,7 @@ before any code, both touching a public API:
         misleading on screen. Not fixed by naming an id in the builder: either the class control
         starts honouring it, or the overlay stops calling it an option. A decision, not a bug fix.
         Touches the system definition format, which is why it is an ADR and not a commit.
+        *(An open item at the end of Phase 3 since 2026-10-05: "Allow multiclassing" does what it says.)*
 - [x] Save/load `.incu` files; **import `.dnd5e`** (the importer was done — this was the UI
       for it). The library reads and writes `.incu` in both forms, and the desktop shell has a
       `ZipCodec` — the framing moved into `packages/core` so the browser's `CompressionStream`
@@ -610,7 +611,7 @@ before any code, both touching a public API:
       for (ADR 0019). Gated on what content declares only: not the campaign option (0 of 740
       files read it), not the current class's prerequisite (content never states it), and not
       *when* a score was met. Known gap: picks of a class whose levels went away stay in
-      `choices`. Found while doing it and fixed afterwards, in the builder and not the frozen
+      `choices` *(an open item at the end of Phase 3 since 2026-10-05)*. Found while doing it and fixed afterwards, in the builder and not the frozen
       importer: an imported save records Race, Class and Background under Aurora's keys, so it
       opened with all three listed as unanswered. A top-level pick is now answered by any recorded
       choice holding an element of its step's types (`packages/ui/src/top-level-pick.ts`).
@@ -631,7 +632,8 @@ before any code, both touching a public API:
       and prerequisite-gated feats (Grappler withheld at Strength 8, War Caster and Ritual Caster
       offered) all behaved. **A quirk, not fixed:** a pool's rules fill in level order, so the
       Trickster's any-school spell has to be taken *before* the enchantment/illusion ones or that
-      slot is gone — documented behaviour, easy to trip over. **Not verified:** a save of this
+      slot is gone — documented behaviour, easy to trip over *(an open item at the end of Phase 3 since
+      2026-10-05)*. **Not verified:** a save of this
       character written and reopened through the real dialogs (the port and the round trip are
       tested; the native dialog cannot be driven); and an Aurora save of exactly these choices —
       but see the next entry, which referees each half of it separately.
@@ -789,7 +791,8 @@ before any code, both touching a public API:
       which records 10 prepared against a limit of 8 (Aurora does not enforce it). Every sample was rebuilt
       through the builder and each prepared spell had to be *offered* first.
       **Not verified / not done:** the 2024 Paladin and Ranger, whose prepared count is a book
-      table content does not carry (Aurora's screen reads 0 and so does Incudo); the Wizard's minimum of one; a
+      table content carries only as prose in the class description, not as a stat (Aurora's screen reads 0 and so does
+      Incudo; corrected 2026-10-05, and an open item at the end of Phase 3 with the next clause); the Wizard's minimum of one; a
       list on the Sheet; a per-character source allowlist for the list pool (Aurora's lists are narrower than
       Incudo's because it had sources switched off); driven in the browser build and not in the Tauri window, and
       the folder dialog that saves and reopens a character could not be answered by a script.
@@ -885,6 +888,7 @@ so that finding one again is recognition rather than discovery.
   six spellbook entries are 1st level and the two it adds each level afterwards are not. The
   pending pool offers the union of the candidates of the rules with room left, and a pick
   recorded against the wrong rule is accepted in silence. Wants a builder before it matters.
+  *(The builder exists now: an open item at the end of Phase 3 since 2026-10-05.)*
 - **One grant cannot cancel another.** A Mithral Armor adornment suppresses its host armour's
   `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE`, and no content file expresses that — it is Aurora
   app behaviour. It is 2 of the 55 `element-extra`, and a set of real saves carry the control case:
@@ -980,7 +984,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       than from its id. An element shows its book, source, file, id and tags. Running it changed the order within a
       rank (a table row called "Elf" came before the Elf races), the narrow layout, and kept the search across panes.
       Driven in the Tauri window, Ctrl+5 and typing with real keys, and the browser build on Windows. **Not done:**
-      filters by tag or setter ("3rd-level spells"); what grants an element; macOS and Linux.
+      filters by tag or setter ("3rd-level spells"); what grants an element; macOS and Linux. *(The first two are
+      in "Beyond 1.0" since 2026-10-05.)*
 - [x] **When two sources define the same id** ([ADR 0054](./docs/adr/0054-when-two-sources-define-the-same-id-the-later-one-in-the-list-is-used-and-the-list-says-so.md)).
       Measured first: AuroraLegacy alone has no id another source defines, but beside the original Aurora repository,
       which someone coming from Aurora may still have, 7,262 ids are defined by both and 1,978 of them differently (450
@@ -990,7 +995,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       each source's line says what it shares with each other source, how many differ and whose version is used, with
       the ids behind a click. Nothing is blocked or chosen per id, and a saved character keeps what it embeds. Driven
       in the browser build on Windows with the original's Core beside AuroraLegacy, reordered both ways. **Not done:**
-      a per-id override; "also defined by" on the Browse pane; the Tauri window, macOS and Linux.
+      a per-id override; "also defined by" on the Browse pane; the Tauri window, macOS and Linux. *("Also defined
+      by" is in "Beyond 1.0" since 2026-10-05.)*
 - [x] **Say when a source refers to content no enabled source has** ([ADR 0052](./docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md)).
       Any inner index can be added as a source, and 58 of AuroraLegacy's 60 grant ids only another declares: the 2014
       Player's Handbook alone refers to 110 missing things and offers no skill at all, and used to do it in silence. Each
@@ -999,8 +1005,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       is missing; requirement-only references are left out, since content writes those on purpose. Running it removed
       "it may need another source enabled", wrong on AuroraLegacy's own line, whose one missing thing is an upstream
       typo. Driven in the browser build on Windows. **Not done:** naming a configured-but-disabled source that declares
-      what is missing; Incudo's own content format, which will declare dependencies (the ADR says what it must carry);
-      the Tauri window, macOS and Linux.
+      what is missing *(an open item at the end of this phase since 2026-10-05)*; Incudo's own content format, which
+      will declare dependencies (the ADR says what it must carry); the Tauri window, macOS and Linux.
 - [x] **Choose parts of a source before loading it** ([ADR 0055](./docs/adr/0055-a-source-records-the-parts-switched-off-and-the-load-skips-them.md)).
       Measured first: AuroraLegacy is 60 indexes at most two levels deep, no part named twice, and three indexes list
       files beside nested ones (Core lists the skills-and-languages file itself; Unearthed Arcana lists 64 documents), so
@@ -1022,7 +1028,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       would have hidden with every skill in it, and a settled pick that dropped its own answer from its alternatives.
       Driven in the Tauri window on Windows, save and reopen with no source included. **Not done:** the Aurora importer
       does not fill the list from a save's `<restricted>` (frozen, and the samples have none to witness it); no edition
-      switch; no per-user default for new characters; macOS and Linux not driven.
+      switch; no per-user default for new characters *(these two in "Beyond 1.0" since 2026-10-05)*; macOS and Linux
+      not driven.
 - [x] **Add a raw Aurora `.xml` the user drops in or picks** ([ADR 0056](./docs/adr/0056-an-aurora-file-the-user-adds-is-a-source-of-its-own-kept-as-a-copy.md)).
       Each file is a source of its own, tagged with the system in view, kept as a copy in the app's storage (outside the
       content cache, which may be pruned), and named by its file name, so adding it again replaces the copy. An index,
@@ -1045,7 +1052,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       and in the Tauri window on Windows (DOM clicks over the debug port, the saved file derived with no source).
       **Not done:** the replacement itself cannot be driven, since the app cannot put an item in the bag (next item,
       since done);
-      a seed whose own requirements have become false is not flagged; macOS and Linux not driven.
+      a seed whose own requirements have become false is not flagged *(part of an open item at the end of this phase
+      since 2026-10-05)*; macOS and Linux not driven.
 - [x] **Take a Tasha's optional class feature in the app**
       ([ADR 0072](./docs/adr/0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md)).
       Measured first: the 36 items carry no requirements of their own (their grants are gated on the class level), nothing
@@ -1059,7 +1067,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       The oracle is identical on all thirty samples. Driven in the browser build and in the Tauri window on Windows (DOM
       clicks over the debug port, the saved file read back from disk with no source). **Not done:** a general bag editor;
       saying which items give a character anything; the other hidden item families (climb speeds, feat unlockers, the
-      companion and familiar selections); macOS and Linux not driven.
+      companion and familiar selections) *(the first two in the inventory item below, the third an open item at the end
+      of this phase since 2026-10-05)*; macOS and Linux not driven.
 - [x] **Optional class features follow the class**
       ([ADR 0081](./docs/adr/0081-an-equip-step-may-offer-only-what-is-gated-on-what-the-character-has.md)). An equip step
       may declare `gatedOnHeld`: an item is offered only when one of its grants is gated on a stat the character publishes
@@ -1095,6 +1104,51 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
         say which items give the character anything, which ADR 0072 left undone.
       **Exit:** a character built from nothing in either app takes a class's package or its gold, then buys, equips and
       attunes items later; its armour class and attunement follow; the file opens identically on the other app.
+
+*The items below were found on 2026-10-05 by an audit of what the ticked items of Phases 0 to 5 left undone, written
+inside them rather than as items of their own. The first four were buried in Phase 2, which stays closed; each keeps
+its original text with a pointer here.*
+
+- [ ] **"Allow multiclassing" does what it says.** *Buried in Phase 2's ADR 0080 sub-item.* Campaign options list the
+      overlay's `ID_INTERNAL_OPTION_ALLOW_MULTICLASSING`, a new character starts with it on (ADR 0080), and nothing reads
+      it (0 of 740 files; the class control is deliberately not gated on it, ADR 0036): unticked, Build still adds a
+      second class, which is misleading on screen. Multiclassing stays; the item is that switching the option off is
+      honoured. What the class control does then, and what a character that already has two classes shows, touch ADR
+      0036's gate and want an ADR.
+- [ ] **Choices that no longer apply stop counting.** *Buried in Phase 2's multiclassing item and this phase's ADR 0071
+      item.* Picks of a class whose levels went away, and picks a lowered level no longer opens (a Wizard 5 lowered to 3
+      keeps its level 4 improvement), stay in `choices` and still seed the derivation (ADR 0036), so the character keeps
+      what it no longer qualifies for, with nothing on screen saying so. A seed whose own requirements have since become
+      false is not flagged, and stale choices are not pruned in general (ADR 0071 decisions 2 and 3). Dropping or
+      flagging them wants a decision about every pick, not only about levels.
+- [ ] **A pool's slots do not depend on the order they are picked in, and a pick that fits no slot is flagged.**
+      *Buried in Phase 2's exit-criterion character item and its "Known gaps".* A pool's rules fill in level order, so an
+      Arcane Trickster's any-school spell has to be taken before its enchantment and illusion ones or that slot is gone.
+      And a pick recorded against the wrong rule is accepted in silence: 89 groups in the corpus mix rules that differ in
+      `supports`, `requirements` or `type` (a wizard's first six spellbook entries are 1st level, later ones are not), and
+      an import or an older save can hold one.
+- [ ] **The 2024 Paladin and Ranger prepare as many spells as their table says, and a Wizard at least one.** *Buried in
+      Phase 2's prepared spells item (ADR 0046), which said content does not carry the count; corrected by the
+      maintainer:* both classes print a Prepared Spells column, level by level, in the Features table of their class
+      description (`core/players-handbook-2024/classes/class-paladin.xml` and `class-ranger.xml` in AuroraLegacy), as
+      prose rather than as a `…:spellcasting:prepare` stat, so both read a limit of 0 and anything prepared is over it.
+      Aurora's app did not systematise it either. How Incudo reads it without parsing prose (ADR 0005), most likely as a
+      table in the system definition beside the other numbers the book states, wants deciding first. The Wizard's
+      minimum of one is the same item's smaller half.
+- [ ] **Take the other hidden item families.** *Buried in the ADR 0072 item.* Aurora switches some things on by an
+      `inventory-hidden` item: climb speeds, feat unlockers, Lycanthropy, the Companion and Familiar Selection items
+      (Aurora Legacy Essentials' Companion Selection, equipped, opens 117 creatures), UA's additional ability score items.
+      Incudo offers only the Tasha's optional class features this way, and a bag editor leaves hidden items out (ADR 0072
+      decision 4), so the inventory item above will not offer the rest either. Each family is a declaration away and wants a look first (ADR 0072 decision 6).
+- [ ] **Say which switched-off source would supply what is missing.** *Buried in the ADR 0052 item.* A source's line
+      says how many things it refers to that no enabled source has, never that a source the user configured and switched
+      off declares them. A disabled source is not loaded, so this needs a record of what each source declared, kept from
+      its last load.
+- [ ] **Mark an offer whose proficiency the character already has** (the maintainer's request, 2026-10-05). When a
+      candidate in a build step (a background, say) would grant a proficiency the character already has from another
+      choice (an Elf's Perception), the picker marks it, so the player sees what is redundant before choosing. A pool's
+      own candidates already leave out what the character holds; this is about what a candidate grants in turn. Whether
+      the replacement proficiency the 2014 rules allow is then offered is a separate question.
 
 ---
 
@@ -1156,7 +1210,8 @@ the kind machinery is not decorative.*
       Derived and compared with the print: other speeds 91 agree and 0 differ, skills 113 and 1, saves 8 and 2. No
       player character derivation moved. Driven in the browser build, including a save reopened with no source.
       **Not done:** senses as numbers (content states none), an editor for the other speeds and proficiencies, and a
-      fly speed's hover; the Tauri window, macOS and Linux. *(The editor was answered by ADR 0063, the next item.)*
+      fly speed's hover; the Tauri window, macOS and Linux. *(The editor was answered by ADR 0063, the next item, except
+      switching a proficiency on: an open item at the end of this phase since 2026-10-05.)*
 - [x] **A DM may write a feature of an NPC's own that adds to or sets its numbers**
       ([ADR 0063](./docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md)). Typing a number (ADR 0059)
       gives it no reason; a feature does: "Godspeed", Speed set to 60, listed with the creature's traits and saved with
@@ -1169,7 +1224,7 @@ the kind machinery is not decorative.*
       in the browser build. A feature never names an ability score, for any kind: the scores have their own editor.
       **Not done:** reusing a feature on another character (a Phase 8 item, and part of its exit criteria), features
       for a player character (whose armour class, hit points and speed are worked out, so a feature could only add to
-      them), conditions or grants
+      them; an open item at the end of this phase since 2026-10-05), conditions or grants
       on one; the Tauri window, macOS and Linux.
 - [x] **A DM or player may put existing content on a character, whatever its prerequisites**
       ([ADR 0064](./docs/adr/0064-a-character-may-carry-elements-its-user-adds-from-loaded-content-and-an-unmet-prerequisite-is-a-flag.md)).
@@ -1186,7 +1241,7 @@ the kind machinery is not decorative.*
       and Proficiencies and Conditions. Every element of the nine types in the corpus is offered, held once added,
       flagged exactly when its own requirements fail, and survives a save opened with no source; no player character
       derivation moved. Driven in the browser build. **Not done:** casting for an added spell (it belongs to no class,
-      and the pane says so), conditions in the rules' sense (the corpus's 23 `Condition` elements are damage
+      and the pane says so; an open item at the end of this phase since 2026-10-05), conditions in the rules' sense (the corpus's 23 `Condition` elements are damage
       resistances and immunities, and there is no Blinded to add), reuse across characters (Phase 8); the Tauri window,
       macOS and Linux.
 - [x] **Decide where legendary content comes from, before any UI for it**
@@ -1254,7 +1309,8 @@ the kind machinery is not decorative.*
       Tauri window on Windows, the saved file read back from disk and reopened with the source off. **Not done:** which
       creature a holder's feature is for when two are held (Improved Defender's +2 applies to both); the Eberron
       homunculus's bonus row (+2 over, upstream's content); a creature's challenge rating for its bonus (two
-      creatures above challenge 4); a creature's attack bonus (`companion:attack`); tracking a creature's hit points;
+      creatures above challenge 4); a creature's attack bonus (`companion:attack`, part of an open item at
+      the end of this phase since 2026-10-05); tracking a creature's hit points;
       macOS and Linux.
 - [ ] Sidekicks. *Split from "Companions and sidekicks" by ADR 0073's measurement:* the corpus has no sidekick content
       (one `Source` element for "Unearthed Arcana: Sidekicks", holding nothing), so there is nothing to read yet.
@@ -1328,7 +1384,29 @@ the kind machinery is not decorative.*
       proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice, death saves, inspiration,
       personality and attacks; ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
       stat block laid out as a stat block; the "Progress" number a level-less Cairn character is shown on Build; Cairn in
-      the Tauri window; macOS and Linux.
+      the Tauri window; macOS and Linux. *(Personality and attacks: open items at the end of this phase since
+      2026-10-05.)*
+
+*The items below were found on 2026-10-05 by the audit described at the end of Phase 3, buried in this phase's ticked
+items; each keeps its original text with a pointer here.*
+
+- [ ] **Personality, appearance, backstory and notes can be written.** *Buried in the ADR 0074 item ("personality"),
+      and in Phase 5's text export (ADR 0075) and PDF (ADR 0079 decision 4) items.* `Character.freeform` holds them, and
+      an Aurora import fills it, but nothing in either app writes it, so a character built in Incudo has none; the Sheet,
+      the text export and the official form's boxes leave them blank. An editor in both shells, and whether and where the
+      Sheet and the exports then show them.
+- [ ] **Attacks on the sheet.** *Buried in the ADR 0074 item ("attacks") and the ADR 0073 item.* A character's sheet
+      has no attacks section (a weapon's attack bonus and damage), and a held creature's `companion:attack` and
+      `companion:damage`, which content writes (the Ranger's Companion), are read by nothing.
+- [ ] **An added spell can be cast.** *Buried in the ADR 0064 item.* A spell put on a character through "Added to this
+      character" belongs to no casting block: no save DC, no attack bonus, no slots, not preparable, and the pane says
+      so. Which block it is cast through (the user's choice, or the character's only one) wants deciding.
+- [ ] **Written features for a player character, and an NPC's proficiency switched on.** *Buried in the ADR 0063 and
+      ADR 0062 items.* `pc` declares no `customFeatures`: its armour class, hit points and speed are worked out, so a
+      feature could only add to them, and whether add-only features are wanted, and the type they are held as, is
+      undecided (one line in `system.json` once it is). And since ADR 0063 a feature on an NPC can set another speed and
+      add to a save or a skill, but `…:proficiency` is not a stat the sheet shows, so a DM still cannot make an NPC
+      proficient in a skill or save its creature does not print.
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the
 engine has no code that names any of them.
@@ -1397,7 +1475,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       same) and in the Tauri window on Windows (a sample opened with no source ever added, exported from the native menu
       through the real save dialog, byte for byte the tests' file). **Not done:** a copy to the clipboard (a port of its
       own); a shortcut (a Ctrl+Shift chord has to be found by pressing real keys in the Windows window); feature
-      descriptions, personality, notes, the bag and prepared spells, none of which the Sheet shows; the save dialog's
+      descriptions, personality, notes, the bag and prepared spells, none of which the Sheet shows (personality and notes
+      are an open item at the end of Phase 4, the bag one at the end of Phase 3, since 2026-10-05); the save dialog's
       replace prompt and Cancel, not exercised for an export in the window; macOS and Linux.
 - [x] **Content's sheet hints are read: a feature's sheet line, at its level, filled**
       ([ADR 0076](./docs/adr/0076-content-s-sheet-hints-are-read-every-description-kept-chosen-by-the-level-the-element-gates-at.md)).
@@ -1418,7 +1497,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       byte the tests') and the Tauri window on Windows (the same, no source ever added, exported from the native menu
       through the real save dialog, byte for byte the tests'); driving a held creature found its unfilled placeholders
       counted nowhere. **Not done:** spells, proficiencies and backgrounds described on the sheet (content writes no sheet
-      text for them); a reason beside a number a hidden feature moved (Tough); counting uses (Phase 6); a hidden trait a
+      text for them); a reason beside a number a hidden feature moved (Tough; an open item at the end of this phase since
+      2026-10-05); counting uses (Phase 6); a hidden trait a
       stat block prints is named without its line (three Tasha's "Primal Bond"s, which no sample holds); macOS and Linux.
 - [x] **"Content has been updated — refresh?": a character whose sources changed what it carries is offered a refresh,
       reviewed as the Sheet it would make** ([ADR 0082](./docs/adr/0082-a-refresh-compares-what-a-character-carries-with-what-its-sources-load-and-shows-the-sheet-it-would-make.md)).
@@ -1493,6 +1573,10 @@ pane draws and every export renders: the PDF and the print layout start from it,
       wry's `print()` opens GTK's print dialog; whether `window.print()` does the same in WebKitGTK is unseen. What
       settles it: pressing "Print sheet…" and Ctrl+P (⌘P) in the window on each, and, where it does nothing, printing
       through a Tauri command that calls `print()` instead. Neither platform has run any of ADR 0077.
+- [ ] **Say why a number moved when what moved it is hidden.** *Buried in the ADR 0076 item; found on 2026-10-05 by
+      the audit described at the end of Phase 3.* A section declaring `omitHidden` leaves out what content marks
+      `display="false"`, so Tough is not on the feature list and the hit points it adds have no reason beside them, as on
+      Aurora's sheet. On the Sheet and in every export that reads the document.
 
 ---
 
@@ -1717,6 +1801,16 @@ character sheet: a sheet organised with more care, as general UX work.
   system definition's to declare. That is a system format change (a public API, ADR 0011), the layout declaration ADR
   0077 considered and kept for later. An ADR first, amending 0062, 0074, 0075 and 0077; the sheet document stays the
   one thing the pane, the print, the export and the PDF read.
+
+### 1.x — Finding and choosing content
+After the first release, by the maintainer's call (2026-10-05). Both were buried in Phase 3's ticked items and found by
+the audit described at the end of that phase.
+- **Browse filters and links** (the ADR 0053 and ADR 0054 items): filter by tag or setter value ("3rd-level spells",
+  "the Wizard list"), say what grants or offers an element beyond a select filtering on one plain tag, and show "also
+  defined by" for an id two sources define (Browse shows only the definition that is used).
+- **Editions and a default book list** (the ADR 0049 item): a 2014 / 2024 switch over a character's Books list, where the
+  two Player's Handbooks are separate books and a table drops one by unticking, and a per-user default list for new
+  characters, which today start offered every book.
 
 ### 2.x — Story building tools ❄️
 Campaign and session notes, NPC and faction tracking, timelines, relationship maps, linking
