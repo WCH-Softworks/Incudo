@@ -48,4 +48,5 @@ export * from './equip-step.ts';
 export * from './description.ts';
 export * from './build-view.ts';
 export * from './content-sources.ts';
+export * from './source-notes.ts';
 export * from './edit-session.ts';

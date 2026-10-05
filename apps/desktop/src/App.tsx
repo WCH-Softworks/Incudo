@@ -575,8 +575,12 @@ function Shell({
       // Only this system's, and only the enabled ones. Loading everything would put a Cairn
       // index into a D&D character's candidate lists — and, worse, into the content a save
       // embeds, where it would be frozen forever (ADR 0012).
-      const forSystem = sourcesForSystem(current.sources, system.id).filter((s) => s.enabled);
-      const loaded = await loadSources(forSystem, platform, setProgress);
+      const ofSystem = sourcesForSystem(current.sources, system.id);
+      const forSystem = ofSystem.filter((s) => s.enabled);
+      // The ones switched off are not loaded; what each declared at its last load names it on a line that misses it.
+      const loaded = await loadSources(forSystem, platform, setProgress, {
+        switchedOff: ofSystem.filter((s) => !s.enabled),
+      });
       setContent(loaded);
       for (const source of loaded.sources) {
         if (source.failed) continue;

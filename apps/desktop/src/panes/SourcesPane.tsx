@@ -27,10 +27,19 @@ import {
   type SourceKeep,
   keepsConverted,
   type SourceOverlap,
+  type SwitchedOffSupply,
   type UpdateStatus,
 } from '@incudo/content';
 import type { GameSystem, PickedFile, SuggestedSource } from '@incudo/core';
-import { describeContentFiles, partsView, togglePart, type ContentFileResult, type PartView } from '@incudo/ui';
+import {
+  describeContentFiles,
+  missingNote,
+  partsView,
+  togglePart,
+  type ContentFileResult,
+  type MissingNoteView,
+  type PartView,
+} from '@incudo/ui';
 
 import { type LoadProgress, type LoadedContent } from '@incudo/content';
 
@@ -506,7 +515,14 @@ function SourceRow({
   last: boolean;
   nameOf: (id: string) => string;
   loaded:
-    | { fileCount: number; elementCount: number; failed?: string; missing?: MissingContent; overlaps?: SourceOverlap[] }
+    | {
+        fileCount: number;
+        elementCount: number;
+        failed?: string;
+        missing?: MissingContent;
+        switchedOff?: SwitchedOffSupply[];
+        overlaps?: SourceOverlap[];
+      }
     | undefined;
   update: UpdateStatus | undefined;
   refreshed: RefreshReport | { failed: string } | undefined;
@@ -594,7 +610,7 @@ function SourceRow({
         </p>
       )}
 
-      {loaded?.missing && <MissingNote missing={loaded.missing} />}
+      {loaded?.missing && <MissingNote note={missingNote(loaded.missing, loaded.switchedOff, nameOf)} />}
       {loaded?.overlaps?.map((overlap) => (
         <OverlapNote key={overlap.sourceId} overlap={overlap} other={nameOf(overlap.sourceId)} />
       ))}
@@ -684,51 +700,47 @@ function UpdateNote({ status }: { status: UpdateStatus }): React.JSX.Element {
 }
 
 /**
- * What this source refers to that none of the enabled ones contain — ADR 0052. Said, never acted on: nothing is
- * disabled or added, and it does not name a source that might supply it, because nothing in an Aurora index says
- * which that is. A requirement naming something absent is not counted (content writes those on purpose), so a
- * whole, healthy corpus says nothing here except AuroraLegacy's one upstream typo.
+ * What this source refers to that none of the enabled ones contain (ADR 0052), and which switched-off source had it when
+ * it was last loaded (ADR 0090). Said, never acted on: nothing is switched on or blocked. The words are `missingNote`'s.
  */
-function MissingNote({ missing }: { missing: MissingContent }): React.JSX.Element | null {
-  const references = missing.references.length;
-  const additions = missing.additions.length;
-  if (!references && !additions) return null;
-  const things = `${references.toLocaleString()} ${references === 1 ? 'thing' : 'things'}`;
-  const adds = `${additions.toLocaleString()} of its additions to other content ${additions === 1 ? 'has' : 'have'} nothing to add to`;
-  const sentence = references
-    ? `Refers to ${things} none of your enabled sources contain${additions ? `, and ${adds}` : ''}.`
-    : `${adds.charAt(0).toUpperCase()}${adds.slice(1)}.`;
-  const targets = [...new Set(missing.additions)];
+function MissingNote({ note }: { note: MissingNoteView | undefined }): React.JSX.Element | null {
+  if (!note) return null;
   return (
-    <details className="card-note">
-      <summary>
-        {sentence}
-      </summary>
-      {references > 0 && (
-        <>
-          <p>Not found in any enabled source:</p>
-          <ul>
-            {missing.references.map((id) => (
-              <li key={id}>
-                <code>{id}</code>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {targets.length > 0 && (
-        <>
-          <p>Additions waiting for:</p>
-          <ul>
-            {targets.map((id) => (
-              <li key={id}>
-                <code>{id}</code>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </details>
+    <>
+      <details className="card-note">
+        <summary>{note.summary}</summary>
+        {note.references.length > 0 && (
+          <>
+            <p>Not found in any enabled source:</p>
+            <IdList ids={note.references} />
+          </>
+        )}
+        {note.additions.length > 0 && (
+          <>
+            <p>Additions waiting for:</p>
+            <IdList ids={note.additions} />
+          </>
+        )}
+      </details>
+      {note.switchedOff.map((other) => (
+        <details key={other.sourceId} className="card-note">
+          <summary>{other.sentence}</summary>
+          <IdList ids={other.ids} />
+        </details>
+      ))}
+    </>
+  );
+}
+
+function IdList({ ids }: { ids: readonly string[] }): React.JSX.Element {
+  return (
+    <ul>
+      {ids.map((id) => (
+        <li key={id}>
+          <code>{id}</code>
+        </li>
+      ))}
+    </ul>
   );
 }
 
