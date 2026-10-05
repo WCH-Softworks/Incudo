@@ -14,8 +14,11 @@
  * player character, through the builder: what it adds to the character, what stats move, what decisions it opens, what
  * problems it brings, and what lines of the sheet change — which is what the app would show for taking it.
  *
- * Everything is reported as `ℹ` lines and nothing is asserted (ADR 0042). Items are found by their setters, never by an
- * id; the baseline character is built by name and source.
+ * Those are reported as `ℹ` lines and assert nothing (ADR 0042). Since ADR 0089 the tests after them hold what 5e
+ * declared, through the builder and against any corpus: every hidden item that switches something on, other than the
+ * optional class features, is offered by an equip step and no hidden item without rules is; a speed item's speed shows
+ * under Other Speeds; the Companion Selection holds a creature that is shown. Items are found by their setters and rules,
+ * never by an id; the baseline character is built by name and source.
  */
 
 import { test } from 'node:test';
@@ -24,6 +27,7 @@ import { readFile } from 'node:fs/promises';
 
 import { parseAuroraSave } from '@incudo/aurora-import';
 import { evaluateRequirements, requirementContextFor, setInventoryEntry, type Character, type Element, type RequirementExpr } from '@incudo/core';
+import { runOracle } from './aurora-oracle.ts';
 import { CharacterBuilder, newCharacterOfKind, sheetDocument, sheetMarkdown, type BuilderState } from '@incudo/ui';
 
 import { loadShippedSystem } from './node-system.ts';
@@ -245,4 +249,90 @@ test('the multiclass unlocker: what a short score flags with it equipped', { ski
     const o = options(equipped);
     t.diagnostic(`  ${equipped ? 'with' : 'without'} it: ${o.filter((x) => x.eligible).length} of ${o.length} classes may be taken, ${o.filter((x) => x.flag).length} flagged, refused ${tally(o.filter((x) => !x.eligible).map((x) => x.unavailable ?? '?'), 4)}`);
   }
+});
+
+/** The equip steps the player character declares, by their key. */
+function equipSteps(system: Awaited<ReturnType<typeof loadShippedSystem>>): string[] {
+  const pc = system.characterKinds.find((k) => k.id === 'pc')!;
+  return (pc.buildSteps ?? []).filter((step) => step.equip).map((step) => `build/${step.id}`);
+}
+
+test('every hidden switch but the optional class features is offered by an equip step, and nothing without rules is', { skip: corpusSkip }, async () => {
+  // Fails if either of ADR 0089's steps is removed (its family is not offered), or if a step offers by "hidden" alone (a
+  // mount is offered). The optional class features are left out: their step offers only a class's own (ADR 0081).
+  const system = await loadShippedSystem('dnd5e');
+  const { builder, elements } = await baseline(4);
+  const state = builder.getState();
+  const offered = new Map<string, string>();
+  for (const key of equipSteps(system)) {
+    for (const id of state.decisions.find((d) => d.id === key)?.candidates ?? []) offered.set(id, key);
+  }
+  const family = [...elements.all()].filter(isFamily);
+  const switches = family.filter((e) => e.rules.length > 0);
+  assert.ok(switches.length > 0, 'the corpus has hidden switches');
+  const missing = switches.filter((e) => !offered.has(e.id)).map((e) => `${e.name} (${category(e)})`);
+  assert.deepEqual(missing, [], 'every hidden switch is offered by a step');
+  const inert = family.filter((e) => e.rules.length === 0 && offered.has(e.id)).map((e) => e.name);
+  assert.deepEqual(inert, [], 'no hidden item without rules is offered');
+  const byStep = new Map<string, Set<string>>();
+  for (const e of switches) byStep.set(offered.get(e.id)!, new Set([...(byStep.get(offered.get(e.id)!) ?? []), category(e)]));
+  for (const [key, categories] of byStep) assert.equal(categories.size, 1, `${key} offers one family: ${[...categories].join(', ')}`);
+});
+
+test('a speed item taken from its step shows its speed under Other Speeds, and taken back shows none', { skip: corpusSkip }, async () => {
+  // Fails if the player character declares no speed:<mode>, or no section shows it, or the step records a choice.
+  const system = await loadShippedSystem('dnd5e');
+  const { builder, elements } = await baseline(4);
+  const item = [...elements.all()].find(
+    (e) => isFamily(e) && e.rules.some((r) => r.kind === 'stat' && r.name === 'innate speed:climb' && r.value.kind === 'ref'),
+  );
+  assert.ok(item, 'the corpus has an item giving a climbing speed equal to walking');
+  const key = equipSteps(system).find((k) => builder.getState().decisions.find((d) => d.id === k)?.candidates.includes(item.id));
+  assert.ok(key, 'a step offers it');
+  const speeds = () => builder.getState().sheet.sections.find((s) => s.section === 'speeds' || s.id === 'speeds');
+  assert.equal(speeds(), undefined, 'a Human shows no other speed');
+  builder.choose(key, [item.id]);
+  const state = builder.getState();
+  assert.deepEqual(state.character.inventory?.map((e) => [e.elementId, e.equipped]), [[item.id, true]]);
+  assert.equal(state.character.choices.some((c) => c.ruleKey === key), false);
+  const walking = state.derived.stats.get('speed')?.value;
+  assert.deepEqual(speeds()?.rows.map((r) => [r.stat, r.value]), [['speed:climb', String(walking)]]);
+  builder.choose(key, []);
+  assert.equal(speeds(), undefined, 'taken back, no other speed');
+  assert.equal(builder.getState().character.inventory, undefined);
+});
+
+test('the Companion Selection taken from its step holds the creature chosen, shown as its own stat block', { skip: corpusSkip }, async () => {
+  // Fails if the step does not offer it, if its select is not opened, or if the creature is not held and shown (ADR 0073).
+  const system = await loadShippedSystem('dnd5e');
+  const { builder, elements } = await baseline(4);
+  const item = [...elements.all()].find((e) => isFamily(e) && e.rules.some((r) => r.kind === 'select' && r.type === 'Companion' && !r.supports));
+  assert.ok(item, 'the corpus has a selection item offering every creature');
+  const key = equipSteps(system).find((k) => builder.getState().decisions.find((d) => d.id === k)?.candidates.includes(item.id));
+  assert.ok(key, 'a step offers it');
+  builder.choose(key, [item.id]);
+  const select = builder.getState().decisions.find((d) => d.from === item.id && d.kind === 'select');
+  assert.ok(select && select.candidates.length > 0, 'it opens its creature select');
+  const creature = select.candidates[0]!;
+  builder.choose(select.id, [creature]);
+  assert.deepEqual(builder.getState().companions?.creatures.map((c) => c.elementId), [creature]);
+  assert.ok(builder.getState().companions!.creatures[0]!.sections.length > 0, 'shown with sections of its own');
+  builder.choose(key, []);
+  const after = builder.getState();
+  assert.equal(after.companions, undefined, 'taken back, no creature');
+  assert.equal(after.character.choices.some((c) => c.ruleKey === select.id), false, 'its answer goes with it');
+});
+
+test('which samples show another speed now that the sheet declares them', { skip: savesSkip }, async (t) => {
+  const elements = await realElements();
+  const rows: string[] = [];
+  for (const sample of readManifest().samples) {
+    const run = await runOracle(samplePath(sample), elements, 'sample');
+    const speeds = ['speed:burrow', 'speed:climb', 'speed:fly', 'speed:swim'].flatMap((stat) => {
+      const value = run.derived.stats.get(stat)?.value ?? 0;
+      return value ? [`${stat} ${value}`] : [];
+    });
+    if (speeds.length) rows.push(`${sample.id}: ${speeds.join(', ')}`);
+  }
+  t.diagnostic(`samples with another speed: ${rows.length}${rows.length ? `: ${rows.join('; ')}` : ''}`);
 });

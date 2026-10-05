@@ -470,6 +470,12 @@
         { "id": "languages", "label": "Languages", "types": ["Language"], "priority": 2.9 },
         { "id": "background", "label": "Background", "types": ["Background"], "required": true, "priority": 3 },
         { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency"], "priority": 3.5 },
+        { "id": "additional-features", "label": "Additional features", "types": ["Item"], "priority": 3.6,
+          "equip": { "setter": "category", "values": ["Additional Feature"] },
+          "description": "Things a table may allow beyond the rules a character is built by: another speed or sense, a feat or multiclass prerequisite waived, weapon mastery, a companion or familiar of your choice, lycanthropy. Take only what your table allows; taking none is the ordinary answer." },
+        { "id": "ability-adjustments", "label": "Ability score adjustments", "types": ["Item"], "priority": 3.7,
+          "equip": { "setter": "category", "values": ["Additional Ability Score Improvement"] },
+          "description": "A score raised or lowered by one beyond what the scores and the build give, for a table that grants or imposes one. Taking none is the ordinary answer." },
         { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
         { "id": "spells", "label": "Spells", "types": ["Spell"], "requires": ["class"] },
         { "id": "details", "label": "Details", "types": ["Alignment", "Deity"] }
