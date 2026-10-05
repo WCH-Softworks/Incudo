@@ -485,6 +485,7 @@ export class CharacterLibrary {
     }
 
     let packed: ContentSubset;
+    let written: LibraryEntry;
     try {
       const result = packCharacter(character, system, elements, {
         profile: this.profile,
@@ -494,11 +495,16 @@ export class CharacterLibrary {
       });
       await this.store.write(target, result.files);
       packed = result.content;
+      written = this.describe(target, result.files);
     } catch (error) {
       return { ok: false, reason: 'failed', message: messageOf(error) };
     }
 
-    await this.refresh();
+    // Only the entry written is described again, from the files just written, as `record` does: a scan of the whole
+    // folder read and inflated every character in it, most of a Save's time on a phone (ADR 0086). What changed in the
+    // folder behind the app's back is read at the next scan, as before.
+    this.scanned = [...this.scanned.filter((entry) => entry.name !== target.name), written].sort(byRecency);
+    this.patch(this.partition(this.scanned));
     return {
       ok: true,
       entry: target,

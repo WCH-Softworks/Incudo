@@ -62,7 +62,7 @@ export async function saveEdit(
     generator,
   });
   if (!result.ok) return result;
-  // The library listed itself again after writing; what it read there is what the next Save compares with.
+  // The library listed the file it wrote, from what it wrote; that `updated` is what the next Save compares with.
   const listed = library.getState().entries.find((entry) => entry.name === result.entry.name);
   return {
     ok: true,

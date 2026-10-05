@@ -49,6 +49,8 @@ class FakeStore implements CharacterStore {
   /** Set to make the next `read` of this entry blow up, the way a vanished file does. */
   unreadable = new Set<string>();
   listCalls = 0;
+  /** Every entry `read` was asked for, in order. */
+  readNames: string[] = [];
 
   constructor(location: string | null = '/characters') {
     this.chosen = location;
@@ -66,6 +68,7 @@ class FakeStore implements CharacterStore {
     return [...this.entries].map(([name, entry]) => ({ name, form: entry.form }));
   }
   async read(entry: LibraryEntryRef): Promise<Map<string, Uint8Array>> {
+    this.readNames.push(entry.name);
     if (this.unreadable.has(entry.name)) throw new Error('no such file or directory');
     const found = this.entries.get(entry.name);
     if (!found) throw new Error('no such file or directory');
@@ -359,6 +362,41 @@ test('an existing entry keeps its form, so a folder never silently becomes a zip
   assert.equal(saved.ok, true);
   assert.equal(store.entries.get('borin')!.form, 'folder');
   assert.equal(library.getState().entries.length, 1, 'and it did not make a second entry');
+});
+
+test('a save reads no other character, and lists what a scan of the folder would', async () => {
+  // Perturbation: putting `await this.refresh()` back reads and inflates every file in the folder on every Save, most of
+  // a Save's time on a phone (ADR 0086); dropping the entry it wrote from `scanned` leaves a new character unlisted and
+  // its next name free to be taken again.
+  const store = new FakeStore();
+  await store.write({ name: 'borin.incu', form: 'zip' }, containerFor(hero('Borin')));
+  await store.write({ name: 'other.incu', form: 'zip' }, containerForOther(otherHero('Cass')));
+  store.unreadable.add('broken.incu');
+  store.entries.set('broken.incu', { form: 'zip', files: new Map() });
+  const library = new CharacterLibrary(store);
+  await library.restore();
+  library.setSystem('test');
+  const before = library.getState().entries.find((entry) => entry.name === 'borin.incu')!;
+  store.readNames = [];
+
+  const renamed = await library.save(hero('Borin the Second'), testSystem(), corpus(), {
+    entry: { name: 'borin.incu', form: 'zip' },
+    expectUpdatedAt: before.updatedAt,
+  });
+  const added = await library.save(hero('Aelin'), testSystem(), corpus());
+  assert.equal(renamed.ok && added.ok, true);
+  assert.deepEqual(store.readNames, ['borin.incu'], 'only the conflict check reads, and only the file written over');
+
+  const saved = library.getState();
+  await library.refresh();
+  const scanned = library.getState();
+  const view = (state: typeof saved) =>
+    state.entries.map((entry) => [entry.name, entry.title, entry.updatedAt, entry.broken ?? false]).sort();
+  assert.deepEqual(view(saved), view(scanned));
+  assert.deepEqual(saved.elsewhere, scanned.elsewhere);
+  assert.equal(saved.entries.find((entry) => entry.name === 'borin.incu')?.title, 'Borin the Second');
+  const third = await library.save(hero('Aelin'), testSystem(), corpus());
+  assert.equal(third.ok && third.entry.name, 'aelin-2.incu', 'the name a save took is not offered again');
 });
 
 test('a write over a file that changed outside Incudo is refused, not merged', async () => {

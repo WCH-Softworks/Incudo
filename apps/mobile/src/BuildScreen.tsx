@@ -120,10 +120,22 @@ function Building({
   const latest = useRef({ session, state, elements, unsaved });
   latest.current = { session, state, elements, unsaved };
 
-  const save = async (): Promise<boolean> => {
+  // The Save in progress, so leaving waits for it rather than asking to save what is being saved.
+  const pending = useRef<Promise<boolean> | undefined>(undefined);
+  const save = (): Promise<boolean> => {
+    if (pending.current) return pending.current;
+    const running = write().finally(() => {
+      pending.current = undefined;
+    });
+    pending.current = running;
+    return running;
+  };
+  const write = async (): Promise<boolean> => {
     const { session: now, state: at, elements: with_ } = latest.current;
     setSaving(true);
     try {
+      // Packing holds the JavaScript thread for most of a second; one frame first lets the header say "Saving…".
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       const result = await saveEdit(library, now, at.character, start.system, with_, 'incudo-mobile');
       if (!result.ok) {
         setNote({ text: result.message, failed: true });
@@ -151,6 +163,12 @@ function Building({
   useEffect(
     () =>
       navigation.addListener('beforeRemove', (event) => {
+        if (pending.current) {
+          // Leaving during a Save waits for it, then tries again: gone if it saved, asked as below if it did not.
+          event.preventDefault();
+          void pending.current.then(() => navigation.dispatch(event.data.action));
+          return;
+        }
         if (!latest.current.unsaved) return;
         event.preventDefault();
         Alert.alert('Save this character?', 'It has changes that are not saved to its file.', [
