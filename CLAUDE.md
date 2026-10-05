@@ -1329,6 +1329,15 @@ before touching `ContentLibrary.loadSource`:
   source. Never name a source as "probably missing": nothing in an Aurora index says which, and AuroraLegacy's own
   line always shows the upstream typo, which no source supplies. `missing-content.test.ts` holds the per-source report,
   taken together, equal to `analyseCorpus`'s whole-load count.
+- **A switched-off source is named for what it declared at its last load, never guessed**
+  ([ADR 0090](docs/adr/0090-a-switched-off-source-is-named-for-what-it-declared-at-its-last-load.md)). After each successful load
+  `loadSources` keeps the ids the source's files declare and the parts it had off under `sources/declared/<id>` (with a
+  signature beside it, so an unchanged record is not rewritten), **outside `content/<id>/`** on purpose: a refresh prunes
+  and an eviction clears that prefix. `LoadReport.declared` walks the library's index lists and file ids again **without
+  the "already loaded" check**: a source loaded after one holding the same files (Core, then the Player's Handbook index)
+  reads none itself. Given `switchedOff`, `loadSources` reads those sources' records only when something is missing and
+  only when the record's parts match the source's now, and sets `LoadedSource.switchedOff`; an id two of them declare is
+  under both. The words are `missingNote` (`packages/ui/src/source-notes.ts`). The phone does not pass `switchedOff` yet.
 
 **The Browse pane looks through everything the enabled sources loaded, and nothing a character holds**
 ([ADR 0053](docs/adr/0053-a-content-browser-searches-everything-loaded-and-groups-by-what-the-system-declares.md)).

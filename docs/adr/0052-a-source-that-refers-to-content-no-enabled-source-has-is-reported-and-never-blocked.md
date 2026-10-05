@@ -138,7 +138,9 @@ sentence as the summary of a list of the ids.
 
 - **It does not name a source that would supply what is missing**, not even one the user has configured and disabled.
   That is not a guess, and it is the obvious next step, but a disabled source is not loaded, so it needs a record of
-  what each source declared, kept from its last load. Left until the report has been used.
+  what each source declared, kept from its last load. Left until the report has been used. *(Since 2026-10-05 a
+  configured, switched-off source is named from that record: [ADR 0090](./0090-a-switched-off-source-is-named-for-what-it-declared-at-its-last-load.md).
+  Any other source still is not.)*
 - **It does not report unmet requirements.** Decision 1's reason.
 - **Nothing appears on the Build or Sheet panes.** The full corpus always has its one typo, so a notice there would be
   on for everyone. The Sources pane is where a source is added, and where the answer belongs.

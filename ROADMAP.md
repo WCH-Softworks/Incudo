@@ -1004,8 +1004,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       many of its additions wait for a target, with the ids behind a click. Never enforced, never a guess at which source
       is missing; requirement-only references are left out, since content writes those on purpose. Running it removed
       "it may need another source enabled", wrong on AuroraLegacy's own line, whose one missing thing is an upstream
-      typo. Driven in the browser build on Windows. **Not done:** naming a configured-but-disabled source that declares
-      what is missing *(an open item at the end of this phase since 2026-10-05)*; Incudo's own content format, which
+      typo. Driven in the browser build on Windows. **Not done:** ~~naming a configured-but-disabled source that declares
+      what is missing~~ (done since 2026-10-05, ADR 0090, at the end of this phase); Incudo's own content format, which
       will declare dependencies (the ADR says what it must carry); the Tauri window, macOS and Linux.
 - [x] **Choose parts of a source before loading it** ([ADR 0055](./docs/adr/0055-a-source-records-the-parts-switched-off-and-the-load-skips-them.md)).
       Measured first: AuroraLegacy is 60 indexes at most two levels deep, no part named twice, and three indexes list
@@ -1160,10 +1160,21 @@ its original text with a pointer here.*
       Other Speeds. The mounts are goods, offered by no step and left to the inventory editor. No engine change; the oracle is
       identical; one sample (a 2024 Thief) shows a climbing speed. Driven in the browser build; not in the Tauri window or on
       the phone.
-- [ ] **Say which switched-off source would supply what is missing.** *Buried in the ADR 0052 item.* A source's line
+- [x] **Say which switched-off source would supply what is missing.** *Buried in the ADR 0052 item.* A source's line
       says how many things it refers to that no enabled source has, never that a source the user configured and switched
       off declares them. A disabled source is not loaded, so this needs a record of what each source declared, kept from
       its last load.
+      **Done** ([ADR 0090](./docs/adr/0090-a-switched-off-source-is-named-for-what-it-declared-at-its-last-load.md)).
+      Measured first (`switched-off-sources.test.ts`, AuroraLegacy's indexes as separate sources): the 2014 Player's
+      Handbook alone misses 110 ids and Core has all of them; Tasha's alone misses 181, Core has all and the Player's
+      Handbook index 123 (Core lists it); the upstream typo is in no source. Each successful load now keeps the ids a
+      source's files declare, with the parts it had switched off, under `sources/declared/` (not the cache, which a refresh
+      prunes), written only when it changes. A line that misses something names each switched-off source whose record,
+      made with its current parts, has some of it: "Core, which is switched off, had all of them when it was last loaded."
+      Never enforced, never a guess. Found on the way: a source loaded after one holding the same files reads none of them,
+      so the record walks the indexes rather than counting what the load read. Driven in the browser build; not in the
+      Tauri window, on the phone (which shows no missing content yet) or on macOS and Linux. Seen and not fixed: two quick
+      toggles start two desktop reloads, and the slower first can finish last.
 - [ ] **Mark an offer whose proficiency the character already has** (the maintainer's request, 2026-10-05). When a
       candidate in a build step (a background, say) would grant a proficiency the character already has from another
       choice (an Elf's Perception), the picker marks it, so the player sees what is redundant before choosing. A pool's
