@@ -540,6 +540,15 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     // and nothing would say why (ADR 0084).
     errors.push(...checkPlay(resolved.play, resolved.sheet.sections, where));
 
+    // Two fields on one key would write each other's text (ADR 0092).
+    const freeformKeys = new Set<string>();
+    for (const field of resolved.freeform?.fields ?? []) {
+      if (freeformKeys.has(field.key)) {
+        errors.push({ path: `${where}.freeform.fields`, message: `names the key "${field.key}" twice` });
+      }
+      freeformKeys.add(field.key);
+    }
+
     // A creature type nothing declares is never held, and a scope setter on a type that is not a creature reads an
     // element the scope does not show: both are a typo nobody would see at runtime (ADR 0073).
     const companions = resolved.companions;

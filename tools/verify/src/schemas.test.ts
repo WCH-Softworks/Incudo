@@ -1203,3 +1203,13 @@ test('the shipped 5e kind declares its preparation', async () => {
     heldFilter: '$(spellcasting:slots)',
   });
 });
+
+test('a kind may not declare one freeform key twice — ADR 0092', async () => {
+  // Fails if the referential check is removed: two fields on one key would each write the other's text.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  assert.deepEqual(validateGameSystem(system, schemas).errors, []);
+  const pc = system.characterKinds.find((k) => k.id === 'pc')!;
+  pc.freeform = { ...pc.freeform!, fields: [...pc.freeform!.fields, { key: 'backstory', label: 'Backstory again' }] };
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [{ path: 'characterKinds[0].freeform.fields', message: 'names the key "backstory" twice' }]);
+});

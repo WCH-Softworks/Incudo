@@ -441,6 +441,31 @@
           }
         },
         "play": { "$ref": "#/$defs/play" },
+        "freeform": {
+          "type": "object",
+          "required": ["label", "fields"],
+          "additionalProperties": false,
+          "description": "The text a user may write about a character of this kind (ADR 0092): personality, appearance, a backstory, notes. Each field reads and writes one key of the character's freeform text, which no rule reads; every sheet shows what is written, and only these fields. A kind without it has nothing to write. Replaced rather than merged along an extends chain.",
+          "properties": {
+            "label": { "type": "string", "minLength": 1, "description": "User-facing heading over the fields, where they are written and shown." },
+            "description": { "type": "string", "description": "User-facing prose shown where they are written." },
+            "fields": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["key", "label"],
+                "additionalProperties": false,
+                "properties": {
+                  "key": { "type": "string", "minLength": 1, "description": "The character's freeform key the field reads and writes; unique within the kind." },
+                  "label": { "type": "string", "minLength": 1, "description": "User-facing name of the field." },
+                  "group": { "type": "string", "minLength": 1, "description": "Consecutive fields with one group are shown under it." },
+                  "multiline": { "type": "boolean", "description": "Whether the text runs to more than one line." }
+                }
+              }
+            }
+          }
+        },
         "candidateNotes": { "type": "array", "items": { "$ref": "#/$defs/candidateNote" } },
         "candidateOverlaps": {
           "type": "object",

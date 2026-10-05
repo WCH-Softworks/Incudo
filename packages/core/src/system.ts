@@ -1416,8 +1416,37 @@ export interface CharacterKindDef {
    * on such a character is kept and shown nowhere.
    */
   play?: PlayDef;
+  /**
+   * The text a user may write about a character of this kind, each field by the `Character.freeform` key it is kept
+   * under — ADR 0092. Replaced rather than merged along an `extends` chain, like `play`. A kind without it has nothing to
+   * write, and what an import put in `freeform` is kept and shown nowhere.
+   */
+  freeform?: FreeformDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
+}
+
+/**
+ * The text a user writes about a character — ADR 0092: personality, appearance, a backstory, notes. None of it is read by
+ * a rule (ADR 0006 has nothing to say about it); every sheet shows what is written. Core names no field.
+ */
+export interface FreeformDef {
+  /** User-facing heading over the fields, where they are written and shown: "About the character". */
+  label: string;
+  /** User-facing prose shown where they are written. */
+  description?: string;
+  fields: FreeformFieldDef[];
+}
+
+export interface FreeformFieldDef {
+  /** The `Character.freeform` key the field reads and writes. Unique within the kind. */
+  key: string;
+  /** User-facing name: "Personality Traits". */
+  label: string;
+  /** Consecutive fields with one group are shown under it: "Appearance". */
+  group?: string;
+  /** Whether the text runs to more than one line: a backstory, not an age. */
+  multiline?: boolean;
 }
 
 /**
@@ -1610,6 +1639,8 @@ export interface ResolvedCharacterKind {
   companions?: CompanionsDef;
   /** What playing a character of this kind keeps track of — ADR 0084. */
   play?: PlayDef;
+  /** The text a user may write about a character of this kind — ADR 0092. */
+  freeform?: FreeformDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
   /** Which types a picker names when a candidate would give one already held; undefined when none. */
@@ -1801,6 +1832,7 @@ export function resolveCharacterKind(
   let references: ReferencesDef | undefined;
   let companions: CompanionsDef | undefined;
   let play: PlayDef | undefined;
+  let freeform: FreeformDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let candidateOverlaps: CandidateOverlapsDef | undefined;
   let buildSteps: BuildStepDef[] = [];
@@ -1831,6 +1863,7 @@ export function resolveCharacterKind(
     if (layer.references !== undefined) references = layer.references;
     if (layer.companions !== undefined) companions = layer.companions;
     if (layer.play !== undefined) play = layer.play;
+    if (layer.freeform !== undefined) freeform = layer.freeform;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.candidateOverlaps !== undefined) candidateOverlaps = layer.candidateOverlaps;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
@@ -1862,6 +1895,7 @@ export function resolveCharacterKind(
     references,
     companions,
     play,
+    freeform,
     candidateNotes,
     candidateOverlaps,
     buildSteps,

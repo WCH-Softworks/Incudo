@@ -371,6 +371,19 @@ export function setName(character: Character, name: string): Character {
   return { ...character, name, updatedAt: new Date().toISOString() };
 }
 
+/**
+ * Write one field of the text the rules never read — ADR 0092. A value that is blank once trimmed removes the key; any
+ * other is kept as typed, so a space typed before the next word is not lost. Returns the character unchanged when
+ * nothing differs. No format version moves: `freeform` is in every format.
+ */
+export function setFreeform(character: Character, key: string, value: string): Character {
+  const current = character.freeform[key];
+  const next = value.trim() === '' ? undefined : value;
+  if (current === next) return character;
+  const { [key]: _previous, ...rest } = character.freeform;
+  return { ...character, freeform: next === undefined ? rest : { ...rest, [key]: next }, updatedAt: new Date().toISOString() };
+}
+
 export function setChoice(
   character: Character,
   ruleKey: string,

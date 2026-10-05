@@ -483,6 +483,128 @@
         { "id": "details", "label": "Details", "types": ["Alignment", "Deity"] }
       ],
 
+      "freeform": {
+        "label": "About the character",
+        "description": "Text no rule reads: who plays the character, how they look, what drives them, and notes. Whatever is written here is shown on the sheet.",
+        "fields": [
+          {
+            "key": "player-name",
+            "label": "Player name",
+            "group": "Player"
+          },
+          {
+            "key": "gender",
+            "label": "Gender",
+            "group": "Player"
+          },
+          {
+            "key": "appearance.age",
+            "label": "Age",
+            "group": "Appearance"
+          },
+          {
+            "key": "appearance.height",
+            "label": "Height",
+            "group": "Appearance"
+          },
+          {
+            "key": "appearance.weight",
+            "label": "Weight",
+            "group": "Appearance"
+          },
+          {
+            "key": "appearance.eyes",
+            "label": "Eyes",
+            "group": "Appearance"
+          },
+          {
+            "key": "appearance.skin",
+            "label": "Skin",
+            "group": "Appearance"
+          },
+          {
+            "key": "appearance.hair",
+            "label": "Hair",
+            "group": "Appearance"
+          },
+          {
+            "key": "background-traits",
+            "label": "Personality Traits",
+            "group": "Personality",
+            "multiline": true
+          },
+          {
+            "key": "background-ideals",
+            "label": "Ideals",
+            "group": "Personality",
+            "multiline": true
+          },
+          {
+            "key": "background-bonds",
+            "label": "Bonds",
+            "group": "Personality",
+            "multiline": true
+          },
+          {
+            "key": "background-flaws",
+            "label": "Flaws",
+            "group": "Personality",
+            "multiline": true
+          },
+          {
+            "key": "background-trinket",
+            "label": "Trinket",
+            "group": "Story"
+          },
+          {
+            "key": "backstory",
+            "label": "Backstory",
+            "group": "Story",
+            "multiline": true
+          },
+          {
+            "key": "organization.name",
+            "label": "Organisation",
+            "group": "Story"
+          },
+          {
+            "key": "organization.allies",
+            "label": "Allies and organisations",
+            "group": "Story",
+            "multiline": true
+          },
+          {
+            "key": "currency.treasure",
+            "label": "Treasure",
+            "group": "Story",
+            "multiline": true
+          },
+          {
+            "key": "additional-features",
+            "label": "Other features and traits",
+            "group": "Story",
+            "multiline": true
+          },
+          {
+            "key": "notes.note.left",
+            "label": "Notes",
+            "group": "Notes",
+            "multiline": true
+          },
+          {
+            "key": "notes.note.right",
+            "label": "More notes",
+            "group": "Notes",
+            "multiline": true
+          },
+          {
+            "key": "quest",
+            "label": "Quests",
+            "group": "Notes",
+            "multiline": true
+          }
+        ]
+      },
       "play": {
         "rests": [
           { "id": "short", "label": "Short Rest", "usage": ["{count}/Short Rest", "{count}/Short or Long Rest", "{count}/Long or Short Rest"] },
@@ -664,6 +786,22 @@
         { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
       ],
 
+      "freeform": {
+        "label": "About the creature",
+        "description": "Text no rule reads: how it looks and acts, and the DM's notes. Whatever is written here is shown on the sheet.",
+        "fields": [
+          {
+            "key": "description",
+            "label": "Description",
+            "multiline": true
+          },
+          {
+            "key": "notes",
+            "label": "Notes",
+            "multiline": true
+          }
+        ]
+      },
       "play": {
         "rests": [
           { "id": "short", "label": "Short Rest", "usage": ["{count}/Short Rest", "{count}/Short or Long Rest", "{count}/Long or Short Rest"] },

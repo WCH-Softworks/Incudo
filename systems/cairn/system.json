@@ -44,6 +44,27 @@
         { "id": "gear", "label": "Gear", "types": ["Item", "Spellbook"] }
       ],
 
+      "freeform": {
+        "label": "About the character",
+        "description": "Text no rule reads. Whatever is written here is shown on the sheet.",
+        "fields": [
+          {
+            "key": "appearance",
+            "label": "Appearance",
+            "multiline": true
+          },
+          {
+            "key": "background-story",
+            "label": "Background story",
+            "multiline": true
+          },
+          {
+            "key": "notes",
+            "label": "Notes",
+            "multiline": true
+          }
+        ]
+      },
       "sheet": {
         "sections": [
           { "id": "background", "label": "Background", "types": ["Background"] },
