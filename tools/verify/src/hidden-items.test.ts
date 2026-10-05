@@ -119,7 +119,7 @@ test('the hidden items outside the optional class features, and what they are', 
   }
   const system = await loadShippedSystem('dnd5e');
   const pc = system.characterKinds.find((k) => k.id === 'pc')!;
-  const shown = new Set(pc.sheet.sections.flatMap((s) => s.stats ?? []));
+  const shown = new Set((pc.sheet?.sections ?? []).flatMap((s) => s.stats ?? []));
   t.diagnostic(`  the player character's sheet shows: ${modes.map((m) => `speed:${m} ${shown.has(`speed:${m}`) ? 'yes' : 'no'}`).join(', ')}`);
 
   const ids = new Set(family.map((e) => e.id));
