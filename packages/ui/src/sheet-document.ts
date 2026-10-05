@@ -13,6 +13,7 @@
 
 import type { Character, ElementId } from '@incudo/core';
 
+import { sheetFreeform, type FreeformState, type SheetFreeform } from './freeform.ts';
 import type { ReferenceRow, ReferencesState } from './references.ts';
 import type { CompanionsView } from './companions.ts';
 import type { SheetListedElement, SheetRow, SheetSectionView, SheetView } from './sheet.ts';
@@ -122,6 +123,11 @@ export interface SheetDocument {
   sections: SheetSectionView[];
   /** Its held creatures, when the kind declares them and it holds any. */
   companions?: { label: string; description?: string; creatures: SheetDocumentCreature[] };
+  /**
+   * What the user wrote about it, the fields with text in the kind's order, when anything is written — ADR 0092. After
+   * the held creatures and before what it keeps, on every sheet.
+   */
+  freeform?: SheetFreeform;
   /** What it keeps beside it, when it keeps anything. */
   references?: { label: string; entries: SheetDocumentReference[] };
 }
@@ -132,10 +138,13 @@ export interface SheetDocumentSource {
   sheet: SheetView;
   companions?: CompanionsView;
   references: Pick<ReferencesState, 'label' | 'rows'>;
+  /** Required, so a caller picking parts cannot leave it out (the phone's sheet did, until it was run). */
+  freeform: FreeformState;
 }
 
 export function sheetDocument(state: SheetDocumentSource): SheetDocument {
   const { sheet, companions, references } = state;
+  const freeform = sheetFreeform(state.freeform);
   return {
     name: state.character.name,
     title: state.character.name.trim() || UNNAMED_CHARACTER,
@@ -160,6 +169,7 @@ export function sheetDocument(state: SheetDocumentSource): SheetDocument {
           },
         }
       : {}),
+    ...(freeform ? { freeform } : {}),
     ...(references.rows.length ? { references: { label: references.label, entries: references.rows.map(referenceEntry) } } : {}),
   };
 }

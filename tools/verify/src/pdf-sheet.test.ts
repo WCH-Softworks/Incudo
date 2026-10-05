@@ -110,6 +110,9 @@ const rowsFilled = (d: Read, id: string, stats: string[]): Verdict =>
   stats.every((s) => d.row(id, s) !== undefined) ? 'filled' : 'absent';
 const listed = (d: Read, id: string): Verdict => ((d.section(id)?.elements.length ?? 0) > 0 ? 'filled' : 'empty');
 const ofType = (d: Read, types: string[]): Verdict => (d.lists('identity', types) ? 'filled' : 'empty');
+/** Whether the document holds what the user wrote under any of these freeform keys (ADR 0092). */
+const wrote = (d: Read, keys: string[]): Verdict =>
+  d.doc.freeform?.groups.some((g) => g.entries.some((e) => keys.includes(e.key))) ? 'filled' : 'empty';
 /** A verdict downgraded to `partial` where the form's shape does not fit this character. */
 const fit = (d: Read, name: string, v: Verdict): Verdict => (v === 'filled' && d.partial.has(name) ? 'partial' : v);
 
@@ -118,7 +121,7 @@ const OFFICIAL_2014: Box[] = [
   { page: 1, name: 'character name', text: 1, checks: 0, read: (d) => (d.doc.name.trim() ? 'filled' : 'empty') },
   { page: 1, name: 'class and level', text: 1, checks: 0, read: (d) => fit(d, 'class and level', d.classLine ? 'filled' : 'absent') },
   { page: 1, name: 'background', text: 1, checks: 0, read: (d) => ofType(d, ['Background']) },
-  { page: 1, name: 'player name', text: 1, checks: 0 },
+  { page: 1, name: 'player name', text: 1, checks: 0, read: (d) => wrote(d, ['player-name']) },
   { page: 1, name: 'race', text: 1, checks: 0, read: (d) => ofType(d, ['Race']) },
   { page: 1, name: 'alignment', text: 1, checks: 0, read: (d) => ofType(d, ['Alignment']) },
   { page: 1, name: 'experience points', text: 1, checks: 0 },
@@ -136,7 +139,7 @@ const OFFICIAL_2014: Box[] = [
   { page: 1, name: 'hit dice total', text: 1, checks: 0, read: (d) => (d.hitDice ? 'filled' : 'absent') },
   { page: 1, name: 'hit dice remaining', text: 1, checks: 0 },
   { page: 1, name: 'death saves', text: 0, checks: 6 },
-  { page: 1, name: 'personality, ideals, bonds, flaws', text: 4, checks: 0 },
+  { page: 1, name: 'personality, ideals, bonds, flaws', text: 4, checks: 0, read: (d) => wrote(d, ['background-traits', 'background-ideals', 'background-bonds', 'background-flaws']) },
   { page: 1, name: 'three weapons: name', text: 3, checks: 0, read: (d) => (['primary', 'secondary'].some((s) => (d.row('worn', s) ?? 'none') !== 'none') ? 'filled' : 'empty') },
   { page: 1, name: 'three weapons: attack bonus and damage', text: 6, checks: 0 },
   { page: 1, name: 'attacks and spellcasting', text: 1, checks: 0, holds: box(166, 113) },
@@ -145,12 +148,12 @@ const OFFICIAL_2014: Box[] = [
   { page: 1, name: 'other proficiencies and languages', text: 1, checks: 0, holds: box(166, 129), read: (d) => fit(d, 'other proficiencies and languages', listed(d, 'proficiencies')) },
   { page: 1, name: 'features and traits', text: 1, checks: 0, holds: box(166, 369), read: (d) => fit(d, 'features and traits', listed(d, 'features')) },
   { page: 2, name: 'character name (again)', text: 1, checks: 0, read: (d) => (d.doc.name.trim() ? 'filled' : 'empty') },
-  { page: 2, name: 'age, height, weight, eyes, skin, hair', text: 6, checks: 0 },
+  { page: 2, name: 'age, height, weight, eyes, skin, hair', text: 6, checks: 0, read: (d) => wrote(d, ['age', 'height', 'weight', 'eyes', 'skin', 'hair'].map((k) => `appearance.${k}`)) },
   { page: 2, name: 'portrait', text: 0, checks: 1 },
-  { page: 2, name: 'allies and organisations, faction name, faction symbol', text: 2, checks: 1 },
-  { page: 2, name: 'backstory', text: 1, checks: 0, holds: box(164, 370) },
+  { page: 2, name: 'allies and organisations, faction name, faction symbol', text: 2, checks: 1, read: (d) => wrote(d, ['organization.name', 'organization.allies']) },
+  { page: 2, name: 'backstory', text: 1, checks: 0, holds: box(164, 370), read: (d) => wrote(d, ['backstory']) },
   { page: 2, name: 'additional features and traits', text: 1, checks: 0, holds: box(353, 205) },
-  { page: 2, name: 'treasure', text: 1, checks: 0, holds: box(353, 152) },
+  { page: 2, name: 'treasure', text: 1, checks: 0, holds: box(353, 152), read: (d) => wrote(d, ['currency.treasure']) },
   { page: 3, name: 'spellcasting class, ability, save DC, attack bonus', text: 4, checks: 0, read: (d) => fit(d, 'spellcasting class, ability, save DC, attack bonus', d.doc.sections.some((s) => s.id.startsWith('spellcasting')) ? 'filled' : 'empty') },
   { page: 3, name: 'spell slots per level', text: 9, checks: 0, read: (d) => (d.doc.sections.some((s) => s.id.includes('slots') && s.rows.length) ? 'filled' : 'empty') },
   { page: 3, name: 'slots expended per level', text: 9, checks: 0 },
@@ -281,7 +284,10 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
     ...(classLine ? { classLine } : {}),
     ...(hitDice ? { hitDice } : {}),
     chars,
-    freeformKeys: Object.keys(character.freeform ?? {}).filter((k) => (character.freeform[k] ?? '').trim() !== ''),
+    // What the document does not hold: text under a key no field of the kind declares (ADR 0092).
+    freeformKeys: Object.keys(character.freeform ?? {}).filter(
+      (k) => (character.freeform[k] ?? '').trim() !== '' && !(resolveCharacterKind(run.system, 'pc').freeform?.fields ?? []).some((field) => field.key === k),
+    ),
     prepared: Object.values(character.prepared ?? {}).reduce((n, list) => n + list.length, 0),
     proficiencyMarks,
     hasPortrait: Boolean(character.assets?.portrait),
@@ -301,7 +307,8 @@ function freeformFamilies(readings: SampleReading[]): string {
   const family = (key: string): string => {
     if (key.startsWith('currency.')) return 'coins';
     if (key.startsWith('attacks.')) return 'attack notes';
-    if (key.startsWith('background-') || /\.(Personality Trait|Ideal|Bond|Flaw)(\.\d+)?$/.test(key)) return 'personality, ideals, bonds, flaws';
+    if (key.startsWith('background-')) return 'personality, ideals, bonds, flaws';
+    if (/\.(Personality Trait|Ideal|Bond|Flaw)(\.\d+)?$/.test(key)) return 'personality, ideals, bonds, flaws as table rows';
     if (key.startsWith('background.feature.')) return 'background feature text';
     if (key.startsWith('list.')) return 'other background tables';
     return key;
@@ -346,7 +353,7 @@ test('the samples against the 2014 fillable sheet: what the sheet document fills
     const values = readings.map((r) => r.chars.get(b.name) ?? 0);
     t.diagnostic(`${b.name}: characters a sample would write ${range(values)}; the box holds about ${b.holds} at 7 pt; samples over it ${values.filter((v) => v > b.holds!).length}`);
   }
-  t.diagnostic(`proficiency marks in the derivation per sample ${range(readings.map((r) => r.proficiencyMarks))}, which the document carries since ADR 0079 decision 6 (the form has 24 boxes for them); prepared spells recorded on ${readings.filter((r) => r.prepared).length} samples, ${range(readings.filter((r) => r.prepared).map((r) => r.prepared))} each, which the document marks since decision 8 (92 boxes); held outside the document: personal text (freeform) on ${readings.filter((r) => r.freeformKeys.length).length} samples, what it holds ${freeformFamilies(readings)}; a portrait on ${readings.filter((r) => r.hasPortrait).length}`);
+  t.diagnostic(`proficiency marks in the derivation per sample ${range(readings.map((r) => r.proficiencyMarks))}, which the document carries since ADR 0079 decision 6 (the form has 24 boxes for them); prepared spells recorded on ${readings.filter((r) => r.prepared).length} samples, ${range(readings.filter((r) => r.prepared).map((r) => r.prepared))} each, which the document marks since decision 8 (92 boxes); held outside the document: freeform text under no declared field (ADR 0092) on ${readings.filter((r) => r.freeformKeys.length).length} samples, what it holds ${freeformFamilies(readings)}; a portrait on ${readings.filter((r) => r.hasPortrait).length}`);
   const outside = new Set(readings.flatMap((r) => [...r.outside]));
   t.diagnostic(`characters the form's font (Helvetica, WinAnsi, not embedded) cannot write: on ${readings.filter((r) => r.outside.size).length} samples, ${[...outside].map((c) => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(' ') || 'none'}`);
 });

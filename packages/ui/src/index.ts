@@ -36,6 +36,7 @@ export * from './companions.ts';
 export * from './sheet.ts';
 export * from './sheet-document.ts';
 export * from './play.ts';
+export * from './freeform.ts';
 export * from './sheet-markdown.ts';
 export * from './sheet-export.ts';
 export * from './print-options.ts';

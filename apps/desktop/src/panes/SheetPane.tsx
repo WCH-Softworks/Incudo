@@ -20,6 +20,7 @@ import type { CharacterBuilder, PlayView, PrintRendering, SheetDocument } from '
 import { PlayPanel } from './PlayPanel.tsx';
 import { ReferenceText } from './References.tsx';
 import { Companions, SheetRows } from './Companions.tsx';
+import { FreeformSheet } from './Freeform.tsx';
 
 export function SheetPane({
   builder,
@@ -64,6 +65,9 @@ export function SheetPane({
         {/* Each creature the character holds, as its own stat block (ADR 0073): after the character, before what it keeps. */}
         {document.companions && <Companions view={document.companions} />}
       </div>
+
+      {/* What the user wrote about the character (ADR 0092): after its sections and creatures, before what it keeps. */}
+      {document.freeform && <FreeformSheet part={document.freeform} />}
 
       {/* What the character keeps beside it for reference (ADR 0068), after the sheet: text, not the character's own. */}
       {document.references && (

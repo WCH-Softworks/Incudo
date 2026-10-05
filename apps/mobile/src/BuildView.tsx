@@ -32,7 +32,7 @@ import {
 } from '@incudo/ui';
 
 import { BooksView, BudgetView, ClassLevelsView, DraftField, HitPointsView, NumberField, PreparedView } from './BuildParts.tsx';
-import { AdditionsView, CustomFeaturesView, HolderGrantsView, ReferencesView } from './BuildExtras.tsx';
+import { AdditionsView, CustomFeaturesView, FreeformView, HolderGrantsView, ReferencesView } from './BuildExtras.tsx';
 import { Body, Button, Card, Heading, Row, Tag } from './controls.tsx';
 import { Picker, type PickerRequest } from './Picker.tsx';
 import { usePalette } from './theme.ts';
@@ -209,6 +209,13 @@ export const BuildView = memo(function BuildView({
         <>
           <Heading>{state.references.label}</Heading>
           <ReferencesView state={state} builder={builder} labelOf={labelOf} pick={setRequest} />
+        </>
+      ) : null}
+
+      {state.freeform.available ? (
+        <>
+          <Heading>{state.freeform.label}</Heading>
+          <FreeformView state={state} builder={builder} />
         </>
       ) : null}
 

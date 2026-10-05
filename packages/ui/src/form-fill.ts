@@ -43,6 +43,11 @@ interface ListRef extends SectionRef {
 export type FormRule =
   /** The character's name. */
   | { field: string; value: 'name' }
+  /**
+   * What the user wrote under a `Character.freeform` key, as the document holds it (ADR 0092). With a capacity it is
+   * written at that size, and text longer than the box is written whole and named as running past it, never cut.
+   */
+  | { field: string; freeform: string; capacity?: { lines: number; perLine: number; fontSize: number } }
   /** A row's value, or what is beside it. A value in `skip` fills nothing ("none" in an empty hand). */
   | { field: string; row: RowRef; part?: 'value' | 'beside'; skip?: string[] }
   /** A check box, ticked when the row carries a mark. */
@@ -237,6 +242,16 @@ export function formValues(document: SheetDocument, map: FormMap): FormValues {
 
   for (const rule of map.fill) {
     if ('value' in rule) put(rule.field, document.name.trim() || undefined);
+    else if ('freeform' in rule) {
+      const entry = document.freeform?.groups.flatMap((g) => g.entries).find((e) => e.key === rule.freeform);
+      if (!entry) continue;
+      const value = rule.capacity ? entry.text : entry.text.replace(/\s*\n\s*/g, ' ');
+      put(rule.field, value);
+      if (rule.capacity) {
+        fontSizes[rule.field] = rule.capacity.fontSize;
+        if (wrappedLines(value, rule.capacity.perLine) > rule.capacity.lines) leftOff.push(`${entry.label} runs past the form's box`);
+      }
+    }
     else if ('row' in rule) {
       const sectionViews = views(document, rule.row.section);
       for (const extra of sectionViews.slice(1)) extraBlocks.add(extra);

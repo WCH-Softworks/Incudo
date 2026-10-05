@@ -2,7 +2,7 @@
  * What goes on a printed sheet, chosen before the platform's print dialog — ADR 0078.
  *
  * "Print sheet…" opens a small step of the app's own: which parts of the sheet print (the character's own sections, the
- * creatures it holds, what it keeps for reference), whether the pages carry their own numbers, and whether pages after
+ * creatures it holds, what the user wrote about it (ADR 0092), what it keeps for reference), whether the pages carry their own numbers, and whether pages after
  * the first carry the character's name. Its Print opens the platform's dialog, unchanged.
  *
  * This is the step's view-model. It reads the sheet document (ADR 0075) and nothing else: never the builder's state and
@@ -26,9 +26,9 @@ import type { PaperSize, Storage } from '@incudo/core';
 import type { SheetDocument } from './sheet-document.ts';
 
 /** A part of a sheet, named by the document's own field. */
-export type PrintPart = 'sections' | 'companions' | 'references';
+export type PrintPart = 'sections' | 'companions' | 'freeform' | 'references';
 
-export const PRINT_PARTS: readonly PrintPart[] = ['sections', 'companions', 'references'];
+export const PRINT_PARTS: readonly PrintPart[] = ['sections', 'companions', 'freeform', 'references'];
 
 /** The papers a PDF is written on. A print's paper is the platform dialog's. */
 export type Paper = 'a4' | 'letter';
@@ -114,6 +114,7 @@ export interface PrintOptionsView {
 export function printPartsOf(document: SheetDocument): PrintPart[] {
   const parts: PrintPart[] = ['sections'];
   if (document.companions && document.companions.creatures.length > 0) parts.push('companions');
+  if (document.freeform && document.freeform.groups.length > 0) parts.push('freeform');
   if (document.references && document.references.entries.length > 0) parts.push('references');
   return parts;
 }
@@ -121,6 +122,7 @@ export function printPartsOf(document: SheetDocument): PrintPart[] {
 function partLabel(document: SheetDocument, part: PrintPart): string {
   if (part === 'companions') return document.companions!.label;
   if (part === 'references') return document.references!.label;
+  if (part === 'freeform') return document.freeform!.label;
   return OWN_SECTIONS_LABEL;
 }
 

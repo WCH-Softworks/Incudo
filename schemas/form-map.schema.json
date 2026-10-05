@@ -70,6 +70,18 @@
           "properties": { "field": { "$ref": "#/$defs/field" }, "value": { "const": "name" } }
         },
         {
+          "type": "object", "required": ["field", "freeform"], "additionalProperties": false,
+          "description": "What the user wrote under a character's freeform key, as the sheet document holds it (ADR 0092). With a capacity it is written at that size, and text longer than the box is written whole and named as running past it.",
+          "properties": {
+            "field": { "$ref": "#/$defs/field" },
+            "freeform": { "type": "string", "minLength": 1 },
+            "capacity": {
+              "type": "object", "required": ["lines", "perLine", "fontSize"], "additionalProperties": false,
+              "properties": { "lines": { "type": "integer", "minimum": 1 }, "perLine": { "type": "integer", "minimum": 1 }, "fontSize": { "type": "number", "exclusiveMinimum": 0 } }
+            }
+          }
+        },
+        {
           "type": "object", "required": ["field", "row"], "additionalProperties": false,
           "properties": {
             "field": { "$ref": "#/$defs/field" },

@@ -315,11 +315,11 @@ function OpenedSheet({
   const [tab, setTab] = useState<'sheet' | 'play'>('sheet');
   // A play edit makes a new state and leaves the sheet's parts as they were, so the document is made again only when
   // one of them moves.
-  const { sheet, companions, references } = state;
+  const { sheet, companions, references, freeform } = state;
   const characterName = state.character.name;
   const document = useMemo<SheetDocument>(
-    () => sheetDocument({ character: { name: characterName }, sheet, references, ...(companions ? { companions } : {}) }),
-    [sheet, companions, references, characterName],
+    () => sheetDocument({ character: { name: characterName }, sheet, references, freeform, ...(companions ? { companions } : {}) }),
+    [sheet, companions, references, freeform, characterName],
   );
   const settle = useRecorder(library, name, state.character, readAt, (text) => setMessage({ text, failed: true }));
 

@@ -25,8 +25,8 @@
  * legendary creature, an NPC and a player character keeping every element their kind may keep, and a Cairn character:
  * the Markdown (`sheetMarkdown(sheetDocument(state))`) is **the same packed and reopened with no source**; it heads
  * every section and lists every row, element and printed line the document holds; it writes no HTML (no `<` it did not
- * escape), no empty heading, and no table whose rows differ in width; and a sample's holds none of the importer's
- * freeform prose and no asset path. And every kept text, read into Markdown, says the same words in the same order as
+ * escape), no empty heading, and no table whose rows differ in width; and a sample's holds no asset path, none of the
+ * importer's freeform prose under a key its kind declares no field for and, since ADR 0092, all of what is under one. And every kept text, read into Markdown, says the same words in the same order as
  * its HTML with the tags taken away, and every table in it has the same columns, a spanning cell counted as the
  * columns it spans: nothing lost, nothing added, no header over the wrong column.
  *
@@ -246,6 +246,9 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
   const problems: string[] = [];
   const offlineExports: string[] = [];
   const leaked: string[] = [];
+  const missingWritten: string[] = [];
+  let written = 0;
+  const declared = new Set((kind.freeform?.fields ?? []).map((field) => field.key));
 
   for (const sample of readManifest().samples) {
     samples++;
@@ -303,9 +306,18 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
     const markdown = exported(state);
     problems.push(...markdownProblems(sheetDocument(state), markdown).map((p) => `${sample.id} ${p}`));
     if (exported(offline) !== markdown) offlineExports.push(sample.id);
+    // What the user wrote under a field the kind declares is on the sheet word for word (ADR 0092); what an import put
+    // under any other key, prose that is not content's own words, is not.
+    const unescaped = markdown.replace(/\\/g, '');
     for (const [key, value] of Object.entries(character.freeform)) {
+      const opening = value.trim().split('\n')[0]!.trim().slice(0, 40);
+      if (declared.has(key)) {
+        if (unescaped.includes(opening)) written++;
+        else missingWritten.push(`${sample.id} ${key}`);
+        continue;
+      }
       const prose = /^(backstory|background-|background\.|attacks\.)/.test(key) && value.trim().length >= 4 && !contents(value);
-      if (prose && markdown.includes(value.trim().slice(0, 40))) leaked.push(`${sample.id} ${key}`);
+      if (prose && markdown.includes(opening)) leaked.push(`${sample.id} ${key}`);
     }
     for (const path of Object.values(character.assets ?? {})) if (markdown.includes(path)) leaked.push(`${sample.id} ${path}`);
   }
@@ -329,8 +341,11 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
   assert.deepEqual(problems, []);
   // Fails if the export reads anything the save does not carry.
   assert.deepEqual(offlineExports, []);
-  // Fails if the export writes the importer's prose or a portrait path, which the Sheet does not show.
+  t.diagnostic(`freeform values under a declared field written in the export: ${written}`);
+  // Fails if the export writes the importer's prose under a key no field declares, or a portrait path.
   assert.deepEqual(leaked, []);
+  // Fails if what is written under a declared field is left off the export (ADR 0092).
+  assert.deepEqual(missingWritten, []);
 });
 
 test('every creature as an NPC and as a legendary creature: what its sheet holds, the same with no source', { skip: corpusSkip }, async (t) => {

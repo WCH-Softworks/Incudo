@@ -1929,6 +1929,67 @@ ul.browse-categories {
   padding: 1px 3px;
 }
 
+/* What the user writes about the character (ADR 0092): a group of labelled boxes on Build, and on the sheet a list of
+   labels and text, a long one under its label with its line breaks kept. */
+.freeform-section {
+  margin-top: 24px;
+}
+
+.freeform-group {
+  border: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.freeform-group legend {
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.freeform-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.freeform-field textarea {
+  font: inherit;
+  resize: vertical;
+}
+
+.sheet-freeform h4 {
+  margin: 8px 0 4px;
+}
+
+.freeform-entry {
+  margin-bottom: 2px;
+}
+
+.freeform-entry.multiline {
+  margin-bottom: 8px;
+}
+
+.freeform-label {
+  font-weight: 600;
+}
+
+.freeform-entry:not(.multiline) .freeform-label::after {
+  content: ': ';
+}
+
+/* A long field's label sits over its text, muted, so it does not read as its group's heading. */
+.freeform-entry.multiline .freeform-label {
+  display: block;
+  font-weight: normal;
+  color: var(--fg-muted);
+}
+
+.freeform-text {
+  white-space: pre-line;
+}
+
 .sheet-references article + article {
   margin-top: 16px;
 }
@@ -2063,6 +2124,7 @@ ul.browse-categories {
   /* A part the print options step left out. */
   .print-omit-sections .sheet-flow > .sheet-section:not(.sheet-companions),
   .print-omit-companions .sheet-companions,
+  .print-omit-freeform .sheet-freeform,
   .print-omit-references .sheet-references {
     display: none;
   }
@@ -2165,7 +2227,7 @@ ul.browse-categories {
   /* A section that lists no elements is a heading, a sentence and a grid of rows or printed lines, never a column long:
      kept whole, so the skills' heading does not end one column with their numbers starting the next. Chosen by what it
      holds, not by what it is called. The creatures' part and the kept texts are parts, not sections, and may be long. */
-  .sheet-section:not(.sheet-companions, .sheet-references, :has(.sheet-elements)) {
+  .sheet-section:not(.sheet-companions, .sheet-references, .sheet-freeform, :has(.sheet-elements)) {
     break-inside: avoid;
   }
 

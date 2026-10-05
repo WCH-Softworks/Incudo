@@ -86,6 +86,7 @@ const source: SheetDocumentSource = {
   sheet,
   companions,
   references: { label: 'For reference', rows },
+  freeform: { available: false, label: '', groups: [] },
 };
 
 test('the document holds what the pane showed, with the sentences the pane used to compose', () => {
@@ -112,6 +113,7 @@ test('a creature nothing names has no from line, and a character keeping nothing
     ...source,
     companions: { ...companions, creatures: [{ ...companions.creatures[0]!, heldBy: [] }] },
     references: { label: 'For reference', rows: [] },
+    freeform: { available: false, label: '', groups: [] },
   });
   assert.equal(doc.companions!.creatures[0]!.from, undefined);
   assert.equal(doc.references, undefined);

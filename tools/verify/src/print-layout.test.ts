@@ -682,7 +682,7 @@ test('the print rules: the Sheet pane on paper, laid out by what it holds (ADR 0
   expect(print, ':root', 'color-scheme', /^light$/, 'the page keeps the dark scheme');
   // Two columns, and what fits is not split.
   expect(print, '.sheet-flow', 'columns', /^2$/, 'the sections are not in columns');
-  for (const selector of ['dl', '.sheet-elements > li', '.sheet-companion-section', '.sheet-section:not(.sheet-companions, .sheet-references, :has(.sheet-elements))']) {
+  for (const selector of ['dl', '.sheet-elements > li', '.sheet-companion-section', '.sheet-section:not(.sheet-companions, .sheet-references, .sheet-freeform, :has(.sheet-elements))']) {
     expect(print, selector, 'break-inside', /^avoid$/, 'what fits can split across a column');
   }
   // Not a whole section: kept whole, a long list jumped to the next page and left this one half empty.

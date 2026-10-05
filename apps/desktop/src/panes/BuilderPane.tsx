@@ -54,6 +54,7 @@ import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 import { CustomFeatures } from './CustomFeatures.tsx';
 import { Additions } from './Additions.tsx';
 import { References } from './References.tsx';
+import { FreeformEditor } from './Freeform.tsx';
 
 export function BuilderPane({
   builder,
@@ -227,6 +228,14 @@ export function BuilderPane({
             <div className="references-section">
               <h2>{state.references.label}</h2>
               <References state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} />
+            </div>
+          )}
+
+          {/* What the user writes about the character (ADR 0092): no rule reads it, and the sheet shows it. */}
+          {state.freeform.available && (
+            <div className="freeform-section">
+              <h2>{state.freeform.label}</h2>
+              <FreeformEditor state={state.freeform} builder={builder} />
             </div>
           )}
         </section>

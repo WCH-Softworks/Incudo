@@ -3,7 +3,8 @@
  *
  * One renderer of `sheetDocument`, beside the Sheet pane: the character's name as the title, its kind under it, each
  * section a heading with one list of what it shows (rows as "Label: value (beside, mark)", listed elements by name, printed
- * lines as "Label: text", in the pane's order), each held creature and each kept element a heading of its own, and a
+ * lines as "Label: text", in the pane's order), each held creature and each kept element a heading of its own, what the
+ * user wrote about the character under its own heading (ADR 0092), and a
  * kept element's text read from its HTML (`htmlToMarkdown`). Nothing but what the document holds, and nothing it holds
  * but the pane's element count, which counts internal elements and says nothing on paper.
  *
@@ -49,6 +50,30 @@ export function sheetMarkdown(document: SheetDocument): string {
       if (creature.from) paragraph(creature.from);
       for (const note of creature.notes) paragraph(note);
       sections(creature.sections, 4);
+    }
+  }
+
+  if (document.freeform) {
+    heading(2, document.freeform.label);
+    for (const group of document.freeform.groups) {
+      // A group heads its fields; fields in no group sit under the part's own heading.
+      if (group.label !== undefined) heading(3, group.label);
+      // One-line fields are a list, "Age: 30"; a multi-line field is a heading over its paragraphs.
+      let list: string[] = [];
+      const flush = (): void => {
+        if (list.length) blocks.push(list.join('\n'));
+        list = [];
+      };
+      for (const entry of group.entries) {
+        if (entry.multiline) {
+          flush();
+          heading(group.label !== undefined ? 4 : 3, entry.label);
+          for (const text of entry.text.split(/\n\s*\n/)) paragraph(text);
+        } else {
+          list.push(`- ${escapeLineStart(`${escapeMarkdown(entry.label)}: ${escapeMarkdown(entry.text.replace(/\s*\n\s*/g, ' '))}`)}`);
+        }
+      }
+      flush();
     }
   }
 

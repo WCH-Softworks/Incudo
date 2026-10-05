@@ -41,6 +41,7 @@ import {
   holderGivenIds,
   setGenerationMethod,
   setName,
+  setFreeform,
   setRoll,
   type BuildStepDef,
   type Character,
@@ -118,6 +119,7 @@ import { additionOptions, additionsState, type AdditionOption, type AdditionsSta
 import { referenceOptions, referencesState, type ReferencesState } from './references.ts';
 import { companionsView, type CompanionsView } from './companions.ts';
 import { sheetView, type SheetView } from './sheet.ts';
+import { freeformState, type FreeformState } from './freeform.ts';
 import { adjustPlay, playView, restPlay, setPlayCondition, setPlaySpent, setPlayTemporary, type PlayView } from './play.ts';
 import {
   equipOffer,
@@ -329,6 +331,11 @@ export interface BuilderState {
    * kind declares no play.
    */
   play?: PlayView;
+  /**
+   * The text the user writes about the character, every field the kind declares, written or not — ADR 0092.
+   * `available` is false for a kind that declares none.
+   */
+  freeform: FreeformState;
   /**
    * What the derivation withdrew because its own requirements are false (ADR 0071), named — ADR 0072. Taking a feature
    * that replaces another withdraws the other, and Build lists it here rather than letting it disappear.
@@ -1217,6 +1224,21 @@ export class CharacterBuilder {
    * A play edit. Play is not a derivation input (ADR 0084), so nothing derived can move: the state is kept and only the
    * character and the play view are made again, which keeps a tap on a phone from re-deriving the character.
    */
+  // --- what the user writes about the character (ADR 0092) ---------------------------------------------------------
+
+  /**
+   * Write one field (`setFreeform`). No rule reads it, so nothing derived can move: as a play edit, the state is kept and
+   * only the character and the text are made again, which keeps a keystroke from re-deriving the character.
+   */
+  setFreeform = (key: string, value: string): void => {
+    const next = setFreeform(this.character, key, value);
+    if (next === this.character) return;
+    this.character = next;
+    const state = this.getState();
+    this.cached = { ...state, character: next, freeform: freeformState(next, this.kind) };
+    for (const listener of this.listeners) listener();
+  };
+
   private playEdit(edit: (view: PlayView) => Character): void {
     const state = this.getState();
     if (!state.play) return;
@@ -1691,6 +1713,7 @@ export class CharacterBuilder {
       companions: companionsView(derived, this.kind, this.elements),
       sheet,
       ...(play ? { play } : {}),
+      freeform: freeformState(this.character, this.kind),
       focusedId: this.focusedId,
     };
   }

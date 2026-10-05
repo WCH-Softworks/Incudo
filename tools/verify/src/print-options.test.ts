@@ -8,7 +8,7 @@
  * `samplesWhere`), the same samples keeping every text their own elements print (ADR 0070's suggestions, which is what
  * a player would keep), every creature as an NPC and as a legendary creature, and a Cairn character, and asks:
  *
- * - **Which parts a kind can ever have**, from what it declares (`companions`, `references`), per shipped system: the
+ * - **Which parts a kind can ever have**, from what it declares (`companions`, `freeform` since ADR 0092, `references`), per shipped system: the
  *   most an options step could offer for it.
  * - **Which parts a sheet has**, and how many sheets have each: whether offering a part the sheet does not have would be
  *   a choice that changes nothing.
@@ -88,11 +88,15 @@ function offerProblem(document: SheetDocument): string | undefined {
     has.push('companions');
     labels.push(document.companions!.label);
   }
+  if ((document.freeform?.groups.length ?? 0) > 0) {
+    has.push('freeform');
+    labels.push(document.freeform!.label);
+  }
   if ((document.references?.entries.length ?? 0) > 0) {
     has.push('references');
     labels.push(document.references!.label);
   }
-  for (const omit of [[], ['sections', 'companions', 'references']] as const) {
+  for (const omit of [[], ['sections', 'companions', 'freeform', 'references']] as const) {
     const view = printOptionsView(document, { ...DEFAULT_PRINT_OPTIONS, omit: [...omit] });
     const offered = view.parts?.choices.map((c) => c.part) ?? ['sections'];
     if (has.length === 1 && view.parts) return `${document.title}: offered parts on a sheet of one part`;
@@ -162,7 +166,7 @@ test('what each shipped kind can ever put on a page: the parts an options step c
     const system: GameSystem = await loadShippedSystem(id);
     for (const def of system.characterKinds) {
       const kind = resolveCharacterKind(system, def.id);
-      const parts = ['the character', kind.companions && `held creatures ("${kind.companions.label}")`, kind.references && `kept texts ("${kind.references.label ?? 'For reference'}")`].filter(Boolean);
+      const parts = ['the character', kind.companions && `held creatures ("${kind.companions.label}")`, kind.freeform && `written text ("${kind.freeform.label}")`, kind.references && `kept texts ("${kind.references.label ?? 'For reference'}")`].filter(Boolean);
       t.diagnostic(`${system.name} · ${kind.name}: ${parts.join(', ')}`);
     }
   }

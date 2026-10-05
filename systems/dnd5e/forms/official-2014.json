@@ -356,6 +356,101 @@
       "value": "name"
     },
     {
+      "field": "PlayerName",
+      "freeform": "player-name"
+    },
+    {
+      "field": "Age",
+      "freeform": "appearance.age"
+    },
+    {
+      "field": "Height",
+      "freeform": "appearance.height"
+    },
+    {
+      "field": "Weight",
+      "freeform": "appearance.weight"
+    },
+    {
+      "field": "Eyes",
+      "freeform": "appearance.eyes"
+    },
+    {
+      "field": "Skin",
+      "freeform": "appearance.skin"
+    },
+    {
+      "field": "Hair",
+      "freeform": "appearance.hair"
+    },
+    {
+      "field": "PersonalityTraits ",
+      "freeform": "background-traits",
+      "capacity": {
+        "lines": 5,
+        "perLine": 40,
+        "fontSize": 7
+      }
+    },
+    {
+      "field": "Ideals",
+      "freeform": "background-ideals",
+      "capacity": {
+        "lines": 4,
+        "perLine": 40,
+        "fontSize": 7
+      }
+    },
+    {
+      "field": "Bonds",
+      "freeform": "background-bonds",
+      "capacity": {
+        "lines": 4,
+        "perLine": 40,
+        "fontSize": 7
+      }
+    },
+    {
+      "field": "Flaws",
+      "freeform": "background-flaws",
+      "capacity": {
+        "lines": 4,
+        "perLine": 40,
+        "fontSize": 7
+      }
+    },
+    {
+      "field": "FactionName",
+      "freeform": "organization.name"
+    },
+    {
+      "field": "Allies",
+      "freeform": "organization.allies",
+      "capacity": {
+        "lines": 25,
+        "perLine": 47,
+        "fontSize": 7
+      }
+    },
+    {
+      "field": "Backstory",
+      "freeform": "backstory",
+      "capacity": {
+        "lines": 43,
+        "perLine": 43,
+        "fontSize": 7
+      }
+    },
+    {
+      "field": "Treasure",
+      "freeform": "currency.treasure",
+      "capacity": {
+        "lines": 17,
+        "perLine": 94,
+        "fontSize": 7
+      }
+    },
+    {
       "field": "ClassLevel",
       "list": {
         "section": "identity",

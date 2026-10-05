@@ -57,6 +57,33 @@ export function SheetView({ document }: { document: SheetDocument }) {
         </View>
       ) : null}
 
+      {/* What the user wrote about the character (ADR 0092): after the creatures, before what it keeps. */}
+      {document.freeform ? (
+        <View style={styles.part}>
+          <Heading text={document.freeform.label} level={2} palette={palette} />
+          {document.freeform.groups.map((group, at) => (
+            <View key={group.label ?? at} style={[styles.section, { borderColor: palette.border }]}>
+              {group.label !== undefined ? <Heading text={group.label} level={3} palette={palette} /> : null}
+              {group.entries.map((entry) =>
+                entry.multiline ? (
+                  <View key={entry.key} style={styles.listed}>
+                    <Text style={[styles.body, styles.bold, { color: palette.text }]}>{entry.label}</Text>
+                    <Text style={[styles.body, { color: palette.text }]} selectable>
+                      {entry.text}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text key={entry.key} style={[styles.body, { color: palette.text }]} selectable>
+                    <Text style={styles.bold}>{entry.label}: </Text>
+                    {entry.text}
+                  </Text>
+                ),
+              )}
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {document.references ? (
         <View style={styles.part}>
           <Heading text={document.references.label} level={2} palette={palette} />

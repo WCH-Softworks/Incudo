@@ -1,7 +1,7 @@
 /**
  * The parts of a build that are not decisions — ADR 0086's second pass: what a held element gives (ADRs 0061, 0067),
  * features the user writes (ADRs 0063, 0065), elements added from loaded content whatever their prerequisites (ADR
- * 0064), and text kept beside the character for reference (ADRs 0068, 0070).
+ * 0064), text kept beside the character for reference (ADRs 0068, 0070), and what the user writes about it (ADR 0092).
  *
  * Renderers, as the desktop's `BuilderPane`, `CustomFeatures`, `Additions` and `References` are: what each part holds is
  * `BuilderState`'s, how it is grouped and worded is `packages/ui`'s, every tap a builder method, and choosing an element
@@ -298,6 +298,29 @@ export function AdditionsView({
           {empty}: {NO_ADDITION_OPTIONS}
         </Body>
       ) : null}
+    </View>
+  );
+}
+
+// --- what the user writes about the character (ADR 0092) ----------------------------------------------------------
+
+/** Every field the kind declares, written or not; a field is committed as `DraftField` commits a name. */
+export function FreeformView({ state, builder }: { state: BuilderState; builder: CharacterBuilder }) {
+  const { freeform } = state;
+  return (
+    <View style={styles.part}>
+      {freeform.description ? <Body tone="muted">{freeform.description}</Body> : null}
+      {freeform.groups.map((group, at) => (
+        <Card key={group.label ?? at}>
+          {group.label !== undefined ? <Body>{group.label}</Body> : null}
+          {group.fields.map((field) => (
+            <View key={field.key}>
+              <Body tone="muted">{field.label}</Body>
+              <DraftField value={field.value} label={field.label} multiline={field.multiline} onCommit={(value) => builder.setFreeform(field.key, value)} />
+            </View>
+          ))}
+        </Card>
+      ))}
     </View>
   );
 }
