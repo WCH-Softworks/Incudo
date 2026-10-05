@@ -450,9 +450,15 @@ Things to know before touching either:
   (`BuildExtras.tsx`): what a creature gives, features of the user's own, additions and references, worded and grouped by
   `holderGrantSections` and its siblings (`build-view.ts`), `additionGroups`, `customLineWithMode` and the rest of
   `custom-features.ts`, `referenceSuggestionNote`; `build-sections.test.ts` holds them. A written feature's line is one row
-  (stat through the `Picker` with `details: false`, Adds | Sets, number, Remove: the maintainer's choice). Not on the phone
-  yet: the class split editor, a source of the user's own. A phone Save of a player character took 5–10 s on the
-  emulator, and Back during it asks as if unsaved; not looked into.
+  (stat through the `Picker` with `details: false`, Adds | Sets, number, Remove: the maintainer's choice). **Third pass**: the class
+  split editor, inline behind "Set the split" (the maintainer's choice), and the progress control's "Use Wolf's (1/4)"
+  link (`ProgressState.printedBy`); the split's rows, total and sentences (`splitDraftView` and siblings) and the link's
+  words (`progressResetLabel`, `progressPrintedHint`) are `build-view.ts`'s, and the desktop calls them too. Not on the
+  phone yet: a source of the user's own.
+- **A Save rescans nothing** (ADR 0086's third pass): `CharacterLibrary.save` describes only the entry it wrote, from
+  the files it wrote, as `record` does. Measured first on the emulator: the rescan was 2.3 of a PC Save's 3.2 s (every
+  file inflated and parsed), and a Save is now 1.5 s (pack ~0.4, zip ~0.5, describing the one entry ~0.4). Back during a
+  Save waits for it (`BuildScreen.tsx`, `pending`), and a frame passes before packing so the header says "Saving…".
 - Driven on the emulator: a character built and a sample edited, exported, and read in Node to the phone's sheet
   checksum. Measured there: AuroraLegacy loads in 2.3 s converted, 6.6 s as files, 82 s from the network.
 
@@ -1718,10 +1724,9 @@ deliberately **not** fixed:
   none, and written on an open, a new character or a save, never a keystroke. It keeps what the session held, not what
   the character reaches: an element taken from a source after opening is not kept, because a reload must change
   nothing. `packages/ui/src/draft.ts`; `boot.ts`'s `loadDraft` reads it. Driven in the browser build only.
-- **Importing N saves rescans the library N times.** `CharacterLibrary.save` refreshes after
-  every write, because the collision suffix reads the current listing — so importing a set of real saves reads 45 containers. Imperceptible at nine and the same root cause as the entry
-  above it: there is no manifest-only fast path. Not fixed, and not worth fixing before the
-  summary cache ADR 0027 names.
+- **~~Importing N saves rescans the library N times.~~** Fixed (ADR 0086's third pass, measured on a phone, where a
+  rescan was most of a Save): `CharacterLibrary.save` puts the entry it wrote into the listing from the files it wrote,
+  which is also what the collision suffix reads next, and rescans nothing. A scan still reads every container in full.
 - **No `supports` operand is unread any more** (ADR 0030, ADR 0005). There were three; `Class` was never an
   operand problem (see the improvement entry above), and `Ritual` and `!` are read (ADR 0047, ADR 0048).
   ~~`!` **negation** inside a filter~~ — **read** (ADR 0048): a tag operand starting with `!` holds when the

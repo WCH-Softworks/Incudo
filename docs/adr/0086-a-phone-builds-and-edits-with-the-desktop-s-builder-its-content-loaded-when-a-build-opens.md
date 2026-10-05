@@ -58,7 +58,7 @@ the raw cache 15 s, the JS heap 16 → 60 MB; a player character's builder made 
    list, a full-screen searchable picker with each option's own text a tap away, choices made (each slot changeable, a
    set's removable), ability scores by every method, hit points per level, class levels (adding a level in any class, and
    changing what a level went to), prepared lists, books, skipped decisions (Reconsider) and what is not held. **Left for a
-   second pass** (the desktop has each; the first four are built since, see "The second pass" below): features of the user's own and what a creature gives (ADRs 0061, 0063, 0067),
+   second pass** (the desktop has each; all are built since, see "The second pass" and "The third pass" below): features of the user's own and what a creature gives (ADRs 0061, 0063, 0067),
    additions (ADR 0064), references (ADRs 0068, 0070), the class split editor (ADR 0045's other input; adding and changing
    levels covers multiclassing), the progress control's "use the creature's" link.
 
@@ -113,8 +113,8 @@ Save refused as a conflict on a device (held by `edit-session.test.ts`).
 ## The second pass
 
 Decision 4's first four are on the phone (2026-10-03): what a held element gives (ADRs 0061, 0067), features of the user's
-own (ADRs 0063, 0065), additions (ADR 0064) and references (ADRs 0068, 0070). Still left: the class split editor and the
-progress control's "use the creature's" link.
+own (ADRs 0063, 0065), additions (ADR 0064) and references (ADRs 0068, 0070). The class split editor and the progress
+control's link back to the creature's followed (2026-10-05, "The third pass").
 
 - **One more question for the maintainer: how a written feature's line is edited on a small screen.** Their choice: each
   line is a row in the feature's card, the stat's name a link that opens the full-screen picker over the stats (searchable,
@@ -151,9 +151,57 @@ progress control's "use the creature's" link.
 - On the desktop's browser build: the Additions pane's add list renders through the shared wording (193 options marked
   "prerequisites not met" for a fresh character), no console errors.
 
-**Found by driving, not fixed:** a Save of the player character took 5–10 s on the emulator (the NPC's well under 4), and
-pressing Back while it runs raises the "Save this character?" prompt, since the session is not yet the saved one; choosing
-Save there saved again without a conflict. Where the time goes was not measured.
+**Found by driving:** a Save of the player character took 5–10 s on the emulator (the NPC's well under 4), and pressing
+Back while it runs raised the "Save this character?" prompt, since the session is not yet the saved one; choosing Save
+there saved again without a conflict. Measured and fixed in the third pass, below.
+
+## The third pass
+
+The rest of decision 4, and the slow Save (2026-10-05).
+
+- **The class split editor (ADR 0045), and the maintainer's choice of how it is edited on a small screen:** inline in the
+  Classes part, behind a "Set the split" button beside "Add level …": a row per class in the order taken, its name a link
+  opening the full-screen picker (the classes the character has and may add, each with any minimum it falls short of), its
+  levels typed, Up, Down and Remove; then Add a class, the character level the rows add up to, and Apply, which closes the
+  editor. The other options were a screen of its own, and steppers in place of a typed number. What the desktop's
+  `ClassSplit` kept to itself moved to `build-view.ts` and both shells call it: `currentSplit`, `splitDraftView` (the
+  total, "Character level 21 — the most is 20", and whether Apply is offered), `withSplitRow`, `movedSplitRow`,
+  `withoutSplitRow` (the last row stays), `withAddedSplitRow`, and the editor's three sentences (`SPLIT_HINT`,
+  `SPLIT_REFUSED`, `SPLIT_INTERLEAVED`). Whether the classes may be combined is still `applySplit`'s alone.
+- **The link back to where content starts the progression (ADR 0060).** `ProgressState.printedBy` names the held element
+  that prints it (from `DerivedCharacter.progress.printed.from`), and `progressResetLabel` words the link, "Use Wolf's
+  (1/4)", only while a typed value replaces a printed one that differs; `progressPrintedHint` the sentence under the field,
+  "A faded number is Wolf's own, …". Both shells call them, so the desktop's link names the creature too where it said
+  "the creature's"; `packages/ui` names the element rather than a game noun. Clearing the field is still the other way back.
+- **Where a Save's time went, measured on the emulator before anything changed** (a level 5 player character, its file
+  59 KB, in a library of five): the conflict check 73 ms, `packCharacter` 372 ms, the zip 419 ms, and **the library's
+  rescan after the write 2,311 ms**, 3.2 s in all. The rescan read, inflated and parsed every file in the folder, so it
+  grows with the library, which is how an earlier drive saw 5 to 10 s. A Save now describes only the entry it wrote, from
+  the files it wrote, and puts it in the listing, as play's `record` (ADR 0084) already did: **1.5 s** for the same
+  character (conflict 92 to 119 ms, pack 416 to 426, zip 520 to 534, describing the one entry about 400), and 50 ms for an
+  NPC's 2 KB file. What changed in the folder behind the app's back is read at the next scan, as before: ADR 0027's "the
+  folder is the list" is kept by the scans, and a Save only stops repeating one. This changes the desktop's Save and
+  Aurora import too (both call `CharacterLibrary.save`), which no longer rescan per file. `character-library.test.ts`
+  holds that a save reads nothing but the file it writes over and lists what a scan would.
+- **Back during a Save waits for it**, then leaves if it saved and asks as before if it did not; a second tap of Save
+  joins the one running. The header said "Save" through most of a Save because packing holds the JavaScript thread right
+  after the state that says "Saving…"; one frame is let pass first, and it says "Saving…".
+
+**Driven** on the Pixel 9 Pro emulator in Expo Go, by `adb` taps:
+
+- **A split:** the dwarf fighter of the first pass, Fighter 2, opened for Edit; Set the split; the Fighter row typed to
+  3, Add a class, the new row changed to Rogue through the picker ("needs Dexterity 13 (you have 10)"), 2 typed; the total
+  read "Character level 5"; Apply closed the editor and the Classes part read Fighter 3 / Rogue 2, with the minimum's note.
+  Saved, then levels 6 and 7 added one at a time, each saved with Back tapped at once: the header read "Saving…", no
+  prompt, and the screen left for the sheet when the Save was done (Fighter 4 (4d10), Rogue 3 (3d8), 44 hit points).
+- **An NPC's rating:** the Wolf NPC of the second pass, its Challenge Rating faded 1/4; 2 typed, "Use Wolf's (1/4)"
+  beside it; saved; the link tapped, the field faded 1/4 again and the link gone; saved; the sheet read 0.25.
+- **The same file on both:** both exported through the phone's folder picker and read in Node with the desktop's code and
+  no content source: the sheet's SHA-256 equal to what the phone logged for each; the player character records seven
+  levels of `advancement` and progress 7, the NPC no `progress`.
+
+**Not run:** the split editor refusing a combination on the phone (held by `applySplit`'s tests); a Save of a character
+in a large library, where the change matters most; a real phone or iOS.
 
 ## Consequences
 

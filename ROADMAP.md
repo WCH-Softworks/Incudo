@@ -1507,9 +1507,13 @@ pane draws and every export renders: the PDF and the print layout start from it,
       the stat, Adds or Sets, the number, the maintainer's choice), additions (a full-screen picker per type, an unmet
       prerequisite marked) and references, their grouping and wording moved to `packages/ui` for both shells. Driven:
       an NPC built on a Wolf with a trait removed and a written "Godspeed: Speed 60", a player character given a feat
-      it does not qualify for and a kept stat block, both exported to the phone's sheet checksum in Node. **Not yet:**
-      a source of the user's own on the phone, the class split editor there; a Cairn character built on the phone; a
-      real phone; iOS.
+      it does not qualify for and a kept stat block, both exported to the phone's sheet checksum in Node. **Third pass**
+      (ADR 0086): the class split editor, inline (the maintainer's choice), and the link back to a creature's rating,
+      their rows and words moved to `packages/ui` for both shells; a Save measured (the library's rescan was 2.3 of a
+      player character's 3.2 s on the emulator) and made to rescan nothing (1.5 s), and Back during a Save waits for it.
+      Driven: a Fighter 3 / Rogue 2 split applied and levelled to 7, an NPC's rating typed and set back to its Wolf's,
+      both exported to the phone's sheet checksum in Node. **Not yet:** a source of the user's own on the phone; a Cairn
+      character built on the phone; a real phone; iOS.
 - [ ] Import/export via share sheet and file picker.
       **Built** (ADR 0083): import through the file picker (`CharacterLibrary.add`), and export from the sheet's header,
       to a folder the user picks or through the share sheet, of the library file unchanged (`exportEntry`). Not yet:
