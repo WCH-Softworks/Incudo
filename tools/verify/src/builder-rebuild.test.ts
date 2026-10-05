@@ -90,6 +90,9 @@ test(
       seed = { ...seed, inventory: reference.inventory, rolls: reference.rolls };
       const builder = new CharacterBuilder(seed, system, elements);
       for (const [stat, value] of Object.entries(reference.baseStats ?? {})) builder.setBaseStat(stat, value);
+      // Campaign options first, as a player ticks them: multiclassing is one, and the class control honours it (ADR 0088).
+      const options = reference.choices.find((c) => c.ruleKey === 'build/options');
+      if (options) builder.choose(options.ruleKey, options.elementIds);
       builder.choose('build/class', [classId]);
       if (advancement) {
         // The first class's levels are a number; each level after that is spent on a class.
@@ -107,7 +110,7 @@ test(
         builder.setProgress(reference.progress!);
       }
       for (const choice of reference.choices) {
-        if (choice === classRecord || isMulticlassRecord(choice.ruleKey)) continue;
+        if (choice === classRecord || choice === options || isMulticlassRecord(choice.ruleKey)) continue;
         builder.choose(choice.ruleKey, choice.elementIds);
       }
       // What each block prepared (ADR 0046), which the picks above do not carry: a whole-list preparer's

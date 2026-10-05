@@ -54,6 +54,11 @@ export interface MulticlassConfig {
   levelElementPattern?: string;
   min: number;
   max?: number;
+  /**
+   * The element that allows a level in a class the character has none in — the step's `multiclassWhen` (ADR 0088). While
+   * the character does not hold it, only the classes it has may take a level.
+   */
+  allowedBy?: ElementId;
 }
 
 /**
@@ -71,6 +76,7 @@ export function multiclassConfig(
     levelElementPattern: progression.elementIdPattern,
     min: progressionMin(progression),
     max: progression.max,
+    ...(step.multiclassWhen !== undefined ? { allowedBy: step.multiclassWhen } : {}),
   };
 }
 
@@ -113,9 +119,10 @@ export interface ClassOption {
    * class in the corpus). `excluded`: something the character holds is one of the things the
    * requirement says must be absent — the other edition of a class it already has, across the
    * corpus's 2014/2024 pairs — and no score can change that. `prerequisite`: the class's own
-   * `requirements` or its multiclass block's do not hold for this character as it stands.
+   * `requirements` or its multiclass block's do not hold for this character as it stands. `multiclassing-off`: the
+   * character does not hold what the step says allows another class (ADR 0088), and nothing else is worked out for it.
    */
-  unavailable?: 'no-multiclass-rules' | 'excluded' | 'prerequisite';
+  unavailable?: 'no-multiclass-rules' | 'excluded' | 'prerequisite' | 'multiclassing-off';
   /** For `excluded`: the element the character holds that rules this class out. */
   excludedBy?: ElementId;
   /** The block's own words for what it needs — "Strength 13 and Charisma 13" — when it has any. */
@@ -149,6 +156,12 @@ export interface ClassLevelState {
    * split replaces that order, so a control may want to say so first.
    */
   interleaved: boolean;
+  /**
+   * What would allow another class, while the character does not hold it (ADR 0088): the step's `multiclassWhen`. Absent
+   * when it is held or the step names none. While present, every class the character has no level in is unavailable as
+   * `multiclassing-off`; a character that holds more than one class anyway keeps them, and a screen says so.
+   */
+  allowedBy?: ElementId;
 }
 
 /**
@@ -587,6 +600,8 @@ export function computeClassLevelState(
   });
 
   const context = requirementContextFor(derived);
+  // Read as `levelRoll.fixedWhen` is: held when the derivation holds it. A character that records no answer holds none.
+  const off = config.allowedBy !== undefined && !derived.elementIds.has(config.allowedBy);
   const options: ClassOption[] = [];
   if (firstClassId !== undefined) {
     for (const element of elements.byType(config.classType)) {
@@ -598,6 +613,11 @@ export function computeClassLevelState(
         const flag =
           element.id === firstClassId ? undefined : scoreFlag(element.multiclass?.requirements, context);
         options.push({ id: element.id, taken, eligible: true, ...(flag ? { flag } : {}) });
+        continue;
+      }
+      // Ahead of every other reason: no score, prerequisite or exclusion can make it available while the option is off.
+      if (off) {
+        options.push({ id: element.id, taken, eligible: false, unavailable: 'multiclassing-off' });
         continue;
       }
       const block = element.multiclass;
@@ -637,6 +657,7 @@ export function computeClassLevelState(
     options,
     canAddLevel: config.max === undefined || (character.progress ?? config.min) < config.max,
     ...(config.max !== undefined ? { maxLevel: config.max } : {}),
+    ...(off ? { allowedBy: config.allowedBy } : {}),
     interleaved: levels.filter((row, index) => row.classId !== undefined && row.classId !== levels[index - 1]?.classId).length > counts.size,
   };
 }

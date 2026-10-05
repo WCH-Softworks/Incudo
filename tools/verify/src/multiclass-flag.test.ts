@@ -50,6 +50,8 @@ test('a short score flags a class and never refuses it, across every multiclass 
     let character: Character = createCharacter('dnd5e', 'pc', { progress: 3 });
     for (const ability of ABILITIES) character = setBaseStat(character, ability, score);
     const builder = new CharacterBuilder(character, system, corpus);
+    // Multiclassing is a campaign option, and the class control honours it (ADR 0088).
+    builder.choose('build/options', ['ID_INTERNAL_OPTION_ALLOW_MULTICLASSING']);
     builder.choose('build/class', [first.id]);
     return builder.classLevelsFor('levels')!.options;
   };

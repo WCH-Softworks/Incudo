@@ -858,6 +858,11 @@
         },
         "budget": { "$ref": "#/$defs/budget" },
         "levelRoll": { "$ref": "#/$defs/levelRoll" },
+        "multiclassWhen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An element id (5e's multiclassing campaign option, ADR 0088). While the character does not hold it, a level may not be spent on a class the character has no level in; a class it already has stays available, and a character already holding more than one class is flagged by the class control, never changed. Only on a perLevel step with a levelRoll. A reader that does not know this key leaves the class control ungated, as before, so it does not change formatVersion."
+        },
         "priority": {
           "type": "number",
           "description": "Where this step's own pick, and everything answering it opens, ranks among \"Open decisions\" — lower sorts first. Defaults to this step's position in the declared/topological build order, so a system that never sets it keeps that order unchanged. Independent of `requires`, which decides when a step can be reached rather than where it reads once it can be — a system author who wants an unanswered Background to keep outranking an already-open Class select states that here, by giving `background` a lower number than `class`, rather than the app enforcing one universal reading for every system."

@@ -50,6 +50,8 @@ function fresh(system: GameSystem, corpus: ElementIndex, first: string, score = 
   let character: Character = createCharacter('dnd5e', 'pc', { progress: 1 });
   for (const ability of ABILITIES) character = setBaseStat(character, ability, score);
   const builder = new CharacterBuilder(character, system, corpus);
+  // Multiclassing is a campaign option, and the class control honours it (ADR 0088).
+  builder.choose('build/options', ['ID_INTERNAL_OPTION_ALLOW_MULTICLASSING']);
   builder.choose('build/class', [first]);
   return builder;
 }

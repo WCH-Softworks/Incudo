@@ -911,3 +911,114 @@ test('a flag names a score the way the system labels it, and interleaving is rep
   assert.equal(b.classLevelsFor('levels')!.interleaved, true);
   assert.equal(fighter(3).classLevelsFor('levels')!.interleaved, false);
 });
+
+// --- the option that allows another class (ADR 0088) ------------------------------------
+
+/** The fixture system with a set of options and a levels step that names `ALLOW` as what allows another class. */
+function gatedSystem(): GameSystem {
+  const sys = system();
+  sys.elementTypes.push({ name: 'Option' });
+  const kind = sys.characterKinds[0]!;
+  kind.elementTypes = [...kind.elementTypes!, 'Option'];
+  kind.buildSteps = [
+    { id: 'options', label: 'Options', types: ['Option'], multiple: true },
+    ...kind.buildSteps!.map((step) => (step.id === 'levels' ? { ...step, multiclassWhen: 'ALLOW' } : step)),
+  ];
+  return sys;
+}
+
+function gatedCorpus(): MapElementIndex {
+  const index = corpus();
+  index.add(element('ALLOW', 'Option'));
+  return index;
+}
+
+/** A level `progress` Fighter under the gated system, with the option on or off. */
+function gatedFighter(progress: number, allowed: boolean): CharacterBuilder {
+  let character: Character = createCharacter('test', 'pc', { progress });
+  character = setBaseStat(character, 'vigour', 14);
+  character = setBaseStat(character, 'grit', 14);
+  const b = new CharacterBuilder(character, gatedSystem(), gatedCorpus());
+  if (allowed) b.choose('build/options', ['ALLOW']);
+  b.choose('build/kit', ['FIGHTER']);
+  return b;
+}
+
+test('with the option off, a class the character has none in is unavailable and the state names the option', () => {
+  const off = gatedFighter(3, false).classLevelsFor('levels')!;
+  assert.equal(off.allowedBy, 'ALLOW');
+  const fighterOption = off.options.find((o) => o.id === 'FIGHTER')!;
+  assert.equal(fighterOption.eligible, true, 'another level in a class it has is not a multiclass');
+  for (const option of off.options.filter((o) => !o.taken)) {
+    assert.equal(option.eligible, false, option.id);
+    assert.equal(option.unavailable, 'multiclassing-off', option.id);
+    // No other reason is worked out: none of them could make it available.
+    assert.equal(option.flag, undefined);
+    assert.equal(option.prerequisite, undefined);
+  }
+
+  // Perturbation's other half: on, the same character is offered what an ungated step offers.
+  const on = gatedFighter(3, true).classLevelsFor('levels')!;
+  assert.equal(on.allowedBy, undefined);
+  const ungated = fighter(3).classLevelsFor('levels')!;
+  assert.deepEqual(on.options, ungated.options);
+});
+
+test('a step naming no option is ungated whether or not anything is held', () => {
+  const state = fighter(3).classLevelsFor('levels')!;
+  assert.equal(state.allowedBy, undefined);
+  assert.equal(state.options.some((o) => o.unavailable === 'multiclassing-off'), false);
+  assert.equal(state.options.find((o) => o.id === 'MAGE')!.eligible, true);
+});
+
+test('with the option off, addLevel, setLevelClass and applySplit refuse a new class and write nothing', () => {
+  const b = gatedFighter(3, false);
+  const before = b.getState().character;
+  assert.equal(b.addLevel('levels', 'MAGE'), false);
+  assert.equal(b.setLevelClass('levels', 2, 'MAGE'), false);
+  assert.equal(b.applySplit('levels', [{ classId: 'FIGHTER', levels: 2 }, { classId: 'MAGE', levels: 1 }]), false);
+  assert.equal(b.getState().character, before, 'a refusal writes nothing');
+  // A level in the class it has is still a level.
+  assert.equal(b.addLevel('levels', 'FIGHTER'), true);
+  assert.equal(b.getState().character.progress, 4);
+});
+
+test('switched off on a character with two classes, nothing is changed and the held classes stay usable', () => {
+  const b = gatedFighter(4, true);
+  assert.equal(b.setLevelClass('levels', 3, 'MAGE'), true);
+  assert.equal(b.setLevelClass('levels', 4, 'MAGE'), true);
+  const derivedBefore = b.getState().derived;
+  const stats = (d: typeof derivedBefore) => [...d.stats].map(([key, stat]) => `${key}=${stat.value}`).sort();
+  const elementsBefore = derivedBefore.elements.map((e) => e.id).filter((id) => id !== 'ALLOW');
+
+  b.choose('build/options', []);
+  const state = b.classLevelsFor('levels')!;
+  assert.equal(state.allowedBy, 'ALLOW', 'the state says the option is off');
+  assert.deepEqual(state.classes, [{ id: 'FIGHTER', levels: 2 }, { id: 'MAGE', levels: 2 }], 'the levels stay');
+  assert.deepEqual(advancementOf(b), ['1:FIGHTER', '2:FIGHTER', '3:MAGE', '4:MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['LVL_3/select:Multiclass (Level 3)=MC_MAGE']);
+  const derivedAfter = b.getState().derived;
+  assert.deepEqual(derivedAfter.elements.map((e) => e.id), elementsBefore, 'nothing derived moves but the option');
+  assert.deepEqual(stats(derivedAfter), stats(derivedBefore));
+
+  // The classes it holds stay usable; a third does not.
+  assert.equal(state.options.find((o) => o.id === 'MAGE')!.eligible, true);
+  assert.equal(b.addLevel('levels', 'MAGE'), true);
+  assert.equal(b.setLevelClass('levels', 2, 'MAGE'), true);
+  assert.equal(b.addLevel('levels', 'RANGER'), false);
+  // A split of the classes it holds is a rearrangement, not a new class; one adding a class is refused.
+  assert.equal(b.applySplit('levels', [{ classId: 'FIGHTER', levels: 3 }, { classId: 'MAGE', levels: 2 }]), true);
+  assert.deepEqual(b.classLevelsFor('levels')!.classes, [{ id: 'FIGHTER', levels: 3 }, { id: 'MAGE', levels: 2 }]);
+  assert.equal(
+    b.applySplit('levels', [{ classId: 'FIGHTER', levels: 3 }, { classId: 'MAGE', levels: 1 }, { classId: 'RANGER', levels: 1 }]),
+    false,
+  );
+});
+
+test('a character that records no options reads as off', () => {
+  const b = new CharacterBuilder(createCharacter('test', 'pc', { progress: 2 }), gatedSystem(), gatedCorpus());
+  b.choose('build/kit', ['FIGHTER']);
+  assert.equal(b.getState().character.choices.some((c) => c.ruleKey === 'build/options'), false);
+  assert.equal(b.classLevelsFor('levels')!.allowedBy, 'ALLOW');
+  assert.equal(b.addLevel('levels', 'MAGE'), false);
+});

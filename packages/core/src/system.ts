@@ -727,6 +727,14 @@ export interface BuildStepDef {
   /** One roll (or a fixed alternative) this step records per point of progression — ADR 0019. */
   levelRoll?: LevelRollDef;
   /**
+   * An element that, while the character does not hold it, keeps a level from being spent on a class the character has
+   * no level in — ADR 0088, 5e's "Multiclassing" campaign option. Read the way `levelRoll.fixedWhen` is: an id the system
+   * names, held when the derivation holds it. A class already held stays available, and a character already holding
+   * more than one is flagged by the class control, never changed. Only on a `perLevel` step with a `levelRoll`, the one
+   * a class control is drawn from (ADR 0036 decision 3).
+   */
+  multiclassWhen?: ElementId;
+  /**
    * Where this step's own pick, and everything answering it opens, ranks among "Open
    * decisions" — lower sorts first. Defaults to this step's position in `orderBuildSteps`'s
    * result, so a system that never sets it keeps exactly the order its array already implies.

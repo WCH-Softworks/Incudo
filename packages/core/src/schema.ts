@@ -290,6 +290,13 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           seen.add(id);
         }
       }
+      // The option that allows another class gates a class control, and only a per-level step with a roll has one (ADR 0088).
+      if (step.multiclassWhen !== undefined && (!step.perLevel || !step.levelRoll)) {
+        errors.push({
+          path: `${where}.buildSteps`,
+          message: `step "${step.id}" names what allows another class, and is not a per-level step with a levelRoll`,
+        });
+      }
       // A pick is of one and a set of any number (ADR 0068): the same refusal, for the same reason.
       if (step.pick && step.multiple) {
         errors.push({

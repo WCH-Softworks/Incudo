@@ -803,6 +803,11 @@ export class CharacterBuilder {
     if (this.elements.get(first)?.type !== multiclass.config.classType) return false;
     if (!multiclass.classStepId) return false;
 
+    // The classes the character holds before this split: with the option that allows another class off (ADR 0088), a split
+    // may still rearrange them, and judged without itself each would read as a class the character has none in.
+    const held = new Set(
+      (this.classLevelsFor(stepId)?.options ?? []).filter((option) => option.taken).map((option) => option.id),
+    );
     // Work on a copy of the state so a refusal leaves the builder exactly as it was.
     const saved = this.character;
     if (firstClassOf(this.character, multiclass.config, this.elements) !== first) {
@@ -824,8 +829,11 @@ export class CharacterBuilder {
         );
         if (!without) return true;
         const derived = deriveCharacter(without, this.system, this.elements, { kind: this.kind });
-        const options = computeClassLevelState(without, derived, multiclass.config, this.elements).options;
-        return !options.find((option) => option.id === classId)?.eligible;
+        const option = computeClassLevelState(without, derived, multiclass.config, this.elements).options.find(
+          (candidate) => candidate.id === classId,
+        );
+        if (option?.unavailable === 'multiclassing-off') return !held.has(classId);
+        return !option?.eligible;
       });
     if (refused || !next) {
       if (this.character !== saved) {

@@ -34,6 +34,9 @@ import { loadSchemas } from './node-system.ts';
 import { unnamed } from './private-saves.ts';
 import { SAVES_DIR, realElements, requireSaves, savesSkip } from './real-data.ts';
 
+// Multiclassing is a campaign option, and the class control honours it (ADR 0088).
+const MULTICLASSING = 'ID_INTERNAL_OPTION_ALLOW_MULTICLASSING';
+
 async function fiveE(): Promise<GameSystem> {
   const path = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'systems', 'dnd5e', 'system.json');
   const result = validateGameSystem(JSON.parse(await readFile(path, 'utf8')), await loadSchemas());
@@ -101,6 +104,10 @@ test(
     seed = { ...seed, inventory: reference.inventory, rolls: reference.rolls };
     const builder = new CharacterBuilder(seed, system, elements);
     for (const [stat, value] of Object.entries(reference.baseStats ?? {})) builder.setBaseStat(stat, value);
+    // The save's campaign options first, as a player ticks them: multiclassing is one of them.
+    const options = reference.choices.find((c) => c.ruleKey === 'build/options')!;
+    assert.ok(options?.elementIds.includes(MULTICLASSING), 'the save records multiclassing on');
+    builder.choose(options.ruleKey, options.elementIds);
 
     builder.choose('build/class', [paladin]);
     builder.setProgress(3);
@@ -108,7 +115,7 @@ test(
 
     // With the scores unset a Charisma 13 minimum is not met. ADR 0045: that is a flag, not a refusal.
     const bare = new CharacterBuilder(
-      { ...createCharacter('dnd5e', 'pc', { progress: 3 }), choices: [{ ruleKey: 'build/class', elementIds: [paladin] }] },
+      { ...createCharacter('dnd5e', 'pc', { progress: 3 }), choices: [{ ruleKey: 'build/options', elementIds: [MULTICLASSING] }, { ruleKey: 'build/class', elementIds: [paladin] }] },
       system,
       elements,
     );
@@ -220,6 +227,7 @@ test(
       seed = setBaseStat(seed, stat, value);
     }
     const builder = new CharacterBuilder(seed, system, elements);
+    builder.choose('build/options', [MULTICLASSING]);
     builder.choose('build/class', [paladin]);
     builder.setProgress(3);
     for (let level = 4; level <= 6; level += 1) assert.equal(builder.addLevel('levels', sorcerer), true);

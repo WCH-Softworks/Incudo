@@ -1008,6 +1008,20 @@ test('a track expression may read a setter, and a level roll may be fixed by an 
   assert.notDeepEqual(await errorsFor(withRoll({ ...base, fixedWhen: 3 })), []);
 });
 
+test('what allows another class is named only on a per-level step with a roll (ADR 0088)', async () => {
+  const roll = { pattern: 'hp:level:{n}', dieSetter: 'hd', classType: 'Class' };
+  const withStep = (step: Record<string, unknown>) =>
+    broken((s) => {
+      s.characterKinds[0]!.buildSteps = [{ id: 'levels', label: 'Levels', types: [], ...step } as never];
+    });
+  assert.deepEqual(await errorsFor(withStep({ perLevel: true, levelRoll: roll, multiclassWhen: 'ID_OPTION' })), []);
+  // Perturbation: no roll, not per level, a blank id and a number are each refused.
+  assert.notDeepEqual(await errorsFor(withStep({ perLevel: true, multiclassWhen: 'ID_OPTION' })), []);
+  assert.notDeepEqual(await errorsFor(withStep({ levelRoll: roll, multiclassWhen: 'ID_OPTION' })), []);
+  assert.notDeepEqual(await errorsFor(withStep({ perLevel: true, levelRoll: roll, multiclassWhen: '' })), []);
+  assert.notDeepEqual(await errorsFor(withStep({ perLevel: true, levelRoll: roll, multiclassWhen: 3 })), []);
+});
+
 test('a recorded prepared list validates as element ids by lowercased block name, and nothing else does (ADR 0046)', async () => {
   const schemas = await loadSchemas();
   const character = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
