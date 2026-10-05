@@ -19,6 +19,8 @@ import {
   decisionTags,
   formatProgress,
   progressLabel,
+  progressPrintedHint,
+  progressResetLabel,
   settledSteps,
   slotOptions,
   stepStatus,
@@ -83,9 +85,13 @@ export const BuildView = memo(function BuildView({
             label={progressName}
             onCommit={(value) => (value === undefined ? progress.printable && builder.setProgress(undefined) : builder.setProgress(value))}
           />
+          {progressResetLabel(progress, nameOf) !== undefined ? (
+            <Button label={progressResetLabel(progress, nameOf)!} kind="link" onPress={() => builder.setProgress(undefined)} />
+          ) : null}
           {progression.kind === 'rating' ? <Body tone="muted">0.125, 0.25 or 0.5 for 1/8, 1/4, 1/2</Body> : null}
         </Row>
       ) : null}
+      {progression.kind !== 'none' && progressPrintedHint(progress, nameOf) ? <Body tone="muted">{progressPrintedHint(progress, nameOf)}</Body> : null}
 
       {!hasContent ? <Body tone="danger">No content is loaded, so nothing can be chosen yet. Add a source under Content.</Body> : null}
 

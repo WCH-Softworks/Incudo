@@ -13,7 +13,16 @@ import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import type { ElementId, ResolvedCharacterKind, StatDef } from '@incudo/core';
 import {
+  SPLIT_HINT,
+  SPLIT_INTERLEAVED,
+  SPLIT_REFUSED,
   classOptionGroups,
+  currentSplit,
+  movedSplitRow,
+  splitDraftView,
+  withAddedSplitRow,
+  withSplitRow,
+  withoutSplitRow,
   preparedItemText,
   scoreLabel,
   searchCandidates,
@@ -24,12 +33,13 @@ import {
   type CharacterBuilder,
   type ClassLevelState,
   type ClassOption,
+  type ClassSegment,
   type HitPointState,
   type PreparationRow,
   type PublicationList,
 } from '@incudo/ui';
 
-import { Body, Button, Row, Tag } from './controls.tsx';
+import { Body, Button, Card, Row, Tag } from './controls.tsx';
 import type { PickerRequest } from './Picker.tsx';
 import { usePalette } from './theme.ts';
 
@@ -310,6 +320,7 @@ export function ClassLevelsView({
   stats: ReadonlyArray<StatDef>;
   pick: (request: PickerRequest) => void;
 }) {
+  const [splitOpen, setSplitOpen] = useState(false);
   if (state.firstClassId === undefined) return <Body tone="muted">Choose a class first. Further levels can then go to other classes.</Body>;
   // The picker lists what may be chosen: the character's classes, then those it may add, each worded with any minimum it
   // falls short of. What it may not take is said below, not offered.
@@ -339,11 +350,17 @@ export function ClassLevelsView({
           {state.unassigned.length === 1 ? `Level ${state.unassigned[0]} has no class recorded.` : `Levels ${state.unassigned.join(', ')} have no class recorded.`}
         </Body>
       ) : null}
-      {state.canAddLevel ? (
-        <Button label={`Add level ${nextLevel}…`} kind="primary" onPress={() => offer(`Level ${nextLevel} goes to`, (id) => builder.addLevel(stepId, id))} />
-      ) : (
-        <Body tone="muted">Highest level reached.</Body>
-      )}
+      <Row>
+        {state.canAddLevel ? (
+          <Button label={`Add level ${nextLevel}…`} kind="primary" onPress={() => offer(`Level ${nextLevel} goes to`, (id) => builder.addLevel(stepId, id))} />
+        ) : (
+          <Body tone="muted">Highest level reached.</Body>
+        )}
+        <Button label={splitOpen ? 'Close the split' : 'Set the split'} onPress={() => setSplitOpen(!splitOpen)} />
+      </Row>
+      {splitOpen ? (
+        <SplitEditor stepId={stepId} state={state} builder={builder} labelOf={labelOf} offer={offer} onApplied={() => setSplitOpen(false)} />
+      ) : null}
       {state.levels.map((row) => (
         <Row key={row.level}>
           <Text style={{ minWidth: 64, fontWeight: '600' }}>Level {row.level}</Text>
@@ -367,6 +384,76 @@ export function ClassLevelsView({
         </Body>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * The whole split as totals (ADR 0045), in place: a row per class in the order taken, its name a link to the picker, its
+ * levels typed. The sum and whether Apply is offered are `splitDraftView`'s; whether the classes may be combined is
+ * `applySplit`'s, which writes nothing when it says no.
+ */
+function SplitEditor({
+  stepId,
+  state,
+  builder,
+  labelOf,
+  offer,
+  onApplied,
+}: {
+  stepId: string;
+  state: ClassLevelState;
+  builder: CharacterBuilder;
+  labelOf: (id: ElementId) => string;
+  offer: (title: string, onPick: (id: ElementId) => void, current?: ElementId) => void;
+  onApplied: () => void;
+}) {
+  const [rows, setRows] = useState<ClassSegment[] | undefined>(undefined);
+  const [refused, setRefused] = useState(false);
+  const draft = splitDraftView(state, rows ?? currentSplit(state));
+  const shown = draft.rows;
+  const edit = (next: ClassSegment[]): void => {
+    setRows(next);
+    setRefused(false);
+  };
+  return (
+    <Card>
+      <Body tone="muted">{SPLIT_HINT}</Body>
+      {shown.map((row, index) => (
+        <Row key={index}>
+          <Button
+            label={labelOf(row.classId)}
+            kind="link"
+            onPress={() => offer(index === 0 ? 'First class' : `Class ${index + 1}`, (id) => edit(withSplitRow(shown, index, { classId: id })), row.classId)}
+          />
+          <NumberField
+            value={Number.isFinite(row.levels) ? row.levels : undefined}
+            label={`Levels in class ${index + 1}`}
+            width={56}
+            onCommit={(levels) => edit(withSplitRow(shown, index, { levels: levels ?? Number.NaN }))}
+          />
+          <Button label="Up" kind="link" disabled={index === 0} onPress={() => edit(movedSplitRow(shown, index, -1))} />
+          <Button label="Down" kind="link" disabled={index === shown.length - 1} onPress={() => edit(movedSplitRow(shown, index, 1))} />
+          <Button label="Remove" kind="link" disabled={shown.length === 1} onPress={() => edit(withoutSplitRow(shown, index))} />
+        </Row>
+      ))}
+      <Row>
+        <Button label="Add a class" kind="link" onPress={() => edit(withAddedSplitRow(shown, state))} />
+        <Body tone={draft.valid ? 'muted' : 'danger'}>{draft.totalText}</Body>
+      </Row>
+      <Button
+        label="Apply"
+        kind="primary"
+        disabled={!draft.valid}
+        onPress={() => {
+          if (builder.applySplit(stepId, shown)) {
+            setRows(undefined);
+            onApplied();
+          } else setRefused(true);
+        }}
+      />
+      {refused ? <Body tone="danger">{SPLIT_REFUSED}</Body> : null}
+      {state.interleaved ? <Body tone="muted">{SPLIT_INTERLEAVED}</Body> : null}
+    </Card>
   );
 }
 
