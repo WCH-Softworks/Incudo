@@ -22,6 +22,8 @@ import type {
   DeclinedDecision,
 } from '@incudo/ui';
 import {
+  progressPrintedHint,
+  progressResetLabel,
   candidateLabel as describeCandidate,
   decisionTags,
   formatProgress,
@@ -123,9 +125,9 @@ export function BuilderPane({
             }}
           />
         </label>
-        {progress.recorded && progress.printed !== undefined && progress.printed !== progress.value && (
+        {progressResetLabel(progress, nameOf) !== undefined && (
           <button type="button" className="link" onClick={() => builder.setProgress(undefined)}>
-            Use the creature's ({formatProgress(progress.printed)})
+            {progressResetLabel(progress, nameOf)}
           </button>
         )}
         {progression.kind === 'level' && (
@@ -136,10 +138,7 @@ export function BuilderPane({
         )}
         {progression.kind === 'rating' && (
           <span className="hint">
-            {progress.printable
-              ? "A faded number is the creature's own rating, and it is used until you type another. Clear what you typed to go back to it. "
-              : 'The number you set here is the one the sheet uses. '}
-            Type 0.125, 0.25 or 0.5 for 1/8, 1/4 or 1/2.
+            {progressPrintedHint(progress, nameOf) ?? 'The number you set here is the one the sheet uses.'} Type 0.125, 0.25 or 0.5 for 1/8, 1/4 or 1/2.
           </span>
         )}
       </section>

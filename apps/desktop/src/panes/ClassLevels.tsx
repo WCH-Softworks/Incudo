@@ -17,7 +17,20 @@
  */
 
 import { useState } from 'react';
-import { classOptionGroups, shortfallText, unavailableReason } from '@incudo/ui';
+import {
+  SPLIT_HINT,
+  SPLIT_INTERLEAVED,
+  SPLIT_REFUSED,
+  classOptionGroups,
+  currentSplit,
+  movedSplitRow,
+  shortfallText,
+  splitDraftView,
+  unavailableReason,
+  withAddedSplitRow,
+  withSplitRow,
+  withoutSplitRow,
+} from '@incudo/ui';
 import type { ClassLevelState, ClassOption, ClassSegment, CharacterBuilder } from '@incudo/ui';
 import type { ElementId, StatDef } from '@incudo/core';
 
@@ -211,43 +224,27 @@ function ClassSplit({
   candidateLabel: (id: ElementId) => string;
   stats: ReadonlyArray<StatDef>;
 }): React.JSX.Element {
-  const current: ClassSegment[] = state.classes.map((held) => ({ classId: held.id, levels: held.levels }));
   const [rows, setRows] = useState<ClassSegment[] | undefined>(undefined);
   const [refused, setRefused] = useState(false);
-  const shown = rows ?? current;
-  const total = shown.reduce((sum, row) => sum + (Number.isFinite(row.levels) ? row.levels : 0), 0);
-  const tooHigh = state.maxLevel !== undefined && total > state.maxLevel;
-  const valid =
-    shown.length > 0 && !tooHigh && shown.every((row) => Number.isInteger(row.levels) && row.levels >= 1);
+  const draft = splitDraftView(state, rows ?? currentSplit(state));
+  const shown = draft.rows;
 
   const edit = (next: ClassSegment[]): void => {
     setRows(next);
     setRefused(false);
-  };
-  const change = (index: number, patch: Partial<ClassSegment>): void =>
-    edit(shown.map((row, at) => (at === index ? { ...row, ...patch } : row)));
-  const move = (index: number, by: number): void => {
-    const target = index + by;
-    if (target < 0 || target >= shown.length) return;
-    const next = [...shown];
-    [next[index], next[target]] = [next[target]!, next[index]!];
-    edit(next);
   };
 
   return (
     <details>
       <summary>Set the split</summary>
       <div className="class-split">
-        <p className="hint">
-          Say how many levels go to each class, in the order they were taken. The first row is the class
-          the character started as, which decides its starting proficiencies and its highest hit die.
-        </p>
+        <p className="hint">{SPLIT_HINT}</p>
         {shown.map((row, index) => (
           <div key={index} className="class-split-row">
             <select
               aria-label={index === 0 ? 'First class' : `Class ${index + 1}`}
               value={row.classId}
-              onChange={(event) => change(index, { classId: event.target.value })}
+              onChange={(event) => edit(withSplitRow(shown, index, { classId: event.target.value }))}
             >
               <ClassOptions options={state.options} candidateLabel={candidateLabel} stats={stats} />
             </select>
@@ -257,17 +254,17 @@ function ClassSplit({
               max={state.maxLevel}
               aria-label={`Levels in class ${index + 1}`}
               value={Number.isFinite(row.levels) ? row.levels : ''}
-              onChange={(event) => change(index, { levels: event.target.valueAsNumber })}
+              onChange={(event) => edit(withSplitRow(shown, index, { levels: event.target.valueAsNumber }))}
             />
             <span className="class-split-buttons">
-              <button type="button" className="link" disabled={index === 0} onClick={() => move(index, -1)}>
+              <button type="button" className="link" disabled={index === 0} onClick={() => edit(movedSplitRow(shown, index, -1))}>
                 Up
               </button>
               <button
                 type="button"
                 className="link"
                 disabled={index === shown.length - 1}
-                onClick={() => move(index, 1)}
+                onClick={() => edit(movedSplitRow(shown, index, 1))}
               >
                 Down
               </button>
@@ -275,7 +272,7 @@ function ClassSplit({
                 type="button"
                 className="link"
                 disabled={shown.length === 1}
-                onClick={() => edit(shown.filter((_, at) => at !== index))}
+                onClick={() => edit(withoutSplitRow(shown, index))}
               >
                 Remove
               </button>
@@ -286,19 +283,14 @@ function ClassSplit({
           <button
             type="button"
             className="link"
-            onClick={() =>
-              edit([...shown, { classId: shown[shown.length - 1]?.classId ?? state.firstClassId!, levels: 1 }])
-            }
+            onClick={() => edit(withAddedSplitRow(shown, state))}
           >
             Add a class
           </button>
-          <span className="hint">
-            Character level {total}
-            {tooHigh ? ` — the most is ${state.maxLevel}` : ''}
-          </span>
+          <span className="hint">{draft.totalText}</span>
           <button
             type="button"
-            disabled={!valid}
+            disabled={!draft.valid}
             onClick={() => {
               if (builder.applySplit(stepId, shown)) {
                 setRows(undefined);
@@ -311,12 +303,9 @@ function ClassSplit({
             Apply
           </button>
         </div>
-        {refused && <p className="hint">These classes cannot be combined, so nothing was changed.</p>}
+        {refused && <p className="hint">{SPLIT_REFUSED}</p>}
         {state.interleaved && (
-          <p className="hint">
-            The levels are not taken one class at a time right now. Applying replaces that order with the
-            rows above.
-          </p>
+          <p className="hint">{SPLIT_INTERLEAVED}</p>
         )}
       </div>
     </details>

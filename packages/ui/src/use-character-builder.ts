@@ -366,6 +366,8 @@ export interface ProgressState {
   recorded: boolean;
   /** What the chosen creature prints, whether or not a typed value replaces it. */
   printed?: number;
+  /** The held element `printed` comes from. */
+  printedBy?: ElementId;
   /** Whether this kind's progression can start where a creature prints it, so a typed value can be cleared. */
   printable: boolean;
 }
@@ -1640,6 +1642,7 @@ export class CharacterBuilder {
         value: derived.progress.value,
         recorded: derived.progress.recorded,
         printed: derived.progress.printed?.value,
+        ...(derived.progress.printed ? { printedBy: derived.progress.printed.from } : {}),
         printable: progressCanBePrinted(this.kind),
       },
       holderGrants: this.holderGrants(derived),

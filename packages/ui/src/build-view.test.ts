@@ -9,6 +9,14 @@ import type { StatDef } from '@incudo/core';
 
 import {
   classOptionGroups,
+  currentSplit,
+  movedSplitRow,
+  progressPrintedHint,
+  progressResetLabel,
+  splitDraftView,
+  withAddedSplitRow,
+  withSplitRow,
+  withoutSplitRow,
   decisionTags,
   preparedItemText,
   settledSteps,
@@ -121,4 +129,56 @@ test("a class's shortfall and reason, in the system's own words", () => {
 test('a prepared item reads with its note', () => {
   assert.equal(preparedItemText({ id: 'S', name: 'Shield', note: 'Level 1' }), 'Shield (Level 1)');
   assert.equal(preparedItemText({ id: 'S', name: 'Shield' }), 'Shield');
+});
+
+const F = { classId: 'FIGHTER', levels: 12 };
+const W = { classId: 'WIZARD', levels: 5 };
+
+test('a split edit starts from the classes held, in the order taken', () => {
+  // Perturbation: reading `levels` (one row per level) instead of `classes` gives seventeen rows.
+  assert.deepEqual(currentSplit({ classes: [{ id: 'FIGHTER', levels: 12 }, { id: 'WIZARD', levels: 5 }] }), [F, W]);
+});
+
+test("a split's total, and Apply only for whole counts adding up to no more than the most", () => {
+  // Perturbation: dropping the `tooHigh` term lets a level 21 split be applied; dropping `Number.isInteger` lets 2.5 be.
+  assert.deepEqual(splitDraftView({ maxLevel: 20 }, [F, W]), { rows: [F, W], total: 17, totalText: 'Character level 17', valid: true });
+  const over = splitDraftView({ maxLevel: 20 }, [F, { ...W, levels: 9 }]);
+  assert.equal(over.totalText, 'Character level 21 — the most is 20');
+  assert.equal(over.valid, false);
+  assert.equal(splitDraftView({ maxLevel: 20 }, [F, { ...W, levels: 2.5 }]).valid, false);
+  assert.equal(splitDraftView({ maxLevel: 20 }, [F, { ...W, levels: 0 }]).valid, false);
+  // A field emptied mid-edit is NaN: counted as nothing, and not applicable.
+  const empty = splitDraftView({ maxLevel: 20 }, [F, { ...W, levels: Number.NaN }]);
+  assert.equal(empty.total, 12);
+  assert.equal(empty.valid, false);
+  assert.equal(splitDraftView({ maxLevel: 20 }, []).valid, false, 'no rows is no split');
+  assert.equal(splitDraftView({ maxLevel: undefined }, [{ ...F, levels: 40 }]).valid, true, 'no most, no cap');
+});
+
+test('a split row changes, moves, goes and comes in place', () => {
+  // Perturbation: `movedSplitRow` swapping past the end leaves an undefined row; `withoutSplitRow` emptying the list
+  // offers a split of nothing; `withAddedSplitRow` ignoring the last row starts every new row at the first class.
+  assert.deepEqual(withSplitRow([F, W], 1, { levels: 3 }), [F, { ...W, levels: 3 }]);
+  assert.deepEqual(movedSplitRow([F, W], 1, -1), [W, F]);
+  assert.deepEqual(movedSplitRow([F, W], 1, 1), [F, W]);
+  assert.deepEqual(movedSplitRow([F, W], 0, -1), [F, W]);
+  assert.deepEqual(withoutSplitRow([F, W], 0), [W]);
+  assert.deepEqual(withoutSplitRow([W], 0), [W]);
+  assert.deepEqual(withAddedSplitRow([F, W], { firstClassId: 'FIGHTER' }), [F, W, { classId: 'WIZARD', levels: 1 }]);
+  assert.deepEqual(withAddedSplitRow([], { firstClassId: 'FIGHTER' }), [{ classId: 'FIGHTER', levels: 1 }]);
+});
+
+test("the link back to a printed progression shows only while a typed value differs from it", () => {
+  // Perturbation: dropping the `recorded` term shows the link on an untouched creature; dropping the equality offers
+  // to "go back" to the number already shown.
+  const nameOf = (id: string): string => (id === 'WOLF' ? 'Wolf' : id);
+  assert.equal(progressResetLabel({ recorded: true, printed: 0.25, printedBy: 'WOLF', value: 2 }, nameOf), "Use Wolf's (1/4)");
+  assert.equal(progressResetLabel({ recorded: false, printed: 0.25, printedBy: 'WOLF', value: 0.25 }, nameOf), undefined);
+  assert.equal(progressResetLabel({ recorded: true, printed: 0.25, printedBy: 'WOLF', value: 0.25 }, nameOf), undefined);
+  assert.equal(progressResetLabel({ recorded: true, value: 3 }, nameOf), undefined, 'nothing printed');
+  assert.equal(progressResetLabel({ recorded: true, printed: 1, value: 3 }, nameOf), 'Use the printed one (1)');
+  // Perturbation: ignoring `printable` puts the sentence under a level, which no element prints.
+  assert.equal(progressPrintedHint({ printable: false, printedBy: 'WOLF' }, nameOf), undefined);
+  assert.match(progressPrintedHint({ printable: true, printedBy: 'WOLF' }, nameOf)!, /^A faded number is Wolf's own, .*Clear what you typed/);
+  assert.match(progressPrintedHint({ printable: true }, nameOf)!, /what the character holds prints/);
 });

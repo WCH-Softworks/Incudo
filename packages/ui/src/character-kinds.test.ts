@@ -15,6 +15,7 @@ import {
   newCharacterOfKind,
 } from './character-kinds.ts';
 import { CharacterBuilder } from './use-character-builder.ts';
+import { progressResetLabel } from './build-view.ts';
 
 const system: GameSystem = {
   formatVersion: 1,
@@ -138,12 +139,14 @@ test("the builder shows the creature's rating until one is typed, and clearing i
   const b = new CharacterBuilder(newCharacterOfKind(printing, 'beast'), printing, index);
   assert.deepEqual(b.getState().progress, { value: 0, recorded: false, printed: undefined, printable: true });
   b.choose('build/creature', ['OX']);
-  assert.deepEqual(b.getState().progress, { value: 5, recorded: false, printed: 5, printable: true });
+  assert.deepEqual(b.getState().progress, { value: 5, recorded: false, printed: 5, printedBy: 'OX', printable: true });
   b.setProgress(2);
-  assert.deepEqual(b.getState().progress, { value: 2, recorded: true, printed: 5, printable: true });
+  assert.deepEqual(b.getState().progress, { value: 2, recorded: true, printed: 5, printedBy: 'OX', printable: true });
   assert.equal(b.getState().derived.stats.get('tier')?.value, 2);
+  assert.equal(progressResetLabel(b.getState().progress, (id) => `the ${id.toLowerCase()}`), "Use the ox's (5)");
   b.setProgress(undefined);
-  assert.deepEqual(b.getState().progress, { value: 5, recorded: false, printed: 5, printable: true });
+  assert.deepEqual(b.getState().progress, { value: 5, recorded: false, printed: 5, printedBy: 'OX', printable: true });
+  assert.equal(progressResetLabel(b.getState().progress, String), undefined, 'nothing to go back to');
   assert.equal(b.getState().character.progress, undefined, 'the print is not copied into the character');
 
   const hero = new CharacterBuilder(newCharacterOfKind(printing, 'hero'), printing, index);

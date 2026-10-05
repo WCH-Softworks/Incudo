@@ -9,9 +9,10 @@
 
 import type { ElementId, StatDef } from '@incudo/core';
 
-import { scoreLabel, type ClassOption, type ScoreShortfall } from './multiclass.ts';
+import { formatProgress } from './character-kinds.ts';
+import { scoreLabel, type ClassLevelState, type ClassOption, type ClassSegment, type ScoreShortfall } from './multiclass.ts';
 import type { PreparedItem } from './preparation.ts';
-import type { BuilderState, BuilderStep, HolderGrant, OpenDecision, SettledPick } from './use-character-builder.ts';
+import type { BuilderState, BuilderStep, HolderGrant, OpenDecision, ProgressState, SettledPick } from './use-character-builder.ts';
 
 /**
  * What slot `index` of an answered decision may hold instead: its own answer, anything no other slot holds, and anything
@@ -167,4 +168,98 @@ export function holderGrantsUnseenNote(unseen: number): string | undefined {
   return unseen === 1
     ? 'One more was removed. Load the content it came from to see it or give it back.'
     : `${unseen} more were removed. Load the content they came from to see them or give them back.`;
+}
+
+// --- a class split (ADR 0045) ---------------------------------------------------------------------------------------
+
+/** The split a character has now, one row per class in the order it was first taken: where an edit starts. */
+export function currentSplit(state: Pick<ClassLevelState, 'classes'>): ClassSegment[] {
+  return state.classes.map((held) => ({ classId: held.id, levels: held.levels }));
+}
+
+/** A split being edited, as a screen shows it beside its Apply. Whether the classes may be combined is `applySplit`'s. */
+export interface SplitDraftView {
+  rows: ClassSegment[];
+  /** The character level the rows add up to; a count that is not a number counts nothing. */
+  total: number;
+  /** "Character level 17", with the most there may be when the rows go past it. */
+  totalText: string;
+  /** Whether Apply may be offered: some rows, each a whole number of at least one, adding up to no more than the most. */
+  valid: boolean;
+}
+
+export function splitDraftView(state: Pick<ClassLevelState, 'maxLevel'>, rows: readonly ClassSegment[]): SplitDraftView {
+  const total = rows.reduce((sum, row) => sum + (Number.isFinite(row.levels) ? row.levels : 0), 0);
+  const tooHigh = state.maxLevel !== undefined && total > state.maxLevel;
+  return {
+    rows: [...rows],
+    total,
+    totalText: `Character level ${total}${tooHigh ? ` — the most is ${state.maxLevel}` : ''}`,
+    valid: rows.length > 0 && !tooHigh && rows.every((row) => Number.isInteger(row.levels) && row.levels >= 1),
+  };
+}
+
+/** The rows with row `index` changed. */
+export function withSplitRow(rows: readonly ClassSegment[], index: number, patch: Partial<ClassSegment>): ClassSegment[] {
+  return rows.map((row, at) => (at === index ? { ...row, ...patch } : row));
+}
+
+/** The rows with row `index` moved `by` places (-1 up, 1 down); unchanged when that would leave the list. */
+export function movedSplitRow(rows: readonly ClassSegment[], index: number, by: number): ClassSegment[] {
+  const target = index + by;
+  if (index < 0 || index >= rows.length || target < 0 || target >= rows.length) return [...rows];
+  const next = [...rows];
+  [next[index], next[target]] = [next[target]!, next[index]!];
+  return next;
+}
+
+/** The rows without row `index`. The last row stays: a split of nothing is not one to apply. */
+export function withoutSplitRow(rows: readonly ClassSegment[], index: number): ClassSegment[] {
+  if (rows.length <= 1) return [...rows];
+  return rows.filter((_, at) => at !== index);
+}
+
+/** The rows with one more, a level of the last row's class (else the first class), to be changed from there. */
+export function withAddedSplitRow(rows: readonly ClassSegment[], state: Pick<ClassLevelState, 'firstClassId'>): ClassSegment[] {
+  const classId = rows[rows.length - 1]?.classId ?? state.firstClassId;
+  return classId === undefined ? [...rows] : [...rows, { classId, levels: 1 }];
+}
+
+/** What the split editor says first. */
+export const SPLIT_HINT =
+  'Say how many levels go to each class, in the order they were taken. The first row is the class the character started as, which decides its starting proficiencies and its highest hit die.';
+
+/** What it says when `applySplit` refused the rows. */
+export const SPLIT_REFUSED = 'These classes cannot be combined, so nothing was changed.';
+
+/** What it says while the levels are not taken one class at a time (`ClassLevelState.interleaved`). */
+export const SPLIT_INTERLEAVED =
+  'The levels are not taken one class at a time right now. Applying replaces that order with the rows above.';
+
+// --- progress that content prints (ADR 0060) ------------------------------------------------------------------------
+
+/**
+ * The link back to where content starts the progression, or nothing when there is none to go back to: only while a
+ * typed value replaces a printed one that differs. "Use Wolf's (1/4)". `nameOf` names the element that prints it.
+ */
+export function progressResetLabel(
+  progress: Pick<ProgressState, 'recorded' | 'printed' | 'printedBy' | 'value'>,
+  nameOf: (id: ElementId) => string,
+): string | undefined {
+  if (!progress.recorded || progress.printed === undefined || progress.printed === progress.value) return undefined;
+  const whose = progress.printedBy !== undefined ? `${nameOf(progress.printedBy)}'s` : 'the printed one';
+  return `Use ${whose} (${formatProgress(progress.printed)})`;
+}
+
+/**
+ * What is said under a progression content may print: a faded number is the printed one, and how to go back to it.
+ * "A faded number is Wolf's own, …" once something prints one; nothing for a progression nothing can print.
+ */
+export function progressPrintedHint(
+  progress: Pick<ProgressState, 'printable' | 'printedBy'>,
+  nameOf: (id: ElementId) => string,
+): string | undefined {
+  if (!progress.printable) return undefined;
+  const whose = progress.printedBy !== undefined ? `${nameOf(progress.printedBy)}'s own` : 'what the character holds prints';
+  return `A faded number is ${whose}, and it is used until you type another. Clear what you typed to go back to it.`;
 }
