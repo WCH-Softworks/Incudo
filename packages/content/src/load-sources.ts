@@ -19,6 +19,7 @@
 import type { ElementIndex, Fetcher, Storage } from '@incudo/core';
 
 import { composeForLoad, writeVersionStamp, type ComposeOptions } from './compose.ts';
+import { readDeclared, switchedOffSupply, writeDeclared, type DeclaredRecord, type SwitchedOffSupply } from './declared.ts';
 import { ContentLibrary, type MissingContent, type SourceOverlap } from './library.ts';
 import { partsFilter } from './parts.ts';
 import type { ConfiguredSource } from './profile.ts';
@@ -37,6 +38,11 @@ export interface LoadedSource {
    */
   missing?: MissingContent;
   /**
+   * Which switched-off sources declared some of `missing` when they were last loaded, in the profile's order, each with
+   * what it declares (ADR 0090). Absent when none does, or when nothing is missing. Said, never acted on.
+   */
+  switchedOff?: SwitchedOffSupply[];
+  /**
    * What this source defines that another enabled source also defines, and whose version is used (ADR 0054), absent
    * when there is nothing. Worked out once every enabled source has loaded, like `missing`.
    */
@@ -50,6 +56,15 @@ export interface LoadedContent {
   sources: LoadedSource[];
   warnings: string[];
   errors: string[];
+}
+
+export interface LoadSourcesOptions {
+  /**
+   * The sources the user configured for this system and switched off, in the profile's order. Not loaded: their records
+   * from their last loads are read, only when an enabled source is missing something, to say which of them declares it
+   * (ADR 0090). Left out, nothing is read and no line names one.
+   */
+  switchedOff?: readonly ConfiguredSource[];
 }
 
 export interface LoadProgress {
@@ -71,6 +86,7 @@ export async function loadSources(
   sources: readonly ConfiguredSource[],
   platform: ComposeOptions,
   onProgress?: (progress: LoadProgress) => void,
+  options: LoadSourcesOptions = {},
 ): Promise<LoadedContent> {
   const library = new ContentLibrary();
   const loaded: LoadedSource[] = [];
@@ -97,6 +113,8 @@ export async function loadSources(
       // load, because a version nothing was fetched under would be a claim about a cache that
       // does not exist.
       await writeVersionStamp(platform.storage, source.id, report.index.version);
+      // What it declared, kept for when it is switched off (ADR 0090). Written only when it changed.
+      await writeDeclared(platform.storage, source, report.declared);
       // Converted once the load is in, from what it read (ADR 0085): the next load parses nothing.
       await composed.finish();
     } catch (error) {
@@ -119,6 +137,22 @@ export async function loadSources(
     if (found && !source.failed) source.missing = found;
     const shared = overlaps.get(source.id);
     if (shared && !source.failed) source.overlaps = shared;
+  }
+
+  // Which switched-off source has what is missing, from what each declared when it was last loaded (ADR 0090). Read
+  // only when something is missing: AuroraLegacy's record is about 0.7 MB.
+  const withMissing = loaded.filter((source) => source.missing);
+  if (withMissing.length && options.switchedOff?.length) {
+    const records: { sourceId: string; record: DeclaredRecord }[] = [];
+    for (const source of options.switchedOff) {
+      if (source.enabled) continue;
+      const record = await readDeclared(platform.storage, source);
+      if (record) records.push({ sourceId: source.id, record });
+    }
+    for (const source of withMissing) {
+      const supply = switchedOffSupply(source.missing!, records);
+      if (supply.length) source.switchedOff = supply;
+    }
   }
 
   const warnings: string[] = [];

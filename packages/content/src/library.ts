@@ -57,6 +57,12 @@ export interface LoadReport {
   filesLoaded: number;
   elementsLoaded: number;
   diagnostics: SourceDiagnostic[];
+  /**
+   * The ids this source's files declare, sorted, each once: what the files it reaches hold, whether this load read them
+   * or an earlier source in the same library already had. Not the elements Incudo generates for Aurora content, which
+   * come from no file. What a record of a switched-off source is made of (ADR 0090).
+   */
+  declared: string[];
 }
 
 /**
@@ -113,6 +119,7 @@ export class ContentLibrary {
       throw new Error(`Could not load ${indexUrl}: ${(error as Error).message}`);
     });
     this.indexes.push(root);
+    this.indexFiles.set(indexUrl, root.files);
 
     // Before the files, not after. Aurora's app materializes 51 elements that no XML file
     // declares, and content grants and requires them constantly; without them a full corpus
@@ -182,6 +189,7 @@ export class ContentLibrary {
           }
           const nested = await (indexFetches.get(ref.url) ?? limit(() => source.loadIndex(ref.url), true));
           this.indexes.push(nested);
+          this.indexFiles.set(ref.url, nested.files);
           for (const child of nested.files) queue.push({ ref: child, depth: depth + 1 });
         } catch (error) {
           this.diagnostics.push({
@@ -229,6 +237,7 @@ export class ContentLibrary {
         }
         const file = result.file!;
         this.addElements(file.elements);
+        this.fileIds.set(result.ref.url, file.elements.map((element) => element.id));
         for (const append of file.appends ?? []) {
           pending.push(append);
           this.appendSources.set(append, source.id);
@@ -245,7 +254,44 @@ export class ContentLibrary {
     if (root.format === 'aurora' && !options.withoutGeneratedElements) {
       this.addImprovementOptions();
     }
-    return { index: root, filesLoaded, elementsLoaded, diagnostics: this.diagnostics };
+    return {
+      index: root,
+      filesLoaded,
+      elementsLoaded,
+      diagnostics: this.diagnostics,
+      declared: this.declaredUnder(indexUrl, options),
+    };
+  }
+
+  /** The ids of every element file each loaded index names, by URL, and the indexes' own lists. */
+  private readonly fileIds = new Map<string, string[]>();
+  private readonly indexFiles = new Map<string, FileRef[]>();
+
+  /**
+   * What the files a source reaches declare, walked again over what the library holds: the same `include` and depth
+   * the load used, but **not** its "already loaded" check. That check is why a source loaded after another that holds
+   * the same files (Core, then the Player's Handbook index Core lists) reads nothing itself, and a record made from
+   * what it read would say it declares nothing (ADR 0090).
+   */
+  private declaredUnder(indexUrl: string, options: LoadOptions): string[] {
+    const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
+    const ids = new Set<string>();
+    const seen = new Set<string>([indexUrl]);
+    const walk = (refs: readonly FileRef[], depth: number): void => {
+      for (const ref of refs) {
+        if (seen.has(ref.url)) continue;
+        if (options.include && !options.include(ref)) continue;
+        seen.add(ref.url);
+        if (ref.isIndex) {
+          const children = this.indexFiles.get(ref.url);
+          if (children && depth < maxDepth) walk(children, depth + 1);
+        } else if (isElementFile(ref)) {
+          for (const id of this.fileIds.get(ref.url) ?? []) ids.add(id);
+        }
+      }
+    };
+    walk(this.indexFiles.get(indexUrl) ?? [], 0);
+    return [...ids].sort();
   }
 
   /** Everything that used to sit between `queue.shift()` and the fetch, in one place. */

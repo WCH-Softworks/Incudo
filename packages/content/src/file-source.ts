@@ -9,6 +9,7 @@
 
 import { parseAuroraElements, parseAuroraIndex } from '@incudo/aurora-import';
 import type { Storage } from '@incudo/core';
+import { removeDeclared } from './declared.ts';
 import type { ConfiguredSource, SourceProfile } from './profile.ts';
 import type { ContentIndex, ContentSource, ElementFile, FileRef, UpdateStatus } from './source.ts';
 
@@ -155,5 +156,7 @@ export async function removeSource(profile: SourceProfile, storage: Storage, id:
   const source = profile.find(id);
   if (!source) return false;
   if (isFileSource(source)) await storage.remove(fileSourceKey(id));
+  // What it declared goes with it (ADR 0090): a removed source is named on no line.
+  await removeDeclared(storage, id);
   return profile.remove(id);
 }

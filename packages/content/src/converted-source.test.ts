@@ -164,7 +164,8 @@ test('a conversion is written as one batch where the storage takes one', async (
   const storage = new MemoryStorage();
   const batches: number[] = [];
   (storage as Storage).apply = async (changes) => {
-    batches.push(changes.length);
+    // The conversion's batches only: the record of what the source declared is a batch of its own (ADR 0090).
+    if (changes.some(([key]) => key.startsWith(cachePrefix(INDEX_URL)))) batches.push(changes.length);
     for (const [key, value] of changes) {
       if (value === null) await storage.remove(key);
       else await storage.write(key, value);
