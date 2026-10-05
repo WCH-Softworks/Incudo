@@ -1422,7 +1422,7 @@ the kind machinery is not decorative.*
       things in, and a 5e sentence under Cairn's score editor. Driven in the browser build and in the Tauri window on
       Windows, saved files reopened with the source off. **Not done:** a mark on the saves and skills a character is
       proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice, death saves, inspiration,
-      personality and attacks; ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
+      ~~personality~~ (ADR 0092) and attacks; ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
       stat block laid out as a stat block; the "Progress" number a level-less Cairn character is shown on Build; Cairn in
       the Tauri window; macOS and Linux. *(Personality and attacks: open items at the end of this phase since
       2026-10-05.)*
@@ -1430,11 +1430,22 @@ the kind machinery is not decorative.*
 *The items below were found on 2026-10-05 by the audit described at the end of Phase 3, buried in this phase's ticked
 items; each keeps its original text with a pointer here.*
 
-- [ ] **Personality, appearance, backstory and notes can be written.** *Buried in the ADR 0074 item ("personality"),
+- [x] **Personality, appearance, backstory and notes can be written.** *Buried in the ADR 0074 item ("personality"),
       and in Phase 5's text export (ADR 0075) and PDF (ADR 0079 decision 4) items.* `Character.freeform` holds them, and
       an Aurora import fills it, but nothing in either app writes it, so a character built in Incudo has none; the Sheet,
       the text export and the official form's boxes leave them blank. An editor in both shells, and whether and where the
       Sheet and the exports then show them.
+      **Done** ([ADR 0092](./docs/adr/0092-a-kind-declares-the-text-a-user-writes-about-a-character-and-every-sheet-shows-it.md)).
+      Measured first (`freeform-fields.test.ts`): Aurora writes one vocabulary into every save, filled or not, and the
+      samples carry backstory and the four personality lines on 18 of 30, coins and experience on all. A kind now declares
+      the fields a user may write (`freeform` in the system format), each by the key the importer already uses, so an
+      imported character's text appears with no change to the frozen importer: 5e's player character has 21 in four groups
+      (player, appearance, personality and story, notes), its NPC a description and notes, Cairn's character three. Writing
+      re-derives nothing and changes no format. Everything written is on the Sheet, the print (a part the step can leave
+      out), the text export and the phone's sheet, and fifteen of the 2014 form's boxes; a key no field declares (coins,
+      experience, attack notes) still shows nowhere, which ADR 0075's check now holds both ways. Driven in the browser build
+      and on the phone emulator, where it found the phone's sheet leaving the part out. Not driven in the Tauri window.
+      Two suggested personality traits overflow the form's box at 7 pt on 9 samples and are named as running past it.
 - [ ] **Attacks on the sheet.** *Buried in the ADR 0074 item ("attacks") and the ADR 0073 item.* A character's sheet
       has no attacks section (a weapon's attack bonus and damage), and a held creature's `companion:attack` and
       `companion:damage`, which content writes (the Ranger's Companion), are read by nothing.
@@ -1470,7 +1481,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       forbid unauthorised software reaching the service), so the user downloads it from a link and points Incudo at their
       copy, recognised by its 334 fields. It is filled from the sheet document only, which first grows what a sheet needs and
       the Sheet will show too, each its own change. Measured: the document fills about 155 of the form's 334 fields a sample
-      and never holds 167 (personality, coins, appearance and play state stay blank); proficiencies overflow their box on 29
+      and never holds 167 (personality, coins, appearance and play state stay blank; personality and appearance are filled
+      since ADR 0092); proficiencies overflow their box on 29
       of 30 samples and features on 12. The 2024 sheet has no form fields and is not filled. Not on macOS or Linux (the print
       item below). The work, in order:
   - [x] **save and skill proficiency marks**: a sheet section's `mark` counts how many proficiency bonuses a row's
@@ -1515,8 +1527,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       same) and in the Tauri window on Windows (a sample opened with no source ever added, exported from the native menu
       through the real save dialog, byte for byte the tests' file). **Not done:** a copy to the clipboard (a port of its
       own); a shortcut (a Ctrl+Shift chord has to be found by pressing real keys in the Windows window); feature
-      descriptions, personality, notes, the bag and prepared spells, none of which the Sheet shows (personality and notes
-      are an open item at the end of Phase 4, the bag one at the end of Phase 3, since 2026-10-05); the save dialog's
+      descriptions, personality, notes, the bag and prepared spells, none of which the Sheet shows (~~personality and notes~~
+      are written and shown since ADR 0092; the bag is an open item at the end of Phase 3 since 2026-10-05); the save dialog's
       replace prompt and Cancel, not exercised for an export in the window; macOS and Linux.
 - [x] **Content's sheet hints are read: a feature's sheet line, at its level, filled**
       ([ADR 0076](./docs/adr/0076-content-s-sheet-hints-are-read-every-description-kept-chosen-by-the-level-the-element-gates-at.md)).

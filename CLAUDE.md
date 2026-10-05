@@ -367,7 +367,7 @@ as text: "Export sheet as text…" writes it as Markdown that reads as plain tex
 in the export is content's own sheet line, at the level its class reads, its numbers filled: "Rage (Bonus Action; 3/Long
 Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platform's own dialog, its sections in two columns**
 (ADR 0077), **after a step of the app's own choosing its parts, page numbers and the name on later pages, and with no edge
-of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079).
+of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079). **Personality, appearance, backstory and notes are written on Build and shown on every sheet** (ADR 0092).
 **The phone app runs and shows a character's sheet, plays it (ADR 0084, below), and builds and edits one (ADR 0086, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
@@ -890,7 +890,7 @@ Things to know before touching either:
   - **Measured by `tools/verify/src/sheet-export.test.ts`** (first report-only on the base commit): the Sheet's view is
     identical packed and reopened with no source for all thirty samples, all 282 creature characters and Cairn; none of
     its text is markup (21 creature lines carry square brackets); the importer's `freeform` prose and the portrait path
-    never reach it; a listed element's description would add 18,635 to 93,290 characters to a sample. The only HTML is
+    never reach it (since ADR 0092, prose under a key no field declares); a listed element's description would add 18,635 to 93,290 characters to a sample. The only HTML is
     a kept element's text: 116 elements a kind may keep, fifteen tags (all on the shell sanitizer's allowlist), 110
     tables (63 the 2024 grid, `<td colspan="2"/>` and no header row; 47 with a `thead`; every row as wide once spans
     count; only `b`, `i`, `strong` in a cell), 100 empty `<h4 />`s, no embed of another element.
@@ -1901,6 +1901,29 @@ if they are not read). **A settled slot is judged without its own answer** (`ove
 derivation), or everything the answer gives reads as redundant. Asked for when a picker opens (`overlapNotesFor`), never
 carried in the state; the desktop's `CandidatePicker` and the phone's `Picker` show the line and compute nothing. Display
 only. The 2014 replacement proficiency is a separate, open question.
+
+**What a user writes about a character is fields a kind declares, kept in `Character.freeform` under the keys the Aurora
+importer already writes, and every sheet shows what is written** ([ADR 0092](docs/adr/0092-a-kind-declares-the-text-a-user-writes-about-a-character-and-every-sheet-shows-it.md)).
+Things to know before touching it:
+
+- **`freeform` on a kind** (system format, optional, replaced along `extends`): `label`, `description`, `fields` (`key`,
+  `label`, `group`, `multiline`); the validator refuses a key twice. 5e's `pc` declares 21 (`player-name`,
+  `appearance.age`, `background-traits`, `backstory`, `organization.allies`, `currency.treasure`, `notes.note.left`, …:
+  Aurora's own keys, so an import shows with no importer change), `npc` (and so `legendary`) `description` and `notes`,
+  Cairn three. **Undeclared on purpose**: coins, `experience`, `attacks.*`, a background feature's text, the faction
+  symbol, `list.*`. `freeform-fields.test.ts` holds every declared key to Aurora's vocabulary and every key a sample
+  carries to "declared or left out on purpose".
+- **`setFreeform` (core) keeps text as typed, drops a blank value, moves no format version**; the builder's `setFreeform`
+  keeps the derivation as a play edit does. `BuilderState.freeform` (`freeformState`, `packages/ui/src/freeform.ts`) is
+  the editor's state; the desktop's `Freeform.tsx` (Build) and the phone's `FreeformView` (`BuildExtras.tsx`) render it.
+- **`SheetDocument.freeform`** (`sheetFreeform`): the fields with text, trimmed, after creatures and before kept texts; a
+  print part (`freeform`, `print-omit-freeform`, not in the "kept whole" rule, not a `dl`); the Markdown writes it under
+  `##` its label. **`SheetDocumentSource.freeform` is required**: the phone's sheet picked parts and left it out, found on
+  the emulator.
+- **ADR 0075's check moved**: `sheet-export.test.ts` holds every declared field's text *in* the export and no undeclared
+  key's prose out of it.
+- **The form map's `{ field, freeform: key, capacity? }` rule** fills fifteen 2014 boxes; with a capacity it writes at that
+  size and names text that runs past the box rather than cutting it (two suggested traits do, on 9 samples).
 
 **A slot publishes a set of tags, and `equipped=` is evaluated** (ADR 0025, step 4). A character
 kind declares its `inventory`: which slots exist, what stat each publishes into, which setters
