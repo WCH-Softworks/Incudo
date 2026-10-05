@@ -1084,8 +1084,9 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
         filtered picks, fixed coins, or a wealth roll); the 2014 per-class wealth roll is the book's rule and sits in each
         class's entry, rolled by `packages/ui` and recorded in `rolls`; only the first class gives a package; what is
         taken is written once into the bag and the purse, and taken back only while untouched. Money is
-        `Character.money`, counts per unit the kind declares (5e: cp, sp, ep, gp, pp), format 9; an import reads
-        `<currency>`. Not built.
+        `Character.money`, counts per unit, in units the system definition's `currency` declares, each with the
+        `exchangeRate`s the book states ("gp": { "sp": 10 }), held consistent by the validator (5e: cp, sp, ep, gp, pp);
+        format 9; an import reads `<currency>`. Not built.
   - [ ] **Inventory management at any point**, not only while building: add any item from loaded content to the bag,
         remove it, change quantity, equip and unequip it into the kind's slots, attune (the limit shown, never refused,
         as `over-attuned` already is), attach a magic item to a host, rename an instance and write notes; and spend or

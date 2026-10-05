@@ -7,8 +7,8 @@ an inventory the player manages" and the money its second half spends · builds 
 [0012](./0012-self-contained-saves.md), [0019](./0019-recorded-rolls-are-readable.md),
 [0024](./0024-inventory-is-a-list-of-instances.md), [0072](./0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md),
 [0079](./0079-a-pdf-sheet-is-the-print-layout-written-to-a-file-and-the-official-form-is-the-user-s-own-copy-filled-from-the-document.md)
-· **format:** a new file beside the system with its own schema (not the system format); system, one optional field on a
-kind's `inventory` (`formatVersion` stays 1); character, `money`, **format 9** only when recorded
+· **format:** a new file beside the system with its own schema (not the system format); system, one optional top-level field,
+`currency` (`formatVersion` stays 1); character, `money`, **format 9** only when recorded
 
 ## Context
 
@@ -84,14 +84,38 @@ and gets its own ADR when it is built.
      the player has sold, dropped or spent part of it, the step says the package has been used and leaves the bag alone:
      guessing which purchase replaced which starting item is the guess ADR 0005 rules out.
 
-5. **Money is counted in units the system declares.** A kind's `inventory` may declare `currency`: a list of units, each
-   with an id, a label and its value in the smallest unit. 5e declares five: copper (cp, 1), silver (sp, 10), electrum
-   (ep, 50), gold (gp, 100), platinum (pp, 1,000). Core names none. `Character.money` is a map from unit id to a whole,
-   non-negative count, an input in the same family as `inventory`; it is written only when some unit is non-zero, and only
-   then is the character **format 9** (the validator refuses `money` below 9, a unit the kind does not declare, and a
-   count that is not a whole non-negative number). Counts are kept per unit as the player holds them, never folded into
-   one total: change is made only when the player asks the inventory editor to (its ADR). An item's `cost` setter names
-   its unit by the same ids, which is what buying will read.
+5. **Money is counted in units the system declares, and the system says what each is worth in the others.** The
+   system definition gains an optional top-level `currency` (the maintainer's shape): each unit by its id, with a label
+   and an `exchangeRate` naming how many of another unit it is worth, as the book states it ("1 gp = 10 sp"). 5e:
+
+   ```json
+   "currency": {
+     "cp": { "label": "Copper" },
+     "sp": { "label": "Silver",   "exchangeRate": { "cp": 10 } },
+     "ep": { "label": "Electrum", "exchangeRate": { "sp": 5 } },
+     "gp": { "label": "Gold",     "exchangeRate": { "sp": 10, "ep": 2 } },
+     "pp": { "label": "Platinum", "exchangeRate": { "gp": 10 } }
+   }
+   ```
+
+   - **The ids are the ones content prices items in** (`<set name="cost" currency="gp">`), so an item's cost and a
+     character's purse name the same units and buying needs no table of its own.
+   - **A unit may state several rates**, as the book does ("an electrum piece is worth five silver, or half a gold"), and
+     **the validator holds them to each other**: every rate a positive number, every unit reachable from every other
+     through the rates, and any two paths between two units giving the same value (gp → sp → cp is 100, and so must any
+     other route be). A system whose rates disagree is refused when it loads, with the two paths named. A unit with no
+     rate is allowed only when it is the one every other reaches.
+   - **Values are worked out from the rates, never written twice.** `packages/ui` (and nothing in core but the
+     validator's arithmetic) reckons each unit's worth in whichever unit everything reaches, for comparing a price with a
+     purse and for making change when the player asks; nothing stores that table.
+   - It is the system's, not a kind's: one game has one coinage. A kind whose `inventory` exists records money; a kind
+     with none (5e's NPC) does not.
+
+   `Character.money` is a map from unit id to a whole, non-negative count, an input in the same family as `inventory`;
+   it is written only when some unit is non-zero, and only then is the character **format 9** (the validator refuses
+   `money` below 9, a unit the system does not declare, and a count that is not a whole non-negative number). Counts are
+   kept per unit as the player holds them, never folded into one total: change is made only when the player asks the
+   inventory editor to (its ADR).
 
 6. **An Aurora import reads `<currency>`.** The five counts go to the five units by a fixed table in
    `packages/aurora-import`, written only when one is non-zero. It is a dropped construct being read, the same kind of
@@ -123,6 +147,10 @@ and gets its own ADR when it is built.
   is a one-time write into an input the player then owns. And the wealth rule is a rule of the book, not an element.
 - **A single gold total.** The book and Aurora both count coins per unit, items are priced in gp, sp and cp, and electrum
   exists to be awkward. A total would lose what the player is actually carrying.
+- **Each unit's value in the smallest unit** (cp 1, sp 10, ep 50, gp 100, pp 1,000), as first drafted. It cannot
+  disagree with itself, but it is not how a book writes its coinage, and it forces a smallest unit on a system that may
+  not have one worth naming. Rates between units read as the book does; the validator buys back the consistency.
+- **Currency on a kind's `inventory`**, as first drafted. Every kind of one game uses the same coins.
 - **Deriving the starting bag from the recorded choice** (so a changed choice rewrites it). The bag is something the player
   edits from the first session on; a derived starting bag would either overwrite their edits or need a second, edited
   copy beside it. Writing once and refusing to undo once used is the honest version.
@@ -131,7 +159,7 @@ and gets its own ADR when it is built.
 
 - The 5e system gains a file a person writes from the books, entry by entry, starting with the Player's Handbooks' 24
   classes and the core backgrounds; a test in `tools/verify` holds every id in it to the corpus, reports each class and
-  background in the corpus it does not cover, and checks each wealth roll and coin amount names a declared unit.
+  background in the corpus it does not cover, and checks each wealth roll and coin amount names a unit the system's `currency` declares.
 - A character built in Incudo can start with a bag and a purse, so its armour class and attunement mean something from
   level 1 without an import.
 - Character format 9 is written only by a character that holds money.
