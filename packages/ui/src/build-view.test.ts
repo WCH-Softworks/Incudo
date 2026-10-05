@@ -11,6 +11,7 @@ import {
   classOptionGroups,
   currentSplit,
   movedSplitRow,
+  multiclassOffNote,
   progressPrintedHint,
   progressResetLabel,
   splitDraftView,
@@ -124,6 +125,24 @@ test("a class's shortfall and reason, in the system's own words", () => {
   assert.equal(unavailableReason(option({ prerequisite: 'Strength 13' }), String), 'needs Strength 13');
   const groups = classOptionGroups([option({ id: 'a', taken: true, eligible: true }), option({ id: 'b', eligible: true }), option({ id: 'c' })]);
   assert.deepEqual([groups.taken, groups.available, groups.unavailable].map((g) => g.map((o) => o.id)), [['a'], ['b'], ['c']]);
+});
+
+test('with what allows another class off, its classes are said once and not listed (ADR 0088)', () => {
+  const option = (patch: Partial<ClassOption>): ClassOption => ({ id: 'ID_C', taken: false, eligible: false, ...patch });
+  const off = option({ id: 'd', unavailable: 'multiclassing-off' });
+  // Perturbation: grouping it with the unavailable lists every class in the game with the same reason.
+  const groups = classOptionGroups([option({ id: 'a', taken: true, eligible: true }), off, option({ id: 'c' })]);
+  assert.deepEqual([groups.taken, groups.available, groups.unavailable].map((g) => g.map((o) => o.id)), [['a'], [], ['c']]);
+  assert.equal(unavailableReason(off, String), 'switched off for this character');
+
+  const label = (id: string) => (id === 'ALLOW' ? 'Multiclassing' : id);
+  assert.equal(multiclassOffNote({ classes: [{ id: 'a', levels: 3 }] }, label), undefined, 'on: nothing to say');
+  assert.equal(
+    multiclassOffNote({ allowedBy: 'ALLOW', classes: [{ id: 'a', levels: 3 }] }, label),
+    'Multiclassing is switched off for this character, so new levels go to the class it has. Switch Multiclassing on to add another class.',
+  );
+  // Perturbation: one sentence for both reads as if a held second class had been taken away.
+  assert.match(multiclassOffNote({ allowedBy: 'ALLOW', classes: [{ id: 'a', levels: 3 }, { id: 'b', levels: 2 }] }, label)!, /Nothing has been removed/);
 });
 
 test('a prepared item reads with its note', () => {

@@ -24,6 +24,7 @@ import {
   classOptionGroups,
   currentSplit,
   movedSplitRow,
+  multiclassOffNote,
   shortfallText,
   splitDraftView,
   unavailableReason,
@@ -109,12 +110,15 @@ export function ClassLevels({
       ? next
       : fallback;
   const nextLevel = state.levels.length + 1;
+  const offNote = multiclassOffNote(state, nameOf);
 
   return (
     <div className="class-levels">
       <p className="class-summary">
         {state.classes.map((held) => `${nameOf(held.id)} ${held.levels}`).join(' / ')}
       </p>
+
+      {offNote && <p className={state.classes.length > 1 ? 'class-flag' : 'hint'}>{offNote}</p>}
 
       {state.options
         .filter((option) => option.taken && option.flag)

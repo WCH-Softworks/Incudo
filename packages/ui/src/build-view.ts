@@ -82,10 +82,15 @@ export function unavailableReason(option: ClassOption, labelOf: (id: ElementId) 
   if (option.eligible) return undefined;
   if (option.unavailable === 'no-multiclass-rules') return 'cannot be taken as an additional class';
   if (option.unavailable === 'excluded' && option.excludedBy) return `cannot be combined with ${labelOf(option.excludedBy)}`;
+  if (option.unavailable === 'multiclassing-off') return 'switched off for this character';
   return option.prerequisite ? `needs ${option.prerequisite}` : 'requirements not met';
 }
 
-/** A class level's options as a screen groups them: the character's classes, those it may add, those it may not. */
+/**
+ * A class level's options as a screen groups them: the character's classes, those it may add, those it may not. A class
+ * unavailable only because what allows another class is off (ADR 0088) is in none of them: `multiclassOffNote` says so
+ * once, rather than every class in the game listed with the same reason.
+ */
 export function classOptionGroups(options: readonly ClassOption[]): {
   taken: ClassOption[];
   available: ClassOption[];
@@ -94,8 +99,23 @@ export function classOptionGroups(options: readonly ClassOption[]): {
   return {
     taken: options.filter((option) => option.taken),
     available: options.filter((option) => !option.taken && option.eligible),
-    unavailable: options.filter((option) => !option.taken && !option.eligible),
+    unavailable: options.filter((option) => !option.taken && !option.eligible && option.unavailable !== 'multiclassing-off'),
   };
+}
+
+/**
+ * What a class control says while what allows another class is off (ADR 0088), in that option's own name, or nothing while
+ * it is on. A character that holds more than one class anyway is told that nothing was removed and how to settle it.
+ */
+export function multiclassOffNote(
+  state: Pick<ClassLevelState, 'allowedBy' | 'classes'>,
+  labelOf: (id: ElementId) => string,
+): string | undefined {
+  if (state.allowedBy === undefined) return undefined;
+  const option = labelOf(state.allowedBy);
+  return state.classes.length > 1
+    ? `${option} is switched off for this character, and it has levels in more than one class. Nothing has been removed: switch ${option} back on, or move its levels to one class.`
+    : `${option} is switched off for this character, so new levels go to the class it has. Switch ${option} on to add another class.`;
 }
 
 /** A prepared list's line for one spell: "Shield (Level 1)". */

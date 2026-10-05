@@ -17,6 +17,7 @@ import {
   SPLIT_INTERLEAVED,
   SPLIT_REFUSED,
   classOptionGroups,
+  multiclassOffNote,
   currentSplit,
   movedSplitRow,
   splitDraftView,
@@ -333,10 +334,12 @@ export function ClassLevelsView({
     pick({ title, options: options.map((option) => option.id), onPick, labels, ...(current ? { current } : {}) });
   };
   const nextLevel = state.levels.length + 1;
+  const offNote = multiclassOffNote(state, nameOf);
 
   return (
     <View style={styles.part}>
       <Body>{state.classes.map((held) => `${nameOf(held.id)} ${held.levels}`).join(' / ')}</Body>
+      {offNote ? <Body tone={state.classes.length > 1 ? 'danger' : 'muted'}>{offNote}</Body> : null}
       {state.options
         .filter((option) => option.taken && option.flag)
         .map((option) => (
