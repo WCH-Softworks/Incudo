@@ -1,6 +1,6 @@
 # 0089 — The other hidden item families are two more equip steps, the mounts are goods, and a player character's sheet shows its other speeds
 
-**Status:** Accepted · 2026-10-05 · answers ROADMAP Phase 3's "Take the other hidden item families", which
+**Status:** Accepted · 2026-10-05 · implemented the same day (see the note at the end) · answers ROADMAP Phase 3's "Take the other hidden item families", which
 [0072](./0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md) decision 6 left open ·
 builds on [0024](./0024-inventory-is-a-list-of-instances.md), [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),
@@ -138,3 +138,26 @@ two stats, so no bucket can separate them, and taking the larger would be a rule
   creature select and, answered, holds a creature that is shown. Each fails with its declaration removed.
 - The oracle: `INCUDO_ORACLE_SNAPSHOT` on the base and `INCUDO_ORACLE_BASELINE` on the change, same checkout.
 - Driven in the browser build.
+
+## Note, 2026-10-05 — built, and what it measured
+
+Implemented as decided, after the measurement and this ADR: the four speed stats and the Other Speeds section, then the two
+steps with their assertions in `hidden-items.test.ts`. No engine, `packages/ui` or format change.
+
+**The oracle is identical.** `INCUDO_ORACLE_SNAPSHOT` on this ADR's commit and `INCUDO_ORACLE_BASELINE` on the change, same
+checkout (AuroraLegacy/elements at `c28ce6c`): no row moved on any of the thirty samples and `oracleViolations` stays
+empty. The full suite passes.
+
+**One sample shows another speed**: sample 28, a 2024 Rogue 3 (Thief), climbs 30, its Second-Story Work as the book gives it.
+No other sample has one.
+
+**Held** by four assertions in `hidden-items.test.ts`, each failing under the perturbation it names: either step's family
+changed to nothing (its items are not offered), a step widened to "Mounts & Vehicles" (a hidden item without rules is
+offered), the climb term taken out of `speed:climb`'s derivation or the Other Speeds section removed (the climbing speed
+does not show), and the Additional Feature step removed (the Companion Selection is not offered).
+
+**Driven** in the browser build (DOM clicks on the dev server, an existing draft, an Aarakocra Fighter 2): both steps listed
+as optional sets, 35 and 12 items; "Speed: Climb Equals Walking" taken, and the Sheet's Other Speeds read Climb 30 beside the
+Aarakocra's own Fly 30, with no item listed; the Companion Selection taken opened a select of 117, an Ape chosen was shown as
+its own stat block "From Companion Selection"; removing the item removed the Ape and its answer; a Strength +1 read 11 on the
+Sheet; all taken back. No console error. Not in the Tauri window, not on the phone.

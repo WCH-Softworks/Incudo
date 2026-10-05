@@ -1068,7 +1068,7 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       clicks over the debug port, the saved file read back from disk with no source). **Not done:** a general bag editor;
       saying which items give a character anything; the other hidden item families (climb speeds, feat unlockers, the
       companion and familiar selections) *(the first two in the inventory item below, the third an open item at the end
-      of this phase since 2026-10-05)*; macOS and Linux not driven.
+      of this phase since 2026-10-05, done the same day by ADR 0089)*; macOS and Linux not driven.
 - [x] **Optional class features follow the class**
       ([ADR 0081](./docs/adr/0081-an-equip-step-may-offer-only-what-is-gated-on-what-the-character-has.md)). An equip step
       may declare `gatedOnHeld`: an item is offered only when one of its grants is gated on a stat the character publishes
@@ -1101,7 +1101,9 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
         as `over-attuned` already is), attach a magic item to a host, rename an instance and write notes; and spend or
         receive money once it is recorded. The model and the engine are there (`setInventoryEntry`, ADRs 0024 to 0026);
         what is missing is the view-model in `packages/ui` and a screen in both shells, the desktop and the phone. Also
-        say which items give the character anything, which ADR 0072 left undone.
+        say which items give the character anything, which ADR 0072 left undone. **Hidden is not a reason to leave an item
+        out** (ADR 0089 decision 3): the 2024 mounts are hidden, priced and without rules, so they are goods this editor
+        offers; the families the equip steps already offer are the ones it may leave to them.
       **Exit:** a character built from nothing in either app takes a class's package or its gold, then buys, equips and
       attunes items later; its armour class and attunement follow; the file opens identically on the other app.
 
@@ -1142,11 +1144,22 @@ its original text with a pointer here.*
       Aurora's app did not systematise it either. How Incudo reads it without parsing prose (ADR 0005), most likely as a
       table in the system definition beside the other numbers the book states, wants deciding first. The Wizard's
       minimum of one is the same item's smaller half.
-- [ ] **Take the other hidden item families.** *Buried in the ADR 0072 item.* Aurora switches some things on by an
+- [x] **Take the other hidden item families.** *Buried in the ADR 0072 item.* Aurora switches some things on by an
       `inventory-hidden` item: climb speeds, feat unlockers, Lycanthropy, the Companion and Familiar Selection items
       (Aurora Legacy Essentials' Companion Selection, equipped, opens 117 creatures), UA's additional ability score items.
       Incudo offers only the Tasha's optional class features this way, and a bag editor leaves hidden items out (ADR 0072
       decision 4), so the inventory item above will not offer the rest either. Each family is a declaration away and wants a look first (ADR 0072 decision 6).
+      **Done** ([ADR 0089](./docs/adr/0089-the-other-hidden-item-families-are-two-more-equip-steps-and-a-player-character-s-sheet-shows-its-other-speeds.md)).
+      Measured first (`hidden-items.test.ts`): 55 hidden items outside Tasha's, 35 "Additional Feature" and 12 "Additional
+      Ability Score Improvement" switches whose grants are all unconditional, and 8 2024 mounts with no rules; no sample
+      carries one; each equipped on a fresh character derives as it says. Two things did not show: the climb, swim and fly
+      items move `innate speed:<mode>`, which the player character's sheet never showed (nor a Tabaxi's climb), and the
+      multiclass unlocker works only through the classes' `<multiclass>` blocks (`… || marker`), where with it no score is
+      flagged. 5e now declares two more equip steps, "Additional features" and "Ability score adjustments", by category,
+      and the player character derives `speed:burrow`, `:climb`, `:fly` and `:swim` as walking speed is and shows them under
+      Other Speeds. The mounts are goods, offered by no step and left to the inventory editor. No engine change; the oracle is
+      identical; one sample (a 2024 Thief) shows a climbing speed. Driven in the browser build; not in the Tauri window or on
+      the phone.
 - [ ] **Say which switched-off source would supply what is missing.** *Buried in the ADR 0052 item.* A source's line
       says how many things it refers to that no enabled source has, never that a source the user configured and switched
       off declares them. A disabled source is not loaded, so this needs a record of what each source declared, kept from

@@ -767,6 +767,15 @@ Things to know before touching either:
     gated (a term outside a `not`) on a stat the character publishes above zero or an element it holds
     (`requirementConcerns`, `equip-step.ts`); not whether it holds, so a Fighter 1 sees its level 4 feature. 5e's step
     declares it, so it offers nothing before a class and a class only its own; `optional-feature-offer.test.ts` holds it.
+  - **Since ADR 0089 5e declares two more equip steps**, by category and not `gatedOnHeld` (no grant of theirs is gated):
+    "Additional features" (35: speeds, senses, feat and multiclass unlockers, weapon mastery, the Companion and Familiar
+    Selection, Lycanthropy, bonus feats) and "Ability score adjustments" (12: +1 or −1 to one score). The 2024 mounts are
+    hidden, priced and have no rules: no step offers them, they are the inventory editor's goods, so **hidden is never a
+    reason to leave an item out**. The multiclass unlocker works only through the classes' `<multiclass>` blocks (`… ||
+    marker`, which an element's own requirements do not show): with it, no score is flagged. The player character now derives
+    `speed:burrow|climb|fly|swim` as walking speed is (`innate speed:<mode> + innate speed:<mode>:misc + speed:<mode>:misc`,
+    `speed:<mode>` itself on top; an innate mode plus an item's of the same mode reads double, unrefereed) and shows them
+    under Other Speeds (`showWhen`); sample 28 (a 2024 Thief) climbs 30. `hidden-items.test.ts` measures and holds it.
   - **`InventoryDef.hiddenSetter`** (5e: `inventory-hidden`): `sheetListedElements` (core) leaves such an item off the
     sheet's lists; still held, derived and saved. The Sheet pane reads through it.
   - **`BuilderState.withdrawn`** names what ADR 0071 withdrew and its granters; Build lists it under "Not held" (an
@@ -775,9 +784,8 @@ Things to know before touching either:
   - The oracle is identical before and after on all thirty samples. Tests: `packages/ui/src/equip-step.test.ts` (each
     case failing under its named perturbation), `tools/verify/src/optional-feature-step.test.ts` (a 2014 Ranger through
     the builder, packed and reopened with no source).
-  - **Not done:** a bag editor; a note saying which items give this character anything; the other hidden families
-    ("Additional Feature": climb speeds, feat unlockers, Lycanthropy, the Companion and Familiar Selection items; UA's
-    additional ability score items), each a declaration away and each wanting a look. Driven in the browser build and the
+  - **Not done:** a bag editor; a note saying which items give this character anything; ~~the other hidden families~~
+    (ADR 0089, above). Driven in the browser build and the
     Tauri window on Windows (DOM clicks over the debug port, the saved file read back from disk with no source); not with
     real input, and not on macOS or Linux.
 - **A creature a character holds is derived one at a time in its holder's namespace, and shown as its own stat block**
