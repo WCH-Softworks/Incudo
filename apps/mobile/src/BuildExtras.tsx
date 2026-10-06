@@ -295,6 +295,22 @@ export function AdditionsView({
     });
   };
 
+  // The block an added spell is cast through (ADR 0097): the blocks the character holds, and none. A recorded block it
+  // no longer holds is shown and cannot be picked again.
+  const NONE = ' none';
+  const chooseBlock = (row: (typeof additions.rows)[number]): void => {
+    const block = row.block!;
+    const held = block.options.filter((option) => option.held);
+    pick({
+      title: block.label,
+      options: [NONE, ...held.map((option) => option.key)],
+      labels: new Map([[NONE, block.none], ...held.map((option) => [option.key, option.label] as const)]),
+      details: false,
+      current: block.value || NONE,
+      onPick: (key) => builder.setAdditionBlock(row.elementId, key === NONE ? undefined : key),
+    });
+  };
+
   return (
     <View style={styles.part}>
       {additions.description ? <Body tone="muted">{additions.description}</Body> : null}
@@ -311,6 +327,14 @@ export function AdditionsView({
                 <Button label="Remove" kind="link" onPress={() => builder.removeAddition(row.elementId)} />
               </Row>
               {row.note ? <Body tone="muted">{row.note}</Body> : null}
+              {row.block ? (
+                <Row>
+                  <Text style={[styles.grow, { color: palette.text, fontSize: 14 }]}>
+                    {row.block.label}: {row.block.options.find((option) => option.key === row.block!.value)?.label ?? row.block.none}
+                  </Text>
+                  <Button label="Change" kind="link" onPress={() => chooseBlock(row)} />
+                </Row>
+              ) : null}
             </View>
           ))}
         </Card>

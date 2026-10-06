@@ -32,6 +32,7 @@ import {
   setDeclined,
   setGrantRemoved,
   setAdded,
+  setAdditionBlock,
   setReferenced,
   setCustomFeature,
   customFeatureTypes,
@@ -115,7 +116,7 @@ import {
   type PublicationList,
 } from './publications.ts';
 import { customFeaturesState, type CustomFeaturesState } from './custom-features.ts';
-import { additionOptions, additionsState, type AdditionOption, type AdditionsState } from './additions.ts';
+import { additionOptions, additionsState, heldBlocks, type AdditionOption, type AdditionsState } from './additions.ts';
 import { referenceOptions, referencesState, type ReferencesState } from './references.ts';
 import { companionsView, type CompanionsView } from './companions.ts';
 import { sheetView, type SheetView } from './sheet.ts';
@@ -659,8 +660,31 @@ export class CharacterBuilder {
     if (type === undefined || !types.includes(type)) return false;
     if (!this.elements.byType(type).some((element) => element.id === elementId)) return false;
     if (this.character.additions?.includes(elementId)) return false;
-    if (this.getState().derived.elementIds.has(elementId)) return false;
+    const derived = this.getState().derived;
+    if (derived.elementIds.has(elementId)) return false;
     this.character = setAdded(this.character, elementId, true);
+    // Cast through the character's only block when it has exactly one (ADR 0097 decision B3), recorded so that a block
+    // taken later never moves it. With several, the row asks; with none, nothing is cast through one.
+    const blocks = heldBlocks(derived);
+    if (this.kind.additions?.blocks?.types.includes(type) && blocks.length === 1) {
+      this.character = setAdditionBlock(this.character, elementId, blocks[0]!.key);
+    }
+    this.invalidate();
+    return true;
+  };
+
+  /**
+   * Say which block an added element is cast through, by its lowercased name, or none with `undefined` — ADR 0097.
+   * Refused, writing nothing, for an element that is not added, one of a type the kind does not cast through a block,
+   * and a block the character does not hold. Returns whether the record is now what was asked.
+   */
+  setAdditionBlock = (elementId: ElementId, block: string | undefined): boolean => {
+    if (!this.character.additions?.includes(elementId)) return false;
+    const type = this.content.get(elementId)?.type;
+    if (type === undefined || !this.kind.additions?.blocks?.types.includes(type)) return false;
+    const key = block?.trim().toLowerCase() || undefined;
+    if (key !== undefined && !heldBlocks(this.getState().derived).some((b) => b.key === key)) return false;
+    this.character = setAdditionBlock(this.character, elementId, key);
     this.invalidate();
     return true;
   };

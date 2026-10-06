@@ -123,6 +123,11 @@ export interface SheetListedElement {
    * when content keeps it on a list, else the player's choice; `label` is what the system calls that.
    */
   prepared?: { label: string; always: boolean };
+  /**
+   * Which block an element the user added is cast through, in the kind's words ("cast as Wizard", "cast through no
+   * class"), for an addition of a type the kind casts through one (ADR 0097). Absent for anything else.
+   */
+  cast?: string;
 }
 
 /**
@@ -198,6 +203,8 @@ export interface SheetSource {
   lookup?: (id: ElementId) => Element | undefined;
   /** The character's attacks (`DerivedCharacter.attacks`, ADR 0093), for a section that lists them. A creature's scope has none. */
   attacks?: readonly DerivedAttack[];
+  /** What each added element of a cast type is cast through, worded (`additionCasting`, ADR 0097). A creature's scope has none. */
+  cast?: ReadonlyMap<ElementId, string>;
 }
 
 /**
@@ -388,6 +395,7 @@ export function sheetSections(
         const progress = section.trackProgress && vocabulary.progression ? trackProgress(vocabulary.progression, e, source.stats) : undefined;
         const sides = section.trackDie !== undefined && progress !== undefined && progress > 0 ? trackDie(e, section.trackDie) : undefined;
         const prepared = section.preparedMark ? preparedState(preparation, e.id) : undefined;
+        const cast = source.cast?.get(e.id);
         return {
           elementId: e.id,
           name: e.name,
@@ -398,6 +406,7 @@ export function sheetSections(
           ...(sides !== undefined ? { dice: { count: progress!, sides } } : {}),
           ...(group ? { group } : {}),
           ...(prepared ? { prepared: { label: section.preparedMark![prepared], always: prepared === 'always' } } : {}),
+          ...(cast !== undefined ? { cast } : {}),
         };
       });
       const attacks = section.attacks ? (source.attacks ?? []).map(sheetAttack) : [];
@@ -471,9 +480,10 @@ export function sheetView(
   unmet: ReadonlySet<ElementId> = new Set(),
   lookup?: (id: ElementId) => Element | undefined,
 ): SheetView {
+  const cast = additionCasting(derived, kind);
   const sections = sheetSections(
     kind.sheet.sections,
-    lookup ? { ...derived, lookup } : derived,
+    { ...derived, ...(lookup ? { lookup } : {}), ...(cast.size ? { cast } : {}) },
     { stats: kind.stats, blockStats: kind.blockStats, progression: kind.progression },
     sheetListedElements(derived.elements, kind),
     unmet,
@@ -484,6 +494,28 @@ export function sheetView(
     sections,
     unfilled: unfilledIn(sections),
   };
+}
+
+/**
+ * What each held addition of a type the kind casts through a block is cast through, in the kind's words — ADR 0097:
+ * "cast as Wizard" for one the derivation published a block for, "cast through no class" for the rest. Empty for a kind
+ * that casts nothing it adds through a block.
+ */
+export function additionCasting(
+  derived: Pick<DerivedCharacter, 'character' | 'elements' | 'additionBlocks'>,
+  kind: Pick<ResolvedCharacterKind, 'additions'>,
+): Map<ElementId, string> {
+  const out = new Map<ElementId, string>();
+  const def = kind.additions?.blocks;
+  if (!def) return out;
+  const added = new Set(derived.character.additions ?? []);
+  const through = new Map(derived.additionBlocks.map((b) => [b.elementId, b.block]));
+  for (const element of derived.elements) {
+    if (!added.has(element.id) || !def.types.includes(element.type)) continue;
+    const block = through.get(element.id);
+    out.set(element.id, block === undefined ? def.none : def.with.replace('{name}', block));
+  }
+  return out;
 }
 
 /** How many placeholders the listed elements of these sections name that nothing publishes (ADR 0076). */

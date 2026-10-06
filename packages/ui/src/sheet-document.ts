@@ -38,11 +38,12 @@ export function listedDice(element: Pick<SheetListedElement, 'dice'>): string | 
 
 /**
  * What a sheet writes in parentheses after a listed element's name: its track's dice, its group and its prepared mark
- * (ADR 0079), "3d10", "Level 1, prepared", "Cantrip", any alone, or nothing. The pane and every export word a listed
+ * (ADR 0079), and what an added element is cast through (ADR 0097): "3d10", "Level 1, prepared", "Cantrip", "Level 1,
+ * always prepared, cast as Wizard", any alone, or nothing. The pane and every export word a listed
  * element this way.
  */
-export function listedAside(element: Pick<SheetListedElement, 'dice' | 'group' | 'prepared'>): string | undefined {
-  const parts = [listedDice(element), element.group?.label, element.prepared?.label].filter((part): part is string => part !== undefined && part !== '');
+export function listedAside(element: Pick<SheetListedElement, 'dice' | 'group' | 'prepared' | 'cast'>): string | undefined {
+  const parts = [listedDice(element), element.group?.label, element.prepared?.label, element.cast].filter((part): part is string => part !== undefined && part !== '');
   return parts.length ? parts.join(', ') : undefined;
 }
 

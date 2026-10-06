@@ -82,6 +82,22 @@ export function Additions({
               )}
               {!row.prerequisitesMet && <span className="tag open">{PREREQUISITES_UNMET}</span>}
               {row.note && <p className="hint">{row.note}</p>}
+              {row.block && (
+                <label className="addition-block">
+                  {row.block.label}{' '}
+                  <select
+                    value={row.block.value}
+                    onChange={(event) => builder.setAdditionBlock(row.elementId, event.target.value || undefined)}
+                  >
+                    <option value="">{row.block.none}</option>
+                    {row.block.options.map((option) => (
+                      <option key={option.key} value={option.key} disabled={!option.held}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </li>
           ))}
         </ul>

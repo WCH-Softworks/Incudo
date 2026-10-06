@@ -12,6 +12,7 @@
  */
 
 import {
+  collectDeclaredBlocks,
   evaluateRequirements,
   requirementContextFor,
   type Character,
@@ -45,6 +46,31 @@ export interface AddedRow {
   prerequisitesMet: boolean;
   /** A sentence for the row when it is not simply held. */
   note?: string;
+  /**
+   * Which block it is cast through, for an element of a type the kind casts through one (ADR 0097): the choice a row
+   * offers, the blocks the character holds and none. Absent for any other row, and for one not held.
+   */
+  block?: AddedRowBlock;
+}
+
+/** A declared block the character holds, as a choice offers it. */
+export interface BlockOption {
+  /** The lowercased block name: what `setAdditionBlock` takes and `Character.additionBlocks` records. */
+  key: string;
+  /** Its name as content wrote it ("Wizard"). */
+  name: string;
+}
+
+/** The choice of block on an added row — ADR 0097. */
+export interface AddedRowBlock {
+  /** The kind's heading for the choice ("Cast as"). */
+  label: string;
+  /** The recorded block's key, or '' for none. A recorded block the character no longer holds is still its value. */
+  value: string;
+  /** The blocks the character holds, in the order its elements declare them, then a recorded one it does not. */
+  options: Array<BlockOption & { held: boolean; label: string }>;
+  /** The kind's words for none, the choice's first option. */
+  none: string;
 }
 
 export interface AdditionsState {
@@ -84,6 +110,11 @@ export function additionsState(
   const refused = new Map(
     derived.problems.filter((p) => p.code === 'addition-not-allowed' && p.elementId).map((p) => [p.elementId!, p.message]),
   );
+  const missing = new Map(
+    derived.problems.filter((p) => p.code === 'addition-block-missing' && p.elementId).map((p) => [p.elementId!, p.message]),
+  );
+  const casting = declared?.blocks;
+  const blocks = casting ? heldBlocks(derived) : [];
   const rows = [...new Set(character.additions ?? [])].map((id): AddedRow => {
     const element = elements.get(id);
     if (!element) {
@@ -98,15 +129,21 @@ export function additionsState(
       };
     }
     const met = !unmet.has(id);
-    const note = refused.get(id) ?? (met ? undefined : 'Its prerequisites are not met. It is on the character anyway.');
+    const held = derived.elementIds.has(id);
+    const note =
+      refused.get(id) ??
+      missing.get(id) ??
+      (met ? undefined : 'Its prerequisites are not met. It is on the character anyway.');
+    const block = held && casting && casting.types.includes(element.type) ? rowBlock(casting, blocks, character.additionBlocks?.[id]) : undefined;
     return {
       elementId: id,
       name: element.name,
       type: element.type,
       known: true,
-      held: derived.elementIds.has(id),
+      held,
       prerequisitesMet: met,
       ...(note ? { note } : {}),
+      ...(block ? { block } : {}),
     };
   });
   return {
@@ -115,6 +152,29 @@ export function additionsState(
     ...(declared?.description ? { description: declared.description } : {}),
     rows,
   };
+}
+
+/** The declared blocks the character holds, once each by lowercased name, in the order its elements declare them. */
+export function heldBlocks(derived: Pick<DerivedCharacter, 'elements'>): BlockOption[] {
+  const out = new Map<string, BlockOption>();
+  for (const block of collectDeclaredBlocks(derived.elements)) {
+    const key = block.name.trim().toLowerCase();
+    if (!out.has(key)) out.set(key, { key, name: block.name });
+  }
+  return [...out.values()];
+}
+
+function rowBlock(
+  casting: NonNullable<NonNullable<ResolvedCharacterKind['additions']>['blocks']>,
+  blocks: BlockOption[],
+  recorded: string | undefined,
+): AddedRowBlock {
+  const options = blocks.map((b) => ({ ...b, held: true, label: b.name }));
+  // A recorded block the character no longer holds stays the value, so the choice shows what is recorded.
+  if (recorded !== undefined && !blocks.some((b) => b.key === recorded)) {
+    options.push({ key: recorded, name: recorded, held: false, label: `${recorded} (no longer on the character)` });
+  }
+  return { label: casting.label, value: recorded ?? '', options, none: casting.none };
 }
 
 /**

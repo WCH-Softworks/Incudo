@@ -1272,6 +1272,13 @@ table.budget-rows input[type='number'] {
   color: var(--warn-line);
 }
 
+/* Which class an added spell is cast as (ADR 0097). */
+.additions li > .addition-block {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.9em;
+}
+
 .additions li.not-held .picker-name {
   text-decoration: line-through;
   color: var(--fg-muted);
