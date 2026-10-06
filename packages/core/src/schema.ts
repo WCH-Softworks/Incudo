@@ -171,6 +171,12 @@ function checkCharacterReferences(character: Character): SchemaError[] {
     if (character.formatVersion < 6 && feature.type !== undefined) {
       errors.push({ path: `customFeatures[${i}].type`, message: 'is recorded only from format 6' });
     }
+    // A reader of 8 refuses the mode outright (ADR 0094), so the number says why.
+    for (const [at, line] of feature.stats.entries()) {
+      if (character.formatVersion < 9 && line.mode === 'mark') {
+        errors.push({ path: `customFeatures[${i}].stats[${at}].mode`, message: '"mark" is recorded only from format 9' });
+      }
+    }
     if (featureIds.has(feature.id)) {
       errors.push({ path: `customFeatures[${i}].id`, message: `"${feature.id}" is already used by another feature` });
     }

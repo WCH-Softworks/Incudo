@@ -13,7 +13,7 @@
 
 import type { Character, CustomFeature } from './character.ts';
 import type { Element, ElementId, StatKey, StatRule } from './model.ts';
-import { progressionStat, type ResolvedCharacterKind } from './system.ts';
+import { progressionStat, type ResolvedCharacterKind, type SheetMarkDef } from './system.ts';
 
 /** The prefix a custom feature's element id carries, so it can never be mistaken for content's. */
 export const CUSTOM_FEATURE_PREFIX = 'custom:';
@@ -40,6 +40,23 @@ export interface CustomFeatureStat {
    * derivation on top of any start, so setting Perception to 7 would read 7 plus the Wisdom modifier.
    */
   settable: boolean;
+  /**
+   * Whether a line may mark the row, and how — ADR 0094: when the row's sheet section declares a `mark` and the stat the
+   * mark is read from is one the kind declares and does not derive (an NPC's `athletics:proficiency`, which starts where
+   * its creature prints it). A line marking the row sets where that stat starts, as `choices`' index times `per`.
+   * Absent where content supplies the mark stat (a player character's), since a start there would add to content's.
+   */
+  mark?: CustomFeatureMark;
+}
+
+/** How a line marks a row — ADR 0094. */
+export interface CustomFeatureMark {
+  /** The stat the mark is read from, as the kind declared it. */
+  stat: StatKey;
+  /** The stat whose multiples are counted. */
+  per: StatKey;
+  /** What none, one, two, … multiples are called, in that order: the mark's `none` (else "none"), then its labels. */
+  choices: string[];
 }
 
 /**
@@ -68,12 +85,31 @@ export function customFeatureStats(kind: ResolvedCharacterKind): CustomFeatureSt
       if (!def || key === progress || seen.has(key) || typeof def.default === 'string') continue;
       seen.add(key);
       const label = def.label ?? def.name;
-      out.push({ stat: def.name, label, group: section.label, fullLabel: label, settable: def.derive === undefined });
+      const mark = section.mark && markOf(section.mark, def.name, defs);
+      out.push({
+        stat: def.name,
+        label,
+        group: section.label,
+        fullLabel: label,
+        settable: def.derive === undefined,
+        ...(mark ? { mark } : {}),
+      });
     }
   }
   const shared = out.filter((s) => out.some((o) => o !== s && o.label === s.label));
   for (const s of shared) s.fullLabel = `${s.label} (${s.group})`;
   return out;
+}
+
+/** How a line may mark a row whose section declares `mark`, or nothing when the mark stat is not the kind's own. */
+function markOf(
+  def: SheetMarkDef,
+  row: StatKey,
+  defs: ReadonlyMap<string, ResolvedCharacterKind['stats'][number]>,
+): CustomFeatureMark | undefined {
+  const target = defs.get(def.stat.replace(/\{stat\}/g, row).toLowerCase());
+  if (!target || target.derive !== undefined || typeof target.default === 'string') return undefined;
+  return { stat: target.name, per: def.per, choices: [def.none ?? 'none', ...def.labels] };
 }
 
 /**
@@ -100,7 +136,7 @@ export function customFeatureType(feature: CustomFeature, kind: ResolvedCharacte
 
 /** Why a line of a custom feature does nothing, or does less than it says. */
 export interface CustomFeatureNote {
-  kind: 'no-custom-features' | 'type-not-allowed' | 'unknown-stat' | 'not-settable' | 'two-setters';
+  kind: 'no-custom-features' | 'type-not-allowed' | 'unknown-stat' | 'not-settable' | 'not-markable' | 'two-setters';
   featureId: string;
   featureName: string;
   stat?: StatKey;
@@ -108,13 +144,18 @@ export interface CustomFeatureNote {
   type?: string;
   /** The feature whose set is used instead, for `two-setters`. */
   usedFrom?: string;
+  /** For `two-setters`, when the two lines mark a row rather than set a number (ADR 0094). */
+  marks?: true;
 }
 
 /** A stat's start set by a custom feature. */
 export interface CustomSet {
   /** The stat as the kind declared it. */
   stat: StatKey;
+  /** The number it starts at, or, with `per`, how many times `per` it starts at (ADR 0094: a marked row). */
   value: number;
+  /** The stat a marked row's start is a multiple of, read when the start is placed. */
+  per?: StatKey;
   /** The feature's element id. */
   from: ElementId;
   featureName: string;
@@ -163,6 +204,22 @@ export function customFeatureEffects(character: Character, kind: ResolvedCharact
       }
       if (line.mode === 'add') {
         rules.push({ kind: 'stat', key: `custom-${at}`, name: stat.stat, value: { kind: 'number', value: line.value } });
+        continue;
+      }
+      if (line.mode === 'mark') {
+        // A count the mark has no name for is not guessed at (ADR 0005): none, one, … as many as it labels.
+        const mark = stat.mark;
+        if (!mark || !Number.isInteger(line.value) || line.value < 0 || line.value >= mark.choices.length) {
+          notes.push({ kind: 'not-markable', ...note, stat: stat.stat });
+          continue;
+        }
+        const key = mark.stat.toLowerCase();
+        const existing = sets.get(key);
+        if (existing) {
+          if (existing.from !== id) notes.push({ kind: 'two-setters', ...note, stat: stat.stat, usedFrom: existing.featureName, marks: true });
+          continue;
+        }
+        sets.set(key, { stat: mark.stat, value: line.value, per: mark.per, from: id, featureName: feature.name });
         continue;
       }
       if (!stat.settable) {

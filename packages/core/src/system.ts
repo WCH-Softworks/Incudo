@@ -996,6 +996,8 @@ export interface SheetMarkDef {
   stat: string;
   per: StatKey;
   labels: string[];
+  /** What no multiple is called where a user chooses one (ADR 0094), never shown beside a row. Absent: "none". */
+  none?: string;
 }
 
 /** One line of printed text a sheet section shows from a held element's setter — ADR 0062. */

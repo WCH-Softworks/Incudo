@@ -400,7 +400,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 9 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 10 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -455,6 +455,21 @@ test('only format 6 may record the type a custom feature is held as — ADR 0065
     { path: 'customFeatures[0].type', message: 'is recorded only from format 6' },
   ]);
   assert.notDeepEqual(validateCharacter({ ...six, customFeatures: [{ ...storm, type: '' }] }, schemas).errors, []);
+});
+
+test('only format 9 may record a custom feature line that marks a row — ADR 0094', async () => {
+  // Fails if the schema refuses the mode, if setCustomFeature stops raising to 9, or if the referential check stops
+  // refusing a mark in a file that claims 8 (a reader of 8 refuses the mode, so the number must say why).
+  const schemas = await loadSchemas();
+  const npc = createCharacter('dnd5e', 'npc', { name: 'Vesper', progress: 1 });
+  const keen = { id: 'k', name: 'Keen Eyes', stats: [{ stat: 'perception', mode: 'mark' as const, value: 1 }] };
+  const nine = setCustomFeature(npc, keen);
+  assert.equal(nine.formatVersion, 9);
+  assert.deepEqual(validateCharacter(nine, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...nine, formatVersion: 8 }, schemas).errors, [
+    { path: 'customFeatures[0].stats[0].mode', message: '"mark" is recorded only from format 9' },
+  ]);
+  assert.equal(setCustomFeature(npc, { ...keen, stats: [{ stat: 'speed', mode: 'set', value: 60 }] }).formatVersion, 4);
 });
 
 test('a type a custom feature may be held as is one the system declares, and the default is among them — ADR 0065', async () => {
@@ -593,8 +608,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 9 } as unknown as Character, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 10 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9' },
   ]);
   // Play state (ADR 0084) is recorded only from format 8, whole positive counts only. Fails if the format check in
   // `checkCharacterReferences` is removed, or if the schema's `minimum` is.

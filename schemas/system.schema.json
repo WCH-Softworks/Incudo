@@ -1059,6 +1059,11 @@
               "minItems": 1,
               "items": { "type": "string", "minLength": 1 },
               "description": "What one, two, … multiples are called, shown beside the row's value: [\"proficient\", \"expertise\"]."
+            },
+            "none": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What no multiple is called, where a user chooses one (ADR 0094: a feature line that marks a row offers this, then each label). Never shown beside a row. Absent: \"none\"."
             }
           }
         },

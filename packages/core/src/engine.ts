@@ -854,12 +854,19 @@ function customFeatureNoteProblem(note: CustomFeatureNote, kind: ResolvedCharact
         elementId,
         message: `${name} sets ${stat}, which is worked out from other numbers and can only be added to. That line changes nothing.`,
       };
+    case 'not-markable':
+      return {
+        level: 'warning',
+        code: 'custom-feature-stat',
+        elementId,
+        message: `${name} marks ${stat} in a way a ${kind.name} has no name for. That line changes nothing.`,
+      };
     case 'two-setters':
       return {
         level: 'warning',
         code: 'custom-feature-conflict',
         elementId,
-        message: `${name} sets ${stat}, and so does ${note.usedFrom}, which comes first and is the one used.`,
+        message: `${name} ${note.marks ? 'marks' : 'sets'} ${stat}, and so does ${note.usedFrom}, which comes first and is the one used.`,
       };
   }
 }
@@ -1245,14 +1252,17 @@ function computeStats(
 
   // Then what a feature the user wrote sets (ADR 0063): more specific than what a creature prints, since the DM
   // wrote it for this character, and less than a value the DM typed, which comes next and replaces it.
+  // A marked row (ADR 0094) starts at a multiple of another stat, read from the previous pass as every rule's value is,
+  // so an NPC's proficiency follows its challenge rating.
   for (const [key, set] of customSets) {
+    const value = set.per === undefined ? set.value : set.value * ctx.statNumber(set.per);
     result.set(key, {
       name: result.get(key)?.name ?? set.stat,
-      value: set.value,
+      value,
       text: result.get(key)?.text,
-      contributions: [{ value: set.value, from: set.from }],
+      contributions: [{ value, from: set.from }],
     });
-    starts.set(key, { stat: set.stat, value: set.value, from: set.from, replaced: false, feature: set.featureName });
+    starts.set(key, { stat: set.stat, value, from: set.from, replaced: false, feature: set.featureName });
   }
 
   // Then the character's own starting values, which replace those defaults (ADR 0014). This

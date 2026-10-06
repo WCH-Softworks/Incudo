@@ -106,7 +106,8 @@ export interface Character {
    * 1 before an inventory existed, 2 since (ADR 0024), 3 for a character that records no `progress` or
    * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063), 5 for one that
    * records `additions` (ADR 0064), 6 for one with a custom feature held as a type other than its kind's default (ADR 0065),
-   * 7 for one that records `references` (ADR 0068), 8 for one that records `play` (ADR 0084). Readers accept all eight. A new character is written at 2, and only a write that needs more raises it
+   * 7 for one that records `references` (ADR 0068), 8 for one that records `play` (ADR 0084), 9 for one with a custom
+   * feature line that marks a row (ADR 0094). Readers accept all nine. A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -262,7 +263,7 @@ export interface Character {
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 /**
  * What playing a character has recorded — ADR 0084. Every key is a tracker's, as the kind's `play` names it
@@ -296,10 +297,13 @@ export interface CustomFeature {
 /**
  * One stat a custom feature changes — ADR 0063. `add` contributes like any content's rule; `set` is where the stat
  * starts, replacing a default, another stat's start and a creature's print, and replaced by a value the user types.
+ * `mark` (ADR 0094) names a sheet row whose section declares a mark, and `value` is how many times the row's mark
+ * stat holds the mark's `per` (0 for none): it sets where the mark stat starts, as that many times `per`. Only format
+ * 9 records one, because a reader of 8 refuses the mode.
  */
 export interface CustomStatLine {
   stat: StatKey;
-  mode: 'add' | 'set';
+  mode: 'add' | 'set' | 'mark';
   value: number;
 }
 
@@ -313,9 +317,9 @@ export const CHARACTER_FORMAT_VERSION = 2;
  * The newest version a reader accepts — ADR 0060, ADR 0063, ADR 0064. A character with no `progress` or with
  * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` at least 5, one with a
  * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), one with `play` 8 (ADR
- * 0084), and nothing else is raised.
+ * 0084), one with a custom feature line that marks a row 9 (ADR 0094), and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 8;
+export const LATEST_CHARACTER_FORMAT_VERSION = 9;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -470,15 +474,15 @@ export function setGrantRemoved(character: Character, elementId: ElementId, remo
 }
 
 /**
- * Add a custom feature, or replace the one with its id — ADR 0063. Recording one raises the character to format 4, and
- * one that records its `type` to 6 (ADR 0065).
+ * Add a custom feature, or replace the one with its id — ADR 0063. Recording one raises the character to format 4,
+ * one that records its `type` to 6 (ADR 0065), and one with a line that marks a row to 9 (ADR 0094).
  * The feature's position is kept when it is replaced, because the first of two that set one stat is the one used.
  */
 export function setCustomFeature(character: Character, feature: CustomFeature): Character {
   const current = character.customFeatures ?? [];
   const at = current.findIndex((f) => f.id === feature.id);
   const next = at < 0 ? [...current, feature] : current.map((f, i) => (i === at ? feature : f));
-  const version = feature.type === undefined ? 4 : 6;
+  const version = feature.stats.some((line) => line.mode === 'mark') ? 9 : feature.type === undefined ? 4 : 6;
   return { ...raiseFormatVersion(character, version), customFeatures: next, updatedAt: new Date().toISOString() };
 }
 
