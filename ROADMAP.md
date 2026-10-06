@@ -1349,8 +1349,8 @@ the kind machinery is not decorative.*
       Tauri window on Windows, the saved file read back from disk and reopened with the source off. **Not done:** which
       creature a holder's feature is for when two are held (Improved Defender's +2 applies to both); the Eberron
       homunculus's bonus row (+2 over, upstream's content); a creature's challenge rating for its bonus (two
-      creatures above challenge 4); a creature's attack bonus (`companion:attack`, part of an open item at
-      the end of this phase since 2026-10-05); tracking a creature's hit points;
+      creatures above challenge 4); ~~a creature's attack bonus~~ (`companion:attack` is shown as what its
+      holder adds since ADR 0093; its actions' own numbers are prose); tracking a creature's hit points;
       macOS and Linux.
 - [ ] Sidekicks. *Split from "Companions and sidekicks" by ADR 0073's measurement:* the corpus has no sidekick content
       (one `Source` element for "Unearthed Arcana: Sidekicks", holding nothing), so there is nothing to read yet.
@@ -1422,7 +1422,7 @@ the kind machinery is not decorative.*
       things in, and a 5e sentence under Cairn's score editor. Driven in the browser build and in the Tauri window on
       Windows, saved files reopened with the source off. **Not done:** a mark on the saves and skills a character is
       proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice, death saves, inspiration,
-      ~~personality~~ (ADR 0092) and attacks; ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
+      ~~personality~~ (ADR 0092) and ~~attacks~~ (ADR 0093); ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
       stat block laid out as a stat block; the "Progress" number a level-less Cairn character is shown on Build; Cairn in
       the Tauri window; macOS and Linux. *(Personality and attacks: open items at the end of this phase since
       2026-10-05.)*
@@ -1446,9 +1446,23 @@ items; each keeps its original text with a pointer here.*
       experience, attack notes) still shows nowhere, which ADR 0075's check now holds both ways. Driven in the browser build
       and on the phone emulator, where it found the phone's sheet leaving the part out. Not driven in the Tauri window.
       Two suggested personality traits overflow the form's box at 7 pt on 9 samples and are named as running past it.
-- [ ] **Attacks on the sheet.** *Buried in the ADR 0074 item ("attacks") and the ADR 0073 item.* A character's sheet
+- [x] **Attacks on the sheet.** *Buried in the ADR 0074 item ("attacks") and the ADR 0073 item.* A character's sheet
       has no attacks section (a weapon's attack bonus and damage), and a held creature's `companion:attack` and
       `companion:damage`, which content writes (the Ranger's Companion), are read by nothing.
+      **Done** ([ADR 0093](./docs/adr/0093-an-attack-is-a-weapon-in-the-bag-and-the-kind-declares-what-it-adds-up.md)).
+      Measured first (`attacks.test.ts`): every one of the corpus's 97 weapons writes a damage die and names its
+      proficiency, what kind of weapon it is is a support tag (the 2014 properties name no element), a magic weapon is an
+      adorner with an `enhancement` setter, and content adds `ranged:attack` and weapon-named stats (`longsword:attack`,
+      Bracers of Archery's `longbow:damage`). Aurora writes a row for every weapon in the bag, carried too, and all eight
+      in the samples agree with the book. A kind now declares its attacks (`attacks` in the system format): the types an
+      attack is an entry of, and what it adds up, as contributions in a scope of its own after the derivation settles, its
+      weapon's tags and setters readable there. No stat of the character moves; the oracle is identical. 5e's player
+      character has an Attacks section ("Longsword: +6, 1d8+3 slashing (two-handed 1d10+3 slashing; Versatile)") on the
+      Sheet, the print, the text export and the phone's sheet, the 2014 form's three weapon rows are its first three
+      attacks, and a held creature's stat block shows what its holder adds to its attack and damage rolls. A save carries the weapon properties its attacks are named by. Driven in the browser build with
+      no source; not in the Tauri window or on the phone. Not done: unarmed strikes and martial arts, spell attacks as
+      rows, two-weapon fighting and Dueling (commented out upstream), a melee weapon's reach as a distance, rewriting a
+      creature's actions with its holder's bonus.
 - [ ] **An added spell can be cast.** *Buried in the ADR 0064 item.* A spell put on a character through "Added to this
       character" belongs to no casting block: no save DC, no attack bonus, no slots, not preparable, and the pane says
       so. Which block it is cast through (the user's choice, or the character's only one) wants deciding.

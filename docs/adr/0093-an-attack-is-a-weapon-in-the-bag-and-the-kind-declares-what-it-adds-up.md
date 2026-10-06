@@ -172,3 +172,39 @@ no source. `DerivedCharacter.attacks` is in `summarize()`, so every test that re
 
 Each test names the perturbation that fails it, and each perturbation was run. Measured first and committed before any
 code (`attacks.test.ts`, its first four tests).
+
+- `tools/verify/src/attacks.test.ts`, after the measurement: **every weapon in each sample's bag is an attack on its sheet,
+  in bag order, and all eight rows Aurora recorded agree** with the sheet's bonus, one of its damages and its properties
+  by name ("Finesse, Light, Vex"). Perturbed, each failing it: the proficiency term, `ranged:attack`, the property labels,
+  the property types, the finesse rule, and Dexterity for a ranged weapon each removed from the declaration. A 2014 Beast
+  Master built through the builder shows its companion's "Added by Its Holder" rows, +2 and +2; removing the section or
+  the stats' labels fails it.
+- `packages/core/src/attacks.test.ts`: types, carried and equipped, bag order, an unresolved entry; the tag stat read by
+  a requirement; `{training}` filled exactly (an id compares exactly) and a missing setter dropping the contribution;
+  `{name}` in a reference; an attack stat read before the character's; a number setter summed over adornments and an
+  unattuned one not read; the name from the user, an adornment's naming setter and the element; die, type, other die,
+  range and properties as written. Perturbed: tags not published (7 failures), the requirement filled lowercased (3),
+  adornments not read (5), an unattuned one read (3), references not filled (3), property types not read (3), attack
+  stats not read first (9). Lowercasing a reference's stat is not caught: every context lowercases stat keys anyway.
+- `packages/ui/src/sheet-attacks.test.ts`: the engine publishes attacks and moves no stat of the character (the stat keys
+  are the same with and without a declaration); a section listing attacks is drawn when it lists nothing else; the damage
+  wording; `attackHead` and `attackAside`; the Markdown, escaped. Perturbed: a section with only attacks dropped as
+  empty; a name written unescaped.
+- `packages/ui/src/form-fill.test.ts`: a section's attacks fill their rows in order and a third past two rows is named;
+  perturbed, a damage box given the bonus and the rule's fields not checked against the form's.
+  `tools/verify/src/pdf-sheet.test.ts` now reads the weapon boxes from the attacks: 6 samples filled, 24 empty, none with
+  more than three.
+- `tools/verify/src/schemas.test.ts`: an undeclared attack type, a condition that will not parse, and a section listing
+  attacks on a kind with none are refused; the shipped declaration and a `setter` read as a number are accepted.
+- **A reopen with no source**: `sheet-export.test.ts` compares every sample's Sheet packed and reopened with no source, and
+  it fails when the property elements are not embedded (a 2024 Shortsword loses Vex); `summarize()` carries the attacks.
+  The same test's personal-text check exempts an `attacks.*` value the sheet's own attack writes (Aurora copies a weapon's
+  properties into the save's freeform; the sheet names them from content and the system).
+- The oracle's thirty-sample table is **identical** before and after (`INCUDO_ORACLE_SNAPSHOT` on the measurement commit,
+  `INCUDO_ORACLE_BASELINE` after the engine change, same checkout). `npm run typecheck` and `npm test` pass.
+- **Driven in the browser build** (an origin-private folder standing in for the folder picker, and no content source
+  ever added): Sample 15 and Sample 09 packed by the repository's own code, and a 2014 Human Beast Master Ranger 3 built
+  through the builder with a +1 rapier, a carried longbow and a carried dagger. With no source: "Longbow: +9, 1d8+4
+  piercing (range 150/600; Arrow; Ammunition, Heavy, Slow, Two-Handed)" and "Shortsword: +7, 1d6+4 piercing (Finesse,
+  Light, Vex)"; "Rapier +1: +3, 1d8+1 piercing (Finesse)"; the baboon's "Added by Its Holder" rows. No console errors. Not
+  driven: the Tauri window, the phone, the print dialog and the form fill (both held by their tests).

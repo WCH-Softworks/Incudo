@@ -367,7 +367,8 @@ as text: "Export sheet as text…" writes it as Markdown that reads as plain tex
 in the export is content's own sheet line, at the level its class reads, its numbers filled: "Rage (Bonus Action; 3/Long
 Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platform's own dialog, its sections in two columns**
 (ADR 0077), **after a step of the app's own choosing its parts, page numbers and the name on later pages, and with no edge
-of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079). **Personality, appearance, backstory and notes are written on Build and shown on every sheet** (ADR 0092).
+of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079). **Personality, appearance, backstory and notes are written on Build and shown on every sheet** (ADR 0092). **The Sheet
+lists a character's attacks, every weapon in its bag with its bonus and damage, and fills the form's weapon rows** (ADR 0093).
 **The phone app runs and shows a character's sheet, plays it (ADR 0084, below), and builds and edits one (ADR 0086, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
@@ -830,7 +831,8 @@ Things to know before touching either:
     (every creature by type; two held together; a Battle Smith through the builder; the samples reopened with no
     source), each case failing under its named perturbation. The oracle is identical before and after.
   - **Not done:** which creature a holder's feature is for when two are held (Improved Defender's +2 applies to both);
-    a creature's challenge rating for its bonus; `companion:attack`; tracking a creature's hit points. Driven in the
+    a creature's challenge rating for its bonus; ~~`companion:attack`~~ (shown as what its holder adds since ADR 0093);
+    tracking a creature's hit points. Driven in the
     browser build and the Tauri window on Windows (DOM clicks over the debug port, the saved file read back from disk and
     reopened with the source off); not with real input, and not on macOS or Linux.
 - **A kind's sheet shows its printed page, and every row says what it is**
@@ -880,7 +882,7 @@ Things to know before touching either:
   - ~~**Content's `<sheet>` hints are parsed and read by nothing, on purpose**~~ Read since ADR 0076 (below): a section
     declares `omitHidden` to honour `display="false"`, and 5e's header and Senses do not, so Darkvision stays.
   - The oracle is identical before and after. **Not done:** a proficiency mark on a save or skill; levels per class;
-    hit dice, death saves, inspiration, personality, attacks; ~~the `<sheet>` hints~~ (ADR 0076); the Build pane's "Progress" number on a
+    hit dice, death saves, inspiration, personality, ~~attacks~~ (ADR 0093); ~~the `<sheet>` hints~~ (ADR 0076); the Build pane's "Progress" number on a
     level-less kind. Driven in the browser build (a Cairn character too) and the Tauri window on Windows (a packed sample
     and a built NPC, the file read back from disk, reopened with the source off); not with real input, Cairn not in the
     window, and not on macOS or Linux.
@@ -1924,6 +1926,47 @@ Things to know before touching it:
   key's prose out of it.
 - **The form map's `{ field, freeform: key, capacity? }` rule** fills fifteen 2014 boxes; with a capacity it writes at that
   size and names text that runs past the box rather than cutting it (two suggested traits do, on 9 samples).
+
+**A character's attacks are its bag's weapons, and the kind declares what each adds up**
+([ADR 0093](docs/adr/0093-an-attack-is-a-weapon-in-the-bag-and-the-kind-declares-what-it-adds-up.md)). Things to know
+before touching it:
+
+- **Measured by `tools/verify/src/attacks.test.ts`**: 97 weapons, each with a `damage` die (its type an attribute) and a
+  `proficiency` setter naming one declared element; melee, ranged, finesse and the 2014 properties are **support tags that
+  name no element** (the 2024 masteries and firearm properties are `Weapon Property` elements); a magic weapon is an
+  adorner with an `enhancement` setter and no rule. Content adds `ranged:attack` (Archery), `<weapon name>:attack` and
+  `<weapon name>:damage` (Blade Mastery, Bracers of Archery). **Aurora writes an `<attacks>` row for every weapon in the
+  bag, carried too**, and all eight in the samples agree with the sheet, which the test now asserts.
+- **`attacks` on a kind** (system format, optional, replaced along `extends`; `companionScopeKind` drops it): `types`,
+  `tagStat`, `bonus`, `damage`, `stats` (contributions `{ stat, value, requirements? }`), `dice`, `damageType`,
+  `alternatives`, `range`, `nameSetter`, `properties` (`types` named by element, `labels` for tags naming nothing). The
+  validator refuses an undeclared type, a condition that will not parse (placeholders stood in for) and `attacks: true` on a
+  section of a kind with none.
+- **`deriveAttacks` (`packages/core/src/attacks.ts`) runs once after the fixed point** with the engine's own context:
+  every bag entry of the types, carried or equipped, in bag order. Contributions in order, an attack stat read before the
+  character's; the attack's tags (element's and adornments' supports and names, lowercased) under `tagStat`; `{name}`
+  and `{<setter>}` filled from the element (exact case in a requirement, so `{proficiency}` is "holds this weapon's
+  proficiency"); a `setter` expression **`as: "number"`** sums over the element and its adornments, an adornment needing
+  attunement on an unattuned entry not read. **No stat of the character moves**; published as `DerivedCharacter.attacks`,
+  in `summarize()`. The oracle is identical.
+- **5e's `pc`** (`systems/dnd5e/system.json`): ability Strength, Dexterity for a simple or martial ranged tag, the higher
+  for finesse; bonus = ability + `proficiency` when `{proficiency}` is held + enhancement + `ranged:attack` (ranged) +
+  `{name}:attack`; damage = ability + enhancement + `{name}:damage`; `versatile` is the "two-handed" die; an Attacks section
+  after Combat. A held creature's scope labels `companion:attack`/`companion:damage` and shows them ("Added by Its
+  Holder", `showWhen`); a creature's actions are prose and are not rewritten.
+- **The sheet**: a section with `attacks: true` carries `SheetSectionView.attacks` (`SheetAttack`, `sheetAttack`,
+  `attackDamage` in `sheet.ts`: "1d8+3 slashing", the die as content writes it, never parsed). `attackHead`/`attackAside`
+  (`sheet-document.ts`) are the one wording; the desktop's `SheetRows`, the phone's `Section` and the Markdown call them.
+  The form map's `{ attacks: { section, rows: [{ name, bonus, damage }] } }` rule fills the 2014 weapon rows (the rule that
+  wrote the hands' contents is gone), a fourth attack named as left off.
+- **A save embeds the `Weapon Property` elements a bag element's supports name, for their names only** (ADR 0069's
+  text-only frontier), so Vex survives a reopen with no source; `sheet-export.test.ts` catches it, `self-contained.test.ts`
+  does not (its fixtures carry no weapon). Its personal-text check exempts an `attacks.*` freeform value equal to the
+  properties the sheet's own attack writes: Aurora copies them there.
+- **Not done:** unarmed strikes and martial arts, spell attacks as rows, two-weapon fighting, Dueling (commented out
+  upstream), reach as a distance (a melee weapon shows no range), the inventory naming an adorned item by `name-format`.
+  Driven in the browser build with no source (two packed samples and a built Beast Master); not the Tauri window, the phone,
+  the print dialog or a filled form.
 
 **A slot publishes a set of tags, and `equipped=` is evaluated** (ADR 0025, step 4). A character
 kind declares its `inventory`: which slots exist, what stat each publishes into, which setters
