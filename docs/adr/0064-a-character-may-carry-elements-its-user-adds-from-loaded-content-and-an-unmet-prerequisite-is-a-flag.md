@@ -177,3 +177,7 @@ declines; giving an added spell a way to cast is its own question.
 - **What running it found.** The corpus's 23 `Condition` elements are damage resistances and immunities; there is no
   Blinded or Charmed element to add, so a condition in the rules' sense is still text. And "Background Feature" had
   no plural label, so the type filter read oddly beside "Feats" and "Spells"; `system.json` now gives it one.
+
+> **Note, 2026-10-06 — amended by [ADR 0096](./0096-a-pick-counts-while-its-slot-exists-and-a-pool-s-slots-are-filled-as-a-matching.md).**
+> A held pick whose own requirements are false is now `requirement-unmet` too, asked the same way, once per element
+> (an element both added and chosen is reported as an addition). Measured over the thirty samples first: 0 flagged.

@@ -254,6 +254,11 @@ recorded pick was legal for. Aurora records that partition and Incudo keeps only
 which is enough to say *which level* the next pick belongs to and not enough to re-derive
 the filter it was made under.
 
+> **Note, 2026-10-06 — ADR 0096.** Picks are now placed into a pool's rules as a matching (each rule `number` slots,
+> a pick fitting a rule by type and filter), so the order a pick was recorded in no longer decides which rule it fills,
+> an open pool offers only what some rule a further pick can reach would take, and a pick no rule offers is reported
+> (`choice-unplaced`). Over the samples none is. The record still keeps only the order, not Aurora's `requiredLevel`.
+
 ### `requirements` — a small boolean expression language
 
 Operators: `!` (not), `,` (and), `||` and `|` (or), `( )` grouping.

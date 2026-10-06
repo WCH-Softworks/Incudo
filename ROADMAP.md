@@ -882,13 +882,13 @@ protect the rules, and **running it protects the product**.
 Things the engine work left visible rather than fixed. None has a symptom today; all are here
 so that finding one again is recognition rather than discovery.
 
-- **Nothing checks that a recorded choice was legal for the slot it fills.** A `select` pool is
+- **~~Nothing checks that a recorded choice was legal for the slot it fills.~~** A `select` pool is
   keyed on (element, name) and its allowance is the sum of the active rules', but 89 groups in
   the corpus have rules that differ in `supports`, `requirements` or `type` — a wizard's first
   six spellbook entries are 1st level and the two it adds each level afterwards are not. The
   pending pool offers the union of the candidates of the rules with room left, and a pick
   recorded against the wrong rule is accepted in silence. Wants a builder before it matters.
-  *(The builder exists now: an open item at the end of Phase 3 since 2026-10-05.)*
+  *(Closed by [ADR 0096](./docs/adr/0096-a-pick-counts-while-its-slot-exists-and-a-pool-s-slots-are-filled-as-a-matching.md): picks are placed as a matching and one no rule offers is flagged.)*
 - **One grant cannot cancel another.** A Mithral Armor adornment suppresses its host armour's
   `ID_INTERNAL_GRANTS_STEALTH_DISADVANTAGE`, and no content file expresses that — it is Aurora
   app behaviour. It is 2 of the 55 `element-extra`, and a set of real saves carry the control case:
@@ -1052,8 +1052,8 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       and in the Tauri window on Windows (DOM clicks over the debug port, the saved file derived with no source).
       **Not done:** the replacement itself cannot be driven, since the app cannot put an item in the bag (next item,
       since done);
-      a seed whose own requirements have become false is not flagged *(part of an open item at the end of this phase
-      since 2026-10-05)*; macOS and Linux not driven.
+      ~~a seed whose own requirements have become false is not flagged~~ *(flagged since [ADR 0096](./docs/adr/0096-a-pick-counts-while-its-slot-exists-and-a-pool-s-slots-are-filled-as-a-matching.md))*; macOS and Linux
+      not driven.
 - [x] **Take a Tasha's optional class feature in the app**
       ([ADR 0072](./docs/adr/0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md)).
       Measured first: the 36 items carry no requirements of their own (their grants are gated on the class level), nothing
@@ -1124,18 +1124,31 @@ its original text with a pointer here.*
       options reads as off (ADR 0080). Measured first: 9 of the 30 samples record the option, all 8 multiclass ones among
       them, so no import is flagged and the 21 without it are offered no second class, as Aurora's screen does. Driven in
       the browser build; not on the phone, not in the Tauri window.
-- [ ] **Choices that no longer apply stop counting.** *Buried in Phase 2's multiclassing item and this phase's ADR 0071
+- [x] **Choices that no longer apply stop counting.** *Buried in Phase 2's multiclassing item and this phase's ADR 0071
       item.* Picks of a class whose levels went away, and picks a lowered level no longer opens (a Wizard 5 lowered to 3
       keeps its level 4 improvement), stay in `choices` and still seed the derivation (ADR 0036), so the character keeps
       what it no longer qualifies for, with nothing on screen saying so. A seed whose own requirements have since become
       false is not flagged, and stale choices are not pruned in general (ADR 0071 decisions 2 and 3). Dropping or
       flagging them wants a decision about every pick, not only about levels.
-- [ ] **A pool's slots do not depend on the order they are picked in, and a pick that fits no slot is flagged.**
+      **Done** ([ADR 0096](./docs/adr/0096-a-pick-counts-while-its-slot-exists-and-a-pool-s-slots-are-filled-as-a-matching.md)), with the item below: a pick under a pool content declares counts only while
+      something held opens that pool, and only as many as it has slots. The rest stay in `choices`, seed nothing, are
+      listed on Build under "Not counting" with a sentence saying why, and count again when the slot is back; only the
+      user's Forget removes one. Records under keys no pool owns (Aurora's race, class, background and multiclass
+      records, a build step's) always count. A held pick whose own requirements are false is flagged as an addition is.
+      Measured first: 0 of the 826 sample picks is stale, over its pool or flagged, and the oracle is identical. Driven in
+      the browser build (a Rogue 3 lowered to 2, a Wizard level moved to Rogue, a Rogue 4 improvement lowered); not on the
+      phone or in the Tauri window.
+- [x] **A pool's slots do not depend on the order they are picked in, and a pick that fits no slot is flagged.**
       *Buried in Phase 2's exit-criterion character item and its "Known gaps".* A pool's rules fill in level order, so an
       Arcane Trickster's any-school spell has to be taken before its enchantment and illusion ones or that slot is gone.
       And a pick recorded against the wrong rule is accepted in silence: 89 groups in the corpus mix rules that differ in
       `supports`, `requirements` or `type` (a wizard's first six spellbook entries are 1st level, later ones are not), and
       an import or an older save can hold one.
+      **Done** ([ADR 0096](./docs/adr/0096-a-pick-counts-while-its-slot-exists-and-a-pool-s-slots-are-filled-as-a-matching.md)): picks are placed into a pool's rules as a matching (augmenting paths in record
+      order), an open pool offers what any rule a further pick can reach would take, and a counted pick no rule offers is
+      a `choice-unplaced` warning, marked on its slot, never refused. Measured: reversing every sample's records, the old
+      fill would have misplaced 19 picks; the matching places all and nothing derived moves. Driven in the browser build: a
+      2014 Arcane Trickster takes Charm Person first and is still offered Magic Missile.
 - [ ] **The 2024 Paladin and Ranger prepare as many spells as their table says, and a Wizard at least one.** *Buried in
       Phase 2's prepared spells item (ADR 0046), which said content does not carry the count; corrected by the
       maintainer:* both classes print a Prepared Spells column, level by level, in the Features table of their class

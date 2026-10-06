@@ -592,7 +592,8 @@ Things to know before touching either:
     **After the fixed point each held addition's own requirements are asked, with the element itself counted as not
     held**, and a false one is `requirement-unmet`, a warning, the code that had been declared and never emitted. Only
     additions: picks were offered only when they qualified, and checking every held element would add problems to
-    derivations nothing else moved. `collectCharacterContent` seeds from them, so a save embeds them.
+    derivations nothing else moved. *(Since ADR 0096 a held pick is asked too, once per element; 0 samples flagged.)*
+    `collectCharacterContent` seeds from them, so a save embeds them.
   - **The offer is every element of the declared types, whatever its requirements, less what is held**, read through the
     offered view (ADR 0049), and asked for on request (`additionOptionsFor`), not carried in the state: it is thousands
     of elements. A row's flag is read from the derivation's own `requirement-unmet`, so the row and Problems cannot
@@ -749,8 +750,9 @@ Things to know before touching either:
     it is attempted in a pass, is asked its own requirements against the *previous* pass's context, itself counted as not
     held (`ownRequirementsHold`, the same function the additions flag uses). False: not added, joins no track, recorded
     with every granter. **A seed is never withdrawn** because every seed is `attempted` before any grant is read; do not
-    reorder that. A recorded choice under `<withdrawn id>/select:` stops seeding (`openSeeds`), unless another open
-    choice or a fixed seed names the same element; the record stays in `choices`. A change in what is withdrawn keeps the
+    reorder that. A recorded choice under `<withdrawn id>/select:` stops seeding, unless another open
+    choice or a fixed seed names the same element; the record stays in `choices` (since ADR 0096 this is one case of a
+    pick whose pool is closed: `openSeeds` became `countedSeeds`, below). A change in what is withdrawn keeps the
     fixed point going. Cycles hit the existing `cycle-limit`.
   - **`DerivedCharacter.withdrawn`** (`{ elementId, grantedBy[] }`) is not a `Problem`, and `summarize()` includes it.
     `collectCharacterContent` needed nothing: it ignores gates, so a withdrawn element is still embedded, which is what
@@ -1221,9 +1223,9 @@ computes nothing. Things to know before touching it:
   the oracle's own rolls include a 10 on a d8, so a value above the die is something real saves
   hold, and deleting one on a plausibility guess is destroying data. `addLevel` is one write for
   the same reason — grow-then-reassign passes through a die change that never happened.
-- **Nothing prunes the picks of a class whose levels went away**, nor of a level lowered away.
-  They stay in `choices` and still seed the derivation, as they do after re-picking a race. A gap
-  carried deliberately; it wants a decision about every pick, not about levels.
+- **~~Nothing prunes the picks of a class whose levels went away~~**, nor of a level lowered away. Since ADR 0096
+  they stay in `choices` and stop counting (below, "A pick counts while its slot exists"); nothing prunes them but
+  the user's Forget.
 - **Evidence:** the Paladin 2 / Warlock 18 oracle rebuilt through the builder (fresh character,
   `addLevel` × 18) has the same `advancement`, the same record, every element and every stat as
   the import, and the same differences against Aurora's save (1 element-missing, 0
@@ -1919,8 +1921,37 @@ sum. The importer has always keyed a `Choice` that way (`<owner>/select:<name>`,
 own `number` against the whole list, so every imported caster reported errors it had not
 earned. Do not reintroduce per-rule quotas. What is genuinely lost is which slot a pick was
 made under: 89 groups in the corpus have rules that differ in `supports`, `requirements` or
-`type`, so a pending pool offers the union of the candidates of the rules with room left, and
-nothing checks that a recorded pick was legal for its slot. See docs/AURORA-FORMAT.md.
+`type`, so a pending pool offers the union of the candidates of the rules a further pick can reach. Since ADR 0096
+picks are placed as a matching and a pick no rule offers is flagged (below). See docs/AURORA-FORMAT.md.
+
+**A pick counts while its slot exists, and a pool's slots are filled as a matching**
+([ADR 0096](docs/adr/0096-a-pick-counts-while-its-slot-exists-and-a-pool-s-slots-are-filled-as-a-matching.md)).
+Things to know before touching it:
+
+- **Measured first** (`tools/verify/src/pool-slots.test.ts`): 2,703 select pools, 89 with more than one rule; in the
+  thirty samples 826 picks, 148 of them under keys no pool owns (Aurora's `ID_LEVEL_1/select:Race|Class|Background`,
+  `ID_LEVEL_N/select:Multiclass (Level N)` on rule-less elements, `build/options`), and **0 stale, 0 over, 0 unplaced, 0
+  whose own requirements are false**. Reversed, the old level-order fill would have misplaced 19. The oracle is identical.
+- **Only a record under a pool content declares can stop counting**: `<element>/select:<name>` where that element carries
+  a `select` of that name (`poolOwner`). Its picks count while the element is held with that pool's rules active, and only
+  as many as the pool has slots; the rest are `DerivedCharacter.uncounted` (`closed` | `over`), kept in `choices`, never
+  seeded, never a repeat (ADR 0035), not a `Problem`, in `summarize()`. Any other key always counts: never widen
+  `poolOwner` to "any key with `/select:`", or every import's class and race stop counting.
+- **Inside the fixed point**: pass 1 seeds every pick; each pass's own holdings (`makeContext(next, nextStats)`, not
+  the previous pass's) decide the next pass's seeds (`countedSeeds`, `countedChoices`); a change keeps the loop going. A
+  stale chain costs a pass per link. Two stale picks opening each other's pools keep each other (not seen in content).
+- **Placement is `placePicks`** (`packages/core/src/pool-slots.ts`, Kuhn's augmenting paths in record order): a pick
+  fits a rule by type and filter only (not its own requirements); an unknown element or a filter with an unresolved
+  `$(…)` fits. An open pool offers the union over `available` rules; its `level` is the first `free` rule's. A counted
+  pick no slot takes is `choice-unplaced` (warning) and `unplaced` on the pending/answered choice. `over-selected` is
+  gone. `poolSlots(derived, index, ruleKey)` reads a pool's rules, fits and slots off a finished derivation.
+- **A held pick whose own requirements are now false is `requirement-unmet`** (ADR 0064 amended), once per element.
+- **A save embeds a recorded pool's owner for its selects only** (the ADR 0069 text frontier in
+  `collectCharacterContent`), or a reopen with no source would count what does not.
+- **The builder**: `BuilderState.uncounted` (`uncountedRows`, `packages/ui/src/uncounted.ts`) under "Not counting",
+  `forgetUncounted` the only remover; a pool's decision shows `countedPicks`, and `choose` appends the waiting picks
+  (`withUncounted`). `SettledPick.unplaced` and `unplacedNote` mark a slot. Desktop `BuilderPane.tsx`, phone
+  `BuildView.tsx`; both compute nothing. Driven in the browser build only.
 
 **A pool never offers what the character already has.** `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,

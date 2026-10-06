@@ -195,3 +195,8 @@ reopen identically with no source, `withdrawn` included. Driven in the browser b
 Windows: the 2024 Fighter at level 4 takes the feat and two Strength increases, reads 12, saves, and the file read
 back from disk derives the same with no source. The replacement itself was not driven: the app cannot put an item in
 the bag. Not driven on macOS or Linux.
+
+> **Note, 2026-10-06 — [ADR 0096](./0096-a-pick-counts-while-its-slot-exists-and-a-pool-s-slots-are-filled-as-a-matching.md).**
+> Decision 3's closed pool is now one case of a general rule: a pick under a pool content declares counts only while
+> something held opens the pool. `openSeeds` is gone; a withdrawn element is not held, so its pool is closed by that rule
+> and its answers are listed as not counting. Behaviour for this case is unchanged.
