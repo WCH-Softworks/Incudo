@@ -157,7 +157,7 @@ Not the derivation's numbers, not a picker, not Browse. A hint is display.
   print layout lay them out.
 - **Describe spells, proficiencies, languages or backgrounds on the sheet.** Content writes no sheet text for them, and
   their full descriptions are most of the text: a spell page lists spells, a proficiency box names proficiencies.
-- **Tell a player why a number moved.** Tough hidden from the feature list leaves its hit points with no reason beside
+- ~~**Tell a player why a number moved.**~~ Done by [ADR 0095](./0095-a-row-names-what-moved-it-that-the-sheet-lists-nowhere.md). Tough hidden from the feature list leaves its hit points with no reason beside
   them, as Aurora's sheet did.
 - **Track uses.** `usage` is shown as written; counting what is spent is Phase 6's play mode.
 

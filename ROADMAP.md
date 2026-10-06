@@ -1645,10 +1645,17 @@ pane draws and every export renders: the PDF and the print layout start from it,
       wry's `print()` opens GTK's print dialog; whether `window.print()` does the same in WebKitGTK is unseen. What
       settles it: pressing "Print sheet…" and Ctrl+P (⌘P) in the window on each, and, where it does nothing, printing
       through a Tauri command that calls `print()` instead. Neither platform has run any of ADR 0077.
-- [ ] **Say why a number moved when what moved it is hidden.** *Buried in the ADR 0076 item; found on 2026-10-05 by
+- [x] **Say why a number moved when what moved it is hidden.** *Buried in the ADR 0076 item; found on 2026-10-05 by
       the audit described at the end of Phase 3.* A section declaring `omitHidden` leaves out what content marks
       `display="false"`, so Tough is not on the feature list and the hit points it adds have no reason beside them, as on
       Aurora's sheet. On the Sheet and in every export that reads the document.
+  - **Built** (2026-10-06, [ADR 0095](docs/adr/0095-a-row-names-what-moved-it-that-the-sheet-lists-nowhere.md)):
+    "Hit Points: 45 (including Tough)". Measured first on the samples: of 1,399 rows, 5 are moved directly by a left-out
+    element (all Hit Points: Tough, Dwarven Toughness) and 24 through a formula the kind declares (Speed by Fleet of Foot,
+    skills by Jack of All Trades, Thaumaturge, Magician, and Skill Expertise, which the row's "expertise" already says).
+    A row's `including` reads the derivation's contributions and follows the kind's `derive` formulas by name, never
+    evaluating them; `rowAside` words it, so the Sheet, print, text export, phone and refresh review all show it. 19 rows
+    on 9 samples now name something; the oracle is identical. Driven in the browser build.
 
 ---
 

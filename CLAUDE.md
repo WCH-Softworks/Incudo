@@ -1004,12 +1004,26 @@ Things to know before touching either:
     user's own file; the drive used a scratch one (not committed), and `companions.test.ts` holds it (two creatures' lines
     each read their own scope, not the holder's sum).
   - **Not done:** spells, proficiencies and backgrounds described on the sheet (content writes no sheet text for them); a
-    reason beside a number a hidden feature moved (Tough); counting uses (Phase 6); a hidden trait a stat block prints is
+    ~~reason beside a number a hidden feature moved (Tough)~~ (ADR 0095, below); counting uses (Phase 6); a hidden trait a stat block prints is
     named without its line (the three Tasha's "Primal Bond"s, held by no sample). Driven in the browser build (samples 17,
     11 and 08, an NPC and a held creature from a user's own file, reopened with the sources off, exports byte for byte
     the tests') and the Tauri window on Windows (samples 02, 17, 08 and 11 and the NPC packed outside it, no source ever
     added, exported from the native menu through the real save dialog, byte for byte the tests'); not with real input,
     not importing in the window, and not on macOS or Linux.
+- **A row names what moved it that the sheet lists nowhere: "Hit Points: 61 (including Tough)"**
+  ([ADR 0095](docs/adr/0095-a-row-names-what-moved-it-that-the-sheet-lists-nowhere.md)). Things to know before touching it:
+  - **Measured by `tools/verify/src/hidden-reasons.test.ts`**: 198 elements a section declaring `omitHidden` leaves out on
+    the samples; of 1,399 rows, 5 moved directly (all Hit Points: Tough, Dwarven Toughness) and 24 only through a formula
+    the kind declares (Speed by Fleet of Foot; skills by Skill Expertise, the 2024 Jack of All Trades, Thaumaturge, Magician).
+  - **`SheetRow.including`** (`nameWhatMovedRows`, `packages/ui/src/sheet.ts`): the sheet names of elements held, hidden, of
+    a type an `omitHidden` section lists and listed by no section, that contribute non-zero to the row's stat or to a stat
+    its `derive` reads, followed through the kind's formulas **by name** (core's `statReferences`), never evaluated. No
+    amounts. The stat a shown mark reads is not followed ("expertise" already says it). A sheet with no `omitHidden`
+    section (a stat block, a held creature) names nothing. No system or character format change.
+  - **`rowAside` words it** ("+6 (proficient; including Thaumaturge)"), so the pane, print, Markdown, phone and refresh
+    review show it; the official form reads `value` and `beside` and is unchanged. 19 rows on 9 samples; oracle identical.
+  - Not named: what is listed nowhere but is not hidden (base scores, the kind's rules, blocks, ability score
+    improvements), `inventory-hidden` items. Driven in the browser build only (samples 17 and 10, no source, the export).
 - **A printed sheet is the Sheet pane under print rules, its sections flowing in two columns**
   ([ADR 0077](docs/adr/0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)).
   Phase 5's print layout. Things to know before touching it:
