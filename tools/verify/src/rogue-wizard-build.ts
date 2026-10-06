@@ -118,8 +118,8 @@ export function buildRogueWizard(builder: CharacterBuilder, elements: ElementInd
   assert.equal(pool('Cantrip (Arcane Trickster)')?.remaining, 2);
   assert.equal(pool('Spell (Arcane Trickster)')?.remaining, 3, 'three spells known at Rogue 3, not five');
   answer('Cantrip (Arcane Trickster)', 'Minor Illusion', 'Message');
-  // Picks fill the pool's rules in level order and the any-school rule comes first, so the two
-  // enchantment/illusion picks after it are what a legal Rogue 3 takes.
+  // One any-school spell and two enchantment or illusion ones, in any order: picks are placed as a
+  // matching (ADR 0096), so taking the any-school one first is no longer what keeps its slot.
   answer('Spell (Arcane Trickster)', 'Feather Fall', 'Disguise Self', 'Charm Person');
 
   assert.equal(builder.addLevel('levels', ROGUE), true);

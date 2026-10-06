@@ -130,6 +130,7 @@ import {
   withdrawnRows,
   type WithdrawnRow,
 } from './equip-step.ts';
+import { countedPicks, forgetUncounted, uncountedRows, withUncounted, type UncountedRow } from './uncounted.ts';
 
 /**
  * One thing the character still has to decide.
@@ -341,6 +342,11 @@ export interface BuilderState {
    * that replaces another withdraws the other, and Build lists it here rather than letting it disappear.
    */
   withdrawn: WithdrawnRow[];
+  /**
+   * Picks kept in the record that do not count (ADR 0096), by pool: what a class whose levels went elsewhere, or a
+   * level lowered away, had chosen. Build lists them so the change is seen, and each may be forgotten.
+   */
+  uncounted: UncountedRow[];
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -420,6 +426,10 @@ export interface SettledPick {
    * replaces and never empties.
    */
   multiple?: boolean;
+  /**
+   * Which of `chosen` fit none of the choice's slots any more (ADR 0096): still counted, and flagged. Absent when none.
+   */
+  unplaced?: ElementId[];
 }
 
 export class CharacterBuilder {
@@ -516,9 +526,10 @@ export class CharacterBuilder {
         ? firstClassOf(this.character, multiclass.config, this.elements)
         : undefined;
 
+    // A pool's screen shows only the picks that count; the ones waiting for a slot stay in the record (ADR 0096).
     this.character = pick
       ? replacePickAnswer(this.character, pick, ruleKey, elementIds, this.elements, reserved)
-      : setChoice(this.character, ruleKey, elementIds);
+      : setChoice(this.character, ruleKey, withUncounted(this.character, this.getState().derived, ruleKey, elementIds));
 
     const nextFirst = elementIds[0];
     if (multiclass && previousFirst !== undefined && nextFirst !== undefined) {
@@ -549,6 +560,17 @@ export class CharacterBuilder {
     this.character = next;
     this.invalidate();
   }
+
+  /**
+   * Forget picks that do not count (ADR 0096): every one a pool's record keeps, or the one at `position`. The only way
+   * one leaves the record; nothing forgets one on its own.
+   */
+  forgetUncounted = (ruleKey: string, position?: number): void => {
+    const next = forgetUncounted(this.character, this.getState().derived, ruleKey, position);
+    if (next === this.character) return;
+    this.character = next;
+    this.invalidate();
+  };
 
   /**
    * Stop a non-blocking decision from cluttering `decisions`, without answering it.
@@ -1311,9 +1333,9 @@ export class CharacterBuilder {
     // A select opened by something already chosen — a class's Skill Proficiency, say.
     const selectDecisions: OpenDecision[] = [];
     for (const choice of derived.pendingChoices) {
-      // `getChoice` and not `choice`'s own shape: the engine tracks how many are left, not
-      // which ids they were (ADR 0032).
-      const chosen = getChoice(this.character, choice.ruleKey)?.elementIds ?? [];
+      // From the record and not `choice`'s own shape: the engine tracks how many are left, not
+      // which ids they were (ADR 0032). Only the picks that count: one waiting for a slot is no slot (ADR 0096).
+      const chosen = countedPicks(this.character, derived, choice.ruleKey);
       addChoiceEdge(choice.from, chosen);
       const stepId = stepForType.get(choice.type) ?? '';
       selectDecisions.push({
@@ -1342,6 +1364,7 @@ export class CharacterBuilder {
           chosen,
           candidates: [...new Set([...choice.candidates, ...chosen])],
           repeatable: choice.repeatable,
+          ...(choice.unplaced.length ? { unplaced: choice.unplaced } : {}),
         });
       }
     }
@@ -1488,6 +1511,7 @@ export class CharacterBuilder {
         chosen: answered.chosen,
         candidates: [...new Set([...answered.candidates, ...answered.chosen])],
         repeatable: answered.repeatable,
+        ...(answered.unplaced.length ? { unplaced: answered.unplaced } : {}),
       });
       addChoiceEdge(answered.from, answered.chosen);
     }
@@ -1709,6 +1733,7 @@ export class CharacterBuilder {
       customFeatures: customFeaturesState(this.character, derived, this.kind, this.system),
       additions,
       withdrawn: withdrawnRows(derived, this.elements),
+      uncounted: uncountedRows(derived, this.elements),
       references: referencesState(this.character, this.kind, this.elements, derived.elements),
       companions: companionsView(derived, this.kind, this.elements),
       sheet,

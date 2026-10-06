@@ -24,6 +24,9 @@ import {
   settledSteps,
   slotOptions,
   stepStatus,
+  unplacedNote,
+  UNCOUNTED_HEADING,
+  UNCOUNTED_HINT,
   withSlot,
   withoutSlot,
   type BuilderState,
@@ -125,6 +128,9 @@ export const BuildView = memo(function BuildView({
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: palette.muted, fontSize: 13 }}>{pick.label}</Text>
                   <Text style={{ color: palette.text, fontSize: 15 }}>{labelOf(id)}</Text>
+                  {pick.unplaced?.includes(id) ? (
+                    <Text style={{ color: palette.muted, fontSize: 13 }}>{unplacedNote(nameOf(id))}</Text>
+                  ) : null}
                 </View>
                 <Button
                   label="Change"
@@ -246,6 +252,25 @@ export const BuildView = memo(function BuildView({
               {row.name} <Text style={{ color: palette.muted }}>from {row.grantedBy.join(', ')}</Text>
             </Body>
           ))}
+        </>
+      ) : null}
+
+      {state.uncounted.length > 0 ? (
+        <>
+          <Heading>{UNCOUNTED_HEADING}</Heading>
+          <Body tone="muted">{UNCOUNTED_HINT}</Body>
+          {state.uncounted.map((row) =>
+            row.items.map((item) => (
+              <Row key={`${row.ruleKey}:${item.position}`} style={[styles.settled, { borderColor: palette.border }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: palette.muted, fontSize: 13 }}>{row.label}</Text>
+                  <Text style={{ color: palette.text, fontSize: 15 }}>{item.name}</Text>
+                  <Text style={{ color: palette.muted, fontSize: 13 }}>{row.note}</Text>
+                </View>
+                <Button label="Forget" kind="link" onPress={() => builder.forgetUncounted(row.ruleKey, item.position)} />
+              </Row>
+            )),
+          )}
         </>
       ) : null}
 

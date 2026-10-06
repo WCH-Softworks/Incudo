@@ -14,7 +14,7 @@
  * pick is not somewhere you go, it is something on screen that still has a control.
  */
 
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import type {
   CharacterBuilder,
   BuilderState,
@@ -32,6 +32,9 @@ import {
   settledSteps,
   slotOptions,
   stepStatus,
+  unplacedNote,
+  UNCOUNTED_HEADING,
+  UNCOUNTED_HINT,
   ADDITIONS_HEADING,
   CUSTOM_FEATURES_HEADING,
   holderGrantSections,
@@ -327,6 +330,34 @@ export function BuilderPane({
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {/*
+            What the character chose earlier and no longer counts (ADR 0096): a class whose levels went to another, a
+            level lowered below the one that opened a choice, or more picks than a choice has room for now. Kept in the
+            record and counted again when the slot is back; Forget is the only thing that removes one.
+          */}
+          {state.uncounted.length > 0 && (
+            <section className="withdrawn">
+              <h2>{UNCOUNTED_HEADING}</h2>
+              <p className="hint">{UNCOUNTED_HINT}</p>
+              {state.uncounted.map((row) => (
+                <div key={row.ruleKey} className="settled">
+                  <h3>{row.label}</h3>
+                  <p className="hint">{row.note}</p>
+                  <ul className="withdrawn-list">
+                    {row.items.map((item) => (
+                      <li key={item.position}>
+                        <span className="name">{item.name}</span>{' '}
+                        <button type="button" className="link" onClick={() => builder.forgetUncounted(row.ruleKey, item.position)}>
+                          Forget
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </section>
           )}
 
@@ -684,22 +715,25 @@ function SettledPickEditor({
       {pick.chosen.map((id, index) => {
         const options = slotOptions(pick, index);
         return (
-          <ChosenCandidate
-            key={index}
-            id={id}
-            elements={elements}
-            candidateLabel={candidateLabel}
-            options={options}
-            notesFor={() => builder.overlapNotesFor(pick.ruleKey, index)}
-            onChange={(next) => builder.choose(pick.ruleKey, withSlot(pick, index, next))}
-            // Only for a set, which the view-model says: taking back one member of it writes the
-            // rest, and the last one leaves the decision open again.
-            onRemove={
-              pick.multiple
-                ? () => builder.choose(pick.ruleKey, withoutSlot(pick, index))
-                : undefined
-            }
-          />
+          <Fragment key={index}>
+            <ChosenCandidate
+              id={id}
+              elements={elements}
+              candidateLabel={candidateLabel}
+              options={options}
+              notesFor={() => builder.overlapNotesFor(pick.ruleKey, index)}
+              onChange={(next) => builder.choose(pick.ruleKey, withSlot(pick, index, next))}
+              // Only for a set, which the view-model says: taking back one member of it writes the
+              // rest, and the last one leaves the decision open again.
+              onRemove={
+                pick.multiple
+                  ? () => builder.choose(pick.ruleKey, withoutSlot(pick, index))
+                  : undefined
+              }
+            />
+            {/* An answer no slot of this choice would offer any more (ADR 0096): still counted, and said so. */}
+            {pick.unplaced?.includes(id) && <p className="hint">{unplacedNote(elements.get(id)?.name ?? id)}</p>}
+          </Fragment>
         );
       })}
     </div>
