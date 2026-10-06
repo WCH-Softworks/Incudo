@@ -72,11 +72,20 @@ export function listedHead(
 
 /**
  * What a sheet writes in parentheses after a row's value: what the section shows beside it and the row's mark (ADR
- * 0079), "18 (+4)", "+7 (expertise)", or nothing. The pane and every export word a row this way.
+ * 0079), then what moved it that the sheet lists nowhere (ADR 0095): "18 (+4)", "+7 (expertise)", "45 (including
+ * Tough)", "+2 (including Jack of All Trades)", or nothing. The pane and every export word a row this way.
  */
-export function rowAside(row: Pick<SheetRow, 'beside' | 'mark'>): string | undefined {
+export function rowAside(row: Pick<SheetRow, 'beside' | 'mark' | 'including'>): string | undefined {
   const parts = [row.beside, row.mark?.label].filter((part): part is string => part !== undefined && part !== '');
-  return parts.length ? parts.join(', ') : undefined;
+  const shown = parts.length ? parts.join(', ') : undefined;
+  if (!row.including?.length) return shown;
+  const including = `including ${joinNames(row.including)}`;
+  return shown === undefined ? including : `${shown}; ${including}`;
+}
+
+/** "A", "A and B", "A, B and C". */
+function joinNames(names: readonly string[]): string {
+  return names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
 /**

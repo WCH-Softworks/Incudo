@@ -26,6 +26,7 @@ import {
   sheetGroup,
   sheetListedElements,
   sheetPlaceholders,
+  statReferences,
   trackDie,
   trackProgress,
   type BlockStatDef,
@@ -55,6 +56,12 @@ export interface SheetRow {
    * `count` is how many times the mark's stat holds its `per`, at least 1.
    */
   mark?: { label: string; count: number };
+  /**
+   * What moved the row's number that the sheet lists nowhere (ADR 0095): each element a section declaring `omitHidden`
+   * leaves out, by its sheet name, when it contributes to the row's stat or to a stat the kind works the row out from.
+   * Not what the row's mark already says. "Hit Points: 45 (including Tough)".
+   */
+  including?: string[];
 }
 
 /**
@@ -338,6 +345,8 @@ export function sheetSections(
   const blocks = collectDeclaredBlocks(source.elements);
 
   const views: SheetSectionView[] = [];
+  // Each row and the stat its mark reads when one is shown, for what moved it (below, once every section is drawn).
+  const marked = new Map<SheetRow, string | undefined>();
   for (const section of sections) {
     for (const rendering of renderSheetSection(section, blocks, reader)) {
       const rows = rendering.stats.map((stat, at): SheetRow => {
@@ -346,13 +355,15 @@ export function sheetSections(
         const besideKey = rendering.beside?.[at];
         const markKey = rendering.mark?.[at];
         const mark = markKey && section.mark ? rowMark(resolved(markKey)?.value, resolved(section.mark.per)?.value, section.mark.labels) : undefined;
-        return {
+        const row: SheetRow = {
           stat,
           label: def?.label ?? stat,
           value: formatStatValue(resolved(stat), def?.signed === true),
           ...(besideKey ? { beside: formatStatValue(resolved(besideKey), stats.get(besideKey.toLowerCase())?.signed === true) } : {}),
           ...(mark ? { mark } : {}),
         };
+        marked.set(row, mark ? markKey : undefined);
+        return row;
       });
       // In the order the section names its types, as a printed sheet's header reads race, class, background; within a
       // type, in the order the character holds them.
@@ -404,7 +415,50 @@ export function sheetSections(
       });
     }
   }
+  nameWhatMovedRows(views, marked, sections, source, stats);
   return views;
+}
+
+/**
+ * Write beside each row what moved it that the sheet lists nowhere (ADR 0095). Left out is what a section declaring
+ * `omitHidden` would list and content hides (`display="false"`), and that no section of this sheet lists anyway. Read
+ * from the derivation: a contribution to the row's stat names its element (`from`), and a stat the kind derives is
+ * followed into the stats its formula reads, by name only, never evaluated. A contribution of 0 moved nothing. The
+ * stat a shown mark reads is not followed: "expertise" already says it.
+ */
+function nameWhatMovedRows(
+  views: readonly SheetSectionView[],
+  marked: ReadonlyMap<SheetRow, string | undefined>,
+  sections: readonly SheetSectionDef[],
+  source: SheetSource,
+  stats: ReadonlyMap<string, StatDef>,
+): void {
+  const hiddenTypes = new Set(sections.filter((section) => section.omitHidden).flatMap((section) => section.types ?? []));
+  if (!hiddenTypes.size) return;
+  const listedAnywhere = new Set(views.flatMap((view) => view.elements.map((e) => e.elementId)));
+  const omitted = new Map<ElementId, Element>();
+  for (const e of source.elements) {
+    if (hiddenTypes.has(e.type) && e.sheet?.display === false && !listedAnywhere.has(e.id)) omitted.set(e.id, e);
+  }
+  if (!omitted.size) return;
+  const movedBy = (stat: string, skip: string | undefined, seen: Set<string>, into: ElementId[]): void => {
+    const key = stat.toLowerCase();
+    if (seen.has(key) || key === skip) return;
+    seen.add(key);
+    for (const c of source.stats.get(key)?.contributions ?? []) {
+      if (c.value !== 0 && omitted.has(c.from) && !into.includes(c.from)) into.push(c.from);
+    }
+    for (const ref of statReferences(stats.get(key)?.derive)) movedBy(ref, skip, seen, into);
+  };
+  for (const [row, markKey] of marked) {
+    const ids: ElementId[] = [];
+    movedBy(row.stat, markKey?.toLowerCase(), new Set(), ids);
+    if (!ids.length) continue;
+    row.including = ids.map((id) => {
+      const e = omitted.get(id)!;
+      return e.sheet?.alt || e.sheet?.name || e.name;
+    });
+  }
 }
 
 /**

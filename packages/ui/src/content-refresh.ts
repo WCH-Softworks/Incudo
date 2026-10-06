@@ -83,7 +83,7 @@ export interface RefreshReview {
   notNow: string;
 }
 
-const value = (row: { value: string; beside?: string; mark?: { label: string; count: number } }): string => {
+const value = (row: { value: string; beside?: string; mark?: { label: string; count: number }; including?: string[] }): string => {
   const aside = rowAside(row);
   return aside ? `${row.value} (${aside})` : row.value;
 };
