@@ -57,6 +57,7 @@ import {
   type SetterStartNote,
 } from './setter-stats.ts';
 import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
+import { placePicks } from './pool-slots.ts';
 import {
   customFeatureEffects,
   customFeatureElementId,
@@ -146,6 +147,11 @@ export interface PendingChoice {
   unresolvedSupports: string[];
   from: ElementId;
   /**
+   * Which of the pool's counted picks fit none of its slots — ADR 0096: no rule of the pool would have offered them
+   * against the character as it is. Each is also a `choice-unplaced` problem. Empty in every other case.
+   */
+  unplaced: ElementId[];
+  /**
    * The progression point this became available at — the `level` on the rule that opened
    * it, where it has one. What lets a builder say "Rogue 4: Ability Score Improvement"
    * instead of listing an unexplained choice (ADR 0017).
@@ -171,7 +177,10 @@ export interface AnsweredChoice {
   label: string;
   type: string;
   optional: boolean;
-  /** Every slot's answer, in the order it was recorded. */
+  /**
+   * Every slot's answer, in the order it was recorded: the picks that count, which a full pool has exactly as many of
+   * as it has slots. A pick recorded past them is in `DerivedCharacter.uncounted` — ADR 0096.
+   */
   chosen: ElementId[];
   /**
    * What a slot could hold instead of its own answer.
@@ -187,6 +196,30 @@ export interface AnsweredChoice {
   repeatable: ElementId[];
   unresolvedSupports: string[];
   from: ElementId;
+  /** As on `PendingChoice`: which of `chosen` fit none of the pool's slots. */
+  unplaced: ElementId[];
+}
+
+/**
+ * A recorded pick that does not count — ADR 0096. It stays in `character.choices`, seeds nothing, and counts again the
+ * moment its slot is back: the user chose it and only the user forgets it.
+ *
+ * Only a pick recorded under a pool content declares (`<element>/select:<name>`, where that element carries a `select`
+ * of that name) can stop counting. A record under any other key — a build step's, or Aurora's `ID_LEVEL_1/select:Class`,
+ * which names an element with no rules — is an answer no pool owns, and always counts.
+ */
+export interface UncountedPick {
+  ruleKey: string;
+  elementId: ElementId;
+  /** Where in the record it sits, so two picks of one repeatable element can be told apart. */
+  position: number;
+  /**
+   * `closed`: nothing the character holds opens the pool any more (its element is gone, withdrawn, or no longer at the
+   * level its rules need). `over`: the pool is open with fewer slots than it has picks, and this is one past them.
+   */
+  reason: 'closed' | 'over';
+  /** The element whose pool it answers. */
+  from: ElementId;
 }
 
 export type ProblemLevel = 'error' | 'warning';
@@ -197,9 +230,11 @@ export interface Problem {
     | 'unresolved-element'
     | 'unknown-type'
     | 'requirement-unmet'
-    | 'over-selected'
+    // A recorded pick no assignment of the pool's picks to its slots can place: no rule of the pool would have offered
+    // it — ADR 0096. It still counts, and is flagged; never refused or deleted.
+    | 'choice-unplaced'
     // Attuned to more items than the limit allows — ADR 0023 decision 3, ADR 0026. In
-    // `over-selected`'s family: reported, and never a refusal to derive.
+    // `over-prepared`'s family: reported, and never a refusal to derive.
     | 'over-attuned'
     // A prepared list longer than the limit allows, or holding what the block cannot prepare — ADR 0046.
     // Reported, never a refusal.
@@ -245,6 +280,8 @@ export interface DerivedCharacter {
   /** Every `select` pool with nothing left to choose — the counterpart `pendingChoices` never
    * lists once a pool is full, and where a slot stays editable after it is. */
   answeredChoices: AnsweredChoice[];
+  /** Every recorded pick that does not count, in record order — ADR 0096. Not a problem: a build that changed. */
+  uncounted: UncountedPick[];
   problems: Problem[];
   /**
    * What the character's slots hold — ADR 0025. Carried on the result because it is computed
@@ -467,8 +504,8 @@ function derive(
     }
   }
 
-  // Every seed a recorded choice did not put there. A choice under a withdrawn element's select stops seeding while
-  // the element is withdrawn (ADR 0071); these never do.
+  // Every seed a recorded choice did not put there. A recorded pick stops seeding while it does not count (ADR 0096,
+  // which generalises ADR 0071's closed pool of a withdrawn element); these never do.
   const fixedSeeds = new Set<ElementId>([
     ...baselineIds,
     ...advancementElementIds(character),
@@ -482,6 +519,9 @@ function derive(
   let starts = new Map<StatKey, StatStart>();
   // A granted element whose own requirements were false in the previous pass, and what granted it (ADR 0071).
   let withdrawn = new Map<ElementId, Set<ElementId>>();
+  // The recorded picks the previous pass found not counting (ADR 0096). Empty before the first pass, so the first pass
+  // seeds every pick, as it always did, and what it holds is what decides which pools are open.
+  let uncounted: UncountedPick[] = [];
   // Element -> the track root it belongs to. Rebuilt each pass alongside `active`, and kept
   // afterwards because the pending-choice walk needs the same gates the expansion used.
   let tracks = new Map<ElementId, ElementId>();
@@ -502,9 +542,10 @@ function derive(
     const levelFor = trackLevelReader(nextTracks, trackLevels, character.progress);
     const ctx = makeContext(active, stats, character, kind, equipment);
 
-    // Seed: everything the user explicitly chose, and the kind's own baseline. Less what answered a select of an
-    // element the previous pass withdrew: that pool is closed, and the record waits for the element (ADR 0071).
-    const seeds = openSeeds(chosenIds, fixedSeeds, character.choices, withdrawn);
+    // Seed: everything the user explicitly chose, and the kind's own baseline. Less a pick the previous pass found
+    // not counting: its pool is closed or full, and the record waits for its slot (ADR 0096; ADR 0071 for a withdrawn
+    // element's pool, which is closed because the element is not held).
+    const seeds = countedSeeds(chosenIds, fixedSeeds, character.choices, uncounted);
     for (const id of seeds) {
       if (exclude.has(id)) continue;
       addElement(next, index, id, problems, undefined, baselineIds.has(id));
@@ -605,15 +646,35 @@ function derive(
       equipment,
       nextStarts,
       custom.sets,
+      countedChoices(character.choices, uncounted),
     );
 
-    // What was withdrawn decides which recorded choices seed the next pass, so a change there is a change too.
-    changed = !sameKeys(active, next) || !sameStats(stats, nextStats) || !sameKeys(withdrawn, nextWithdrawn);
+    // Which recorded picks count, asked of what this pass holds and publishes: whether the pool's element is held,
+    // which of its rules are active, and which slot each pick fits (ADR 0096). It decides the next pass's seeds.
+    const nextUncounted = uncountedPicks(
+      next,
+      character,
+      kind,
+      index,
+      makeContext(next, nextStats, character, kind, equipment),
+      levelFor,
+      equipment,
+      () => makeBlockFilterResolver(kind, next, nextStats),
+    );
+
+    // What was withdrawn, and which picks count, decide which recorded choices seed the next pass, so a change there
+    // is a change too.
+    changed =
+      !sameKeys(active, next) ||
+      !sameStats(stats, nextStats) ||
+      !sameKeys(withdrawn, nextWithdrawn) ||
+      uncountedSignature(uncounted) !== uncountedSignature(nextUncounted);
     active = next;
     stats = nextStats;
     starts = nextStarts;
     tracks = nextTracks;
     withdrawn = nextWithdrawn;
+    uncounted = nextUncounted;
   }
 
   if (passes >= maxPasses) {
@@ -628,6 +689,18 @@ function derive(
   // for an ability score). Asked of the finished derivation, and as it would have been asked before taking the element:
   // "does not already have this" must not fail because it now does.
   reportUnmetAdditions(added, active, stats, character, kind, equipment, problems);
+  // So is a pick that still counts and whose own requirements have since become false (ADR 0096): it was offered only
+  // when they held, so a later edit moved them — a score lowered, a feature it needs no longer held.
+  reportUnmetPicks(
+    countedChoices(character.choices, uncounted),
+    new Set(added),
+    active,
+    stats,
+    character,
+    kind,
+    equipment,
+    problems,
+  );
 
   // Attuned to more than the limit allows — ADR 0023 decision 3. Once, after the fixed point,
   // because the limit is a derived number: the kind contributes a base and content raises it,
@@ -696,6 +769,7 @@ function derive(
     stats,
     pendingChoices,
     answeredChoices,
+    uncounted,
     equipment,
     preparation,
     attacks,
@@ -756,26 +830,167 @@ function ownRequirementsHold(element: Element, ctx: RequirementContext): boolean
 }
 
 /**
- * The seeds of one pass: every seed, less what a recorded choice under a select of a withdrawn element holds and
- * nothing else seeds (ADR 0071). The pool is closed while its element is withdrawn, and the record stays, so the
- * answers count again the moment the element does. The same set, in the same order, when nothing is withdrawn.
+ * The seeds of one pass: every seed, less an element only uncounted picks name (ADR 0096). A pick that does not count
+ * stays recorded, so it seeds again the moment its slot is back. The same set, in the same order, when every pick
+ * counts.
  */
-function openSeeds(
+function countedSeeds(
   seeds: ReadonlySet<ElementId>,
   fixed: ReadonlySet<ElementId>,
   choices: Character['choices'],
-  withdrawn: ReadonlyMap<ElementId, unknown>,
+  uncounted: readonly UncountedPick[],
 ): Set<ElementId> {
-  if (!withdrawn.size) return new Set(seeds);
-  // A pool is keyed `<element>/select:<name>`, so an element's own pools are the keys with that prefix.
-  const prefixes = [...withdrawn.keys()].map((id) => `${id}/select:`);
-  const closedPool = (ruleKey: string): boolean => prefixes.some((prefix) => ruleKey.startsWith(prefix));
+  if (!uncounted.length) return new Set(seeds);
   const open = new Set<ElementId>(fixed);
-  for (const choice of choices) {
-    if (closedPool(choice.ruleKey)) continue;
-    for (const id of choice.elementIds) open.add(id);
-  }
+  for (const choice of countedChoices(choices, uncounted)) for (const id of choice.elementIds) open.add(id);
   return new Set([...seeds].filter((id) => open.has(id)));
+}
+
+/** The recorded choices with every uncounted pick left out of them (ADR 0096); the same list when every pick counts. */
+function countedChoices(choices: Character['choices'], uncounted: readonly UncountedPick[]): Character['choices'] {
+  if (!uncounted.length) return choices;
+  const skipped = new Map<string, Set<number>>();
+  for (const pick of uncounted) {
+    const positions = skipped.get(pick.ruleKey);
+    if (positions) positions.add(pick.position);
+    else skipped.set(pick.ruleKey, new Set([pick.position]));
+  }
+  const seen = new Set<string>();
+  return choices.map((choice) => {
+    // Only the first record of a key is a pool's answer, as everywhere else that reads a pool's record.
+    const first = !seen.has(choice.ruleKey);
+    seen.add(choice.ruleKey);
+    const positions = first ? skipped.get(choice.ruleKey) : undefined;
+    if (!positions) return choice;
+    return { ...choice, elementIds: choice.elementIds.filter((_, at) => !positions.has(at)) };
+  });
+}
+
+function uncountedSignature(picks: readonly UncountedPick[]): string {
+  return picks.map((pick) => `${pick.ruleKey}|${pick.position}|${pick.reason}`).join('\n');
+}
+
+const POOL_MARK = '/select:';
+
+/**
+ * The element whose `select` pool a record answers, when the key names one content declares: `<element>/select:<name>`
+ * and that element carries a `select` of that name. Anything else — a build step's key, Aurora's `ID_LEVEL_1/select:Class`
+ * on an element with no rules, an element nothing loaded declares — is an answer no pool owns (ADR 0096).
+ */
+function poolOwner(ruleKey: string, index: ElementIndex): Element | undefined {
+  const at = ruleKey.indexOf(POOL_MARK);
+  if (at <= 0) return undefined;
+  const owner = index.get(ruleKey.slice(0, at));
+  const key = ruleKey.slice(at + 1);
+  if (!owner || !owner.rules.some((rule) => rule.kind === 'select' && rule.key === key)) return undefined;
+  return owner;
+}
+
+/** Where a pool's recorded picks go — see {@link placeRecorded}. */
+interface RecordedPlacement {
+  /** Whether the pick at each position counts: every placed one, then unplaced ones in record order while slots are left. */
+  counts: boolean[];
+  /** The positions of picks that count without a slot they fit. */
+  unplaced: number[];
+  /** The rules a further pick could go into, by index. */
+  available: number[];
+  /** The rules with a slot nothing fills, by index. */
+  free: number[];
+}
+
+/**
+ * Where a pool's recorded picks go — ADR 0096. Placed by `placePicks`, a pick fitting a rule when the rule would have
+ * offered it: its type, and its filter as `candidatesFor` reads it. A pick nothing loaded declares, and a rule whose
+ * filter has a term nothing resolves, are taken to fit: the engine cannot tell, and a flag it cannot stand behind is
+ * a guess (ADR 0005). Own requirements are not asked here; they are whether an element may be held, not which slot it
+ * fills.
+ */
+function placeRecorded(
+  rules: readonly SelectRule[],
+  picks: readonly ElementId[],
+  index: ElementIndex,
+  filters: BlockFilterResolver | undefined,
+): RecordedPlacement {
+  const unreadable = rules.map((rule) =>
+    [...supportsInterpolations(rule.supports)].some((key) => filters?.expand(rule, key) === undefined),
+  );
+  const slots = placePicks(
+    rules.map((rule) => rule.number),
+    picks.length,
+    (at, pick) => {
+      const candidate = index.get(picks[pick]!);
+      if (!candidate) return true;
+      const rule = rules[at]!;
+      if (candidate.type !== rule.type) return false;
+      return unreadable[at]! || candidateAccepted(rule, candidate, filters);
+    },
+  );
+  let free = slots.capacity - slots.placed.filter((rule) => rule !== undefined).length;
+  const counts: boolean[] = [];
+  const unplaced: number[] = [];
+  slots.placed.forEach((rule, at) => {
+    if (rule !== undefined) return void counts.push(true);
+    if (free > 0) {
+      free--;
+      counts.push(true);
+      unplaced.push(at);
+    } else counts.push(false);
+  });
+  return { counts, unplaced, available: slots.available, free: slots.free };
+}
+
+/**
+ * Every recorded pick that does not count, against what one pass holds (ADR 0096). A pick under a pool content
+ * declares does not count when nothing held opens that pool, or when the pool has fewer slots than picks and this is
+ * one past them. The block filters are built only when a pool has more picks than slots.
+ */
+function uncountedPicks(
+  held: Map<ElementId, Element>,
+  character: Character,
+  kind: ResolvedCharacterKind,
+  index: ElementIndex,
+  ctx: EngineContext,
+  levelFor: TrackLevelReader,
+  equipment: EquipmentState,
+  filtersFor: () => BlockFilterResolver | undefined,
+): UncountedPick[] {
+  const out: UncountedPick[] = [];
+  const seen = new Set<string>();
+  const pools = new Map<ElementId, Map<string, SelectRule[]>>();
+  let filters: { value: BlockFilterResolver | undefined } | undefined;
+  for (const choice of character.choices) {
+    if (seen.has(choice.ruleKey)) continue;
+    seen.add(choice.ruleKey);
+    if (!choice.elementIds.length) continue;
+    const owner = poolOwner(choice.ruleKey, index);
+    if (!owner) continue;
+    let rules: SelectRule[] | undefined;
+    const element = held.get(owner.id);
+    if (element) {
+      let own = pools.get(owner.id);
+      if (!own) {
+        own = selectPools(element, character, kind, ctx, levelFor, equipment);
+        pools.set(owner.id, own);
+      }
+      rules = own.get(choice.ruleKey);
+    }
+    if (!rules) {
+      choice.elementIds.forEach((elementId, position) =>
+        out.push({ ruleKey: choice.ruleKey, elementId, position, reason: 'closed', from: owner.id }),
+      );
+      continue;
+    }
+    // No more picks than slots: all count, whatever fits where, since nothing is past the pool's end.
+    if (choice.elementIds.length <= rules.reduce((sum, rule) => sum + rule.number, 0)) continue;
+    filters ??= { value: filtersFor() };
+    const { counts } = placeRecorded(rules, choice.elementIds, index, filters.value);
+    counts.forEach((counted, position) => {
+      if (!counted) {
+        out.push({ ruleKey: choice.ruleKey, elementId: choice.elementIds[position]!, position, reason: 'over', from: owner.id });
+      }
+    });
+  }
+  return out;
 }
 
 function reportUnmetAdditions(
@@ -798,6 +1013,40 @@ function reportUnmetAdditions(
       elementId: id,
       message: `${element.name} was added to this character, and its prerequisites are not met.`,
     });
+  }
+}
+
+/**
+ * Every held pick whose own requirements are false against the finished derivation, as an addition's are asked (ADR
+ * 0096 decision 5): a warning, never a refusal, and the pick still counts. Once per element, whichever records name it;
+ * an element the user also added is already reported as an addition.
+ */
+function reportUnmetPicks(
+  choices: Character['choices'],
+  added: ReadonlySet<ElementId>,
+  active: Map<ElementId, Element>,
+  stats: Map<StatKey, ResolvedStat>,
+  character: Progressed,
+  kind: ResolvedCharacterKind,
+  equipment: EquipmentState,
+  problems: Problem[],
+): void {
+  const ctx = makeContext(active, stats, character, kind, equipment);
+  const asked = new Set<ElementId>(added);
+  for (const choice of choices) {
+    for (const id of choice.elementIds) {
+      if (asked.has(id)) continue;
+      asked.add(id);
+      const element = active.get(id);
+      if (!element || ownRequirementsHold(element, ctx)) continue;
+      problems.push({
+        level: 'warning',
+        code: 'requirement-unmet',
+        elementId: id,
+        ruleKey: choice.ruleKey,
+        message: `${element.name} was chosen for this character, and its prerequisites are no longer met.`,
+      });
+    }
   }
 }
 
@@ -981,7 +1230,7 @@ function addElement(
 /**
  * Being attuned to more items than the rules allow — ADR 0023 decision 3.
  *
- * A problem in `over-selected`'s family and not a refusal, for the same reason: a system
+ * A problem and not a refusal, as every check on a recorded input is: a system
  * definition is authored once and a character is edited constantly, so a character mid-edit is
  * routinely in a state the rules do not permit. The engine reports and keeps deriving.
  *
@@ -1131,6 +1380,7 @@ function computeStats(
   equipment: EquipmentState,
   starts: Map<StatKey, StatStart>,
   customSets: ReadonlyMap<StatKey, CustomSet>,
+  choices: Character['choices'],
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
@@ -1145,7 +1395,8 @@ function computeStats(
   // An element the character chose several times applies its rules that many times — ADR 0035.
   // A +2 to one score is the same +1 element taken twice, and Aurora's own `<sum>` lists it
   // twice for exactly that reason.
-  const repeats = repeatCounts(character, active, kind);
+  // Only the picks that count: one past a pool's end is no second bump (ADR 0096).
+  const repeats = repeatCounts(choices, active, kind);
   for (const element of active.values()) {
     const times = repeats.get(element.id) ?? 1;
     for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
@@ -1576,13 +1827,13 @@ function isRepeatable(element: Element | undefined, kind: ResolvedCharacterKind)
  * is not repeatable never appears here, so choosing Athletics twice is still one Athletics.
  */
 function repeatCounts(
-  character: Character,
+  choices: Character['choices'],
   active: Map<ElementId, Element>,
   kind: ResolvedCharacterKind,
 ): Map<ElementId, number> {
   const counts = new Map<ElementId, number>();
   if (!kind.repeatableSetter) return counts;
-  for (const choice of character.choices) {
+  for (const choice of choices) {
     for (const id of choice.elementIds) counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   for (const [id, times] of counts) {
@@ -1615,16 +1866,22 @@ function collectPendingChoices(
 
   for (const element of active.values()) {
     for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor, equipment)) {
-      const chosen = character.choices.find((c) => c.ruleKey === ruleKey)?.elementIds ?? [];
+      const recorded = character.choices.find((c) => c.ruleKey === ruleKey)?.elementIds ?? [];
       const allowed = rules.reduce((sum, rule) => sum + rule.number, 0);
       const label = rules[0]!.name;
 
-      if (chosen.length > allowed) {
+      // Which slot each recorded pick fills, as a matching rather than in the order picked (ADR 0096). What counts is
+      // the pool's answer; a pick past its end is published as uncounted by the fixed point, not here.
+      const placement = placeRecorded(rules, recorded, index, filters);
+      const chosen = recorded.filter((_, at) => placement.counts[at]);
+      const unplaced = placement.unplaced.map((at) => recorded[at]!);
+      for (const id of unplaced) {
+        const name = index.get(id)?.name ?? id;
         problems.push({
-          level: 'error',
-          code: 'over-selected',
-          message: `"${label}" allows ${allowed} choice(s) but ${chosen.length} are recorded.`,
-          elementId: element.id,
+          level: 'warning',
+          code: 'choice-unplaced',
+          message: `${name} is chosen for "${label}", and none of its slots would offer it to this character.`,
+          elementId: id,
           ruleKey,
         });
       }
@@ -1655,27 +1912,23 @@ function collectPendingChoices(
           repeatable: repeatableAmong([...candidates, ...chosen]),
           unresolvedSupports: [...unresolvedSupports],
           from: element.id,
+          unplaced,
         });
         continue;
       }
 
-      // Which rules still have room. Picks fill the pool in level order — the order the
-      // importer writes them in and the order a character is actually built in — so the
-      // first rule whose capacity is not used up is where the next pick lands.
-      let filled = chosen.length;
-      let at = 0;
-      while (at < rules.length && filled >= rules[at]!.number) {
-        filled -= rules[at]!.number;
-        at++;
-      }
-      const open = rules.slice(at);
-      const next = open[0]!;
+      // Which rules a further pick can go into: a rule with a free slot, or one whose slot holds a pick that could move
+      // to such a rule (ADR 0096). Not "the first rules in level order with room", which made the order picks were
+      // made in decide which slots were left: an Arcane Trickster who took the any-school spell second had lost it.
+      // A counted pick that fits no slot takes up a free one, and which one is not knowable, so it narrows nothing.
+      const open = placement.available.map((at) => rules[at]!);
+      // The level the next pick is owed at: the first rule with a slot nothing fills (ADR 0017's "Rogue 4: …").
+      const next = rules[placement.free[0] ?? placement.available[0] ?? 0]!;
 
       // The union across the rules with room left, deduplicated. The rules of one pool can
       // genuinely differ — a wizard's first six spellbook entries are 1st level and the two
       // it adds every level afterwards go up to its highest slot — so no single rule's list
-      // covers the remaining picks. Over-inclusive rather than short, which is the same call
-      // `candidatesFor` already makes about an element's own requirements.
+      // covers the remaining picks. Every candidate here can be placed with every pick already made kept.
       const candidates = new Set<ElementId>();
       for (const rule of open) {
         for (const candidate of candidatesFor(rule, index, unrepeatable(chosen), ctx, filters)) {
@@ -1725,6 +1978,7 @@ function collectPendingChoices(
           ),
         ],
         from: element.id,
+        unplaced,
         level: next.level,
       });
     }
@@ -2035,6 +2289,71 @@ export function preparationPool(
     requirementContextFor(derived),
     makeBlockFilterResolver(derived.kind, active, derived.stats),
   );
+}
+
+/** One rule of a pool, as {@link poolSlots} describes it. */
+export interface PoolRule {
+  /** The progression point the rule opens at, where it names one. */
+  level?: number;
+  /** How many slots it has. */
+  number: number;
+}
+
+/** One recorded pick of a pool, as {@link poolSlots} describes it. */
+export interface PoolPick {
+  elementId: ElementId;
+  /** The rules it fits, by index into `rules`. */
+  fits: number[];
+  /** The rule whose slot it fills in the derivation's assignment, when one does. */
+  slot?: number;
+  /** Whether it counts — ADR 0096. */
+  counts: boolean;
+}
+
+/**
+ * How a pool's recorded picks sit in its slots, read off a finished derivation — ADR 0096. The rules the character has
+ * reached, in level order, which of them each pick fits, and the slot the assignment gave it. `undefined` when nothing
+ * the character holds opens the pool. What a screen or a test asks of one pool; the derivation itself never calls it.
+ */
+export function poolSlots(
+  derived: DerivedCharacter,
+  index: ElementIndex,
+  ruleKey: string,
+): { rules: PoolRule[]; picks: PoolPick[] } | undefined {
+  const at = ruleKey.indexOf(POOL_MARK);
+  if (at <= 0) return undefined;
+  const owner = derived.elements.find((element) => element.id === ruleKey.slice(0, at));
+  if (!owner) return undefined;
+  const active = new Map(derived.elements.map((element) => [element.id, element]));
+  const character: Progressed = { ...derived.character, progress: derived.progress.value };
+  const ctx = makeContext(active, derived.stats, character, derived.kind, derived.equipment);
+  const levelFor: TrackLevelReader = (id) => derived.gateLevels.get(id) ?? character.progress;
+  const rules = selectPools(owner, character, derived.kind, ctx, levelFor, derived.equipment).get(ruleKey);
+  if (!rules) return undefined;
+  const filters = makeBlockFilterResolver(derived.kind, active, derived.stats);
+  const recorded = derived.character.choices.find((choice) => choice.ruleKey === ruleKey)?.elementIds ?? [];
+  const unreadable = rules.map((rule) =>
+    [...supportsInterpolations(rule.supports)].some((key) => filters?.expand(rule, key) === undefined),
+  );
+  const fits = recorded.map((id) => {
+    const candidate = index.get(id);
+    return rules.flatMap((rule, r) =>
+      !candidate || (candidate.type === rule.type && (unreadable[r]! || candidateAccepted(rule, candidate, filters)))
+        ? [r]
+        : [],
+    );
+  });
+  const slots = placePicks(rules.map((rule) => rule.number), recorded.length, (r, pick) => fits[pick]!.includes(r));
+  const { counts } = placeRecorded(rules, recorded, index, filters);
+  return {
+    rules: rules.map((rule) => ({ ...(rule.level !== undefined ? { level: rule.level } : {}), number: rule.number })),
+    picks: recorded.map((elementId, pick) => ({
+      elementId,
+      fits: fits[pick]!,
+      ...(slots.placed[pick] !== undefined ? { slot: slots.placed[pick] } : {}),
+      counts: counts[pick]!,
+    })),
+  };
 }
 
 export interface ReferenceOptions {

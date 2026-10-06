@@ -764,11 +764,17 @@ test('a pool with room left is pending, not answered', () => {
   assert.deepEqual(derived.answeredChoices, []);
 });
 
-test('over-selected fires on the pool, not on one rule of it', () => {
+test('a pick past the end of the pool does not count, judged on the pool and not on one rule of it', () => {
+  // ADR 0096: it was the error `over-selected`, still seeded. Five recorded in a pool of four: the fifth is uncounted,
+  // is not held, and is not a problem.
   const derived = deriveCharacter(withCantrips(10, 'A', 'B', 'C', 'D', 'E'), system(), CANTRIPS());
-  const over = derived.problems.filter((p) => p.code === 'over-selected');
-  assert.equal(over.length, 1);
-  assert.match(over[0]!.message, /allows 4 choice\(s\) but 5 are recorded/);
+  assert.deepEqual(
+    derived.uncounted.map((pick) => [pick.elementId, pick.position, pick.reason]),
+    [['E', 4, 'over']],
+  );
+  assert.equal(derived.elementIds.has('E'), false);
+  assert.deepEqual(derived.answeredChoices[0]!.chosen, ['A', 'B', 'C', 'D']);
+  assert.deepEqual(derived.problems, []);
 });
 
 test('only the rules a character has reached count toward the allowance', () => {
@@ -1472,12 +1478,26 @@ test('the order choices were recorded in does not change the answer', () => {
   assert.equal(ids(choosing(4, 4, CHOSE_X, CHOSE_SUB)).includes('X_LATE'), false);
 });
 
-test('a pick nothing offers still seeds the derivation, on the total, as it always did', () => {
-  // ADR 0015's known gap, kept: nothing prunes a pick whose chooser has gone. Beta-only, so no
-  // element offers 'Sub' at all, and SUB is in no track.
-  const derived = deriveCharacter(choosing(0, 8, CHOSE_SUB), trackedSystem(), chosenIndex());
-  assert.equal(derived.elementIds.has('SUB'), true);
-  assert.equal(derived.elementIds.has('SUB_LATE'), true, 'no track to read, so the total: 8 >= 6');
+test('a pick whose chooser has gone does not count, and neither does what only it opened', () => {
+  // ADR 0015's known gap, closed by ADR 0096. Beta-only, so nothing holds PICKER and nothing opens 'Sub': SUB is kept in
+  // the record and not held, and the answer to SUB's own pool goes with it, in the next pass.
+  const derived = deriveCharacter(choosing(0, 8, CHOSE_SUB, CHOSE_X), trackedSystem(), chosenIndex());
+  assert.equal(derived.elementIds.has('SUB'), false);
+  assert.equal(derived.elementIds.has('SUB_LATE'), false);
+  assert.equal(derived.elementIds.has('X'), false);
+  assert.deepEqual(
+    derived.uncounted.map((pick) => [pick.ruleKey, pick.elementId, pick.reason, pick.from]),
+    [
+      ['PICKER/select:Sub', 'SUB', 'closed', 'PICKER'],
+      ['SUB/select:Extra', 'X', 'closed', 'SUB'],
+    ],
+  );
+  assert.deepEqual(derived.character.choices, [CHOSE_SUB, CHOSE_X], 'the records stay');
+  // And they count again the moment Alpha is back at level 3.
+  const back = deriveCharacter(choosing(3, 5, CHOSE_SUB, CHOSE_X), trackedSystem(), chosenIndex());
+  assert.equal(back.elementIds.has('SUB'), true);
+  assert.equal(back.elementIds.has('X'), true);
+  assert.deepEqual(back.uncounted, []);
 });
 
 test('a character with no advancement is unchanged: a chosen element gates on the total', () => {

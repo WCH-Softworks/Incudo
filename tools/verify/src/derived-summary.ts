@@ -32,6 +32,11 @@ export interface DerivedSummary {
    * with no source that lost them would differ here.
    */
   attacks?: DerivedCharacter['attacks'];
+  /**
+   * The recorded picks that do not count (ADR 0096): present only when there are any, so the summary of every other
+   * character is what it was. A save carries every pick it records, counted or not, so a reopen must agree.
+   */
+  uncounted?: Array<{ ruleKey: string; elementId: string; position: number; reason: string }>;
   companions?: Array<{
     elementId: string;
     elements: string[];
@@ -92,6 +97,11 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
       .sort((a, b) => (a.elementId < b.elementId ? -1 : 1)),
     gateLevels: levelsOf(derived.gateLevels),
     ...(derived.attacks.length ? { attacks: derived.attacks } : {}),
+    ...(derived.uncounted.length
+      ? {
+          uncounted: derived.uncounted.map(({ ruleKey, elementId, position, reason }) => ({ ruleKey, elementId, position, reason })),
+        }
+      : {}),
     ...(companions.length ? { companions } : {}),
   };
 }

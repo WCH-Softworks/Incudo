@@ -118,14 +118,20 @@ test('a prerequisite that the element not already be held does not flag the elem
   assert.deepEqual(codes(derived), []);
 });
 
-test('only additions are checked: a chosen element whose requirements fail is not flagged', () => {
-  // Fails if every held element's requirements are checked rather than the additions'. The hero adds something too,
-  // so the check runs at all.
+test('a chosen element whose requirements have since failed is flagged too, once, and still held', () => {
+  // ADR 0064 checked only additions; ADR 0096 checks a pick that still counts as well, since it was offered only while
+  // its requirements held. Fails if picks are not checked, or if an element both chosen and added is reported twice.
   const character = hero(['KEEN']);
   character.choices = [{ ruleKey: 'build/knack', elementIds: ['STRONG_ONLY'] }];
   const derived = deriveCharacter(character, system(), index);
   assert.ok(derived.elementIds.has('STRONG_ONLY'));
-  assert.deepEqual(codes(derived), []);
+  assert.deepEqual(codes(derived), ['requirement-unmet']);
+  assert.equal(derived.problems[0]?.message, 'STRONG_ONLY was chosen for this character, and its prerequisites are no longer met.');
+  assert.equal(derived.problems[0]?.ruleKey, 'build/knack');
+
+  const both = hero(['STRONG_ONLY']);
+  both.choices = [{ ruleKey: 'build/knack', elementIds: ['STRONG_ONLY'] }];
+  assert.deepEqual(codes(deriveCharacter(both, system(), index)), ['requirement-unmet'], 'reported once, as an addition');
 });
 
 test('a type the kind does not list, and any addition on a kind that lists none, is reported and not held', () => {

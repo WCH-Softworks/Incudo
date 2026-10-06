@@ -122,6 +122,16 @@ export interface CollectOptions {
 
 const MAX_EMBEDDED_ELEMENTS = 20000;
 
+/** The elements a character's recorded choices name as the owner of their pool: `<element>/select:<name>` — ADR 0096. */
+function choicePoolOwners(character: Character): ElementId[] {
+  const owners: ElementId[] = [];
+  for (const choice of character.choices) {
+    const at = choice.ruleKey.indexOf('/select:');
+    if (at > 0) owners.push(choice.ruleKey.slice(0, at));
+  }
+  return owners;
+}
+
 /**
  * The transitive closure of everything a character references: chosen, granted, carried, and
  * named by requirements — plus, transitively, everything *those* reference.
@@ -188,8 +198,16 @@ export function collectCharacterContent(
   for (const id of frontier) seen.add(id);
   // Reached only through a description (ADR 0069): embedded for its text, its rules not followed. Anything in `seen`
   // is followed in full, so an id is in at most one of the two frontiers.
-  let embedFrontier: ElementId[] = [];
-  const embedSeen = new Set<ElementId>();
+  //
+  // It starts with the element whose pool a recorded choice answers (ADR 0096), embedded for its `select`s and not
+  // followed. Usually reached by a rule anyway; not when what offered the choice has gone (a class with no level left),
+  // and a save without it would read the record as one no pool owns and count a pick that does not count. Followed in
+  // full it would carry everything the gone class grants. Only one the index declares: a key naming nothing is not
+  // something the character uses.
+  let embedFrontier: ElementId[] = [...new Set(choicePoolOwners(character))].filter(
+    (id) => !seen.has(id) && index.get(id) !== undefined,
+  );
+  const embedSeen = new Set<ElementId>(embedFrontier);
   const nextEmbeds = new Set<ElementId>();
   const embedsOf = (element: Element): void => {
     for (const id of embeddedElementIds(element)) {
