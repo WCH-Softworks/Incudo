@@ -937,6 +937,11 @@ export interface SheetSectionDef {
    */
   group?: SheetGroupDef;
   /**
+   * List the character's attacks — ADR 0093: every bag entry of a type its kind's `attacks` names, with its bonus and
+   * damage. Only meaningful on a kind that declares `attacks`, which the validator holds it to.
+   */
+  attacks?: boolean;
+  /**
    * Mark a listed element the character's prepared lists hold — ADR 0079, from what the derivation publishes as
    * `preparation` (ADR 0046): `always` for what content keeps on a list, `chosen` for what the player put on one and
    * counts. The section also lists what a list holds and the character does not (a list preparer prepares from every
@@ -1422,8 +1427,56 @@ export interface CharacterKindDef {
    * write, and what an import put in `freeform` is kept and shown nowhere.
    */
   freeform?: FreeformDef;
+  /** What a character of this kind attacks with — ADR 0093. Replaced rather than merged along an `extends` chain. */
+  attacks?: AttacksDef;
   buildSteps?: BuildStepDef[];
   sheet?: SheetLayoutDef;
+}
+
+/**
+ * What a character of a kind attacks with, and what each attack adds up — ADR 0093.
+ *
+ * Every inventory entry whose element is of one of `types` is an attack, carried or equipped, in bag order. Its numbers
+ * are `stats`, contributions evaluated once per attack after the derivation settles, in the order written: an attack stat
+ * is the sum of the contributions to it, and a reference reads an attack stat summed so far, else the character's. The
+ * attack's tags (its element's and its adornments' support tags and names) are published under `tagStat` for its
+ * requirements; `{name}` (the element's name) and `{<setter>}` (one of its setters) are placeholders in a requirement and
+ * in a reference's stat. Core names no ability, property or kind of weapon: the system says all of them.
+ */
+export interface AttacksDef {
+  /** The element types an attack is an entry of. */
+  types: ElementType[];
+  /** The stat whose tags an attack's own requirements read: `[weapon:<tag>]`. */
+  tagStat: StatKey;
+  /** The attack stat shown as its bonus. */
+  bonus: StatKey;
+  /** The attack stat added to its damage die. */
+  damage: StatKey;
+  /** What an attack adds up, in order. */
+  stats: AttackStatDef[];
+  /** The setter holding the damage die, written as content writes it. */
+  dice: string;
+  /** That setter's attribute naming the damage type. */
+  damageType?: string;
+  /** Setters holding another die, with the same modifier, and what each is called: "two-handed". */
+  alternatives?: Array<{ setter: string; label: string }>;
+  /** The setter whose text is the attack's range. */
+  range?: string;
+  /** A setter on an adornment naming the attack: `{{parent}}` the element's name, `{{x}}` the adornment's setter `x`. */
+  nameSetter?: string;
+  /**
+   * How an attack's properties are named: a support tag naming an element of one of `types` by that element's name, and
+   * a tag that names no element by `labels`. A tag neither answers is not a property.
+   */
+  properties?: { types?: ElementType[]; labels?: Record<string, string> };
+}
+
+/** One contribution to an attack's own numbers — ADR 0093. The shape of a kind's {@link ContributionDef}, unbucketed. */
+export interface AttackStatDef {
+  stat: StatKey;
+  value: StatExpr;
+  /** A condition in content's requirement language, its placeholders filled from the attack's element. */
+  requirements?: string;
 }
 
 /**
@@ -1641,6 +1694,8 @@ export interface ResolvedCharacterKind {
   play?: PlayDef;
   /** The text a user may write about a character of this kind — ADR 0092. */
   freeform?: FreeformDef;
+  /** What a character of this kind attacks with — ADR 0093. Replaced rather than merged along an `extends` chain. */
+  attacks?: AttacksDef;
   /** What a picker prints beside a candidate of certain types. */
   candidateNotes: CandidateNoteDef[];
   /** Which types a picker names when a candidate would give one already held; undefined when none. */
@@ -1833,6 +1888,7 @@ export function resolveCharacterKind(
   let companions: CompanionsDef | undefined;
   let play: PlayDef | undefined;
   let freeform: FreeformDef | undefined;
+  let attacks: AttacksDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let candidateOverlaps: CandidateOverlapsDef | undefined;
   let buildSteps: BuildStepDef[] = [];
@@ -1864,6 +1920,7 @@ export function resolveCharacterKind(
     if (layer.companions !== undefined) companions = layer.companions;
     if (layer.play !== undefined) play = layer.play;
     if (layer.freeform !== undefined) freeform = layer.freeform;
+    if (layer.attacks !== undefined) attacks = layer.attacks;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.candidateOverlaps !== undefined) candidateOverlaps = layer.candidateOverlaps;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
@@ -1896,6 +1953,7 @@ export function resolveCharacterKind(
     companions,
     play,
     freeform,
+    attacks,
     candidateNotes,
     candidateOverlaps,
     buildSteps,
@@ -1906,7 +1964,7 @@ export function resolveCharacterKind(
 /**
  * The kind a held creature's scope is derived with — ADR 0073: the kind, with the companion declaration's stats (by
  * name, replacing the kind's), starts, contributions and setter grants added, and no companions of its own, so a scope
- * derives none. Undefined for a kind that declares none.
+ * derives none. Nor attacks (ADR 0093): those are the holder's bag. Undefined for a kind that declares none.
  */
 export function companionScopeKind(kind: ResolvedCharacterKind): ResolvedCharacterKind | undefined {
   const companions = kind.companions;
@@ -1921,6 +1979,7 @@ export function companionScopeKind(kind: ResolvedCharacterKind): ResolvedCharact
     contributions: [...kind.contributions, ...(companions.contributions ?? [])],
     setterGrants: [...kind.setterGrants, ...(companions.setterGrants ?? [])],
     companions: undefined,
+    attacks: undefined,
   };
 }
 

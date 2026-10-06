@@ -43,8 +43,11 @@ export type StatExpr =
    * any other value, or none, reads 0. Only meaningful inside a `trackStats` value, where the
    * context knows a track; anywhere else it reads 0 and the engine reports a warning. Core names
    * no setter: a system says which one (5e's `hd`).
+   *
+   * `as: "number"` (ADR 0093) is the sum of the setter's numbers over the elements the context reads setters from: an
+   * attack's weapon and its adornments (5e's `enhancement`), or a track's root. A value that is not a number reads 0.
    */
-  | { kind: 'setter'; name: string; as: 'dieSides' };
+  | { kind: 'setter'; name: string; as: 'dieSides' | 'number' };
 
 export interface ExpressionContext {
   statNumber(stat: string): number;
@@ -61,6 +64,11 @@ export interface ExpressionContext {
    * per-track context has one; everywhere else it is absent and a `setter` expression reads 0.
    */
   trackSetter?(name: string): string | undefined;
+  /**
+   * Every value of a setter over the elements a context reads setters from, for `as: "number"` (ADR 0093): an attack's
+   * weapon and its adornments. A context without it reads the track's setter alone.
+   */
+  setterValues?(name: string): string[];
 }
 
 /** The face count of a `dN` die value, or 0 when the text is not one. */
@@ -180,8 +188,14 @@ export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {
     // eslint-disable-next-line no-fallthrough
     case 'rolls':
       return ctx.rollSum?.(expr.pattern) ?? 0;
-    case 'setter':
-      return dieSides(ctx.trackSetter?.(expr.name));
+    case 'setter': {
+      if (expr.as === 'dieSides') return dieSides(ctx.trackSetter?.(expr.name));
+      const values = ctx.setterValues?.(expr.name) ?? [ctx.trackSetter?.(expr.name) ?? ''];
+      return values.reduce((sum, value) => {
+        const n = Number(value.trim());
+        return sum + (value.trim() !== '' && Number.isFinite(n) ? n : 0);
+      }, 0);
+    }
     case 'table': {
       if (!expr.values.length) return 0;
       const raw = Math.floor(evaluateExpr(expr.index, ctx));

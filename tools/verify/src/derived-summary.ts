@@ -26,6 +26,12 @@ export interface DerivedSummary {
    * Each held creature's scope (ADR 0073): what it holds, its stats and what it finds. Present only when the character
    * holds one, so the summary of every other character is what it was.
    */
+  /**
+   * The character's attacks (ADR 0093), each as a sheet writes it: present only when it has any, so the summary of every
+   * other character is what it was. Its properties are named by elements the save carries for their names, so a reopen
+   * with no source that lost them would differ here.
+   */
+  attacks?: DerivedCharacter['attacks'];
   companions?: Array<{
     elementId: string;
     elements: string[];
@@ -85,6 +91,7 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
       .map((w) => ({ elementId: w.elementId, grantedBy: [...w.grantedBy].sort() }))
       .sort((a, b) => (a.elementId < b.elementId ? -1 : 1)),
     gateLevels: levelsOf(derived.gateLevels),
+    ...(derived.attacks.length ? { attacks: derived.attacks } : {}),
     ...(companions.length ? { companions } : {}),
   };
 }

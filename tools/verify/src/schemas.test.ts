@@ -1213,3 +1213,31 @@ test('a kind may not declare one freeform key twice — ADR 0092', async () => {
   pc.freeform = { ...pc.freeform!, fields: [...pc.freeform!.fields, { key: 'backstory', label: 'Backstory again' }] };
   assert.deepEqual(validateGameSystem(system, schemas).errors, [{ path: 'characterKinds[0].freeform.fields', message: 'names the key "backstory" twice' }]);
 });
+
+test('an attack declaration naming nothing, a condition that will not parse, or a section listing attacks of a kind with none is refused — ADR 0093', async () => {
+  // Fails if any of the three checks is removed, or if the schema refuses the shipped declaration or a `setter` read as a
+  // number: each mistake would leave a sheet listing no attacks and nothing saying why.
+  const schemas = await loadSchemas();
+  const read = async (): Promise<GameSystem> => JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  const shipped = await read();
+  assert.deepEqual(validateGameSystem(shipped, schemas).errors, [], 'the shipped declaration is valid');
+  assert.ok(shipped.characterKinds[0]!.attacks!.stats.some((s) => s.value.kind === 'setter' && s.value.as === 'number'));
+
+  const typo = await read();
+  typo.characterKinds[0]!.attacks!.types = ['Weapom'];
+  assert.deepEqual(validateGameSystem(typo, schemas).errors, [
+    { path: 'characterKinds[0].attacks.types', message: `names "Weapom", which the system's elementTypes does not declare` },
+  ]);
+
+  const broken = await read();
+  broken.characterKinds[0]!.attacks!.stats[0]!.requirements = '[weapon:{name}';
+  assert.deepEqual(validateGameSystem(broken, schemas).errors.map((e) => e.path), ['characterKinds[0].attacks.stats[0].requirements']);
+
+  const none = await read();
+  const npc = none.characterKinds.find((k) => k.id === 'npc')!;
+  npc.sheet = { sections: [...npc.sheet!.sections, { id: 'attacks', label: 'Attacks', attacks: true }] };
+  // For the NPC and for the legendary creature, which inherits the NPC's sheet only if it declares none; it declares its own.
+  assert.deepEqual(validateGameSystem(none, schemas).errors, [
+    { path: `characterKinds[${none.characterKinds.indexOf(npc)}].sheet.sections`, message: '"attacks" lists attacks, and the kind declares none' },
+  ]);
+});

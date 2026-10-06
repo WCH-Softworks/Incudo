@@ -536,6 +536,32 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       }
     }
 
+    // An attack of a type nothing declares is never one, a condition that will not parse never holds, and a section
+    // listing the attacks of a kind with none lists nothing: each a typo nobody would see at runtime (ADR 0093).
+    const attacks = resolved.attacks;
+    if (attacks) {
+      if (!attacks.types.length) errors.push({ path: `${where}.attacks.types`, message: 'names no element type' });
+      for (const type of attacks.types) {
+        if (!typeNames.has(type)) {
+          errors.push({ path: `${where}.attacks.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+        }
+      }
+      for (const [at, stat] of attacks.stats.entries()) {
+        if (stat.requirements === undefined) continue;
+        try {
+          // A placeholder is filled from the attack's element; any one id stands for it here.
+          parseRequirements(stat.requirements.replace(/\{[^{}]*\}/g, 'X'));
+        } catch (err) {
+          errors.push({ path: `${where}.attacks.stats[${at}].requirements`, message: (err as Error).message });
+        }
+      }
+    }
+    for (const section of resolved.sheet.sections) {
+      if (section.attacks && !attacks) {
+        errors.push({ path: `${where}.sheet.sections`, message: `"${section.id}" lists attacks, and the kind declares none` });
+      }
+    }
+
     // What play keeps track of names rests and sheet sections; one naming nothing would track or give back nothing,
     // and nothing would say why (ADR 0084).
     errors.push(...checkPlay(resolved.play, resolved.sheet.sections, where));

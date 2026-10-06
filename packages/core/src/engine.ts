@@ -73,6 +73,7 @@ import {
   type PreparationProblem,
   type PreparedBlock,
 } from './preparation.ts';
+import { deriveAttacks, type DerivedAttack } from './attacks.ts';
 import {
   evaluateExpr,
   evaluateExprAsString,
@@ -257,6 +258,11 @@ export interface DerivedCharacter {
    * list never holds an element that seeds the derivation: those are not in Aurora's `<sum>` either.
    */
   preparation: PreparedBlock[];
+  /**
+   * The character's attacks — ADR 0093: every bag entry of a type the kind's `attacks` names, carried or equipped, in bag
+   * order, with the numbers the kind adds up for it. Empty for a kind that declares none. No stat moves for them.
+   */
+  attacks: DerivedAttack[];
   /**
    * Every stat whose start came from content rather than from a declared default, keyed by the stat's
    * lowercased name — ADR 0057 and ADR 0059. What a budget row calls printed, from the same numbers the
@@ -662,6 +668,9 @@ function derive(
       )
     : [];
 
+  // The attacks, against the settled stats and what the character holds (ADR 0093). Nothing reads them back.
+  const attacks = deriveAttacks(character, index, kind.attacks, ctx, kind.inventory);
+
   // The progression's start is published beside every other start, so an editor shows the creature's
   // challenge rating beside a typed one and can go back to it.
   const progressKey = progressionStat(kind.progression);
@@ -689,6 +698,7 @@ function derive(
     answeredChoices,
     equipment,
     preparation,
+    attacks,
     starts,
     // The derivation is a fixed point, so an unresolvable grant is discovered again on
     // every pass. The user has one broken reference, not four, and should be told once.

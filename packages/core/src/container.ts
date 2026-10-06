@@ -239,6 +239,18 @@ export function collectCharacterContent(
         next.add(referenced);
       }
       embedsOf(element);
+      // What names an attack's properties (ADR 0093): a support tag naming an element of the properties' types, on a
+      // weapon or on what adorns one, embedded for its name and its rules not followed, as a description's embeds are. A
+      // save that left them out would reopen with a 2024 weapon's mastery missing from its attack.
+      if (options.kind?.attacks?.properties?.types?.length) {
+        const types = new Set(options.kind.attacks.properties?.types ?? []);
+        for (const tag of element.supports) {
+          const named = index.get(tag.trim());
+          if (!named || !types.has(named.type) || seen.has(named.id) || embedSeen.has(named.id)) continue;
+          embedSeen.add(named.id);
+          nextEmbeds.add(named.id);
+        }
+      }
     }
     frontier = [...next];
     embedFrontier = [...nextEmbeds];

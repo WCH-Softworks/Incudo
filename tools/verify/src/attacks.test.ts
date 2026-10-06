@@ -119,7 +119,9 @@ test('stats content writes about attacks and damage', { skip: corpusSkip }, asyn
     if (/spellcasting/.test(name)) return 'a casting block\'s';
     return 'a feature\'s own number';
   };
-  for (const [kind, group] of Map.groupBy(writes, (w) => shape(w.r.name))) {
+  const groups = new Map<string, typeof writes>();
+  for (const w of writes) groups.set(shape(w.r.name), [...(groups.get(shape(w.r.name)) ?? []), w]);
+  for (const [kind, group] of groups) {
     t.diagnostic(`  ${kind}: ${group.length}: ${tally(group.map((w) => `${w.r.name}${w.r.equipped ? ' (equipped=)' : ''}`), 12)}`);
   }
   // A stat named after a weapon (Bracers of Archery's `longbow:damage`) is a bonus for that weapon alone.

@@ -231,13 +231,13 @@
         },
         {
           "type": "object",
-          "description": "A setter read off the root element of the track being evaluated, as a number (ADR 0044). \"dieSides\" takes the face count of a dN value (d8 is 8) and is the one parsing rule; any other value reads 0. Only meaningful inside a trackStats value, which is the one place a track is known; anywhere else it reads 0 and the derivation reports a warning. The setter is named by the system (5e's hd), so the engine names no game noun.",
+          "description": "A setter read off the root element of the track being evaluated, as a number (ADR 0044). \"dieSides\" takes the face count of a dN value (d8 is 8) and is the one parsing rule; any other value reads 0. Only meaningful inside a trackStats value, which is the one place a track is known, or an attack's stats (as number, ADR 0093); anywhere else it reads 0 and the derivation reports a warning. The setter is named by the system (5e's hd), so the engine names no game noun.",
           "required": ["kind", "name", "as"],
           "additionalProperties": false,
           "properties": {
             "kind": { "const": "setter" },
             "name": { "type": "string", "minLength": 1 },
-            "as": { "const": "dieSides" }
+            "as": { "enum": ["dieSides", "number"], "description": "dieSides reads a dN value's face count; number (ADR 0093) the sum of the setter's numbers over the elements the context reads, an attack's weapon and its adornments." }
           }
         }
       ]
@@ -422,6 +422,55 @@
             },
             "label": { "type": "string", "minLength": 1, "description": "User-facing heading for the references where they are shown." },
             "description": { "type": "string", "description": "User-facing prose shown where a reference is chosen: what keeping one means in this system." }
+          }
+        },
+        "attacks": {
+          "type": "object",
+          "required": ["types", "tagStat", "bonus", "damage", "stats", "dice"],
+          "additionalProperties": false,
+          "description": "What a character of this kind attacks with (ADR 0093): every inventory entry whose element is of one of the types, carried or equipped, in bag order. Its numbers are the stats, contributions evaluated once per attack after the derivation settles, in order: an attack stat is the sum of the contributions to it, and a reference reads an attack stat summed so far, else the character's. No stat of the character moves. Replaced rather than merged along an extends chain.",
+          "properties": {
+            "types": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "The element types an attack is an entry of; each must be declared in elementTypes." },
+            "tagStat": { "type": "string", "minLength": 1, "description": "The stat whose tags an attack's own requirements read, as a slot's are read: the attack's element's and adornments' support tags and names, lowercased." },
+            "bonus": { "type": "string", "minLength": 1, "description": "The attack stat shown as its bonus." },
+            "damage": { "type": "string", "minLength": 1, "description": "The attack stat added to its damage die." },
+            "stats": {
+              "type": "array",
+              "description": "What an attack adds up, in order. {name} (the element's name) and {<setter>} (one of its setters) are placeholders in a requirement and in a reference's stat; one the element does not answer drops the contribution. A setter expression as number reads the element and its adornments.",
+              "items": {
+                "type": "object",
+                "required": ["stat", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "stat": { "type": "string", "minLength": 1 },
+                  "value": { "$ref": "#/$defs/expr" },
+                  "requirements": { "type": "string", "description": "A condition in content's requirement language." }
+                }
+              }
+            },
+            "dice": { "type": "string", "minLength": 1, "description": "The setter holding the damage die, written as content writes it." },
+            "damageType": { "type": "string", "minLength": 1, "description": "That setter's attribute naming the damage type." },
+            "alternatives": {
+              "type": "array",
+              "description": "Setters holding another die, rolled with the same modifier, and what each is called.",
+              "items": {
+                "type": "object",
+                "required": ["setter", "label"],
+                "additionalProperties": false,
+                "properties": { "setter": { "type": "string", "minLength": 1 }, "label": { "type": "string", "minLength": 1 } }
+              }
+            },
+            "range": { "type": "string", "minLength": 1, "description": "The setter whose text is the attack's range." },
+            "nameSetter": { "type": "string", "minLength": 1, "description": "A setter on an adornment naming the attack: {{parent}} is the element's name, {{x}} the adornment's setter x." },
+            "properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "How an attack's properties are named: a support tag naming an element of one of the types by its name, and a tag naming no element by labels. A tag neither answers is not shown.",
+              "properties": {
+                "types": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                "labels": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } }
+              }
+            }
           }
         },
         "companions": {
@@ -1040,6 +1089,10 @@
               "description": "Exact-value names, tried before label: { \"0\": \"Cantrip\" }."
             }
           }
+        },
+        "attacks": {
+          "type": "boolean",
+          "description": "List the character's attacks (ADR 0093): every bag entry of a type its kind's attacks names, with its bonus and damage. Only on a kind that declares attacks."
         },
         "preparedMark": {
           "type": "object",
