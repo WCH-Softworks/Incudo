@@ -280,6 +280,22 @@ test('a block whose limit stat nothing publishes reads zero, and everything on i
   assert.equal(derived.preparation[0]?.over, 1);
 });
 
+test("a system's minimum is the fewest a block prepares, whatever its stat reads, and never lowers a larger one (ADR 0097)", () => {
+  // Fails if `minimum` is not read (the first reads 0 and is over), or is read as the limit (the second reads 1).
+  const withMinimum = (): GameSystem => {
+    const s = fixtureSystem();
+    s.characterKinds[0]!.preparation = { ...s.characterKinds[0]!.preparation!, minimum: 1 };
+    return s;
+  };
+  const noLimit = widget('CASTER', [stat('orange:gizmo:charge:1', 1), stat('orange:gizmo:allow', -1)], blockOf('true'));
+  const low = deriveCharacter(characterWith(noLimit, { orange: ['A'] }), withMinimum(), index(noLimit, A));
+  assert.equal(low.preparation[0]?.limit, 1);
+  assert.equal(low.preparation[0]?.over, 0);
+  assert.equal(low.problems.some((p) => p.code === 'over-prepared'), false);
+  const high = deriveCharacter(characterWith(listCaster()), withMinimum(), index(listCaster(), A));
+  assert.equal(high.preparation[0]?.limit, 2);
+});
+
 test('the limit follows the derivation, so a stat that changes with level moves it', () => {
   const growing = widget(
     'CASTER',

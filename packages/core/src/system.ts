@@ -565,6 +565,12 @@ export interface PreparationDef {
   listFilter: string;
   /** The same for a block that prepares from what it holds; the list part does not apply to a book. */
   heldFilter: string;
+  /**
+   * The fewest a preparing block may prepare, whatever its limit stat reads (ADR 0097 decision A3): 5e's 2014 book
+   * gives every preparing class "a minimum of one", which content's ability-and-level formulas do not state. Omitted,
+   * a limit is the stat as it reads (never below zero).
+   */
+  minimum?: number;
 }
 
 /**

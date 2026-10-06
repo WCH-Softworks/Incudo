@@ -128,7 +128,9 @@ export function derivePreparation(
     const attach = input.attachments.get(key) ?? { attached: new Set(), always: new Set(), book: false };
     const mode: PreparationMode = attach.book ? 'held' : 'list';
     const limitStat = substituteBlockPlaceholders(def.limit, block)?.toLowerCase();
-    const limit = limitStat === undefined ? 0 : Math.max(0, input.stats.get(limitStat)?.value ?? 0);
+    const stated = limitStat === undefined ? 0 : input.stats.get(limitStat)?.value ?? 0;
+    // A system's floor applies to every preparing block (ADR 0097 decision A3).
+    const limit = Math.max(0, def.minimum ?? 0, stated);
     const always = [...attach.always];
 
     const passes = (id: ElementId, filter: SupportsExpr | undefined): boolean => {

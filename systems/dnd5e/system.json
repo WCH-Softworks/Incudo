@@ -295,7 +295,8 @@
         "elementType": "Spell",
         "heldSelect": "Spellbook",
         "listFilter": "$(spellcasting:list), $(spellcasting:slots)",
-        "heldFilter": "$(spellcasting:slots)"
+        "heldFilter": "$(spellcasting:slots)",
+        "minimum": 1
       },
 
       "contributions": [

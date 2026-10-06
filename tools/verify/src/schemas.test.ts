@@ -1216,6 +1216,7 @@ test('the shipped 5e kind declares its preparation', async () => {
     heldSelect: 'Spellbook',
     listFilter: '$(spellcasting:list), $(spellcasting:slots)',
     heldFilter: '$(spellcasting:slots)',
+    minimum: 1,
   });
 });
 
