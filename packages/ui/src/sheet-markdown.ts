@@ -13,7 +13,7 @@
  */
 
 import { escapeLineStart, escapeMarkdown, htmlToMarkdown } from './html-markdown.ts';
-import { listedHead, listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument } from './sheet-document.ts';
+import { attackHead, listedHead, listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument } from './sheet-document.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
 
 export function sheetMarkdown(document: SheetDocument): string {
@@ -90,7 +90,10 @@ export function sheetMarkdown(document: SheetDocument): string {
   return `${blocks.join('\n\n')}\n`;
 }
 
-/** One section's list items, escaped: its rows, then the elements it lists, then its printed lines, as the pane draws them. */
+/**
+ * One section's list items, escaped: its rows, then its attacks (ADR 0093), "**Longsword**: +6, 1d8+3 slashing (…)", then the
+ * elements it lists, then its printed lines, as the pane draws them.
+ */
 function sectionItems(section: SheetSectionView): string[] {
   const e = escapeMarkdown;
   return [
@@ -98,6 +101,7 @@ function sectionItems(section: SheetSectionView): string[] {
       const aside = rowAside(row);
       return `${e(row.label)}: ${e(row.value)}${aside !== undefined ? ` (${e(aside)})` : ''}`;
     }),
+    ...(section.attacks ?? []).map((attack) => attackHead(attack, `**${e(attack.name)}**`, e)),
     ...section.elements.map(elementItem),
     ...section.printed.map((line) => `${e(line.label)}: ${e(line.text)}`),
   ];

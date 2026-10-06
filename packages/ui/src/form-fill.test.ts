@@ -233,3 +233,26 @@ test('dice add up die by die, the largest die first', () => {
   assert.equal(diceTotal([{ count: 3, sides: 10 }, { count: 3, sides: 10 }]), '6d10');
   assert.equal(diceTotal([{ count: 4, sides: 6 }, { count: 2, sides: 12 }, { count: 1, sides: 6 }]), '2d12 + 5d6');
 });
+
+test("a section's attacks fill one row of boxes each, in order, and what is past the last row is named — ADR 0093", () => {
+  const attack = (name: string, bonus: string, damage: string) => ({ instanceId: name, elementId: name, name, equipped: true, bonus, damage, alternatives: [], properties: [] });
+  const armed: SheetDocument = {
+    ...doc,
+    sections: [
+      ...doc.sections,
+      { id: 'strikes', section: 'strikes', label: 'Strikes', rows: [], printed: [], elements: [], attacks: [attack('Hammer', '+5', '1d8+3 bashing'), attack('Saw', '+2', '1d4'), attack('Awl', '+4', '1d4+2')] },
+    ],
+  };
+  const rows = [
+    { name: 'W1', bonus: 'W1B', damage: 'W1D' },
+    { name: 'W2', bonus: 'W2B ', damage: 'W2D' },
+  ];
+  const strikes: FormMap = { ...map, fields: { ...fields, W1: 'text', W1B: 'text', W1D: 'text', W2: 'text', 'W2B ': 'text', W2D: 'text' }, fill: [{ attacks: { section: 'strikes', rows } }] };
+  assert.deepEqual(checkFormMap(strikes, true).errors, []);
+  const values = formValues(armed, strikes);
+  // Fails if a box takes another part of the attack, if the rows are not filled in order, or if the third is dropped silently.
+  assert.deepEqual(values.text, { W1: 'Hammer', W1B: '+5', W1D: '1d8+3 bashing', W2: 'Saw', 'W2B ': '+2', W2D: '1d4' });
+  assert.deepEqual(values.leftOff, ["1 of 3 Strikes past the form's 2 lines: Awl"]);
+  // Fails if the rule's fields are not checked against the form's.
+  assert.deepEqual(checkFormMap({ ...strikes, fields }, true).errors.map((e) => e.message)[0], 'writes "W1", which the form does not have');
+});

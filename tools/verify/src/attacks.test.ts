@@ -23,7 +23,10 @@ import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 
 import { childrenNamed, findFirst, parseXml } from '@incudo/aurora-import';
+import assert from 'node:assert/strict';
+
 import { deriveCharacter, resolveCharacterKind, type Element, type ElementIndex } from '@incudo/core';
+import { CharacterBuilder, newCharacterOfKind, sheetView } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
@@ -183,4 +186,73 @@ test('the official 2014 form\'s attack boxes', async (t) => {
   const map = JSON.parse(await readFile(new URL('../../../systems/dnd5e/forms/official-2014.json', import.meta.url), 'utf8')) as { fields: Record<string, string> };
   const boxes = Object.keys(map.fields).filter((name) => /^Wpn|Attacks/.test(name));
   t.diagnostic(`attack boxes: ${boxes.length}: ${boxes.map((b) => JSON.stringify(b)).join(', ')}`);
+});
+
+// --- Since ADR 0093: what 5e's declaration does, held against Aurora's own rows and through the builder. ---------
+
+test('every weapon in a sample\'s bag is an attack on its sheet, and every row Aurora recorded agrees with it', { skip: corpusSkip || savesSkip }, async (t) => {
+  const elements = await realElements();
+  const system = await loadShippedSystem('dnd5e');
+  const kind = resolveCharacterKind(system, 'pc');
+  let compared = 0;
+  const differ: string[] = [];
+  for (const sample of readManifest().samples) {
+    const file = samplePath(sample);
+    const recorded = auroraAttacks(await readFile(file, 'utf8'));
+    const run = await runOracle(file, elements, 'sample');
+    const derived = deriveCharacter(run.imported.character, run.system, run.elements, { kind });
+    const attacks = sheetView(derived, kind).sections.find((s) => s.id === 'attacks')?.attacks ?? [];
+    // Aurora writes a row for every weapon in the bag, carried too; so does the sheet.
+    const weapons = (run.imported.character.inventory ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Weapon').map((e) => e.instanceId);
+    assert.deepEqual(attacks.map((a) => a.instanceId), weapons, `${sample.id}: an attack per weapon in the bag, in bag order`);
+    for (const row of recorded) {
+      const attack = attacks.find((a) => a.instanceId === row.identifier);
+      compared++;
+      // Aurora writes "+6 vs AC" and one row per die; the sheet writes "+6" and the other die beside the first.
+      const damages = attack ? [attack.damage, ...attack.alternatives.map((a) => a.damage)] : [];
+      const properties = attack?.properties.join(', ') ?? '';
+      if (!attack || `${attack.bonus} vs AC` !== row.attack || !damages.includes(row.damage) || properties !== row.description) {
+        differ.push(`${sample.id} ${row.name}: Aurora ${row.attack}, ${row.damage}, "${row.description}"; the sheet ${attack ? `${attack.bonus}, ${damages.join(' or ')}, "${properties}"` : 'none'}`);
+      }
+    }
+  }
+  t.diagnostic(`Aurora's attack rows compared: ${compared}; differing: ${differ.length}`);
+  for (const line of differ) t.diagnostic(`  ${line}`);
+  // Fails if the ability, the proficiency term, ranged:attack or a property's name is dropped from the declaration (each
+  // moves at least one of Aurora's eight rows), or if a carried weapon is left out (two of the rows are carried weapons).
+  assert.ok(compared > 0, 'the samples record attack rows');
+  assert.deepEqual(differ, []);
+});
+
+test("a Beast Master's companion shows what its ranger adds to its attack and damage rolls", { skip: corpusSkip }, async () => {
+  // Built by name: the 2014 Human Ranger and its Beast Master archetype at level 3, its companion the first offered.
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await realElements();
+  const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements);
+  const pick = (stepId: string, test: (e: Element) => boolean) => {
+    const decision = b.getState().decisions.find((d) => d.stepId === stepId && d.kind === 'pick');
+    const id = decision?.candidates.find((c) => test(elements.get(c)!));
+    assert.ok(decision && id, `the ${stepId} step offers what is asked for`);
+    b.choose(decision.id, [id]);
+  };
+  pick('race', (e) => e.name === 'Human' && e.source === 'Player’s Handbook');
+  pick('class', (e) => e.name === 'Ranger' && e.source === 'Player’s Handbook');
+  b.setProgress(3);
+  const archetype = b.getState().decisions.find((d) => d.candidates.some((c) => elements.get(c)?.name === 'Beast Master'));
+  assert.ok(archetype, 'the archetype is offered');
+  b.choose(archetype.id, [archetype.candidates.find((c) => elements.get(c)?.name === 'Beast Master')!]);
+  const beast = b.getState().decisions.find((d) => d.candidates.some((c) => elements.get(c)?.type === 'Companion'));
+  assert.ok(beast, 'a companion is offered');
+  b.choose(beast.id, [beast.candidates[0]!]);
+  const state = b.getState();
+  const creature = state.companions?.creatures[0];
+  assert.ok(creature, 'the ranger holds a creature');
+  const holder = creature.sections.find((s) => s.section === 'holder');
+  // Fails if the section is removed from the scope's sheet, or its stats lose their labels (rows called by their keys).
+  assert.deepEqual(holder?.rows.map((r) => [r.label, r.value]), [
+    ['Attack Rolls', '+2'],
+    ['Damage Rolls', '+2'],
+  ]);
+  // A ranger with no weapon has no attacks; one is not invented.
+  assert.equal(state.sheet.sections.find((s) => s.id === 'attacks'), undefined);
 });

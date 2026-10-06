@@ -140,8 +140,9 @@ const OFFICIAL_2014: Box[] = [
   { page: 1, name: 'hit dice remaining', text: 1, checks: 0 },
   { page: 1, name: 'death saves', text: 0, checks: 6 },
   { page: 1, name: 'personality, ideals, bonds, flaws', text: 4, checks: 0, read: (d) => wrote(d, ['background-traits', 'background-ideals', 'background-bonds', 'background-flaws']) },
-  { page: 1, name: 'three weapons: name', text: 3, checks: 0, read: (d) => (['primary', 'secondary'].some((s) => (d.row('worn', s) ?? 'none') !== 'none') ? 'filled' : 'empty') },
-  { page: 1, name: 'three weapons: attack bonus and damage', text: 6, checks: 0 },
+  // The document's attacks since ADR 0093; before it, the names were what the character's hands held and the numbers nothing.
+  { page: 1, name: 'three weapons: name', text: 3, checks: 0, read: (d) => fit(d, 'three weapons: name', d.section('attacks')?.attacks?.length ? 'filled' : 'empty') },
+  { page: 1, name: 'three weapons: attack bonus and damage', text: 6, checks: 0, read: (d) => fit(d, 'three weapons: attack bonus and damage', d.section('attacks')?.attacks?.length ? 'filled' : 'empty') },
   { page: 1, name: 'attacks and spellcasting', text: 1, checks: 0, holds: box(166, 113) },
   { page: 1, name: 'coins', text: 5, checks: 0 },
   { page: 1, name: 'equipment', text: 1, checks: 0, holds: box(120, 163), read: (d) => listed(d, 'inventory') },
@@ -234,7 +235,7 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
   const overSpellLines = perLevel.flatMap((n, level) => (n > SPELL_LINES[level]! ? [`level ${level}: ${n} of ${SPELL_LINES[level]}`] : []));
   const blocks = doc.sections.filter((s) => s.id.startsWith('spellcasting')).length;
 
-  const weapons = (section('inventory')?.elements ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Weapon').length;
+  const weapons = section('attacks')?.attacks?.length ?? 0;
   const chars = new Map<string, number>([
     ['features and traits', listedChars(section('features'))],
     ['other proficiencies and languages', listedChars(section('proficiencies'))],
@@ -243,6 +244,7 @@ function readSample(run: OracleRun, id: string, multiclass: boolean): SampleRead
 
   const partial = new Set<string>();
   if (blocks > 1) partial.add('spellcasting class, ability, save DC, attack bonus');
+  if (weapons > 3) for (const name of ['three weapons: name', 'three weapons: attack bonus and damage']) partial.add(name);
   if (overSpellLines.length) partial.add('spells, by level');
   // A prepared box is on a levelled spell's line: a spell past its level's lines has no box either. Cantrips have none.
   if (perLevel.some((n, level) => level > 0 && n > SPELL_LINES[level]!)) partial.add('spell prepared marks');

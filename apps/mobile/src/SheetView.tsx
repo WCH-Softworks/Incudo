@@ -3,7 +3,7 @@
  *
  * Another renderer of the one document, as ADR 0075 meant a print layout or a PDF to be: the Sheet pane, the text export
  * and this read the same value, and every sentence and every wording of a row or a listed element comes from the
- * document's own helpers (`rowAside`, `listedName`, `listedAside`, `listedUsage`, `PREREQUISITES_UNMET`). Content's
+ * document's own helpers (`rowAside`, `attackAside`, `listedName`, `listedAside`, `listedUsage`, `PREREQUISITES_UNMET`). Content's
  * HTML is read by `htmlToBlocks`/`htmlToRuns`, never shown as markup. This computes nothing but layout.
  */
 
@@ -17,6 +17,7 @@ import {
   listedUsage,
   PREREQUISITES_UNMET,
   rowAside,
+  attackAside,
   type SheetDocument,
   type SheetListedElement,
   type SheetSectionView,
@@ -117,6 +118,13 @@ function Section({ section, level, palette }: { section: SheetSectionView; level
           </View>
         );
       })}
+      {(section.attacks ?? []).map((attack) => (
+        <Text key={attack.instanceId} style={[styles.body, text]} selectable>
+          <Text style={styles.bold}>{attack.name}</Text>
+          {`: ${attack.bonus}, ${attack.damage}`}
+          {attackAside(attack) !== undefined ? <Text style={{ color: palette.muted }}>{` (${attackAside(attack)})`}</Text> : null}
+        </Text>
+      ))}
       {section.elements.map((element) => (
         <Listed key={element.elementId} element={element} palette={palette} />
       ))}

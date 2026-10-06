@@ -69,6 +69,8 @@ export type FormRule =
   | { flow: { fields: string[]; capacity: Array<{ lines: number; perLine: number; fontSize: number }> }; list: ListRef & { join: string } }
   /** Rows matched by `{n}`, one field per n: the first source that has any; any other source with rows is left off. */
   | { table: { sources: RowRef[]; fields: Record<string, string> } }
+  /** A section's attacks, one row of boxes each, in order: name, bonus, damage (ADR 0093). What is past the last row is left off. */
+  | { attacks: { section: string; rows: Array<{ name: string; bonus: string; damage: string }> } }
   /** Listed elements by their group's value, one line each, and a box per line ticked when the element is prepared. */
   | { groups: { section: string; levels: Record<string, { lines: string[]; prepared?: string[] }> } };
 
@@ -109,6 +111,7 @@ function ruleFields(rule: FormRule): Array<[string, FormFieldType]> {
   if ('flow' in rule) return rule.flow.fields.map((f) => [f, 'text']);
   if ('fields' in rule) return rule.fields.map((f) => [f, 'text']);
   if ('table' in rule) return Object.values(rule.table.fields).map((f) => [f, 'text']);
+  if ('attacks' in rule) return rule.attacks.rows.flatMap((row) => [row.name, row.bonus, row.damage].map((f): [string, FormFieldType] => [f, 'text']));
   return Object.values(rule.groups.levels).flatMap((level) => [
     ...level.lines.map((f): [string, FormFieldType] => [f, 'text']),
     ...(level.prepared ?? []).map((f): [string, FormFieldType] => [f, 'check']),
@@ -302,6 +305,19 @@ export function formValues(document: SheetDocument, map: FormMap): FormValues {
         for (const [n, field] of Object.entries(rule.table.fields)) put(field, rowOf(first.view, first.ref.stat.replaceAll('{n}', n))?.value);
       }
       for (const other of used.slice(1)) leftOff.push(named(other.view));
+    } else if ('attacks' in rule) {
+      const view = views(document, rule.attacks.section)[0];
+      const attacks = view?.attacks ?? [];
+      attacks.slice(0, rule.attacks.rows.length).forEach((attack, i) => {
+        const row = rule.attacks.rows[i]!;
+        put(row.name, attack.name);
+        put(row.bonus, attack.bonus);
+        put(row.damage, attack.damage);
+      });
+      if (attacks.length > rule.attacks.rows.length) {
+        const past = attacks.slice(rule.attacks.rows.length).map((a) => a.name).join(', ');
+        leftOff.push(`${attacks.length - rule.attacks.rows.length} of ${attacks.length} ${view!.label} past the form's ${rule.attacks.rows.length} lines: ${past}`);
+      }
     } else {
       const byValue = new Map<string, SheetListedElement[]>();
       const sectionViews = views(document, rule.groups.section);

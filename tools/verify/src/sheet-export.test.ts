@@ -316,7 +316,11 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
         else missingWritten.push(`${sample.id} ${key}`);
         continue;
       }
-      const prose = /^(backstory|background-|background\.|attacks\.)/.test(key) && value.trim().length >= 4 && !contents(value);
+      // Aurora writes a weapon's properties under its attack row; the sheet's attack names the same properties itself, from
+      // content and the system (ADR 0093), so the same words there are not the import's.
+      const sheetProperties = sheetDocument(state).sections.flatMap((section) => (section.attacks ?? []).map((a) => a.properties.join(', ')));
+      const ownWords = /^attacks\./.test(key) && sheetProperties.includes(value.trim());
+      const prose = /^(backstory|background-|background\.|attacks\.)/.test(key) && value.trim().length >= 4 && !contents(value) && !ownWords;
       if (prose && markdown.includes(opening)) leaked.push(`${sample.id} ${key}`);
     }
     for (const path of Object.values(character.assets ?? {})) if (markdown.includes(path)) leaked.push(`${sample.id} ${path}`);

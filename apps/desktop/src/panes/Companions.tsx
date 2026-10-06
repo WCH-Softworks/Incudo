@@ -8,12 +8,12 @@
 
 import { useMemo } from 'react';
 
-import { listedAside, listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
+import { attackAside, listedAside, listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
 
 import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
 
 /**
- * A section's rows, listed elements and printed lines, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
+ * A section's rows, attacks (ADR 0093), listed elements and printed lines, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
  * the character's Sheet and each creature's stat block, which are built by the same function. Elements before printed
  * lines, so an NPC's Creature section names the creature before its size, type and alignment.
  */
@@ -32,6 +32,17 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
             </div>
           ))}
         </dl>
+      )}
+      {section.attacks && (
+        <ul className="sheet-elements sheet-attacks">
+          {section.attacks.map((attack) => (
+            <li key={attack.instanceId}>
+              <strong>{attack.name}</strong>
+              {`: ${attack.bonus}, ${attack.damage}`}
+              {attackAside(attack) !== undefined && <span className="sheet-beside"> ({attackAside(attack)})</span>}
+            </li>
+          ))}
+        </ul>
       )}
       {section.elements.length > 0 && (
         <ul className="sheet-elements">

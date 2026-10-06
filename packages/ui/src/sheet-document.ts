@@ -16,7 +16,7 @@ import type { Character, ElementId } from '@incudo/core';
 import { sheetFreeform, type FreeformState, type SheetFreeform } from './freeform.ts';
 import type { ReferenceRow, ReferencesState } from './references.ts';
 import type { CompanionsView } from './companions.ts';
-import type { SheetListedElement, SheetRow, SheetSectionView, SheetView } from './sheet.ts';
+import type { SheetAttack, SheetListedElement, SheetRow, SheetSectionView, SheetView } from './sheet.ts';
 
 /** What is written beside an element the user added whose prerequisites are unmet (ADR 0064). */
 export const PREREQUISITES_UNMET = 'prerequisites not met';
@@ -77,6 +77,29 @@ export function listedHead(
 export function rowAside(row: Pick<SheetRow, 'beside' | 'mark'>): string | undefined {
   const parts = [row.beside, row.mark?.label].filter((part): part is string => part !== undefined && part !== '');
   return parts.length ? parts.join(', ') : undefined;
+}
+
+/**
+ * What a sheet writes after an attack's damage (ADR 0093): each other die it may be rolled with, its range and its
+ * properties, "two-handed 1d10+3 slashing; Versatile", "range 150/600; Ammunition, Heavy, Two-Handed", or nothing.
+ */
+export function attackAside(attack: Pick<SheetAttack, 'alternatives' | 'range' | 'properties'>): string | undefined {
+  const parts = [
+    ...attack.alternatives.map((alternative) => `${alternative.label} ${alternative.damage}`),
+    ...(attack.range !== undefined ? [`range ${attack.range}`] : []),
+    ...(attack.properties.length ? [attack.properties.join(', ')] : []),
+  ];
+  return parts.length ? parts.join('; ') : undefined;
+}
+
+/**
+ * An attack as one line: its name, its bonus and damage, and what follows them in parentheses, "Longsword: +6, 1d8+3
+ * slashing (two-handed 1d10+3 slashing; Versatile)". The pane, the phone and every export word an attack this way; the
+ * Markdown escapes each part and bolds the name it is given.
+ */
+export function attackHead(attack: SheetAttack, name: string = attack.name, escape: (text: string) => string = (text) => text): string {
+  const aside = attackAside(attack);
+  return `${name}: ${escape(`${attack.bonus}, ${attack.damage}`)}${aside !== undefined ? ` (${escape(aside)})` : ''}`;
 }
 
 /** The title of a character whose name is blank. */

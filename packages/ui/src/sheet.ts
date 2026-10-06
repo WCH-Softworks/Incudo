@@ -29,6 +29,7 @@ import {
   trackDie,
   trackProgress,
   type BlockStatDef,
+  type DerivedAttack,
   type DerivedCharacter,
   type Element,
   type ElementId,
@@ -117,6 +118,28 @@ export interface SheetListedElement {
   prepared?: { label: string; always: boolean };
 }
 
+/**
+ * One attack, as a sheet writes it (ADR 0093): its bonus signed, its damage as the die content writes with the modifier
+ * after it and the type, "1d8+3 slashing", and the same for each other die it may be rolled with.
+ */
+export interface SheetAttack {
+  instanceId: string;
+  elementId: ElementId;
+  name: string;
+  /** Whether it is worn or wielded rather than carried. Both are listed. */
+  equipped: boolean;
+  /** "+6". */
+  bonus: string;
+  /** "1d8+3 slashing", or "—" when content writes no die. */
+  damage: string;
+  /** "two-handed" and "1d10+3 slashing". */
+  alternatives: Array<{ label: string; damage: string }>;
+  /** As content writes it: "150/600". */
+  range?: string;
+  /** "Ammunition", "Heavy": by name, in order of name. */
+  properties: string[];
+}
+
 /** One section with nothing left to decide. */
 export interface SheetSectionView {
   id: string;
@@ -131,6 +154,8 @@ export interface SheetSectionView {
   rows: SheetRow[];
   printed: PrintedSheetLine[];
   elements: SheetListedElement[];
+  /** The character's attacks, when the section lists them (ADR 0093). */
+  attacks?: SheetAttack[];
 }
 
 /** The character's own sheet: its kind, how many elements it holds, and its sections, empty ones left out. */
@@ -164,6 +189,8 @@ export interface SheetSource {
    * builder's index, which puts a save's embedded content first. Without it such an element is not listed.
    */
   lookup?: (id: ElementId) => Element | undefined;
+  /** The character's attacks (`DerivedCharacter.attacks`, ADR 0093), for a section that lists them. A creature's scope has none. */
+  attacks?: readonly DerivedAttack[];
 }
 
 /**
@@ -187,6 +214,35 @@ export function formatStatValue(stat: ResolvedStat | undefined, signed: boolean)
   if (stat.text !== undefined) return stat.text.trim() === '' ? '—' : stat.text;
   if (signed && stat.value >= 0) return `+${stat.value}`;
   return String(stat.value);
+}
+
+/**
+ * An attack's damage as a sheet writes it (ADR 0093): the die as content writes it, the modifier after it with its sign
+ * (none when 0), and the type, "1d8+3 slashing". No die is "—", or the modifier alone when there is one.
+ */
+export function attackDamage(dice: string | undefined, modifier: number, type: string | undefined): string {
+  const sign = modifier > 0 ? `+${modifier}` : modifier < 0 ? String(modifier) : '';
+  const amount = dice !== undefined ? `${dice}${sign}` : sign;
+  if (amount === '') return '—';
+  return type ? `${amount} ${type}` : amount;
+}
+
+/** An attack as a sheet writes it. */
+export function sheetAttack(attack: DerivedAttack): SheetAttack {
+  return {
+    instanceId: attack.instanceId,
+    elementId: attack.elementId,
+    name: attack.name,
+    equipped: attack.equipped,
+    bonus: attack.bonus >= 0 ? `+${attack.bonus}` : String(attack.bonus),
+    damage: attackDamage(attack.dice, attack.damageBonus, attack.damageType),
+    alternatives: attack.alternatives.map((alternative) => ({
+      label: alternative.label,
+      damage: attackDamage(alternative.dice, attack.damageBonus, attack.damageType),
+    })),
+    ...(attack.range !== undefined ? { range: attack.range } : {}),
+    properties: attack.properties,
+  };
 }
 
 /** What `fillPlaceholders` wrote, and the stats it could not. */
@@ -333,7 +389,8 @@ export function sheetSections(
           ...(prepared ? { prepared: { label: section.preparedMark![prepared], always: prepared === 'always' } } : {}),
         };
       });
-      if (!rows.length && !rendering.printed.length && !elements.length) continue;
+      const attacks = section.attacks ? (source.attacks ?? []).map(sheetAttack) : [];
+      if (!rows.length && !rendering.printed.length && !elements.length && !attacks.length) continue;
       views.push({
         id: rendering.id,
         label: rendering.label,
@@ -343,6 +400,7 @@ export function sheetSections(
         rows,
         printed: rendering.printed,
         elements,
+        ...(attacks.length ? { attacks } : {}),
       });
     }
   }

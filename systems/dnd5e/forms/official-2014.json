@@ -971,24 +971,26 @@
       }
     },
     {
-      "fields": [
-        "Wpn Name",
-        "Wpn Name 2",
-        "Wpn Name 3"
-      ],
-      "rows": [
-        {
-          "section": "worn",
-          "stat": "primary"
-        },
-        {
-          "section": "worn",
-          "stat": "secondary"
-        }
-      ],
-      "skip": [
-        "none"
-      ]
+      "attacks": {
+        "section": "attacks",
+        "rows": [
+          {
+            "name": "Wpn Name",
+            "bonus": "Wpn1 AtkBonus",
+            "damage": "Wpn1 Damage"
+          },
+          {
+            "name": "Wpn Name 2",
+            "bonus": "Wpn2 AtkBonus ",
+            "damage": "Wpn2 Damage "
+          },
+          {
+            "name": "Wpn Name 3",
+            "bonus": "Wpn3 AtkBonus  ",
+            "damage": "Wpn3 Damage "
+          }
+        ]
+      }
     },
     {
       "flow": {
