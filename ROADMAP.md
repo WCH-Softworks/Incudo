@@ -1466,12 +1466,18 @@ items; each keeps its original text with a pointer here.*
 - [ ] **An added spell can be cast.** *Buried in the ADR 0064 item.* A spell put on a character through "Added to this
       character" belongs to no casting block: no save DC, no attack bonus, no slots, not preparable, and the pane says
       so. Which block it is cast through (the user's choice, or the character's only one) wants deciding.
-- [ ] **Written features for a player character, and an NPC's proficiency switched on.** *Buried in the ADR 0063 and
-      ADR 0062 items.* `pc` declares no `customFeatures`: its armour class, hit points and speed are worked out, so a
-      feature could only add to them, and whether add-only features are wanted, and the type they are held as, is
-      undecided (one line in `system.json` once it is). And since ADR 0063 a feature on an NPC can set another speed and
-      add to a save or a skill, but `…:proficiency` is not a stat the sheet shows, so a DM still cannot make an NPC
-      proficient in a skill or save its creature does not print.
+- [x] **Written features for a player character, and an NPC's proficiency switched on.**
+      **[ADR 0094](./docs/adr/0094-a-player-character-s-written-features-only-add-and-a-feature-line-may-mark-a-row.md),
+      accepted 2026-10-06**, measured first. The maintainer's calls: a player character carries written features, and
+      they only add (the 34 numbers its sheet offers all derive), held as a Class Feature, Racial Trait, Feat or Background
+      Feature, all listed under Features & Traits; a DM makes an NPC proficient through a feature line; and the NPC's
+      sheet marks its saves and skills as the player character's does ("Stealth +7 (expertise)"). A feature line may now
+      **mark** a row whose section declares a mark, when the kind declares the stat the mark is read from: it sets where
+      that stat starts as so many proficiency bonuses, so "Athletics: proficient" follows the challenge rating, and "not
+      proficient" takes a printed one away (character format 9). Measured: all 300 saves and skills the 141 creatures show
+      hold a whole number of the NPC's bonus. No player character derivation moved; the oracle is identical. Driven in the
+      browser build (a Wolf NPC and a Human Fighter); not in the Tauri window or on the phone. Not done: a mark on a held
+      creature's stat block.
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the
 engine has no code that names any of them.

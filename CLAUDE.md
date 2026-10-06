@@ -507,7 +507,8 @@ Things to know before touching either:
   one. Nothing downgrades. The validator refuses either field below 3. The frozen importer and every PC are untouched.
   *(Since ADR 0063 a character that records `customFeatures` is **4**, and since ADR 0064 one that records `additions` is
   **5**, and since ADR 0065 one with a custom feature that records its `type` is **6**, and since ADR 0068 one that
-  records `references` is **7**, and since ADR 0084 one that records `play` is **8**; `LATEST_CHARACTER_FORMAT_VERSION` is 8.)*
+  records `references` is **7**, and since ADR 0084 one that records `play` is **8**, and since ADR 0094 one with a custom
+  feature line that marks a row is **9**; `LATEST_CHARACTER_FORMAT_VERSION` is 9.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any
@@ -536,6 +537,7 @@ Things to know before touching either:
   **A sheet section may declare `showWhen`** (a row shows only when that stat, `{stat}` for the row, is non-zero),
   **`printed`** (a held element's setter as written) and **`description`**; `renderSheetSection` takes a `SheetReader`
   and decides all three, so the pane still computes nothing. No editor for the new stats: only the walking speed has one.
+  *(Since ADR 0094 a written feature's line may mark a save or skill, below.)*
 - **A DM may write a feature of the NPC's own, "Godspeed: Speed 60"** ([ADR 0063](docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md)).
   `Character.customFeatures` (format **4**, only when present): a name, a description and lines that each **add** to a
   stat (an unbucketed rule on the feature) or **set** where it starts. A set sits after a creature's print and before a
@@ -543,13 +545,37 @@ Things to know before touching either:
   is in force. A typed value still wins, and says so three times: `custom-feature-replaced` in the derivation, the
   feature line's status, and the entry step's row (`BudgetRow.featureNote`). A kind opts in with
   `customFeatures: { type }`, the element type the feature is held as (5e `npc`: `Companion Trait`, so it is listed
-  with the creature's traits; `pc` declares none). **What a line may name is what the kind's sheet shows**
+  with the creature's traits; `pc` since ADR 0094, below). **What a line may name is what the kind's sheet shows**
   (`customFeatureStats`), not every labelled stat: that first version offered an NPC spell slots and item slots, found by
   running it. **And never an ability score, for any kind**: `customFeatures.sections` lists the sheet sections a feature
-  may name, and 5e leaves out Ability Scores (they have their own editor). `pc` still declares none: its armour class, hit
-  points and speed all derive, so a feature on a PC could only add, and whether that is wanted is undecided. **Reuse across characters
+  may name, and 5e leaves out Ability Scores (they have their own editor). **Reuse across characters
   is a Phase 8 item and part of its exit criteria.** A feature lives in `character.json`, is held as `custom:<id>` in front of the content, and is never
   embedded content. The editor's state is `packages/ui/src/custom-features.ts`; `CustomFeatures.tsx` computes nothing.
+- **A player character's written features only add, and a feature line may mark a row**
+  ([ADR 0094](docs/adr/0094-a-player-character-s-written-features-only-add-and-a-feature-line-may-mark-a-row.md)). Things
+  to know before touching it:
+  - **5e's `pc` declares `customFeatures`** (the maintainer's choice): Class Feature by default, Racial Trait, Feat or
+    Background Feature, all listed under Features & Traits; sections Combat, Other Speeds, Saving Throws, Skills, Senses.
+    Measured: those 34 stats all derive, so every line adds and "sets it to" is greyed. No content reads `[type:feat]`.
+  - **`mode: "mark"`** on a custom feature line names a sheet *row* and a count (0, 1, 2…). It applies only where the
+    row's section declares a `mark` (ADR 0079) and the mark stat (template filled) is **declared by the kind, with no
+    `derive`**: then it sets where that stat starts to count × the mark's `per`, read from the previous pass, so an NPC's
+    marked skill follows its challenge rating. The condition is what keeps it off a PC, whose `…:proficiency` is
+    content's (a start would be added to content's) — never name a kind to decide it. `CustomFeatureStat.mark`
+    (`{ stat, per, choices }`, choices the mark's `none` then its labels) is the one reader; `CustomSet.per` carries it to
+    the engine. A count past the labels or a mark on an unmarkable row is `custom-feature-stat`; two marks of a row are
+    `custom-feature-conflict`. **Format 9** only when a line marks (`setCustomFeature`), the validator refuses it below.
+  - **A sheet `mark` may declare `none`** (5e: "not proficient"), offered by the editor and never shown beside a row.
+  - **5e's NPC and legendary creature declare their saves' and skills' marks**, so their sheets read "+5 (proficient)",
+    "+7 (expertise)" (the maintainer's call; every NPC export changed). Measured: all 300 rows the 141 creatures show
+    hold a whole number of the NPC's bonus. A held creature's stat block declares none.
+  - **The editor** (`customLineModes`, `customLineModeAllowed`, `customMarkChoices`, `customFeaturesHint`, in
+    `packages/ui/src/custom-features.ts`): "marked" only where a row may be, its value a list of names; the hint is worded
+    from what the kind's lines can do (a PC's says only that a line adds). Desktop `CustomFeatures.tsx`, phone
+    `BuildExtras.tsx` ("Marked" and a picker).
+  - Tests: `packages/core/src/custom-feature-marks.test.ts`, `packages/ui/src/custom-feature-marks.test.ts`,
+    `tools/verify/src/pc-custom-features.test.ts`, the last test of `npc-creatures.test.ts`, each failing under its named
+    perturbation. The oracle is identical. Driven in the browser build only (selects set through the DOM).
 - **A user may add an existing element to a character, and an unmet prerequisite is a flag**
   ([ADR 0064](docs/adr/0064-a-character-may-carry-elements-its-user-adds-from-loaded-content-and-an-unmet-prerequisite-is-a-flag.md)).
   ADR 0063's sibling, for the player character and the NPC alike. Things to know before touching it:
