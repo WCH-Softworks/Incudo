@@ -351,7 +351,8 @@
 
       "additions": {
         "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature", "Proficiency", "Language", "Condition", "Spell"],
-        "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is listed with the character's spells and belongs to no spellcasting class, so no class's save DC, attack bonus or spell slots apply to it."
+        "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is cast as one of the character's spellcasting classes, which you choose (the only one is chosen for you): that class's save DC, attack bonus and spell slots apply to it, and if the class prepares spells it is always prepared. Cast through no class, none of them apply.",
+        "blocks": { "types": ["Spell"], "label": "Cast as", "with": "cast as {name}", "none": "cast through no class" }
       },
 
       "references": {
@@ -754,7 +755,8 @@
 
       "additions": {
         "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature", "Proficiency", "Language", "Condition", "Spell"],
-        "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is listed with the character's spells and belongs to no spellcasting class, so no class's save DC, attack bonus or spell slots apply to it."
+        "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is cast as one of the character's spellcasting classes, which you choose (the only one is chosen for you): that class's save DC, attack bonus and spell slots apply to it, and if the class prepares spells it is always prepared. Cast through no class, none of them apply.",
+        "blocks": { "types": ["Spell"], "label": "Cast as", "with": "cast as {name}", "none": "cast through no class" }
       },
 
       "references": {

@@ -258,6 +258,10 @@ export interface Problem {
     // An element the user added of a type the kind does not let be added, which is not held — ADR 0064. An added one
     // whose own prerequisites fail is held, and is `requirement-unmet`.
     | 'addition-not-allowed'
+    // An added element recorded as cast through a block nothing the character holds declares, or of a type the kind
+    // does not cast through one — ADR 0097. It is cast through none; the record is kept.
+    | 'addition-block-missing'
+    | 'addition-block-not-allowed'
     // The bag, read through the kind's inventory declaration — ADR 0025, ADR 0023.
     | 'slot-unknown'
     | 'slot-full'
@@ -265,6 +269,13 @@ export interface Problem {
   message: string;
   elementId?: ElementId;
   ruleKey?: string;
+}
+
+/** An added element and the block it is cast through — ADR 0097. */
+export interface AdditionBlock {
+  elementId: ElementId;
+  /** The block's name as content wrote it ("Wizard"). */
+  block: string;
 }
 
 export interface DerivedCharacter {
@@ -295,6 +306,12 @@ export interface DerivedCharacter {
    * list never holds an element that seeds the derivation: those are not in Aurora's `<sum>` either.
    */
   preparation: PreparedBlock[];
+  /**
+   * The block each held addition is cast through — ADR 0097: one entry per added element whose recorded block a held
+   * element declares, in the order added, with the block's name as content wrote it. A record naming a block nothing
+   * declares, or on a type the kind does not cast through one, is a warning and is not here.
+   */
+  additionBlocks: AdditionBlock[];
   /**
    * The character's attacks — ADR 0093: every bag entry of a type the kind's `attacks` names, carried or equipped, in bag
    * order, with the numbers the kind adds up for it. Empty for a kind that declares none. No stat moves for them.
@@ -722,6 +739,9 @@ function derive(
     blockFilters,
   );
 
+  // Which block each addition is cast through (ADR 0097), before the prepared lists, which hold them always.
+  const additionBlocks = resolveAdditionBlocks(character, kind, active, problems);
+
   // The prepared lists, after everything they read has settled: the limit is a derived stat and what is
   // always prepared depends on which tracks reached which level (ADR 0046).
   const preparation = kind.preparation
@@ -737,6 +757,7 @@ function derive(
         stats,
         recordedChoices,
         blockFilters,
+        additionBlocks,
         problems,
       )
     : [];
@@ -772,6 +793,7 @@ function derive(
     uncounted,
     equipment,
     preparation,
+    additionBlocks,
     attacks,
     starts,
     // The derivation is a fixed point, so an unresolvable grant is discovered again on
@@ -815,6 +837,52 @@ function allowedAdditions(
       continue;
     }
     out.push(id);
+  }
+  return out;
+}
+
+/**
+ * The block each held addition is cast through — ADR 0097. Read from `Character.additionBlocks` against the blocks held
+ * elements declare; a record on an element that is not held says nothing (its own problem says why), one on a type the
+ * kind does not cast through a block and one naming a block nothing declares are warnings, and are cast through none.
+ */
+function resolveAdditionBlocks(
+  character: Character,
+  kind: ResolvedCharacterKind,
+  active: Map<ElementId, Element>,
+  problems: Problem[],
+): AdditionBlock[] {
+  const recorded = character.additionBlocks;
+  if (!recorded) return [];
+  const def = kind.additions?.blocks;
+  const types = new Set(def?.types ?? []);
+  const blocks = new Map<string, string>();
+  for (const block of collectDeclaredBlocks(active.values())) blocks.set(block.name.trim().toLowerCase(), block.name);
+  const out: AdditionBlock[] = [];
+  for (const id of addedElementIds(character)) {
+    const key = recorded[id]?.trim().toLowerCase();
+    const element = active.get(id);
+    if (key === undefined || element === undefined) continue;
+    if (!types.has(element.type)) {
+      problems.push({
+        level: 'warning',
+        code: 'addition-block-not-allowed',
+        elementId: id,
+        message: `${element.name} records a class to be cast through, and a ${element.type} added to a ${kind.name} is cast through none. The record is ignored.`,
+      });
+      continue;
+    }
+    const block = blocks.get(key);
+    if (block === undefined) {
+      problems.push({
+        level: 'warning',
+        code: 'addition-block-missing',
+        elementId: id,
+        message: `${element.name} was added to be ${(def?.with ?? '{name}').replace('{name}', key)}, and the character no longer has it. It is ${def?.none ?? 'cast through none'} until another is chosen.`,
+      });
+      continue;
+    }
+    out.push({ elementId: id, block });
   }
   return out;
 }
@@ -2202,6 +2270,7 @@ function preparedBlocks(
   stats: Map<StatKey, ResolvedStat>,
   recordedChoices: Map<string, ElementId[]>,
   filters: BlockFilterResolver | undefined,
+  additionBlocks: AdditionBlock[],
   problems: Problem[],
 ): PreparedBlock[] {
   const blocks = preparingBlocks(def, collectDeclaredBlocks(active.values()));
@@ -2234,6 +2303,14 @@ function preparedBlocks(
         if (always) entry.always.add(id);
       }
     }
+  }
+
+  // An addition cast through a preparing block is on its list always, as a grant with the `prepared` marker is (ADR 0097).
+  for (const { elementId, block } of additionBlocks) {
+    const entry = attachments.get(block.trim().toLowerCase());
+    if (!entry) continue;
+    entry.attached.add(elementId);
+    entry.always.add(elementId);
   }
 
   const found: PreparationProblem[] = [];

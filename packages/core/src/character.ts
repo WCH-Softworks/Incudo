@@ -107,7 +107,8 @@ export interface Character {
    * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063), 5 for one that
    * records `additions` (ADR 0064), 6 for one with a custom feature held as a type other than its kind's default (ADR 0065),
    * 7 for one that records `references` (ADR 0068), 8 for one that records `play` (ADR 0084), 9 for one with a custom
-   * feature line that marks a row (ADR 0094). Readers accept all nine. A new character is written at 2, and only a write that needs more raises it
+   * feature line that marks a row (ADR 0094), 10 for one that records `additionBlocks` (ADR 0097). Readers accept all
+   * ten. A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -244,6 +245,13 @@ export interface Character {
    */
   additions?: ElementId[];
   /**
+   * Which declared block each added element is cast through — ADR 0097: an added element's id to the lowercased block
+   * name, the key `prepared` uses (ADR 0046). An input like `additions`: nothing derives which class a DM's boon spell is
+   * cast as. Which added types may have one is the kind's `additions.blocks`. Absent when empty; only format 10 records
+   * it, because a reader of 9 would drop it and the spell would quietly leave its block.
+   */
+  additionBlocks?: Record<ElementId, string>;
+  /**
    * Elements shown beside this character as a reference, in the order chosen — ADR 0068. A DM's NPC built by hand
    * next to a stat block that exists only as prose. **Not held**: nothing derives from one, no requirement reads one,
    * no sheet section lists one; it is text the character keeps beside it, embedded in the save so it still shows with
@@ -263,7 +271,7 @@ export interface Character {
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 /**
  * What playing a character has recorded — ADR 0084. Every key is a tracker's, as the kind's `play` names it
@@ -317,9 +325,10 @@ export const CHARACTER_FORMAT_VERSION = 2;
  * The newest version a reader accepts — ADR 0060, ADR 0063, ADR 0064. A character with no `progress` or with
  * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` at least 5, one with a
  * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), one with `play` 8 (ADR
- * 0084), one with a custom feature line that marks a row 9 (ADR 0094), and nothing else is raised.
+ * 0084), one with a custom feature line that marks a row 9 (ADR 0094), one with `additionBlocks` 10 (ADR 0097), and
+ * nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 9;
+export const LATEST_CHARACTER_FORMAT_VERSION = 10;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -505,8 +514,35 @@ export function setAdded(character: Character, elementId: ElementId, added: bool
   if (added === current.includes(elementId)) return character;
   const next = added ? [...current, elementId] : current.filter((id) => id !== elementId);
   const { additions: _previous, ...rest } = character;
-  const written: Character = next.length ? { ...raiseFormatVersion(rest, 5), additions: next } : rest;
+  let written: Character = next.length ? { ...raiseFormatVersion(rest, 5), additions: next } : rest;
+  // Taking an element off takes its block with it (ADR 0097), so nothing records a block for what is not added.
+  if (!added && written.additionBlocks?.[elementId] !== undefined) written = withAdditionBlock(written, elementId, undefined);
   return { ...written, updatedAt: new Date().toISOString() };
+}
+
+/**
+ * Record which declared block an added element is cast through, by the block's lowercased name, or forget it — ADR 0097.
+ * Recording one raises the character to format 10; forgetting the last leaves the field absent and the version where it
+ * is. Says nothing about whether the element is added or the block held: the builder refuses those, the derivation
+ * reports a record that names a block nothing declares.
+ */
+export function setAdditionBlock(character: Character, elementId: ElementId, block: string | undefined): Character {
+  const key = block?.trim().toLowerCase() || undefined;
+  if ((character.additionBlocks?.[elementId] ?? undefined) === key) return character;
+  return { ...withAdditionBlock(character, elementId, key), updatedAt: new Date().toISOString() };
+}
+
+function withAdditionBlock(character: Character, elementId: ElementId, key: string | undefined): Character {
+  const next: Record<ElementId, string> = { ...(character.additionBlocks ?? {}) };
+  if (key === undefined) delete next[elementId];
+  else next[elementId] = key;
+  const { additionBlocks: _previous, ...rest } = character;
+  return Object.keys(next).length ? { ...raiseFormatVersion(rest, 10), additionBlocks: next } : rest;
+}
+
+/** The block an added element is cast through, by its lowercased name, when one is recorded — ADR 0097. */
+export function additionBlockOf(character: Character, elementId: ElementId): string | undefined {
+  return character.additionBlocks?.[elementId];
 }
 
 /** What the user added to the character, in the order added — ADR 0064. */

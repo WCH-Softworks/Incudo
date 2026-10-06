@@ -19,6 +19,7 @@ import {
   MapElementIndex,
   resolveCharacterKind,
   setAdded,
+  setAdditionBlock,
   setReferenced,
   setCustomFeature,
   validateCharacter,
@@ -400,7 +401,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 10 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 11 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -500,6 +501,35 @@ test('only format 5 may record additions, each once — ADR 0064', async () => {
     { path: 'additions', message: 'is recorded only from format 5' },
   ]);
   assert.deepEqual(validateCharacter({ ...five, additions: ['ID_A', 'ID_A'] }, schemas).errors.map((e) => e.path), ['additions']);
+});
+
+test('only format 10 may record the block an addition is cast through, and only for an addition — ADR 0097', async () => {
+  // Fails if the schema refuses the field, if the referential check stops refusing it in a file that claims 9 (a reader
+  // of 9 would drop it), or stops refusing a record on an element that is not added.
+  const schemas = await loadSchemas();
+  const pc = setAdded(createCharacter('dnd5e', 'pc', { name: 'Sample', progress: 1 }), 'ID_A', true);
+  const ten = setAdditionBlock(pc, 'ID_A', 'Wizard');
+  assert.equal(ten.formatVersion, 10);
+  assert.deepEqual(ten.additionBlocks, { ID_A: 'wizard' });
+  assert.deepEqual(validateCharacter(ten, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...ten, formatVersion: 9 }, schemas).errors, [
+    { path: 'additionBlocks', message: 'is recorded only from format 10' },
+  ]);
+  assert.deepEqual(validateCharacter({ ...ten, additionBlocks: { ID_B: 'wizard' } }, schemas).errors, [
+    { path: 'additionBlocks.ID_B', message: '"ID_B" is not an element added to this character' },
+  ]);
+});
+
+test('a type cast through a block that cannot be added is caught before the app loads it — ADR 0097', async () => {
+  // Fails if the referential check is removed: the choice of block would be offered for a type no row ever shows.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  const pc = system.characterKinds.find((k) => k.id === 'pc')!;
+  assert.deepEqual(validateGameSystem(system, schemas).errors, []);
+  pc.additions = { ...pc.additions!, blocks: { ...pc.additions!.blocks!, types: ['Spell', 'Item'] } };
+  assert.deepEqual(validateGameSystem(system, schemas).errors, [
+    { path: 'characterKinds[0].additions.blocks.types', message: `names "Item", which is not among the kind's additions types` },
+  ]);
 });
 
 test('an addable type the system does not declare is caught before the app loads it — ADR 0064', async () => {
@@ -608,8 +638,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 10 } as unknown as Character, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 11 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10' },
   ]);
   // Play state (ADR 0084) is recorded only from format 8, whole positive counts only. Fails if the format check in
   // `checkCharacterReferences` is removed, or if the schema's `minimum` is.

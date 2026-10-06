@@ -1615,6 +1615,24 @@ export interface AdditionsDef {
   types: ElementType[];
   /** User-facing prose shown where elements are added: what adding one means in this system. */
   description?: string;
+  /** Which added types are cast through a declared block the user names — ADR 0097. */
+  blocks?: AdditionBlocksDef;
+}
+
+/**
+ * Which added types are cast through one of the character's declared blocks (ADR 0020), and the words for it — ADR 0097.
+ * The user names the block per element (`Character.additionBlocks`); on a block that prepares the element is always
+ * prepared. Core names no type: 5e's is Spell.
+ */
+export interface AdditionBlocksDef {
+  /** The added types that may be cast through a block; each among the declaration's `types`. */
+  types: ElementType[];
+  /** User-facing heading of the choice of block on an added row ("Cast as"). */
+  label: string;
+  /** What the sheet writes beside one cast through a block, `{name}` the block's name as content wrote it. */
+  with: string;
+  /** What the sheet writes beside one cast through none, and the choice's option for none. */
+  none: string;
 }
 
 /** What a character of a kind may keep beside it as a reference — ADR 0068. */

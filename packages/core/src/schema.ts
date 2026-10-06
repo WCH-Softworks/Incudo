@@ -157,6 +157,15 @@ function checkCharacterReferences(character: Character): SchemaError[] {
   if (character.formatVersion < 5 && character.additions !== undefined) {
     errors.push({ path: 'additions', message: 'is recorded only from format 5' });
   }
+  // A block an addition is cast through is dropped by a reader of 9 (ADR 0097), and names an addition or nothing.
+  if (character.formatVersion < 10 && character.additionBlocks !== undefined) {
+    errors.push({ path: 'additionBlocks', message: 'is recorded only from format 10' });
+  }
+  for (const id of Object.keys(character.additionBlocks ?? {})) {
+    if (!(character.additions ?? []).includes(id)) {
+      errors.push({ path: `additionBlocks.${id}`, message: `"${id}" is not an element added to this character` });
+    }
+  }
   // A reference is dropped by a reader of 6 (ADR 0068).
   if (character.formatVersion < 7 && character.references !== undefined) {
     errors.push({ path: 'references', message: 'is recorded only from format 7' });
@@ -528,6 +537,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     for (const type of resolved.additions?.types ?? []) {
       if (!typeNames.has(type)) {
         errors.push({ path: `${where}.additions.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+      }
+    }
+    // A type cast through a block that cannot be added would offer a choice nothing ever shows (ADR 0097).
+    for (const type of resolved.additions?.blocks?.types ?? []) {
+      if (!resolved.additions!.types.includes(type)) {
+        errors.push({ path: `${where}.additions.blocks.types`, message: `names "${type}", which is not among the kind's additions types` });
       }
     }
     for (const type of resolved.references?.types ?? []) {

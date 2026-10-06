@@ -404,7 +404,25 @@
               "items": { "type": "string", "minLength": 1 },
               "description": "The element types that may be added, in the order a picker offers them."
             },
-            "description": { "type": "string", "description": "User-facing prose shown where elements are added: what adding one means in this system." }
+            "description": { "type": "string", "description": "User-facing prose shown where elements are added: what adding one means in this system." },
+            "blocks": {
+              "type": "object",
+              "required": ["types", "label", "with", "none"],
+              "additionalProperties": false,
+              "description": "Which added types are cast through one of the character's declared blocks, which the user names per element (Character.additionBlocks, ADR 0097). On a block that prepares, such an element is always prepared. A kind without it casts nothing it adds through a block.",
+              "properties": {
+                "types": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 },
+                  "description": "The added types that may be cast through a block; each must be among this declaration's types."
+                },
+                "label": { "type": "string", "minLength": 1, "description": "User-facing heading of the choice of block on an added row: \"Cast as\"." },
+                "with": { "type": "string", "minLength": 1, "description": "User-facing words the sheet writes beside such an element cast through a block, {name} the block's name as content wrote it: \"cast as {name}\"." },
+                "none": { "type": "string", "minLength": 1, "description": "User-facing words the sheet writes beside such an element cast through no block, and the choice's option for none: \"cast through no class\"." }
+              }
+            }
           }
         },
         "references": {

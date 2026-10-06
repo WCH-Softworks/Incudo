@@ -37,6 +37,11 @@ export interface DerivedSummary {
    * character is what it was. A save carries every pick it records, counted or not, so a reopen must agree.
    */
   uncounted?: Array<{ ruleKey: string; elementId: string; position: number; reason: string }>;
+  /**
+   * The block each added element is cast through (ADR 0097): present only when there are any, so the summary of every
+   * other character is what it was. The block's name comes from the class element a save carries, so a reopen agrees.
+   */
+  additionBlocks?: DerivedCharacter['additionBlocks'];
   companions?: Array<{
     elementId: string;
     elements: string[];
@@ -102,6 +107,7 @@ export function summarize(derived: DerivedCharacter): DerivedSummary {
           uncounted: derived.uncounted.map(({ ruleKey, elementId, position, reason }) => ({ ruleKey, elementId, position, reason })),
         }
       : {}),
+    ...(derived.additionBlocks.length ? { additionBlocks: derived.additionBlocks } : {}),
     ...(companions.length ? { companions } : {}),
   };
 }
