@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseStatValue, evaluateExpr, evaluateExprAsString, type ExpressionContext } from './expression.ts';
+import { parseStatValue, evaluateExpr, evaluateExprAsString, statReferences, type ExpressionContext, type StatExpr } from './expression.ts';
 
 function ctx(stats: Record<string, number> = {}, strings: Record<string, string> = {}): ExpressionContext {
   return {
@@ -56,4 +56,18 @@ test('a suffix is read only when nothing is published under the suffixed name', 
   assert.equal(evaluateExpr({ kind: 'ref', stat: ':half' }, ctx({ '': 8 })), 0);
   // The string form of a reference takes the same reading.
   assert.equal(evaluateExprAsString({ kind: 'ref', stat: 'level:paladin:half' }, ctx({ 'level:paladin': 5 })), '2');
+});
+
+test('an expression names the stats it reads, once each, in order, and what a half halves', () => {
+  // Fails with a branch of a binary, a call's arguments or a table's index not walked, a repeat kept, or a `:half`
+  // reference not naming the stat it halves (ADR 0095: a sheet follows these names, never their numbers).
+  const expr: StatExpr = {
+    kind: 'binary',
+    op: '+',
+    left: { kind: 'call', fn: 'floor', args: [{ kind: 'ref', stat: 'A' }, { kind: 'ref', stat: 'b:half:up' }] },
+    right: { kind: 'binary', op: '*', left: { kind: 'table', index: { kind: 'ref', stat: 'c' }, values: [1, 2] }, right: { kind: 'ref', stat: 'a' } },
+  };
+  assert.deepEqual(statReferences(expr), ['a', 'b:half:up', 'b', 'c']);
+  assert.deepEqual(statReferences({ kind: 'number', value: 3 }), []);
+  assert.deepEqual(statReferences(undefined), []);
 });

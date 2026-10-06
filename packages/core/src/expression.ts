@@ -164,6 +164,28 @@ export function halfReference(stat: string): { base: string; up: boolean } | und
   return base === '' ? undefined : { base, up };
 }
 
+/**
+ * Every stat an expression reads, lowercased, in the order it reads them, once each; a `:half` reference names the stat
+ * it halves as well. Reading names, never numbers: a sheet asking which stats a derived row is worked from (ADR 0095).
+ */
+export function statReferences(expr: StatExpr | undefined, into: string[] = []): string[] {
+  if (!expr) return into;
+  const add = (stat: string): void => void (into.includes(stat) || into.push(stat));
+  switch (expr.kind) {
+    case 'ref': {
+      add(expr.stat.toLowerCase());
+      const half = halfReference(expr.stat);
+      if (half) add(half.base);
+      break;
+    }
+    case 'binary': statReferences(expr.left, into); statReferences(expr.right, into); break;
+    case 'call': for (const arg of expr.args) statReferences(arg, into); break;
+    case 'table': statReferences(expr.index, into); break;
+    default: break;
+  }
+  return into;
+}
+
 export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {
   switch (expr.kind) {
     case 'number':
