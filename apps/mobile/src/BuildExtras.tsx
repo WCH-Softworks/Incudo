@@ -16,12 +16,14 @@ import {
   additionGroups,
   additionOptionLabel,
   ALL_ADDITION_TYPES,
-  CUSTOM_FEATURES_HINT,
+  customFeaturesHint,
   customFeatureLines,
   customFeatureTypeChoices,
   customLineOnStat,
   customLineWithMode,
   customStatChoiceLabel,
+  customMarkChoices,
+  customStatMarkable,
   customStatSettable,
   holderGrantSections,
   holderGrantsHeading,
@@ -115,7 +117,7 @@ export function CustomFeaturesView({
 }) {
   return (
     <View style={styles.part}>
-      <Body tone="muted">{CUSTOM_FEATURES_HINT}</Body>
+      <Body tone="muted">{customFeaturesHint(state.customFeatures.stats)}</Body>
       {state.customFeatures.features.map((feature) => (
         <FeatureView key={feature.id} feature={feature} state={state} builder={builder} pick={pick} />
       ))}
@@ -126,7 +128,8 @@ export function CustomFeaturesView({
 
 /**
  * One written feature: its name, where it is listed when there is a choice, its description, and its lines, each a
- * row of the stat (a tap opens the list of stats), Adds or Sets, the number, and Remove (the maintainer's choice).
+ * row of the stat (a tap opens the list of stats), Adds or Sets, the number, and Remove (the maintainer's choice). Where
+ * the stat may be marked (an NPC's save or skill), Marked is a third button and the number is the mark, chosen from a list.
  */
 function FeatureView({
   feature,
@@ -156,6 +159,18 @@ function FeatureView({
       current: lines[at]!.stat,
       onPick: (stat) => change(at, customLineOnStat(lines[at]!, stat, stats, state.derived)),
     });
+
+  const chooseMark = (at: number): void => {
+    const choices = customMarkChoices(stats, lines[at]!.stat);
+    pick({
+      title: 'Which mark',
+      options: choices.map((_, count) => String(count)),
+      labels: new Map(choices.map((choice, count) => [String(count), choice])),
+      details: false,
+      current: String(lines[at]!.value),
+      onPick: (count) => change(at, { ...lines[at]!, value: Number(count) }),
+    });
+  };
 
   return (
     <Card>
@@ -207,11 +222,27 @@ function FeatureView({
               disabled={!customStatSettable(stats, line.stat)}
               onPress={() => change(at, customLineWithMode(lines[at]!, 'set', stats))}
             />
-            <NumberField
-              value={line.value}
-              label={`${line.label} value`}
-              onCommit={(value) => value !== undefined && change(at, { ...lines[at]!, value })}
-            />
+            {customStatMarkable(stats, line.stat) ? (
+              <Button
+                label="Marked"
+                kind={line.mode === 'mark' ? 'primary' : 'plain'}
+                style={styles.small}
+                onPress={() => change(at, customLineWithMode(lines[at]!, 'mark', stats))}
+              />
+            ) : null}
+            {line.mode === 'mark' ? (
+              <Button
+                label={customMarkChoices(stats, line.stat)[line.value] ?? String(line.value)}
+                kind="link"
+                onPress={() => chooseMark(at)}
+              />
+            ) : (
+              <NumberField
+                value={line.value}
+                label={`${line.label} value`}
+                onCommit={(value) => value !== undefined && change(at, { ...lines[at]!, value })}
+              />
+            )}
             <Button label="Remove" kind="link" onPress={() => write(withoutCustomLine(lines, at))} />
           </Row>
           {line.note ? <Body tone="muted">{line.note}</Body> : null}

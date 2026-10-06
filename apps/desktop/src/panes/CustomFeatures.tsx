@@ -2,20 +2,22 @@
  * Features the user writes for this character — ADR 0063.
  *
  * A name, an optional description, where it is listed (ADR 0065: a DM's legendary action), and lines that each add to
- * a number or set it. What every line is doing (set, replaced by a typed value, overruled by an earlier feature, only
- * addable) and what each list is called is worked out in `packages/ui/src/custom-features.ts`; this renders it and
- * writes what is typed. Nothing here names a stat or a type.
+ * a number, set it or choose its mark (ADR 0094). What every line is doing (set, replaced by a typed value, overruled
+ * by an earlier feature, only addable) and what each list is called is worked out in `packages/ui/src/custom-features.ts`;
+ * this renders it and writes what is typed. Nothing here names a stat or a type.
  */
 
 import type { BuilderState, CharacterBuilder, CustomFeatureView } from '@incudo/ui';
 import {
-  CUSTOM_FEATURES_HINT,
+  customFeaturesHint,
   customFeatureLines,
   customFeatureTypeChoices,
   customLineOnStat,
+  customLineModeAllowed,
+  customLineModes,
   customLineWithMode,
+  customMarkChoices,
   customStatGroups,
-  customStatSettable,
   newCustomStatLine,
   NEW_CUSTOM_FEATURE_NAME,
   withCustomLine,
@@ -33,7 +35,7 @@ export function CustomFeatures({
   const { customFeatures } = state;
   return (
     <>
-      <p className="hint">{CUSTOM_FEATURES_HINT}</p>
+      <p className="hint">{customFeaturesHint(customFeatures.stats)}</p>
       {customFeatures.features.map((feature) => (
         <Feature key={feature.id} feature={feature} state={state} builder={builder} />
       ))}
@@ -125,22 +127,41 @@ function Feature({
                 <select
                   aria-label="How"
                   value={line.mode}
-                  onChange={(event) => change(at, customLineWithMode(lines[at]!, event.target.value === 'set' ? 'set' : 'add', stats))}
-                >
-                  <option value="add">adds</option>
-                  <option value="set" disabled={!customStatSettable(stats, line.stat)}>
-                    sets it to
-                  </option>
-                </select>
-                <input
-                  type="number"
-                  aria-label="Value"
-                  value={line.value}
                   onChange={(event) => {
-                    if (event.target.value === '') return;
-                    change(at, { ...lines[at]!, value: Number(event.target.value) });
+                    const mode = customLineModes(stats, line.stat).find((m) => m.mode === event.target.value)?.mode ?? 'add';
+                    change(at, customLineWithMode(lines[at]!, mode, stats));
                   }}
-                />
+                >
+                  {customLineModes(stats, line.stat).map((m) => (
+                    <option key={m.mode} value={m.mode} disabled={!customLineModeAllowed(stats, line.stat, m.mode)}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+                {line.mode === 'mark' ? (
+                  <select
+                    aria-label="Mark"
+                    value={line.value}
+                    onChange={(event) => change(at, { ...lines[at]!, value: Number(event.target.value) })}
+                  >
+                    {line.status === 'not-markable' && <option value={line.value}>{String(line.value)}</option>}
+                    {customMarkChoices(stats, line.stat).map((choice, count) => (
+                      <option key={count} value={count}>
+                        {choice}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    aria-label="Value"
+                    value={line.value}
+                    onChange={(event) => {
+                      if (event.target.value === '') return;
+                      change(at, { ...lines[at]!, value: Number(event.target.value) });
+                    }}
+                  />
+                )}
                 <button type="button" className="link" onClick={() => write(withoutCustomLine(lines, at))}>
                   Remove
                 </button>

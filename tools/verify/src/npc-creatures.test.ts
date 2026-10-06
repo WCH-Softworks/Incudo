@@ -700,3 +700,74 @@ test("a feature the DM writes sets or adds to every creature's numbers, a typed 
   assert.ok(moved > 0, 'the corpus has a creature with another speed, and it was exercised');
   assert.deepEqual(wrong, []);
 });
+
+test("every creature's NPC marks the saves and skills it is proficient in, and a written feature marks or unmarks one", { skip }, async (t) => {
+  // ADR 0094, over every creature. Measured first: a row an NPC shows holds a whole number of its proficiency bonuses
+  // (a class summon carries its summoner's bonus, and the mark rounds down). Then a feature marks a save the creature
+  // is not proficient in and takes away a skill it is, and the CR moving moves the marked save with it.
+  // Fails if the sections lose `mark` (no row is marked), if a mark line is not a start (the save stays at the
+  // modifier), if its start is a number and not a multiple of `proficiency` (the CR change leaves it behind), if it
+  // stops replacing the creature's print (the skill stays), or if the save does not keep it.
+  const system = await fiveE();
+  const elements = await realElements();
+  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const npc = kind(system);
+  const saves = sectionStats(npc, 'saves');
+  const skills = sectionStats(npc, 'skills');
+  const wrong: string[] = [];
+  const notWhole: string[] = [];
+  let rows = 0;
+  let expertise = 0;
+  let marked = 0;
+  for (const creature of creatures) {
+    const b = npcOn(system, elements, creature);
+    let state = b.getState();
+    const bonus = state.derived.stats.get('proficiency')?.value ?? 0;
+    for (const section of state.sheet.sections) {
+      if (section.section !== 'saves' && section.section !== 'skills') continue;
+      for (const row of section.rows) {
+        rows++;
+        const held = state.derived.stats.get(`${row.stat}:proficiency`)?.value ?? 0;
+        if (bonus <= 0 || held % bonus !== 0) notWhole.push(`${creature.id} ${row.stat} (${held} of ${bonus})`);
+        else if (!row.mark) wrong.push(`${creature.id} ${row.stat}: shown and not marked`);
+        if (row.mark && row.mark.count > 1) expertise++;
+      }
+    }
+
+    const holds = (stat: string) => (state.derived.stats.get(`${stat}:proficiency`)?.value ?? 0) !== 0;
+    const save = saves.find((s) => !holds(s));
+    const skill = skills.find((s) => holds(s));
+    if (!save) continue;
+    const id = b.addCustomFeature('Trained')!;
+    b.updateCustomFeature(id, {
+      stats: [{ stat: save, mode: 'mark', value: 1 }, ...(skill ? [{ stat: skill, mode: 'mark' as const, value: 0 }] : [])],
+    });
+    state = b.getState();
+    marked++;
+    const prof = state.derived.stats.get('proficiency')!.value;
+    if (state.derived.stats.get(`${save}:proficiency`)?.value !== prof) wrong.push(`${creature.id} ${save}: not marked by the feature`);
+    if (skill && holds(skill)) wrong.push(`${creature.id} ${skill}: still proficient`);
+    if (state.derived.problems.some((p) => p.code.startsWith('custom-feature'))) wrong.push(`${creature.id}: a problem with no cause`);
+    const shown = state.sheet.sections.find((s) => s.section === 'saves')?.rows.find((r) => r.stat === save);
+    if (shown?.mark?.count !== 1) wrong.push(`${creature.id} ${save}: the sheet does not mark it`);
+
+    const { container } = readCharacterContainer(packCharacter(state.character, system, elements, { generator: 'test' }).files);
+    const reopened = deriveCharacter(container!.character, system, new BundleElementIndex(container!.content.elements));
+    for (const stat of [save, skill].filter((s): s is string => s !== undefined)) {
+      if (reopened.stats.get(stat)?.value !== state.derived.stats.get(stat)?.value) wrong.push(`${creature.id} ${stat} after reopening`);
+    }
+
+    b.setProgress(20);
+    state = b.getState();
+    const higher = state.derived.stats.get('proficiency')!.value;
+    if (higher === prof) wrong.push(`${creature.id}: a challenge rating of 20 did not move the bonus`);
+    if (state.derived.stats.get(`${save}:proficiency`)?.value !== higher) wrong.push(`${creature.id} ${save}: left behind by the challenge rating`);
+  }
+  t.diagnostic(
+    `${rows} saves and skills shown across ${creatures.length} creatures, ${expertise} with expertise; ` +
+      `${notWhole.length} not a whole number of the NPC's bonus${notWhole.length ? `: ${notWhole.join('; ')}` : ''}; ` +
+      `${marked} given a feature marking a save`,
+  );
+  assert.ok(rows > 0 && marked > 0, 'the corpus has proficient creatures, and they were exercised');
+  assert.deepEqual(wrong, []);
+});

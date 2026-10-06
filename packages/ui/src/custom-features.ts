@@ -24,10 +24,11 @@ import {
 /**
  * What a line is doing: `applied` as written; `replaced` by a value the user typed for that stat; `overruled` by an
  * earlier feature's set of the same stat; `add-only` because the stat is worked out and can only be added to;
- * `unknown` because the kind has no such stat; `not-held` because the feature is held as a type the kind does not list
- * (its `typeNote` says so).
+ * `not-markable` because the row has no mark a line may choose, or none by that count (ADR 0094); `unknown` because the
+ * kind has no such stat; `not-held` because the feature is held as a type the kind does not list (its `typeNote` says
+ * so).
  */
-export type CustomLineStatus = 'applied' | 'replaced' | 'overruled' | 'add-only' | 'unknown' | 'not-held';
+export type CustomLineStatus = 'applied' | 'replaced' | 'overruled' | 'add-only' | 'not-markable' | 'unknown' | 'not-held';
 
 export interface CustomLineView extends CustomStatLine {
   /** The stat as the kind shows it, or the recorded name when the kind has no such stat. */
@@ -103,6 +104,22 @@ export function customFeaturesState(
       }
       const view = { ...line, stat: stat.stat, label: stat.fullLabel };
       if (line.mode === 'add') return { ...view, status: 'applied' };
+      if (line.mode === 'mark') {
+        const choice = Number.isInteger(line.value) ? stat.mark?.choices[line.value] : undefined;
+        if (!stat.mark || choice === undefined) {
+          return { ...view, status: 'not-markable', note: `${stat.fullLabel} cannot be marked this way. The line changes nothing.` };
+        }
+        // What the line moves is the stat the mark is read from, so that is whose start it must own.
+        const start = derived.starts.get(stat.mark.stat.toLowerCase());
+        if (start?.from !== elementId) {
+          const other = start?.feature?.trim() || 'another feature';
+          return { ...view, status: 'overruled', note: `${other} also marks ${stat.fullLabel} and comes first, so this line is not used.` };
+        }
+        if (start.replaced) {
+          return { ...view, status: 'replaced', note: `A value entered for ${stat.fullLabel} replaces this. Clear that entry to use "${choice}".` };
+        }
+        return { ...view, status: 'applied' };
+      }
       if (!stat.settable) {
         return { ...view, status: 'add-only', note: `${stat.fullLabel} is worked out from other numbers, so it can only be added to. The line changes nothing.` };
       }
@@ -154,7 +171,8 @@ export function newCustomStatLine(
 
 /**
  * A line moved to another stat. An add keeps its number; a set starts again at the new stat's current number, and
- * becomes an add when the new stat can only be added to.
+ * becomes an add when the new stat can only be added to; a mark keeps its choice when the new stat may be marked that
+ * way, and becomes an add of 0 when it may not.
  */
 export function customLineOnStat(
   line: CustomStatLine,
@@ -163,17 +181,38 @@ export function customLineOnStat(
   derived: DerivedCharacter,
 ): CustomStatLine {
   if (line.mode === 'add') return { ...line, stat };
+  if (line.mode === 'mark') {
+    return line.value < customMarkChoices(stats, stat).length ? { ...line, stat } : { stat, mode: 'add', value: 0 };
+  }
   return newCustomStatLine(stats, derived, stat) ?? { ...line, stat };
 }
 
 /** The heading the section is shown under. */
 export const CUSTOM_FEATURES_HEADING = 'Your own features';
 
-/** What the section says first. */
-export const CUSTOM_FEATURES_HINT =
-  'A feature of your own for this character, listed on its sheet. Each line adds to a number or sets it; a feature can ' +
-  'also be only a name and a description. A number typed in the entry steps replaces what a feature sets. Features ' +
-  'are saved with the character.';
+/**
+ * What the section says first, worded from what this kind's lines can do: a player character's numbers are all worked
+ * out, so its lines only add, and saying they set or mark would describe a control that is never enabled.
+ */
+export function customFeaturesHint(stats: readonly CustomFeatureStat[]): string {
+  const sets = stats.some((s) => s.settable);
+  const marks = stats.some((s) => s.mark);
+  const ways = [sets && 'sets it', marks && 'where the sheet marks a number, chooses its mark'].filter(Boolean);
+  const lines =
+    ways.length === 2 ? `adds to a number, ${ways[0]}, or, ${ways[1]}` : ways.length ? `adds to a number or ${ways[0]}` : 'adds to a number';
+  return (
+    `A feature of your own for this character, listed on its sheet. Each line ${lines}; a feature can also be only a name ` +
+    `and a description.${sets ? ' A number typed in the entry steps replaces what a feature sets.' : ''} Features are ` +
+    'saved with the character.'
+  );
+}
+
+/** What each way a line may change its stat is called, in the order a choice offers them. */
+export const CUSTOM_LINE_MODES: readonly { mode: CustomStatLine['mode']; label: string }[] = [
+  { mode: 'add', label: 'adds' },
+  { mode: 'set', label: 'sets it to' },
+  { mode: 'mark', label: 'marked' },
+];
 
 /** The name a feature is given when it is added, before the user names it. */
 export const NEW_CUSTOM_FEATURE_NAME = 'New feature';
@@ -194,16 +233,42 @@ export function withoutCustomLine(lines: readonly CustomStatLine[], at: number):
 }
 
 /**
- * A line switched to adding or to setting. A stat that may not be set (it is worked out from other numbers) keeps the
- * line as it is when asked to set; a set keeps its number when it becomes an add.
+ * A line switched to adding, setting or marking. A stat that may not be set (it is worked out from other numbers) keeps
+ * the line as it is when asked to set, and one with no mark when asked to mark; a set keeps its number when it becomes
+ * an add. A mark starts at the first mark past none, and an add made from a mark starts at 0, since a count of marks is
+ * no number to add.
  */
 export function customLineWithMode(
   line: CustomStatLine,
   mode: CustomStatLine['mode'],
   stats: readonly CustomFeatureStat[],
 ): CustomStatLine {
-  if (mode === 'set' && !customStatSettable(stats, line.stat)) return line;
+  if (mode === line.mode || !customLineModeAllowed(stats, line.stat, mode)) return line;
+  if (mode === 'mark') return { ...line, mode, value: 1 };
+  if (line.mode === 'mark') return { ...line, mode, value: 0 };
   return { ...line, mode };
+}
+
+/** Whether a line on `stat` may mark it — ADR 0094. */
+export function customStatMarkable(stats: readonly CustomFeatureStat[], stat: string): boolean {
+  return customMarkChoices(stats, stat).length > 1;
+}
+
+/** What a line marking `stat` may choose, by count, none first; empty when it may not mark it. */
+export function customMarkChoices(stats: readonly CustomFeatureStat[], stat: string): string[] {
+  return stats.find((s) => s.stat.toLowerCase() === stat.toLowerCase())?.mark?.choices ?? [];
+}
+
+/** Whether a line on `stat` may change it in `mode`, for a choice that greys the rest out. */
+export function customLineModeAllowed(stats: readonly CustomFeatureStat[], stat: string, mode: CustomStatLine['mode']): boolean {
+  if (mode === 'set') return customStatSettable(stats, stat);
+  if (mode === 'mark') return customStatMarkable(stats, stat);
+  return true;
+}
+
+/** The modes a choice offers for a line on `stat`: adding and setting always (setting greyed where it may not), marking only where it may. */
+export function customLineModes(stats: readonly CustomFeatureStat[], stat: string): typeof CUSTOM_LINE_MODES {
+  return CUSTOM_LINE_MODES.filter((m) => m.mode !== 'mark' || customStatMarkable(stats, stat));
 }
 
 /** Whether a line on `stat` may set it. */
