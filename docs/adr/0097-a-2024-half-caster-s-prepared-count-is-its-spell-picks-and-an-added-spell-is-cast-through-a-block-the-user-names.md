@@ -125,11 +125,15 @@ block's DC, attack and slots already have.
    is a refusal, and neither record is pruned.
 5. **The sheet says it**: a listed element that is an addition of a cast type carries `SheetListedElement.cast`, the
    kind's words, and `listedAside` writes it after the group and the mark: "Level 1, always prepared, cast as Wizard",
-   "Level 2, cast through no class". The pane, the print, the Markdown export, the phone and the official form's spell
-   lines all read `listedAside`, so all of them show it. The block's own DC, attack and slots are its rows, as before.
-6. **Build**: each added row of a cast type has a choice of the blocks the character holds, and none
-   (`AddedRow.block`, worded in `packages/ui/src/additions.ts`); the desktop's `Additions.tsx` and the phone's
-   `BuildExtras.tsx` render it. `CharacterBuilder.setAdditionBlock(id, key | undefined)` writes it, refusing an element
+   "Level 2, cast through no class". The pane, the print, the Markdown export and the phone all read `listedAside`, so
+   all of them show it. The official form's spell lines write a name only (ADR 0079), so there it is the spell on its
+   level's line with its prepared box ticked when it is always prepared, and the words are not written. The block's own
+   DC, attack and slots are its rows, as before.
+6. **Build**: each added row of a cast type has a choice headed by the kind's `label`, offering None (`NO_BLOCK`; the
+   kind's `none` words read badly in a choice, "Cast as: cast through no class") and the blocks the character holds, and
+   a recorded block it no longer holds shown and not offered again (`AddedRow.block`, worded in
+   `packages/ui/src/additions.ts`, with the derivation's warning as the row's note); the desktop's `Additions.tsx` and
+   the phone's `BuildExtras.tsx` render it. `CharacterBuilder.setAdditionBlock(id, key | undefined)` writes it, refusing an element
    that is not an added one of a cast type and a block the character does not hold.
 7. **A save opens with zero sources and says the same**: the block's name comes from the class element that declares it,
    which the save embeds already.
@@ -149,3 +153,28 @@ block's DC, attack and slots already have.
 
 - Nothing in Aurora's format records an added spell, so there is no referee: the evidence is the unit tests, each failing
   under its named perturbation, and a drive in the browser build.
+
+---
+
+## Evidence
+
+- **A**: `tools/verify/src/prepared-counts.test.ts` (above). `packages/core/src/preparation.test.ts` holds the minimum
+  (fails without it, and if it were read as the limit). Perturbed: 5e's `minimum` set to 0 fails the 2014 Wizard case;
+  the limit pointed at a stat nothing publishes fails the 2024 Wizard, Cleric and Druid case.
+- **B**: `packages/core/src/addition-blocks.test.ts` (the attachment, always prepared and counting for nothing; nothing
+  guessed without a record; a block that does not prepare; the two warnings; format 10 and the removal; the same with no
+  source) and `packages/ui/src/addition-blocks.test.ts` (the only block recorded on adding, nothing among several, the
+  refusals, a block no longer held, the sheet's and the Markdown's words, removal). Perturbed: without the attachment,
+  without the type check, without the record on adding, and without `cast` in `listedAside`, each fails its test.
+  `tools/verify/src/schemas.test.ts` holds the validator's two refusals and the system check.
+- **The oracle is identical** on all thirty samples: `INCUDO_ORACLE_SNAPSHOT` on the base commit and
+  `INCUDO_ORACLE_BASELINE` on the change, with A and B both in. No sample records an addition, and no sample's limit is
+  below 1.
+- **Driven in the browser build** (`npm run desktop`, AuroraLegacy loaded): a 2024 Human Paladin 5 owed "Spell (Paladin):
+  6 left" of level 1 and 2 spells, with no prepared list, and 4 left after two picks. The 2024 Fireball added through
+  "Added to this character" was recorded as cast as Paladin (its only class), and the Sheet read "Fireball (Level 3, cast
+  as Paladin)" under the Paladin's DC and slots. Changing the class to a 2024 Cleric left the row saying the Paladin was
+  gone; choosing Cleric put Fireball under the Cleric's "Always prepared" ("0 of 9 prepared", the 2024 column at level 5)
+  and the Sheet read "Fireball (Level 3, always prepared, cast as Cleric)". No console errors. **Not driven:** the Tauri
+  window, the phone (the phone's row is a picker over the same view-model), saving to a library folder and reopening
+  with no source (the tests do it), and macOS and Linux.

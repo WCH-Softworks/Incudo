@@ -143,6 +143,8 @@ does.
 - **The 2024 Paladin and Ranger.** The player's book prepares from a fixed table; the corpus declares no `prepare`,
   and Aurora's screen reads 0 (the maintainer noted it). Incudo agrees with Aurora's screen and says so; it does not
   invent a table content does not carry (ADR 0005).
+  *(Note, 2026-10-06: content does carry it, as the spell select's allowance; see decision 8's note and
+  [ADR 0097]({a}).)*
 
 ## Decision
 
@@ -285,8 +287,12 @@ its filter admits from the content loaded or embedded.
 
 ### 8. What is not modelled
 
-- The Wizard's "minimum of one spell", which content does not state and no sample tests.
-- The 2024 Paladin's and Ranger's fixed tables (above).
+- The Wizard's "minimum of one spell", which content does not state and no sample tests. *(Since [ADR 0097](./0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md): a
+  kind's `preparation` may declare `minimum`, and 5e's is 1, for every preparing block.)*
+- The 2024 Paladin's and Ranger's fixed tables (above). *(Note, 2026-10-06: wrong. Content carries them as the
+  allowance of each class's `Spell (Paladin)` / `Spell (Ranger)` select, equal to the Prepared Spells column at all 20
+  levels, and the builder already owed exactly that; the same holds for the 2024 Bard, Sorcerer, Warlock, Eldritch Knight
+  and Arcane Trickster. They are picks, not a prepared list. [ADR 0097](./0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md) decision A.)*
 - Ritual casting (above).
 - *When* a list may be changed (a long rest). A character has one list.
 - Spell **slots** being spent, and any per-day state: the builder builds a character, it does not run one.

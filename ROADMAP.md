@@ -1149,7 +1149,7 @@ its original text with a pointer here.*
       a `choice-unplaced` warning, marked on its slot, never refused. Measured: reversing every sample's records, the old
       fill would have misplaced 19 picks; the matching places all and nothing derived moves. Driven in the browser build: a
       2014 Arcane Trickster takes Charm Person first and is still offered Magic Missile.
-- [ ] **The 2024 Paladin and Ranger prepare as many spells as their table says, and a Wizard at least one.** *Buried in
+- [x] **The 2024 Paladin and Ranger prepare as many spells as their table says, and a Wizard at least one.** *Buried in
       Phase 2's prepared spells item (ADR 0046), which said content does not carry the count; corrected by the
       maintainer:* both classes print a Prepared Spells column, level by level, in the Features table of their class
       description (`core/players-handbook-2024/classes/class-paladin.xml` and `class-ranger.xml` in AuroraLegacy), as
@@ -1157,6 +1157,13 @@ its original text with a pointer here.*
       Aurora's app did not systematise it either. How Incudo reads it without parsing prose (ADR 0005), most likely as a
       table in the system definition beside the other numbers the book states, wants deciding first. The Wizard's
       minimum of one is the same item's smaller half.
+      **Done** ([ADR 0097](./docs/adr/0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md), decision A), and measured first it needed no table: content states the column as the
+      allowance of each class's `Spell (Paladin)` / `Spell (Ranger)` select, equal to the printed column at all 20 levels
+      (so do the 2024 Bard, Sorcerer, Warlock, Eldritch Knight and Arcane Trickster), and the builder already owed exactly
+      that, with no prepared list, so nothing read a limit of 0. Their prepared spells are their picks, changed as any
+      settled pick is. `prepared-counts.test.ts` holds the Paladin, Ranger, Wizard, Cleric and Druid to the columns typed
+      from the book. A kind's preparation may now declare a `minimum`; 5e's is 1, for every preparing block (the 2014
+      book's "minimum of one"). The oracle is identical. Driven in the browser build: a 2024 Paladin 5 owes 6 spells.
 - [x] **Take the other hidden item families.** *Buried in the ADR 0072 item.* Aurora switches some things on by an
       `inventory-hidden` item: climb speeds, feat unlockers, Lycanthropy, the Companion and Familiar Selection items
       (Aurora Legacy Essentials' Companion Selection, equipped, opens 117 creatures), UA's additional ability score items.
@@ -1476,9 +1483,17 @@ items; each keeps its original text with a pointer here.*
       no source; not in the Tauri window or on the phone. Not done: unarmed strikes and martial arts, spell attacks as
       rows, two-weapon fighting and Dueling (commented out upstream), a melee weapon's reach as a distance, rewriting a
       creature's actions with its holder's bonus.
-- [ ] **An added spell can be cast.** *Buried in the ADR 0064 item.* A spell put on a character through "Added to this
+- [x] **An added spell can be cast.** *Buried in the ADR 0064 item.* A spell put on a character through "Added to this
       character" belongs to no casting block: no save DC, no attack bonus, no slots, not preparable, and the pane says
       so. Which block it is cast through (the user's choice, or the character's only one) wants deciding.
+      **Done** ([ADR 0097](./docs/adr/0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md), decision B). The user chooses ("Cast as" on the added row, desktop and phone), and the
+      character's only class is chosen when the spell is added; the choice is recorded (`Character.additionBlocks`,
+      character format 10 only when recorded), so a class taken later never moves it. On a class that prepares, the
+      spell is always prepared and counts against nothing; a recorded class the character no longer has is a warning and
+      casts through none. The Sheet, print, text export and phone read "Fireball (Level 3, always prepared, cast as
+      Cleric)", beside that class's DC, attack and slots. A save carries the class, so it reads the same with no source.
+      The oracle is identical. Driven in the browser build (a 2024 Paladin, then Cleric); not in the Tauri window or on the
+      phone.
 - [x] **Written features for a player character, and an NPC's proficiency switched on.**
       **[ADR 0094](./docs/adr/0094-a-player-character-s-written-features-only-add-and-a-feature-line-may-mark-a-row.md),
       accepted 2026-10-06**, measured first. The maintainer's calls: a player character carries written features, and

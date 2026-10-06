@@ -10,6 +10,10 @@ an inventory the player manages" and the money its second half spends · builds 
 · **format:** a new file beside the system with its own schema (not the system format); system, one optional top-level field,
 `currency` (`formatVersion` stays 1); character, `money`, **format 9** only when recorded
 
+> **Note, 2026-10-06:** character formats 9 and 10 have since been taken by [ADR 0094](./0094-a-player-character-s-written-features-only-add-and-a-feature-line-may-mark-a-row.md)
+> (a feature line that marks a row) and [ADR 0097](./0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md) (`additionBlocks`). When money is built it takes the next free
+> version, not 9.
+
 ## Context
 
 The bag is modelled, imported, derived and saved (ADRs 0024 to 0026), armour class and attunement read it, and nothing

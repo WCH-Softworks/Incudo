@@ -369,6 +369,7 @@ Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platfo
 (ADR 0077), **after a step of the app's own choosing its parts, page numbers and the name on later pages, and with no edge
 of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079). **Personality, appearance, backstory and notes are written on Build and shown on every sheet** (ADR 0092). **The Sheet
 lists a character's attacks, every weapon in its bag with its bonus and damage, and fills the form's weapon rows** (ADR 0093).
+**A spell added to a character is cast as a class the user chooses, always prepared there** (ADR 0097).
 **The phone app runs and shows a character's sheet, plays it (ADR 0084, below), and builds and edits one (ADR 0086, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
@@ -508,7 +509,8 @@ Things to know before touching either:
   *(Since ADR 0063 a character that records `customFeatures` is **4**, and since ADR 0064 one that records `additions` is
   **5**, and since ADR 0065 one with a custom feature that records its `type` is **6**, and since ADR 0068 one that
   records `references` is **7**, and since ADR 0084 one that records `play` is **8**, and since ADR 0094 one with a custom
-  feature line that marks a row is **9**; `LATEST_CHARACTER_FORMAT_VERSION` is 9.)*
+  feature line that marks a row is **9**, and since ADR 0097 one that records `additionBlocks` is **10**;
+  `LATEST_CHARACTER_FORMAT_VERSION` is 10.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any
@@ -601,7 +603,8 @@ Things to know before touching either:
   - **Removal drops the answers to the selects it closed, exactly**: a recorded choice goes when its pool was open before
     the removal and is not after, repeated until nothing more closes. By name (`<element>/select:`) would be wrong: a
     pool another element still opens keeps its answers.
-  - **An added spell belongs to no casting block** and the pane says so; no DC, attack or slots, not preparable.
+  - ~~**An added spell belongs to no casting block**~~ It is cast through a block the user names since ADR 0097 (below,
+    "An added spell is cast through a block"); without a record it is still in none.
   - **The corpus's `Condition` type is 23 damage resistances and immunities**, not Blinded or Charmed. Found by running it.
   - `packages/ui/src/additions.ts` is the view-model; `Additions.tsx` computes nothing. Driven in the browser build only.
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
@@ -1310,8 +1313,9 @@ agreed with Aurora's screen for 10 of 15 blocks. The other five were `:half`. Th
 - **The list pool is wider than Aurora's**: Aurora had sources and editions switched off. A character can now be
   offered only some books (ADR 0049), but an import does not record which, so an imported character's pool is still
   wider. Never narrower: 0 of Aurora's listed spells are missing.
-- **Not modelled:** the 2024 Paladin and Ranger (content declares no `prepare`; Aurora's screen
-  reads 0 and so does Incudo), the Wizard's minimum of one, and a list on the Sheet. Rituals are not a gap: the `Ritual` filter is read (ADR 0047).
+- ~~**Not modelled:** the 2024 Paladin and Ranger, the Wizard's minimum of one~~ Both since ADR 0097: the 2024 Paladin's
+  and Ranger's count is their spell picks (content states it as the select's allowance), and a kind's preparation may
+  declare `minimum` (5e: 1). Still not: a list on the Sheet. Rituals are not a gap: the `Ritual` filter is read (ADR 0047).
 - **Driven in the browser build only.** A Fighter 12 / Wizard 5 taking a Cleric level was built and its two lists
   prepared, over-limit and reload seen; the library save-and-reopen needs a folder dialog and was covered by the
   tests, which pack and reopen every sample that records a list with zero sources.
@@ -1952,6 +1956,37 @@ Things to know before touching it:
   `forgetUncounted` the only remover; a pool's decision shows `countedPicks`, and `choose` appends the waiting picks
   (`withUncounted`). `SettledPick.unplaced` and `unplacedNote` mark a slot. Desktop `BuilderPane.tsx`, phone
   `BuildView.tsx`; both compute nothing. Driven in the browser build only.
+
+**A 2024 half-caster's prepared count is its spell picks, and an added spell is cast through a block the user names**
+([ADR 0097](docs/adr/0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md)). Two decisions. Things to know before touching either:
+
+- **A: no table in the system definition, on purpose.** Measured (`tools/verify/src/prepared-counts.test.ts`): the 2024
+  Paladin's and Ranger's Prepared Spells column (read out of the description by the test only) equals the allowance of
+  their block's `Spell (Paladin)` / `Spell (Ranger)` select at all 20 levels, and the 2024 Bard's, Sorcerer's,
+  Warlock's, Eldritch Knight's and Arcane Trickster's the same; the 2024 Wizard, Cleric and Druid prepare by a
+  `<class>:spellcasting:prepare` table equal to theirs. The builder already owed those counts and none of them has a
+  `PreparedBlock`, so "a limit of 0, anything prepared is over" never happened. Do not make them preparing blocks or mark
+  their picks "prepared": content's shape is the 2014 Sorcerer's and nothing says the edition.
+- **`preparation.minimum`** (system format, optional): a preparing block's limit is never below it. 5e: 1 (the 2014
+  book's minimum of one, for every preparing class). No sample's limit is below 1, so it has no referee.
+- **B: `Character.additionBlocks`** (added id → lowercased block name, the `prepared` key), **format 10** only when
+  recorded (`setAdditionBlock`; `setAdded(…, false)` drops the record); the validator refuses it below 10 and on an id
+  not in `additions`. **`additions.blocks`** on a kind (`types` among the addable ones, `label`, `with` with `{name}`,
+  `none`; 5e: Spell, "Cast as", "cast as {name}", "cast through no class").
+- **The engine** (`resolveAdditionBlocks`) publishes `DerivedCharacter.additionBlocks` (`{ elementId, block }`, block as
+  content wrote it; in `summarize()` when non-empty) and attaches each to a preparing block's list as **always prepared**,
+  as a grant with the `prepared` marker is. A block nothing held declares is `addition-block-missing`, a type not cast
+  `addition-block-not-allowed`; both warnings, cast through none, record kept. A block's DC, attack and slots are its
+  stats (ADR 0020), so nothing else in the engine reads a spell's block.
+- **The builder** records the only block when an element of a cast type is added to a character holding exactly one
+  (`addElement`), never derives "the only one" later; `setAdditionBlock(id, key | undefined)` refuses an element not
+  added, a type not cast, a block not held. `AddedRow.block` (`packages/ui/src/additions.ts`, `heldBlocks`, `NO_BLOCK`)
+  is the row's choice; desktop `Additions.tsx` a select, phone `BuildExtras.tsx` a picker.
+- **The sheet**: `SheetListedElement.cast` (`additionCasting`, `sheet.ts`), written by `listedAside` after the prepared
+  mark: "Fireball (Level 3, always prepared, cast as Cleric)". The official form's spell lines write names only.
+- Tests: `packages/core/src/addition-blocks.test.ts`, `packages/ui/src/addition-blocks.test.ts`, the minimum in
+  `preparation.test.ts`, the validator in `schemas.test.ts`, each failing under its named perturbation. The oracle is
+  identical. Driven in the browser build only.
 
 **A pool never offers what the character already has.** `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,

@@ -123,6 +123,10 @@ It is listed with the character's spells on the sheet, and it has no save DC, at
 cannot be prepared, and is in no block's list. The pane says so. Inventing a block for it is the guess ADR 0005
 declines; giving an added spell a way to cast is its own question.
 
+*(Amended by [ADR 0097](./0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md) decision B: an added spell is cast through a block the user names, recorded per addition in
+`Character.additionBlocks` (format 10), the character's only block chosen when it is added, and always prepared on a
+block that prepares. Without a record it is still in no block, as above.)*
+
 ## Alternatives considered
 
 - **A `multiple` build step with no requirement filter.** Most of the machinery is there, and it is what ADR 0032
