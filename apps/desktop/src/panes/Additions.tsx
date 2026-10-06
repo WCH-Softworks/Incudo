@@ -89,7 +89,7 @@ export function Additions({
                     value={row.block.value}
                     onChange={(event) => builder.setAdditionBlock(row.elementId, event.target.value || undefined)}
                   >
-                    <option value="">{row.block.none}</option>
+                    <option value="">{row.block.noneOption}</option>
                     {row.block.options.map((option) => (
                       <option key={option.key} value={option.key} disabled={!option.held}>
                         {option.label}

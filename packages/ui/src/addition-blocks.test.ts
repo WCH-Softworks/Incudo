@@ -111,6 +111,7 @@ test('with two blocks nothing is recorded, the row offers both and none, and a c
       { key: 'purple', name: 'Purple', held: true, label: 'Purple' },
     ],
     none: 'cast through no calling',
+    noneOption: 'None',
   });
   assert.equal(b.setAdditionBlock('GLOW', 'Purple'), true);
   row = b.getState().additions.rows.find((r) => r.elementId === 'GLOW');

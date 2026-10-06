@@ -69,9 +69,14 @@ export interface AddedRowBlock {
   value: string;
   /** The blocks the character holds, in the order its elements declare them, then a recorded one it does not. */
   options: Array<BlockOption & { held: boolean; label: string }>;
-  /** The kind's words for none, the choice's first option. */
+  /** The kind's words for none, as the sheet writes them ("cast through no class"). */
   none: string;
+  /** The choice's first option, for none: `NO_BLOCK`. */
+  noneOption: string;
 }
+
+/** The option for no block, beside a choice the kind heads ("Cast as: None"). */
+export const NO_BLOCK = 'None';
 
 export interface AdditionsState {
   /** Whether a character of this kind may have anything added. */
@@ -174,7 +179,7 @@ function rowBlock(
   if (recorded !== undefined && !blocks.some((b) => b.key === recorded)) {
     options.push({ key: recorded, name: recorded, held: false, label: `${recorded} (no longer on the character)` });
   }
-  return { label: casting.label, value: recorded ?? '', options, none: casting.none };
+  return { label: casting.label, value: recorded ?? '', options, none: casting.none, noneOption: NO_BLOCK };
 }
 
 /**

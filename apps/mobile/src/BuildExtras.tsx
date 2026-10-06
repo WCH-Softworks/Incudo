@@ -304,7 +304,7 @@ export function AdditionsView({
     pick({
       title: block.label,
       options: [NONE, ...held.map((option) => option.key)],
-      labels: new Map([[NONE, block.none], ...held.map((option) => [option.key, option.label] as const)]),
+      labels: new Map([[NONE, block.noneOption], ...held.map((option) => [option.key, option.label] as const)]),
       details: false,
       current: block.value || NONE,
       onPick: (key) => builder.setAdditionBlock(row.elementId, key === NONE ? undefined : key),
@@ -330,7 +330,7 @@ export function AdditionsView({
               {row.block ? (
                 <Row>
                   <Text style={[styles.grow, { color: palette.text, fontSize: 14 }]}>
-                    {row.block.label}: {row.block.options.find((option) => option.key === row.block!.value)?.label ?? row.block.none}
+                    {row.block.label}: {row.block.options.find((option) => option.key === row.block!.value)?.label ?? row.block.noneOption}
                   </Text>
                   <Button label="Change" kind="link" onPress={() => chooseBlock(row)} />
                 </Row>
