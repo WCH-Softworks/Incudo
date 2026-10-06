@@ -109,7 +109,9 @@ argument. The text comes from the element the save embeds (ADR 0012), so it is t
   to the kind.
   *(Since [ADR 0063](./0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md) a
   feature the DM writes can set another speed and add to a save or a skill, with its reason on the sheet. A proficiency
-  still cannot be switched on, since `…:proficiency` is not a stat the sheet shows.)*
+  still cannot be switched on, since `…:proficiency` is not a stat the sheet shows.)* *(Since [ADR 0094](./0094-a-player-character-s-written-features-only-add-and-a-feature-line-may-mark-a-row.md) a
+  feature's line may mark a save or skill not proficient, proficient or with expertise, which sets where its
+  `…:proficiency` starts as that many proficiency bonuses, and the sheet marks each row it shows.)*
 - **Hovering** ("fly 60 ft. (hover)") is in the print only, and the NPC's fly speed does not say it.
 - **Rules nothing reads, reported**: `companion:<name>:misc` (one UA Wildfire Spirit's Nature, and three saves its
   Soul Bond trait adds), `companion:initiative` (1; the NPC's initiative is the system's Dexterity modifier), and the

@@ -105,7 +105,8 @@ The builder shows the same on the feature's line, and clearing the typed value b
   what is left is smaller: a player character's armour class, hit points and speed are worked out (each `derive`s from
   armour, hit dice and content), so under decision 3 every line on one could only add. Whether add-only features are
   what a player character wants, and the type they are held as, are the open questions; one line in `system.json` once
-  they are decided.
+  they are decided. *(Decided by [ADR 0094](./0094-a-player-character-s-written-features-only-add-and-a-feature-line-may-mark-a-row.md): it carries them, add-only, held as a Class Feature, Racial Trait, Feat
+  or Background Feature. A line may also mark a row since then, `mode: "mark"`, format 9.)*
 - **No conditions, grants or choices.** A line is a number added or set, always in force. "Only while raging", a
   granted spell or a feature that opens a choice is content, and content is Phase 8's.
 - **No text stats.** A stat whose value is text (a creature's size) cannot be named.
