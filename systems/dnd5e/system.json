@@ -346,6 +346,8 @@
 
       "heldTypesStat": "type",
 
+      "customFeatures": { "type": "Class Feature", "types": ["Class Feature", "Racial Trait", "Feat", "Background Feature"], "sections": ["combat", "speeds", "saves", "skills", "senses"] },
+
       "additions": {
         "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature", "Proficiency", "Language", "Condition", "Spell"],
         "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is listed with the character's spells and belongs to no spellcasting class, so no class's save DC, attack bonus or spell slots apply to it."
