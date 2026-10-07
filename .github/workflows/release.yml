@@ -1,0 +1,120 @@
+name: Release
+
+# Builds the desktop installers and attaches them to one GitHub Release (ROADMAP Phase 9).
+#
+# Started by a tag, never by a push: `vX.Y.Z-rc.N` makes a pre-release, a plain `vX.Y.Z` a release. Deciding that a
+# release exists is the maintainer's call, made by pushing the tag. The release is created as a **draft**: nothing is
+# public until someone reads it and presses Publish on GitHub.
+#
+# Nothing goes to npm (CLAUDE.md), and no rulebook content is bundled: an installer is the engine and the shipped
+# system definitions. The builds are unsigned, and the notes say so.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # Stops the run before anything is built when the tag does not name this commit's version, or names a commit
+    # main does not have.
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: The tag matches the app's version
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if ! [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-rc\.([0-9]+))?$ ]]; then
+            echo "::error::Tag $tag is neither vX.Y.Z nor vX.Y.Z-rc.N"
+            exit 1
+          fi
+          base="${BASH_REMATCH[1]}"
+          # The app's own version carries no -rc: a Windows .msi refuses a pre-release that is not a number, so a
+          # candidate is the version it will become, and the tag is what says it is a candidate.
+          conf=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          cargo=$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)
+          pkg=$(node -p "require('./apps/desktop/package.json').version")
+          for found in "tauri.conf.json:$conf" "Cargo.toml:$cargo" "apps/desktop/package.json:$pkg"; do
+            if [ "${found#*:}" != "$base" ]; then
+              echo "::error::Tag $tag is version $base, and ${found%%:*} says ${found#*:}"
+              exit 1
+            fi
+          done
+          echo "version=$base" >> "$GITHUB_OUTPUT"
+          if [ -n "${BASH_REMATCH[2]}" ]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+      - name: The tagged commit is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME names a commit main does not have"
+            exit 1
+          fi
+
+  ci:
+    # The same jobs as every push to main, on the tagged commit: typecheck, tests, and the real-content suite.
+    needs: check
+    uses: ./.github/workflows/ci.yml
+
+  installers:
+    needs: [check, ci]
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ''
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+          - platform: ubuntu-22.04
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ startsWith(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+      - name: Linux build dependencies
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_name }}
+          releaseName: Incudo ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: ${{ needs.check.outputs.prerelease == 'true' }}
+          releaseBody: |
+            Incudo ${{ github.ref_name }}, a free, open-source character builder that reads Aurora's content.
+
+            **These installers are not signed.** Windows SmartScreen will say the publisher is unknown ("More info", then "Run anyway"), and macOS will refuse to open the app the first time (right-click it, then Open).
+
+            **Which platforms were tried:** only Windows has been run by hand. The macOS (Apple silicon and Intel) and Linux builds were produced by this workflow and have not been installed or opened by anyone yet. Reports from those platforms are welcome as issues.
+
+            No rulebook content is included. Add a content source on the Sources screen; the app suggests the community-maintained AuroraLegacy collection.
+
+            Built from ${{ github.sha }}.

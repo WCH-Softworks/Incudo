@@ -10,6 +10,8 @@ on:
     # upstream change while nothing here is happening. Scheduled runs only ever use the default branch.
     - cron: '23 6 * * *'
   workflow_dispatch:
+  # `release.yml` runs these same two jobs on the tagged commit before it builds any installer.
+  workflow_call:
 
 jobs:
   build:

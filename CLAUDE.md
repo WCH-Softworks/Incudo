@@ -142,8 +142,12 @@ or per-package versioning, and do not remove `private`. If someone else claims t
 scope, that is fine and changes nothing here.
 
 The one release workflow that does belong here builds the desktop installers and attaches them to a
-GitHub Release (ROADMAP Phase 9). It does not exist yet and is added by the commit that cuts the
-first release candidate, not before.
+GitHub Release (ROADMAP Phase 9): `.github/workflows/release.yml`, added 2026-10-07 for the first public release
+candidate. A `vX.Y.Z-rc.N` or `vX.Y.Z` tag on a commit main has starts it; it stops unless the tag's X.Y.Z is the
+version in `tauri.conf.json`, `Cargo.toml` and `apps/desktop/package.json` (the app's version never carries the
+`-rc`: an .msi refuses one), runs `ci.yml` on the commit, builds on Windows, macOS (both chips) and Linux with
+`tauri-action`, and leaves a **draft** release for the maintainer to publish. Unsigned, and its notes say so and say
+only Windows was ever run by hand.
 
 That does **not** mean nothing is a public API. Two things are, and they need real versioning
 discipline: the **system definition format** (users author these — ADR 0011) and the **`.incu`
@@ -1183,6 +1187,12 @@ it while keeping `advancement` loses `ID_INTERNAL_GRANT_MULTICLASS` (caster leve
 with it) and opens an unearned "choose two skills", with no error anywhere. Everything is in
 `packages/ui/src/multiclass.ts` under `node --test`; `apps/desktop/src/panes/ClassLevels.tsx`
 computes nothing. Things to know before touching it:
+
+- **The level is buttons at the head of Build's middle column, not a typed number** (2026-10-06, the maintainer's
+  call): "Level up to N" with the class it goes to beside it, and "Remove level N (Wizard 2)". It was a number field
+  in the header and a Classes panel in the settled column, where taking a second class read as not built. The
+  wording is `levelControlView`, `LEVEL_HINT` and `LEVEL_UP_OTHER` (`build-view.ts`); the phone shows the same panel
+  ahead of "Your character". A rating or xp total is still typed. A jump of many levels is the split's.
 
 - **`advancement` exists only while there is more than one class**, and then covers every level.
   A single-class character carries none, as an imported one never did. Records are keyed exactly

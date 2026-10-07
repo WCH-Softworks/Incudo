@@ -1788,9 +1788,10 @@ written on a character can be moved into the user's library without being typed 
 
 ## Phase 9 — 1.0 ⬜
 
-- [ ] **Release pipeline: main builds the installers and puts them on GitHub.** Does not exist
-      yet, **and is not added until the first release candidate is cut** — the commit that cuts RC1
-      adds the workflow, so nothing before it can start one. Until then `ci.yml` (typecheck, test,
+- [ ] **Release pipeline: main builds the installers and puts them on GitHub.** Written 2026-10-07 as
+      `.github/workflows/release.yml`, for the first public release candidate, to the shape below; the release it
+      makes is a draft the maintainer publishes. Ticked when a real tag has produced installers that were downloaded
+      and installed. Until then `ci.yml` (typecheck, test,
       the corpus budget) is the whole of main's pipeline. The shape, so that writing it is not a
       design session:
   - **Triggered by a tag, not a push.** A `vX.Y.Z-rc.N` tag on a commit reachable from `main`
