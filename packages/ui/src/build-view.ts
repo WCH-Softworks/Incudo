@@ -241,6 +241,13 @@ export const LEVEL_MULTICLASS_HINT = 'Choose another class here to take this lev
 /** A screen that offers the next class through a picker rather than beside the button: the button that opens it. */
 export const LEVEL_UP_OTHER = 'Level up in another class…';
 
+/**
+ * What the two folded parts under the level buttons are called. A name that says what opening one lets you do: the split's
+ * was "Set the split", which said nothing to someone who had not read about splits, and both open collapsed.
+ */
+export const SPLIT_LABEL = 'Set levels for each class at once';
+export const LEVEL_ROWS_LABEL = "Change a past level's class";
+
 // --- a class split (ADR 0045) ---------------------------------------------------------------------------------------
 
 /** The split a character has now, one row per class in the order it was first taken: where an edit starts. */

@@ -15,6 +15,7 @@ import type { ElementId, ResolvedCharacterKind, StatDef } from '@incudo/core';
 import {
   LEVEL_HINT,
   LEVEL_UP_OTHER,
+  SPLIT_LABEL,
   levelControlView,
   SPLIT_HINT,
   SPLIT_INTERLEAVED,
@@ -395,7 +396,7 @@ export function ClassLevelsView({
       {classes && stepId !== undefined ? (
         <>
           <Row>
-            <Button label={splitOpen ? 'Close the split' : 'Set the split'} onPress={() => setSplitOpen(!splitOpen)} />
+            <Button label={splitOpen ? 'Close' : SPLIT_LABEL} onPress={() => setSplitOpen(!splitOpen)} />
           </Row>
           {splitOpen ? (
             <SplitEditor stepId={stepId} state={classes} builder={builder} labelOf={labelOf} offer={offer} onApplied={() => setSplitOpen(false)} />

@@ -1163,6 +1163,71 @@ button.primary:hover:not(:disabled) {
   margin: 0;
 }
 
+/*
+ * An explanation behind a small circled "i" (InfoTip.tsx), shown on hover or keyboard focus. The mark is a
+ * letter in a CSS circle, not an image.
+ */
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  align-self: center;
+}
+
+.info-tip-mark {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--fg-muted);
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 16px;
+  text-align: center;
+  cursor: help;
+}
+
+.info-tip-mark:hover,
+.info-tip-mark:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.info-tip-text {
+  display: none;
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(340px, 80vw);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 400;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.info-tip:hover .info-tip-text,
+.info-tip:focus-within .info-tip-text {
+  display: block;
+}
+
+.info-tip-para {
+  display: block;
+}
+
+.info-tip-para + .info-tip-para {
+  margin-top: 6px;
+}
+
+.level-head .info-tip {
+  margin-left: auto;
+}
+
 .class-level-row select {
   width: 100%;
   min-width: 0;

@@ -22,6 +22,8 @@ import { useState } from 'react';
 import {
   LEVEL_HINT,
   LEVEL_MULTICLASS_HINT,
+  LEVEL_ROWS_LABEL,
+  SPLIT_LABEL,
   SPLIT_HINT,
   SPLIT_INTERLEAVED,
   SPLIT_REFUSED,
@@ -39,6 +41,8 @@ import {
 } from '@incudo/ui';
 import type { ClassLevelState, ClassOption, ClassSegment, CharacterBuilder } from '@incudo/ui';
 import type { ElementId, StatDef } from '@incudo/core';
+
+import { InfoTip } from './InfoTip.tsx';
 
 /** `<option>`s in three groups, so a class you already have and one you may add read differently. */
 function ClassOptions({
@@ -137,6 +141,11 @@ export function ClassLevels({
           Level <strong>{view.level}</strong>
         </span>
         {view.summary && <span className="class-summary">{view.summary}</span>}
+        {/* How levelling behaves, kept off the panel: what stays on screen below is only what asks for attention. */}
+        <InfoTip label="About levelling">
+          {canAddClass && view.up && <span className="info-tip-para">{LEVEL_MULTICLASS_HINT}</span>}
+          <span className="info-tip-para">{LEVEL_HINT}</span>
+        </InfoTip>
       </div>
 
       <div className="level-actions">
@@ -166,7 +175,6 @@ export function ClassLevels({
         </button>
       </div>
 
-      {canAddClass && view.up && <p className="hint">{LEVEL_MULTICLASS_HINT}</p>}
       {state && state.firstClassId === undefined && (
         <p className="hint">Choose a class in Open decisions. Further levels can then go to other classes.</p>
       )}
@@ -187,11 +195,9 @@ export function ClassLevels({
           {classes.unassigned.length === 1
             ? `Level ${classes.unassigned[0]} has no class recorded.`
             : `Levels ${classes.unassigned.join(', ')} have no class recorded.`}{' '}
-          Choose one under Level by level.
+          Choose one under {LEVEL_ROWS_LABEL}.
         </p>
       )}
-
-      <p className="hint">{LEVEL_HINT}</p>
 
       {classes && stepId !== undefined && (
         <>
@@ -204,7 +210,7 @@ export function ClassLevels({
           />
 
           <details open={classes.unassigned.length > 0}>
-            <summary>Level by level</summary>
+            <summary>{LEVEL_ROWS_LABEL}</summary>
             <div className="class-level-rows">
               {classes.levels.map((row) => (
                 <div key={row.level} className="class-level-row">
@@ -278,7 +284,7 @@ function ClassSplit({
 
   return (
     <details>
-      <summary>Set the split</summary>
+      <summary>{SPLIT_LABEL}</summary>
       <div className="class-split">
         <p className="hint">{SPLIT_HINT}</p>
         {shown.map((row, index) => (
