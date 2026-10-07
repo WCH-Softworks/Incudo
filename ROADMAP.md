@@ -24,7 +24,7 @@ discontinued. Incudo aims to be:
    keeping none of its formats.
 6. **Saves that always open.** A character built with 200 books loaded opens on a fresh
    install with zero sources. The save file is the product.
-7. **Free and open source.** MIT, GitHub, a Ko-fi link, no paywall and no accounts.
+7. **Free and open source.** MIT, GitHub, Patreon and Ko-fi links, no paywall and no accounts.
 
 ### Non-goals (for now)
 
@@ -1875,7 +1875,7 @@ written on a character can be moved into the user's library without being typed 
 - [ ] Signed desktop installers (Windows/macOS/Linux); mobile store presence TBD
 - [ ] Docs site, contribution guide, issue templates
 - [ ] `docs/LICENSING.md` complete for every shipped system
-- [ ] Ko-fi link in README and in-app About — never on a screen showing licensed material,
+- [ ] Patreon and Ko-fi links in README and in-app About — never on a screen showing licensed material,
       never gating anything
 
 ---

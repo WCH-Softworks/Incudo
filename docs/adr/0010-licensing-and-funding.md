@@ -79,3 +79,9 @@ conservative.
 The link goes on the README and in the app's About screen, described as supporting **Incudo's
 development** — never as buying access to content, and never on a screen that displays licensed
 material. Nothing in Incudo is paywalled, ever; that is what keeps "donation" accurate.
+
+> **Note, 2026-10-07 — a Patreon joins the Ko-fi link** (patreon.com/incudo, recurring; Ko-fi stays for one-off
+> support), and both are behind the repository's Sponsor button (`.github/FUNDING.yml`). It is the "other
+> donation-based funding" the owner's words above already allow, and it stays that only while no tier unlocks
+> anything in Incudo: not a feature, not content, and not an earlier build. Patron perks, if any, are about the
+> project (credits, a say in priorities), never access to it. The licence test this ADR sets is unchanged.

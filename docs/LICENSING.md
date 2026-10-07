@@ -10,7 +10,7 @@ MIT. See [LICENSE](../LICENSE). That is the whole story.
 
 **Policy ([ADR 0010](./adr/0010-licensing-and-funding.md)):** a system is added to `systems/`
 only after its licence has been read and recorded as permitting third-party tools that accept
-donations. Incudo is funded by a Ko-fi link, so "permits third-party tools but restricts
+donations. Incudo is funded by donations (Patreon and Ko-fi), so "permits third-party tools but restricts
 monetization" is not good enough.
 
 Incudo ships **no rulebook content** — users point it at content indexes themselves. But an

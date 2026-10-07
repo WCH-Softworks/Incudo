@@ -28,7 +28,7 @@ Incudo reads all of it, and adds the following:
   repository, or downloaded for offline use. Either way, what is read is cached.
 - **Aurora import.** Incudo imports Aurora content and Aurora saved characters directly. Its own
   formats are separate: characters are saved as JSON, and portraits are stored as image files.
-- **Free.** MIT licensed, with no accounts and no paywall. There is a Ko-fi link below.
+- **Free.** MIT licensed, with no accounts and no paywall. There are Patreon and Ko-fi links below.
 
 ## Built with AI
 
@@ -119,7 +119,7 @@ Incudo ships **no rulebook content**. You add content sources yourself. The code
 ([LICENSE](./LICENSE)), and each content source is under its publisher's own licence.
 
 A game system is distributed with Incudo only if its licence allows third-party tools that accept
-donations, since Incudo is funded through Ko-fi. D&D 5e meets that requirement: the SRD 5.1 and
+donations, since Incudo is funded by donations through Patreon and Ko-fi. D&D 5e meets that requirement: the SRD 5.1 and
 5.2.1 are released under CC-BY-4.0, which allows commercial use and requires attribution. A
 system whose licence has not been assessed is not distributed. This applies only to what the
 project distributes. You can write a system definition for any game and use it yourself. See
@@ -127,5 +127,8 @@ project distributes. You can write a system definition for any game and use it y
 
 ## Support
 
-Incudo is free and will stay free. If you want to support it:
-**[ko-fi.com/willcaphir](https://ko-fi.com/willcaphir)**
+Incudo is free and will stay free. Support pays for its development and unlocks nothing: no part of
+Incudo is paywalled. If you want to support it:
+
+- **Every month:** [patreon.com/incudo](https://patreon.com/incudo)
+- **Once:** [ko-fi.com/willcaphir](https://ko-fi.com/willcaphir)
