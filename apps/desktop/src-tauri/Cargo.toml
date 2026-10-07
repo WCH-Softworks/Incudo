@@ -20,6 +20,7 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 serde = { version = "1", features = ["derive"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-opener = "2"
 
 # "Export sheet as PDF…" (ADR 0079): WebView2's PrintToPdfStream, reached through the webview Tauri hands a command. The
 # versions wry already builds, so nothing new is compiled; `Win32_System_Com` is for reading the stream it answers with.

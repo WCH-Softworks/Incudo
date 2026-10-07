@@ -5,10 +5,12 @@
 //! knows what a character is belongs in `packages/`, where it is testable in Node and shared
 //! with the mobile shell.
 //!
-//! Two plugins are registered, each for a reason the web platform cannot cover:
+//! Three plugins are registered, each for a reason the web platform cannot cover:
 //!
 //! - `dialog` — "where do you keep your characters?" needs a real folder picker (ADR 0027).
 //! - `fs` — and then it needs to read that folder.
+//! - `opener` — the About section's links open in the user's browser, not in the window. Its capability names
+//!   the exact addresses, so the page can open nothing else.
 //!
 //! And three commands, each a transport rather than a rule:
 //!
@@ -234,6 +236,7 @@ pub fn run() {
         .manage(ContentClient::new())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![allow_library_folder, fetch_content_text, print_to_pdf])
         .run(tauri::generate_context!())
         .expect("error while running the Incudo desktop shell");

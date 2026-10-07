@@ -827,6 +827,20 @@ button.link:hover {
   overflow-wrap: anywhere;
 }
 
+/* Settings' About section: prose at reading width, links one per line. */
+.about {
+  max-width: 68ch;
+}
+
+.about-links {
+  list-style: none;
+  padding: 0;
+}
+
+.about-links li + li {
+  margin-top: 4px;
+}
+
 /* --- the Aurora import report -------------------------------------------- */
 
 /*

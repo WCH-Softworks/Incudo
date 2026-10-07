@@ -16,6 +16,9 @@ declare module '*.json' {
   export default value;
 }
 
+/** The app's version, put in by `vite.config.ts` from `package.json`. */
+declare const __INCUDO_VERSION__: string;
+
 /**
  * The File System Access API, which `lib.dom` does not yet describe in full.
  *

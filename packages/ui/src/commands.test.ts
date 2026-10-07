@@ -83,7 +83,7 @@ test('with no library chosen, only what does not need one is enabled', () => {
   const on = enabledIn({ ...READY, library: 'no-location', hasEnabledSource: false });
   assert.deepEqual(
     [...on].sort(),
-    [...NAVIGATION, 'change-system', 'choose-library-folder'].sort(),
+    [...NAVIGATION, 'change-system', 'choose-library-folder', 'about'].sort(),
   );
   // The three that need somewhere to put a character say no, and Save says no on any pane.
   for (const pane of ['library', 'build'] as Destination[]) {
@@ -655,4 +655,19 @@ test('reviewing content updates is live on Build and the Sheet while the open ch
   assert.ok(!enabledIn({ ...READY, pane: 'build', modal: true }).has('review-content-updates'));
   const file = MENUS.find((menu) => menu.label === 'File')!;
   assert.equal(file.items.indexOf('review-content-updates'), file.items.indexOf('reload-sources') + 1);
+});
+
+// --- about ---------------------------------------------------------------------------------------------------
+
+test('About Incudo is the Help menu, live on every pane and on none behind a dialog, with no shortcut and no tab', () => {
+  // Fails if it is gated on a pane, reacts behind a dialog, takes a key, or becomes a destination (a header tab).
+  for (const pane of ['library', 'build', 'sheet', 'sources', 'browse', 'settings'] as Destination[]) {
+    assert.ok(enabledIn({ ...READY, pane }).has('about'), pane);
+  }
+  assert.ok(!enabledIn({ ...READY, modal: true }).has('about'));
+  assert.deepEqual(MENUS.at(-1), { label: 'Help', items: ['about'] });
+  const command = COMMANDS.find((candidate) => candidate.id === 'about')!;
+  assert.equal(command.label, 'About Incudo');
+  assert.equal(command.shortcut, undefined);
+  assert.equal(command.destination, undefined);
 });

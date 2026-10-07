@@ -52,6 +52,7 @@ export const COMMAND_IDS = [
   'reload-sources',
   'review-content-updates',
   'change-system',
+  'about',
 ] as const;
 
 export type CommandId = (typeof COMMAND_IDS)[number];
@@ -130,6 +131,9 @@ export const COMMANDS: readonly CommandDef[] = [
   // What a refresh of the open character would change, then the refresh itself (ADR 0082). No shortcut.
   { id: 'review-content-updates', label: 'Review content updates…' },
   { id: 'change-system', label: 'Change system' },
+  // The About section of Settings (about.ts). Not a destination: that would make it a tab of the header's own. No
+  // shortcut, since nothing about it is done often.
+  { id: 'about', label: 'About Incudo' },
 ];
 
 /** `null` is a separator. */
@@ -163,6 +167,7 @@ export const MENUS: MenuLayout = [
     ],
   },
   { label: 'View', items: ['go-library', 'go-build', 'go-sheet', 'go-sources', 'go-browse', 'go-settings'] },
+  { label: 'Help', items: ['about'] },
 ];
 
 // --- what is possible right now -------------------------------------------------------------
@@ -286,6 +291,7 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   // Where the line offering it is shown, Build and the Sheet, and only while there is something to refresh (ADR 0082).
   'review-content-updates': (c) => (c.pane === 'build' || c.pane === 'sheet') && c.contentUpdates && !c.contentBusy,
   'change-system': () => true,
+  'about': () => true,
 };
 
 export interface ResolvedCommand extends CommandDef {

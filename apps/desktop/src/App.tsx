@@ -404,6 +404,9 @@ function Shell({
   nameOfSystem: (id: string) => string;
 }): React.JSX.Element {
   const [pane, setPane] = useState<Pane>('library');
+  // Help > About Incudo: Settings, scrolled to its About section once it is drawn.
+  const [showAbout, setShowAbout] = useState(false);
+  const aboutShown = useCallback(() => setShowAbout(false), []);
   const [content, setContent] = useState<LoadedContent | null>(null);
   const [progress, setProgress] = useState<LoadProgress | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1251,6 +1254,10 @@ function Shell({
     'refresh-library': () => void library.refresh(),
     'reload-sources': () => void reload(),
     'change-system': onChangeSystem,
+    'about': () => {
+      setPane('settings');
+      setShowAbout(true);
+    },
   };
   for (const command of COMMANDS) {
     if (command.destination) handlers[command.id] = () => setPane(command.destination!);
@@ -1455,6 +1462,12 @@ function Shell({
           entryCount={libraryState.entries.length}
           onChooseFolder={() => void chooseFolder()}
           shell={platform.shell}
+          version={__INCUDO_VERSION__}
+          showAbout={showAbout}
+          onAboutShown={aboutShown}
+          onOpenLink={(url) =>
+            void platform.links.open(url).catch((error: unknown) => console.error('The link could not be opened.', url, error))
+          }
         />
       )}
       {pane === 'sources' && (

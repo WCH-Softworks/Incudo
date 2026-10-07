@@ -12,18 +12,24 @@
  * **The dev server is fixed to a port and never searches for a free one.** Tauri points its
  * window at exactly this URL, and a dev server that silently moved to 5174 would leave the
  * window blank with no error worth reading.
+ *
+ * `__INCUDO_VERSION__` is this package's version, which the About section prints. The release workflow refuses a tag
+ * unless it equals `tauri.conf.json`'s and `Cargo.toml`'s, so the browser build and the window print the same one.
  */
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..', '..');
+const { version } = JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8')) as { version: string };
 
 export default defineConfig({
   plugins: [react()],
+  define: { __INCUDO_VERSION__: JSON.stringify(version) },
   resolve: {
     alias: { '@repo': repoRoot },
   },

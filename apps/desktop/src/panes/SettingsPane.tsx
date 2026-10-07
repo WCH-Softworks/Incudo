@@ -9,7 +9,14 @@
  *
  * Nothing here knows a rule about the game, and nothing here knows it is running in Tauri;
  * `shell` arrives as a word from `src/platform.ts`, which is the only file allowed to ask.
+ *
+ * It also holds About Incudo, with the support links, because this is a screen that shows no
+ * content: ADR 0010 keeps those links off any screen showing licensed material. Help > About Incudo
+ * brings this pane up with that section in view.
  */
+
+import { useEffect, useRef } from 'react';
+import { ABOUT_SUMMARY, SOURCE_LINK, SUPPORT_LINKS, SUPPORT_TEXT, type AboutLink } from '@incudo/ui';
 
 export function SettingsPane({
   location,
@@ -17,13 +24,45 @@ export function SettingsPane({
   entryCount,
   onChooseFolder,
   shell,
+  version,
+  showAbout,
+  onAboutShown,
+  onOpenLink,
 }: {
   location: string | null;
   unavailableReason: string | undefined;
   entryCount: number;
   onChooseFolder: () => void;
   shell: 'tauri' | 'browser';
+  version: string;
+  /** Help > About Incudo asked for the About section; scrolled into view once, then `onAboutShown`. */
+  showAbout: boolean;
+  onAboutShown: () => void;
+  onOpenLink: (url: string) => void;
 }): React.JSX.Element {
+  const about = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!showAbout) return;
+    about.current?.scrollIntoView({ block: 'start' });
+    onAboutShown();
+  }, [showAbout, onAboutShown]);
+
+  const link = (target: AboutLink) => (
+    <li key={target.url}>
+      {target.label}:{' '}
+      <a
+        href={target.url}
+        onClick={(event) => {
+          // The window would follow the link itself and replace the app with the page.
+          event.preventDefault();
+          onOpenLink(target.url);
+        }}
+      >
+        {target.text}
+      </a>
+    </li>
+  );
+
   return (
     <main className="pane">
       <h2>Settings</h2>
@@ -79,6 +118,16 @@ export function SettingsPane({
           ? 'The desktop app. It can load content from any site.'
           : 'The browser version. Some sites do not let a web page load their files, so a content source that works in the desktop app may fail here.'}
       </p>
+
+      <section ref={about} className="about" aria-labelledby="about-heading">
+        <h3 id="about-heading">About Incudo</h3>
+        <p className="card-meta">Version {version}</p>
+        <p>{ABOUT_SUMMARY}</p>
+        <ul className="about-links">{link(SOURCE_LINK)}</ul>
+        <h4>Support Incudo</h4>
+        <p>{SUPPORT_TEXT}</p>
+        <ul className="about-links">{SUPPORT_LINKS.map(link)}</ul>
+      </section>
     </main>
   );
 }

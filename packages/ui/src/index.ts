@@ -26,6 +26,7 @@ export * from './candidate-search.ts';
 export * from './content-browser.ts';
 export * from './candidate-label.ts';
 export * from './preview-placement.ts';
+export * from './about.ts';
 export * from './commands.ts';
 export * from './source-parts.ts';
 export * from './content-files.ts';

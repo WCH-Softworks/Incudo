@@ -1032,6 +1032,30 @@ class BrowserCommandHost implements CommandHost {
   }
 }
 
+/**
+ * Opening a web address in the user's own browser: the About section's links, and nothing else yet.
+ *
+ * The window cannot follow a link itself (it would replace the app with the page), so Tauri's opener plugin hands it to
+ * the system, and `capabilities/default.json` lets it open only the addresses `ABOUT_URLS` lists. A browser tab opens a
+ * new tab.
+ */
+export interface LinkOpener {
+  open(url: string): Promise<void>;
+}
+
+class TauriLinkOpener implements LinkOpener {
+  async open(url: string): Promise<void> {
+    const { openUrl } = await import('@tauri-apps/plugin-opener');
+    await openUrl(url);
+  }
+}
+
+class BrowserLinkOpener implements LinkOpener {
+  async open(url: string): Promise<void> {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
 export interface DesktopPlatform {
   fetcher: Fetcher;
   storage: Storage;
@@ -1047,6 +1071,7 @@ export interface DesktopPlatform {
   zip: ZipCodec;
   /** The menu, where there is one. See `CommandHost`. */
   commands: CommandHost;
+  links: LinkOpener;
   /** Which build this is, for the one line of UI that has to admit the difference. */
   shell: 'tauri' | 'browser';
 }
@@ -1084,6 +1109,7 @@ export function createDesktopPlatform(): DesktopPlatform {
     drops: tauri ? new TauriFileDrop() : new BrowserFileDrop(),
     zip,
     commands: tauri ? new TauriCommandHost(absentCommands({ pdfAvailable: pdf.available })) : new BrowserCommandHost(),
+    links: tauri ? new TauriLinkOpener() : new BrowserLinkOpener(),
     shell: tauri ? 'tauri' : 'browser',
   };
 }

@@ -1875,8 +1875,12 @@ written on a character can be moved into the user's library without being typed 
 - [ ] Signed desktop installers (Windows/macOS/Linux); mobile store presence TBD
 - [ ] Docs site, contribution guide, issue templates
 - [ ] `docs/LICENSING.md` complete for every shipped system
-- [ ] Patreon and Ko-fi links in README and in-app About — never on a screen showing licensed material,
-      never gating anything
+- [x] Patreon and Ko-fi links in README and in-app About — never on a screen showing licensed material,
+      never gating anything. Done 2026-10-07: README's Support section, and an About Incudo section at the foot of
+      Settings (the one pane that shows no content), reached from Help > About Incudo too. The words and addresses are
+      `packages/ui/src/about.ts`; `tools/verify/src/support-links.test.ts` holds them to README, `.github/FUNDING.yml`
+      and the window's capability, which lets the opener plugin open those addresses and no other. The phone has no
+      About screen yet.
 
 ---
 
