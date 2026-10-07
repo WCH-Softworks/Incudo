@@ -79,7 +79,8 @@ export const BuildView = memo(function BuildView({
         <Text style={[styles.fieldLabel, { color: palette.muted }]}>Name</Text>
         <NameField name={state.character.name} onCommit={builder.setName} />
       </View>
-      {progression.kind !== 'none' && progressName ? (
+      {/* A level moves one at a time, with the buttons that head the build below; a rating or an xp total is typed. */}
+      {progression.kind !== 'none' && progression.kind !== 'level' && progressName ? (
         <Row>
           <Text style={[styles.fieldLabel, { color: palette.muted }]}>{progressName}</Text>
           <NumberField
@@ -97,6 +98,23 @@ export const BuildView = memo(function BuildView({
       {progression.kind !== 'none' && progressPrintedHint(progress, nameOf) ? <Body tone="muted">{progressPrintedHint(progress, nameOf)}</Body> : null}
 
       {!hasContent ? <Body tone="danger">No content is loaded, so nothing can be chosen yet. Add a source under Content.</Body> : null}
+
+      {/* How the character grows, and where a second class is taken: ahead of everything it opens. */}
+      {progression.kind === 'level' ? (
+        <>
+          <Heading>{`${progressName ?? 'Level'}${classLevels?.classLevels ? ' and classes' : ''}`}</Heading>
+          <ClassLevelsView
+            {...(classLevels?.classLevels ? { stepId: classLevels.id, state: classLevels.classLevels } : {})}
+            level={progress.value}
+            bounds={{ min: progression.min, max: progression.max }}
+            builder={builder}
+            labelOf={labelOf}
+            nameOf={nameOf}
+            stats={kind.stats}
+            pick={setRequest}
+          />
+        </>
+      ) : null}
 
       <Heading>Your character</Heading>
       {steps.map((step) => {
@@ -167,21 +185,6 @@ export const BuildView = memo(function BuildView({
         <>
           <Heading>{ADDITIONS_HEADING}</Heading>
           <AdditionsView state={state} builder={builder} labelOf={labelOf} pick={setRequest} />
-        </>
-      ) : null}
-
-      {classLevels?.classLevels ? (
-        <>
-          <Heading>Classes</Heading>
-          <ClassLevelsView
-            stepId={classLevels.id}
-            state={classLevels.classLevels}
-            builder={builder}
-            labelOf={labelOf}
-            nameOf={nameOf}
-            stats={kind.stats}
-            pick={setRequest}
-          />
         </>
       ) : null}
 

@@ -190,6 +190,57 @@ export function holderGrantsUnseenNote(unseen: number): string | undefined {
     : `${unseen} more were removed. Load the content they came from to see them or give them back.`;
 }
 
+// --- the level control ----------------------------------------------------------------------------------------------
+
+/**
+ * A level-based character's level as a build screen shows it: the number, the classes it is made of, and the two moves a
+ * player has, one level up and one level down. Buttons and not a typed number: a typed 1 on the way to 12 dropped every
+ * level above it, and a level is gained or lost one at a time. A jump of many levels is the class split's.
+ *
+ * `up` is absent at the progression's top and `down` at its bottom. Which class the next level goes to is the screen's
+ * choice among `ClassLevelState.options`, defaulting to `nextClass`; `down` names the class the level it removes was in.
+ */
+export interface LevelControlView {
+  level: number;
+  /** "Fighter 3 / Wizard 2", once a class is chosen. */
+  summary?: string;
+  up?: { level: number; label: string };
+  down?: { level: number; label: string };
+  /** The class a level up goes to unless another is chosen: the last level's, else the first class. */
+  nextClass?: ElementId;
+}
+
+export function levelControlView(
+  level: number,
+  bounds: { min?: number; max?: number },
+  state: ClassLevelState | undefined,
+  nameOf: (id: ElementId) => string,
+): LevelControlView {
+  const min = bounds.min ?? 1;
+  const last = state?.levels[state.levels.length - 1];
+  const canUp = state ? state.canAddLevel : bounds.max === undefined || level < bounds.max;
+  const nextClass = last?.classId ?? state?.firstClassId;
+  const summary = state?.classes.length ? state.classes.map((held) => `${nameOf(held.id)} ${held.levels}`).join(' / ') : undefined;
+  const removed = last?.classId !== undefined && state && state.classes.length > 0 ? ` (${nameOf(last.classId)} ${last.classLevel})` : '';
+  return {
+    level,
+    ...(summary ? { summary } : {}),
+    ...(canUp ? { up: { level: level + 1, label: `Level up to ${level + 1}` } } : {}),
+    ...(level > min ? { down: { level: level - 1, label: `Remove level ${level}${removed}` } } : {}),
+    ...(nextClass ? { nextClass } : {}),
+  };
+}
+
+/** What the level control says under its buttons. */
+export const LEVEL_HINT =
+  'What a new level opens arrives in Open decisions, tagged with the level that raised it. Removing a level keeps what was chosen for it: those choices wait under Not counting and count again if the level comes back.';
+
+/** What it says beside the class a level up goes to, when another class may be added. */
+export const LEVEL_MULTICLASS_HINT = 'Choose another class here to take this level in it.';
+
+/** A screen that offers the next class through a picker rather than beside the button: the button that opens it. */
+export const LEVEL_UP_OTHER = 'Level up in another class…';
+
 // --- a class split (ADR 0045) ---------------------------------------------------------------------------------------
 
 /** The split a character has now, one row per class in the order it was first taken: where an edit starts. */

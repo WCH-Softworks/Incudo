@@ -107,39 +107,39 @@ export function BuilderPane({
             onChange={(event) => builder.setName(event.target.value)}
           />
         </label>
-        <label>
-          {progressLabel(kind) ?? 'Progress'}
-          <input
-            type="number"
-            // A kind a creature prints for shows the creature's number faded until one is typed, as the
-            // ability scores do; clearing the field goes back to it. Every other kind always has a value.
-            value={progress.printable && !progress.recorded ? '' : progress.value}
-            placeholder={progress.printable && !progress.recorded ? String(progress.value) : undefined}
-            min={progression.kind === 'none' ? 0 : (progression.min ?? 0)}
-            max={progression.kind === 'none' ? 0 : (progression.max ?? 20)}
-            // A challenge rating can be 1/8, 1/4 or 1/2, typed as 0.125, 0.25 or 0.5. A level cannot.
-            step={progression.kind === 'rating' ? 'any' : 1}
-            disabled={progression.kind === 'none'}
-            onChange={(event) => {
-              const raw = event.target.value;
-              if (raw === '') {
-                if (progress.printable) builder.setProgress(undefined);
-                return;
-              }
-              builder.setProgress(Number(raw));
-            }}
-          />
-        </label>
+        {/*
+          A level is not typed here: it moves one at a time, with the buttons at the head of the middle column,
+          where the class it goes to is chosen too. A challenge rating or an xp total is a number to type.
+        */}
+        {progression.kind !== 'level' && (
+          <label>
+            {progressLabel(kind) ?? 'Progress'}
+            <input
+              type="number"
+              // A kind a creature prints for shows the creature's number faded until one is typed, as the
+              // ability scores do; clearing the field goes back to it. Every other kind always has a value.
+              value={progress.printable && !progress.recorded ? '' : progress.value}
+              placeholder={progress.printable && !progress.recorded ? String(progress.value) : undefined}
+              min={progression.kind === 'none' ? 0 : (progression.min ?? 0)}
+              max={progression.kind === 'none' ? 0 : (progression.max ?? 20)}
+              // A challenge rating can be 1/8, 1/4 or 1/2, typed as 0.125, 0.25 or 0.5. A level cannot.
+              step={progression.kind === 'rating' ? 'any' : 1}
+              disabled={progression.kind === 'none'}
+              onChange={(event) => {
+                const raw = event.target.value;
+                if (raw === '') {
+                  if (progress.printable) builder.setProgress(undefined);
+                  return;
+                }
+                builder.setProgress(Number(raw));
+              }}
+            />
+          </label>
+        )}
         {progressResetLabel(progress, nameOf) !== undefined && (
           <button type="button" className="link" onClick={() => builder.setProgress(undefined)}>
             {progressResetLabel(progress, nameOf)}
           </button>
-        )}
-        {progression.kind === 'level' && (
-          <span className="hint">
-            Levelling is not a separate screen — whatever this opens arrives in the list below,
-            tagged with the level that raised it.
-          </span>
         )}
         {progression.kind === 'rating' && (
           <span className="hint">
@@ -244,6 +244,29 @@ export function BuilderPane({
         </section>
 
         <section>
+          {/*
+            The level, and the class each level goes to (ADR 0036). Not a decision and never outstanding,
+            but it is how the character grows, so it heads the column where what a new level opens arrives.
+            It sat in the settled column once, below everything already chosen, and taking a second class
+            there was hard enough to find that it read as not built.
+          */}
+          {progression.kind === 'level' && (
+            <section className="level-panel">
+              <h2>{progressLabel(kind) ?? 'Level'}{classLevelsStep?.classLevels ? ' and classes' : ''}</h2>
+              <ClassLevels
+                {...(classLevelsStep?.classLevels
+                  ? { stepId: classLevelsStep.id, state: classLevelsStep.classLevels }
+                  : {})}
+                level={progress.value}
+                bounds={{ min: progression.min, max: progression.max }}
+                builder={builder}
+                nameOf={nameOf}
+                candidateLabel={candidateLabel}
+                stats={kind.stats}
+              />
+            </section>
+          )}
+
           <h2>
             Open decisions <span className="count">{decisions.length}</span>
           </h2>
@@ -426,26 +449,6 @@ export function BuilderPane({
             <section className="additions-section">
               <h2>{ADDITIONS_HEADING}</h2>
               <Additions state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} />
-            </section>
-          )}
-
-          {/*
-            Which class each level went to. Not a decision and never outstanding, so it does not
-            live in Open decisions: a character with one class has nothing to answer here, and the
-            control is for taking a level in another one — or for correcting what an earlier level
-            went to. What a level in a new class opens still arrives in the list beside it.
-          */}
-          {classLevelsStep?.classLevels && (
-            <section>
-              <h2>Classes</h2>
-              <ClassLevels
-                stepId={classLevelsStep.id}
-                state={classLevelsStep.classLevels}
-                builder={builder}
-                nameOf={nameOf}
-                candidateLabel={candidateLabel}
-                stats={kind.stats}
-              />
             </section>
           )}
 

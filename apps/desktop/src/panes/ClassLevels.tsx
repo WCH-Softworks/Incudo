@@ -1,5 +1,5 @@
 /**
- * Which class each level went to, on screen.
+ * The character's level, and which class each level went to, on screen.
  *
  * Computes nothing, the same discipline `BudgetEditor.tsx` and `HitPointEditor.tsx` state for
  * themselves: every row, every class and every reason a class is unavailable comes off
@@ -8,9 +8,11 @@
  * prerequisite, a level count or which class a level belongs to ever needs working out in this file,
  * a bug in it stops being fixable in a package.
  *
- * Three controls, because there are three things a player does: take one more level in some class
- * (the usual case), say the whole split at once ("Fighter 12, Wizard 5" — ADR 0045), and change what
- * a level already taken went to (the repair, and how a level-by-level build is corrected).
+ * Level up and level down are buttons at the top of the build's main column, with the class the next
+ * level goes to beside Level up. They used to be a typed number in the header and a separate Classes
+ * panel in the settled column, where taking a second class was hard enough to find that it read as
+ * missing. Below them, two more controls for the less usual moves: say the whole split at once
+ * ("Fighter 12, Wizard 5" — ADR 0045), and change what a level already taken went to (the repair).
  *
  * An ability score minimum a class asks for is shown, never enforced (ADR 0045): the flag is data on
  * `ClassOption`, and the sentence around it is this file's.
@@ -18,11 +20,14 @@
 
 import { useState } from 'react';
 import {
+  LEVEL_HINT,
+  LEVEL_MULTICLASS_HINT,
   SPLIT_HINT,
   SPLIT_INTERLEAVED,
   SPLIT_REFUSED,
   classOptionGroups,
   currentSplit,
+  levelControlView,
   movedSplitRow,
   multiclassOffNote,
   shortfallText,
@@ -83,44 +88,92 @@ function ClassOptions({
 export function ClassLevels({
   stepId,
   state,
+  level,
+  bounds,
   builder,
   nameOf,
   candidateLabel,
   stats,
 }: {
-  stepId: string;
-  state: ClassLevelState;
+  /** The class levels step and its state, when the kind has one; without them the panel only moves the level. */
+  stepId?: string;
+  state?: ClassLevelState;
+  level: number;
+  bounds: { min?: number; max?: number };
   builder: CharacterBuilder;
   nameOf: (id: ElementId) => string;
   candidateLabel: (id: ElementId) => string;
   stats: ReadonlyArray<StatDef>;
 }): React.JSX.Element {
   const [next, setNext] = useState<ElementId | undefined>(undefined);
+  const classes = state?.firstClassId !== undefined ? state : undefined;
+  const view = levelControlView(level, bounds, classes, nameOf);
 
-  if (state.firstClassId === undefined) {
-    return <p className="hint">Choose a class first. Further levels can then go to other classes.</p>;
-  }
-
-  const last = state.levels[state.levels.length - 1];
-  const fallback = last?.classId ?? state.firstClassId;
   // What was picked, unless it has since stopped being available — a score changed elsewhere can
   // take a class out from under a control that is still on screen.
   const target =
-    next !== undefined && state.options.some((option) => option.id === next && option.eligible)
+    classes && next !== undefined && classes.options.some((option) => option.id === next && option.eligible)
       ? next
-      : fallback;
-  const nextLevel = state.levels.length + 1;
-  const offNote = multiclassOffNote(state, nameOf);
+      : view.nextClass;
+  const offNote = classes ? multiclassOffNote(classes, nameOf) : undefined;
+  const canAddClass = classes !== undefined && classOptionGroups(classes.options).available.length > 0;
+
+  // A class picked for one level up is spent by it: afterwards the control follows the last level again, so
+  // removing that level does not leave the class it was in waiting beside Level up.
+  const up = (): void => {
+    if (stepId !== undefined && classes && target !== undefined) builder.addLevel(stepId, target);
+    else builder.setProgress(level + 1);
+    setNext(undefined);
+  };
+  const down = (): void => {
+    if (view.down) builder.setProgress(view.down.level);
+    setNext(undefined);
+  };
 
   return (
     <div className="class-levels">
-      <p className="class-summary">
-        {state.classes.map((held) => `${nameOf(held.id)} ${held.levels}`).join(' / ')}
-      </p>
+      <div className="level-head">
+        <span className="level-number">
+          Level <strong>{view.level}</strong>
+        </span>
+        {view.summary && <span className="class-summary">{view.summary}</span>}
+      </div>
 
-      {offNote && <p className={state.classes.length > 1 ? 'class-flag' : 'hint'}>{offNote}</p>}
+      <div className="level-actions">
+        <button type="button" className="primary" disabled={!view.up} onClick={up}>
+          {view.up ? view.up.label : 'Highest level reached'}
+        </button>
+        {classes && (
+          <label className="level-class">
+            in
+            <select
+              value={target}
+              disabled={!view.up}
+              aria-label={view.up ? `Class for level ${view.up.level}` : 'Class for the next level'}
+              onChange={(event) => setNext(event.target.value)}
+            >
+              <ClassOptions options={classes.options} candidateLabel={candidateLabel} stats={stats} />
+            </select>
+          </label>
+        )}
+        <button
+          type="button"
+          className="level-down"
+          disabled={!view.down}
+          onClick={down}
+        >
+          {view.down ? view.down.label : 'Remove a level'}
+        </button>
+      </div>
 
-      {state.options
+      {canAddClass && view.up && <p className="hint">{LEVEL_MULTICLASS_HINT}</p>}
+      {state && state.firstClassId === undefined && (
+        <p className="hint">Choose a class in Open decisions. Further levels can then go to other classes.</p>
+      )}
+
+      {offNote && <p className={classes!.classes.length > 1 ? 'class-flag' : 'hint'}>{offNote}</p>}
+
+      {classes?.options
         .filter((option) => option.taken && option.flag)
         .map((option) => (
           <p key={option.id} className="class-flag">
@@ -129,83 +182,68 @@ export function ClassLevels({
           </p>
         ))}
 
-      {state.unassigned.length > 0 && (
+      {classes && classes.unassigned.length > 0 && (
         <p className="hint">
-          {state.unassigned.length === 1
-            ? `Level ${state.unassigned[0]} has no class recorded.`
-            : `Levels ${state.unassigned.join(', ')} have no class recorded.`}{' '}
-          Choose one below.
+          {classes.unassigned.length === 1
+            ? `Level ${classes.unassigned[0]} has no class recorded.`
+            : `Levels ${classes.unassigned.join(', ')} have no class recorded.`}{' '}
+          Choose one under Level by level.
         </p>
       )}
 
-      <div className="class-add">
-        <label>
-          {state.canAddLevel ? `Level ${nextLevel} goes to` : 'Highest level reached'}
-          <select
-            value={target}
-            disabled={!state.canAddLevel}
-            onChange={(event) => setNext(event.target.value)}
-          >
-            <ClassOptions options={state.options} candidateLabel={candidateLabel} stats={stats} />
-          </select>
-        </label>
-        <button
-          type="button"
-          disabled={!state.canAddLevel}
-          onClick={() => builder.addLevel(stepId, target)}
-        >
-          Add level {state.canAddLevel ? nextLevel : ''}
-        </button>
-      </div>
+      <p className="hint">{LEVEL_HINT}</p>
 
-      <ClassSplit
-        stepId={stepId}
-        state={state}
-        builder={builder}
-        candidateLabel={candidateLabel}
-        stats={stats}
-      />
+      {classes && stepId !== undefined && (
+        <>
+          <ClassSplit
+            stepId={stepId}
+            state={classes}
+            builder={builder}
+            candidateLabel={candidateLabel}
+            stats={stats}
+          />
 
-      <details open={state.classes.length > 1 || state.unassigned.length > 0}>
-        <summary>Level by level</summary>
-        <div className="class-level-rows">
-          {state.levels.map((row) => (
-            <div key={row.level} className="class-level-row">
-              <span className="label">Level {row.level}</span>
-              {row.first ? (
-                <span className="hint">
-                  {row.classId ? `${nameOf(row.classId)} 1 · your first class` : '—'}
-                </span>
-              ) : (
-                <>
-                  <span className="hint">
-                    {row.classId ? `${nameOf(row.classId)} ${row.classLevel}` : 'no class'}
-                  </span>
-                  <select
-                    aria-label={`Class for level ${row.level}`}
-                    value={row.classId ?? ''}
-                    onChange={(event) => builder.setLevelClass(stepId, row.level, event.target.value)}
-                  >
-                    {row.classId === undefined && (
-                      <option value="" disabled>
-                        Choose a class
-                      </option>
-                    )}
-                    <ClassOptions options={state.options} candidateLabel={candidateLabel} stats={stats} />
-                  </select>
-                </>
-              )}
+          <details open={classes.unassigned.length > 0}>
+            <summary>Level by level</summary>
+            <div className="class-level-rows">
+              {classes.levels.map((row) => (
+                <div key={row.level} className="class-level-row">
+                  <span className="label">Level {row.level}</span>
+                  {row.first ? (
+                    <span className="hint">
+                      {row.classId ? `${nameOf(row.classId)} 1 · your first class` : '—'}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="hint">
+                        {row.classId ? `${nameOf(row.classId)} ${row.classLevel}` : 'no class'}
+                      </span>
+                      <select
+                        aria-label={`Class for level ${row.level}`}
+                        value={row.classId ?? ''}
+                        onChange={(event) => builder.setLevelClass(stepId, row.level, event.target.value)}
+                      >
+                        {row.classId === undefined && (
+                          <option value="" disabled>
+                            Choose a class
+                          </option>
+                        )}
+                        <ClassOptions options={classes.options} candidateLabel={candidateLabel} stats={stats} />
+                      </select>
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </details>
-
-      <p className="hint">
-        Ability score minimums a class asks for are shown, not enforced: the class can be taken and the
-        minimum is listed until the score reaches it. Anything else a class requires, such as not
-        combining it with another edition of a class you have, still applies and is checked against the
-        character as it is now. Changing a level's class clears a hit point roll made on a different die.
-      </p>
+            <p className="hint">
+              Ability score minimums a class asks for are shown, not enforced: the class can be taken and the
+              minimum is listed until the score reaches it. Anything else a class requires, such as not
+              combining it with another edition of a class you have, still applies and is checked against the
+              character as it is now. Changing a level's class clears a hit point roll made on a different die.
+            </p>
+          </details>
+        </>
+      )}
     </div>
   );
 }

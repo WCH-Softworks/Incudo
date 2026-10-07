@@ -10,6 +10,7 @@ import type { StatDef } from '@incudo/core';
 import {
   classOptionGroups,
   currentSplit,
+  levelControlView,
   movedSplitRow,
   multiclassOffNote,
   progressPrintedHint,
@@ -28,7 +29,7 @@ import {
   withSlot,
   withoutSlot,
 } from './build-view.ts';
-import type { ClassOption } from './multiclass.ts';
+import type { ClassLevelState, ClassOption } from './multiclass.ts';
 import type { BuilderStep, OpenDecision, SettledPick } from './use-character-builder.ts';
 
 const pick = (chosen: string[], candidates: string[], repeatable: string[] = []): SettledPick => ({
@@ -200,4 +201,36 @@ test("the link back to a printed progression shows only while a typed value diff
   assert.equal(progressPrintedHint({ printable: false, printedBy: 'WOLF' }, nameOf), undefined);
   assert.match(progressPrintedHint({ printable: true, printedBy: 'WOLF' }, nameOf)!, /^A faded number is Wolf's own, .*Clear what you typed/);
   assert.match(progressPrintedHint({ printable: true }, nameOf)!, /what the character holds prints/);
+});
+
+test('the level control offers one level up and one down, and names the class the level it removes was in', () => {
+  const names: Record<string, string> = { F: 'Fighter', W: 'Wizard' };
+  const nameOf = (id: string): string => names[id] ?? id;
+  const state = {
+    levels: [
+      { level: 1, classId: 'F', classLevel: 1, first: true },
+      { level: 2, classId: 'F', classLevel: 2, first: false },
+      { level: 3, classId: 'W', classLevel: 1, first: false },
+    ],
+    firstClassId: 'F',
+    classes: [{ id: 'F', levels: 2 }, { id: 'W', levels: 1 }],
+    canAddLevel: true,
+  } as unknown as ClassLevelState;
+  // Perturbation: the removed level's class read from the first row instead of the last names Fighter.
+  assert.deepEqual(levelControlView(3, { min: 1, max: 20 }, state, nameOf), {
+    level: 3,
+    summary: 'Fighter 2 / Wizard 1',
+    up: { level: 4, label: 'Level up to 4' },
+    down: { level: 2, label: 'Remove level 3 (Wizard 1)' },
+    nextClass: 'W',
+  });
+  // At the top, the class state says no room; at the bottom, nothing to remove.
+  const top = levelControlView(20, { min: 1, max: 20 }, { ...state, canAddLevel: false }, nameOf);
+  assert.equal(top.up, undefined);
+  // Before any class: the progression's bounds decide, and nothing is summarised.
+  const bare = levelControlView(1, { min: 1, max: 20 }, undefined, nameOf);
+  assert.equal(bare.down, undefined);
+  assert.deepEqual(bare.up, { level: 2, label: 'Level up to 2' });
+  assert.equal(bare.summary, undefined);
+  assert.equal(levelControlView(20, { min: 1, max: 20 }, undefined, nameOf).up, undefined);
 });

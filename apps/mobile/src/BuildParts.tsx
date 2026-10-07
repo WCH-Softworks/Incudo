@@ -13,6 +13,9 @@ import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import type { ElementId, ResolvedCharacterKind, StatDef } from '@incudo/core';
 import {
+  LEVEL_HINT,
+  LEVEL_UP_OTHER,
+  levelControlView,
   SPLIT_HINT,
   SPLIT_INTERLEAVED,
   SPLIT_REFUSED,
@@ -307,25 +310,32 @@ export function HitPointsView({ stepId, state, builder }: { stepId: string; stat
 export function ClassLevelsView({
   stepId,
   state,
+  level,
+  bounds,
   builder,
   labelOf,
   nameOf,
   stats,
   pick,
 }: {
-  stepId: string;
-  state: ClassLevelState;
+  /** The class levels step and its state, when the kind has one; without them this only moves the level. */
+  stepId?: string;
+  state?: ClassLevelState;
+  level: number;
+  bounds: { min?: number; max?: number };
   builder: CharacterBuilder;
   labelOf: (id: ElementId) => string;
   nameOf: (id: ElementId) => string;
   stats: ReadonlyArray<StatDef>;
   pick: (request: PickerRequest) => void;
 }) {
+  const palette = usePalette();
   const [splitOpen, setSplitOpen] = useState(false);
-  if (state.firstClassId === undefined) return <Body tone="muted">Choose a class first. Further levels can then go to other classes.</Body>;
+  const classes = state?.firstClassId !== undefined ? state : undefined;
+  const view = levelControlView(level, bounds, classes, nameOf);
   // The picker lists what may be chosen: the character's classes, then those it may add, each worded with any minimum it
   // falls short of. What it may not take is said below, not offered.
-  const groups = classOptionGroups(state.options);
+  const groups = classOptionGroups(classes?.options ?? []);
   const optionLabel = (option: ClassOption): string =>
     option.flag ? `${labelOf(option.id)} (needs ${shortfallText(option.flag, stats)})` : labelOf(option.id);
   const offer = (title: string, onPick: (id: ElementId) => void, current?: ElementId): void => {
@@ -333,14 +343,40 @@ export function ClassLevelsView({
     const labels = new Map(options.map((option) => [option.id, optionLabel(option)]));
     pick({ title, options: options.map((option) => option.id), onPick, labels, ...(current ? { current } : {}) });
   };
-  const nextLevel = state.levels.length + 1;
-  const offNote = multiclassOffNote(state, nameOf);
+  const offNote = classes ? multiclassOffNote(classes, nameOf) : undefined;
+  // Level up goes to the last level's class in one tap; any other class the character may take is one more, named.
+  const other = groups.taken.length + groups.available.length > 1;
+  const up = view.up;
+  const down = view.down;
 
   return (
     <View style={styles.part}>
-      <Body>{state.classes.map((held) => `${nameOf(held.id)} ${held.levels}`).join(' / ')}</Body>
-      {offNote ? <Body tone={state.classes.length > 1 ? 'danger' : 'muted'}>{offNote}</Body> : null}
-      {state.options
+      <Row>
+        <Text style={{ color: palette.text, fontSize: 15 }}>
+          Level <Text style={{ fontSize: 24, fontWeight: '700' }}>{view.level}</Text>
+        </Text>
+        {view.summary ? <Text style={{ color: palette.text, fontWeight: '600', flexShrink: 1 }}>{view.summary}</Text> : null}
+      </Row>
+      <Row>
+        {up ? (
+          <Button
+            label={classes && view.nextClass ? `${up.label} as ${nameOf(view.nextClass)}` : up.label}
+            kind="primary"
+            onPress={() =>
+              stepId !== undefined && classes && view.nextClass ? builder.addLevel(stepId, view.nextClass) : builder.setProgress(up.level)
+            }
+          />
+        ) : (
+          <Body tone="muted">Highest level reached.</Body>
+        )}
+        {up && stepId !== undefined && classes && other ? (
+          <Button label={LEVEL_UP_OTHER} onPress={() => offer(`Level ${up.level} goes to`, (id) => builder.addLevel(stepId, id), view.nextClass)} />
+        ) : null}
+      </Row>
+      {down ? <Button label={down.label} kind="link" onPress={() => builder.setProgress(down.level)} /> : null}
+      {state && !classes ? <Body tone="muted">Choose a class in Open decisions. Further levels can then go to other classes.</Body> : null}
+      {classes && offNote ? <Body tone={classes.classes.length > 1 ? 'danger' : 'muted'}>{offNote}</Body> : null}
+      {classes?.options
         .filter((option) => option.taken && option.flag)
         .map((option) => (
           <Body key={option.id} tone="muted">
@@ -348,43 +384,45 @@ export function ClassLevelsView({
             high enough.
           </Body>
         ))}
-      {state.unassigned.length > 0 ? (
+      {classes && classes.unassigned.length > 0 ? (
         <Body tone="danger">
-          {state.unassigned.length === 1 ? `Level ${state.unassigned[0]} has no class recorded.` : `Levels ${state.unassigned.join(', ')} have no class recorded.`}
+          {classes.unassigned.length === 1
+            ? `Level ${classes.unassigned[0]} has no class recorded.`
+            : `Levels ${classes.unassigned.join(', ')} have no class recorded.`}
         </Body>
       ) : null}
-      <Row>
-        {state.canAddLevel ? (
-          <Button label={`Add level ${nextLevel}…`} kind="primary" onPress={() => offer(`Level ${nextLevel} goes to`, (id) => builder.addLevel(stepId, id))} />
-        ) : (
-          <Body tone="muted">Highest level reached.</Body>
-        )}
-        <Button label={splitOpen ? 'Close the split' : 'Set the split'} onPress={() => setSplitOpen(!splitOpen)} />
-      </Row>
-      {splitOpen ? (
-        <SplitEditor stepId={stepId} state={state} builder={builder} labelOf={labelOf} offer={offer} onApplied={() => setSplitOpen(false)} />
-      ) : null}
-      {state.levels.map((row) => (
-        <Row key={row.level}>
-          <Text style={{ minWidth: 64, fontWeight: '600' }}>Level {row.level}</Text>
-          {row.first ? (
-            <Body tone="muted">{row.classId ? `${nameOf(row.classId)} 1 · first class` : '—'}</Body>
-          ) : (
-            <>
-              <Body>{row.classId ? `${nameOf(row.classId)} ${row.classLevel}` : 'no class'}</Body>
-              <Button
-                label="Change"
-                kind="link"
-                onPress={() => offer(`Level ${row.level} goes to`, (id) => builder.setLevelClass(stepId, row.level, id), row.classId)}
-              />
-            </>
-          )}
-        </Row>
-      ))}
-      {groups.unavailable.length > 0 ? (
-        <Body tone="muted">
-          Not available: {groups.unavailable.map((option) => `${labelOf(option.id)} (${unavailableReason(option, labelOf)})`).join('; ')}.
-        </Body>
+      <Body tone="muted">{LEVEL_HINT}</Body>
+      {classes && stepId !== undefined ? (
+        <>
+          <Row>
+            <Button label={splitOpen ? 'Close the split' : 'Set the split'} onPress={() => setSplitOpen(!splitOpen)} />
+          </Row>
+          {splitOpen ? (
+            <SplitEditor stepId={stepId} state={classes} builder={builder} labelOf={labelOf} offer={offer} onApplied={() => setSplitOpen(false)} />
+          ) : null}
+          {classes.levels.map((row) => (
+            <Row key={row.level}>
+              <Text style={{ minWidth: 64, fontWeight: '600' }}>Level {row.level}</Text>
+              {row.first ? (
+                <Body tone="muted">{row.classId ? `${nameOf(row.classId)} 1 · first class` : '—'}</Body>
+              ) : (
+                <>
+                  <Body>{row.classId ? `${nameOf(row.classId)} ${row.classLevel}` : 'no class'}</Body>
+                  <Button
+                    label="Change"
+                    kind="link"
+                    onPress={() => offer(`Level ${row.level} goes to`, (id) => builder.setLevelClass(stepId, row.level, id), row.classId)}
+                  />
+                </>
+              )}
+            </Row>
+          ))}
+          {groups.unavailable.length > 0 ? (
+            <Body tone="muted">
+              Not available: {groups.unavailable.map((option) => `${labelOf(option.id)} (${unavailableReason(option, labelOf)})`).join('; ')}.
+            </Body>
+          ) : null}
+        </>
       ) : null}
     </View>
   );

@@ -1079,13 +1079,43 @@ table.budget-rows input[type='number'] {
 }
 
 /*
- * Which class each level went to. Blocks, not a table, for the reason `.hp-level` gives: this sits
- * in the narrow settled column, where a class name plus its book and a select do not share a row.
+ * The level and which class each level went to, at the head of the build's middle column. Level up is
+ * the one filled button on the pane: it is how a character grows, and it had been a typed number.
  */
+.level-panel {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-sunken);
+}
+
+.level-panel h2 {
+  margin-top: 0;
+}
+
 .class-levels {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.level-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+
+.level-number {
+  font-size: 15px;
+}
+
+.level-number strong {
+  font-size: 26px;
+  line-height: 1;
+  margin-left: 4px;
 }
 
 .class-summary {
@@ -1093,19 +1123,46 @@ table.budget-rows input[type='number'] {
   font-weight: 600;
 }
 
-.class-add {
+.level-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+button.primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.level-class {
+  display: flex;
+  align-items: center;
   gap: 6px;
+  flex: 1 1 12em;
+  min-width: 0;
 }
 
-.class-add label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.level-class select {
+  flex: 1;
+  min-width: 0;
 }
 
-.class-add select,
+.level-down {
+  margin-left: auto;
+}
+
+.class-levels .hint,
+.class-levels .class-flag {
+  margin: 0;
+}
+
 .class-level-row select {
   width: 100%;
   min-width: 0;
