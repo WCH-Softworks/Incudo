@@ -12,6 +12,11 @@
 > **not** what was built: the key is per source and per URL, the version is a stamp beside it,
 > and a refresh evicts that source's cache. ADR 0029 says why.
 >
+> **The per-source setting is retired** ([ADR 0100](./0100-on-a-metered-connection-the-phone-asks-before-a-fetch-that-downloads-a-source-and-the-mode-setting-goes.md),
+> 2026-10-08). Measured, *stream* and *download* fetched the same files at the same moment, and no load read the
+> setting, so no default of it could save data on a metered connection. The desktop no longer offers it, the field is
+> still read and written, and the phone asks before an action that downloads a source on a metered connection instead.
+>
 > **"Lazy per-file" is withdrawn** ([ADR 0051](./0051-lazy-loading-is-declined-and-the-index-walk-stops-waiting-on-itself.md)).
 > A character holds a dozen of AuroraLegacy's 740 files, but building one is offered choices from 373 of them, and an
 > Aurora index cannot say what a file holds without fetching it. `HttpContentSource` still fetches per file; the
