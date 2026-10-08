@@ -21,6 +21,7 @@
 import {
   validateGameSystem,
   type GameSystem,
+  type OverlayChange,
   type PickedFile,
   type SchemaBundle,
   type SchemaError,
@@ -39,13 +40,21 @@ export interface SystemLoadFailure {
   errors: SchemaError[];
 }
 
+/** What an overlay was applied to and what it changed (ADR 0102), as `validateGameSystem` reported it. */
+export interface UserOverlay {
+  parent: GameSystem;
+  changes: OverlayChange[];
+}
+
 export interface LoadedUserSystems {
   systems: GameSystem[];
   failures: SystemLoadFailure[];
+  /** For each system that is an overlay, by id: its parent and its changes, as applied on this load. */
+  overlays: Record<string, UserOverlay>;
 }
 
 export type AddSystemResult =
-  | { ok: true; system: GameSystem; replaced: boolean }
+  | { ok: true; system: GameSystem; replaced: boolean; overlay?: UserOverlay }
   | { ok: false; message: string; errors?: SchemaError[] };
 
 /**
@@ -60,22 +69,34 @@ export class UserSystemStore {
   private readonly storage: Storage;
   private readonly schemas: SchemaBundle;
   private readonly reserved: ReadonlySet<string>;
+  private readonly bases: readonly GameSystem[];
 
-  constructor(storage: Storage, schemas: SchemaBundle, reserved: Iterable<string> = []) {
+  /**
+   * `bases` are the shipped systems an overlay may name in `extends` (ADR 0102), beside the user's own complete ones.
+   * Their ids are reserved too.
+   */
+  constructor(storage: Storage, schemas: SchemaBundle, reserved: Iterable<string> = [], bases: readonly GameSystem[] = []) {
     this.storage = storage;
     this.schemas = schemas;
-    this.reserved = new Set([...reserved].map((id) => id.toLowerCase()));
+    this.bases = bases;
+    this.reserved = new Set([...reserved, ...bases.map((system) => system.id)].map((id) => id.toLowerCase()));
   }
 
+  /**
+   * Every stored definition, validated now. Complete systems first, then overlays, each applied to its parent as the
+   * parent is today: that is how a fix to the parent reaches an overlay written before it (ADR 0102).
+   */
   async load(): Promise<LoadedUserSystems> {
     const systems: GameSystem[] = [];
     const failures: SystemLoadFailure[] = [];
+    const overlays: Record<string, UserOverlay> = {};
     let keys: string[];
     try {
       keys = await this.storage.list(USER_SYSTEM_PREFIX);
     } catch {
-      return { systems, failures };
+      return { systems, failures, overlays };
     }
+    const read: Array<{ key: string; value: unknown }> = [];
     for (const key of keys.sort()) {
       const text = await this.storage.read(key).catch(() => null);
       if (text === null) continue;
@@ -84,11 +105,27 @@ export class UserSystemStore {
         failures.push({ id: idFromKey(key), key, errors: [{ path: '', message: parsed.message }] });
         continue;
       }
-      const result = validateGameSystem(parsed.value, this.schemas);
-      if (result.value) systems.push(result.value);
-      else failures.push({ id: idOf(parsed.value) ?? idFromKey(key), key, errors: result.errors });
+      read.push({ key, value: parsed.value });
     }
-    return { systems, failures };
+    // Complete systems before overlays, so an overlay of the user's own system finds it whatever the file names sort as.
+    const ordered = [...read.filter((entry) => !isOverlay(entry.value)), ...read.filter((entry) => isOverlay(entry.value))];
+    for (const { key, value } of ordered) {
+      const result = validateGameSystem(value, this.schemas, { parent: (id) => this.parentAmong(systems, id) });
+      if (result.value) {
+        systems.push(result.value);
+        if (result.overlay) overlays[result.value.id] = result.overlay;
+      } else failures.push({ id: idOf(value) ?? idFromKey(key), key, errors: result.errors });
+    }
+    return { systems, failures, overlays };
+  }
+
+  /**
+   * The system an overlay names: shipped, or the user's own. An overlay found here is refused by the validator with a
+   * sentence saying so, which reads better than "not a system Incudo has" about a system the user can see.
+   */
+  private parentAmong(user: readonly GameSystem[], id: string): GameSystem | undefined {
+    const lower = id.toLowerCase();
+    return this.bases.find((system) => system.id.toLowerCase() === lower) ?? user.find((system) => system.id.toLowerCase() === lower);
   }
 
   /**
@@ -107,7 +144,8 @@ export class UserSystemStore {
     const parsed = parse(text);
     if (!parsed.ok) return { ok: false, message: `"${file.name}" is not valid JSON: ${parsed.message}` };
 
-    const result = validateGameSystem(parsed.value, this.schemas);
+    const user = isOverlay(parsed.value) ? (await this.load()).systems : [];
+    const result = validateGameSystem(parsed.value, this.schemas, { parent: (id) => this.parentAmong(user, id) });
     if (!result.value) {
       return {
         ok: false,
@@ -121,7 +159,7 @@ export class UserSystemStore {
         message:
           `"${result.value.id}" is a system Incudo ships, and two systems cannot share an id — ` +
           `a character records only the id. To change an official system, give yours its own id ` +
-          `and name the official one in "extends" (ADR 0011).`,
+          `and name the official one in "extends".`,
       };
     }
 
@@ -131,7 +169,7 @@ export class UserSystemStore {
     // the file the user actually wrote — comments they cannot have, but key order and spacing
     // are theirs, and a round trip through JSON.stringify is a change nobody asked for.
     await this.storage.write(key, text);
-    return { ok: true, system: result.value, replaced };
+    return { ok: true, system: result.value, replaced, ...(result.overlay ? { overlay: result.overlay } : {}) };
   }
 
   async remove(id: string): Promise<void> {
@@ -157,6 +195,10 @@ function idFromKey(key: string): string {
   } catch {
     return last;
   }
+}
+
+function isOverlay(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && 'extends' in value;
 }
 
 function idOf(value: unknown): string | undefined {

@@ -175,6 +175,22 @@ test('a source belongs to the system the user assigned it, and to no other', () 
   assert.deepEqual(sourcesForSystem(profile.sources, 'nothing'), []);
 });
 
+// Perturbation: matching only the first id of a lineage (an overlay loads none of its parent's sources), or counting an
+// untagged source as anyone's.
+test("an overlay loads its parent's sources and its own, in the profile's order (ADR 0102)", () => {
+  const profile = new SourceProfile(new MemoryStorage());
+  profile.add(CORE, { systemId: 'dnd5e' });
+  profile.add('https://example.test/house.index', { systemId: 'dnd5e-house' });
+  profile.add('https://example.test/cairn.incuset', { systemId: 'cairn' });
+  profile.add('https://example.test/untagged.index');
+
+  assert.deepEqual(sourcesForSystem(profile.sources, ['dnd5e-house', 'dnd5e']).map((s) => s.id), [
+    CORE,
+    'https://example.test/house.index',
+  ]);
+  assert.deepEqual(sourcesForSystem(profile.sources, 'dnd5e').map((s) => s.id), [CORE]);
+});
+
 /**
  * The case that decides the shape. A profile written before ADR 0031 has no `systemId` on
  * anything, and counting those as the current system's would feed a Pathfinder index to a D&D

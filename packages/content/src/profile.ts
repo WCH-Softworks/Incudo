@@ -211,11 +211,16 @@ export class SourceProfile {
  * {@link unassignedSources} instead, which is a question to put to the user rather than an
  * answer to invent.
  */
+/**
+ * The sources a system loads. Given a system's lineage (`systemLineage`, ADR 0102), an overlay loads its parent's
+ * sources as well as its own: a source keeps one tag, so 5e's are not configured twice.
+ */
 export function sourcesForSystem(
   profile: readonly ConfiguredSource[],
-  systemId: string,
+  systemIds: string | readonly string[],
 ): ConfiguredSource[] {
-  return profile.filter((source) => source.systemId === systemId);
+  const ids = typeof systemIds === 'string' ? [systemIds] : systemIds;
+  return profile.filter((source) => source.systemId !== undefined && ids.includes(source.systemId));
 }
 
 /** Sources the user has never assigned to a system. Shown, never hidden. */

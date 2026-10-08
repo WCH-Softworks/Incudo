@@ -19,6 +19,7 @@
 
 import {
   clampProgress,
+  systemLineage,
   progressCanBePrinted,
   setProgress as recordProgress,
   deriveCharacter,
@@ -520,7 +521,7 @@ export class CharacterBuilder {
     this.steps = orderBuildSteps(this.kind.buildSteps);
     // A file is the system's and names the kind it is for; one for another system or kind offers nothing here.
     this.startingFile = options.startingEquipment?.find(
-      (file) => file.system === system.id && file.kind === this.kind.id && this.steps.some((step) => step.id === file.step),
+      (file) => systemLineage(system).includes(file.system) && file.kind === this.kind.id && this.steps.some((step) => step.id === file.step),
     );
 
     for (const step of this.steps) {

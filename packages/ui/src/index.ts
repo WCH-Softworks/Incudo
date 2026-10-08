@@ -28,6 +28,7 @@ export * from './fetch-prompt.ts';
 export * from './draft.ts';
 export * from './aurora-import.ts';
 export * from './user-systems.ts';
+export * from './system-overlay-view.ts';
 export * from './candidate-search.ts';
 export * from './content-browser.ts';
 export * from './candidate-label.ts';
