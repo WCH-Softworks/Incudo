@@ -66,7 +66,8 @@ as a whole system, then loads it with **Add a system…**, like any other. Its c
    validator the shipped systems go through, so a system the app accepts is one it can build in.
    The validator checks structure against the schema *and* that every reference resolves —
    element types your kinds name, stats your sheets show, kinds your `extends` points at — and
-   names the path of whatever it refuses. For a definition kept in this repository,
+   says where each problem is: the line and column in your file, and the path with your own ids
+   (`characterKinds "hero" › buildSteps "talents" › label: is required`). For a definition kept in this repository,
    `tools/verify/src/schemas.test.ts` validates every `systems/*/system.json` on `npm test`.
 6. Confirm your content matches: every element type your content uses should be one you
    declared. The app lists what a source contributes in its Sources view.

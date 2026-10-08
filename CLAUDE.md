@@ -583,6 +583,29 @@ Phase 7's first item. Things to know before touching it:
   entry cannot be placed before another; a JSON editor pointed at `system.schema.json` validates an overlay as a complete
   system.
 
+**A system definition's error says where it is: its line, and a path with ids in place of positions**
+([ADR 0103](docs/adr/0103-a-system-error-says-where-in-the-file-by-line-and-by-the-ids-written-there.md)), Phase 7's
+second item. Things to know before touching it:
+
+- **`readJsonText` (`packages/core/src/json-text.ts`)** reads JSON and records where each value starts, under the path the
+  validator renders (a member at its name, an array entry at its start), and names the common slips at their line. It is
+  for locating only; `JSON.parse` reads values everywhere else. `json-text.test.ts` holds the two to the same value on every
+  JSON file in `systems/` and `schemas/` and the same verdict on 4,000 broken variants. A leading BOM is read past (JSON.parse
+  refuses one).
+- **`describeSystemErrors(errors, file, positions, overlay?)` (`packages/ui/src/system-problems.ts`)** gives each
+  `SchemaError` a `where` (an identified array's position replaced by the entry's id as written, other positions counted
+  from 1, field names kept since the author searches for them), the line and column of the path or its nearest ancestor,
+  sorted in file order; `systemProblemLine` is the one wording. For an overlay the errors are about the applied system
+  (`SystemValidationResult.overlay.applied`) and are traced back to the overlay's text by id; one in a part the overlay
+  does not write is `fromParent`, with no line.
+- **`UserSystemStore`** reads with `readJsonText` and attaches `problems` to every failure and failed add; the desktop
+  launcher lists all of them (`ProblemList`, five open). Shipped-system failures get problems without lines (no text).
+- **Refused since:** an identity twice in any array of ADR 0102's table (`duplicateIdentities`, stat names ignoring case;
+  arrays with a check of their own are in `CHECKED_ELSEWHERE`), and a generation method's `min` above its `max`. A guard
+  test duplicates an entry of every table path in 5e and requires an error naming it.
+- **Not done:** the 141 reference checks point at the container (they read resolved kinds, inherited parts included);
+  reference checks run only once the structure validates, so a second round can appear. Driven in the browser build only.
+
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
 

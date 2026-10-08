@@ -1811,7 +1811,18 @@ See [ADR 0011](./docs/adr/0011-user-systems.md).
 - [ ] Scaffold a working system from the app's system flow, never an empty file (this was
       `incudo system new <id>` until the CLI was scheduled for removal — see Phase 2)
 - [ ] User systems load through *exactly* the same path as official ones, clearly labelled
-- [ ] Validation errors that a non-programmer can act on
+- [x] Validation errors that a non-programmer can act on.
+      **Done: [ADR 0103](./docs/adr/0103-a-system-error-says-where-in-the-file-by-line-and-by-the-ids-written-there.md).**
+      Measured first on 33 authoring mistakes and six JSON slips: the words were mostly good, the locations were positions
+      (`characterKinds[0].buildSteps[2]`), nothing had a line, syntax errors were V8's, three ambiguities validated (a stat or
+      element type twice, a min above its max) and the launcher showed the first eight. Now every problem reads like
+      `Line 47, column 9: characterKinds "hero" › buildSteps "talents" › label: is required`, in the file's order, all of
+      them (five open). A core JSON reader records positions and names the slips (a trailing comma, a comment, single
+      quotes) at their line; it is held to `JSON.parse` on every repository JSON file and 4,000 broken variants. An overlay's
+      error is at the overlay's own line, or said to be in the parent's part. An identity twice is refused in every array an
+      overlay merges by. **Driven in the browser build** (the picker stood in for by a script). **Not done:** reference checks
+      still point at the container when the entry they name may be inherited; structural errors are shown before reference
+      ones, so fixing the first round can show a second.
 - [ ] "How to write a system definition" guide
 - [ ] A second **official** system, licence permitting ([ADR 0010](./docs/adr/0010-licensing-and-funding.md))
 
