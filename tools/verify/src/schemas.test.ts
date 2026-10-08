@@ -20,6 +20,8 @@ import {
   resolveCharacterKind,
   setAdded,
   setAdditionBlock,
+  setMoney,
+  setStartingEquipmentTaken,
   setReferenced,
   setCustomFeature,
   validateCharacter,
@@ -401,7 +403,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 11 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 12 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -518,6 +520,38 @@ test('only format 10 may record the block an addition is cast through, and only 
   assert.deepEqual(validateCharacter({ ...ten, additionBlocks: { ID_B: 'wizard' } }, schemas).errors, [
     { path: 'additionBlocks.ID_B', message: '"ID_B" is not an element added to this character' },
   ]);
+});
+
+test('only format 11 may record money or a starting package, and money only in the units the system declares — ADR 0087', async () => {
+  // Fails if the schema refuses either field, if the referential check stops refusing them in a file that claims 10 (a
+  // reader of 10 drops them), stops refusing a unit the system does not declare, or a package recorded twice for one class.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  const pc = createCharacter('dnd5e', 'pc', { name: 'Sample', progress: 1 });
+  const eleven = setStartingEquipmentTaken(setMoney(pc, { gp: 15, sp: 3 }), 'ID_A', { for: 'ID_A', option: 'a', coins: { gp: 15 } });
+  assert.equal(eleven.formatVersion, 11);
+  assert.deepEqual(validateCharacter(eleven, schemas, system).errors, []);
+  assert.deepEqual(validateCharacter({ ...eleven, formatVersion: 10 }, schemas).errors, [
+    { path: 'money', message: 'is recorded only from format 11' },
+    { path: 'startingEquipment', message: 'is recorded only from format 11' },
+  ]);
+  assert.deepEqual(validateCharacter({ ...eleven, money: { gp: 1, doubloon: 2 } }, schemas, system).errors, [
+    { path: 'money.doubloon', message: '"doubloon" is not a unit of money this system declares' },
+  ]);
+  // With no system to hold it to, a unit is not judged.
+  assert.deepEqual(validateCharacter({ ...eleven, money: { doubloon: 2 } }, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...eleven, money: { gp: 1.5 } }, schemas).errors.map((e) => e.path), ['money.gp']);
+  const twice = { ...eleven, startingEquipment: [...eleven.startingEquipment!, { for: 'ID_A', option: 'b' }] };
+  assert.deepEqual(validateCharacter(twice, schemas).errors.map((e) => e.path), ['startingEquipment[1].for']);
+});
+
+test('a coinage whose rates disagree is refused when the system loads — ADR 0087', async () => {
+  // Fails if the referential check is removed: an electrum piece worth both 50 and 30 copper would price one thing twice.
+  const schemas = await loadSchemas();
+  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  assert.deepEqual(validateGameSystem(system, schemas).errors, []);
+  system.currency = { ...system.currency!, ep: { label: 'Electrum', exchangeRate: { sp: 3 } } };
+  assert.deepEqual(validateGameSystem(system, schemas).errors.map((e) => e.path), ['currency']);
 });
 
 test('a type cast through a block that cannot be added is caught before the app loads it — ADR 0097', async () => {
@@ -638,8 +672,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 11 } as unknown as Character, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 12 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11' },
   ]);
   // Play state (ADR 0084) is recorded only from format 8, whole positive counts only. Fails if the format check in
   // `checkCharacterReferences` is removed, or if the schema's `minimum` is.

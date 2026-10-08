@@ -1806,6 +1806,104 @@ export interface GameSystem {
   auroraTypeMap?: Record<string, ElementType>;
   /** Content indexes to offer when the user adds a source — ADR 0031. */
   suggestedSources?: SuggestedSource[];
+  /**
+   * The units a character's money is counted in, by id, each with what it is worth in another — ADR 0087. One coinage
+   * per system, never per kind. The ids are the ones content prices items in, so a cost and a purse name the same
+   * units. The validator holds the rates to each other; a system without it records no money.
+   */
+  currency?: Record<string, CurrencyUnitDef>;
+}
+
+/** One unit of a system's money — ADR 0087. */
+export interface CurrencyUnitDef {
+  label: string;
+  /** How many of other units one of this is worth, as the book states it: gold `{ "sp": 10 }`. */
+  exchangeRate?: Record<string, number>;
+}
+
+/**
+ * Where two routes between two units of a system's money disagree, or a unit cannot be reached — ADR 0087 decision 5.
+ * Each unit's worth is worked out in the one unit every rate leads to, through the rates as the book states them, both
+ * ways; a second route to a worth already found must give the same value, or the system is refused with both routes.
+ * Empty when the rates agree, or when the system declares no money.
+ */
+export function currencyProblems(currency: Record<string, CurrencyUnitDef> | undefined): string[] {
+  if (!currency) return [];
+  const units = Object.keys(currency);
+  const problems: string[] = [];
+  // Every rate both ways: one of `from` is `rate` of `to`, so one of `to` is 1/rate of `from`.
+  const edges = new Map<string, Array<{ to: string; factor: number; route: string }>>();
+  for (const unit of units) edges.set(unit, []);
+  for (const [from, def] of Object.entries(currency)) {
+    for (const [to, rate] of Object.entries(def.exchangeRate ?? {})) {
+      if (!(to in currency)) {
+        problems.push(`${from} is worth ${rate} ${to}, and "${to}" is not a unit this system declares`);
+        continue;
+      }
+      if (!(rate > 0) || !Number.isFinite(rate)) {
+        problems.push(`${from} is worth ${rate} ${to}, and a rate must be a positive number`);
+        continue;
+      }
+      edges.get(from)!.push({ to, factor: rate, route: `1 ${from} = ${rate} ${to}` });
+      edges.get(to)!.push({ to: from, factor: 1 / rate, route: `1 ${from} = ${rate} ${to}` });
+    }
+  }
+  if (problems.length || !units.length) return problems;
+  // Worth in the first unit, found by walking the rates; a second route is compared, not taken.
+  const base = units[0]!;
+  const worth = new Map<string, { value: number; route: string }>([[base, { value: 1, route: base }]]);
+  const queue = [base];
+  const disagreeing = new Set<string>();
+  while (queue.length) {
+    const unit = queue.shift()!;
+    const here = worth.get(unit)!;
+    for (const edge of edges.get(unit)!) {
+      const value = here.value * edge.factor;
+      const route = `${here.route}, ${edge.route}`;
+      const known = worth.get(edge.to);
+      if (!known) {
+        worth.set(edge.to, { value, route });
+        queue.push(edge.to);
+      } else if (Math.abs(known.value - value) > 1e-9 * Math.max(known.value, value) && !disagreeing.has([unit, edge.to].sort().join(' '))) {
+        // Once per rate: the same loop is met again from that rate's other end.
+        disagreeing.add([unit, edge.to].sort().join(' '));
+        problems.push(`two routes to ${edge.to} disagree: (${known.route}) and (${route})`);
+      }
+    }
+  }
+  for (const unit of units) {
+    if (!worth.has(unit)) problems.push(`${unit} cannot be reached from ${base} through any rate`);
+  }
+  return [...new Set(problems)];
+}
+
+/**
+ * Each unit's worth in the unit every other is worth a whole number of — ADR 0087 decision 5: values are worked out
+ * from the rates and never written twice. 5e: cp 1, sp 10, ep 50, gp 100, pp 1000. Undefined for a system whose rates do
+ * not agree, or that declares no money.
+ */
+export function currencyWorths(currency: Record<string, CurrencyUnitDef> | undefined): Map<string, number> | undefined {
+  if (!currency || currencyProblems(currency).length) return undefined;
+  const units = Object.keys(currency);
+  if (!units.length) return undefined;
+  const raw = new Map<string, number>([[units[0]!, 1]]);
+  const queue = [units[0]!];
+  while (queue.length) {
+    const unit = queue.shift()!;
+    for (const [from, def] of Object.entries(currency)) {
+      for (const [to, rate] of Object.entries(def.exchangeRate ?? {})) {
+        if (from === unit && !raw.has(to)) {
+          raw.set(to, raw.get(unit)! / rate);
+          queue.push(to);
+        } else if (to === unit && !raw.has(from)) {
+          raw.set(from, raw.get(unit)! * rate);
+          queue.push(from);
+        }
+      }
+    }
+  }
+  const smallest = Math.min(...raw.values());
+  return new Map(units.map((unit) => [unit, Math.round(raw.get(unit)! / smallest)]));
 }
 
 export function findStatDef(system: GameSystem, name: StatKey): StatDef | undefined {

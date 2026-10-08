@@ -17,6 +17,7 @@
 import { validateJson, type JsonSchema, type SchemaError } from './json-schema.ts';
 import {
   buildStepCycles,
+  currencyProblems,
   progressionStat,
   resolveCharacterKind,
   type GameSystem,
@@ -60,9 +61,11 @@ export function validateGameSystem(
 export function validateCharacter(
   value: unknown,
   schemas: SchemaBundle,
+  /** When given, what the character records is held to what the system declares: money in its units (ADR 0087). */
+  system?: GameSystem,
 ): ValidationResult<Character> {
   const errors = validateJson(value, schemas.character);
-  if (errors.length === 0) errors.push(...checkCharacterReferences(value as Character));
+  if (errors.length === 0) errors.push(...checkCharacterReferences(value as Character, system));
   return result(value as Character, errors);
 }
 
@@ -139,7 +142,7 @@ function result<T>(value: T, errors: SchemaError[]): ValidationResult<T> {
  * (ADR 0024). Everything else about a character is either structural — which the schema
  * checks — or a reference into content, which the save deliberately does not have loaded.
  */
-function checkCharacterReferences(character: Character): SchemaError[] {
+function checkCharacterReferences(character: Character, system?: GameSystem): SchemaError[] {
   const errors: SchemaError[] = [];
   // What only format 3 may do (ADR 0060, ADR 0061). A file that does it and claims 2 is one a reader of 2 would
   // open and get wrong without a word, which is the one thing the number exists to prevent.
@@ -173,6 +176,23 @@ function checkCharacterReferences(character: Character): SchemaError[] {
   // Play state is dropped by a reader of 7 (ADR 0084).
   if (character.formatVersion < 8 && character.play !== undefined) {
     errors.push({ path: 'play', message: 'is recorded only from format 8' });
+  }
+  // Money and what a starting package wrote are dropped by a reader of 10 (ADR 0087).
+  if (character.formatVersion < 11 && character.money !== undefined) {
+    errors.push({ path: 'money', message: 'is recorded only from format 11' });
+  }
+  if (character.formatVersion < 11 && character.startingEquipment !== undefined) {
+    errors.push({ path: 'startingEquipment', message: 'is recorded only from format 11' });
+  }
+  if (system?.currency) {
+    for (const unit of Object.keys(character.money ?? {})) {
+      if (!(unit in system.currency)) errors.push({ path: `money.${unit}`, message: `"${unit}" is not a unit of money this system declares` });
+    }
+  }
+  const takenFor = new Set<string>();
+  for (const [i, record] of (character.startingEquipment ?? []).entries()) {
+    if (takenFor.has(record.for)) errors.push({ path: `startingEquipment[${i}].for`, message: `"${record.for}" has a package recorded twice` });
+    takenFor.add(record.for);
   }
   const featureIds = new Set<string>();
   for (const [i, feature] of (character.customFeatures ?? []).entries()) {
@@ -237,6 +257,9 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         .join(', ')}); only one may be`,
     });
   }
+
+  // A coinage whose rates disagree would price one thing two ways (ADR 0087): refused with both routes named.
+  for (const message of currencyProblems(system.currency)) errors.push({ path: 'currency', message });
 
   const typeNames = new Set((system.elementTypes ?? []).map((t) => t.name));
   const methodIds = new Set((system.generationMethods ?? []).map((m) => m.id));

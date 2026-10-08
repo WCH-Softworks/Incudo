@@ -72,6 +72,23 @@
       "type": "array",
       "items": { "$ref": "#/$defs/suggestedSource" },
       "description": "Content indexes to offer when the user adds a source (ADR 0031). Pointers, not content: a system definition still ships no elements (ADR 0022) and a character still opens with none configured (ADR 0012). They live on the system rather than in a catalogue beside the app so that a user-authored system can point at its own content, and a fork inherits what it was forked from. Nothing is fetched until the user picks one."
+    },
+    "currency": {
+      "type": "object",
+      "description": "The units a character's money is counted in, by id, each with what it is worth in other units as the book states it (ADR 0087): gold { \"sp\": 10 }. One coinage for the whole system. The ids are the ones content prices items in. The validator refuses rates that disagree with each other, a rate naming an undeclared unit, and a unit no rate reaches. A system without it records no money.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["label"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "exchangeRate": {
+            "type": "object",
+            "description": "How many of another unit one of this is worth: { \"cp\": 10 } on silver.",
+            "additionalProperties": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        }
+      }
     }
   },
 

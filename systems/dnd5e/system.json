@@ -949,6 +949,13 @@
     }
   ],
 
+  "currency": {
+    "cp": { "label": "Copper" },
+    "sp": { "label": "Silver", "exchangeRate": { "cp": 10 } },
+    "ep": { "label": "Electrum", "exchangeRate": { "sp": 5 } },
+    "gp": { "label": "Gold", "exchangeRate": { "sp": 10, "ep": 2 } },
+    "pp": { "label": "Platinum", "exchangeRate": { "gp": 10 } }
+  },
   "suggestedSources": [
     {
       "url": "https://raw.githubusercontent.com/AuroraLegacy/elements/master/AuroraLegacy.index",

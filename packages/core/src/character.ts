@@ -107,8 +107,8 @@ export interface Character {
    * records `removedGrants` (ADR 0060, ADR 0061), 4 for one that records `customFeatures` (ADR 0063), 5 for one that
    * records `additions` (ADR 0064), 6 for one with a custom feature held as a type other than its kind's default (ADR 0065),
    * 7 for one that records `references` (ADR 0068), 8 for one that records `play` (ADR 0084), 9 for one with a custom
-   * feature line that marks a row (ADR 0094), 10 for one that records `additionBlocks` (ADR 0097). Readers accept all
-   * ten. A new character is written at 2, and only a write that needs more raises it
+   * feature line that marks a row (ADR 0094), 10 for one that records `additionBlocks` (ADR 0097), 11 for one that
+   * records `money` or `startingEquipment` (ADR 0087). Readers accept all eleven. A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -267,11 +267,40 @@ export interface Character {
    * reader of 7 would drop it without a word.
    */
   play?: PlayState;
+  /**
+   * The money the character holds, a count per unit the system's `currency` declares — ADR 0087: `{ "gp": 15 }`. An
+   * input in the family of `inventory`: no formula produces what is in a purse. Counts are kept per unit as the player
+   * holds them, never folded into one total. Absent when every count is 0; only format 11 records it, because a reader
+   * of 10 would drop it without a word.
+   */
+  money?: Record<string, number>;
+  /**
+   * What the starting equipment step wrote into the bag and the purse, one record per class or background whose
+   * package was taken — ADR 0087 decision 4. Not a choice: a recorded choice seeds the derivation, and what a package
+   * gave is carried, not held. It is what lets the step read settled and take a package back while it is untouched.
+   * Absent when empty; only format 11 records it.
+   */
+  startingEquipment?: StartingEquipmentTaken[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+
+/**
+ * One starting package taken — ADR 0087 decision 4: which entry of the system's starting equipment, which of its
+ * options, and exactly what that wrote, so that taking it back removes that and nothing the player added since.
+ */
+export interface StartingEquipmentTaken {
+  /** The class or background the package is for: the entry's `for`. */
+  for: ElementId;
+  /** The option taken, by its id in the entry. */
+  option: string;
+  /** The bag entries it added, by instance id, with the quantity each was given (absent: 1). */
+  entries?: Array<{ instanceId: string; quantity?: number }>;
+  /** The coins it added to `money`, per unit. Absent when none. */
+  coins?: Record<string, number>;
+}
 
 /**
  * What playing a character has recorded — ADR 0084. Every key is a tracker's, as the kind's `play` names it
@@ -325,10 +354,10 @@ export const CHARACTER_FORMAT_VERSION = 2;
  * The newest version a reader accepts — ADR 0060, ADR 0063, ADR 0064. A character with no `progress` or with
  * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` at least 5, one with a
  * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), one with `play` 8 (ADR
- * 0084), one with a custom feature line that marks a row 9 (ADR 0094), one with `additionBlocks` 10 (ADR 0097), and
- * nothing else is raised.
+ * 0084), one with a custom feature line that marks a row 9 (ADR 0094), one with `additionBlocks` 10 (ADR 0097), one
+ * with `money` or `startingEquipment` 11 (ADR 0087), and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 10;
+export const LATEST_CHARACTER_FORMAT_VERSION = 11;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -582,6 +611,52 @@ export function setPlayState(character: Character, play: PlayState): Character {
   if (JSON.stringify(empty ? undefined : next) === JSON.stringify(character.play)) return character;
   const { play: _previous, ...rest } = character;
   const written: Character = empty ? rest : { ...raiseFormatVersion(rest, 8), play: next };
+  return { ...written, updatedAt: new Date().toISOString() };
+}
+
+/**
+ * Replace what the character holds of each unit — ADR 0087. Counts are whole and non-negative: a fraction is rounded
+ * down and a negative or non-finite count is 0. Zeros are dropped, so a character with no money records none; recording
+ * any raises it to format 11, and emptying the purse leaves the version where it is. Unchanged when nothing differs.
+ */
+export function setMoney(character: Character, money: Record<string, number>): Character {
+  const kept = Object.entries(money)
+    .map(([unit, count]): [string, number] => [unit, Number.isFinite(count) && count > 0 ? Math.floor(count) : 0])
+    .filter(([, count]) => count > 0);
+  const next = kept.length ? Object.fromEntries(kept) : undefined;
+  if (JSON.stringify(next) === JSON.stringify(character.money)) return character;
+  const { money: _previous, ...rest } = character;
+  const written: Character = next ? { ...raiseFormatVersion(rest, 11), money: next } : rest;
+  return { ...written, updatedAt: new Date().toISOString() };
+}
+
+/** Add coins to what the character holds, unit by unit; a negative count takes away, never below 0. */
+export function addMoney(character: Character, coins: Record<string, number>): Character {
+  const next: Record<string, number> = { ...(character.money ?? {}) };
+  for (const [unit, count] of Object.entries(coins)) next[unit] = Math.max(0, (next[unit] ?? 0) + count);
+  return setMoney(character, next);
+}
+
+/**
+ * Record a starting package taken, replacing any record for the same class or background, or forget it with
+ * `undefined` — ADR 0087. Recording raises the character to format 11; forgetting the last leaves the field absent and
+ * the version where it is.
+ */
+export function setStartingEquipmentTaken(
+  character: Character,
+  forId: ElementId,
+  taken: StartingEquipmentTaken | undefined,
+): Character {
+  const current = character.startingEquipment ?? [];
+  const at = current.findIndex((record) => record.for === forId);
+  if (at < 0 && !taken) return character;
+  const next = taken
+    ? at < 0
+      ? [...current, taken]
+      : current.map((record, i) => (i === at ? taken : record))
+    : current.filter((_, i) => i !== at);
+  const { startingEquipment: _previous, ...rest } = character;
+  const written: Character = next.length ? { ...raiseFormatVersion(rest, 11), startingEquipment: next } : rest;
   return { ...written, updatedAt: new Date().toISOString() };
 }
 
