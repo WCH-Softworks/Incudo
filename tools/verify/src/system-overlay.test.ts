@@ -95,6 +95,22 @@ test('a change to 5e that breaks the overlay is named, not half-loaded', async (
   assert.equal(failures.length, 1);
   assert.equal(failures[0]!.id, 'dnd5e-house');
   assert.ok(failures[0]!.errors.length > 0);
+  // ADR 0103: the section the overlay patched is now one it adds, and its error is at the overlay's own line.
+  const text = JSON.stringify(showing, null, 2);
+  const sensesLine = text.split('\n').findIndex((line) => line.includes('"senses"'));
+  assert.deepEqual(
+    failures[0]!.problems.map((p) => [p.where, p.line, p.fromParent]),
+    failures[0]!.errors.map(() => ['characterKinds "pc" › sheet › sections "senses" › label', sensesLine, undefined]),
+  );
+});
+
+// Perturbation: the store reading with JSON.parse again (V8's words, no line of its own).
+test('a file that is not JSON is refused at its line, in words', async () => {
+  const result = await store(new MemoryStorage()).add(file('house.json', '{\n  "id": "x",\n}'));
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.ok ? undefined : result.problems, [
+    { where: '', line: 2, column: 12, message: 'There is a comma after the last entry, before the }. JSON does not allow one: remove it.' },
+  ]);
 });
 
 // Perturbation: loading the user's files in name order only (an overlay sorting before its parent finds nothing).

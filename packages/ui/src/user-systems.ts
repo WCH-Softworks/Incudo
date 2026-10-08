@@ -19,7 +19,9 @@
  */
 
 import {
+  readJsonText,
   validateGameSystem,
+  type JsonPosition,
   type GameSystem,
   type OverlayChange,
   type PickedFile,
@@ -27,6 +29,8 @@ import {
   type SchemaError,
   type Storage,
 } from '@incudo/core';
+
+import { describeSystemErrors, syntaxProblem, type SystemProblem } from './system-problems.ts';
 
 /** Where user systems live in the injected Storage. One document per system. */
 export const USER_SYSTEM_PREFIX = 'systems/user/';
@@ -38,6 +42,8 @@ export interface SystemLoadFailure {
   /** Where it came from, for a user system: the storage key. */
   key?: string;
   errors: SchemaError[];
+  /** The same errors, each with where it is in the file, by line and by the ids written there (ADR 0103). */
+  problems: SystemProblem[];
 }
 
 /** What an overlay was applied to and what it changed (ADR 0102), as `validateGameSystem` reported it. */
@@ -55,7 +61,7 @@ export interface LoadedUserSystems {
 
 export type AddSystemResult =
   | { ok: true; system: GameSystem; replaced: boolean; overlay?: UserOverlay }
-  | { ok: false; message: string; errors?: SchemaError[] };
+  | { ok: false; message: string; errors?: SchemaError[]; problems?: SystemProblem[] };
 
 /**
  * Read, add and remove the user's own system definitions.
@@ -96,25 +102,28 @@ export class UserSystemStore {
     } catch {
       return { systems, failures, overlays };
     }
-    const read: Array<{ key: string; value: unknown }> = [];
+    const read: Array<{ key: string; value: unknown; positions: ReadonlyMap<string, JsonPosition> }> = [];
     for (const key of keys.sort()) {
       const text = await this.storage.read(key).catch(() => null);
       if (text === null) continue;
-      const parsed = parse(text);
+      const parsed = readJsonText(text);
       if (!parsed.ok) {
-        failures.push({ id: idFromKey(key), key, errors: [{ path: '', message: parsed.message }] });
+        failures.push({ id: idFromKey(key), key, errors: [{ path: '', message: parsed.message }], problems: [syntaxProblem(parsed)] });
         continue;
       }
-      read.push({ key, value: parsed.value });
+      read.push({ key, value: parsed.value, positions: parsed.positions });
     }
     // Complete systems before overlays, so an overlay of the user's own system finds it whatever the file names sort as.
     const ordered = [...read.filter((entry) => !isOverlay(entry.value)), ...read.filter((entry) => isOverlay(entry.value))];
-    for (const { key, value } of ordered) {
+    for (const { key, value, positions } of ordered) {
       const result = validateGameSystem(value, this.schemas, { parent: (id) => this.parentAmong(systems, id) });
       if (result.value) {
         systems.push(result.value);
         if (result.overlay) overlays[result.value.id] = result.overlay;
-      } else failures.push({ id: idOf(value) ?? idFromKey(key), key, errors: result.errors });
+      } else {
+        const problems = describeSystemErrors(result.errors, value, positions, result.overlay);
+        failures.push({ id: idOf(value) ?? idFromKey(key), key, errors: result.errors, problems });
+      }
     }
     return { systems, failures, overlays };
   }
@@ -141,8 +150,15 @@ export class UserSystemStore {
     } catch {
       return { ok: false, message: `"${file.name}" is not text.` };
     }
-    const parsed = parse(text);
-    if (!parsed.ok) return { ok: false, message: `"${file.name}" is not valid JSON: ${parsed.message}` };
+    const parsed = readJsonText(text);
+    if (!parsed.ok) {
+      return {
+        ok: false,
+        message: `"${file.name}" is not valid JSON.`,
+        errors: [{ path: '', message: parsed.message }],
+        problems: [syntaxProblem(parsed)],
+      };
+    }
 
     const user = isOverlay(parsed.value) ? (await this.load()).systems : [];
     const result = validateGameSystem(parsed.value, this.schemas, { parent: (id) => this.parentAmong(user, id) });
@@ -151,6 +167,7 @@ export class UserSystemStore {
         ok: false,
         message: `"${file.name}" is not a valid system definition.`,
         errors: result.errors,
+        problems: describeSystemErrors(result.errors, parsed.value, parsed.positions, result.overlay),
       };
     }
     if (this.reserved.has(result.value.id.toLowerCase())) {
@@ -206,10 +223,3 @@ function idOf(value: unknown): string | undefined {
   return typeof id === 'string' ? id : undefined;
 }
 
-function parse(text: string): { ok: true; value: unknown } | { ok: false; message: string } {
-  try {
-    return { ok: true, value: JSON.parse(text) as unknown };
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : String(error) };
-  }
-}
