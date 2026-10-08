@@ -125,7 +125,7 @@ test("an overlay's own shell is located in its own text", () => {
 // Perturbation: keeping the validator's order (it checks structure, then kinds, then the rest, not top to bottom).
 test('problems are listed in the order of the file, those with no line last', () => {
   // The method is written first; the validator checks stat names before methods.
-  const definition = { generationMethods: [{ id: 'roll', label: 'Roll', min: 18, max: 3 }], ...(JSON.parse(JSON.stringify(PARENT)) as Record<string, any>) };
+  const definition: Record<string, any> = { generationMethods: [{ id: 'roll', label: 'Roll', min: 18, max: 3 }], ...(JSON.parse(JSON.stringify(PARENT)) as Record<string, any>) };
   definition.stats.push({ name: 'Might', default: 1 });
   const text = JSON.stringify(definition, null, 2);
   const found = problems(text);
