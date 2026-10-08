@@ -1,5 +1,6 @@
 /**
- * The phone app: a library, a sheet, playing it, and building one — ROADMAP Phase 6, ADRs 0083, 0084 and 0086.
+ * The phone app: a library, a sheet, playing it, building one, and importing an Aurora save — ROADMAP Phase 6, ADRs
+ * 0083, 0084, 0086 and 0101.
  *
  * Screens on a native stack (React Navigation), so Android's back gesture and button do what a user expects. What a
  * screen shows comes from `packages/ui`: `CharacterLibrary` lists and adds characters, `CharacterBuilder` and
@@ -9,7 +10,7 @@
  * library file at once (`CharacterLibrary.record`), as a pencil mark on a paper sheet is; a build edit is saved with Save.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DarkTheme, DefaultTheme, NavigationContainer, createNavigationContainerRef, useFocusEffect } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,12 +27,19 @@ import {
   characterKindChoices,
   describeKindAndProgress,
   exportEntry,
+  importReceivedSaves,
+  importedView,
   libraryEntryProgress,
   receiveFiles,
   receivedView,
+  saveImportLine,
+  saveImportStep,
   sheetDocument,
   sheetMarkdown,
   type LibraryEntry,
+  type ReceivedFile,
+  type ReceivedView,
+  type SaveImportPhase,
   type SheetDocument,
 } from '@incudo/ui';
 
@@ -57,6 +65,9 @@ import { createMobileZipCodec } from './zip.ts';
 
 const Stack = createNativeStackNavigator<Screens>();
 const navigationRef = createNavigationContainerRef<Screens>();
+
+/** Show what was received, wherever the user is, with Open and Import as the view offers them (ADRs 0099, 0101). */
+const PresentReceived = createContext<(view: ReceivedView) => void>(() => undefined);
 
 export function App() {
   const scheme = useColorScheme();
@@ -91,6 +102,91 @@ export function App() {
     });
   }, [platform]);
 
+  // An Aurora save is imported on a tap (ADR 0101): first whatever the import needs is asked, one question at a time
+  // (`saveImportStep`), then its game's content is loaded (the same load a Build screen makes and shares) and it is
+  // imported. A line over the screen says what it waits on meanwhile.
+  const [importing, setImporting] = useState<{ saves: ReceivedFile[]; phase: SaveImportPhase } | null>(null);
+  const importSaves = useCallback(
+    async (saves: ReceivedFile[], game?: string): Promise<void> => {
+      const { sources, systems, library, connection } = platform;
+      await sources.restore();
+      const step = saveImportStep(saves, { systems, sources: sources.getState().sources, connection: await connection.current() }, game);
+      const toContent = { text: 'Content', onPress: () => navigationRef.isReady() && navigationRef.navigate('Content') };
+      switch (step.kind) {
+        case 'choose-game':
+          Alert.alert(step.title, step.message, [
+            { text: 'Cancel', style: 'cancel' },
+            ...step.choices.map((choice) => ({ text: choice.label, onPress: () => void importSaves(saves, choice.systemId) })),
+          ]);
+          return;
+        case 'switched-off':
+        case 'no-source':
+          Alert.alert(step.title, step.message, [{ text: 'Close', style: 'cancel' }, toContent]);
+          return;
+        case 'needs-source':
+          Alert.alert(step.title, step.message, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: step.confirm,
+              onPress: () =>
+                void (async () => {
+                  setImporting({ saves, phase: 'loading' });
+                  try {
+                    await sources.add(step.systemId, step.suggestion, 'converted');
+                  } catch {
+                    // Said in the sources' message; the import then finds no content and says so.
+                  }
+                  setImporting(null);
+                  await importSaves(saves, game);
+                })(),
+            },
+          ]);
+          return;
+        case 'ready':
+          break;
+      }
+      setImporting({ saves, phase: 'loading' });
+      const started = Date.now();
+      const outcomes = await importReceivedSaves(
+        {
+          library,
+          systems,
+          load: async (systemId) => (await sources.load(systemId)).elements,
+          onPhase: (phase) => setImporting({ saves, phase }),
+        },
+        saves,
+        game,
+      );
+      setImporting(null);
+      if (__DEV__) console.log(`[incudo] imported ${saves.length} save(s) in ${Date.now() - started} ms, content load included: ${outcomes.map((outcome) => outcome.message).join(' | ')}`);
+      const view = importedView(outcomes);
+      const open = view.open;
+      // Open is offered beside the notes too: an alert closes when a button is pressed, and the notes are read first.
+      const openButton = open ? [{ text: 'Open', onPress: () => navigationRef.isReady() && navigationRef.navigate('Sheet', open) }] : [];
+      const showNotes = (): void =>
+        Alert.alert('Notes from the import', view.notes.join('\n\n'), [{ text: 'Close', style: 'cancel' }, ...openButton]);
+      Alert.alert(view.title, view.lines.join('\n\n'), [
+        { text: 'Close', style: 'cancel' },
+        ...(view.notes.length ? [{ text: 'Notes', onPress: showNotes }] : []),
+        ...openButton,
+      ]);
+    },
+    [platform],
+  );
+
+  const presentReceived = useCallback(
+    (view: ReceivedView): void => {
+      const open = view.open;
+      const saves = view.saves;
+      Alert.alert(view.title, view.lines.join('\n\n'), [
+        { text: 'Close', style: 'cancel' },
+        ...(open ? [{ text: 'Open', onPress: () => navigationRef.isReady() && navigationRef.navigate('Sheet', open) }] : []),
+        ...(saves ? [{ text: saves.label, onPress: () => void importSaves(saves.files) }] : []),
+      ]);
+    },
+    [importSaves],
+  );
+
   // A file shared to the app or opened with it (ADR 0099), wherever the user is: added as a picked one is and said in an
   // alert, so no screen is replaced under them (an unsaved build stays where it was). Open goes to the one it added.
   useEffect(
@@ -98,26 +194,16 @@ export function App() {
       platform.inbox.listen((files) => {
         void receiveFiles(platform.library, platform.zip, files).then((outcomes) => {
           if (__DEV__) console.log(`[incudo] received ${files.length} file(s): ${outcomes.map((outcome) => outcome.message).join(' | ')}`);
-          const view = receivedView(outcomes);
-          const open = view.open;
-          Alert.alert(
-            view.title,
-            view.lines.join('\n\n'),
-            open
-              ? [
-                  { text: 'Close', style: 'cancel' },
-                  { text: 'Open', onPress: () => navigationRef.isReady() && navigationRef.navigate('Sheet', open) },
-                ]
-              : [{ text: 'Close' }],
-          );
+          presentReceived(receivedView(outcomes));
         });
       }),
-    [platform],
+    [platform, presentReceived],
   );
 
   return (
     <SafeAreaProvider>
       <PlatformContext.Provider value={platform}>
+        <PresentReceived.Provider value={presentReceived}>
         <NavigationContainer ref={navigationRef} theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack.Navigator>
             <Stack.Screen name="Library" component={LibraryScreen} options={{ title: 'Characters' }} />
@@ -127,9 +213,24 @@ export function App() {
             <Stack.Screen name="Content" component={ContentScreen} options={{ title: 'Content' }} />
           </Stack.Navigator>
         </NavigationContainer>
+        {importing ? <ImportLine saves={importing.saves} phase={importing.phase} /> : null}
+        </PresentReceived.Provider>
         <StatusBar style="auto" />
       </PlatformContext.Provider>
     </SafeAreaProvider>
+  );
+}
+
+/** The line over the screen while an import runs: its words `saveImportLine`'s, its progress the content load's. */
+function ImportLine({ saves, phase }: { saves: ReceivedFile[]; phase: SaveImportPhase }) {
+  const { sources } = usePlatform();
+  const palette = usePalette();
+  const content = useSyncExternalStore(sources.subscribe, sources.getState);
+  return (
+    <View style={[styles.importLine, { backgroundColor: palette.surface }]} accessibilityLiveRegion="polite">
+      <ActivityIndicator color={palette.accent} />
+      <Text style={[styles.body, { color: palette.text, flex: 1 }]}>{saveImportLine(saves, phase, content.loading?.progress)}</Text>
+    </View>
   );
 }
 
@@ -137,6 +238,7 @@ export function App() {
 
 function LibraryScreen({ navigation }: NativeStackScreenProps<Screens, 'Library'>) {
   const { library, picker, zip, systems } = usePlatform();
+  const presentReceived = useContext(PresentReceived);
   const palette = usePalette();
   const state = useSyncExternalStore(library.subscribe, library.getState);
   const [message, setMessage] = useState<string | null>(null);
@@ -156,12 +258,16 @@ function LibraryScreen({ navigation }: NativeStackScreenProps<Screens, 'Library'
     }, [library]),
   );
 
-  // A picked file is received as a shared one is (ADR 0099), so the two ways in answer alike.
+  // A picked file is received as a shared one is (ADR 0099), so the two ways in answer alike; an Aurora save is offered
+  // for import in the same alert a share shows (ADR 0101).
   const addFile = async (): Promise<void> => {
     setMessage(null);
     try {
       const picked = await picker.pick({ title: 'Add a character' });
-      if (picked.length) setMessage(receivedView(await receiveFiles(library, zip, picked)).lines.join('\n'));
+      if (!picked.length) return;
+      const view = receivedView(await receiveFiles(library, zip, picked));
+      if (view.saves) presentReceived(view);
+      else setMessage(view.lines.join('\n'));
     } catch (error) {
       setMessage(`Could not add the file: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -186,7 +292,7 @@ function LibraryScreen({ navigation }: NativeStackScreenProps<Screens, 'Library'
       ))}
       {state.status === 'ready' && !state.entries.length ? (
         <Text style={[styles.body, { color: palette.muted }]}>
-          No characters on this device yet. Add a .incu file saved from Incudo on a computer, from wherever you keep it.
+          No characters on this device yet. Add a .incu file saved from Incudo on a computer, or an Aurora save, from wherever you keep it.
         </Text>
       ) : null}
       {state.entries.map((entry) => (
@@ -499,4 +605,16 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12 },
   tab: { flex: 1, borderWidth: 1, borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
   tabText: { fontSize: 15, fontWeight: '600' },
+  importLine: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 24,
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    elevation: 4,
+  },
 });
