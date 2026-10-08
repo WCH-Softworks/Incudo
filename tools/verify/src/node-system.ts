@@ -14,8 +14,10 @@ import {
   formatSchemaErrors,
   validateGameSystem,
   type GameSystem,
+  type JsonSchema,
   type SchemaBundle,
 } from '@incudo/core';
+import { checkStartingEquipment, type StartingEquipmentFile } from '@incudo/ui';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -69,6 +71,15 @@ export async function loadShippedSystem(id: string): Promise<GameSystem> {
       `${path} is not a valid system definition:\n  ${formatSchemaErrors(result.errors).join('\n  ')}`,
     );
   }
+  return result.value;
+}
+
+/** A shipped system's starting equipment (ADR 0087), checked by the same function the apps call. Throws, as above. */
+export async function loadShippedStartingEquipment(id: string): Promise<StartingEquipmentFile> {
+  const path = join(systemsDirectory(), id, 'starting-equipment.json');
+  const schema = (await readJson(join(systemsDirectory(), '..', 'schemas', 'starting-equipment.schema.json'))) as unknown as JsonSchema;
+  const result = checkStartingEquipment(await readJson(path), schema, await loadShippedSystem(id));
+  if (!result.value) throw new Error(`${path} does not check:\n  ${formatSchemaErrors(result.errors).join('\n  ')}`);
   return result.value;
 }
 

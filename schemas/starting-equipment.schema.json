@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://incudo.dev/schemas/starting-equipment.schema.json",
+  "title": "Incudo starting equipment",
+  "description": "What a character may start with, per class and background (ADR 0087): a file shipped beside a system's system.json, written by a person from the books, and not part of the system format. One entry per element id; an entry is a list of options of which a character takes one: a package of item lines, fixed coins, or a wealth roll. Nothing here is parsed from prose.",
+  "type": "object",
+  "required": ["formatVersion", "system", "kind", "step", "from", "packages"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "formatVersion": { "const": 1 },
+    "system": { "type": "string", "minLength": 1, "description": "The system this file belongs to, by id." },
+    "kind": { "type": "string", "minLength": 1, "description": "The character kind whose build offers the packages." },
+    "step": { "type": "string", "minLength": 1, "description": "The kind's build step the packages are offered in." },
+    "from": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "The kind's pick steps whose answer gives a package, in the order offered: a class step answers with the character's first class only."
+    },
+    "equip": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Element types an item of which is equipped when taken, if a slot it fits is free; everything else is carried."
+    },
+    "packages": { "type": "array", "items": { "$ref": "#/$defs/package" } }
+  },
+  "$defs": {
+    "package": {
+      "type": "object",
+      "required": ["for", "options"],
+      "additionalProperties": false,
+      "properties": {
+        "for": { "type": "string", "minLength": 1, "description": "The class or background id the package is for." },
+        "options": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/option" } }
+      }
+    },
+    "option": {
+      "type": "object",
+      "required": ["id", "label"],
+      "additionalProperties": false,
+      "description": "One way to start: item lines and coins, or a wealth roll alone.",
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "lines": { "type": "array", "items": { "$ref": "#/$defs/line" } },
+        "coins": { "$ref": "#/$defs/coins" },
+        "wealth": {
+          "type": "object",
+          "required": ["dice", "unit"],
+          "additionalProperties": false,
+          "description": "Roll for the coins instead: the dice in the system's notation, times a multiplier, in a unit.",
+          "properties": {
+            "dice": { "type": "string", "minLength": 1 },
+            "multiplier": { "type": "integer", "minimum": 1 },
+            "unit": { "type": "string", "minLength": 1 }
+          }
+        },
+        "unlisted": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "What the book lists that no element is: shown beside the option, written nowhere."
+        }
+      }
+    },
+    "coins": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 1 }
+    },
+    "line": {
+      "description": "A bundle of items and picks, or a choice of one of several bundles (the book's (a) / (b)).",
+      "anyOf": [
+        { "$ref": "#/$defs/bundle" },
+        {
+          "type": "object",
+          "required": ["choose"],
+          "additionalProperties": false,
+          "properties": { "choose": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/bundle" } } }
+        }
+      ]
+    },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/item" } },
+        "picks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/pick" } }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "quantity": { "type": "integer", "minimum": 2 }
+      }
+    },
+    "pick": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "description": "Items the player chooses: from a list of ids, or every element of the types matching a filter in content's supports language, from the books named.",
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "description": "The book's words: \"a martial weapon\"." },
+        "count": { "type": "integer", "minimum": 2, "description": "How many to choose; absent is one." },
+        "from": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "supports": { "type": "string", "minLength": 1 },
+        "publications": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    }
+  }
+}

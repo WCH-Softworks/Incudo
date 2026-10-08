@@ -132,6 +132,16 @@ import {
   type WithdrawnRow,
 } from './equip-step.ts';
 import { countedPicks, forgetUncounted, uncountedRows, withUncounted, type UncountedRow } from './uncounted.ts';
+import {
+  planReturnStarting,
+  planTakeStarting,
+  setStartingChoice,
+  setStartingPick,
+  startingEquipmentState,
+  type StartingDraft,
+  type StartingEquipmentFile,
+  type StartingEquipmentState,
+} from './starting-equipment.ts';
 
 /**
  * One thing the character still has to decide.
@@ -156,7 +166,7 @@ export interface OpenDecision {
    * `aurora-import` says so above `OPTIONS_RULE_KEY`). This publishes what the rest of the
    * project was already writing by hand.
    */
-  kind: 'select' | 'budget' | 'pick' | 'hitpoints';
+  kind: 'select' | 'budget' | 'pick' | 'hitpoints' | 'equipment';
   label: string;
   /** Which grouping it belongs to, for presentation. */
   stepId: string;
@@ -348,6 +358,12 @@ export interface BuilderState {
    * level lowered away, had chosen. Build lists them so the change is seen, and each may be forgotten.
    */
   uncounted: UncountedRow[];
+  /**
+   * The starting equipment step (ADR 0087): for the character's first class and its background, what each offers, what
+   * was taken and whether it can still be taken back, and the purse. Undefined when the system ships no starting
+   * equipment for this kind. An option still to take is also an `equipment` decision, `startingKey(forId)`.
+   */
+  startingEquipment?: StartingEquipmentState;
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -447,6 +463,9 @@ export class CharacterBuilder {
   private readonly reviewingHitPoints = new Set<string>();
   private cached: BuilderState | undefined;
   private readonly random: () => number;
+  /** The system's starting equipment for this kind (ADR 0087), and the answers given to its options, never saved. */
+  private readonly startingFile: StartingEquipmentFile | undefined;
+  private startingDraft: StartingDraft = {};
   /**
    * The step that publishes class levels, if the kind has one — ADR 0036. Resolved once: it is a
    * property of the definition, and `choose` and `setProgress` both need to know whether a
@@ -460,7 +479,7 @@ export class CharacterBuilder {
     character: Character,
     system: GameSystem,
     elements: ElementIndex,
-    options: { random?: () => number } = {},
+    options: { random?: () => number; startingEquipment?: readonly StartingEquipmentFile[] } = {},
   ) {
     this.character = character;
     this.system = system;
@@ -474,6 +493,10 @@ export class CharacterBuilder {
     this.content = elements;
     // Sorted once: `requires` is a property of the definition, not of the character.
     this.steps = orderBuildSteps(this.kind.buildSteps);
+    // A file is the system's and names the kind it is for; one for another system or kind offers nothing here.
+    this.startingFile = options.startingEquipment?.find(
+      (file) => file.system === system.id && file.kind === this.kind.id && this.steps.some((step) => step.id === file.step),
+    );
 
     for (const step of this.steps) {
       const config = multiclassConfig(step, this.kind.progression);
@@ -806,6 +829,59 @@ export class CharacterBuilder {
 
   /** What could still be kept as a reference, by name. Computed on request: nothing needs it until the user looks. */
   referenceOptionsFor = (): ElementId[] => referenceOptions(this.character, this.kind, this.elements);
+
+  // --- starting equipment (ADR 0087) ---------------------------------------------------------------------------------
+
+  /** Answer a choice line of an option, before it is taken: which bundle (the book's (a), (b), ...). */
+  chooseStartingAlternative = (forId: ElementId, optionId: string, lineKey: string, index: number): void => {
+    if (!this.startingFile) return;
+    this.startingDraft = setStartingChoice(this.startingDraft, forId, optionId, lineKey, index);
+    this.invalidate();
+  };
+
+  /** Answer one slot of a pick of an option, or clear it with `undefined`, before it is taken. */
+  pickStartingItem = (forId: ElementId, optionId: string, pickKey: string, slot: number, elementId: ElementId | undefined): void => {
+    if (!this.startingFile) return;
+    this.startingDraft = setStartingPick(this.startingDraft, forId, optionId, pickKey, slot, elementId);
+    this.invalidate();
+  };
+
+  /**
+   * Take an option for a class or background: its items into the bag and its coins into the purse, once. Returns a
+   * sentence when refused (answers owed, an item nothing loaded declares, a package already used), writing nothing.
+   */
+  takeStartingOption = (forId: ElementId, optionId: string): string | undefined => {
+    const context = this.startingContext(this.getState().derived);
+    if (!context) return 'This character has no starting equipment.';
+    const plan = planTakeStarting(context, forId, optionId, { random: this.random });
+    if ('refused' in plan) return plan.refused;
+    this.character = plan.character;
+    this.invalidate();
+    return undefined;
+  };
+
+  /** Take back what a package wrote, while the bag and the purse still hold all of it. Returns whether it did. */
+  returnStartingOption = (forId: ElementId): boolean => {
+    const next = planReturnStarting(this.character, forId);
+    if (!next) return false;
+    this.character = next;
+    this.invalidate();
+    return true;
+  };
+
+  private startingContext(derived: DerivedCharacter) {
+    if (!this.startingFile) return undefined;
+    return {
+      file: this.startingFile,
+      system: this.system,
+      kind: this.kind,
+      steps: this.steps,
+      character: this.character,
+      elements: this.elements,
+      reserved: this.poolKeys(derived),
+      draft: this.startingDraft,
+    };
+  }
 
   /** Bring a skipped decision back into `decisions`, answerable exactly as before. */
   reconsider = (decisionId: string): void => {
@@ -1677,6 +1753,27 @@ export class CharacterBuilder {
       }
     }
 
+    // An option still to take for the first class or the background (ADR 0087). Never blocking: a table may hand out
+    // equipment itself, and Skip says so.
+    const startingContext = this.startingContext(derived);
+    const startingEquipment = startingContext ? startingEquipmentState(startingContext) : undefined;
+    for (const source of startingEquipment?.sources ?? []) {
+      if (source.status !== 'open' || source.forId === undefined) continue;
+      decisions.push({
+        id: source.key,
+        kind: 'equipment',
+        label: `Starting equipment: ${source.stepLabel}`,
+        stepId: startingEquipment!.stepId,
+        blocking: false,
+        from: source.forId,
+        remaining: 1,
+        // An option is taken whole; what it owes is on its own view.
+        candidates: [],
+        chosen: [],
+        unresolved: [],
+      });
+    }
+
     // A non-blocking decision the user declined (ADR 0033) leaves `decisions` the same way an
     // answered one does, and for the same reason: a step whose only outstanding items are
     // declined ones should read complete, not stuck open forever on something nobody intends
@@ -1763,6 +1860,7 @@ export class CharacterBuilder {
       sheet,
       ...(play ? { play } : {}),
       freeform: freeformState(this.character, this.kind),
+      ...(startingEquipment ? { startingEquipment } : {}),
       focusedId: this.focusedId,
     };
   }
