@@ -53,7 +53,7 @@ point, which is honest about inheritance.
   does reach.
 
 The text is read by a JSON reader of core's own that records where each value starts (`readJsonText`), and that is used
-only to locate: the value it reads is held to `JSON.parse` by a test over every shipped file and every sample save's JSON.
+only to locate: the value it reads is held to `JSON.parse` by a test over every JSON file in `systems/` and `schemas/`.
 
 ### 2. A syntax error says what is wrong, at a line and column, in words
 
