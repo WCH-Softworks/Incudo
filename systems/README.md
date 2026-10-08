@@ -34,6 +34,23 @@ live in the app's data directory instead and are not subject to that policy — 
 not distribute them. They load through exactly the same code path
 ([ADR 0011](../docs/adr/0011-user-systems.md)).
 
+## Changing a shipped system: an overlay
+
+To change a few rules of a system that ships here and keep receiving its fixes, write an **overlay**
+([ADR 0102](../docs/adr/0102-an-overlay-is-a-patch-applied-to-its-parent-on-every-load-and-validated-as-the-system-it-makes.md)):
+your own `id`, `name`, `version`, `"extends": "dnd5e"`, and only what differs.
+
+```json
+{ "formatVersion": 1, "id": "dnd5e-house", "name": "5e (our table)", "version": "1.0.0", "extends": "dnd5e",
+  "stats": [{ "name": "sanity", "label": "Sanity", "default": 10 }],
+  "characterKinds": [{ "id": "pc", "progression": { "max": 30 } }] }
+```
+
+An object merges with the parent's; an entry with an identity (a stat's `name`, a kind's or step's `id`) merges with
+the parent's entry of that identity, or is added; `"remove": true` on such an entry removes it and `null` removes a
+field; anything else replaces the parent's. The app applies it to the parent every time it starts and checks the result
+as a whole system, then loads it with **Add a system…**, like any other. Its card says what it changes.
+
 ## Adding a system
 
 1. Copy `cairn/system.json` and edit it. It is deliberately small enough to read in one go.

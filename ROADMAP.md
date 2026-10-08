@@ -1796,7 +1796,18 @@ See [ADR 0011](./docs/adr/0011-user-systems.md).
 - [ ] `schemas/system.schema.json` published, with in-app validation and any other checker
       sharing one implementation (`incudo system validate` goes with the CLI — see Phase 2)
 - [ ] **Fork** an official system into user space
-- [ ] **Overlay** an official system (`extends` + patch), so house rules survive upstream updates
+- [x] **Overlay** an official system (`extends` + patch), so house rules survive upstream updates.
+      **Done: [ADR 0102](./docs/adr/0102-an-overlay-is-a-patch-applied-to-its-parent-on-every-load-and-validated-as-the-system-it-makes.md).**
+      A definition with a root `extends` is a patch: objects merge, entries with an identity (a stat's name, a kind's or
+      step's id) merge by it, anything else is replaced, and `null` or `"remove": true` removes. It is applied to its parent
+      as the parent is on every load and the result is validated as a complete system, so a fix to 5e the overlay does not
+      touch reaches it and a change that breaks it is named, never half-loaded. Measured first: the root `extends` was read by
+      nothing, ADR 0011's own example was refused with three errors, and 5e's `version` has read 0.2.0 through 72 commits, so
+      the parent-version warning was declined. An overlay loads its parent's sources and is offered its starting equipment and
+      form; its launcher card says what it is built on and what it changes. The oracle is identical. **Driven in the browser
+      build** (the file picker stood in for by a script): added, its card, 14,320 elements from 5e's source, its stat on the
+      Sheet, a broken one refused. **Not done:** overlays of overlays, placing a new entry before another, errors pointing at
+      the overlay's own lines, the phone (no user systems there yet), the Tauri window.
 - [ ] Scaffold a working system from the app's system flow, never an empty file (this was
       `incudo system new <id>` until the CLI was scheduled for removal — see Phase 2)
 - [ ] User systems load through *exactly* the same path as official ones, clearly labelled

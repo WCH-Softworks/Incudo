@@ -549,6 +549,40 @@ Phase 6's last item. Things to know before touching it:
   (3.6 s load); one swapping for hours took minutes, which is the machine. Not run: Expo Go's picker, "Open with", a real
   phone, iOS, a release build.
 
+**A user system may be an overlay of another: a patch applied to its parent on every load and validated as the system it
+makes** ([ADR 0102](docs/adr/0102-an-overlay-is-a-patch-applied-to-its-parent-on-every-load-and-validated-as-the-system-it-makes.md)),
+Phase 7's first item. Things to know before touching it:
+
+- **Measured first:** the root `extends` was in the schema and read by nothing; ADR 0011's example overlay was refused with
+  three errors; 5e's `version` has read 0.2.0 through 72 commits, so the parent-version warning ADR 0011 asked for is declined.
+- **An overlay is never seen past the validator.** `validateGameSystem(value, schemas, { parent })` recognises a root
+  `extends`, checks the shell against `$defs/overlay` (`validateJson`'s `root` option), applies it
+  (`applySystemOverlay`, `packages/core/src/system-overlay.ts`) and validates the result as a complete system; it returns a
+  complete `GameSystem` keeping `extends`, plus `overlay: { parent, changes }`. Without `parent` an overlay is refused.
+- **The patch:** an object merges (`null` removes a key); an array in `OVERLAY_KEYED_ARRAYS` merges by its identity (`name`,
+  `id`, `key`; `suggestedSources` by `url`), merged entries keeping the parent's position and new ones appended, `"remove":
+  true` removing one (one naming nothing is an `absent` change, not an error); a kind's `elementTypes` written as a `+`/`-`
+  delta is applied to the parent's list; anything else is replaced. Guard tests hold the table to every schema array whose
+  entries require `id`, `name` or `key`, `$defs/overlay`'s fields to the root's, and no identified entry to a `remove` field.
+  **A new root field or identified array needs an entry in both**, or the guards fail.
+- **The parent is a complete system**, shipped or the user's: an overlay of an overlay is refused with a sentence, as is
+  one naming nothing or taking its parent's id. `UserSystemStore(storage, schemas, reserved, bases)` takes the shipped
+  systems as `bases` (their ids are reserved), loads complete systems before overlays whatever the files are called, and
+  publishes `overlays` by id. A character built in an overlay records the overlay's id.
+- **`systemLineage(system)`** (core: own id, then the parent's) is what sources (`sourcesForSystem` takes a lineage),
+  starting equipment (the builder) and form maps (desktop) match against. An overlay loads its parent's sources; a source
+  keeps one tag, so switching it off there does it for the parent, which the Sources row says (`sharedSourceNote`).
+- **Words:** `overlayView` (`packages/ui/src/system-overlay-view.ts`): "Built on …", one sentence per change, fields
+  named in words (`NOUNS`), entries by label. The launcher folds them under the card. The shipped-id refusal lost "(ADR 0011)".
+- Tests: `packages/core/src/system-overlay.test.ts`, `packages/ui/src/system-overlay-view.test.ts`, the lineage case in
+  `packages/content/src/profile.test.ts`, `tools/verify/src/system-overlay.test.ts` (5e's overlay through the store, a fixed
+  5e reaching it, a breaking change named, a Fighter built in the overlay deriving as in 5e with 5e's starting equipment),
+  each failing under its named perturbation. The oracle is identical. Driven in the browser build only, the picker stood
+  in for by a script; not the Tauri window, not the phone (which has no user systems yet).
+- **Not done:** errors name the applied system's paths by index, not the overlay's lines; no overlay of an overlay; a new
+  entry cannot be placed before another; a JSON editor pointed at `system.schema.json` validates an overlay as a complete
+  system.
+
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
 
