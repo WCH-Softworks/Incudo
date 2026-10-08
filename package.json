@@ -25,7 +25,9 @@
     "desktop:app": "npm run tauri:dev -w @incudo/desktop",
     "desktop:build": "npm run build -w @incudo/desktop",
     "mobile": "npm run start -w @incudo/mobile",
-    "mobile:android": "npm run android -w @incudo/mobile"
+    "mobile:android": "npm run android -w @incudo/mobile",
+    "mobile:build:android": "npm run build:android -w @incudo/mobile",
+    "mobile:build": "npm run start:build -w @incudo/mobile"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

@@ -5,6 +5,32 @@
     "version": "0.0.1",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
-    "platforms": ["android", "ios"]
+    "platforms": ["android", "ios"],
+    "scheme": "incudo",
+    "android": {
+      "package": "dev.incudo.mobile",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["DEFAULT", "BROWSABLE"],
+          "data": [
+            { "scheme": "content", "mimeType": "application/octet-stream" },
+            { "scheme": "content", "mimeType": "application/zip" }
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      [
+        "expo-sharing",
+        {
+          "android": {
+            "enabled": true,
+            "singleShareMimeTypes": ["application/octet-stream", "application/zip"],
+            "multipleShareMimeTypes": ["application/octet-stream", "application/zip"]
+          }
+        }
+      ]
+    ]
   }
 }

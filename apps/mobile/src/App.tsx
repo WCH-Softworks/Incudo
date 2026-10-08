@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { DarkTheme, DefaultTheme, NavigationContainer, useFocusEffect } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer, createNavigationContainerRef, useFocusEffect } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -27,6 +27,8 @@ import {
   describeKindAndProgress,
   exportEntry,
   libraryEntryProgress,
+  receiveFiles,
+  receivedView,
   sheetDocument,
   sheetMarkdown,
   type LibraryEntry,
@@ -38,13 +40,22 @@ import { BuildScreen } from './BuildScreen.tsx';
 import { ContentScreen } from './ContentScreen.tsx';
 import { PlatformContext, usePlatform, type Platform, type Screens } from './context.ts';
 import { Button } from './controls.tsx';
-import { MobileCharacterStore, MobileFetcher, MobileFilePicker, MobileFolderSaver, MobileShareSaver, MobileStorage } from './platform.ts';
+import {
+  MobileCharacterStore,
+  MobileFetcher,
+  MobileFilePicker,
+  MobileFolderSaver,
+  MobileShareInbox,
+  MobileShareSaver,
+  MobileStorage,
+} from './platform.ts';
 import { PlayPanel } from './PlayPanel.tsx';
 import { SheetView } from './SheetView.tsx';
 import { usePalette } from './theme.ts';
 import { createMobileZipCodec } from './zip.ts';
 
 const Stack = createNativeStackNavigator<Screens>();
+const navigationRef = createNavigationContainerRef<Screens>();
 
 export function App() {
   const scheme = useColorScheme();
@@ -54,6 +65,7 @@ export function App() {
     return {
       library: new CharacterLibrary(new MobileCharacterStore(zip)),
       picker: new MobileFilePicker(),
+      inbox: new MobileShareInbox(),
       folderSaver: new MobileFolderSaver(),
       shareSaver: new MobileShareSaver(),
       zip,
@@ -77,10 +89,34 @@ export function App() {
     });
   }, [platform]);
 
+  // A file shared to the app or opened with it (ADR 0099), wherever the user is: added as a picked one is and said in an
+  // alert, so no screen is replaced under them (an unsaved build stays where it was). Open goes to the one it added.
+  useEffect(
+    () =>
+      platform.inbox.listen((files) => {
+        void receiveFiles(platform.library, platform.zip, files).then((outcomes) => {
+          if (__DEV__) console.log(`[incudo] received ${files.length} file(s): ${outcomes.map((outcome) => outcome.message).join(' | ')}`);
+          const view = receivedView(outcomes);
+          const open = view.open;
+          Alert.alert(
+            view.title,
+            view.lines.join('\n\n'),
+            open
+              ? [
+                  { text: 'Close', style: 'cancel' },
+                  { text: 'Open', onPress: () => navigationRef.isReady() && navigationRef.navigate('Sheet', open) },
+                ]
+              : [{ text: 'Close' }],
+          );
+        });
+      }),
+    [platform],
+  );
+
   return (
     <SafeAreaProvider>
       <PlatformContext.Provider value={platform}>
-        <NavigationContainer theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <NavigationContainer ref={navigationRef} theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack.Navigator>
             <Stack.Screen name="Library" component={LibraryScreen} options={{ title: 'Characters' }} />
             <Stack.Screen name="Sheet" component={SheetScreen} options={({ route }) => ({ title: route.params.title })} />
@@ -118,18 +154,12 @@ function LibraryScreen({ navigation }: NativeStackScreenProps<Screens, 'Library'
     }, [library]),
   );
 
+  // A picked file is received as a shared one is (ADR 0099), so the two ways in answer alike.
   const addFile = async (): Promise<void> => {
     setMessage(null);
     try {
       const picked = await picker.pick({ title: 'Add a character' });
-      for (const file of picked) {
-        if (!/\.incu$/i.test(file.name)) {
-          setMessage(`"${file.name}" is not an Incudo character file (.incu).`);
-          continue;
-        }
-        const added = await library.add(await zip.unzip(file.bytes), file.name);
-        setMessage(added.ok ? `Added "${added.entry.name}".` : added.message);
-      }
+      if (picked.length) setMessage(receivedView(await receiveFiles(library, zip, picked)).lines.join('\n'));
     } catch (error) {
       setMessage(`Could not add the file: ${error instanceof Error ? error.message : String(error)}`);
     }

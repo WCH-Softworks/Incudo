@@ -8,7 +8,7 @@ import { createContext, useContext } from 'react';
 import type { FileSaver, GameSystem } from '@incudo/core';
 import type { CharacterLibrary, ContentSources } from '@incudo/ui';
 
-import type { MobileFilePicker } from './platform.ts';
+import type { MobileFilePicker, MobileShareInbox } from './platform.ts';
 import type { createMobileZipCodec } from './zip.ts';
 
 export type Screens = {
@@ -23,6 +23,8 @@ export type Screens = {
 export interface Platform {
   library: CharacterLibrary;
   picker: MobileFilePicker;
+  /** Files another app shares to this one or opens with it (ADR 0099). Only the app's own build receives any. */
+  inbox: MobileShareInbox;
   /** Where "Export" can send a file: a folder the user picks, or the share sheet. */
   folderSaver: FileSaver;
   shareSaver: FileSaver;

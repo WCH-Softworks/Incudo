@@ -29,6 +29,7 @@
  * and is left for later rather than ruled out.
  */
 
+import { Linking } from 'react-native';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as SQLite from 'expo-sqlite';
@@ -48,6 +49,7 @@ import type {
   Storage,
   ZipCodec,
 } from '@incudo/core';
+import type { ReceivedFile } from '@incudo/ui';
 
 /**
  * React Native's `fetch` is not a web page's: no origin, no CORS preflight, so `If-None-Match` may be sent and a 304
@@ -263,4 +265,92 @@ export class MobileFilePicker implements FilePicker {
     const files = Array.isArray(picked.result) ? picked.result : [picked.result];
     return Promise.all(files.map(async (file) => ({ name: file.name, bytes: await file.bytes() })));
   }
+}
+
+/** The URL `expo-sharing` opens the app with for a share: the app's scheme (`app.json`) and its own host. */
+const SHARE_URL = 'incudo://expo-sharing';
+
+/** Whether a share is waiting; false where the module cannot say (Expo Go, or a module without the function). */
+function hasSharedPayloads(): boolean {
+  try {
+    return Sharing.getSharedPayloads().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Files another app hands to Incudo — ADR 0099: a share ("Share" in a chat, a mail, a cloud drive) or an "Open with" from
+ * a file manager. Only the app's own build receives either: its manifest carries the intent filters (`app.json`), which
+ * Expo Go's cannot, so in Expo Go nothing ever arrives here and nothing is said about it.
+ *
+ * Both arrive as a URL. An "Open with" is Android's `VIEW`, whose URL is the file's own `content://` one. A share is
+ * `SEND`, which `expo-sharing` turns into its `incudo://expo-sharing` URL, keeping the files for
+ * `getResolvedSharedPayloadsAsync`; they are cleared once read, so a share is received once. The app's start and every
+ * later arrival go through the same listener. Each file's bytes are read here and handed on; a file that cannot be read
+ * is handed on with why, so the sentence names it.
+ */
+export class MobileShareInbox {
+  listen(receive: (files: ReceivedFile[]) => void): () => void {
+    const take = async (url: string | null): Promise<void> => {
+      if (!url) return;
+      const files = await this.read(url);
+      if (files.length) receive(files);
+    };
+    // At the start, payloads `expo-sharing` is holding are read whatever the first URL is: in a development build the
+    // first URL is the dev launcher's, and a share that started the app would otherwise wait unread. Then the first URL,
+    // when it is a file's. One after the other, so a share is not read twice before it is cleared.
+    void (async () => {
+      if (hasSharedPayloads()) await take(SHARE_URL);
+      const initial = await Linking.getInitialURL();
+      if (initial && !initial.toLowerCase().startsWith(SHARE_URL)) await take(initial);
+    })();
+    const subscription = Linking.addEventListener('url', ({ url }) => void take(url));
+    return () => subscription.remove();
+  }
+
+  private async read(url: string): Promise<ReceivedFile[]> {
+    if (/^(content|file):/i.test(url)) return [await readUri(url)];
+    if (!url.toLowerCase().startsWith(SHARE_URL)) return [];
+    // Resolving reads every file at once and rejects as a whole when one cannot be opened (a grant that did not reach
+    // this activity); then each raw payload is read on its own, so the sentence names the one that failed.
+    const raw = Sharing.getSharedPayloads();
+    let resolved: Sharing.ResolvedSharePayload[] | undefined;
+    try {
+      resolved = await Sharing.getResolvedSharedPayloadsAsync();
+    } catch {
+      resolved = undefined;
+    } finally {
+      Sharing.clearSharedPayloads();
+    }
+    const files = (payload: Sharing.SharePayload): boolean => payload.shareType !== 'text' && payload.shareType !== 'url';
+    if (!resolved) return Promise.all(raw.filter(files).map((payload) => readUri(payload.value)));
+    // `expo-sharing` copies each file into the app's cache and says where (`contentUri`); a copy it could not make it
+    // reports nowhere, so the sender's own URI (`value`) is read when the copy is not there.
+    return Promise.all(
+      resolved
+        .filter((payload) => payload.contentUri && payload.contentType !== 'website' && payload.contentType !== 'text')
+        .map((payload) => readUri([payload.contentUri!, payload.value], payload.originalName ?? undefined)),
+    );
+  }
+}
+
+async function readUri(uris: string | string[], name?: string): Promise<ReceivedFile> {
+  const candidates = (Array.isArray(uris) ? uris : [uris]).filter(Boolean);
+  let shownName = name;
+  let failure = '';
+  for (const uri of candidates) {
+    const file = new File(uri);
+    try {
+      shownName ??= file.name || undefined;
+    } catch {
+      // A provider that answers no name: the sentence says "the file".
+    }
+    try {
+      return { ...(shownName ? { name: shownName } : {}), bytes: await file.bytes() };
+    } catch (error) {
+      failure ||= error instanceof Error ? error.message : String(error);
+    }
+  }
+  return { ...(shownName ? { name: shownName } : {}), bytes: new Uint8Array(), unreadable: failure };
 }
