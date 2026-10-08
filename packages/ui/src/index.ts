@@ -22,6 +22,7 @@ export * from './dice.ts';
 export * from './character-library.ts';
 export * from './character-kinds.ts';
 export * from './character-copy.ts';
+export * from './received-files.ts';
 export * from './draft.ts';
 export * from './aurora-import.ts';
 export * from './user-systems.ts';
