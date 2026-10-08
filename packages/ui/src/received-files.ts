@@ -6,9 +6,9 @@
  * its name: a sender may give no name, or one without the extension (a mail provider's attachment id).
  *
  * A character is added to the library unchanged (`CharacterLibrary.add`, ADR 0083), under a free name, never over a file
- * already there. An Aurora save is recognised and not imported: importing needs content loaded, which a phone has only
- * when a Build screen asks for it, so the sentence says where to import it instead. Anything else is refused with a
- * sentence and nothing is written.
+ * already there. An Aurora save is recognised and not imported here: importing needs content loaded, so it is offered
+ * for import and imported only on a tap (`received-saves.ts`, ADR 0101). Anything else is refused with a sentence and
+ * nothing is written.
  */
 
 import { readCharacterContainer, type ContainerFiles, type LibraryEntryRef, type ZipCodec } from '@incudo/core';
@@ -28,14 +28,18 @@ export interface ReceivedFile {
 /** What became of one received file. `title` is the character's name when one was added. */
 export type ReceivedOutcome =
   | { status: 'added'; entry: LibraryEntryRef; title: string; message: string }
-  | { status: 'aurora-save'; message: string }
+  | { status: 'aurora-save'; file: ReceivedFile; message: string }
   | { status: 'refused'; message: string };
 
-/** What the shell shows: a title, a line per file, and the one character to open when exactly one was added. */
+/**
+ * What the shell shows: a title, a line per file, the one character to open when exactly one was added, and the Aurora
+ * saves to offer for import, with the button's words (ADR 0101).
+ */
 export interface ReceivedView {
   title: string;
   lines: string[];
   open?: { name: string; title: string };
+  saves?: { files: ReceivedFile[]; label: string };
 }
 
 type Library = Pick<CharacterLibrary, 'add' | 'getState' | 'restore'>;
@@ -65,7 +69,7 @@ export function isAuroraSave(bytes: Uint8Array): boolean {
  * as the user knows it but a provider's id for it ("msf:44" from Android's Recent files, "1000034" from a mail), so it
  * is not quoted.
  */
-function shown(file: ReceivedFile, inside = false): string {
+export function shown(file: { name?: string }, inside = false): string {
   const name = file.name?.trim();
   return name && /\.[^.\s]+$/.test(name) ? `"${name}"` : inside ? 'the file' : 'The file';
 }
@@ -87,10 +91,7 @@ async function receiveOne(library: Library, zip: Pick<ZipCodec, 'unzip'>, file: 
   if (file.unreadable !== undefined) return { status: 'refused', message: `Could not read ${shown(file, true)}: ${file.unreadable}` };
   if (!isZip(file.bytes)) {
     if (isAuroraSave(file.bytes)) {
-      return {
-        status: 'aurora-save',
-        message: `${shown(file)} is an Aurora save. Import it in Incudo on a computer, then share the .incu file it makes to this phone.`,
-      };
+      return { status: 'aurora-save', file, message: `${shown(file)} is an Aurora save.` };
     }
     return { status: 'refused', message: `${shown(file)} is not an Incudo character file (.incu).` };
   }
@@ -127,8 +128,19 @@ async function receiveOne(library: Library, zip: Pick<ZipCodec, 'unzip'>, file: 
 /** The outcome as the shell shows it. */
 export function receivedView(outcomes: readonly ReceivedOutcome[]): ReceivedView {
   const added = outcomes.filter((outcome) => outcome.status === 'added');
-  const title = added.length === outcomes.length ? 'Added to your characters' : added.length ? 'Some files were not added' : 'Not added';
+  const saves = outcomes.flatMap((outcome) => (outcome.status === 'aurora-save' ? [outcome.file] : []));
+  const title =
+    added.length === outcomes.length
+      ? 'Added to your characters'
+      : saves.length === outcomes.length
+        ? saves.length === 1
+          ? 'An Aurora save'
+          : 'Aurora saves'
+        : added.length
+          ? 'Some files were not added'
+          : 'Not added';
   const view: ReceivedView = { title, lines: outcomes.map((outcome) => outcome.message) };
   if (added.length === 1 && added[0]!.status === 'added') view.open = { name: added[0]!.entry.name, title: added[0]!.title };
+  if (saves.length) view.saves = { files: saves, label: saves.length === 1 ? 'Import' : `Import ${saves.length} saves` };
   return view;
 }

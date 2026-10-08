@@ -161,7 +161,7 @@ export async function importAuroraSaveIntoLibrary(
     return fail(
       'Importing needs content loaded: a .dnd5e records Aurora’s element ids and nothing ' +
         'about what they mean. Add and enable a content source, then import again. Opening a ' +
-        'character you have already imported needs none (ADR 0012).',
+        'character you have already imported needs none.',
     );
   }
 
