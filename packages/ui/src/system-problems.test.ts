@@ -121,3 +121,14 @@ test("an overlay's own shell is located in its own text", () => {
   const text = '{\n  "formatVersion": 1,\n  "id": "house",\n  "name": "House",\n  "version": "1",\n  "extends": "base",\n  "stats": {}\n}';
   assert.deepEqual(lines(problems(text, PARENT)), ['Line 7, column 3: stats: must be an array, not an object']);
 });
+
+// Perturbation: keeping the validator's order (it checks structure, then kinds, then the rest, not top to bottom).
+test('problems are listed in the order of the file, those with no line last', () => {
+  // The method is written first; the validator checks stat names before methods.
+  const definition = { generationMethods: [{ id: 'roll', label: 'Roll', min: 18, max: 3 }], ...(JSON.parse(JSON.stringify(PARENT)) as Record<string, any>) };
+  definition.stats.push({ name: 'Might', default: 1 });
+  const text = JSON.stringify(definition, null, 2);
+  const found = problems(text);
+  assert.deepEqual(found.map((p) => p.where), ['generationMethods "roll" › min', 'stats "Might" › name']);
+  assert.ok(found[0]!.line! < found[1]!.line!);
+});

@@ -40,7 +40,8 @@ export function describeSystemErrors(
   positions: ReadonlyMap<string, JsonPosition> | undefined,
   overlay?: AppliedOverlayContext,
 ): SystemProblem[] {
-  return errors.map((error) => {
+  // In the order of the file, so an author fixes from the top down; what has no line (the parent's part) comes last.
+  return sortByLine(errors.map((error): SystemProblem => {
     const segments = parsePath(error.path);
     const about = overlay ? overlay.applied : file;
     const where = describePath(about, segments);
@@ -49,7 +50,12 @@ export function describeSystemErrors(
     const traced = traceIntoOverlay(segments, overlay.applied, file, overlay.parent);
     if (traced.fromParent) return { where, message: error.message, fromParent: overlay.parent.name };
     return { where, message: error.message, ...lineOf(positions, traced.segments) };
-  });
+  }));
+}
+
+function sortByLine(problems: SystemProblem[]): SystemProblem[] {
+  const key = (p: SystemProblem): number => (p.line === undefined ? Infinity : p.line * 1e6 + (p.column ?? 0));
+  return problems.map((p, i) => ({ p, i })).sort((a, b) => key(a.p) - key(b.p) || a.i - b.i).map(({ p }) => p);
 }
 
 /** One problem as one line: "Line 12, column 5: characterKinds "pc" › buildSteps "abilities": must not be empty". */
