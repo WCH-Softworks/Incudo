@@ -502,6 +502,22 @@ the rest of Phase 6's import/export item. Things to know before touching it:
   read grant. Warm shares, "Open with" and the picker all work. A release build has no launcher; none has been built.
 - `workspace.test.ts`'s home-path check walks the working tree and skips `apps/mobile/android` and `ios` by path: the
   generated build caches are full of the builder's paths.
+
+**On a metered connection the phone asks before a fetch that downloads a source, and the Stream/Download setting is gone**
+([ADR 0100](docs/adr/0100-on-a-metered-connection-the-phone-asks-before-a-fetch-that-downloads-a-source-and-the-mode-setting-goes.md)),
+Phase 6's last item. Things to know before touching it:
+
+- **`ConfiguredSource.mode` does nothing and is kept.** Measured: both modes fetch in full when a source is added, nothing
+  reads the field, and no default of it can save data. The desktop no longer offers it and writes `download`; profiles and
+  `SourceRef`s still carry it, so do not remove it from the format for tidiness.
+- **What an action fetches is `fetchCost`** (`packages/ui/src/fetch-prompt.ts`): a refresh downloads everything when the
+  source is kept converted (no raw copy to answer a 304 with) and only what changed when kept as files; converted to files
+  downloads everything again; files to converted fetches nothing. `fetchPrompt` asks only when `metered === true`, never
+  on an unknown connection; `addSourceNote` adds the sentence to the Add question the phone always asks.
+- **`MobileConnection` (`platform.ts`) reads NetInfo's `isConnectionExpensive`**, a native module: the development build
+  was rebuilt for it, Expo Go has it. On the emulator `adb shell svc wifi disable` gives the metered LTE connection.
+- The desktop does not ask (Windows says "metered" only through WinRT). A Build screen's load that finds a file missing
+  from the cache fetches it unasked.
 - Driven on the Pixel 9 Pro emulator from the Files app (share sheet, "Open with", three at once with a taken name and an
   Aurora save, the picker's Recent files), every sheet to Node's checksum; Expo Go run after. Not run: a real phone, iOS,
   a release build.

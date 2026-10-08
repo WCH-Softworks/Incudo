@@ -1762,7 +1762,15 @@ pane draws and every export renders: the PDF and the print layout start from it,
       sheet opened to Node's checksum. **Not yet:** a real phone, iOS, a release build (a share that starts a
       development build goes through its launcher and loses the read grant), importing an Aurora save on the phone.
 - [ ] Import an Aurora save on the phone (ADR 0099 decision 5: today it is recognised and sent to a computer).
-- [ ] Download mode as the default on metered connections
+- [x] **Download mode on metered connections: the phone asks before a fetch that downloads a source, and the mode
+      setting goes** ([ADR 0100](./docs/adr/0100-on-a-metered-connection-the-phone-asks-before-a-fetch-that-downloads-a-source-and-the-mode-setting-goes.md)).
+      Measured first: *stream* and *download* fetch the same files at the same moment and no load reads the setting, so
+      no default of it saves data; what spends data on a phone is adding a source, Refresh (all of it again when kept
+      converted, what changed when kept as files) and switching from converted to files (all of it again). The phone reads
+      whether the connection is metered (NetInfo) and, when it is, asks before Refresh and the switch and says on Add what
+      it will download; on Wi-Fi nothing changes. The desktop's Stream/Download select is gone (the maintainer's choice);
+      the field stays in profiles and saves. Driven on the emulator with Wi-Fi off and on, in Expo Go and the development
+      build, and the Sources pane in the browser build. **Not yet:** the desktop, a real phone, iOS.
 
 **Exit criteria:** the same `.incu` file opens identically on desktop and mobile, and
 `@incudo/core` still has zero platform-specific code.

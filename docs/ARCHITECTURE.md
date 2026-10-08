@@ -103,9 +103,10 @@ exists specifically to prove this by shipping a second one.
   re-fetched all 238 files every time. `BundledContentSource` is still the one implementation
   in this list that does not exist; nothing has needed it.
 
-The user-facing toggle is **per source**: *stream* or *download*. Mobile defaults to download
-(metered connections); desktop defaults to stream with an opt-in download. The two differ only
-in *when* files are fetched, and that is now the design rather than a gap: ADR 0004's lazy per-file
+A source is fetched in full when it is added and kept. There used to be a per-source toggle, *stream*
+or *download*; measured, the two did the same thing, and it left the UI (ADR 0100), though profiles and
+saves still carry the field. On a metered connection the phone asks before an action that downloads a
+source (adding, refreshing, keeping it as files) and says what it will fetch. ADR 0004's lazy per-file
 loading was measured and declined (ADR 0051). A character holds a dozen of AuroraLegacy's 740 files,
 but building one is offered choices from 373 of them, and an Aurora index cannot say which without
 fetching them. What a load does instead is fetch nested indexes as soon as they are named, which was
