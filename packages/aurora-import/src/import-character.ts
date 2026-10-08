@@ -144,6 +144,13 @@ export function importAuroraCharacter(
   const prepared = toPrepared(save);
   if (prepared) character.prepared = prepared;
   character.freeform = toFreeform(save);
+  const money = toMoney(save, diagnostics);
+  if (money) {
+    // Format 11 is what records money (ADR 0087). Set here rather than through `setMoney`, which stamps the time and
+    // would make two imports of one file differ.
+    character.money = money;
+    character.formatVersion = 11;
+  }
 
   const { assets, assetRefs } = extractPortrait(save, options.portraitName ?? 'portrait', diagnostics);
   if (assetRefs) character.assets = assetRefs;
@@ -690,6 +697,40 @@ function toRolls(save: AuroraSave, advancement: AdvancementEntry[] | undefined):
   return rolls;
 }
 
+// --- money -----------------------------------------------------------------
+
+/**
+ * Aurora's `<currency>` counts and the unit each lands in — ADR 0087 decision 6. A fixed table, because the save names
+ * its five coins in words and the units are the 5e system's ids, which content prices items in.
+ */
+const CURRENCY_UNITS: ReadonlyArray<readonly [string, string]> = [
+  ['copper', 'cp'],
+  ['silver', 'sp'],
+  ['electrum', 'ep'],
+  ['gold', 'gp'],
+  ['platinum', 'pp'],
+];
+
+/**
+ * What the save's purse holds, by unit, or nothing when every count is 0 — a construct the importer used to drop (it
+ * reached `freeform` as five numbers nothing read). Read from `<input><currency>`, where Aurora writes it; a count that is
+ * not a whole non-negative number is reported and left out, never guessed at.
+ */
+function toMoney(save: AuroraSave, diagnostics: SaveDiagnostic[]): Record<string, number> | undefined {
+  const money: Record<string, number> = {};
+  for (const [word, unit] of CURRENCY_UNITS) {
+    const raw = save.input[`currency.${word}`];
+    if (raw === undefined) continue;
+    const count = Number(raw);
+    if (!Number.isInteger(count) || count < 0) {
+      diagnostics.push({ level: 'warning', message: `The save's ${word} count "${raw}" is not a whole number and was not imported.`, where: 'build/input/currency' });
+      continue;
+    }
+    if (count > 0) money[unit] = count;
+  }
+  return Object.keys(money).length ? money : undefined;
+}
+
 // --- freeform --------------------------------------------------------------
 
 /**
@@ -704,6 +745,8 @@ function toFreeform(save: AuroraSave): Record<string, string> {
   const freeform: Record<string, string> = {};
   for (const [key, value] of Object.entries(save.input)) {
     if (key === 'name') continue;
+    // The coins are `money` now (ADR 0087); a count kept here too would disagree with it the first time one is spent.
+    if (CURRENCY_UNITS.some(([word]) => key === `currency.${word}`)) continue;
     freeform[key] = value;
   }
   for (const [key, value] of Object.entries(save.appearance)) {

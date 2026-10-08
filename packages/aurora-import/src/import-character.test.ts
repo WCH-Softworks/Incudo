@@ -188,6 +188,25 @@ test('freeform carries the prose, and the name is not duplicated into it', () =>
   assert.equal(character.freeform['appearance.portrait'], undefined);
 });
 
+test('the purse becomes money by unit, and leaves freeform — ADR 0087', () => {
+  // Fails if <currency> is still dropped, if a count lands in the wrong unit, if a 0 is written, if the coins also stay
+  // in freeform, or if a character holding money is not format 11.
+  const purse = '<currency><copper>3</copper><silver>0</silver><electrum>1</electrum><gold>15</gold><platinum>0</platinum><treasure>A ruby</treasure></currency>';
+  const { character } = importAuroraCharacter(parseAuroraSave(SAVE.replace('<backstory>Prose.</backstory>', `<backstory>Prose.</backstory>${purse}`)));
+  assert.deepEqual(character.money, { cp: 3, ep: 1, gp: 15 });
+  assert.equal(character.formatVersion, 11);
+  assert.equal(character.freeform['currency.gold'], undefined);
+  assert.equal(character.freeform['currency.treasure'], 'A ruby');
+});
+
+test('a purse of zeros, or none, records no money and moves no version — ADR 0087', () => {
+  const zeros = '<currency><copper>0</copper><gold>0</gold></currency>';
+  const { character } = importAuroraCharacter(parseAuroraSave(SAVE.replace('<backstory>Prose.</backstory>', `<backstory>Prose.</backstory>${zeros}`)));
+  assert.equal(character.money, undefined);
+  assert.equal(character.formatVersion, 2);
+  assert.equal(imported().character.money, undefined);
+});
+
 test('a list pick becomes freeform, because a row number is not an element id', () => {
   const { character } = imported();
   assert.equal(character.freeform['list.ID_LEVEL_4.Bond'], '3');
