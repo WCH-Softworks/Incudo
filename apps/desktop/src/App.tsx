@@ -42,7 +42,6 @@ import {
   refreshSourceRefs,
   type ConfiguredSource,
   type RefreshReport,
-  type SourceMode,
   type UpdateStatus,
 } from '@incudo/content';
 import {
@@ -610,7 +609,7 @@ function Shell({
 
   const actions: SourcesActions = useMemo(
     () => ({
-      add: async (url, mode, options = {}) => {
+      add: async (url, options = {}) => {
         const current = profile.current;
         if (!current) return;
         // A source is keyed on its URL, so adding one another system already holds would
@@ -626,7 +625,9 @@ function Shell({
         // Tagged with the system it is being added under — ADR 0031. Nothing in an index says
         // what game it is for, so this is the only moment the answer is known, and for a
         // source picked from the system's own suggestions the user said it by picking it.
-        current.add(url, { mode, systemId: system.id, ...options });
+        // Written as `download`: the setting is retired and does nothing either way (ADR 0100), but profiles and saves
+        // carry it.
+        current.add(url, { mode: 'download', systemId: system.id, ...options });
         await persist();
         await reload();
       },
@@ -651,7 +652,7 @@ function Shell({
           url,
           name: url,
           enabled: false,
-          mode: 'stream' as const,
+          mode: 'download' as const,
           addedAt: '',
         };
         return readIndexTree(composeSource(configured, platform), url);
@@ -696,10 +697,6 @@ function Shell({
         profile.current?.update(id, { enabled });
         await persist();
         await reload();
-      },
-      setMode: async (id, mode) => {
-        profile.current?.update(id, { mode });
-        await persist();
       },
       // Reloaded at once, so the source is converted, or its conversion dropped, while the user watches (ADR 0085). A
       // source kept as files whose files went with its conversion fetches them again.

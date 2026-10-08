@@ -1,5 +1,5 @@
 /**
- * Content sources: add, name, remove, enable, stream or download, and check for updates.
+ * Content sources: add, name, remove, enable, and check for updates.
  *
  * ADR 0004 designed all of this and the app shipped a single text box. ADR 0028 says what the
  * list *is* — the user's profile, which no character depends on — and ADR 0029 says what the
@@ -23,7 +23,6 @@ import {
   type IndexTreeNode,
   type MissingContent,
   type RefreshReport,
-  type SourceMode,
   type SourceKeep,
   keepsConverted,
   type SourceOverlap,
@@ -44,7 +43,7 @@ import {
 import { type LoadProgress, type LoadedContent } from '@incudo/content';
 
 export interface SourcesActions {
-  add: (url: string, mode: SourceMode, options?: Partial<ConfiguredSource>) => Promise<void>;
+  add: (url: string, options?: Partial<ConfiguredSource>) => Promise<void>;
   /** Read a source's tree of parts from its indexes alone — ADR 0055. */
   readParts: (url: string) => Promise<IndexTreeNode>;
   /** Record which parts of a configured source are switched off, and reload. */
@@ -58,7 +57,6 @@ export interface SourcesActions {
   remove: (id: string) => Promise<void>;
   rename: (id: string, name: string) => Promise<void>;
   setEnabled: (id: string, enabled: boolean) => Promise<void>;
-  setMode: (id: string, mode: SourceMode) => Promise<void>;
   /** Keep what was fetched converted or as the files it came as, and reload — ADR 0085. */
   setKeep: (id: string, keep: SourceKeep) => Promise<void>;
   /** Swap with the neighbour above or below among this system's sources — ADR 0054. */
@@ -135,7 +133,6 @@ export function SourcesPane({
       entry.already?.systemId !== undefined && entry.already.systemId !== system.id,
   );
   const [url, setUrl] = useState('');
-  const [mode, setMode] = useState<SourceMode>('stream');
   const [keep, setKeep] = useState<SourceKeep>('converted');
   const [failure, setFailure] = useState<string | null>(null);
   /** A source about to be added with some of its parts chosen first (ADR 0055): what to add it with once they are. */
@@ -144,7 +141,7 @@ export function SourcesPane({
   async function add(target: string, options?: Partial<ConfiguredSource>): Promise<void> {
     setFailure(null);
     try {
-      await actions.add(target.trim(), mode, { ...options, keep });
+      await actions.add(target.trim(), { ...options, keep });
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
     }
@@ -226,15 +223,6 @@ export function SourcesPane({
           onChange={(event) => setUrl(event.target.value)}
           aria-label="Index URL"
         />
-        <select
-          value={mode}
-          disabled={busy}
-          aria-label="Stream or download"
-          onChange={(event) => setMode(event.target.value as SourceMode)}
-        >
-          <option value="stream">Stream</option>
-          <option value="download">Download</option>
-        </select>
         <KeepSelect value={keep} disabled={busy} label="How to keep it" onChange={setKeep} />
         <button type="button" onClick={() => void add(url)} disabled={busy || !url.trim()}>
           {busy ? 'Loading…' : 'Add'}
@@ -244,14 +232,10 @@ export function SourcesPane({
         </button>
       </div>
 
-      {/* The two modes differ only in when (ADR 0029). This used to promise lazy per-file loading;
-          ADR 0051 measured it and declined it, since a build is offered choices from half the corpus. */}
+      {/* There was a Stream or Download choice here; the two did the same thing (ADR 0100), so it went. */}
       <p className="hint">
-        <strong>Download</strong> fetches everything now and keeps it, so the source works
-        offline from here on. <strong>Stream</strong> fetches when the source is first used and
-        keeps it the same way, so it is offline after that too. Both fetch every file the
-        source lists, less any part you switch off, because building a character offers choices
-        from all of them. Nothing is fetched again until you ask.
+        Adding a source fetches every file it lists, less any part you switch off, because building a character offers
+        choices from all of them, and keeps them, so it works offline from then on. Nothing is fetched again until you ask.
       </p>
       <p className="hint">
         <strong>Converted</strong> keeps what was fetched in Incudo's own form, which loads quickly and takes somewhat
@@ -532,7 +516,7 @@ function SourceRow({
 }): React.JSX.Element {
   const [name, setName] = useState(source.name);
   const [choosing, setChoosing] = useState(false);
-  // A file the user added has nothing upstream (ADR 0056): no mode, no update check, no refresh, no parts.
+  // A file the user added has nothing upstream (ADR 0056): no update check, no refresh, no parts.
   const file = isFileSource(source);
   const off = source.excluded?.length ?? 0;
 
@@ -553,16 +537,6 @@ function SourceRow({
           />
           Enabled
         </label>
-        {!file && (
-          <select
-            value={source.mode}
-            aria-label={`Mode for ${source.name}`}
-            onChange={(event) => void actions.setMode(source.id, event.target.value as SourceMode)}
-          >
-            <option value="stream">Stream</option>
-            <option value="download">Download</option>
-          </select>
-        )}
         {!file && (
           <KeepSelect
             value={keepsConverted(source) ? 'converted' : 'files'}
