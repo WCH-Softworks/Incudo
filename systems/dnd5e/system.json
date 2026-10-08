@@ -342,7 +342,8 @@
         "attunement": { "setter": "attunement", "requires": "true", "countStat": "attunement:current", "maxStat": "attunement:max" },
         "hiddenSetter": "inventory-hidden",
         "types": ["Item", "Weapon", "Armor", "Magic Item"],
-        "adornSetter": "type"
+        "adornSetter": "type",
+        "price": { "setter": "cost", "unitAttribute": "currency" }
       },
 
       "repeatableSetter": "allow duplicate",

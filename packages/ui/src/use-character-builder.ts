@@ -142,6 +142,26 @@ import {
   type StartingEquipmentFile,
   type StartingEquipmentState,
 } from './starting-equipment.ts';
+import {
+  adornmentOffer,
+  inventoryOffer,
+  inventoryOfferNote,
+  inventoryState,
+  openMissingNote,
+  planAddItem,
+  planAttachItem,
+  planAttuneItem,
+  planDetachItem,
+  planEquipItem,
+  planItemNotes,
+  planOpenItem,
+  planRemoveItem,
+  planRenameItem,
+  planSetQuantity,
+  type InventoryState,
+  type InventoryWrite,
+} from './inventory.ts';
+import { planExchangeCoins, planReceiveCoins, planSetCoins, planSpendCoins, type PurseWrite } from './money.ts';
 
 /**
  * One thing the character still has to decide.
@@ -364,6 +384,11 @@ export interface BuilderState {
    * equipment for this kind. An option still to take is also an `equipment` decision, `startingKey(forId)`.
    */
   startingEquipment?: StartingEquipmentState;
+  /**
+   * The bag and the purse as the inventory editor shows them (ADR 0098): every entry, where it is and what it gives, the
+   * attunement count, the coins. Undefined for a kind that declares no inventory.
+   */
+  inventory?: InventoryState;
   /** What the shell has chosen to show. Presentation only; nothing depends on it. */
   focusedId: string | undefined;
 }
@@ -868,6 +893,80 @@ export class CharacterBuilder {
     this.invalidate();
     return true;
   };
+
+  // --- the inventory editor (ADR 0098) -------------------------------------------------------------------------------
+  // Each write returns a sentence when it was refused, writing nothing, and undefined when it was made.
+
+  private inventoryWrite(write: InventoryWrite | PurseWrite): string | undefined {
+    if ('refused' in write) return write.refused;
+    if (write.character !== this.character) {
+      this.character = write.character;
+      this.invalidate();
+    }
+    return undefined;
+  }
+
+  private inventoryContext() {
+    return { system: this.system, kind: this.kind, steps: this.steps, character: this.character, elements: this.elements };
+  }
+
+  /** What could be added to the bag, by name. Computed on request: it is thousands of items. */
+  inventoryOptionsFor = (): ElementId[] => inventoryOffer(this.kind, this.steps, this.elements);
+
+  /** What a candidate is, beside its name: its price, attunement and what it is attached to. */
+  inventoryOptionNote = (elementId: ElementId): string => {
+    const element = this.elements.get(elementId);
+    return element ? inventoryOfferNote(element, this.kind, this.system) : '';
+  };
+
+  /** What could be attached to an entry, by name. */
+  adornmentOptionsFor = (instanceId: string): ElementId[] => adornmentOffer(this.inventoryContext(), instanceId);
+
+  /** Add an item to the bag, carried; with `buy`, pay its price from the purse. */
+  addItem = (elementId: ElementId, buy = false): string | undefined =>
+    this.inventoryWrite(planAddItem(this.inventoryContext(), elementId, { buy }));
+
+  removeItem = (instanceId: string): string | undefined => this.inventoryWrite(planRemoveItem(this.character, instanceId));
+
+  setItemQuantity = (instanceId: string, quantity: number): string | undefined =>
+    this.inventoryWrite(planSetQuantity(this.character, instanceId, quantity));
+
+  equipItem = (instanceId: string, equipped: boolean): string | undefined =>
+    this.inventoryWrite(planEquipItem(this.character, instanceId, equipped));
+
+  attuneItem = (instanceId: string, attuned: boolean): string | undefined =>
+    this.inventoryWrite(planAttuneItem(this.character, instanceId, attuned));
+
+  renameItem = (instanceId: string, name: string): string | undefined =>
+    this.inventoryWrite(planRenameItem(this.character, instanceId, name));
+
+  setItemNotes = (instanceId: string, notes: string): string | undefined =>
+    this.inventoryWrite(planItemNotes(this.character, instanceId, notes));
+
+  attachItem = (instanceId: string, adornmentId: ElementId): string | undefined =>
+    this.inventoryWrite(planAttachItem(this.inventoryContext(), instanceId, adornmentId));
+
+  detachItem = (instanceId: string): string | undefined => this.inventoryWrite(planDetachItem(this.character, instanceId));
+
+  /** Open an entry into what it holds. Returns a sentence when refused, or when it left out lines nothing declares. */
+  openItem = (instanceId: string): string | undefined => {
+    const opened = planOpenItem(this.inventoryContext(), instanceId);
+    if ('refused' in opened) return opened.refused;
+    this.character = opened.character;
+    this.invalidate();
+    return opened.missing.length ? openMissingNote(opened.missing.length) : undefined;
+  };
+
+  setCoins = (unit: string, count: number): string | undefined => this.inventoryWrite(planSetCoins(this.character, this.system, unit, count));
+
+  receiveCoins = (unit: string, count: number): string | undefined =>
+    this.inventoryWrite(planReceiveCoins(this.character, this.system, unit, count));
+
+  spendCoins = (unit: string, count: number): string | undefined =>
+    this.inventoryWrite(planSpendCoins(this.character, this.system, unit, count));
+
+  exchangeCoins = (from: string, count: number, to: string): string | undefined =>
+    this.inventoryWrite(planExchangeCoins(this.character, this.system, from, count, to));
 
   private startingContext(derived: DerivedCharacter) {
     if (!this.startingFile) return undefined;
@@ -1833,6 +1932,7 @@ export class CharacterBuilder {
       (id) => this.elements.get(id),
     );
     const play = playView({ character: this.character, kind: this.kind, derived, sheet });
+    const inventory = inventoryState({ ...this.inventoryContext(), derived, sheet });
     return {
       character: this.character,
       derived,
@@ -1861,6 +1961,7 @@ export class CharacterBuilder {
       ...(play ? { play } : {}),
       freeform: freeformState(this.character, this.kind),
       ...(startingEquipment ? { startingEquipment } : {}),
+      ...(inventory ? { inventory } : {}),
       focusedId: this.focusedId,
     };
   }

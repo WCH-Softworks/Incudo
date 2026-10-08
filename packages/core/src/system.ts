@@ -541,6 +541,12 @@ export interface InventoryDef {
    * 5e's content writes `type`.
    */
   adornSetter?: string;
+  /**
+   * Where an item states its price — ADR 0098: the setter whose value is the amount and the attribute beside it naming
+   * the unit, one of the system's `currency` units. An amount that is not a number above 0, or a unit the system does
+   * not declare, is no price. 5e's content writes `<set name="cost" currency="gp">15</set>`.
+   */
+  price?: { setter: string; unitAttribute: string };
 }
 
 /**

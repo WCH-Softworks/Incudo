@@ -893,6 +893,16 @@
           "type": "string",
           "minLength": 1,
           "description": "A setter naming the type of item an item is made from (ADR 0098): an item whose setter reads one of the types is attached to a host of that type, and the host is admitted by the item's setter named after that type, lowercased, read as a filter with the host's name as one more operand; absent, any host of the type. 5e's content writes `type`: a Mithral Armor's is Armor, and its `armor` setter names the hosts."
+        },
+        "price": {
+          "type": "object",
+          "required": ["setter", "unitAttribute"],
+          "additionalProperties": false,
+          "description": "Where an item states its price (ADR 0098): the setter whose value is the amount, and the attribute beside it naming one of the system's currency units. An amount that is not a number above 0, or a unit the system does not declare, is no price.",
+          "properties": {
+            "setter": { "type": "string", "minLength": 1 },
+            "unitAttribute": { "type": "string", "minLength": 1 }
+          }
         }
       }
     },

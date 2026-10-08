@@ -123,8 +123,11 @@ function entryElements(entry: InventoryEntry, element: Element, index: ElementIn
   return [element, ...adornments];
 }
 
-/** An adornment's naming setter filled (`{{parent}}`, `{{setter}}`), or undefined when it names nothing it answers. */
-function adornedName(template: string, parent: Element, adornment: Element): string | undefined {
+/**
+ * An adornment's naming setter filled (`{{parent}}`, `{{setter}}`), or undefined when it names nothing it answers. The
+ * inventory editor names an adorned entry with it too (ADR 0098).
+ */
+export function adornedName(template: string, parent: Element, adornment: Element): string | undefined {
   let missing = false;
   const out = template.replace(/\{\{([^{}]*)\}\}/g, (_match, key: string) => {
     const name = key.trim().toLowerCase();

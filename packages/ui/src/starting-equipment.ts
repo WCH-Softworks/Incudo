@@ -18,7 +18,6 @@
  */
 
 import {
-  currencyWorths,
   matchesSupports,
   newInstanceId,
   parseSupports,
@@ -43,6 +42,7 @@ import {
 } from '@incudo/core';
 
 import { parseDice, rollDice } from './dice.ts';
+import { formatCoins, purseRows, type PurseRow } from './money.ts';
 import { pickAnswerOf } from './top-level-pick.ts';
 
 // --- the file --------------------------------------------------------------------------------------------------------
@@ -251,12 +251,6 @@ export interface StartingSource {
   taken?: StartingTakenView;
 }
 
-export interface PurseRow {
-  unit: string;
-  label: string;
-  count: number;
-}
-
 export interface StartingEquipmentState {
   stepId: string;
   sources: StartingSource[];
@@ -296,12 +290,6 @@ export function startingMissingNote(count: number): string {
   return `${count} item${count === 1 ? '' : 's'} in this option ${count === 1 ? 'is' : 'are'} not in any loaded content, so it cannot be taken.`;
 }
 
-/** The purse in a line: "10 gp, 3 sp", or "None". */
-export function purseLine(purse: readonly PurseRow[]): string {
-  const held = purse.filter((row) => row.count > 0).map((row) => `${row.count} ${row.unit}`);
-  return held.length ? held.join(', ') : 'None';
-}
-
 /** The decision's id for one source: what `decline` records. */
 export function startingKey(forId: ElementId): string {
   return `build/equipment/${forId}`;
@@ -310,27 +298,6 @@ export function startingKey(forId: ElementId): string {
 /** Where a wealth roll for one class or background is recorded in `rolls`. */
 export function wealthRollKey(forId: ElementId): string {
   return `build/equipment/${forId}/wealth`;
-}
-
-/** The units in the order a book lists coins: most worth first, as the system's rates make them. */
-function unitsByWorth(system: GameSystem): string[] {
-  const worths = currencyWorths(system.currency);
-  const units = Object.keys(system.currency ?? {});
-  return worths ? units.sort((a, b) => (worths.get(b) ?? 0) - (worths.get(a) ?? 0)) : units;
-}
-
-/** "15 gp, 3 sp": coins most worth first, by the unit ids content prices items in. */
-export function formatCoins(coins: Record<string, number> | undefined, system: GameSystem): string | undefined {
-  if (!coins) return undefined;
-  const order = unitsByWorth(system);
-  const units = Object.keys(coins).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  const parts = units.filter((unit) => (coins[unit] ?? 0) > 0).map((unit) => `${coins[unit]} ${unit}`);
-  return parts.length ? parts.join(', ') : undefined;
-}
-
-/** The purse: every declared unit, most worth first, with the count held. */
-export function purseRows(character: Character, system: GameSystem): PurseRow[] {
-  return unitsByWorth(system).map((unit) => ({ unit, label: system.currency![unit]!.label, count: character.money?.[unit] ?? 0 }));
 }
 
 function nameOf(elements: ElementIndex, id: ElementId): string {
