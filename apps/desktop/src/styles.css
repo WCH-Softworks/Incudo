@@ -518,6 +518,55 @@ ul.problems li.error {
   margin-top: 6px;
 }
 
+/* The inventory editor (ADR 0098): one card per entry, its controls on the head line. */
+.inventory-rows {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.inventory-row {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.inventory-row p {
+  margin: 2px 0;
+}
+.inventory-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-left: auto;
+}
+.inventory-number {
+  width: 4.5em;
+}
+.inventory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.inventory-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.inventory-details textarea {
+  width: 100%;
+}
+.inventory-coins {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 6px 0;
+}
+
+/* The purse under a sheet's bag (ADR 0098): one row after the list. */
+.sheet-purse {
+  margin-top: 6px;
+}
+
 /* What a row shows beside its value, a score's modifier: secondary to the value it qualifies. */
 .sheet-beside {
   color: var(--fg-muted);

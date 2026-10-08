@@ -46,6 +46,7 @@ import {
   withSlot,
   withoutSlot,
   STARTING_EQUIPMENT_HEADING,
+  INVENTORY_HEADING,
 } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
@@ -61,6 +62,7 @@ import { Additions } from './Additions.tsx';
 import { References } from './References.tsx';
 import { FreeformEditor } from './Freeform.tsx';
 import { StartingEquipmentSettled, StartingOptions } from './StartingEquipment.tsx';
+import { InventoryEditor } from './InventoryEditor.tsx';
 
 export function BuilderPane({
   builder,
@@ -344,6 +346,17 @@ export function BuilderPane({
             <section className="starting-equipment">
               <h2>{STARTING_EQUIPMENT_HEADING}</h2>
               <StartingEquipmentSettled state={state.startingEquipment} builder={builder} nameOf={nameOf} />
+            </section>
+          )}
+
+          {/*
+            The bag and the purse, edited at any point (ADR 0098): add or buy, equip, attune, attach, open, name, and the
+            coins. Not a decision: nothing is owed, and what each item gives is said beside it.
+          */}
+          {state.inventory && (
+            <section className="inventory-section">
+              <h2>{INVENTORY_HEADING}</h2>
+              <InventoryEditor state={state.inventory} builder={builder} elements={elements} candidateLabel={candidateLabel} />
             </section>
           )}
 
