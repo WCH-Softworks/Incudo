@@ -22,6 +22,7 @@ import {
   type JsonSchema,
 } from '@incudo/core';
 import { CharacterBuilder } from './use-character-builder.ts';
+import { decisionTags } from './build-view.ts';
 import { checkStartingEquipment, startingKey, wealthRollKey, type StartingEquipmentFile } from './starting-equipment.ts';
 import { readFileSync } from 'node:fs';
 
@@ -144,6 +145,8 @@ test('the step offers each source its options, as a decision that never blocks',
     [startingKey('DRIFTER'), false, 'DRIFTER'],
   ]);
   assert.equal(state.steps.find((s) => s.id === 'kit')!.complete, true);
+  // Taken whole: no "1 left" beside it.
+  assert.deepEqual(decisionTags(decisions[0]!), ['optional']);
   const smith = source(b, 'SMITH');
   assert.deepEqual(smith.options.map((o) => [o.id, o.owed, o.ready]), [['kit', 1, false], ['wealth', 0, true]]);
   assert.deepEqual(smith.options[0]!.unlisted, ['a soot-black handkerchief']);

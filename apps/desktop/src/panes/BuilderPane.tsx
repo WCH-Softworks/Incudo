@@ -21,6 +21,7 @@ import type {
   OpenDecision,
   SettledPick,
   DeclinedDecision,
+  StartingSource,
 } from '@incudo/ui';
 import {
   progressPrintedHint,
@@ -44,6 +45,7 @@ import {
   holderGrantsUnseenNote,
   withSlot,
   withoutSlot,
+  STARTING_EQUIPMENT_HEADING,
 } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
@@ -58,6 +60,7 @@ import { CustomFeatures } from './CustomFeatures.tsx';
 import { Additions } from './Additions.tsx';
 import { References } from './References.tsx';
 import { FreeformEditor } from './Freeform.tsx';
+import { StartingEquipmentSettled, StartingOptions } from './StartingEquipment.tsx';
 
 export function BuilderPane({
   builder,
@@ -285,6 +288,7 @@ export function BuilderPane({
                   kind={kind}
                   budget={steps.find((step) => step.id === decision.stepId)?.budget}
                   hitPoints={steps.find((step) => step.id === decision.stepId)?.hitPoints}
+                  startingSource={state.startingEquipment?.sources.find((source) => source.key === decision.id)}
                 />
               </li>
             ))}
@@ -328,6 +332,18 @@ export function BuilderPane({
                   />
                 </div>
               ))}
+            </section>
+          )}
+
+          {/*
+            What the first class and the background started with (ADR 0087): taken, used, or nothing written for it, and
+            the purse. An option still to take is an open decision; this is what has been settled, and Take back undoes it
+            while none of it has been used.
+          */}
+          {state.startingEquipment && state.startingEquipment.sources.some((source) => source.status !== 'open') && (
+            <section className="starting-equipment">
+              <h2>{STARTING_EQUIPMENT_HEADING}</h2>
+              <StartingEquipmentSettled state={state.startingEquipment} builder={builder} nameOf={nameOf} />
             </section>
           )}
 
@@ -560,6 +576,7 @@ function Decision({
   kind,
   budget,
   hitPoints,
+  startingSource,
 }: {
   decision: OpenDecision;
   builder: CharacterBuilder;
@@ -570,6 +587,8 @@ function Decision({
   kind: ResolvedCharacterKind;
   budget: BuilderState['steps'][number]['budget'];
   hitPoints: BuilderState['steps'][number]['hitPoints'];
+  /** The starting equipment an `equipment` decision offers (ADR 0087). */
+  startingSource: StartingSource | undefined;
 }): React.JSX.Element {
   // What each candidate would give that the character already has, worked out once per state of the decision.
   const notes = useMemo(
@@ -599,7 +618,13 @@ function Decision({
         )}
       </div>
 
-      {decision.kind === 'budget' ? (
+      {decision.kind === 'equipment' ? (
+        startingSource ? (
+          <StartingOptions source={startingSource} builder={builder} candidateLabel={candidateLabel} />
+        ) : (
+          <p className="hint">Incudo could not show this step. This is a bug in Incudo.</p>
+        )
+      ) : decision.kind === 'budget' ? (
         budget ? (
           <BudgetEditor stepId={decision.stepId} budget={budget} builder={builder} kind={kind} />
         ) : (

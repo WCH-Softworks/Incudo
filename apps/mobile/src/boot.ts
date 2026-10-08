@@ -9,13 +9,16 @@
  * its file names, and a character whose system is not shipped says so.
  */
 
-import { validateGameSystem, type GameSystem, type SchemaBundle, type SchemaError } from '@incudo/core';
+import { validateGameSystem, type GameSystem, type JsonSchema, type SchemaBundle, type SchemaError } from '@incudo/core';
+import { checkStartingEquipment, type StartingEquipmentFile } from '@incudo/ui';
 
 import systemSchema from '@repo/schemas/system.schema.json';
 import characterSchema from '@repo/schemas/character.schema.json';
 import manifestSchema from '@repo/schemas/manifest.schema.json';
 import dnd5e from '@repo/systems/dnd5e/system.json';
 import cairn from '@repo/systems/cairn/system.json';
+import startingEquipmentSchema from '@repo/schemas/starting-equipment.schema.json';
+import dnd5eStartingEquipment from '@repo/systems/dnd5e/starting-equipment.json';
 
 const SHIPPED: unknown[] = [dnd5e, cairn];
 
@@ -29,6 +32,22 @@ export interface ShippedSystems {
   systems: GameSystem[];
   /** A shipped definition that would not validate, by whatever id it gave itself. */
   failures: { id: string; errors: SchemaError[] }[];
+}
+
+/**
+ * The starting equipment shipped beside the systems (ADR 0087), each checked against the system it names by the same
+ * `checkStartingEquipment` the desktop and the tests call. One that does not check is left out, and the step offers
+ * nothing rather than the wrong package.
+ */
+export function loadShippedStartingEquipment(systems: readonly GameSystem[]): StartingEquipmentFile[] {
+  const files: StartingEquipmentFile[] = [];
+  for (const candidate of [dnd5eStartingEquipment] as unknown[]) {
+    const system = systems.find((s) => s.id === (candidate as { system?: unknown }).system);
+    const result = checkStartingEquipment(candidate, startingEquipmentSchema as JsonSchema, system);
+    if (result.value && system) files.push(result.value);
+    else console.error('A shipped starting equipment file does not check and is left out.', result.errors);
+  }
+  return files;
 }
 
 export function loadShippedSystems(): ShippedSystems {

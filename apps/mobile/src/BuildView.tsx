@@ -32,12 +32,14 @@ import {
   type BuilderState,
   type CharacterBuilder,
   type OpenDecision,
+  STARTING_EQUIPMENT_HEADING,
 } from '@incudo/ui';
 
 import { BooksView, BudgetView, ClassLevelsView, DraftField, HitPointsView, NumberField, PreparedView } from './BuildParts.tsx';
 import { AdditionsView, CustomFeaturesView, FreeformView, HolderGrantsView, ReferencesView } from './BuildExtras.tsx';
 import { Body, Button, Card, Heading, Row, Tag } from './controls.tsx';
 import { Picker, type PickerRequest } from './Picker.tsx';
+import { StartingOptionsView, StartingSettledView } from './StartingEquipmentView.tsx';
 import { usePalette } from './theme.ts';
 
 /**
@@ -243,6 +245,14 @@ export const BuildView = memo(function BuildView({
         </>
       ) : null}
 
+      {/* What the first class and the background started with, and the purse (ADR 0087). */}
+      {state.startingEquipment?.sources.some((source) => source.status !== 'open') ? (
+        <>
+          <Heading>{STARTING_EQUIPMENT_HEADING}</Heading>
+          <StartingSettledView state={state.startingEquipment} builder={builder} nameOf={nameOf} />
+        </>
+      ) : null}
+
       {state.withdrawn.length > 0 ? (
         <>
           <Heading>Not held</Heading>
@@ -331,7 +341,14 @@ function DecisionView({
   const palette = usePalette();
   const step = state.steps.find((candidate) => candidate.id === decision.stepId);
   let body: React.ReactNode;
-  if (decision.kind === 'budget') {
+  const startingSource = decision.kind === 'equipment' ? state.startingEquipment?.sources.find((source) => source.key === decision.id) : undefined;
+  if (decision.kind === 'equipment') {
+    body = startingSource ? (
+      <StartingOptionsView source={startingSource} builder={builder} nameOf={nameOf} pick={pick} />
+    ) : (
+      <Body tone="danger">Incudo could not show this step. This is a bug in Incudo.</Body>
+    );
+  } else if (decision.kind === 'budget') {
     body = step?.budget ? (
       <BudgetView stepId={decision.stepId} budget={step.budget} builder={builder} kind={state.kind} />
     ) : (

@@ -100,6 +100,7 @@ import {
 import {
   loadDraft,
   loadShippedForms,
+  loadShippedStartingEquipment,
   loadShippedSystems,
   newCharacter,
   readChosenSystem,
@@ -112,6 +113,7 @@ import { createDesktopPlatform } from './platform.ts';
 
 /** The form maps shipped beside the systems (ADR 0079), read once. */
 const SHIPPED_FORMS: FormMap[] = loadShippedForms();
+const SHIPPED_STARTING_EQUIPMENT = loadShippedStartingEquipment(loadShippedSystems().systems);
 import { useBuilder } from './use-builder.ts';
 import { useLibrary } from './use-library.ts';
 import { useCommandHost, type CommandBinder, type CommandHandlers } from './use-commands.ts';
@@ -531,7 +533,7 @@ function Shell({
     return layers.length === 1 ? layers[0]! : new LayeredElementIndex(layers);
   }, [working.embedded, content]);
 
-  const { builder, state } = useBuilder(working.character, system, elements);
+  const { builder, state } = useBuilder(working.character, system, elements, SHIPPED_STARTING_EQUIPMENT);
 
   // What the open character carries against what its sources load now (ADR 0082). Only with both: listing and opening
   // never reach for content, and with no source loaded there is nothing to compare with.

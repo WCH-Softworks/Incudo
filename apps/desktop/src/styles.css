@@ -2174,6 +2174,34 @@ ul.browse-categories {
   display: none;
 }
 
+/* The starting equipment step (ADR 0087): one card per option, its (a) / (b) lines as radio buttons. */
+.starting-option {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+.starting-option legend {
+  font-weight: 600;
+  padding: 0 0.25rem;
+}
+.starting-lines,
+.starting-taken {
+  margin: 0 0 0.5rem;
+  padding-left: 1.1rem;
+}
+.starting-lines > li {
+  margin: 0.2rem 0;
+}
+.starting-choice label {
+  display: block;
+}
+.starting-pick select {
+  display: block;
+  margin: 0.25rem 0;
+  max-width: 100%;
+}
+
 @media print {
   /* No edge of a printed page is left to the print dialog (ADR 0078): it prints its date, title, address and page number
      in any edge that has a margin and no margin box with content, and offers them only while some edge does. So by

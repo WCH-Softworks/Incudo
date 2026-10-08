@@ -279,6 +279,28 @@ export interface StartingContext {
 }
 
 export const STARTING_EQUIPMENT_HEADING = 'Starting equipment';
+/** What an option does, said once above the options. */
+export const STARTING_EQUIPMENT_HINT =
+  'Take one option. Its items go into the bag, worn or held where a free slot takes them, and its coins into the purse. ' +
+  'It can be taken back until any of it is used.';
+/** Above what a book lists that no loaded content has. */
+export const STARTING_UNLISTED = 'Also listed, and not in any loaded content:';
+
+/** "2 choices left", under an option that cannot be taken yet. */
+export function startingOwedNote(owed: number): string {
+  return `${owed} choice${owed === 1 ? '' : 's'} left`;
+}
+
+/** Under an option naming an item nothing loaded declares. */
+export function startingMissingNote(count: number): string {
+  return `${count} item${count === 1 ? '' : 's'} in this option ${count === 1 ? 'is' : 'are'} not in any loaded content, so it cannot be taken.`;
+}
+
+/** The purse in a line: "10 gp, 3 sp", or "None". */
+export function purseLine(purse: readonly PurseRow[]): string {
+  const held = purse.filter((row) => row.count > 0).map((row) => `${row.count} ${row.unit}`);
+  return held.length ? held.join(', ') : 'None';
+}
 
 /** The decision's id for one source: what `decline` records. */
 export function startingKey(forId: ElementId): string {

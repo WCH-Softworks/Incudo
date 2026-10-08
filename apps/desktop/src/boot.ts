@@ -19,7 +19,15 @@ import {
   type SchemaError,
   type Storage,
 } from '@incudo/core';
-import { checkFormMap, newCharacterOfKind, readDraftOrigin, type FormMap, type WorkingCharacter } from '@incudo/ui';
+import {
+  checkFormMap,
+  checkStartingEquipment,
+  newCharacterOfKind,
+  readDraftOrigin,
+  type FormMap,
+  type StartingEquipmentFile,
+  type WorkingCharacter,
+} from '@incudo/ui';
 
 import systemSchema from '@repo/schemas/system.schema.json';
 import characterSchema from '@repo/schemas/character.schema.json';
@@ -28,6 +36,8 @@ import dnd5e from '@repo/systems/dnd5e/system.json';
 import cairn from '@repo/systems/cairn/system.json';
 import formMapSchema from '@repo/schemas/form-map.schema.json';
 import dnd5eOfficial2014 from '@repo/systems/dnd5e/forms/official-2014.json';
+import startingEquipmentSchema from '@repo/schemas/starting-equipment.schema.json';
+import dnd5eStartingEquipment from '@repo/systems/dnd5e/starting-equipment.json';
 
 /**
  * Every system definition that ships with the app, in the order the launcher offers them.
@@ -96,6 +106,26 @@ export function loadShippedForms(): FormMap[] {
     else console.error('A shipped form map does not check and is left out.', result.errors);
   }
   return maps;
+}
+
+/**
+ * The starting equipment shipped beside the systems (ADR 0087): what each class and background may start with. Not part
+ * of the system format; each file is checked by the same `checkStartingEquipment` the tests call, against the shipped
+ * system it names, and one that does not check is left out and logged, which leaves the step offering nothing rather
+ * than the wrong package.
+ */
+const SHIPPED_STARTING_EQUIPMENT: unknown[] = [dnd5eStartingEquipment];
+
+export function loadShippedStartingEquipment(systems: readonly GameSystem[]): StartingEquipmentFile[] {
+  const files: StartingEquipmentFile[] = [];
+  for (const candidate of SHIPPED_STARTING_EQUIPMENT) {
+    const id = (candidate as { system?: unknown }).system;
+    const system = systems.find((s) => s.id === id);
+    const result = checkStartingEquipment(candidate, startingEquipmentSchema as JsonSchema, system);
+    if (result.value && system) files.push(result.value);
+    else console.error('A shipped starting equipment file does not check and is left out.', result.errors);
+  }
+  return files;
 }
 
 /** Where the launcher's answer is kept between launches — ADR 0031. */

@@ -59,7 +59,8 @@ export function settledSteps(state: Pick<BuilderState, 'steps' | 'decisions'>): 
 export function decisionTags(decision: OpenDecision): string[] {
   const tags: string[] = [];
   if (!decision.blocking) tags.push('optional');
-  if (!decision.multiple) tags.push(decision.remaining > 0 ? `${decision.remaining} left` : 'all recorded');
+  // A starting package is taken whole, so it owes no count (ADR 0087); what an option still owes is on the option.
+  if (!decision.multiple && decision.kind !== 'equipment') tags.push(decision.remaining > 0 ? `${decision.remaining} left` : 'all recorded');
   if (decision.openedAt !== undefined) tags.push(`opened at ${decision.openedAt}`);
   return tags;
 }

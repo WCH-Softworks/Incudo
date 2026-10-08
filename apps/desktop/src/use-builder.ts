@@ -15,13 +15,15 @@
  */
 
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { CharacterBuilder, type BuilderState } from '@incudo/ui';
+import { CharacterBuilder, type BuilderState, type StartingEquipmentFile } from '@incudo/ui';
 import type { Character, ElementIndex, GameSystem } from '@incudo/core';
 
 export function useBuilder(
   character: Character,
   system: GameSystem,
   elements: ElementIndex,
+  /** The starting equipment shipped beside the systems (ADR 0087). A list made once, so it never rebuilds the builder. */
+  startingEquipment: readonly StartingEquipmentFile[] = [],
 ): { builder: CharacterBuilder; state: BuilderState } {
   /**
    * The character as it stands, so a rebuild resumes rather than reverts.
@@ -60,9 +62,10 @@ export function useBuilder(
   const builder = useMemo(
     // Same object as last time: only the content changed, so resume from the latest state, which
     // is what fixes bug one. A new object: start from it, whatever its id.
-    () => new CharacterBuilder(handed.current === character ? current.current : character, system, elements),
+    () =>
+      new CharacterBuilder(handed.current === character ? current.current : character, system, elements, { startingEquipment }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [system, elements, character],
+    [system, elements, character, startingEquipment],
   );
 
   // After the render that used it, so a second call of the memo (React's development double
