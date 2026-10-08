@@ -26,6 +26,7 @@ import {
   BundleElementIndex,
   LayeredElementIndex,
   MapElementIndex,
+  systemLineage,
   type ElementIndex,
   type GameSystem,
   type LibraryEntryRef,
@@ -52,6 +53,8 @@ import {
   libraryEntryReferences,
   libraryEntryProgress,
   UserSystemStore,
+  overlayView,
+  type UserOverlay,
   addContentFiles,
   describeCommand,
   exportSheet,
@@ -141,6 +144,8 @@ interface Booted {
   failures: SystemFailure[];
   /** Which of them the user added themselves, and can therefore remove. */
   mine: Set<string>;
+  /** Which of the user's are overlays, by id, with what each is built on and changes (ADR 0102). */
+  overlays: Record<string, UserOverlay>;
   /** What the user picked last time, if that system still exists. */
   remembered: GameSystem | null;
 }
@@ -163,7 +168,8 @@ export function App(): React.JSX.Element {
     const shipped = loadShippedSystems();
     // ADR 0011's other half. A user definition is revalidated on every load rather than trusted
     // from when it was added, because Incudo's schema moves under a file written months ago.
-    const store = new UserSystemStore(platform.storage, schemas, shipped.systems.map((s) => s.id));
+    // An overlay is applied to its parent as the parent is on this load (ADR 0102), so the shipped systems are its bases.
+    const store = new UserSystemStore(platform.storage, schemas, [], shipped.systems);
     const user = await store.load();
     const rememberedId = await readChosenSystem((key) => platform.storage.read(key));
     const systems = [...shipped.systems, ...user.systems];
@@ -171,6 +177,7 @@ export function App(): React.JSX.Element {
       systems,
       failures: [...shipped.failures, ...user.failures],
       mine: new Set(user.systems.map((s) => s.id)),
+      overlays: user.overlays,
       remembered: systems.find((s) => s.id === rememberedId) ?? null,
     };
   }, []);
@@ -293,7 +300,9 @@ function Launcher({
         schemas,
         // Only the *shipped* ids are reserved. A user system may of course be replaced by
         // another file with the same id — that is what editing your own definition means.
-        loadShippedSystems().systems.map((s) => s.id),
+        // They are also what an overlay may be built on (ADR 0102).
+        [],
+        loadShippedSystems().systems,
       ),
     [],
   );
@@ -339,11 +348,12 @@ function Launcher({
       const profile = await SourceProfile.load(platform.storage);
       const next: Record<string, SystemSummary> = {};
       for (const system of booted.systems) {
-        const forSystem = sourcesForSystem(profile.sources, system.id);
+        const forSystem = sourcesForSystem(profile.sources, systemLineage(system));
         next[system.id] = {
           sources: forSystem.length,
           enabled: forSystem.filter((s) => s.enabled).length,
           mine: booted.mine.has(system.id),
+          ...(booted.overlays[system.id] ? { overlay: overlayView(system, booted.overlays[system.id]!) } : {}),
         };
       }
 
@@ -513,7 +523,7 @@ function Shell({
       // source of another system as `missing` (ADR 0028).
       library.setProfile(loaded.sources);
       await library.restore();
-      if (sourcesForSystem(loaded.sources, system.id).some((s) => s.enabled)) {
+      if (sourcesForSystem(loaded.sources, systemLineage(system)).some((s) => s.enabled)) {
         void reloadRef.current?.();
       }
     })();
@@ -579,7 +589,7 @@ function Shell({
       // Only this system's, and only the enabled ones. Loading everything would put a Cairn
       // index into a D&D character's candidate lists — and, worse, into the content a save
       // embeds, where it would be frozen forever (ADR 0012).
-      const ofSystem = sourcesForSystem(current.sources, system.id);
+      const ofSystem = sourcesForSystem(current.sources, systemLineage(system));
       const forSystem = ofSystem.filter((s) => s.enabled);
       // The ones switched off are not loaded; what each declared at its last load names it on a line that misses it.
       const loaded = await loadSources(forSystem, platform, setProgress, {
@@ -711,12 +721,12 @@ function Shell({
         const current = profile.current;
         if (!current) return;
         const loadOrder = (): string =>
-          sourcesForSystem(current.sources, system.id)
+          sourcesForSystem(current.sources, systemLineage(system))
             .filter((s) => s.enabled)
             .map((s) => s.id)
             .join('\n');
         const before = loadOrder();
-        if (!current.move(id, direction, (s) => s.systemId === system.id)) return;
+        if (!current.move(id, direction, (s) => s.systemId !== undefined && systemLineage(system).includes(s.systemId))) return;
         await persist();
         if (loadOrder() !== before) await reload();
       },
@@ -783,11 +793,12 @@ function Shell({
   }, [pane]);
 
   /** The profile, split the way ADR 0031 splits it: mine, nobody's, and everyone else's. */
-  const mySources = useMemo(() => sourcesForSystem(sources, system.id), [sources, system.id]);
+  // An overlay loads its parent's sources as well as its own (ADR 0102): they are this system's to show, not another's.
+  const mySources = useMemo(() => sourcesForSystem(sources, systemLineage(system)), [sources, system]);
   const untagged = useMemo(() => unassignedSources(sources), [sources]);
   const otherSources = useMemo(
-    () => sources.filter((s) => s.systemId !== undefined && s.systemId !== system.id),
-    [sources, system.id],
+    () => sources.filter((s) => s.systemId !== undefined && !systemLineage(system).includes(s.systemId)),
+    [sources, system],
   );
 
   /**
@@ -1040,8 +1051,8 @@ function Shell({
 
   // The form this character's kind fills, if its system ships one (ADR 0079 decision 5): the 5e player character's.
   const formMap = useMemo(
-    () => SHIPPED_FORMS.find((map) => map.system === system.id && map.kinds.includes(state.character.kind)),
-    [system.id, state.character.kind],
+    () => SHIPPED_FORMS.find((map) => systemLineage(system).includes(map.system) && map.kinds.includes(state.character.kind)),
+    [system, state.character.kind],
   );
 
   const openOfficialSheet = useCallback((): void => {

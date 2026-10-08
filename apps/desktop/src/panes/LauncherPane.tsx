@@ -23,6 +23,7 @@
  */
 
 import type { GameSystem } from '@incudo/core';
+import type { OverlayView } from '@incudo/ui';
 
 import type { SystemFailure } from '../boot.ts';
 
@@ -36,6 +37,8 @@ export interface SystemSummary {
   enabled: number;
   /** True for a definition the user added themselves, which they may also remove. */
   mine?: boolean;
+  /** For an overlay: what it is built on and what it changes (ADR 0102), worded by `overlayView`. */
+  overlay?: OverlayView;
 }
 
 export function LauncherPane({
@@ -192,6 +195,7 @@ function SystemCard({
           <span className="system-facts">{facts(summary)}</span>
         </span>
       </button>
+      {summary.overlay && <OverlayChanges overlay={summary.overlay} />}
       {summary.mine && (
         <button
           type="button"
@@ -203,6 +207,29 @@ function SystemCard({
         </button>
       )}
     </>
+  );
+}
+
+/**
+ * What an overlay is built on and what it changes. Outside the card's button, so a long list is read rather than clicked,
+ * and folded, since a house rule with twenty changes should not push every other card off the screen.
+ */
+function OverlayChanges({ overlay }: { overlay: OverlayView }): React.JSX.Element {
+  return (
+    <details className="system-overlay">
+      <summary>
+        {overlay.builtOn} {overlay.changes.length === 1 ? 'One change.' : overlay.changes.length ? `${overlay.changes.length} changes.` : ''}
+      </summary>
+      {overlay.none ? (
+        <p className="hint">{overlay.none}</p>
+      ) : (
+        <ul>
+          {overlay.changes.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </details>
   );
 }
 

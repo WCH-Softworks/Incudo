@@ -1858,6 +1858,27 @@ button.primary:hover:not(:disabled) {
   flex: 0 0 auto;
 }
 
+/* What an overlay is built on and changes, on its own line under the card and its Remove button. */
+.launcher .system {
+  flex-wrap: wrap;
+}
+
+.system-overlay {
+  flex: 1 0 100%;
+  font-size: 0.85rem;
+  padding: 0 1rem;
+}
+
+.system-overlay summary {
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.system-overlay ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
 /* The Books list in the Build pane: a switch, the book's name, and how much loaded content it holds. */
 .publications .picker-list {
   margin-top: 6px;

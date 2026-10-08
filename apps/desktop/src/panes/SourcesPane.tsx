@@ -29,11 +29,12 @@ import {
   type SwitchedOffSupply,
   type UpdateStatus,
 } from '@incudo/content';
-import type { GameSystem, PickedFile, SuggestedSource } from '@incudo/core';
+import { systemLineage, type GameSystem, type PickedFile, type SuggestedSource } from '@incudo/core';
 import {
   describeContentFiles,
   missingNote,
   partsView,
+  sharedSourceNote,
   togglePart,
   type ContentFileResult,
   type MissingNoteView,
@@ -130,7 +131,7 @@ export function SourcesPane({
   // configured, and one held by nobody is offered above.
   const elsewhere = suggestions.filter(
     (entry) =>
-      entry.already?.systemId !== undefined && entry.already.systemId !== system.id,
+      entry.already?.systemId !== undefined && !systemLineage(system).includes(entry.already.systemId),
   );
   const [url, setUrl] = useState('');
   const [keep, setKeep] = useState<SourceKeep>('converted');
@@ -347,6 +348,10 @@ export function SourcesPane({
               first={position === 0}
               last={position === sources.length - 1}
               nameOf={nameOf}
+              sharedWith={
+                // An overlay loads its parent's sources too (ADR 0102); a row says so, since its switch is the parent's.
+                source.systemId !== undefined && source.systemId !== system.id ? nameOfSystem(source.systemId) : undefined
+              }
               loaded={loadedById.get(source.id)}
               update={updates[source.id]}
               refreshed={refreshes[source.id]}
@@ -486,6 +491,7 @@ function SourceRow({
   first,
   last,
   nameOf,
+  sharedWith,
   loaded,
   update,
   refreshed,
@@ -498,6 +504,8 @@ function SourceRow({
   first: boolean;
   last: boolean;
   nameOf: (id: string) => string;
+  /** The parent system's name, for a source an overlay loads because its parent does (ADR 0102). */
+  sharedWith?: string;
   loaded:
     | {
         fileCount: number;
@@ -556,6 +564,7 @@ function SourceRow({
           <code>{source.url}</code>
         )}
       </p>
+      {sharedWith && <p className="card-meta">{sharedSourceNote(sharedWith)}</p>}
       {off > 0 && (
         <p className="card-meta">
           {off} {off === 1 ? 'part' : 'parts'} switched off. <strong>Choose parts</strong> shows which.
