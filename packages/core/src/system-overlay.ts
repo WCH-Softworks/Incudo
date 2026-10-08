@@ -209,3 +209,50 @@ function clone<T>(value: T): T {
 function deepEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
+
+/**
+ * Where an identified array holds one identity twice — ADR 0103 decision 3. An overlay patches the first such entry and
+ * never the second, and resolution keeps one of two stats of one name silently, so a duplicate is refused. Stat names are
+ * compared ignoring case, as resolution compares them. `skip` is the arrays whose own check already says it in its words.
+ */
+export function duplicateIdentities(
+  system: unknown,
+  skip: ReadonlySet<string> = new Set(),
+): Array<{ path: string; field: string; identity: string }> {
+  const out: Array<{ path: string; field: string; identity: string }> = [];
+  for (const [pattern, key] of Object.entries(OVERLAY_KEYED_ARRAYS)) {
+    if (skip.has(pattern)) continue;
+    const field = pattern.split('.').pop()!;
+    for (const { path, value } of arraysAt(system, pattern)) {
+      const seen = new Set<string>();
+      value.forEach((entry, i) => {
+        if (!isObject(entry) || typeof entry[key] !== 'string') return;
+        const identity = entry[key] as string;
+        const folded = key === 'name' && field === 'stats' ? identity.toLowerCase() : identity;
+        if (seen.has(folded)) out.push({ path: `${path}[${i}].${key}`, field, identity });
+        seen.add(folded);
+      });
+    }
+  }
+  return out;
+}
+
+/** Every array a table pattern names in a document, with the path the validator renders for it. */
+function arraysAt(document: unknown, pattern: string): Array<{ path: string; value: unknown[] }> {
+  let at: Array<{ path: string; value: unknown }> = [{ path: '', value: document }];
+  for (const segment of pattern.split('.')) {
+    const many = segment.endsWith('[]');
+    const name = many ? segment.slice(0, -2) : segment;
+    const next: Array<{ path: string; value: unknown }> = [];
+    for (const { path, value } of at) {
+      if (!isObject(value) || !(name in value)) continue;
+      const child = value[name];
+      const childPath = path ? `${path}.${name}` : name;
+      if (many) {
+        if (Array.isArray(child)) child.forEach((entry, i) => next.push({ path: `${childPath}[${i}]`, value: entry }));
+      } else next.push({ path: childPath, value: child });
+    }
+    at = next;
+  }
+  return at.filter((entry): entry is { path: string; value: unknown[] } => Array.isArray(entry.value));
+}

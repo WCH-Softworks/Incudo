@@ -271,3 +271,52 @@ test("an overlay may write every root field of the format, and nothing else", ()
   const shell = Object.keys(((((systemSchema as Node)['$defs'] as Node)['overlay'] as Node)['properties'] as Node)).sort();
   assert.deepEqual(shell, root);
 });
+
+// --- ADR 0103: an identity twice is refused in every identified array ------------------------------------------------
+
+const shipped5e = (): Record<string, unknown> =>
+  JSON.parse(readFileSync(new URL('../../../systems/dnd5e/system.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+
+/** The first array in `document` that `pattern` names and that holds an entry, walked as the table's patterns are. */
+function firstArray(document: unknown, pattern: string): unknown[] | undefined {
+  let at: unknown[] = [document];
+  for (const segment of pattern.split('.')) {
+    const many = segment.endsWith('[]');
+    const name = many ? segment.slice(0, -2) : segment;
+    at = at.flatMap((value) => {
+      const child = (value as Record<string, unknown> | undefined)?.[name];
+      if (child === undefined) return [];
+      return many ? (Array.isArray(child) ? child : []) : [child];
+    });
+  }
+  return at.find((value): value is unknown[] => Array.isArray(value) && value.length > 0);
+}
+
+// Perturbation: dropping duplicateIdentities from checkSystemReferences, or adding a table path to CHECKED_ELSEWHERE that
+// no check covers.
+test('every identified array refuses an identity twice, with one error naming it', () => {
+  assert.deepEqual(validateGameSystem(shipped5e(), schemas).errors, []);
+  for (const [pattern, key] of Object.entries(OVERLAY_KEYED_ARRAYS)) {
+    const system = shipped5e();
+    const array = firstArray(system, pattern);
+    assert.ok(array, `5e has an entry in ${pattern}`);
+    const copy = JSON.parse(JSON.stringify(array[0])) as Record<string, unknown>;
+    // A copy with only its identity kept the same, so nothing else about it is what is refused.
+    array.push(copy);
+    const errors = validateGameSystem(system, schemas).errors;
+    assert.ok(errors.length >= 1, `${pattern}: ${JSON.stringify(errors)}`);
+    assert.ok(errors.every((e) => e.message.includes(String(copy[key]))), `${pattern}: ${JSON.stringify(errors)}`);
+  }
+});
+
+// Perturbation: comparing stat names exactly (resolution lowercases, so "Might" and "might" are one stat).
+test('two stats whose names differ only by case are one stat twice', () => {
+  const errors = validateGameSystem(parent({ stats: [...parent().stats, { name: 'Might', default: 3 }] }), schemas).errors;
+  assert.deepEqual(errors, [{ path: 'stats[3].name', message: '"Might" is already used in this stats list; each entry needs its own, or remove one' }]);
+});
+
+// Perturbation: removing the min/max comparison.
+test('a generation method whose min is above its max is refused', () => {
+  const errors = validateGameSystem(parent({ generationMethods: [{ id: 'roll', label: 'Roll', min: 18, max: 3 }] } as Partial<GameSystem>), schemas).errors;
+  assert.deepEqual(errors, [{ path: 'generationMethods[0].min', message: 'is 18, above the max of 3, so no value could be chosen' }]);
+});

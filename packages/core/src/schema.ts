@@ -25,7 +25,7 @@ import {
   type SheetSectionDef,
 } from './system.ts';
 import { parseRequirements } from './requirements.ts';
-import { applySystemOverlay, type OverlayChange } from './system-overlay.ts';
+import { applySystemOverlay, duplicateIdentities, type OverlayChange } from './system-overlay.ts';
 import { parseSupports, supportsInterpolations } from './supports.ts';
 import type { Character } from './character.ts';
 import type { ContainerManifest } from './container.ts';
@@ -60,7 +60,11 @@ export interface ValidateSystemOptions {
 
 /** A validated system, and for an overlay, what it was applied to and what it changed (ADR 0102). */
 export interface SystemValidationResult extends ValidationResult<GameSystem> {
-  overlay?: { parent: GameSystem; changes: OverlayChange[] };
+  /**
+   * For an overlay that was applied: its parent, what it changed, and the system it made, which is what `errors` are about
+   * when there are any (ADR 0103 follows them back to the overlay's text). Absent when the overlay's own shell failed.
+   */
+  overlay?: { parent: GameSystem; changes: OverlayChange[]; applied: GameSystem };
 }
 
 /**
@@ -112,7 +116,7 @@ function validateOverlay(
   const applied = applySystemOverlay(parent, value);
   const errors = validateJson(applied.system, schemas.system);
   if (errors.length === 0) errors.push(...checkSystemReferences(applied.system));
-  return { ...result(applied.system, errors), overlay: { parent, changes: applied.changes } };
+  return { ...result(applied.system, errors), overlay: { parent, changes: applied.changes, applied: applied.system } };
 }
 
 export function validateCharacter(
@@ -289,6 +293,18 @@ function checkCharacterReferences(character: Character, system?: GameSystem): Sc
  * Everything here is a reference that has to resolve. Run only once the schema has passed,
  * so this can assume the shape is right and worry only about what it points at.
  */
+/** Identified arrays whose duplicates a check below already refuses, in its own words. */
+const CHECKED_ELSEWHERE: ReadonlySet<string> = new Set([
+  'characterKinds',
+  'characterKinds[].buildSteps',
+  'characterKinds[].play.rests',
+  'characterKinds[].play.trackers',
+  'characterKinds[].inventory.slots',
+  'characterKinds[].blockFilters',
+  'characterKinds[].freeform.fields',
+  'characterKinds[].companions.sheet',
+]);
+
 function checkSystemReferences(system: GameSystem): SchemaError[] {
   const errors: SchemaError[] = [];
   const kinds = system.characterKinds ?? [];
@@ -304,6 +320,19 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     }
     seenIds.add(kind.id);
   }
+
+  // One identity twice in an array an overlay merges by it (ADR 0103). The arrays skipped have a check of their own below.
+  for (const duplicate of duplicateIdentities(system, CHECKED_ELSEWHERE)) {
+    errors.push({
+      path: duplicate.path,
+      message: `"${duplicate.identity}" is already used in this ${duplicate.field} list; each entry needs its own, or remove one`,
+    });
+  }
+  (system.generationMethods ?? []).forEach((method, i) => {
+    if (method.min !== undefined && method.max !== undefined && method.min > method.max) {
+      errors.push({ path: `generationMethods[${i}].min`, message: `is ${method.min}, above the max of ${method.max}, so no value could be chosen` });
+    }
+  });
 
   const defaults = kinds.filter((k) => k.default);
   if (defaults.length > 1) {
