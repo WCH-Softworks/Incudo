@@ -63,7 +63,7 @@ After a change to `app.json` or a native dependency, build again. The build and 
 
 - **No icon or splash image.** Expo's own stand in. The logo's tile is an open design decision (`brand/`); this is a
   marked gap, not an oversight, and no artwork is to be generated for it.
-- Download mode as the default on metered connections (ADR 0004), importing an Aurora save: Phase 6's later items. A
+- Importing an Aurora save: Phase 6's later item. On a metered connection, Content asks before a download (ADR 0100). A
   share that *starts* a development build goes through its launcher and arrives unreadable (the read grant stays with
   the launcher's first activity); a release build has no launcher, and none has been built. On the build: an index URL of the user's own as a source, the class split editor, features of the user's own,
   additions and references (the desktop has them all).

@@ -42,6 +42,7 @@ import { PlatformContext, usePlatform, type Platform, type Screens } from './con
 import { Button } from './controls.tsx';
 import {
   MobileCharacterStore,
+  MobileConnection,
   MobileFetcher,
   MobileFilePicker,
   MobileFolderSaver,
@@ -66,6 +67,7 @@ export function App() {
       library: new CharacterLibrary(new MobileCharacterStore(zip)),
       picker: new MobileFilePicker(),
       inbox: new MobileShareInbox(),
+      connection: new MobileConnection(),
       folderSaver: new MobileFolderSaver(),
       shareSaver: new MobileShareSaver(),
       zip,

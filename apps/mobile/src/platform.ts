@@ -10,6 +10,8 @@
  * | `Storage`        | one SQLite table, through `expo-sqlite`                   |
  * | `CharacterStore` | a `library` folder in the app's own documents, `expo-file-system` |
  * | `FilePicker`     | the system's document picker, through `expo-file-system`  |
+ * | (inbox)          | a file shared to the app or opened with it (`MobileShareInbox`) |
+ * | (connection)     | whether the connection is metered, through NetInfo (`MobileConnection`) |
  * | `FileSaver`      | two: a folder the user picks, or the share sheet (`expo-sharing`) |
  * | `ZipCodec`       | fflate (`zip.ts`): Hermes has no `CompressionStream`      |
  *
@@ -30,6 +32,7 @@
  */
 
 import { Linking } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as SQLite from 'expo-sqlite';
@@ -49,7 +52,7 @@ import type {
   Storage,
   ZipCodec,
 } from '@incudo/core';
-import type { ReceivedFile } from '@incudo/ui';
+import type { ConnectionState, ReceivedFile } from '@incudo/ui';
 
 /**
  * React Native's `fetch` is not a web page's: no origin, no CORS preflight, so `If-None-Match` may be sent and a 304
@@ -353,4 +356,21 @@ async function readUri(uris: string | string[], name?: string): Promise<Received
     }
   }
   return { ...(shownName ? { name: shownName } : {}), bytes: new Uint8Array(), unreadable: failure };
+}
+
+/**
+ * Whether the connection is metered — ADR 0100. NetInfo's `isConnectionExpensive` is Android's metered flag for the
+ * active network and iOS's expensive one. With no connection there are no details, and nothing is said: a fetch then
+ * fails as it would anyway.
+ */
+export class MobileConnection {
+  async current(): Promise<ConnectionState> {
+    try {
+      const state = await NetInfo.fetch();
+      const expensive = (state.details as { isConnectionExpensive?: unknown } | null)?.isConnectionExpensive;
+      return typeof expensive === 'boolean' ? { metered: expensive } : {};
+    } catch {
+      return {};
+    }
+  }
 }

@@ -8,7 +8,7 @@ import { createContext, useContext } from 'react';
 import type { FileSaver, GameSystem } from '@incudo/core';
 import type { CharacterLibrary, ContentSources } from '@incudo/ui';
 
-import type { MobileFilePicker, MobileShareInbox } from './platform.ts';
+import type { MobileConnection, MobileFilePicker, MobileShareInbox } from './platform.ts';
 import type { createMobileZipCodec } from './zip.ts';
 
 export type Screens = {
@@ -30,6 +30,8 @@ export interface Platform {
   shareSaver: FileSaver;
   zip: ReturnType<typeof createMobileZipCodec>;
   systems: GameSystem[];
+  /** Whether the connection is metered, asked before a source action that downloads (ADR 0100). */
+  connection: MobileConnection;
   /** The content a build loads (ADR 0086). Nothing else asks for it. */
   sources: ContentSources;
 }

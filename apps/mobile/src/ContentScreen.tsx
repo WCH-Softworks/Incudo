@@ -1,7 +1,8 @@
 /**
  * The content a phone builds with — ADR 0086. Per game: its suggested sources, added with one tap and downloaded in
  * full, kept converted or as files (ADR 0085, the user's choice of speed against space); each added source switched on
- * or off, refreshed, kept the other way, or removed with what it kept on the device.
+ * or off, refreshed, kept the other way, or removed with what it kept on the device. On a metered connection, adding,
+ * refreshing or keeping a source as files asks first and says what it downloads (ADR 0100, `fetchPrompt`).
  *
  * A renderer of `ContentSources` (`packages/ui`). Reading or playing a character never needs any of this (ADR 0012).
  */
@@ -11,6 +12,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, View } 
 
 import { keepsConverted, type ConfiguredSource } from '@incudo/content';
 import type { SuggestedSource } from '@incudo/core';
+import { addSourceNote, fetchPrompt, type FetchAction } from '@incudo/ui';
 
 import { Body, Button, Card, Heading, Row } from './controls.tsx';
 import { usePlatform } from './context.ts';
@@ -21,7 +23,7 @@ const KEEP_NOTE =
   'Files keeps the files as they came (about 15 MB), and reads them again every time content loads.';
 
 export function ContentScreen() {
-  const { sources, systems } = usePlatform();
+  const { sources, systems, connection } = usePlatform();
   const palette = usePalette();
   const state = useSyncExternalStore(sources.subscribe, sources.getState);
   const [busy, setBusy] = useState(false);
@@ -41,12 +43,24 @@ export function ContentScreen() {
     }
   };
 
-  const add = (systemId: string, suggestion: SuggestedSource): void =>
-    Alert.alert(`Add ${suggestion.name}?`, `It is downloaded in full now.\n\n${KEEP_NOTE}`, [
+  const add = async (systemId: string, suggestion: SuggestedSource): Promise<void> => {
+    const note = addSourceNote(await connection.current());
+    Alert.alert(`Add ${suggestion.name}?`, `${note}\n\n${KEEP_NOTE}`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Files', onPress: () => void run(() => sources.add(systemId, suggestion, 'files')) },
       { text: 'Converted', onPress: () => void run(() => sources.add(systemId, suggestion, 'converted')) },
     ]);
+  };
+
+  // Asked first on a metered connection, and only when the action downloads something (ADR 0100).
+  const confirmFetch = async (action: FetchAction, work: () => Promise<void>): Promise<void> => {
+    const prompt = fetchPrompt(action, await connection.current());
+    if (!prompt) return run(work);
+    Alert.alert(prompt.title, prompt.message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: prompt.confirm, onPress: () => void run(work) },
+    ]);
+  };
 
   return (
     <ScrollView style={{ backgroundColor: palette.background }} contentContainerStyle={styles.page}>
@@ -72,7 +86,7 @@ export function ContentScreen() {
               <Card key={suggestion.url}>
                 <Text style={[styles.name, { color: palette.text }]}>{suggestion.name}</Text>
                 {suggestion.description ? <Body tone="muted">{suggestion.description}</Body> : null}
-                <Button label="Add" kind="primary" disabled={busy} onPress={() => add(system.id, suggestion)} />
+                <Button label="Add" kind="primary" disabled={busy} onPress={() => void add(system.id, suggestion)} />
               </Card>
             ))}
             {configured.map((source) => (
@@ -82,10 +96,11 @@ export function ContentScreen() {
                 elements={loaded?.sources.find((row) => row.id === source.id)?.elementCount}
                 busy={busy}
                 onEnabled={(on) => void run(() => sources.setEnabled(source.id, on))}
-                onKeep={() =>
-                  void run(() => sources.setKeep(source.id, keepsConverted(source) ? 'files' : 'converted'))
-                }
-                onRefresh={() => void run(() => sources.refresh(source.id))}
+                onKeep={() => {
+                  const keep = keepsConverted(source) ? 'files' : 'converted';
+                  void confirmFetch({ kind: 'keep', source, keep }, () => sources.setKeep(source.id, keep));
+                }}
+                onRefresh={() => void confirmFetch({ kind: 'refresh', source }, () => sources.refresh(source.id))}
                 onRemove={() =>
                   Alert.alert(`Remove ${source.name}?`, 'What it downloaded is deleted from this device. Characters keep the content they use.', [
                     { text: 'Cancel', style: 'cancel' },
