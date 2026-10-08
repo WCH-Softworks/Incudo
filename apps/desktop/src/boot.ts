@@ -22,10 +22,12 @@ import {
 import {
   checkFormMap,
   checkStartingEquipment,
+  describeSystemErrors,
   newCharacterOfKind,
   readDraftOrigin,
   type FormMap,
   type StartingEquipmentFile,
+  type SystemProblem,
   type WorkingCharacter,
 } from '@incudo/ui';
 
@@ -59,6 +61,8 @@ export interface SystemFailure {
   /** Whatever the file called itself, when it got far enough to say. */
   id: string;
   errors: SchemaError[];
+  /** The errors located (ADR 0103). A shipped definition has no text here, so they carry no line. */
+  problems: SystemProblem[];
 }
 
 export interface ShippedSystems {
@@ -85,7 +89,7 @@ export function loadShippedSystems(): ShippedSystems {
     if (result.value) systems.push(result.value);
     else {
       const id = (candidate as { id?: unknown })?.id;
-      failures.push({ id: typeof id === 'string' ? id : 'unknown', errors: result.errors });
+      failures.push({ id: typeof id === 'string' ? id : 'unknown', errors: result.errors, problems: describeSystemErrors(result.errors, candidate, undefined) });
     }
   }
   return { systems, failures };

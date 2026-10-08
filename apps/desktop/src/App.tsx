@@ -55,6 +55,7 @@ import {
   UserSystemStore,
   overlayView,
   type UserOverlay,
+  type SystemProblem,
   addContentFiles,
   describeCommand,
   exportSheet,
@@ -290,7 +291,7 @@ function Launcher({
   const [location, setLocation] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [addProblem, setAddProblem] = useState<
-    { message: string; errors?: { path: string; message: string }[] } | undefined
+    { message: string; problems?: SystemProblem[] } | undefined
   >();
 
   const store = useMemo(
@@ -321,7 +322,7 @@ function Launcher({
       if (!picked.length) return;
       const result = await store.add(picked[0]!);
       if (!result.ok) {
-        setAddProblem({ message: result.message, errors: result.errors });
+        setAddProblem({ message: result.message, problems: result.problems });
         return;
       }
       onChanged(await reboot());

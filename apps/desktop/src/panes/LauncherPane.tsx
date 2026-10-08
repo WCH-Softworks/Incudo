@@ -23,7 +23,7 @@
  */
 
 import type { GameSystem } from '@incudo/core';
-import type { OverlayView } from '@incudo/ui';
+import { systemProblemLine, type OverlayView, type SystemProblem } from '@incudo/ui';
 
 import type { SystemFailure } from '../boot.ts';
 
@@ -66,7 +66,7 @@ export function LauncherPane({
   onRemoveSystem: (system: GameSystem) => void;
   adding: boolean;
   /** What went wrong with the last add, with its validation errors. Dismissed, never timed out. */
-  addProblem?: { message: string; errors?: { path: string; message: string }[] };
+  addProblem?: { message: string; problems?: SystemProblem[] };
   onDismissAddProblem: () => void;
   canAdd: boolean;
   cannotAddReason?: string;
@@ -108,16 +108,7 @@ export function LauncherPane({
       {addProblem && (
         <div className="problem error">
           <strong>{addProblem.message}</strong>
-          {addProblem.errors && addProblem.errors.length > 0 && (
-            <ul>
-              {addProblem.errors.slice(0, 8).map((error) => (
-                <li key={`${error.path}${error.message}`}>
-                  {error.path ? `${error.path}: ` : ''}
-                  {error.message}
-                </li>
-              ))}
-            </ul>
-          )}
+          {addProblem.problems && addProblem.problems.length > 0 && <ProblemList problems={addProblem.problems} />}
           <div className="row">
             <button type="button" onClick={onDismissAddProblem}>
               Dismiss
@@ -138,15 +129,8 @@ export function LauncherPane({
             {failures.map((failure) => (
               <li key={failure.id}>
                 <strong>{failure.id}</strong> — this definition does not match the system format,
-                so Incudo will not load part of it.
-                <ul>
-                  {failure.errors.slice(0, 5).map((error) => (
-                    <li key={`${error.path}${error.message}`}>
-                      {error.path ? `${error.path}: ` : ''}
-                      {error.message}
-                    </li>
-                  ))}
-                </ul>
+                so Incudo does not load it. Fix what is listed and add the file again.
+                <ProblemList problems={failure.problems} />
               </li>
             ))}
           </ul>
@@ -205,6 +189,33 @@ function SystemCard({
         >
           Remove
         </button>
+      )}
+    </>
+  );
+}
+
+/** How many problems are listed open; the rest are folded, so a file with forty does not bury the screen. */
+const OPEN_PROBLEMS = 5;
+
+/** Every problem with a definition, each with its line where the file says it (ADR 0103). */
+function ProblemList({ problems }: { problems: readonly SystemProblem[] }): React.JSX.Element {
+  const rest = problems.slice(OPEN_PROBLEMS);
+  return (
+    <>
+      <ul className="system-problems">
+        {problems.slice(0, OPEN_PROBLEMS).map((problem, i) => (
+          <li key={i}>{systemProblemLine(problem)}</li>
+        ))}
+      </ul>
+      {rest.length > 0 && (
+        <details>
+          <summary>{rest.length === 1 ? 'One more' : `${rest.length} more`}</summary>
+          <ul className="system-problems">
+            {rest.map((problem, i) => (
+              <li key={i}>{systemProblemLine(problem)}</li>
+            ))}
+          </ul>
+        </details>
       )}
     </>
   );
