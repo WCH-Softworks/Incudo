@@ -16,7 +16,7 @@ player manages" · amends [0072](./0072-a-build-step-may-offer-items-a-character
 [0089](./0089-the-other-hidden-item-families-are-two-more-equip-steps-and-a-player-character-s-sheet-shows-its-other-speeds.md),
 [0093](./0093-an-attack-is-a-weapon-in-the-bag-and-the-kind-declares-what-it-adds-up.md),
 [0095](./0095-a-row-names-what-moved-it-that-the-sheet-lists-nowhere.md) ·
-**format:** optional `types` and `adornSetter` on a kind's `inventory` and an optional `bag` on a sheet section in the
+**format:** optional `types`, `adornSetter` and `price` on a kind's `inventory` and an optional `bag` on a sheet section in the
 system format (`formatVersion` stays 1); a parsed element gains an optional `contents` (the `<extract>` block, a bugfix to
 the frozen importer); the character format is unchanged (11)
 
@@ -55,6 +55,15 @@ samples):
   else (5 equipped, 2 carried), and 1 equipped item gives nothing. **Every stat an item moves is one with no label**
   (`ac:armored:armor`, `ac:shield`, …: 42 of 42): what a player reads, Armor Class, is reached only through the kind's
   formulas. **No item the samples hold is outside the bag** (0), so a sheet listing the bag loses nothing.
+
+> **Note, 2026-10-08 — built, and what building it changed.** `inventory.price` (`{ setter, unitAttribute }`, 5e: `cost`
+> and `currency`) joined the format, so the editor names no setter of content's. A moved row whose label two sections show
+> is written under its section ("Moves Armor Class; Saving Throws: Strength, …"): the first wording, found in the running
+> app, read a Ring of Protection as moving the ability scores. The sheet's bag leaves out an equip step's items, as the
+> sheet always did through `hiddenSetter`. The purse helpers moved to `packages/ui/src/money.ts`. Driven in the browser
+> build (a Fighter's wealth, three items bought and equipped, armour class 19 with an attuned ring, Mithral Armor
+> attached, a pack opened, coins exchanged); not on a phone or in the Tauri window. The oracle is identical before and
+> after.
 
 ## Decision
 

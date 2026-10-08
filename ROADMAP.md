@@ -1100,14 +1100,21 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
         choice, which would seed the derivation; 2024 rows measured as 11 "A or B" and one "A, B or C"; the file covers the
         Player's Handbooks' 24 classes and 29 backgrounds, held to the corpus and to the 2024 book's own pack items (`<extract>`,
         44 blocks the parser does not read). Driven in the browser build; not on a phone or in the Tauri window.
-  - [ ] **Inventory management at any point**, not only while building: add any item from loaded content to the bag,
+  - [x] **Inventory management at any point**, not only while building: add any item from loaded content to the bag,
         remove it, change quantity, equip and unequip it into the kind's slots, attune (the limit shown, never refused,
         as `over-attuned` already is), attach a magic item to a host, rename an instance and write notes; and spend or
         receive money once it is recorded. The model and the engine are there (`setInventoryEntry`, ADRs 0024 to 0026);
         what is missing is the view-model in `packages/ui` and a screen in both shells, the desktop and the phone. Also
         say which items give the character anything, which ADR 0072 left undone. **Hidden is not a reason to leave an item
         out** (ADR 0089 decision 3): the 2024 mounts are hidden, priced and without rules, so they are goods this editor
-        offers; the families the equip steps already offer are the ones it may leave to them.
+        offers; the families the equip steps already offer are the ones it may leave to them. **Built 2026-10-08**
+        ([ADR 0098](./docs/adr/0098-the-bag-and-the-purse-are-edited-in-place-and-what-an-item-gives-is-read-off-the-derivation.md)):
+        an Inventory section on Build in both shells; buying pays in the item's own coin and change is only an Exchange the
+        player asks for; an adornment admits its host by name too; a pack opens into its `<extract>` contents (now parsed);
+        each entry says what it gives, read off the derivation; the Sheet, the Markdown and the 2014 form list the bag and
+        the purse. Driven in the browser build; the phone screen is written and **not yet run on the emulator**, which is
+        what the item's exit criterion still waits for (`inventory-editor-build.test.ts` reads the desktop's file with the
+        phone's zip in Node).
       **Exit:** a character built from nothing in either app takes a class's package or its gold, then buys, equips and
       attunes items later; its armour class and attunement follow; the file opens identically on the other app.
 

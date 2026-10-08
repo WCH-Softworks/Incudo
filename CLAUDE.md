@@ -2040,9 +2040,41 @@ built 2026-10-07; its dated note says what building it changed). Things to know 
 - Tests: `packages/core/src/money.test.ts`, `packages/ui/src/starting-equipment.test.ts`, the validator in `schemas.test.ts`,
   the importer's, `tools/verify/src/starting-equipment-build.test.ts` (a 2014 Fighter through the builder: armour class 18,
   reopened with no source to the same bag and purse), each failing under its named perturbation. The oracle is identical.
-- **Not done:** the inventory editor (the roadmap item's second part), spending or making change, opening a pack into its
-  contents, money on the Sheet and the official form, the other books' classes and backgrounds. Driven in the browser build
-  only (a 2014 Fighter and Soldier, a wealth roll, Take back, a reload); not on a phone or in the Tauri window.
+- **Not done:** ~~the inventory editor, spending or making change, opening a pack, money on the Sheet and the form~~ (ADR
+  0098, below); the other books' classes and backgrounds. Driven in the browser build only (a 2014 Fighter and Soldier, a
+  wealth roll, Take back, a reload); not on a phone or in the Tauri window.
+
+**The bag and the purse are edited in place at any point, and what each item gives is read off the derivation**
+([ADR 0098](docs/adr/0098-the-bag-and-the-purse-are-edited-in-place-and-what-an-item-gives-is-read-off-the-derivation.md)).
+Things to know before touching it:
+
+- **Measured first** (`tools/verify/src/inventory-editor.test.ts`, report-only): 2,881 items, 83 of them the equip steps'
+  families, 8 hidden mounts that are goods; 902 prices are 0 (Aurora's "not for sale") and 32 a dash, none a fraction;
+  **214 of 415 adorner filters admit no host unless the host's name is an operand** ("Plate", "Longsword"); every stat a
+  sample's item moves is unlabelled (`ac:armored:armor`), so Armor Class is reached only through the kind's formulas.
+- **`packages/ui/src/inventory.ts` is the view-model** (`BuilderState.inventory`, `inventoryState`); every write is a pure
+  `plan…` returning a character or `{ refused }`, and the builder's methods (`addItem(id, buy)`, `equipItem`, `attuneItem`,
+  `attachItem`, `openItem`, `setCoins`, `spendCoins`, `exchangeCoins`, …) return the sentence. Desktop
+  `panes/InventoryEditor.tsx` on Build, phone `InventoryView.tsx`; both compute nothing. **No character format change.**
+- **System format** (all optional, `formatVersion` 1): `inventory.types` (what can be added), `inventory.adornSetter` (5e
+  `type`: an item whose setter names one of those types attaches to a host of it, filtered by its setter named after the
+  type, the host's own name an operand here only, never in `matchesSupports`), `inventory.price` (`cost` / `currency`), and
+  a sheet section's `bag`. The equip steps' families are never offered or listed in the bag (`takenOnBuild`).
+- **Money**: `packages/ui/src/money.ts` (the purse helpers moved there). Buying and spending take only the item's own coin;
+  **change is made only by Exchange**, refused unless it comes out whole ("a multiple of 10 gp").
+- **What an item gives** (`gives`): the sheet rows it moves (contributions followed through `derive` by name, as ADR 0095),
+  a row's section named when two sections show its label, what it grants that a section lists, an attack, or why nothing
+  (carried, not attuned). Taking a starting package back follows `packageUntouched` unchanged; a package's entries and
+  coins say what editing them does to it.
+- **`<extract>` is parsed** as `Element.contents` (the eighth dropped construct; `CONVERTER_VERSION` 2). Open replaces one
+  of an entry with its contents and names an id nothing declares.
+- **The Sheet lists the bag** (every entry, "Arrows ×20", "(equipped, attuned)", and a Money line) where it used to list
+  only equipped items, so every export with a bag changed; the 2014 form's Equipment box flows the bag and CP–PP take the
+  purse (form rule `money`).
+- Tests: `packages/ui/src/inventory.test.ts` (each case failing under its named perturbation),
+  `tools/verify/src/inventory-editor-build.test.ts` (a Fighter from nothing: wealth, buy, equip, attune, Mithral, a pack,
+  an exchange; AC 18 → 19, speed 20 → 30; the desktop's file read with the phone's zip, reopened with no source the same).
+  The oracle is identical. Driven in the browser build; **not on the phone emulator or in the Tauri window**.
 
 **A pool never offers what the character already has.** `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,
