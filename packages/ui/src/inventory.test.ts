@@ -34,7 +34,7 @@ function element(id: string, type: string, extra: Partial<Element> = {}): Elemen
 
 const price = (value: string, unit?: string) => ({ value, ...(unit ? { attrs: { coin: unit } } : {}) });
 
-function system(): GameSystem {
+function system(options: { saves?: boolean } = {}): GameSystem {
   return {
     formatVersion: 1,
     id: 'test',
@@ -44,6 +44,8 @@ function system(): GameSystem {
     stats: [
       { name: 'guard', label: 'Guard', derive: { kind: 'binary', op: '+', left: { kind: 'number', value: 10 }, right: { kind: 'ref', stat: 'guard:worn' } } },
       { name: 'guard:worn', default: 0 },
+      { name: 'guard:save', label: 'Guard', derive: { kind: 'ref', stat: 'guard:worn' } },
+      { name: 'reach', label: 'Reach', derive: { kind: 'ref', stat: 'guard:worn' } },
       { name: 'bonds', default: 0 },
       { name: 'bonds:max', default: 1 },
     ],
@@ -76,7 +78,8 @@ function system(): GameSystem {
         },
         sheet: {
           sections: [
-            { id: 'stats', label: 'Stats', stats: ['guard'] },
+            { id: 'stats', label: 'Stats', stats: options.saves ? ['guard', 'reach'] : ['guard'] },
+            ...(options.saves ? [{ id: 'saves', label: 'Saves', stats: ['guard:save'] }] : []),
             { id: 'signs', label: 'Signs', types: ['Sign'] },
             { id: 'bag', label: 'Bag', types: ['Gear', 'Garb', 'Relic', 'Kit'], bag: true },
           ],
@@ -110,8 +113,8 @@ function corpus(): MapElementIndex {
   return index;
 }
 
-function builder(character?: Character): CharacterBuilder {
-  const s = system();
+function builder(character?: Character, options: { saves?: boolean } = {}): CharacterBuilder {
+  const s = system(options);
   return new CharacterBuilder(character ?? createCharacter('test', 'pc', { name: 'W' }), s, corpus());
 }
 
@@ -244,6 +247,15 @@ test('what an item gives is read off the derivation: the rows it moves, what it 
   // An equipped item with no rules gives nothing, and says so; one with no rules carried says nothing at all.
   b.addItem('CLOAK');
   assert.equal(b.getState().inventory!.rows[1]!.gives, '');
+});
+
+test('a row whose label two sections show is named with its section', () => {
+  // Fails if the save row reads as a bare "Guard", the same words as the stat it is not.
+  const b = builder(undefined, { saves: true });
+  b.addItem('COAT');
+  const id = b.getState().inventory!.rows[0]!.instanceId;
+  b.equipItem(id, true);
+  assert.equal(b.getState().inventory!.rows[0]!.gives, 'Moves Stats: Guard and Reach; Saves: Guard.');
 });
 
 test('the limit is shown and never refused, and attuning a carried item counts nothing', () => {

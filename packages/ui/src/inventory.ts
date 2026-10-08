@@ -237,13 +237,19 @@ export function entryName(entry: InventoryEntry, elements: Pick<ElementIndex, 'g
   return host.name;
 }
 
+/** A sheet row an item moves: its label, and the section it is in. */
+interface MovedRow {
+  section: string;
+  label: string;
+}
+
 /**
  * For every element, the sheet rows it moves: a row whose stat it contributes to non-zero, directly or through a stat
  * the kind's formulas read, followed by name as ADR 0095 follows them and never evaluated.
  */
-function rowsMoved(sheet: SheetView, derived: DerivedCharacter, kind: ResolvedCharacterKind): Map<ElementId, string[]> {
+function rowsMoved(sheet: SheetView, derived: DerivedCharacter, kind: ResolvedCharacterKind): Map<ElementId, MovedRow[]> {
   const derives = new Map(kind.stats.map((def) => [def.name.toLowerCase(), def.derive]));
-  const out = new Map<ElementId, string[]>();
+  const out = new Map<ElementId, MovedRow[]>();
   for (const section of sheet.sections) {
     for (const row of section.rows) {
       const ids = new Set<ElementId>();
@@ -257,9 +263,9 @@ function rowsMoved(sheet: SheetView, derived: DerivedCharacter, kind: ResolvedCh
       };
       walk(row.stat);
       for (const id of ids) {
-        const labels = out.get(id) ?? [];
-        if (!labels.includes(row.label)) labels.push(row.label);
-        out.set(id, labels);
+        const rows = out.get(id) ?? [];
+        if (!rows.some((r) => r.section === section.label && r.label === row.label)) rows.push({ section: section.label, label: row.label });
+        out.set(id, rows);
       }
     }
   }
@@ -272,8 +278,34 @@ function listed(names: readonly string[], most = 5): string {
   return shown.length < 2 ? (shown[0] ?? '') : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
 }
 
+/** Row labels that more than one section of the sheet shows ("Strength" is a score and a saving throw). */
+function ambiguousLabels(sheet: SheetView): Set<string> {
+  const sections = new Map<string, Set<string>>();
+  for (const section of sheet.sections) {
+    for (const row of section.rows) sections.set(row.label, (sections.get(row.label) ?? new Set()).add(section.label));
+  }
+  return new Set([...sections].filter(([, where]) => where.size > 1).map(([label]) => label));
+}
+
+/**
+ * The rows an item moves, in the sheet's order: "Armor Class and Speed", or, where a label is shown in more than one
+ * section, that section's rows under its name, "Armor Class; Saving Throws: Strength, Dexterity and Constitution".
+ */
+function movedText(rows: readonly MovedRow[], ambiguous: ReadonlySet<string>): string {
+  const bySection = new Map<string, string[]>();
+  for (const row of rows) bySection.set(row.section, [...(bySection.get(row.section) ?? []), row.label]);
+  const plain: string[] = [];
+  const named: string[] = [];
+  for (const [section, labels] of bySection) {
+    if (labels.some((label) => ambiguous.has(label))) named.push(`${section}: ${listed(labels, 6)}`);
+    else plain.push(...labels);
+  }
+  return [...(plain.length ? [listed(plain)] : []), ...named].join('; ');
+}
+
 interface GivesReading {
-  moved: Map<ElementId, string[]>;
+  moved: Map<ElementId, MovedRow[]>;
+  ambiguous: Set<string>;
   /** The types some section of the character's sheet lists: a granted element of one of these is named. */
   listedTypes: Set<string>;
 }
@@ -289,8 +321,12 @@ function gives(entry: InventoryEntry, items: readonly Element[], context: Invent
   }
   const working = items.filter((e) => !derived.equipment.suppressed.has(e.id));
   const unattuned = items.length > working.length;
-  const rows: string[] = [];
-  for (const e of working) for (const label of reading.moved.get(e.id) ?? []) if (!rows.includes(label)) rows.push(label);
+  const rows: MovedRow[] = [];
+  for (const e of working) {
+    for (const row of reading.moved.get(e.id) ?? []) {
+      if (!rows.some((r) => r.section === row.section && r.label === row.label)) rows.push(row);
+    }
+  }
   const named: string[] = [];
   let unnamed = 0;
   for (const e of working) {
@@ -305,7 +341,7 @@ function gives(entry: InventoryEntry, items: readonly Element[], context: Invent
     }
   }
   const parts: string[] = [];
-  if (rows.length) parts.push(`Moves ${listed(rows)}.`);
+  if (rows.length) parts.push(`Moves ${movedText(rows, reading.ambiguous)}.`);
   if (named.length) parts.push(`Gives ${listed(unnamed ? [...named, 'something the sheet does not list'] : named)}.`);
   else if (unnamed) parts.push('Gives something the sheet does not list.');
   if (attack) parts.push('An attack, under Attacks.');
@@ -346,6 +382,7 @@ export function inventoryState(context: InventoryContext): InventoryState | unde
   if (!def) return undefined;
   const reading: GivesReading = {
     moved: rowsMoved(context.sheet, derived, kind),
+    ambiguous: ambiguousLabels(context.sheet),
     listedTypes: new Set(kind.sheet.sections.flatMap((s) => s.types ?? [])),
   };
   const rows: InventoryRow[] = [];
