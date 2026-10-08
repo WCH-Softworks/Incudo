@@ -399,3 +399,20 @@ test('a sheet with no description records none, and a level that is not a number
   assert.equal(file.diagnostics.length, 1);
   assert.match(file.diagnostics[0]!.message, /"high" is not a number/);
 });
+
+test('an <extract> block is what the element holds, in file order, with its amounts — ADR 0098', () => {
+  // Fails if `parseExtract` is removed (no contents), if `amount=` is not read, or if a <description> child is read as a line.
+  const { elements } = parse(`
+    <element name="Pack" type="Item" source="S" id="ID_PACK">
+      <extract>
+        <description>Includes a backpack and ten torches.</description>
+        <item>ID_BACKPACK</item>
+        <item amount="10">ID_TORCH</item>
+        <item amount="1">ID_ROPE</item>
+        <item>  </item>
+      </extract>
+    </element>
+    <element name="Rope" type="Item" source="S" id="ID_ROPE" />`);
+  assert.deepEqual(elements[0]!.contents, [{ id: 'ID_BACKPACK' }, { id: 'ID_TORCH', quantity: 10 }, { id: 'ID_ROPE' }]);
+  assert.equal('contents' in elements[1]!, false);
+});

@@ -107,7 +107,7 @@ test('a converted source loads what the files load, and the second time reads no
  * way, record the new hash here.
  */
 const PARSING_FILES = ['parse-elements.ts', 'parse-index.ts', 'xml.ts'];
-const PARSED_BY = { converter: 1, sha256: '1fb71f81f3918b5cd258a8aa722a896fa1a4e5e68dcbd338b210f83fa027068f' };
+const PARSED_BY = { converter: 2, sha256: 'c3bfe31f9d46366ca35fe21b13544e25f2d01c1a1c00c5f6248269726cfdbdd7' };
 
 test("the converter's version is asked about whenever parsing changes", async () => {
   const root = join(repoRoot(), 'packages', 'aurora-import', 'src');

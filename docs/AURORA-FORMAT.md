@@ -63,12 +63,15 @@ anyway.
 
 ### Constructs that are easy to miss, and were
 
-There are seven of them now. Every one was read past in silence, none of them errored, and
+There are eight of them now. Every one was read past in silence, none of them errored, and
 every one was found the same way — by counting what the corpus contains rather than by
 reading the format. Three are below, `equipped=` follows them, the fifth is
 `<spellcasting><list>` in the `supports` section further down, the sixth is a `<select>`'s
 own nested `<item>`s, right after this list, and the seventh is a `<sheet>`'s later
-`<description>`s, under "Deliberate simplifications in the importer" below. The first is the expensive one.
+`<description>`s, under "Deliberate simplifications in the importer" below. The eighth is
+`<extract>`, a pack's contents: an `<item>` per line, its id as the text and `amount=` beside it, 44
+blocks and 265 lines, read as `Element.contents` since ADR 0098 (a `<description>` child beside the
+lines is prose and is not read). The first is the expensive one.
 (CLAUDE.md's list leaves out the inline items, which are an element-count finding there, and so
 calls the `<sheet>` one the sixth, as ADR 0076 does.)
 

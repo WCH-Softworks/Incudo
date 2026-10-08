@@ -257,7 +257,18 @@ export interface Element {
   sheet?: SheetHints;
   multiclass?: MulticlassBlock;
   spellcasting?: SpellcastingBlock[];
+  /**
+   * What the element holds, as content lists it: a pack's backpack, ten torches and the rest — ADR 0098. Aurora writes
+   * it as an `<extract>` block; read only by the inventory editor's Open, never by a derivation.
+   */
+  contents?: ElementContent[];
   origin: ElementOrigin;
+}
+
+/** One line of what an element holds: another element and how many, 1 when absent. */
+export interface ElementContent {
+  id: ElementId;
+  quantity?: number;
 }
 
 /** A queryable collection of elements. The engine only ever sees this, never a source. */

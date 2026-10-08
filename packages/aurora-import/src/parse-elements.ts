@@ -10,6 +10,7 @@ import {
   parseStatValue,
   parseSupports,
   type Element,
+  type ElementContent,
   type MulticlassBlock,
   type Rule,
   type Setter,
@@ -174,11 +175,30 @@ function toElement(
       extraElements,
     ),
     spellcasting: childrenNamed(node, 'spellcasting').map(parseSpellcasting),
+    contents: parseExtract(firstChild(node, 'extract')),
     origin: { sourceId: options.sourceId, fileUrl: options.fileUrl, format: 'aurora' },
   };
 
   if (element.spellcasting?.length === 0) delete element.spellcasting;
+  if (!element.contents) delete element.contents;
   return element;
+}
+
+/**
+ * What a pack holds — ADR 0098. Aurora writes `<extract>` with an `<item>` per line, its id as the text and `amount=`
+ * beside it when more than one; 44 blocks in the corpus, which this used to drop (the eighth such construct). A
+ * `<description>` child is prose beside the list and is not read, and an `<item>` naming no id is skipped.
+ */
+function parseExtract(node: XmlNode | undefined): ElementContent[] | undefined {
+  if (!node) return undefined;
+  const lines: ElementContent[] = [];
+  for (const item of childrenNamed(node, 'item')) {
+    const id = item.text.trim();
+    if (!id) continue;
+    const amount = Number(item.attrs['amount']);
+    lines.push({ id, ...(Number.isInteger(amount) && amount > 1 ? { quantity: amount } : {}) });
+  }
+  return lines.length ? lines : undefined;
 }
 
 /**
