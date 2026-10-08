@@ -10,7 +10,7 @@ when something here looks odd, the ADR usually says why.
 ## Commands
 
 ```bash
-npm install            # ~70s, 519 packages: Expo is in, since apps/mobile became a workspace (ADR 0083).
+npm install            # ~70s, 535 packages: Expo is in, since apps/mobile became a workspace (ADR 0083), and its dev client (ADR 0099).
 npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, start here.
                        # Opens on the character library; pick a folder to see anything in it.
 npm run desktop:app    # the real Tauri window — needs Rust. Builds now; the icon arrived.
@@ -20,6 +20,8 @@ npm test               # node --test, no build step. Includes the real-content s
                        # `.corpus/` exists; without it those tests skip and say to run corpus:sync.
 npm run fixtures:rebuild   # regenerate tools/verify/fixtures/aelin/ after a format change
 npm run mobile         # the phone app's dev server (Expo Go); mobile:android opens it on an emulator or USB phone
+npm run mobile:build:android   # build and install the phone app's own development build (Gradle; receives shared files)
+npm run mobile:build   # serve that build (`expo start --dev-client`); `npm run mobile` stays Expo Go (`--go`)
 ```
 
 **There is no CLI, and none should be added**
@@ -376,7 +378,8 @@ lists a character's attacks, every weapon in its bag with its bonus and damage, 
 **A spell added to a character is cast as a class the user chooses, always prepared there** (ADR 0097).
 **A character takes its first class's and its background's starting equipment, or the gold instead, and holds money**
 (ADR 0087, below).
-**The phone app runs and shows a character's sheet, plays it (ADR 0084, below), and builds and edits one (ADR 0086, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
+**The phone app runs and shows a character's sheet, plays it (ADR 0084, below), builds and edits one (ADR 0086, below), and
+receives a file shared to it (ADR 0099, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
 - **`apps/mobile` is a workspace** (Expo SDK 57, React Native 0.86, React 19.2, run in Expo Go). The install went from
@@ -395,7 +398,8 @@ Phase 6's first item and the read half of its second (it builds nothing). Things
   meet when a phone adds a UTF-16 Aurora file.
 - **Driven on the Pixel 9 Pro emulator in Expo Go by `adb`**: five samples packed in Node, added through Android's
   picker, opened with no source; in dev builds the sheet screen logs `[incudo] sheet <file>: <n> characters, sha256 <…>`
-  of `sheetMarkdown`, and all five equalled Node's. Not run: a real phone, iOS, a development or release build.
+  of `sheetMarkdown`, and all five equalled Node's. Not run: a real phone, iOS, a release build (a development build
+  since ADR 0099, below).
 - **Export** (the sheet's header): "Save to a folder…" or "Share…", both `FileSaver`s in `platform.ts`, through
   `exportEntry`, which hands on the library file **unchanged** (never `saveCopy`, which repacks). The type is
   `application/octet-stream` on purpose: `application/zip` makes Android append ".zip". The provider never replaces a
@@ -469,6 +473,38 @@ Things to know before touching either:
   Save waits for it (`BuildScreen.tsx`, `pending`), and a frame passes before packing so the header says "Saving…".
 - Driven on the emulator: a character built and a sample edited, exported, and read in Node to the phone's sheet
   checksum. Measured there: AuroraLegacy loads in 2.3 s converted, 6.6 s as files, 82 s from the network.
+
+**A file shared to the phone, opened with it or picked is added by one function, and receiving needs the app's own build**
+([ADR 0099](docs/adr/0099-a-file-shared-to-the-phone-is-added-as-a-picked-one-is-and-receiving-needs-the-app-s-own-build.md)),
+the rest of Phase 6's import/export item. Things to know before touching it:
+
+- **Measured first, on the emulator:** Expo Go registers no `SEND` filter and is not offered for `application/octet-stream`,
+  which is what Android types both a `.incu` and a `.dnd5e`. So **the phone app has a development build of its own**
+  (`expo-dev-client`, the maintainer's choice; `app.json` names `dev.incudo.mobile`, the scheme `incudo`, `expo-sharing`'s
+  plugin for `SEND`/`SEND_MULTIPLE` and a `VIEW` intent filter on `content`, both for `application/octet-stream` and
+  `application/zip`). `apps/mobile/android` is generated and ignored; build it again after a change to `app.json` or a
+  native dependency. **Expo Go stays:** `npm run mobile` is `expo start --go`, said explicitly because with the dev client
+  installed a plain `expo start` serves the build and Expo Go loads nothing (found by running it).
+- **`receiveFiles` (`packages/ui/src/received-files.ts`) decides by contents, not name**: a zip that reads as a character
+  goes to `CharacterLibrary.add` unchanged (a name not ending `.incu` is replaced by the character's), an Aurora save
+  (`isAuroraSave`: XML whose root is `character`, BOM, declaration, comments and UTF-16 zero bytes skipped) is named and
+  **not imported** (decision 5: the phone loads content only to build), anything else is refused with a sentence. It
+  restores the library first when it is not `ready`: a share can start the app, and a free name chosen before the first
+  scan would be chosen against nothing. A name with no extension is a provider's id (`msf:44`, Android's Recent files)
+  and is not quoted. `receivedView` is the alert: title, a line per file, Open only when exactly one was added. The picker's
+  "Add a character file…" calls it too.
+- **`MobileShareInbox` (`platform.ts`)** reads `Linking` (a `VIEW`'s `content://` URL; `expo-sharing`'s
+  `incudo://expo-sharing` for a share) and, at the start, whatever payloads `expo-sharing` holds whatever the first URL is
+  (in a dev build it is the launcher's). It reads `expo-sharing`'s cache copy, then the sender's URI, then each raw payload
+  when resolving rejects, and hands a file it cannot read on with `unreadable`, which becomes a sentence. `App.tsx` shows
+  the alert over whatever screen is open and never replaces it.
+- **A share that starts a development build arrives unreadable**: the launcher's new activity does not hold the sender's
+  read grant. Warm shares, "Open with" and the picker all work. A release build has no launcher; none has been built.
+- `workspace.test.ts`'s home-path check walks the working tree and skips `apps/mobile/android` and `ios` by path: the
+  generated build caches are full of the builder's paths.
+- Driven on the Pixel 9 Pro emulator from the Files app (share sheet, "Open with", three at once with a taken name and an
+  Aurora save, the picker's Recent files), every sheet to Node's checksum; Expo Go run after. Not run: a real phone, iOS,
+  a release build.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:

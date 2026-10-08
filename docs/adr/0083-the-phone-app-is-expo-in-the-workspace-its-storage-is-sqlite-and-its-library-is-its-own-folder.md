@@ -40,6 +40,11 @@ there; `localeCompare` sorts `b, A, a, Tasha's, Tasha` exactly as Node does; `Co
    pins them; the desktop keeps its newer React, and Metro is told to resolve `react` to the app's own copy
    (`metro.config.cjs`), so which copy npm hoists cannot put two Reacts in the bundle.
 
+   > **Note, 2026-10-08 ([ADR 0099](./0099-a-file-shared-to-the-phone-is-added-as-a-picked-one-is-and-receiving-needs-the-app-s-own-build.md)):**
+   > receiving a file shared to the app needed the development build this decision deferred: Expo Go registers no
+   > intent filter for one. `expo-dev-client` is in, `npm run mobile:build:android` builds the app's own, and `npm run
+   > mobile` still runs Expo Go (`expo start --go`, said explicitly now that a plain `expo start` would serve the build).
+
 2. **`apps/mobile` is a workspace**, so its imports of `@incudo/*` are the same symlinked TypeScript sources the desktop
    uses, typechecked by `npm run typecheck` (it is in the root `tsconfig.json`'s references). Every contributor pays the
    install above, whether or not they open the phone app; that is the trade. `workspace.test.ts` now asserts it is in,

@@ -1747,10 +1747,21 @@ pane draws and every export renders: the PDF and the print layout start from it,
       Driven: a Fighter 3 / Rogue 2 split applied and levelled to 7, an NPC's rating typed and set back to its Wolf's,
       both exported to the phone's sheet checksum in Node. **Not yet:** a source of the user's own on the phone; a Cairn
       character built on the phone; a real phone; iOS.
-- [ ] Import/export via share sheet and file picker.
-      **Built** (ADR 0083): import through the file picker (`CharacterLibrary.add`), and export from the sheet's header,
-      to a folder the user picks or through the share sheet, of the library file unchanged (`exportEntry`). Not yet:
-      receiving a file shared *to* the app.
+- [x] **Import/export via share sheet and file picker** (ADR 0083, [ADR 0099](./docs/adr/0099-a-file-shared-to-the-phone-is-added-as-a-picked-one-is-and-receiving-needs-the-app-s-own-build.md)).
+      Import through the file picker and export from the sheet's header, to a folder or through the share sheet, of the
+      library file unchanged (ADR 0083). **Receiving** (ADR 0099): measured first, Expo Go registers no intent filter for
+      a file and Android types both a `.incu` and a `.dnd5e` `application/octet-stream`, so the phone app gained a
+      development build of its own (the maintainer's choice; Expo Go stays for everything else) whose manifest takes
+      `SEND`, `SEND_MULTIPLE` and `VIEW` of that type and `application/zip`, through `expo-sharing`'s plugin and React
+      Native's `Linking`. A shared file, an "Open with" and a picked file go through one function, `receiveFiles`
+      (`packages/ui`), which decides by contents and not by name: a character is added unchanged under a free name,
+      saying so when its own was taken; an Aurora save is recognised and not imported, and says to import it on a
+      computer (importing needs content a phone loads only to build). Driven on the emulator: shared from the Files
+      app's share sheet, opened with Incudo, three shared at once with a taken name and an Aurora save among them, and
+      picked from Recent files (whose names are provider ids, which the old extension check would have refused); every
+      sheet opened to Node's checksum. **Not yet:** a real phone, iOS, a release build (a share that starts a
+      development build goes through its launcher and loses the read grant), importing an Aurora save on the phone.
+- [ ] Import an Aurora save on the phone (ADR 0099 decision 5: today it is recognised and sent to a computer).
 - [ ] Download mode as the default on metered connections
 
 **Exit criteria:** the same `.incu` file opens identically on desktop and mobile, and
