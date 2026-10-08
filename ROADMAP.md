@@ -1078,7 +1078,7 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       modelled, imported, derived and saved (the five inventory steps in Phase 2), and armour class and attunement read
       it, but nothing in either app puts an item in it: a character built in Incudo starts empty and stays empty, and
       5e's "Equipment" build step is a heading with nothing to choose, so it always reads complete. Two parts:
-  - [ ] **A starting equipment step**, a full step of the build: the character takes its class's starting items **or**
+  - [x] **A starting equipment step**, a full step of the build: the character takes its class's starting items **or**
         the gold they are worth instead, and its background's, and what it takes lands in the bag (equipped where it is
         worn or wielded). **Measured before planning it, and it decides the design:** content states starting equipment
         only as prose, never as rules. The 2014 Player's Handbook's 12 classes write "You start with the following
@@ -1095,7 +1095,11 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
         taken is written once into the bag and the purse, and taken back only while untouched. Money is
         `Character.money`, counts per unit, in units the system definition's `currency` declares, each with the
         `exchangeRate`s the book states ("gp": { "sp": 10 }), held consistent by the validator (5e: cp, sp, ep, gp, pp);
-        format 9; an import reads `<currency>`. Not built.
+        format 9; an import reads `<currency>`. **Built 2026-10-07** (ADR 0087's note): character format **11**, not 9; the
+        record of what a package wrote is `Character.startingEquipment` (the option, the entries it added, the coins), not a
+        choice, which would seed the derivation; 2024 rows measured as 11 "A or B" and one "A, B or C"; the file covers the
+        Player's Handbooks' 24 classes and 29 backgrounds, held to the corpus and to the 2024 book's own pack items (`<extract>`,
+        44 blocks the parser does not read). Driven in the browser build; not on a phone or in the Tauri window.
   - [ ] **Inventory management at any point**, not only while building: add any item from loaded content to the bag,
         remove it, change quantity, equip and unequip it into the kind's slots, attune (the limit shown, never refused,
         as `over-attuned` already is), attach a magic item to a host, rename an instance and write notes; and spend or

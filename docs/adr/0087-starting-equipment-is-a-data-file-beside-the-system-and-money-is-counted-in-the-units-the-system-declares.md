@@ -1,6 +1,6 @@
 # 0087 — Starting equipment is a data file beside the system, and money is counted in the units the system declares
 
-**Status:** Accepted · 2026-10-05 · not yet built · answers the first half of ROADMAP Phase 3's "Starting equipment, and
+**Status:** Accepted · 2026-10-05 · built 2026-10-07 (see the note below) · answers the first half of ROADMAP Phase 3's "Starting equipment, and
 an inventory the player manages" and the money its second half spends · builds on
 [0005](./0005-aurora-import.md), [0006](./0006-derived-character-state.md),
 [0007](./0007-native-formats.md), [0008](./0008-aurora-compatibility-frozen.md),
@@ -13,6 +13,36 @@ an inventory the player manages" and the money its second half spends · builds 
 > **Note, 2026-10-06:** character formats 9 and 10 have since been taken by [ADR 0094](./0094-a-player-character-s-written-features-only-add-and-a-feature-line-may-mark-a-row.md)
 > (a feature line that marks a row) and [ADR 0097](./0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md) (`additionBlocks`). When money is built it takes the next free
 > version, not 9.
+
+> **Note, 2026-10-07 — built, and what building it changed.** Measured first (`tools/verify/src/starting-equipment-content.test.ts`,
+> report-only, AuroraLegacy/elements at `c28ce6c`): the counts above hold, with one correction: 11 of the 2024 book's 12
+> classes write "Choose A or B" and only the Fighter "Choose A, B or C"; the last option is gold alone in all 12. And one
+> finding this ADR did not have: **content writes what a pack holds in an `<extract>` block** (44 of them: the 2014 and 2024
+> equipment packs and 29 2024 "Class/Background Equipment Pack (…)" items listing a package's contents less its armour and
+> coins), which the parser does not read. The importer still does not; `starting-equipment.test.ts` reads the XML and holds
+> every 2024 package to its pack item (129 items agree; one, the Guard's light crossbow, names an id nothing declares
+> upstream). Opening a pack into its contents is the inventory editor's.
+>
+> - **Money and the record are character format 11**, the next free version (above). `validateCharacter` takes the system
+>   when the caller has it, and only then refuses a unit it does not declare: the character alone cannot say.
+> - **The answer is not recorded under `build/equipment/…` as a choice** (decision 4). A recorded choice outside a select pool
+>   is a seed of the derivation (ADR 0096), and a package's items are carried, not held. It is `Character.startingEquipment`
+>   instead, one record per class or background: the option, **the instance ids of the entries it added** with their
+>   quantities, and the coins. That also replaces the `origin` on each entry this ADR described: one field, not two, and
+>   "untouched" is every recorded entry still there with its quantity and no adornment, and the purse covering the coins.
+> - **Which steps give a package, which step offers them and which item types are equipped are the file's** (`kind`, `step`,
+>   `from`, `equip`), so the system format gained only `currency`. "Only the first class" is the class pick's answer, which is
+>   the first class (ADR 0036); a background step's answer is the background. Equipping is in the order the package writes
+>   its items, each taken when the kind's slots have room (`resolveEquipment` on the trial bag), the rest carried; within a
+>   bundle fixed items come before picks, so "a martial weapon and a shield" equips the shield first.
+> - **A pick names its books** (`publications`): the weapon category tags are shared by the 2014 and 2024 weapons, so "a
+>   martial weapon" for a 2014 class would otherwise offer both editions' (it offers the Player's Handbook's 23).
+> - **What a book lists that no element is** ("5 sticks of incense", "a pet mouse") is an option's `unlisted`, shown and
+>   written nowhere. The 2024 spellbook is a Book, as the 2024 book's own Wizard pack writes it.
+> - **A wealth roll is recorded once and read again**: taking the option back keeps the roll, and taking it again uses it, so
+>   toggling cannot reroll for more gold.
+> - **The file covers the Player's Handbooks**: 24 classes and 29 backgrounds (13 + 16). The test reports the 5 classes and
+>   89 backgrounds it does not cover, by book; each says so in a sentence on Build and offers nothing.
 
 ## Context
 

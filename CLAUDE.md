@@ -374,6 +374,8 @@ Rest): …"** (ADR 0076). **"Print sheet…" prints the Sheet through the platfo
 of the page the dialog can write its date and address in** (ADR 0078). **"Export sheet as PDF…" writes that print to a file with no dialog in the Windows window, and "Fill the official sheet…" fills the user's own copy of the 2014 form** (ADR 0079). **Personality, appearance, backstory and notes are written on Build and shown on every sheet** (ADR 0092). **The Sheet
 lists a character's attacks, every weapon in its bag with its bonus and damage, and fills the form's weapon rows** (ADR 0093).
 **A spell added to a character is cast as a class the user chooses, always prepared there** (ADR 0097).
+**A character takes its first class's and its background's starting equipment, or the gold instead, and holds money**
+(ADR 0087, below).
 **The phone app runs and shows a character's sheet, plays it (ADR 0084, below), and builds and edits one (ADR 0086, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
@@ -513,8 +515,8 @@ Things to know before touching either:
   *(Since ADR 0063 a character that records `customFeatures` is **4**, and since ADR 0064 one that records `additions` is
   **5**, and since ADR 0065 one with a custom feature that records its `type` is **6**, and since ADR 0068 one that
   records `references` is **7**, and since ADR 0084 one that records `play` is **8**, and since ADR 0094 one with a custom
-  feature line that marks a row is **9**, and since ADR 0097 one that records `additionBlocks` is **10**;
-  `LATEST_CHARACTER_FORMAT_VERSION` is 10.)*
+  feature line that marks a row is **9**, and since ADR 0097 one that records `additionBlocks` is **10**, and since ADR
+  0087 one that records `money` or `startingEquipment` is **11**; `LATEST_CHARACTER_FORMAT_VERSION` is 11.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any
@@ -1997,6 +1999,50 @@ Things to know before touching it:
 - Tests: `packages/core/src/addition-blocks.test.ts`, `packages/ui/src/addition-blocks.test.ts`, the minimum in
   `preparation.test.ts`, the validator in `schemas.test.ts`, each failing under its named perturbation. The oracle is
   identical. Driven in the browser build only.
+
+**Starting equipment is a file beside the system, and money is counted in the units the system declares**
+([ADR 0087](docs/adr/0087-starting-equipment-is-a-data-file-beside-the-system-and-money-is-counted-in-the-units-the-system-declares.md),
+built 2026-10-07; its dated note says what building it changed). Things to know before touching it:
+
+- **Measured first** (`tools/verify/src/starting-equipment-content.test.ts`, report-only): content states starting
+  equipment only as prose (0 rules of 29 classes and 118 backgrounds grant or select an item); the 2024 rows are 11 "Choose
+  A or B" and the Fighter's "A, B or C"; all thirty samples record 0 of every coin. **`<extract>`**, 44 blocks listing what
+  a pack holds (29 of them 2024 "Class/Background Equipment Pack" items), is a construct the parser does not read; the
+  test of the file reads the XML itself.
+- **`systems/dnd5e/starting-equipment.json`** (schema `schemas/starting-equipment.schema.json`, checker
+  `checkStartingEquipment` in `packages/ui/src/starting-equipment.ts`, the only one; both shells' `boot.ts` and
+  `node-system.ts`'s `loadShippedStartingEquipment` call it). Not the system format. It names its `kind`, the `step` that
+  offers packages, the pick steps they come `from` (the class pick's answer is the first class) and the item types it
+  `equip`s. An entry per element id, options of which one is taken: `lines` (a bundle of `items` and `picks`, or `choose`
+  among bundles), `coins`, a `wealth` roll alone, `unlisted` text. A pick is a `from` list or `types` + `supports` (content's
+  language) + `publications` (the weapon category tags are shared across editions). The file is written by a person; a
+  scratch generator is not committed. It covers the Player's Handbooks: 24 classes, 29 backgrounds.
+- **Held by `tools/verify/src/starting-equipment.test.ts`**: every id declared (236), every filtered pick offering
+  something, each 2024 package agreeing with its pack item's `<extract>` (129 items; the Guard's light crossbow is an
+  upstream id nothing declares). What the file does not cover is reported by book, not asserted.
+- **`GameSystem.currency`** (system format, optional): units by id with `label` and `exchangeRate` as the book states it.
+  `currencyProblems` (core) refuses rates that disagree, naming both routes, a rate naming an undeclared unit, a unit no
+  rate reaches; `currencyWorths` works each unit's worth out (5e cp 1 … pp 1000) and nothing stores it.
+- **`Character.money`** (whole counts per unit, zeros dropped, `setMoney`/`addMoney`) and **`Character.startingEquipment`**
+  (per class or background: the option, the instance ids and quantities of the entries it added, the coins;
+  `setStartingEquipmentTaken`) are **format 11**, only when recorded. **Not a choice**: a choice outside a pool seeds the
+  derivation. `validateCharacter(value, schemas, system?)` refuses a unit only when handed the system.
+- **The importer reads `<currency>`** (in `<input>`, so it had reached freeform as five numbers): copper/silver/electrum/
+  gold/platinum to cp/sp/ep/gp/pp, non-zero only, out of freeform. A bugfix to the frozen package; no sample moves.
+- **The builder** takes `{ startingEquipment: files }`, uses the one for its system and kind, and publishes
+  `BuilderState.startingEquipment` (sources: unanswered, none, open, taken, used, and a package taken for an earlier class;
+  the purse). An open source is a non-blocking `equipment` decision, `startingKey(forId)`. Answers live in a draft the
+  builder holds and never saves (`chooseStartingAlternative`, `pickStartingItem`); `takeStartingOption` writes once (items
+  of an `equip` type equipped where `resolveEquipment` finds room, in package order, the rest carried; a wealth roll recorded
+  under `wealthRollKey` and read again on a retake) and returns a sentence when refused; `returnStartingOption` removes
+  exactly what was recorded, only while untouched. Desktop `panes/StartingEquipment.tsx`, phone
+  `StartingEquipmentView.tsx`; both compute nothing.
+- Tests: `packages/core/src/money.test.ts`, `packages/ui/src/starting-equipment.test.ts`, the validator in `schemas.test.ts`,
+  the importer's, `tools/verify/src/starting-equipment-build.test.ts` (a 2014 Fighter through the builder: armour class 18,
+  reopened with no source to the same bag and purse), each failing under its named perturbation. The oracle is identical.
+- **Not done:** the inventory editor (the roadmap item's second part), spending or making change, opening a pack into its
+  contents, money on the Sheet and the official form, the other books' classes and backgrounds. Driven in the browser build
+  only (a 2014 Fighter and Soldier, a wealth roll, Take back, a reload); not on a phone or in the Tauri window.
 
 **A pool never offers what the character already has.** `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,
