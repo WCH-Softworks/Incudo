@@ -19,7 +19,7 @@
 
 import { validateJson, type JsonSchema, type SchemaError } from '@incudo/core';
 
-import { listedHead, listedName, type SheetDocument } from './sheet-document.ts';
+import { bagEntryHead, listedHead, listedName, type SheetDocument } from './sheet-document.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
 
 /** What kind of box a field is. A button is a box the form has and no rule fills (a portrait). */
@@ -54,6 +54,8 @@ export type FormRule =
   | { field: string; mark: RowRef }
   /** The name of the first block a per-block section is rendered for. */
   | { field: string; block: SectionRef }
+  /** How many coins of one unit the section's purse holds (ADR 0098); nothing when it holds none. */
+  | { field: string; money: SectionRef & { unit: string } }
   /** Listed elements' names, joined, on one line: "Paladin 3 / Sorcerer 3". */
   | { field: string; list: ListRef & { join: string } }
   /** Listed elements' dice, added die by die, largest die first: "3d10 + 3d6". */
@@ -61,7 +63,8 @@ export type FormRule =
   /** Rows' values into a run of fields, one each, skipping values in `skip` and repeats. */
   | { fields: string[]; rows: RowRef[]; skip?: string[] }
   /**
-   * Listed elements' heads (name, what follows it, what using it takes), joined, flowing through a run of multi-line
+   * Listed elements' heads (name, what follows it, what using it takes), then the section's bag entries' (ADR 0098),
+   * joined, flowing through a run of multi-line
    * fields, each holding about `lines` lines of `perLine` characters at `fontSize` points, which it is written at (a
    * form's automatic size would write a short list huge and shrink a long one past reading); what is past the last is
    * left off.
@@ -267,6 +270,9 @@ export function formValues(document: SheetDocument, map: FormMap): FormValues {
       const sectionViews = views(document, rule.block.section);
       for (const extra of sectionViews.slice(1)) extraBlocks.add(extra);
       put(rule.field, sectionViews[0]?.block);
+    } else if ('money' in rule) {
+      const count = views(document, rule.money.section)[0]?.purse?.find((row) => row.unit === rule.money.unit)?.count;
+      if (count) put(rule.field, String(count));
     } else if ('list' in rule && 'field' in rule) {
       put(rule.field, listed(document, rule.list).map((e) => listedName(e)).join(rule.list.join));
     } else if ('dice' in rule) {
@@ -282,7 +288,10 @@ export function formValues(document: SheetDocument, map: FormMap): FormValues {
       const section = views(document, rule.rows[0]?.section ?? '')[0]?.label ?? 'values';
       if (values.length > rule.fields.length) leftOff.push(`${values.length - rule.fields.length} of ${values.length} ${section} past the form's ${rule.fields.length} lines`);
     } else if ('flow' in rule) {
-      const items = listed(document, rule.list).map((e) => listedHead(e));
+      const items = [
+        ...listed(document, rule.list).map((e) => listedHead(e)),
+        ...(views(document, rule.list.section)[0]?.bag ?? []).map(bagEntryHead),
+      ];
       let next = 0;
       rule.flow.fields.forEach((field, i) => {
         const { lines, perLine, fontSize } = rule.flow.capacity[i]!;

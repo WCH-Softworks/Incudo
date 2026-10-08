@@ -315,3 +315,43 @@ test('names, notes and quantities are written as given and cleared by blanks', (
   assert.equal(b.removeItem(id), undefined);
   assert.equal(b.getState().character.inventory, undefined);
 });
+
+test('the sheet lists the bag and the purse, and its types only what no entry names', async () => {
+  // Fails if a section declaring `bag` lists only what is held (a carried Staff missing), lists an equipped item twice
+  // (once as a held element, once as an entry), lists an equip step's item, or the Markdown or the form leave either out.
+  const { sheetDocument } = await import('./sheet-document.ts');
+  const { sheetMarkdown } = await import('./sheet-markdown.ts');
+  const { formValues } = await import('./form-fill.ts');
+  const character: Character = {
+    ...setMoney(createCharacter('test', 'pc', { name: 'W' }), { shell: 3, bead: 12 }),
+    formatVersion: 11,
+    inventory: [
+      { instanceId: 'c', elementId: 'COAT', equipped: true, adorners: [{ elementId: 'GILDED' }], attuned: true },
+      { instanceId: 's', elementId: 'STAFF', quantity: 2 },
+      { instanceId: 'b', elementId: 'BOON', equipped: true },
+    ],
+  };
+  const state = builder(character).getState();
+  const bag = state.sheet.sections.find((s) => s.section === 'bag')!;
+  assert.deepEqual(bag.elements, [], 'an equipped Coat is an entry, not a held element besides');
+  assert.deepEqual(
+    bag.bag!.map((e) => [e.name, e.quantity, e.equipped, e.attuned]),
+    [['Coat (Gilded Garb)', 1, true, true], ['Staff', 2, false, false]],
+  );
+  assert.deepEqual(bag.purse!.map((r) => [r.unit, r.count]), [['shell', 3], ['bead', 12]]);
+  const document = sheetDocument({ ...state, freeform: state.freeform });
+  const markdown = sheetMarkdown(document);
+  assert.match(markdown, /- Coat \(Gilded Garb\) \(equipped, attuned\)\n- Staff ×2\n- Money: 3 shell, 12 bead\n/);
+  const values = formValues(document, {
+    formatVersion: 1, id: 'f', name: 'F', publisher: 'P', download: 'https://example.org', system: 'test', kinds: ['pc'], encoding: 'WinAnsi',
+    fields: { Gear: 'text', Shells: 'text', Pearls: 'text' },
+    fill: [
+      { flow: { fields: ['Gear'], capacity: [{ lines: 5, perLine: 40, fontSize: 7 }] }, list: { section: 'bag', join: ', ' } },
+      { field: 'Shells', money: { section: 'bag', unit: 'shell' } },
+      { field: 'Pearls', money: { section: 'bag', unit: 'pearl' } },
+    ],
+  });
+  assert.equal(values.text['Gear'], 'Coat (Gilded Garb) (equipped, attuned), Staff ×2');
+  assert.equal(values.text['Shells'], '3');
+  assert.equal(values.text['Pearls'], undefined, 'a unit the purse holds none of fills nothing');
+});

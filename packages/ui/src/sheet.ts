@@ -45,6 +45,9 @@ import {
   type StatDef,
 } from '@incudo/core';
 
+import { entryName, entryNeedsAttunement, takenOnBuild } from './inventory.ts';
+import { purseRows, type PurseRow } from './money.ts';
+
 /** One row: a stat, what it is called, its value as written, and what is shown beside it when the section says. */
 export interface SheetRow {
   stat: string;
@@ -153,6 +156,17 @@ export interface SheetAttack {
 }
 
 /** One section with nothing left to decide. */
+/** One bag entry as a sheet lists it (ADR 0098): its name as the inventory shows it, how many, and how it is carried. */
+export interface SheetBagEntry {
+  instanceId: string;
+  elementId: ElementId;
+  name: string;
+  quantity: number;
+  equipped: boolean;
+  /** Attuned, and only when the item or its adornment requires it. */
+  attuned: boolean;
+}
+
 export interface SheetSectionView {
   id: string;
   label: string;
@@ -168,6 +182,10 @@ export interface SheetSectionView {
   elements: SheetListedElement[];
   /** The character's attacks, when the section lists them (ADR 0093). */
   attacks?: SheetAttack[];
+  /** The character's bag, entry by entry, when the section lists it (ADR 0098). */
+  bag?: SheetBagEntry[];
+  /** The coins held, most worth first, when the section lists the bag and the purse holds any. */
+  purse?: PurseRow[];
 }
 
 /** The character's own sheet: its kind, how many elements it holds, and its sections, empty ones left out. */
@@ -205,6 +223,12 @@ export interface SheetSource {
   attacks?: readonly DerivedAttack[];
   /** What each added element of a cast type is cast through, worded (`additionCasting`, ADR 0097). A creature's scope has none. */
   cast?: ReadonlyMap<ElementId, string>;
+  /** The character's bag, for a section that lists it (ADR 0098). A creature's scope has none. */
+  bag?: readonly SheetBagEntry[];
+  /** Every unit the system declares with what the character holds, for a section that lists the bag. */
+  purse?: readonly PurseRow[];
+  /** Every element the bag's entries and their adornments name: what a section listing the bag does not list again. */
+  bagIds?: readonly ElementId[];
 }
 
 /**
@@ -383,8 +407,12 @@ export function sheetSections(
       const unheld = preparedListIds(preparation)
         .filter((id) => !listedIds.has(id))
         .flatMap((id) => source.lookup?.(id) ?? []);
+      // A section listing the bag lists its entries itself, and its types only what no entry names (ADR 0098).
+      const bag = section.bag ? [...(source.bag ?? [])] : [];
+      const purse = section.bag ? (source.purse ?? []).filter((row) => row.count > 0) : [];
+      const inBag = new Set(section.bag ? (source.bagIds ?? []) : []);
       const shown = [...listed, ...unheld]
-        .filter((e) => rendering.types.includes(e.type) && !(section.omitHidden && e.sheet?.display === false))
+        .filter((e) => rendering.types.includes(e.type) && !(section.omitHidden && e.sheet?.display === false) && !inBag.has(e.id))
         .map((e) => ({ element: e, group: section.group ? sheetGroup(e, section.group) : undefined }))
         .sort((a, b) => rendering.types.indexOf(a.element.type) - rendering.types.indexOf(b.element.type));
       // A grouping section lists by group, then by name, and what is in no group after, in the order held (ADR 0079).
@@ -410,7 +438,7 @@ export function sheetSections(
         };
       });
       const attacks = section.attacks ? (source.attacks ?? []).map(sheetAttack) : [];
-      if (!rows.length && !rendering.printed.length && !elements.length && !attacks.length) continue;
+      if (!rows.length && !rendering.printed.length && !elements.length && !attacks.length && !bag.length && !purse.length) continue;
       views.push({
         id: rendering.id,
         label: rendering.label,
@@ -421,6 +449,8 @@ export function sheetSections(
         printed: rendering.printed,
         elements,
         ...(attacks.length ? { attacks } : {}),
+        ...(bag.length ? { bag } : {}),
+        ...(purse.length ? { purse } : {}),
       });
     }
   }
@@ -481,9 +511,10 @@ export function sheetView(
   lookup?: (id: ElementId) => Element | undefined,
 ): SheetView {
   const cast = additionCasting(derived, kind);
+  const bag = kind.sheet.sections.some((s) => s.bag) ? sheetBag(derived, kind, lookup) : undefined;
   const sections = sheetSections(
     kind.sheet.sections,
-    { ...derived, ...(lookup ? { lookup } : {}), ...(cast.size ? { cast } : {}) },
+    { ...derived, ...(lookup ? { lookup } : {}), ...(cast.size ? { cast } : {}), ...(bag ?? {}) },
     { stats: kind.stats, blockStats: kind.blockStats, progression: kind.progression },
     sheetListedElements(derived.elements, kind),
     unmet,
@@ -493,6 +524,33 @@ export function sheetView(
     elementCount: derived.elements.length,
     sections,
     unfilled: unfilledIn(sections),
+  };
+}
+
+/**
+ * The bag and the purse as a sheet lists them (ADR 0098): every entry in bag order, named as the inventory names it, but
+ * what an equip step took (a feature enabled by an item, ADR 0072, which content keeps off a sheet's lists), and every
+ * element an entry names, so a section listing the bag does not list them twice.
+ */
+function sheetBag(
+  derived: DerivedCharacter,
+  kind: ResolvedCharacterKind,
+  lookup: ((id: ElementId) => Element | undefined) | undefined,
+): Pick<SheetSource, 'bag' | 'purse' | 'bagIds'> {
+  const held = new Map(derived.elements.map((e) => [e.id, e]));
+  const elements = { get: (id: ElementId) => lookup?.(id) ?? held.get(id) };
+  const entries = derived.character.inventory ?? [];
+  return {
+    bag: entries.filter((entry) => !takenOnBuild(elements.get(entry.elementId), kind.buildSteps)).map((entry) => ({
+      instanceId: entry.instanceId,
+      elementId: entry.elementId,
+      name: entryName(entry, elements, kind),
+      quantity: entry.quantity ?? 1,
+      equipped: entry.equipped === true,
+      attuned: entry.attuned === true && entryNeedsAttunement(entry, elements, kind),
+    })),
+    purse: derived.system.currency ? purseRows(derived.character, derived.system) : [],
+    bagIds: entries.flatMap((entry) => [entry.elementId, ...(entry.adorners ?? []).map((a) => a.elementId)]),
   };
 }
 

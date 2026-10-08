@@ -18,6 +18,10 @@ import {
   PREREQUISITES_UNMET,
   rowAside,
   attackAside,
+  bagEntryAside,
+  bagEntryName,
+  MONEY_LABEL,
+  purseText,
   type SheetDocument,
   type SheetListedElement,
   type SheetSectionView,
@@ -128,6 +132,20 @@ function Section({ section, level, palette }: { section: SheetSectionView; level
       {section.elements.map((element) => (
         <Listed key={element.elementId} element={element} palette={palette} />
       ))}
+      {(section.bag ?? []).map((entry) => (
+        <Text key={entry.instanceId} style={[styles.body, text]} selectable>
+          {bagEntryName(entry)}
+          {bagEntryAside(entry) !== undefined ? <Text style={{ color: palette.muted }}>{` (${bagEntryAside(entry)})`}</Text> : null}
+        </Text>
+      ))}
+      {section.purse ? (
+        <View style={styles.row}>
+          <Text style={[styles.rowLabel, text]}>{MONEY_LABEL}</Text>
+          <Text style={[styles.rowValue, text]} selectable>
+            {purseText(section.purse)}
+          </Text>
+        </View>
+      ) : null}
       {section.printed.map((line, at) => (
         <Text key={`${line.elementId}-${at}`} style={[styles.body, text]} selectable>
           <Text style={styles.bold}>{line.label}: </Text>

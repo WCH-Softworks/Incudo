@@ -8,7 +8,21 @@
 
 import { useMemo } from 'react';
 
-import { attackAside, listedAside, listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument, type SheetListedElement, type SheetSectionView } from '@incudo/ui';
+import {
+  attackAside,
+  bagEntryAside,
+  bagEntryName,
+  listedAside,
+  listedName,
+  listedUsage,
+  MONEY_LABEL,
+  PREREQUISITES_UNMET,
+  purseText,
+  rowAside,
+  type SheetDocument,
+  type SheetListedElement,
+  type SheetSectionView,
+} from '@incudo/ui';
 
 import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
 
@@ -50,6 +64,24 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
             <ListedElement key={element.elementId} element={element} />
           ))}
         </ul>
+      )}
+      {section.bag && (
+        <ul className="sheet-elements sheet-bag">
+          {section.bag.map((entry) => (
+            <li key={entry.instanceId}>
+              {bagEntryName(entry)}
+              {bagEntryAside(entry) !== undefined && <span className="sheet-beside"> ({bagEntryAside(entry)})</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {section.purse && (
+        <dl className="sheet-purse">
+          <div>
+            <dt>{MONEY_LABEL}</dt>
+            <dd>{purseText(section.purse)}</dd>
+          </div>
+        </dl>
       )}
       {section.printed.length > 0 && (
         <dl className="sheet-printed">

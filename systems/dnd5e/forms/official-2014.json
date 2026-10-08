@@ -1053,6 +1053,41 @@
       }
     },
     {
+      "field": "CP",
+      "money": {
+        "section": "inventory",
+        "unit": "cp"
+      }
+    },
+    {
+      "field": "SP",
+      "money": {
+        "section": "inventory",
+        "unit": "sp"
+      }
+    },
+    {
+      "field": "EP",
+      "money": {
+        "section": "inventory",
+        "unit": "ep"
+      }
+    },
+    {
+      "field": "GP",
+      "money": {
+        "section": "inventory",
+        "unit": "gp"
+      }
+    },
+    {
+      "field": "PP",
+      "money": {
+        "section": "inventory",
+        "unit": "pp"
+      }
+    },
+    {
       "field": "Spellcasting Class 2",
       "block": {
         "section": "spellcasting"

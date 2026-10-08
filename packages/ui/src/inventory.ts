@@ -136,6 +136,12 @@ function requiresAttunement(elements: readonly Element[], kind: ResolvedCharacte
   return elements.some((e) => setterOf(e, def.setter)?.value.trim().toLowerCase() === requires);
 }
 
+/** Whether an entry's item or its adornment requires attunement: only then does its attunement count, or show. */
+export function entryNeedsAttunement(entry: InventoryEntry, elements: Pick<ElementIndex, 'get'>, kind: ResolvedCharacterKind): boolean {
+  const items = [entry.elementId, ...(entry.adorners ?? []).map((a) => a.elementId)].flatMap((id) => elements.get(id) ?? []);
+  return requiresAttunement(items, kind);
+}
+
 /** The type of item an item is made from, when its adorn setter names one of the kind's inventory types. */
 function madeFrom(element: Element, kind: ResolvedCharacterKind): string | undefined {
   const setter = kind.inventory?.adornSetter;
@@ -168,7 +174,8 @@ function equipSteps(steps: readonly BuildStepDef[]): BuildStepDef[] {
   return steps.filter(isEquipStep);
 }
 
-function takenOnBuild(element: Element | undefined, steps: readonly BuildStepDef[]): boolean {
+/** Whether an item is one an equip step takes on Build (ADR 0072, ADR 0089), and so not the editor's or the bag list's. */
+export function takenOnBuild(element: Element | undefined, steps: readonly BuildStepDef[]): boolean {
   return element !== undefined && equipSteps(steps).some((step) => equipAdmits(step, element));
 }
 

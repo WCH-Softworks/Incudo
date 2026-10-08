@@ -16,7 +16,8 @@ import type { Character, ElementId } from '@incudo/core';
 import { sheetFreeform, type FreeformState, type SheetFreeform } from './freeform.ts';
 import type { ReferenceRow, ReferencesState } from './references.ts';
 import type { CompanionsView } from './companions.ts';
-import type { SheetAttack, SheetListedElement, SheetRow, SheetSectionView, SheetView } from './sheet.ts';
+import type { SheetAttack, SheetBagEntry, SheetListedElement, SheetRow, SheetSectionView, SheetView } from './sheet.ts';
+import { purseLine, type PurseRow } from './money.ts';
 
 /** What is written beside an element the user added whose prerequisites are unmet (ADR 0064). */
 export const PREREQUISITES_UNMET = 'prerequisites not met';
@@ -100,6 +101,31 @@ export function attackAside(attack: Pick<SheetAttack, 'alternatives' | 'range' |
     ...(attack.properties.length ? [attack.properties.join(', ')] : []),
   ];
   return parts.length ? parts.join('; ') : undefined;
+}
+
+/** A bag entry's name with how many, "Arrows ×20" (ADR 0098): the pane, the phone, the export and the form write it so. */
+export function bagEntryName(entry: Pick<SheetBagEntry, 'name' | 'quantity'>): string {
+  return entry.quantity > 1 ? `${entry.name} ×${entry.quantity}` : entry.name;
+}
+
+/** What follows a bag entry's name in parentheses: "equipped", "equipped, attuned", "attuned", or nothing (carried). */
+export function bagEntryAside(entry: Pick<SheetBagEntry, 'equipped' | 'attuned'>): string | undefined {
+  const parts = [...(entry.equipped ? ['equipped'] : []), ...(entry.attuned ? ['attuned'] : [])];
+  return parts.length ? parts.join(', ') : undefined;
+}
+
+/** A bag entry in one line, "Chain Mail (equipped)". */
+export function bagEntryHead(entry: SheetBagEntry): string {
+  const aside = bagEntryAside(entry);
+  return `${bagEntryName(entry)}${aside !== undefined ? ` (${aside})` : ''}`;
+}
+
+/** What the purse line is called on a sheet. */
+export const MONEY_LABEL = 'Money';
+
+/** The coins a sheet lists, "15 gp, 3 sp". */
+export function purseText(purse: readonly PurseRow[]): string {
+  return purseLine(purse);
 }
 
 /**

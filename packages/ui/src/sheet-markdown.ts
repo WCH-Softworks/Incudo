@@ -13,7 +13,18 @@
  */
 
 import { escapeLineStart, escapeMarkdown, htmlToMarkdown } from './html-markdown.ts';
-import { attackHead, listedHead, listedName, listedUsage, PREREQUISITES_UNMET, rowAside, type SheetDocument } from './sheet-document.ts';
+import {
+  attackHead,
+  bagEntryHead,
+  listedHead,
+  listedName,
+  listedUsage,
+  MONEY_LABEL,
+  PREREQUISITES_UNMET,
+  purseText,
+  rowAside,
+  type SheetDocument,
+} from './sheet-document.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
 
 export function sheetMarkdown(document: SheetDocument): string {
@@ -92,7 +103,8 @@ export function sheetMarkdown(document: SheetDocument): string {
 
 /**
  * One section's list items, escaped: its rows, then its attacks (ADR 0093), "**Longsword**: +6, 1d8+3 slashing (…)", then the
- * elements it lists, then its printed lines, as the pane draws them.
+ * elements it lists, then its bag and purse (ADR 0098), "Arrows ×20", "Money: 15 gp", then its printed lines, as the pane
+ * draws them.
  */
 function sectionItems(section: SheetSectionView): string[] {
   const e = escapeMarkdown;
@@ -103,6 +115,8 @@ function sectionItems(section: SheetSectionView): string[] {
     }),
     ...(section.attacks ?? []).map((attack) => attackHead(attack, `**${e(attack.name)}**`, e)),
     ...section.elements.map(elementItem),
+    ...(section.bag ?? []).map((entry) => e(bagEntryHead(entry))),
+    ...(section.purse ? [`${e(MONEY_LABEL)}: ${e(purseText(section.purse))}`] : []),
     ...section.printed.map((line) => `${e(line.label)}: ${e(line.text)}`),
   ];
 }

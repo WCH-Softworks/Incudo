@@ -99,6 +99,17 @@
           "properties": { "field": { "$ref": "#/$defs/field" }, "block": { "$ref": "#/$defs/section" } }
         },
         {
+          "type": "object", "required": ["field", "money"], "additionalProperties": false,
+          "description": "How many coins of one unit the section's purse holds (ADR 0098); nothing when it holds none.",
+          "properties": {
+            "field": { "$ref": "#/$defs/field" },
+            "money": {
+              "type": "object", "required": ["section", "unit"], "additionalProperties": false,
+              "properties": { "section": { "type": "string", "minLength": 1 }, "unit": { "type": "string", "minLength": 1 } }
+            }
+          }
+        },
+        {
           "type": "object", "required": ["field", "list"], "additionalProperties": false,
           "properties": { "field": { "$ref": "#/$defs/field" }, "list": { "$ref": "#/$defs/joinedList" } }
         },

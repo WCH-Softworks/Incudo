@@ -414,7 +414,15 @@ test('on the samples, what the sheet shows of the hints: chosen by gate level, f
     for (const def of kind.sheet.sections) {
       const types = def.types ?? [];
       if (!types.length || def.perBlock) continue;
-      const shown = new Set(state.sheet.sections.filter((s) => s.id === def.id).flatMap((s) => s.elements.map((e) => e.elementId)));
+      // A section listing the bag (ADR 0098) lists a held item through its bag entry rather than as an element.
+      const shown = new Set(
+        state.sheet.sections
+          .filter((s) => s.id === def.id)
+          .flatMap((s) => [...s.elements.map((e) => e.elementId), ...(s.bag ?? []).map((e) => e.elementId)]),
+      );
+      if (def.bag) {
+        for (const entry of state.character.inventory ?? []) for (const a of entry.adorners ?? []) if (shown.has(entry.elementId)) shown.add(a.elementId);
+      }
       for (const element of listable.filter((e) => types.includes(e.type))) {
         const hidden = element.sheet?.display === false;
         if (def.omitHidden) {
