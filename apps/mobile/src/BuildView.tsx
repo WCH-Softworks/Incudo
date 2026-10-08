@@ -33,6 +33,7 @@ import {
   type CharacterBuilder,
   type OpenDecision,
   STARTING_EQUIPMENT_HEADING,
+  INVENTORY_HEADING,
 } from '@incudo/ui';
 
 import { BooksView, BudgetView, ClassLevelsView, DraftField, HitPointsView, NumberField, PreparedView } from './BuildParts.tsx';
@@ -40,6 +41,7 @@ import { AdditionsView, CustomFeaturesView, FreeformView, HolderGrantsView, Refe
 import { Body, Button, Card, Heading, Row, Tag } from './controls.tsx';
 import { Picker, type PickerRequest } from './Picker.tsx';
 import { StartingOptionsView, StartingSettledView } from './StartingEquipmentView.tsx';
+import { InventoryView } from './InventoryView.tsx';
 import { usePalette } from './theme.ts';
 
 /**
@@ -250,6 +252,14 @@ export const BuildView = memo(function BuildView({
         <>
           <Heading>{STARTING_EQUIPMENT_HEADING}</Heading>
           <StartingSettledView state={state.startingEquipment} builder={builder} nameOf={nameOf} />
+        </>
+      ) : null}
+
+      {/* The bag and the purse, edited at any point (ADR 0098). */}
+      {state.inventory ? (
+        <>
+          <Heading>{INVENTORY_HEADING}</Heading>
+          <InventoryView state={state.inventory} builder={builder} pick={setRequest} />
         </>
       ) : null}
 
