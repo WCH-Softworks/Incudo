@@ -529,6 +529,18 @@ export interface InventoryDef {
    * Read by {@link sheetListedElements} and nothing else.
    */
   hiddenSetter?: string;
+  /**
+   * The element types the inventory editor offers to add — ADR 0098, less what an equip step of the kind offers. Absent
+   * offers nothing to add; the bag is still edited. Read by `packages/ui`'s inventory view-model and nothing else.
+   */
+  types?: string[];
+  /**
+   * A setter naming the type of item an item is made from — ADR 0098: an item whose setter reads one of the kind's
+   * inventory types (case ignored) is an adornment, attached to a host of that type, and the host is admitted by the
+   * item's setter named after that type, lowercased, read as a filter with the host's own name as one more operand.
+   * 5e's content writes `type`.
+   */
+  adornSetter?: string;
 }
 
 /**
@@ -947,6 +959,13 @@ export interface SheetSectionDef {
    * damage. Only meaningful on a kind that declares `attacks`, which the validator holds it to.
    */
   attacks?: boolean;
+  /**
+   * List the character's bag and purse — ADR 0098: every inventory entry in bag order, with its quantity and whether it
+   * is equipped and attuned, and the coins of each unit the system declares. The section's `types` still list a held
+   * element of them that no entry names. Only meaningful on a kind that declares an inventory, which the validator
+   * holds it to.
+   */
+  bag?: boolean;
   /**
    * Mark a listed element the character's prepared lists hold — ADR 0079, from what the derivation publishes as
    * `preparation` (ADR 0046): `always` for what content keeps on a list, `chosen` for what the player put on one and

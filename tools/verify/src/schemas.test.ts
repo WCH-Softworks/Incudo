@@ -1321,3 +1321,26 @@ test('an attack declaration naming nothing, a condition that will not parse, or 
     { path: `characterKinds[${none.characterKinds.indexOf(npc)}].sheet.sections`, message: '"attacks" lists attacks, and the kind declares none' },
   ]);
 });
+
+test('an inventory editor offering an undeclared type, or a section listing the bag of a kind with no inventory, is refused — ADR 0098', async () => {
+  // Fails if either check is removed, or if the schema refuses the shipped `types`, `adornSetter` or `bag`.
+  const schemas = await loadSchemas();
+  const read = async (): Promise<GameSystem> => JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
+  const shipped = await read();
+  assert.deepEqual(validateGameSystem(shipped, schemas).errors, []);
+  const pc = shipped.characterKinds[0]!;
+  assert.ok(pc.inventory!.types!.length && pc.inventory!.adornSetter && pc.sheet!.sections.some((s) => s.bag));
+
+  const typo = await read();
+  typo.characterKinds[0]!.inventory!.types = ['Item', 'Magik Item'];
+  assert.deepEqual(validateGameSystem(typo, schemas).errors, [
+    { path: 'characterKinds[0].inventory.types', message: `names "Magik Item", which the system's elementTypes does not declare` },
+  ]);
+
+  const none = await read();
+  const npc = none.characterKinds.find((k) => k.id === 'npc')!;
+  npc.sheet = { sections: [...npc.sheet!.sections, { id: 'bag', label: 'Bag', bag: true }] };
+  assert.deepEqual(validateGameSystem(none, schemas).errors, [
+    { path: `characterKinds[${none.characterKinds.indexOf(npc)}].sheet.sections`, message: '"bag" lists the bag, and the kind declares no inventory' },
+  ]);
+});

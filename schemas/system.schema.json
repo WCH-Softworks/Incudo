@@ -882,6 +882,17 @@
           "type": "string",
           "minLength": 1,
           "description": "A setter which, reading `true` (case ignored), keeps an item off the sheet's lists (ADR 0072). The item is still held, derived and saved. 5e's content writes `inventory-hidden` on an item a character equips to enable a feature and does not carry."
+        },
+        "types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "The element types the inventory editor offers to add (ADR 0098), less what an equip step of the kind offers; each must be declared in elementTypes. Absent offers nothing to add, and the bag is still edited."
+        },
+        "adornSetter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A setter naming the type of item an item is made from (ADR 0098): an item whose setter reads one of the types is attached to a host of that type, and the host is admitted by the item's setter named after that type, lowercased, read as a filter with the host's name as one more operand; absent, any host of the type. 5e's content writes `type`: a Mithral Armor's is Armor, and its `armor` setter names the hosts."
         }
       }
     },
@@ -1138,6 +1149,10 @@
         "attacks": {
           "type": "boolean",
           "description": "List the character's attacks (ADR 0093): every bag entry of a type its kind's attacks names, with its bonus and damage. Only on a kind that declares attacks."
+        },
+        "bag": {
+          "type": "boolean",
+          "description": "List the character's bag and purse (ADR 0098): every inventory entry in bag order, with its quantity and whether it is equipped and attuned, and the coins held of each unit the system's currency declares. The section's types still list a held element of them that no entry names. Only on a kind that declares an inventory."
         },
         "preparedMark": {
           "type": "object",

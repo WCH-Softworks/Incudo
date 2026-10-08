@@ -604,6 +604,16 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       if (section.attacks && !attacks) {
         errors.push({ path: `${where}.sheet.sections`, message: `"${section.id}" lists attacks, and the kind declares none` });
       }
+      // A bag listed on a kind with nothing to carry lists nothing, and nothing would say why (ADR 0098).
+      if (section.bag && !resolved.inventory) {
+        errors.push({ path: `${where}.sheet.sections`, message: `"${section.id}" lists the bag, and the kind declares no inventory` });
+      }
+    }
+    // The types an inventory editor offers are element types like any other list's (ADR 0098).
+    for (const type of resolved.inventory?.types ?? []) {
+      if (!typeNames.has(type)) {
+        errors.push({ path: `${where}.inventory.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+      }
     }
 
     // What play keeps track of names rests and sheet sections; one naming nothing would track or give back nothing,
