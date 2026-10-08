@@ -379,7 +379,7 @@ lists a character's attacks, every weapon in its bag with its bonus and damage, 
 **A character takes its first class's and its background's starting equipment, or the gold instead, and holds money**
 (ADR 0087, below).
 **The phone app runs and shows a character's sheet, plays it (ADR 0084, below), builds and edits one (ADR 0086, below), and
-receives a file shared to it (ADR 0099, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
+receives a file shared to it (ADR 0099, below), an Aurora save imported on a tap (ADR 0101, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
 - **`apps/mobile` is a workspace** (Expo SDK 57, React Native 0.86, React 19.2, run in Expo Go). The install went from
@@ -488,7 +488,8 @@ the rest of Phase 6's import/export item. Things to know before touching it:
 - **`receiveFiles` (`packages/ui/src/received-files.ts`) decides by contents, not name**: a zip that reads as a character
   goes to `CharacterLibrary.add` unchanged (a name not ending `.incu` is replaced by the character's), an Aurora save
   (`isAuroraSave`: XML whose root is `character`, BOM, declaration, comments and UTF-16 zero bytes skipped) is named and
-  **not imported** (decision 5: the phone loads content only to build), anything else is refused with a sentence. It
+  **offered for import, not imported** (`ReceivedView.saves`, the Import button; ADR 0101, below), anything else is refused
+  with a sentence. It
   restores the library first when it is not `ready`: a share can start the app, and a free name chosen before the first
   scan would be chosen against nothing. A name with no extension is a provider's id (`msf:44`, Android's Recent files)
   and is not quoted. `receivedView` is the alert: title, a line per file, Open only when exactly one was added. The picker's
@@ -521,6 +522,32 @@ Phase 6's last item. Things to know before touching it:
 - Driven on the Pixel 9 Pro emulator from the Files app (share sheet, "Open with", three at once with a taken name and an
   Aurora save, the picker's Recent files), every sheet to Node's checksum; Expo Go run after. Not run: a real phone, iOS,
   a release build.
+
+**An Aurora save shared to the phone, opened with it or picked is offered for import, and imported with the content a build
+loads** ([ADR 0101](docs/adr/0101-an-aurora-save-received-on-the-phone-is-offered-for-import-and-imported-with-the-content-a-build-loads.md)),
+Phase 6's last item. Things to know before touching it:
+
+- **Measured first** (`tools/verify/src/phone-aurora-import.test.ts`, report-only plus one assertion): the desktop's
+  `importAuroraSaveIntoLibrary` imports all thirty samples with the whole corpus and with only AuroraLegacy's core part
+  (every one then names what it misses, 235 ids: reported, never blocked), refuses an empty index, **refused a name with
+  no extension** (Android's Recent files hands the picker `msf:44`), and refuses a UTF-16 save with a sentence (it decodes
+  as UTF-8 and never calls `TextDecoder('utf-16le')`, which throws on Hermes). UTF-16 is not added (ADR 0008). The
+  assertion: every sample imported through the phone's path under a provider id opens to the desktop import's sheet.
+- **`packages/ui/src/received-saves.ts`**: `saveImportStep(saves, { systems, sources, connection }, game?)` is the next
+  question or `ready` — `choose-game` (a name whose extension names no system that declares `auroraTypeMap`, the format's
+  "consumes Aurora content"; one button per such system), `switched-off` (Content), `needs-source` (the system's suggested
+  source, `addSourceNote` after it, added kept converted), `no-source`. Asked again after every answer. Nothing is switched
+  on or downloaded unasked, and the import is never automatic. `importReceivedSaves` loads each needed system's content
+  once (`ContentSources.load`, shared with a Build screen), hands a file whose name does not say to the importer as
+  `<name>.<system id>`, and unquotes that name in a refusal; `importedView` (taken name, missing count, "The import noted
+  N things.", Open for exactly one) and `saveImportLine` are the words. `receivedView` gives `saves` and the button label.
+- **The desktop's empty-content sentence lost "(ADR 0012)"**: no ADR number on screen.
+- **`App.tsx` holds the flow** (`importSaves`, `presentReceived` in a context the picker uses too, `ImportLine` over the
+  screen); it computes nothing. The notes alert carries Open as well: pressing Notes closes the result alert.
+- Driven on the emulator in the development build: shared, picked from Recent files, no source (Wi-Fi and metered), three
+  at once with taken names, the source off; every sheet equals the desktop's import. A fresh emulator imports in 6.3 s
+  (3.6 s load); one swapping for hours took minutes, which is the machine. Not run: Expo Go's picker, "Open with", a real
+  phone, iOS, a release build.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:

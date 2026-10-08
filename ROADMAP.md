@@ -1760,8 +1760,19 @@ pane draws and every export renders: the PDF and the print layout start from it,
       app's share sheet, opened with Incudo, three shared at once with a taken name and an Aurora save among them, and
       picked from Recent files (whose names are provider ids, which the old extension check would have refused); every
       sheet opened to Node's checksum. **Not yet:** a real phone, iOS, a release build (a share that starts a
-      development build goes through its launcher and loses the read grant), importing an Aurora save on the phone.
-- [ ] Import an Aurora save on the phone (ADR 0099 decision 5: today it is recognised and sent to a computer).
+      development build goes through its launcher and loses the read grant), ~~importing an Aurora save on the phone~~
+      (ADR 0101, below).
+- [x] **Import an Aurora save on the phone: a `.dnd5e` shared, opened or picked is offered for import, and imported with
+      the content a build loads** ([ADR 0101](./docs/adr/0101-an-aurora-save-received-on-the-phone-is-offered-for-import-and-imported-with-the-content-a-build-loads.md)).
+      Measured first: the desktop's import takes all thirty samples on the phone's terms (with only AuroraLegacy's core
+      part on, every one imports and says what it misses), but refused a file named by a provider id, which is how Android's
+      Recent files hands one over; a UTF-16 save is refused with a sentence and nothing throws. Import is a tap, never
+      automatic: a file whose name does not say is asked about among the games that read Aurora content, a game with every
+      source off says so, and one with none offers its suggested source with ADR 0100's words (the metered sentence on a
+      metered connection). The result says a taken name and what was missing, and offers the importer's notes and Open.
+      Driven on the emulator in the development build, shared and picked, no source, metered, three at once and the source
+      off; every sheet equals the desktop's import of the same save. **Not yet:** a real phone, iOS, a release build,
+      Expo Go's picker.
 - [x] **Download mode on metered connections: the phone asks before a fetch that downloads a source, and the mode
       setting goes** ([ADR 0100](./docs/adr/0100-on-a-metered-connection-the-phone-asks-before-a-fetch-that-downloads-a-source-and-the-mode-setting-goes.md)).
       Measured first: *stream* and *download* fetch the same files at the same moment and no load reads the setting, so
