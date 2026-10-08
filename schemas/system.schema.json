@@ -93,6 +93,39 @@
   },
 
   "$defs": {
+    "overlay": {
+      "description": "A system that names its parent in \"extends\" and states only what differs, written as a patch: an object merges key by key (null removes a key), an array whose entries have an identity (a stat's name, a kind's or step's id) merges entry by entry (\"remove\": true removes one), anything else is replaced. The patch is applied to the parent on every load and the result is validated as a complete system. ADR 0102.",
+      "type": "object",
+      "required": ["formatVersion", "id", "name", "version", "extends"],
+      "additionalProperties": false,
+      "properties": {
+        "$schema": { "type": "string" },
+        "formatVersion": { "const": 1 },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "patternDescription": "must be lowercase letters, digits and hyphens, e.g. \"dnd5e\" or \"my-house-rules\"",
+          "maxLength": 64
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": ["string", "null"] },
+        "version": { "type": "string", "minLength": 1 },
+        "extends": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the system this one changes: one Incudo ships, or one of your own that is not itself an overlay."
+        },
+        "licence": { "type": ["object", "null"] },
+        "elementTypes": { "type": "array" },
+        "stats": { "type": "array" },
+        "generationMethods": { "type": ["array", "null"] },
+        "characterKinds": { "type": "array" },
+        "auroraTypeMap": { "type": ["object", "null"] },
+        "logo": { "type": ["string", "null"] },
+        "suggestedSources": { "type": ["array", "null"] },
+        "currency": { "type": ["object", "null"] }
+      }
+    },
     "suggestedSource": {
       "description": "One content index a system's author suggests. Adding it configures a source whose id is this url, verbatim.",
       "type": "object",

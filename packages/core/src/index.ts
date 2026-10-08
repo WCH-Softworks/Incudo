@@ -23,6 +23,7 @@ export * from './sheet-hints.ts';
 export * from './container.ts';
 export * from './json-schema.ts';
 export * from './schema.ts';
+export * from './system-overlay.ts';
 export * from './sha256.ts';
 export * from './platform.ts';
 export * from './zip.ts';

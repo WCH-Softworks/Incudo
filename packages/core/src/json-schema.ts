@@ -35,6 +35,11 @@ export type JsonSchema = boolean | { [keyword: string]: unknown };
 export interface ValidateOptions {
   /** Stop after this many errors. A malformed file should not print 4,000 lines. */
   maxErrors?: number;
+  /**
+   * The document a `#/$defs/...` reference resolves against, when `schema` is a part of it: `{ $ref: '#/$defs/overlay' }`
+   * against the system schema (ADR 0102). Defaults to `schema` itself.
+   */
+  root?: JsonSchema;
 }
 
 export function validateJson(
@@ -43,7 +48,7 @@ export function validateJson(
   options: ValidateOptions = {},
 ): SchemaError[] {
   const maxErrors = options.maxErrors ?? 100;
-  return validateAgainst(value, schema, schema, maxErrors);
+  return validateAgainst(value, schema, options.root ?? schema, maxErrors);
 }
 
 /**

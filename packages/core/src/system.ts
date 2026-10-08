@@ -1931,6 +1931,14 @@ export function currencyWorths(currency: Record<string, CurrencyUnitDef> | undef
   return new Map(units.map((unit) => [unit, Math.round(raw.get(unit)! / smallest)]));
 }
 
+/**
+ * The ids a system answers to for what is kept beside it, its own first: an overlay also answers to its parent's
+ * (ADR 0102 decision 5). Content sources, starting equipment and form maps name a system by id and ask this.
+ */
+export function systemLineage(system: Pick<GameSystem, 'id' | 'extends'>): string[] {
+  return system.extends === undefined ? [system.id] : [system.id, system.extends];
+}
+
 export function findStatDef(system: GameSystem, name: StatKey): StatDef | undefined {
   const lower = name.toLowerCase();
   return system.stats.find((s) => s.name.toLowerCase() === lower);

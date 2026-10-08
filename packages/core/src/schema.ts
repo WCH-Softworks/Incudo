@@ -25,6 +25,7 @@ import {
   type SheetSectionDef,
 } from './system.ts';
 import { parseRequirements } from './requirements.ts';
+import { applySystemOverlay, type OverlayChange } from './system-overlay.ts';
 import { parseSupports, supportsInterpolations } from './supports.ts';
 import type { Character } from './character.ts';
 import type { ContainerManifest } from './container.ts';
@@ -49,13 +50,69 @@ export interface ValidationResult<T> {
  * A system that fails is refused, never partially loaded (ADR 0011): a half-read system
  * builds a character that is quietly wrong, which is worse than an error message.
  */
+export interface ValidateSystemOptions {
+  /**
+   * The systems an overlay may name in `extends` (ADR 0102): complete ones, shipped or the user's. Without it an overlay
+   * is refused, since there is nothing to apply it to.
+   */
+  parent?: (id: string) => GameSystem | undefined;
+}
+
+/** A validated system, and for an overlay, what it was applied to and what it changed (ADR 0102). */
+export interface SystemValidationResult extends ValidationResult<GameSystem> {
+  overlay?: { parent: GameSystem; changes: OverlayChange[] };
+}
+
+/**
+ * Validate a system definition, structurally and then every reference in it.
+ *
+ * A definition with a root `extends` is an overlay (ADR 0102): its shell is checked against `$defs/overlay`, it is applied
+ * to its parent, and the system that makes is checked exactly as a complete one is. What comes back is a complete system;
+ * nothing past this function sees a patch.
+ */
 export function validateGameSystem(
   value: unknown,
   schemas: SchemaBundle,
-): ValidationResult<GameSystem> {
+  options: ValidateSystemOptions = {},
+): SystemValidationResult {
+  if (isOverlay(value)) return validateOverlay(value, schemas, options);
   const errors = validateJson(value, schemas.system);
   if (errors.length === 0) errors.push(...checkSystemReferences(value as GameSystem));
   return result(value as GameSystem, errors);
+}
+
+function isOverlay(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && 'extends' in value;
+}
+
+function validateOverlay(
+  value: Record<string, unknown>,
+  schemas: SchemaBundle,
+  options: ValidateSystemOptions,
+): SystemValidationResult {
+  const shell = validateJson(value, { $ref: '#/$defs/overlay' }, { root: schemas.system });
+  if (shell.length) return result(value as unknown as GameSystem, shell);
+  const parentId = value['extends'] as string;
+  const parent = options.parent?.(parentId);
+  if (!parent) {
+    return result(value as unknown as GameSystem, [
+      { path: 'extends', message: `names "${parentId}", which is not a system Incudo has` },
+    ]);
+  }
+  if (parent.extends !== undefined) {
+    return result(value as unknown as GameSystem, [
+      { path: 'extends', message: `names "${parentId}", which changes another system itself; an overlay must build on a complete system` },
+    ]);
+  }
+  if (parent.id === value['id']) {
+    return result(value as unknown as GameSystem, [
+      { path: 'id', message: `is the id of the system it changes; an overlay needs an id of its own` },
+    ]);
+  }
+  const applied = applySystemOverlay(parent, value);
+  const errors = validateJson(applied.system, schemas.system);
+  if (errors.length === 0) errors.push(...checkSystemReferences(applied.system));
+  return { ...result(applied.system, errors), overlay: { parent, changes: applied.changes } };
 }
 
 export function validateCharacter(
