@@ -2015,8 +2015,8 @@ the audit described at the end of that phase.
   characters, which today start offered every book.
 
 ### 1.x — Systems for authors
-After the first release, by the maintainer's call (2026-10-09). Both were Phase 7 items, and neither is in its exit
-criteria.
+After the first release, by the maintainer's call (2026-10-09): everything about creating a system or copying one waits
+for it. The first two were Phase 7 items, and neither is in its exit criteria.
 - **The schema where an author's editor can read it.** The app needs no served schema: it bundles all five and validates
   with the one validator the tests share. Serving one helps only someone writing a system in a text editor, which reads
   the file's `$schema` line. Whether the app hands over its own copy (beside a file **New system…** writes) or something
@@ -2024,6 +2024,14 @@ criteria.
   `$schema` lines and ADR 0102's note (an editor given the root schema validates an overlay as a complete system) were
   never tried in an editor.
 - **A second official system**, licence permitting ([ADR 0010](./docs/adr/0010-licensing-and-funding.md)).
+- **An overlay's error inside a formula it replaced, at the overlay's own line.** An overlay merges a `derive` key by key,
+  so replacing a formula with one of another shape keeps the parent's `op`, `left` and `right`, and is refused with "In
+  <parent>'s part, which something this file changes or removes breaks: …" and no line, because ADR 0103 locates only
+  what the overlay writes. Either locate it at the overlay's `derive` and say `null` removes the leftover (amends ADR
+  0103; docs/SYSTEM-GUIDE.md section 7 and its test change), or replace a formula whole (an overlay format change, and
+  the guide's partial edit would stop working). Measure first how many places hold a formula.
+- **Also left from Phase 7's items:** forking a user's own system from the app, an in-app system editor, overlays of
+  overlays and placing a new entry before another.
 
 ### 2.x — Story building tools ❄️
 Campaign and session notes, NPC and faction tracking, timelines, relationship maps, linking
