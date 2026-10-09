@@ -36,6 +36,9 @@ not distribute them. They load through exactly the same code path
 
 ## Starting a system of your own
 
+**[How to write a system definition](../docs/SYSTEM-GUIDE.md)** walks through the file step by step, for someone who has
+not written JSON before: the starter field by field, formulas, content, overlays, and what the app's problems mean.
+
 **New system…** on the app's launcher writes the file for you: give it a name and choose where to start
 ([ADR 0104](../docs/adr/0104-a-new-system-starts-from-a-file-the-app-writes-and-a-copy-keeps-what-it-was-copied-from.md)).
 
