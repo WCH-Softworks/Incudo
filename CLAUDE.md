@@ -606,6 +606,27 @@ second item. Things to know before touching it:
 - **Not done:** the 141 reference checks point at the container (they read resolved kinds, inherited parts included);
   reference checks run only once the structure validates, so a second round can appear. Driven in the browser build only.
 
+**A new system starts from a file the app writes: a starter, changes to a shipped system, or a copy that keeps its origin**
+([ADR 0104](docs/adr/0104-a-new-system-starts-from-a-file-the-app-writes-and-a-copy-keeps-what-it-was-copied-from.md)),
+Phase 7's fork and scaffold items. Things to know before touching it:
+
+- **Measured first:** a full copy of 5e under its own id validated and loaded no content (AuroraLegacy is tagged with 5e,
+  a source has one tag) and lost 5e's starting equipment and form; an overlay changing nothing is refused for want of
+  `version`; a shipped system as validated is deep-equal to its file.
+- **`copiedFrom`** (system format, optional root, `formatVersion` 1; in `$defs/overlay` too) joins `systemLineage` after
+  `extends`, each id once, so a copy loads its original's sources and is offered its starting equipment and form, and an
+  overlay of a copy inherits it. Nothing checks the id exists. A copy of a copy records the origin.
+- **`packages/ui/src/system-new.ts`** writes the text only: `newSystemChoices` (the starter, then changes to and a copy of
+  each shipped system), `systemIdFor` (lowercased, accents dropped, hyphens, 64 characters, `-2`… when taken ignoring case:
+  `UserSystemStore.add` replaces a same id, so a new system must never take one, a failed definition's id included),
+  `newSystemFile`, `starterSystem` (Incudo's own words, builds with no content), `copiedFromNote`, `newSystemSavedNote`.
+  Every new file is `version` 0.1.0 and has no `$schema` line.
+- **The launcher saves, then adds** (`createSystem` in `App.tsx`): `FileSaver` with `<id>.json`, then those bytes through
+  `UserSystemStore.add`; a cancel adds nothing. Editing is the user's editor and **Add a system…** again.
+- Tests: `packages/core/src/system-lineage.test.ts`, `packages/ui/src/system-new.test.ts`, `tools/verify/src/system-new.test.ts`
+  (every start added and loaded through the store against the real schema; the starter built; a copy of 5e's sources and
+  starting equipment), each failing under its named perturbation. The oracle is identical. Driven in the browser build only.
+
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
 

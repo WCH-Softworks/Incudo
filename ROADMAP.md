@@ -1795,7 +1795,19 @@ See [ADR 0011](./docs/adr/0011-user-systems.md).
 
 - [ ] `schemas/system.schema.json` published, with in-app validation and any other checker
       sharing one implementation (`incudo system validate` goes with the CLI — see Phase 2)
-- [ ] **Fork** an official system into user space
+- [x] **Fork** an official system into user space.
+      **Done: [ADR 0104](./docs/adr/0104-a-new-system-starts-from-a-file-the-app-writes-and-a-copy-keeps-what-it-was-copied-from.md)**,
+      with the scaffold below. **New system…** on the launcher offers, for each shipped system, *changes to* it (an overlay
+      that changes nothing yet) and *a copy of* it (the whole definition under the user's own id). Measured first: a full copy of
+      5e validated and loaded **no content**, since AuroraLegacy is tagged with 5e and a source has one tag, and it lost 5e's
+      starting equipment and form, the gap ADR 0011 calls a bug. So a copy records an optional root `copiedFrom` (a deliberate
+      format addition), which joins `systemLineage` after `extends`: a copy loads its original's sources and is offered what
+      ships beside it, and receives none of its later changes. The file is saved where the user chooses and those bytes added
+      through `UserSystemStore`, so editing it and adding it again is how it changes; an id already in use gets `-2`, never
+      replacing a system. The oracle is identical. **Driven in the browser build** (the save dialog stood in for by a script):
+      a copy of 5e loaded a file source added under 5e, its row saying the switch is 5e's too.
+      **Not done:** forking a user's own system from the app; an in-app editor; the phone; the Tauri window.
+
 - [x] **Overlay** an official system (`extends` + patch), so house rules survive upstream updates.
       **Done: [ADR 0102](./docs/adr/0102-an-overlay-is-a-patch-applied-to-its-parent-on-every-load-and-validated-as-the-system-it-makes.md).**
       A definition with a root `extends` is a patch: objects merge, entries with an identity (a stat's name, a kind's or
@@ -1808,8 +1820,14 @@ See [ADR 0011](./docs/adr/0011-user-systems.md).
       build** (the file picker stood in for by a script): added, its card, 14,320 elements from 5e's source, its stat on the
       Sheet, a broken one refused. **Not done:** overlays of overlays, placing a new entry before another, errors pointing at
       the overlay's own lines, the phone (no user systems there yet), the Tauri window.
-- [ ] Scaffold a working system from the app's system flow, never an empty file (this was
-      `incudo system new <id>` until the CLI was scheduled for removal — see Phase 2)
+- [x] Scaffold a working system from the app's system flow, never an empty file (this was
+      `incudo system new <id>` until the CLI was scheduled for removal — see Phase 2).
+      **Done: [ADR 0104](./docs/adr/0104-a-new-system-starts-from-a-file-the-app-writes-and-a-copy-keeps-what-it-was-copied-from.md).**
+      **New system…**'s first start is a small starter system of Incudo's own words (not Cairn's): two element types, three
+      scores entered through a budget step, a level, a Health derived from a score and the level, notes and a sheet. It builds a
+      character with no content, held by `tools/verify/src/system-new.test.ts`, and was built in the browser build: Might 14,
+      Agility 9, Wits 12, Health 16, nothing open.
+
 - [ ] User systems load through *exactly* the same path as official ones, clearly labelled
 - [x] Validation errors that a non-programmer can act on.
       **Done: [ADR 0103](./docs/adr/0103-a-system-error-says-where-in-the-file-by-line-and-by-the-ids-written-there.md).**
