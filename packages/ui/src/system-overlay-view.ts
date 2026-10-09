@@ -36,6 +36,7 @@ const NOUNS: Record<string, string> = {
   fields: 'field',
   currency: 'money',
   auroraTypeMap: 'Aurora type names',
+  copiedFrom: 'system it was copied from',
   licence: 'licence',
   progression: 'progression',
   default: 'default',

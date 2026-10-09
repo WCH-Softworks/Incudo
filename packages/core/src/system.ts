@@ -1814,6 +1814,11 @@ export interface GameSystem {
   licence?: LicenceRef;
   /** A user overlay names the official system it patches. ADR 0011. */
   extends?: string;
+  /**
+   * The system this one was copied from (ADR 0104). It joins the lineage, so a copy loads that system's sources and is
+   * offered what ships beside it, and it receives none of that system's later changes.
+   */
+  copiedFrom?: string;
   elementTypes: ElementTypeDef[];
   /** Stats shared by every kind. A kind may add its own. */
   stats: StatDef[];
@@ -1933,10 +1938,13 @@ export function currencyWorths(currency: Record<string, CurrencyUnitDef> | undef
 
 /**
  * The ids a system answers to for what is kept beside it, its own first: an overlay also answers to its parent's
- * (ADR 0102 decision 5). Content sources, starting equipment and form maps name a system by id and ask this.
+ * (ADR 0102 decision 5), and a copy to the system it was copied from (ADR 0104), each once. Content sources, starting
+ * equipment and form maps name a system by id and ask this.
  */
-export function systemLineage(system: Pick<GameSystem, 'id' | 'extends'>): string[] {
-  return system.extends === undefined ? [system.id] : [system.id, system.extends];
+export function systemLineage(system: Pick<GameSystem, 'id' | 'extends' | 'copiedFrom'>): string[] {
+  const lineage = [system.id];
+  for (const id of [system.extends, system.copiedFrom]) if (id !== undefined && !lineage.includes(id)) lineage.push(id);
+  return lineage;
 }
 
 export function findStatDef(system: GameSystem, name: StatKey): StatDef | undefined {

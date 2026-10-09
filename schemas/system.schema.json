@@ -34,6 +34,13 @@
       "type": "string",
       "description": "The id of an official system this one overlays. ADR 0011."
     },
+    "copiedFrom": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "patternDescription": "must be the id of a system, e.g. \"dnd5e\"",
+      "maxLength": 64,
+      "description": "The id of the system this one was copied from. A copy loads that system's content sources and is offered what ships beside it (starting equipment, form maps), and does not receive its later changes. ADR 0104."
+    },
     "licence": { "$ref": "#/$defs/licence" },
 
     "elementTypes": {
@@ -115,6 +122,7 @@
           "minLength": 1,
           "description": "The id of the system this one changes: one Incudo ships, or one of your own that is not itself an overlay."
         },
+        "copiedFrom": { "type": ["string", "null"] },
         "licence": { "type": ["object", "null"] },
         "elementTypes": { "type": "array" },
         "stats": { "type": "array" },
