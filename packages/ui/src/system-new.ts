@@ -148,7 +148,7 @@ const ref = (stat: string): Record<string, unknown> => ({ kind: 'ref', stat });
 
 /**
  * Incudo's starter system (ADR 0104 decision 3): two element types, three scores entered by hand, a level, a stat derived
- * from a score and the level, one kind with a required scores step, two optional element steps, text about the character
+ * from a score and the level, one kind with a required scores step, two sets of elements to take, text about the character
  * and a sheet. It builds a character with no content loaded. Every name in it is a placeholder for the author's own.
  */
 export function starterSystem(id: string, name: string): Record<string, unknown> {
@@ -199,8 +199,10 @@ export function starterSystem(id: string, name: string): Record<string, unknown>
             description: 'Enter each score, from 1 to 20.',
             budget: { stat: 'score points', targets: ['might', 'agility', 'wits'], methods: ['entered'] },
           },
-          { id: 'traits', label: 'Traits', types: ['Trait'] },
-          { id: 'gear', label: 'Gear', types: ['Item'] },
+          // Sets: a step that is neither required, a pick nor a set only heads the choices content opens, so it would offer
+          // none of the traits and items the author's own content declares.
+          { id: 'traits', label: 'Traits', types: ['Trait'], multiple: true },
+          { id: 'gear', label: 'Gear', types: ['Item'], multiple: true },
         ],
         freeform: {
           label: 'About the character',

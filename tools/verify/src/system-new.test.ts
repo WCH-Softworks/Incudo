@@ -13,7 +13,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { BundleElementIndex, MemoryStorage, systemLineage, type GameSystem } from '@incudo/core';
+import { BundleElementIndex, MemoryStorage, systemLineage, type Element, type GameSystem } from '@incudo/core';
 import { sourcesForSystem, type ConfiguredSource } from '@incudo/content';
 import { CharacterBuilder, newCharacterOfKind, newSystemChoices, newSystemFile, UserSystemStore, type NewSystemStart } from '@incudo/ui';
 
@@ -64,6 +64,22 @@ test('the starter builds a character with no content: scores entered, a derived 
       ['condition', ['Level 1', 'Health 16']],
     ],
   );
+});
+
+// Perturbation: the starter's Traits and Gear steps without `multiple` offer none of the traits and items loaded.
+test("the starter offers the author's own traits and items, and lists what is taken on the sheet", async () => {
+  const { system } = await made({ kind: 'starter' }, 'My Game');
+  const element = (id: string, type: string, name: string): Element => ({
+    id, type, name, source: 'Mine', setters: {}, rules: [], supports: [], origin: { sourceId: 'mine', format: 'incudo' },
+  });
+  const content = new BundleElementIndex([element('BRAVE', 'Trait', 'Brave'), element('KEEN', 'Trait', 'Keen'), element('ROPE', 'Item', 'Rope')]);
+  const builder = new CharacterBuilder(newCharacterOfKind(system, 'character'), system, content);
+  const offered = (step: string) => builder.getState().decisions.find((d) => d.stepId === step);
+  assert.deepEqual(offered('traits')?.candidates, ['BRAVE', 'KEEN']);
+  assert.deepEqual(offered('gear')?.candidates, ['ROPE']);
+  builder.choose(offered('traits')!.id, ['KEEN']);
+  const sheet = builder.getState().sheet.sections.find((section) => section.id === 'traits');
+  assert.deepEqual(sheet?.elements.map((e) => e.name), ['Keen']);
 });
 
 test('a copy of 5e answers to 5e: its sources, its starting equipment and its form', async () => {
