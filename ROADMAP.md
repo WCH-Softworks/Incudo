@@ -1841,7 +1841,17 @@ See [ADR 0011](./docs/adr/0011-user-systems.md).
       overlay merges by. **Driven in the browser build** (the picker stood in for by a script). **Not done:** reference checks
       still point at the container when the entry they name may be inherited; structural errors are shown before reference
       ones, so fixing the first round can show a second.
-- [ ] "How to write a system definition" guide
+- [x] "How to write a system definition" guide.
+      **Done: [docs/SYSTEM-GUIDE.md](./docs/SYSTEM-GUIDE.md)**, with [ADR 0105](./docs/adr/0105-a-stat-name-one-slip-from-a-declared-one-is-a-warning-when-a-system-loads.md).
+      Measured first by growing the starter as an author would: the starter writes 57 of the schema's 334 field paths, 242 have
+      an example only in 5e, formulas are trees (5e's median 210 characters), and four slips validate. One of those was silent
+      and wrong (a misspelled stat in a formula read 0, Health 2 for 16), so a stat name one slip from a declared one is now a
+      warning listed under the system's card; a blanket warning was ruled out, since 5e names 72 formula stats it does not
+      declare. The starter's Traits and Gear steps offered nothing and are sets now. The guide walks the starter field by
+      field, formulas, a worked game with its content and the sheet it makes, overlays, and what each problem means; every
+      example in it is read by a test, problem lines and sheet included. **Driven in the browser build** (the warning on a
+      card). **Not done:** a link from the app (waits for the published schema's address); the editor `$schema` lines were
+      not tried in an editor; an overlay's error inside a formula it replaced is located in the parent's part.
 - [ ] A second **official** system, licence permitting ([ADR 0010](./docs/adr/0010-licensing-and-funding.md))
 
 **Exit criteria:** someone who is not the maintainer adds a system without touching engine code,

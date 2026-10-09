@@ -627,6 +627,35 @@ Phase 7's fork and scaffold items. Things to know before touching it:
   (every start added and loaded through the store against the real schema; the starter built; a copy of 5e's sources and
   starting equipment), each failing under its named perturbation. The oracle is identical. Driven in the browser build only.
 
+**How to write a system definition is `docs/SYSTEM-GUIDE.md`, every block of it read by a test, and a stat name one slip
+from a declared one is a warning when a system loads**
+([ADR 0105](docs/adr/0105-a-stat-name-one-slip-from-a-declared-one-is-a-warning-when-a-system-loads.md)), Phase 7's guide
+item. Things to know before touching either:
+
+- **Measured first**, growing the starter as an author would: of 334 field paths in the schema (expressions aside) the
+  starter writes 57, Cairn a subset of those, and 242 have an example only in 5e; 32 have none at all. 5e's 152 formulas
+  run 27 to 736 characters (median 210; `floor((x - 10) / 2)` is 190). Four slips validate: a misspelled stat in a
+  `derive` (Health read 2 for 16, no problem anywhere), a budget target, a step type missing from a kind, a point-buy
+  with no costs. **The starter's Traits and Gear steps offered nothing** (neither required, `pick` nor `multiple`); they
+  are sets now. `auroraTypeMap` maps nothing: its presence is the "reads Aurora content" flag, and the guide says so.
+- **`SystemValidationResult.warnings`** (`systemWarnings`, `packages/core/src/system-warnings.ts`): a stat name in a
+  `derive`, a contribution, a per-track stat, a budget target or a `startsFrom` that nothing the kind resolves declares and
+  that is within one edit of a declared name (two for five letters or more), case ignored, `{…}` templates skipped.
+  **Not "every undeclared name"**: 5e's player character names 72 of its 87 formula stats without declaring them, for
+  content to supply, and a test holds both shipped systems and the starter to no warning. Never a refusal.
+  `UserSystemStore` locates them like errors (`LoadedUserSystems.warnings` by id, `AddSystemResult.warnings`), the
+  launcher lists them under the card after `systemWarningsNote`.
+- **The guide's fences are its contract** (`tools/verify/src/system-guide.test.ts`): `json system` (validates, no warning,
+  nameable in `extends`), `json overlay`, `json refused` / `json warns` / `json slip` each followed by `text problem` (exactly
+  `systemProblemLine`'s output), `json $defs/<name>` (a fragment against that part of the schema), `xml content` (parses,
+  types declared), `text sheet` (the worked example built from that content). An untagged `json` or `xml` block fails.
+  Edit the guide's examples by running that test.
+- **An overlay merges an expression key by key**: replacing a binary `derive` with a `ref` keeps `op`, `left`, `right` and
+  is refused with "In <parent>'s part…" (ADR 0103 locates only what the overlay writes). The guide shows the `null`s that
+  fix it. Locating such an error at the overlay's own `derive` is an open improvement.
+- Not done: the app links to the guide (waits for the published schema's address); the `$schema` lines the guide suggests
+  were not tried in an editor. Driven in the browser build only.
+
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
 
