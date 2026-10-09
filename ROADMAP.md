@@ -1793,8 +1793,6 @@ pane draws and every export renders: the PDF and the print layout start from it,
 *This is the phase that makes or breaks the project's premise. It should not slip.*
 See [ADR 0011](./docs/adr/0011-user-systems.md).
 
-- [ ] `schemas/system.schema.json` published, with in-app validation and any other checker
-      sharing one implementation (`incudo system validate` goes with the CLI — see Phase 2)
 - [x] **Fork** an official system into user space.
       **Done: [ADR 0104](./docs/adr/0104-a-new-system-starts-from-a-file-the-app-writes-and-a-copy-keeps-what-it-was-copied-from.md)**,
       with the scaffold below. **New system…** on the launcher offers, for each shipped system, *changes to* it (an overlay
@@ -1852,7 +1850,8 @@ See [ADR 0011](./docs/adr/0011-user-systems.md).
       example in it is read by a test, problem lines and sheet included. **Driven in the browser build** (the warning on a
       card). **Not done:** a link from the app (waits for the published schema's address); the editor `$schema` lines were
       not tried in an editor; an overlay's error inside a formula it replaced is located in the parent's part.
-- [ ] A second **official** system, licence permitting ([ADR 0010](./docs/adr/0010-licensing-and-funding.md))
+- Publishing the schema and a second official system were moved to "Beyond 1.0" by the maintainer's call
+  (2026-10-09).
 
 **Exit criteria:** someone who is not the maintainer adds a system without touching engine code,
 and a house-rule overlay still receives upstream fixes.
@@ -2014,6 +2013,17 @@ the audit described at the end of that phase.
 - **Editions and a default book list** (the ADR 0049 item): a 2014 / 2024 switch over a character's Books list, where the
   two Player's Handbooks are separate books and a table drops one by unticking, and a per-user default list for new
   characters, which today start offered every book.
+
+### 1.x — Systems for authors
+After the first release, by the maintainer's call (2026-10-09). Both were Phase 7 items, and neither is in its exit
+criteria.
+- **The schema where an author's editor can read it.** The app needs no served schema: it bundles all five and validates
+  with the one validator the tests share. Serving one helps only someone writing a system in a text editor, which reads
+  the file's `$schema` line. Whether the app hands over its own copy (beside a file **New system…** writes) or something
+  serves it is open; `$id` (`https://incudo.dev/schemas/…`) serves nothing today and nothing reads it. The guide's
+  `$schema` lines and ADR 0102's note (an editor given the root schema validates an overlay as a complete system) were
+  never tried in an editor.
+- **A second official system**, licence permitting ([ADR 0010](./docs/adr/0010-licensing-and-funding.md)).
 
 ### 2.x — Story building tools ❄️
 Campaign and session notes, NPC and faction tracking, timelines, relationship maps, linking
