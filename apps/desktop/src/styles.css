@@ -1887,6 +1887,22 @@ button.primary:hover:not(:disabled) {
   font-size: 0.85rem;
 }
 
+/* What is worth checking in a file that loaded, under its card, each with its line. */
+.system-warnings {
+  flex: 1 0 100%;
+  padding: 0 1rem;
+  font-size: 0.85rem;
+}
+
+.system-warnings p {
+  margin: 0;
+}
+
+.system-warnings ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.2rem;
+}
+
 /* "New system…": a name and where to start. */
 .new-system {
   display: grid;

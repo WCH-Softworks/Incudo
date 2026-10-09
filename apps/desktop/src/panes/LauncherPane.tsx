@@ -24,7 +24,7 @@
 
 import { useState } from 'react';
 import type { GameSystem } from '@incudo/core';
-import { systemProblemLine, type NewSystemChoice, type NewSystemStart, type OverlayView, type SystemProblem } from '@incudo/ui';
+import { systemProblemLine, systemWarningsNote, type NewSystemChoice, type NewSystemStart, type OverlayView, type SystemProblem } from '@incudo/ui';
 
 import type { SystemFailure } from '../boot.ts';
 
@@ -42,6 +42,8 @@ export interface SystemSummary {
   overlay?: OverlayView;
   /** For a copy: what it is a copy of, worded by `copiedFromNote` (ADR 0104). */
   copiedFrom?: string;
+  /** What is worth checking in the file, though it loaded (ADR 0105), each with its line. */
+  warnings?: SystemProblem[];
 }
 
 export function LauncherPane({
@@ -224,6 +226,12 @@ function SystemCard({
       </button>
       {summary.overlay && <OverlayChanges overlay={summary.overlay} />}
       {summary.copiedFrom && <p className="system-copied hint">{summary.copiedFrom}</p>}
+      {summary.warnings && summary.warnings.length > 0 && (
+        <div className="system-warnings">
+          <p className="hint">{systemWarningsNote(summary.warnings.length)}</p>
+          <ProblemList problems={summary.warnings} />
+        </div>
+      )}
       {summary.mine && (
         <button
           type="button"

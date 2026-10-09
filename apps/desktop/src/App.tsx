@@ -152,6 +152,8 @@ interface Booted {
   mine: Set<string>;
   /** Which of the user's are overlays, by id, with what each is built on and changes (ADR 0102). */
   overlays: Record<string, UserOverlay>;
+  /** What is worth checking in each of the user's that loaded, by id (ADR 0105). */
+  warnings: Record<string, SystemProblem[]>;
   /** What the user picked last time, if that system still exists. */
   remembered: GameSystem | null;
 }
@@ -184,6 +186,7 @@ export function App(): React.JSX.Element {
       failures: [...shipped.failures, ...user.failures],
       mine: new Set(user.systems.map((s) => s.id)),
       overlays: user.overlays,
+      warnings: user.warnings,
       remembered: systems.find((s) => s.id === rememberedId) ?? null,
     };
   }, []);
@@ -410,6 +413,7 @@ function Launcher({
           enabled: forSystem.filter((s) => s.enabled).length,
           mine: booted.mine.has(system.id),
           ...(booted.overlays[system.id] ? { overlay: overlayView(system, booted.overlays[system.id]!) } : {}),
+          ...(booted.warnings[system.id] ? { warnings: booted.warnings[system.id] } : {}),
           ...(system.copiedFrom !== undefined
             ? { copiedFrom: copiedFromNote(system, (id) => booted.systems.find((known) => known.id === id)?.name) }
             : {}),
