@@ -26,6 +26,7 @@ import {
 } from './system.ts';
 import { parseRequirements } from './requirements.ts';
 import { applySystemOverlay, duplicateIdentities, type OverlayChange } from './system-overlay.ts';
+import { systemWarnings } from './system-warnings.ts';
 import { parseSupports, supportsInterpolations } from './supports.ts';
 import type { Character } from './character.ts';
 import type { ContainerManifest } from './container.ts';
@@ -65,6 +66,11 @@ export interface SystemValidationResult extends ValidationResult<GameSystem> {
    * when there are any (ADR 0103 follows them back to the overlay's text). Absent when the overlay's own shell failed.
    */
   overlay?: { parent: GameSystem; changes: OverlayChange[]; applied: GameSystem };
+  /**
+   * What a system that validated may still have wrong (ADR 0105): a stat name one slip from a declared one. Never a
+   * refusal, and empty when the system did not validate.
+   */
+  warnings: SchemaError[];
 }
 
 /**
@@ -82,7 +88,11 @@ export function validateGameSystem(
   if (isOverlay(value)) return validateOverlay(value, schemas, options);
   const errors = validateJson(value, schemas.system);
   if (errors.length === 0) errors.push(...checkSystemReferences(value as GameSystem));
-  return result(value as GameSystem, errors);
+  return withWarnings(result(value as GameSystem, errors));
+}
+
+function withWarnings(validated: ValidationResult<GameSystem> & { overlay?: SystemValidationResult['overlay'] }): SystemValidationResult {
+  return { ...validated, warnings: validated.value ? systemWarnings(validated.value) : [] };
 }
 
 function isOverlay(value: unknown): value is Record<string, unknown> {
@@ -95,28 +105,28 @@ function validateOverlay(
   options: ValidateSystemOptions,
 ): SystemValidationResult {
   const shell = validateJson(value, { $ref: '#/$defs/overlay' }, { root: schemas.system });
-  if (shell.length) return result(value as unknown as GameSystem, shell);
+  if (shell.length) return withWarnings(result(value as unknown as GameSystem, shell));
   const parentId = value['extends'] as string;
   const parent = options.parent?.(parentId);
   if (!parent) {
-    return result(value as unknown as GameSystem, [
+    return withWarnings(result(value as unknown as GameSystem, [
       { path: 'extends', message: `names "${parentId}", which is not a system Incudo has` },
-    ]);
+    ]));
   }
   if (parent.extends !== undefined) {
-    return result(value as unknown as GameSystem, [
+    return withWarnings(result(value as unknown as GameSystem, [
       { path: 'extends', message: `names "${parentId}", which changes another system itself; an overlay must build on a complete system` },
-    ]);
+    ]));
   }
   if (parent.id === value['id']) {
-    return result(value as unknown as GameSystem, [
+    return withWarnings(result(value as unknown as GameSystem, [
       { path: 'id', message: `is the id of the system it changes; an overlay needs an id of its own` },
-    ]);
+    ]));
   }
   const applied = applySystemOverlay(parent, value);
   const errors = validateJson(applied.system, schemas.system);
   if (errors.length === 0) errors.push(...checkSystemReferences(applied.system));
-  return { ...result(applied.system, errors), overlay: { parent, changes: applied.changes, applied: applied.system } };
+  return withWarnings({ ...result(applied.system, errors), overlay: { parent, changes: applied.changes, applied: applied.system } });
 }
 
 export function validateCharacter(

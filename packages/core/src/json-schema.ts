@@ -434,7 +434,8 @@ function nearest(name: string, candidates: string[]): string | undefined {
   return best;
 }
 
-function editDistance(a: string, b: string): number {
+/** Letters inserted, deleted or replaced to turn one name into the other (Levenshtein). */
+export function editDistance(a: string, b: string): number {
   let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
   for (let i = 1; i <= a.length; i++) {
     const current = [i];

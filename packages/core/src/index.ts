@@ -24,6 +24,7 @@ export * from './container.ts';
 export * from './json-schema.ts';
 export * from './schema.ts';
 export * from './system-overlay.ts';
+export * from './system-warnings.ts';
 export * from './json-text.ts';
 export * from './sha256.ts';
 export * from './platform.ts';
