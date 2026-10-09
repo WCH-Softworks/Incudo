@@ -54,6 +54,11 @@ import {
   libraryEntryProgress,
   UserSystemStore,
   overlayView,
+  copiedFromNote,
+  newSystemChoices,
+  newSystemFile,
+  newSystemSavedNote,
+  type NewSystemStart,
   type UserOverlay,
   type SystemProblem,
   addContentFiles,
@@ -293,6 +298,10 @@ function Launcher({
   const [addProblem, setAddProblem] = useState<
     { message: string; problems?: SystemProblem[] } | undefined
   >();
+  // "New system…" (ADR 0104): a file being saved, why the form refused, and where the last one went.
+  const [creating, setCreating] = useState(false);
+  const [newProblem, setNewProblem] = useState<string | undefined>();
+  const [newNote, setNewNote] = useState<string | undefined>();
 
   const store = useMemo(
     () =>
@@ -333,6 +342,49 @@ function Launcher({
     }
   }, [store, onChanged, reboot]);
 
+  /**
+   * Write a new system's file where the user chooses, then add exactly those bytes (ADR 0104 decision 2): the same
+   * validation as any added file, and the user has the file to edit. A cancelled save adds nothing.
+   */
+  const createSystem = useCallback(
+    async (start: NewSystemStart, name: string): Promise<boolean> => {
+      setNewProblem(undefined);
+      setNewNote(undefined);
+      setAddProblem(undefined);
+      // Every id in use, a definition that failed to load included: its stored copy would be replaced too.
+      const file = newSystemFile(start, name, [...booted.systems.map((s) => s.id), ...booted.failures.map((f) => f.id)]);
+      if (!file.ok) {
+        setNewProblem(file.message);
+        return false;
+      }
+      setCreating(true);
+      try {
+        const bytes = new TextEncoder().encode(file.text);
+        const saved = await platform.saver.save(bytes, {
+          suggestedName: file.fileName,
+          title: 'Save the new system',
+          extensions: ['json'],
+          label: 'System definition',
+        });
+        if (!saved) return false;
+        const result = await store.add({ name: saved.name, bytes });
+        if (!result.ok) {
+          setAddProblem({ message: result.message, problems: result.problems });
+          return false;
+        }
+        setNewNote(newSystemSavedNote(file.name, saved.name));
+        onChanged(await reboot());
+        return true;
+      } catch (error) {
+        setNewProblem(error instanceof Error ? error.message : String(error));
+        return false;
+      } finally {
+        setCreating(false);
+      }
+    },
+    [booted, store, onChanged, reboot],
+  );
+
   const removeSystem = useCallback(
     async (system: GameSystem): Promise<void> => {
       // Removing a definition removes no character. A save records its system by id and keeps
@@ -343,6 +395,9 @@ function Launcher({
     },
     [store, onChanged, reboot],
   );
+
+  // The starts a new system may take: the starter, and changes to or a copy of each shipped system (ADR 0104).
+  const newChoices = useMemo(() => newSystemChoices(loadShippedSystems().systems), []);
 
   useEffect(() => {
     void (async () => {
@@ -355,6 +410,9 @@ function Launcher({
           enabled: forSystem.filter((s) => s.enabled).length,
           mine: booted.mine.has(system.id),
           ...(booted.overlays[system.id] ? { overlay: overlayView(system, booted.overlays[system.id]!) } : {}),
+          ...(system.copiedFrom !== undefined
+            ? { copiedFrom: copiedFromNote(system, (id) => booted.systems.find((known) => known.id === id)?.name) }
+            : {}),
         };
       }
 
@@ -387,6 +445,14 @@ function Launcher({
       onChoose={onChoose}
       onAddSystem={() => void addSystem()}
       onRemoveSystem={(system) => void removeSystem(system)}
+      newChoices={newChoices}
+      onNewSystem={createSystem}
+      creating={creating}
+      newProblem={newProblem}
+      newNote={newNote}
+      onDismissNewNote={() => setNewNote(undefined)}
+      canSave={platform.saver.available}
+      cannotSaveReason={platform.saver.unavailableReason}
       adding={adding}
       addProblem={addProblem}
       onDismissAddProblem={() => setAddProblem(undefined)}

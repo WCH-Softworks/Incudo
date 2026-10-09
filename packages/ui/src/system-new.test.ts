@@ -106,6 +106,9 @@ test('a copy of a copy records the origin, so it still reaches the content', () 
 test('a copy\'s card names its origin, or the id it writes when that is not loaded', () => {
   const names: Record<string, string> = { base: 'Base Game' };
   assert.equal(copiedFromNote({}, (id) => names[id]), undefined);
-  assert.match(copiedFromNote({ copiedFrom: 'base' }, (id) => names[id])!, /^A copy of Base Game\. It uses Base Game's content/);
+  assert.equal(
+    copiedFromNote({ copiedFrom: 'base' }, (id) => names[id]),
+    'Uses the content of Base Game, which it was copied from. Later fixes to Base Game do not reach it.',
+  );
   assert.equal(copiedFromNote({ copiedFrom: 'gone' }, (id) => names[id]), 'A copy of "gone", which Incudo does not have.');
 });

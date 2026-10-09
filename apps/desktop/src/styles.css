@@ -1879,6 +1879,46 @@ button.primary:hover:not(:disabled) {
   padding-left: 1.2rem;
 }
 
+/* A copy's line under its card: what it is a copy of. */
+.system-copied {
+  flex: 1 0 100%;
+  margin: 0;
+  padding: 0 1rem;
+  font-size: 0.85rem;
+}
+
+/* "New system…": a name and where to start. */
+.new-system {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 42rem;
+  margin: 0 0 1rem;
+}
+
+.new-system label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.new-system fieldset {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+}
+
+.new-system .new-system-start {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.new-system-start > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
 /* The Books list in the Build pane: a switch, the book's name, and how much loaded content it holds. */
 .publications .picker-list {
   margin-top: 6px;

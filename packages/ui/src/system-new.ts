@@ -43,13 +43,13 @@ export function newSystemChoices(shipped: readonly GameSystem[]): NewSystemChoic
     choices.push({
       key: `changes:${system.id}`,
       label: `Changes to ${system.name}`,
-      note: `Starts with nothing changed. Write only what your table does differently; fixes to ${system.name} keep reaching it.`,
+      note: 'Starts with nothing changed: write only what your table does differently. Fixes to the original keep reaching it.',
       start: { kind: 'changes', of: system },
     });
     choices.push({
       key: `copy:${system.id}`,
       label: `A copy of ${system.name}`,
-      note: `The whole definition, to change as you like. It uses ${system.name}'s content, and later fixes to ${system.name} do not reach it.`,
+      note: 'The whole definition, to change as you like. It uses the same content; later fixes to the original do not reach it.',
       start: { kind: 'copy', of: system },
     });
   }
@@ -236,6 +236,6 @@ export function copiedFromNote(system: Pick<GameSystem, 'copiedFrom'>, nameOf: (
   if (system.copiedFrom === undefined) return undefined;
   const origin = nameOf(system.copiedFrom);
   return origin
-    ? `A copy of ${origin}. It uses ${origin}'s content, and later fixes to ${origin} do not reach it.`
+    ? `Uses the content of ${origin}, which it was copied from. Later fixes to ${origin} do not reach it.`
     : `A copy of "${system.copiedFrom}", which Incudo does not have.`;
 }

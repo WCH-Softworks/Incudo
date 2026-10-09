@@ -22,8 +22,9 @@
  * notes live in `systems/README.md` now. Nothing on a card cites an ADR.
  */
 
+import { useState } from 'react';
 import type { GameSystem } from '@incudo/core';
-import { systemProblemLine, type OverlayView, type SystemProblem } from '@incudo/ui';
+import { systemProblemLine, type NewSystemChoice, type NewSystemStart, type OverlayView, type SystemProblem } from '@incudo/ui';
 
 import type { SystemFailure } from '../boot.ts';
 
@@ -39,6 +40,8 @@ export interface SystemSummary {
   mine?: boolean;
   /** For an overlay: what it is built on and what it changes (ADR 0102), worded by `overlayView`. */
   overlay?: OverlayView;
+  /** For a copy: what it is a copy of, worded by `copiedFromNote` (ADR 0104). */
+  copiedFrom?: string;
 }
 
 export function LauncherPane({
@@ -49,6 +52,14 @@ export function LauncherPane({
   onChoose,
   onAddSystem,
   onRemoveSystem,
+  newChoices,
+  onNewSystem,
+  creating,
+  newProblem,
+  newNote,
+  onDismissNewNote,
+  canSave,
+  cannotSaveReason,
   adding,
   addProblem,
   onDismissAddProblem,
@@ -64,6 +75,18 @@ export function LauncherPane({
   onChoose: (system: GameSystem) => void;
   onAddSystem: () => void;
   onRemoveSystem: (system: GameSystem) => void;
+  /** Where a new system may start (ADR 0104), worded by `newSystemChoices`. */
+  newChoices: readonly NewSystemChoice[];
+  /** Save the new system's file and add it. True when it was added, so the form can close. */
+  onNewSystem: (start: NewSystemStart, name: string) => Promise<boolean>;
+  creating: boolean;
+  /** Why the form refused, in a sentence. */
+  newProblem?: string;
+  /** Where the last new system was saved, and how to change it. */
+  newNote?: string;
+  onDismissNewNote: () => void;
+  canSave: boolean;
+  cannotSaveReason?: string;
   adding: boolean;
   /** What went wrong with the last add, with its validation errors. Dismissed, never timed out. */
   addProblem?: { message: string; problems?: SystemProblem[] };
@@ -93,6 +116,26 @@ export function LauncherPane({
           </li>
         ))}
       </ul>
+
+      <NewSystem
+        choices={newChoices}
+        onCreate={onNewSystem}
+        creating={creating}
+        problem={newProblem}
+        canSave={canSave}
+        cannotSaveReason={cannotSaveReason}
+      />
+
+      {newNote && (
+        <div className="note">
+          {newNote}
+          <div className="row">
+            <button type="button" onClick={onDismissNewNote}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="row">
         <button type="button" onClick={onAddSystem} disabled={adding || !canAdd}>
@@ -180,6 +223,7 @@ function SystemCard({
         </span>
       </button>
       {summary.overlay && <OverlayChanges overlay={summary.overlay} />}
+      {summary.copiedFrom && <p className="system-copied hint">{summary.copiedFrom}</p>}
       {summary.mine && (
         <button
           type="button"
@@ -191,6 +235,91 @@ function SystemCard({
         </button>
       )}
     </>
+  );
+}
+
+/**
+ * "New system…" (ADR 0104): a name and where to start, then the file is saved where the user chooses and added. Folded
+ * until asked for, since most visits to this screen are to pick a game. The name and the choice are this form's own
+ * state; what each start writes is `newSystemFile`'s.
+ */
+function NewSystem({
+  choices,
+  onCreate,
+  creating,
+  problem,
+  canSave,
+  cannotSaveReason,
+}: {
+  choices: readonly NewSystemChoice[];
+  onCreate: (start: NewSystemStart, name: string) => Promise<boolean>;
+  creating: boolean;
+  problem?: string;
+  canSave: boolean;
+  cannotSaveReason?: string;
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [key, setKey] = useState(choices[0]?.key ?? '');
+  const chosen = choices.find((choice) => choice.key === key) ?? choices[0];
+
+  if (!open) {
+    return (
+      <div className="row">
+        <button type="button" onClick={() => setOpen(true)} disabled={!canSave}>
+          New system…
+        </button>
+        <span className="hint">
+          {canSave ? 'Start your own game, or your own version of one here, from a file Incudo writes for you.' : cannotSaveReason}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="new-system"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!chosen) return;
+        void onCreate(chosen.start, name).then((added) => {
+          if (added) {
+            setOpen(false);
+            setName('');
+          }
+        });
+      }}
+    >
+      <h3>New system</h3>
+      <label>
+        Name
+        <input type="text" value={name} onChange={(event) => setName(event.target.value)} autoFocus />
+      </label>
+      <fieldset>
+        <legend>Start from</legend>
+        {choices.map((choice) => (
+          <label key={choice.key} className="new-system-start">
+            <input type="radio" name="new-system-start" checked={choice.key === chosen?.key} onChange={() => setKey(choice.key)} />
+            <span>
+              <strong>{choice.label}</strong>
+              <span className="hint">{choice.note}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      {problem && <p className="problem error">{problem}</p>}
+      <p className="hint">
+        Incudo asks where to save the file, then adds it. To change the system later, edit that file and add it again.
+      </p>
+      <div className="row">
+        <button type="submit" disabled={creating}>
+          {creating ? 'Saving…' : 'Save and add…'}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} disabled={creating}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
