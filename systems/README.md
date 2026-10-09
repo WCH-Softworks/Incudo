@@ -34,6 +34,21 @@ live in the app's data directory instead and are not subject to that policy â€” 
 not distribute them. They load through exactly the same code path
 ([ADR 0011](../docs/adr/0011-user-systems.md)).
 
+## Starting a system of your own
+
+**New system…** on the app's launcher writes the file for you: give it a name and choose where to start
+([ADR 0104](../docs/adr/0104-a-new-system-starts-from-a-file-the-app-writes-and-a-copy-keeps-what-it-was-copied-from.md)).
+
+- **A small starter system**: Incudo's own, with two element types, three scores entered by hand, a level, a derived
+  Health and a sheet. It builds a character with no content; rename and grow it into your game.
+- **Changes to** a shipped system: an overlay (below) that changes nothing yet.
+- **A copy of** a shipped system: the whole definition under your id, with `"copiedFrom"` naming the original. A copy
+  loads the original's content sources and is offered what ships beside it (5e's starting equipment and official form),
+  and later fixes to the original do not reach it.
+
+The app asks where to save the `.json`, then adds it. To change the system, edit that file and add it again with
+**Add a system…**, which replaces it by its id.
+
 ## Changing a shipped system: an overlay
 
 To change a few rules of a system that ships here and keep receiving its fixes, write an **overlay**
@@ -53,7 +68,8 @@ as a whole system, then loads it with **Add a systemâ€¦**, like any other. Its c
 
 ## Adding a system
 
-1. Copy `cairn/system.json` and edit it. It is deliberately small enough to read in one go.
+1. Start from **New system…**'s starter (above), or copy `cairn/system.json` and edit it. Both are small enough to
+   read in one go.
 2. Declare every element type your content uses. Aurora content types are just strings;
    your types can be anything.
 3. Declare stats. Anything derived (a modifier, a bonus that scales with level) goes in
