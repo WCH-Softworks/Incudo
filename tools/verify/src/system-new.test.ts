@@ -4,7 +4,7 @@
  * sources, starting equipment and form, and an overlay of the copy does too.
  *
  * Perturbations, each run and failing here: the starter's scores step without its budget (a decision stays open); its
- * health formula naming a stat nothing declares (refused); the overlay written without `version` (refused); a copy written
+ * health formula naming a stat nothing declares (it validates, and Health reads wrong: ADR 0105 makes a near miss a warning); the overlay written without `version` (refused); a copy written
  * with `extends` (refused, it names its own origin's id and is no overlay of it… it is applied, and its fields are written
  * twice); `copiedFrom` left out of the lineage (the copy loads no 5e source and is offered no starting equipment); a copy
  * written without `copiedFrom`.

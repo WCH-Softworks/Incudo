@@ -57,10 +57,15 @@ export interface LoadedUserSystems {
   failures: SystemLoadFailure[];
   /** For each system that is an overlay, by id: its parent and its changes, as applied on this load. */
   overlays: Record<string, UserOverlay>;
+  /**
+   * For each system that loaded with something worth checking, by id (ADR 0105): each warning with where it is in the file,
+   * as a problem is. A system with none is absent.
+   */
+  warnings: Record<string, SystemProblem[]>;
 }
 
 export type AddSystemResult =
-  | { ok: true; system: GameSystem; replaced: boolean; overlay?: UserOverlay }
+  | { ok: true; system: GameSystem; replaced: boolean; overlay?: UserOverlay; warnings?: SystemProblem[] }
   | { ok: false; message: string; errors?: SchemaError[]; problems?: SystemProblem[] };
 
 /**
@@ -96,11 +101,12 @@ export class UserSystemStore {
     const systems: GameSystem[] = [];
     const failures: SystemLoadFailure[] = [];
     const overlays: Record<string, UserOverlay> = {};
+    const warnings: Record<string, SystemProblem[]> = {};
     let keys: string[];
     try {
       keys = await this.storage.list(USER_SYSTEM_PREFIX);
     } catch {
-      return { systems, failures, overlays };
+      return { systems, failures, overlays, warnings };
     }
     const read: Array<{ key: string; value: unknown; positions: ReadonlyMap<string, JsonPosition> }> = [];
     for (const key of keys.sort()) {
@@ -120,12 +126,13 @@ export class UserSystemStore {
       if (result.value) {
         systems.push(result.value);
         if (result.overlay) overlays[result.value.id] = result.overlay;
+        if (result.warnings.length) warnings[result.value.id] = describeSystemErrors(result.warnings, value, positions, result.overlay);
       } else {
         const problems = describeSystemErrors(result.errors, value, positions, result.overlay);
         failures.push({ id: idOf(value) ?? idFromKey(key), key, errors: result.errors, problems });
       }
     }
-    return { systems, failures, overlays };
+    return { systems, failures, overlays, warnings };
   }
 
   /**
@@ -186,7 +193,15 @@ export class UserSystemStore {
     // the file the user actually wrote — comments they cannot have, but key order and spacing
     // are theirs, and a round trip through JSON.stringify is a change nobody asked for.
     await this.storage.write(key, text);
-    return { ok: true, system: result.value, replaced, ...(result.overlay ? { overlay: result.overlay } : {}) };
+    return {
+      ok: true,
+      system: result.value,
+      replaced,
+      ...(result.overlay ? { overlay: result.overlay } : {}),
+      ...(result.warnings.length
+        ? { warnings: describeSystemErrors(result.warnings, parsed.value, parsed.positions, result.overlay) }
+        : {}),
+    };
   }
 
   async remove(id: string): Promise<void> {

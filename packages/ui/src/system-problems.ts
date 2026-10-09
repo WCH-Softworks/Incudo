@@ -205,3 +205,10 @@ function reaches(node: unknown, segments: readonly Segment[]): boolean {
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+/** The line above a loaded system's warnings (ADR 0105): it loaded, and this much in it is worth checking. */
+export function systemWarningsNote(count: number): string {
+  return count === 1
+    ? 'This file loaded. One thing in it is worth checking:'
+    : `This file loaded. ${count} things in it are worth checking:`;
+}
