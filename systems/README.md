@@ -36,7 +36,7 @@ not distribute them. They load through exactly the same code path
 
 ## Starting a system of your own
 
-**New system…** on the app's launcher writes the file for you: give it a name and choose where to start
+**New systemâ€¦** on the app's launcher writes the file for you: give it a name and choose where to start
 ([ADR 0104](../docs/adr/0104-a-new-system-starts-from-a-file-the-app-writes-and-a-copy-keeps-what-it-was-copied-from.md)).
 
 - **A small starter system**: Incudo's own, with two element types, three scores entered by hand, a level, a derived
@@ -47,7 +47,7 @@ not distribute them. They load through exactly the same code path
   and later fixes to the original do not reach it.
 
 The app asks where to save the `.json`, then adds it. To change the system, edit that file and add it again with
-**Add a system…**, which replaces it by its id.
+**Add a systemâ€¦**, which replaces it by its id.
 
 ## Changing a shipped system: an overlay
 
@@ -68,7 +68,7 @@ as a whole system, then loads it with **Add a systemâ€¦**, like any other. Its c
 
 ## Adding a system
 
-1. Start from **New system…**'s starter (above), or copy `cairn/system.json` and edit it. Both are small enough to
+1. Start from **New systemâ€¦**'s starter (above), or copy `cairn/system.json` and edit it. Both are small enough to
    read in one go.
 2. Declare every element type your content uses. Aurora content types are just strings;
    your types can be anything.
