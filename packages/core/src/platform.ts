@@ -112,6 +112,23 @@ export interface CharacterStore {
   read(entry: LibraryEntryRef): Promise<Map<string, Uint8Array>>;
   write(entry: LibraryEntryRef, files: Map<string, Uint8Array>): Promise<void>;
   remove(entry: LibraryEntryRef): Promise<void>;
+  /**
+   * One plain file in the folder by name, never a path and never a container: the user's feature library (ADR 0106).
+   * Null when absent. Optional: a store without it keeps no library, and says nothing about one.
+   */
+  readFile?(name: string): Promise<Uint8Array | null>;
+  /** Write that file whole, replacing it. */
+  writeFile?(name: string, bytes: Uint8Array): Promise<void>;
+}
+
+/**
+ * Refuse what `readFile` and `writeFile` must never be handed: a path, a name that climbs or hides, or a container's —
+ * ADR 0106. Every store calls it, so the port means one thing everywhere.
+ */
+export function assertPlainFileName(name: string): void {
+  if (!/^[^/\\:*?"<>|]+$/.test(name) || name.startsWith('.') || /\.incu$/i.test(name)) {
+    throw new Error(`"${name}" is not a plain file name in the library folder.`);
+  }
 }
 
 export interface LibraryEntryRef {

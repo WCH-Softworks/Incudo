@@ -117,6 +117,7 @@ import {
   type PublicationList,
 } from './publications.ts';
 import { customFeaturesState, type CustomFeaturesState } from './custom-features.ts';
+import { givenFeature, updatedFromLibrary, type LibraryFeature } from './feature-library.ts';
 import { additionOptions, additionsState, heldBlocks, type AdditionOption, type AdditionsState } from './additions.ts';
 import { referenceOptions, referencesState, type ReferencesState } from './references.ts';
 import { companionsView, type CompanionsView } from './companions.ts';
@@ -679,16 +680,54 @@ export class CharacterBuilder {
     const current = this.character.customFeatures?.find((f) => f.id === id);
     if (!current) return;
     if (change.type !== undefined && !customFeatureTypes(this.kind).includes(change.type)) return;
-    const { description: _old, type: _oldType, ...rest } = current;
+    const { description: _old, type: _oldType, library: _link, ...rest } = current;
     const description = change.description ?? current.description;
     const type = change.type ?? current.type;
+    // A copy from the library changed here is marked, so an update says it replaces the change (ADR 0106). Where it is
+    // listed is the character's own and marks nothing.
+    const edited =
+      (change.name !== undefined && change.name !== current.name) ||
+      (change.description !== undefined && (change.description.trim() || undefined) !== (current.description?.trim() || undefined)) ||
+      (change.stats !== undefined && JSON.stringify(change.stats) !== JSON.stringify(current.stats));
+    const library = current.library && (edited ? { ...current.library, edited: true as const } : current.library);
     this.character = setCustomFeature(this.character, {
       ...rest,
       ...(change.name !== undefined ? { name: change.name } : {}),
       ...(change.stats !== undefined ? { stats: change.stats } : {}),
       ...(description?.trim() ? { description } : {}),
       ...(type !== undefined && type !== this.kind.customFeatures?.type ? { type } : {}),
+      ...(library ? { library } : {}),
     });
+    this.invalidate();
+  };
+
+  /**
+   * Give the character a copy of a feature from the user's library, recording where it came from — ADR 0106. Refused
+   * (`undefined`) for a kind that carries none, a feature of another system, and one the character already holds a
+   * copy of. Returns the new feature's id.
+   */
+  giveLibraryFeature = (entry: LibraryFeature): string | undefined => {
+    if (!this.kind.customFeatures || entry.system !== this.character.systemId) return undefined;
+    if (this.character.customFeatures?.some((f) => f.library?.id === entry.id)) return undefined;
+    const id = newCustomFeatureId(this.character);
+    this.character = setCustomFeature(this.character, { id, ...givenFeature(entry, this.kind) });
+    this.invalidate();
+    return id;
+  };
+
+  /** Take the library's newer text and lines for a copy of it, keeping where it is listed — ADR 0106. */
+  updateFromLibrary = (id: string, entry: LibraryFeature): void => {
+    const current = this.character.customFeatures?.find((f) => f.id === id);
+    if (!current || current.library?.id !== entry.id) return;
+    this.character = setCustomFeature(this.character, updatedFromLibrary(current, entry));
+    this.invalidate();
+  };
+
+  /** Record that a feature now matches the library's feature `link`, as after saving it there — ADR 0106. */
+  linkCustomFeature = (id: string, link: { id: string; revision: number }): void => {
+    const current = this.character.customFeatures?.find((f) => f.id === id);
+    if (!current) return;
+    this.character = setCustomFeature(this.character, { ...current, library: { id: link.id, revision: link.revision } });
     this.invalidate();
   };
 

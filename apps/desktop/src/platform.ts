@@ -56,7 +56,7 @@ import type {
   ZipCodec,
   ZipCompressor,
 } from '@incudo/core';
-import { createZipCodec } from '@incudo/core';
+import { assertPlainFileName, createZipCodec } from '@incudo/core';
 import { absentCommands, menuModel } from '@incudo/ui';
 import type { CommandHost, CommandId, InstalledMenu, Os, ResolvedCommand } from '@incudo/ui';
 import type { MenuItem as TauriMenuItem, Submenu as TauriSubmenu } from '@tauri-apps/api/menu';
@@ -327,6 +327,19 @@ class TauriCharacterStore implements CharacterStore {
     await fs.remove(join(root, entry.name), { recursive: entry.form === 'folder' });
   }
 
+  async readFile(name: string): Promise<Uint8Array | null> {
+    assertPlainFileName(name);
+    const fs = await import('@tauri-apps/plugin-fs');
+    const path = join(await this.require(), name);
+    return (await fs.exists(path)) ? fs.readFile(path) : null;
+  }
+
+  async writeFile(name: string, bytes: Uint8Array): Promise<void> {
+    assertPlainFileName(name);
+    const fs = await import('@tauri-apps/plugin-fs');
+    await fs.writeFile(join(await this.require(), name), bytes);
+  }
+
   private async grant(path: string): Promise<void> {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('allow_library_folder', { path });
@@ -477,6 +490,24 @@ class FileSystemAccessCharacterStore implements CharacterStore {
   async remove(entry: LibraryEntryRef): Promise<void> {
     const root = await this.require();
     await root.removeEntry(entry.name, { recursive: entry.form === 'folder' });
+  }
+
+  async readFile(name: string): Promise<Uint8Array | null> {
+    assertPlainFileName(name);
+    const root = await this.require();
+    let handle: FileSystemFileHandle;
+    try {
+      handle = await root.getFileHandle(name);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotFoundError') return null;
+      throw error;
+    }
+    return new Uint8Array(await (await handle.getFile()).arrayBuffer());
+  }
+
+  async writeFile(name: string, bytes: Uint8Array): Promise<void> {
+    assertPlainFileName(name);
+    await writeFileInto(await this.require(), name, bytes);
   }
 
   private async remembered(): Promise<FileSystemDirectoryHandle | undefined> {

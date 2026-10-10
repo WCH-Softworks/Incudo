@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://incudo.dev/schemas/feature-library.schema.json",
+  "title": "Incudo feature library",
+  "description": "A user's own features, kept as incudo-features.json in their character library folder (ADR 0106), and given to any character of the feature's system as a copy that records which feature and revision it came from. A feature is a character's custom feature (ADR 0063, 0065, 0094) plus the system whose stats it names and a revision. A user's own file, so a public format.",
+  "type": "object",
+  "required": ["formatVersion", "features"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "formatVersion": { "const": 1 },
+    "features": { "type": "array", "items": { "$ref": "#/$defs/feature" } }
+  },
+  "$defs": {
+    "feature": {
+      "type": "object",
+      "required": ["id", "system", "revision", "name", "stats"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Unique in the file; what a character's copy records." },
+        "system": { "type": "string", "minLength": 1, "description": "The system whose stats the lines name, by id. A character is offered its own system's features." },
+        "revision": { "type": "integer", "minimum": 1, "description": "Raised by every change; a copy recording a lower one is offered the change." },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "minLength": 1, "description": "The element type it is listed as when given, if the character's kind lists it; else the kind's default." },
+        "stats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["stat", "mode", "value"],
+            "additionalProperties": false,
+            "properties": {
+              "stat": { "type": "string", "minLength": 1 },
+              "mode": { "enum": ["add", "set", "mark"], "description": "As a character's custom feature line: `add` contributes, `set` is where the stat starts, `mark` marks a row (ADR 0063, 0094)." },
+              "value": { "type": "number" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

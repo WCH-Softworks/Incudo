@@ -52,6 +52,7 @@ import type {
   Storage,
   ZipCodec,
 } from '@incudo/core';
+import { assertPlainFileName } from '@incudo/core';
 import type { ConnectionState, ReceivedFile } from '@incudo/ui';
 
 /**
@@ -186,6 +187,19 @@ export class MobileCharacterStore implements CharacterStore {
   async remove(entry: LibraryEntryRef): Promise<void> {
     const target = entry.form === 'zip' ? new File(this.root(), entry.name) : new Directory(this.root(), entry.name);
     if (target.exists) target.delete();
+  }
+
+  async readFile(name: string): Promise<Uint8Array | null> {
+    assertPlainFileName(name);
+    const file = new File(this.root(), name);
+    return file.exists ? file.bytes() : null;
+  }
+
+  async writeFile(name: string, bytes: Uint8Array): Promise<void> {
+    assertPlainFileName(name);
+    const file = new File(this.root(), name);
+    if (!file.exists) file.create();
+    file.write(bytes);
   }
 }
 
