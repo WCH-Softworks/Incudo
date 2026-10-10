@@ -239,6 +239,16 @@ export const FEATURE_LIBRARY_HEADING = 'From your feature library';
 export const FEATURE_LIBRARY_EMPTY = 'Your feature library has nothing for this game yet. Save a feature to it from any character.';
 export const FEATURE_LIBRARY_NO_FOLDER = 'Choose a library folder to keep features for reuse.';
 
+/** Removing a feature from the library asks first; what it asks, for a dialog with a title and a message. */
+export function libraryRemoveQuestion(name: string): string {
+  return `Remove "${name.trim() || 'Unnamed feature'}" from your feature library?`;
+}
+export const FEATURE_LIBRARY_REMOVE_NOTE = 'Characters that have it keep their copy.';
+/** The same question as one button that does it, where a second click is the answer. */
+export function libraryRemoveConfirmLabel(name: string): string {
+  return `Remove "${name.trim() || 'Unnamed feature'}": characters that have it keep their copy`;
+}
+
 export interface FeatureLibraryState {
   /** `unavailable` with no folder or no way to read one; `loading` until the first read. */
   status: 'unavailable' | 'loading' | 'ready' | 'unreadable';

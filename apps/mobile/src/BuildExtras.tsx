@@ -47,7 +47,13 @@ import {
   type ReferenceRow,
 } from '@incudo/ui';
 import type { CustomStatLine } from '@incudo/core';
-import { FEATURE_LIBRARY_HEADING, featureLibraryView, type FeatureLinkView } from '@incudo/ui';
+import {
+  FEATURE_LIBRARY_HEADING,
+  FEATURE_LIBRARY_REMOVE_NOTE,
+  featureLibraryView,
+  libraryRemoveQuestion,
+  type FeatureLinkView,
+} from '@incudo/ui';
 
 import { DraftField, NumberField } from './BuildParts.tsx';
 import { Body, Button, Card, Heading, Row, Tag } from './controls.tsx';
@@ -139,7 +145,7 @@ export function CustomFeaturesView({
   };
 
   const removeFromLibrary = (id: string, name: string): void => {
-    Alert.alert(`Remove "${name}" from your feature library?`, 'Characters that have it keep their copy.', [
+    Alert.alert(libraryRemoveQuestion(name), FEATURE_LIBRARY_REMOVE_NOTE, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',

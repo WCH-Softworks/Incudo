@@ -14,6 +14,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AuroraImportReport, KindChoice, LibraryEntry, LibraryState } from '@incudo/ui';
 
+import { ArmedButton } from './ArmedButton.tsx';
+
 export function LibraryPane({
   state,
   systemName,
@@ -551,23 +553,5 @@ function useObjectUrl(bytes: Uint8Array | undefined, type: string): string | und
 
 /** Deleting someone's file is a two-click action, and the second click says what it deletes. */
 function RemoveButton({ name, onRemove }: { name: string; onRemove: () => void }): React.JSX.Element {
-  const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    if (!armed) return;
-    const timer = setTimeout(() => setArmed(false), 4000);
-    return () => clearTimeout(timer);
-  }, [armed]);
-
-  if (!armed) {
-    return (
-      <button type="button" onClick={() => setArmed(true)}>
-        Delete…
-      </button>
-    );
-  }
-  return (
-    <button type="button" className="danger" onClick={onRemove}>
-      Delete "{name}" from the folder
-    </button>
-  );
+  return <ArmedButton label="Delete…" armedLabel={`Delete "${name}" from the folder`} onConfirm={onRemove} />;
 }

@@ -11,11 +11,13 @@ import { useState } from 'react';
 
 import { playRestNote, playTemporaryText, playValue, restEffects, type CharacterBuilder, type PlayTracker, type PlayView } from '@incudo/ui';
 
+import { ArmedButton } from './ArmedButton.tsx';
+
 export function PlayPanel({ builder, view }: { builder: CharacterBuilder; view: PlayView }): React.JSX.Element {
-  const rest = (restId: string, label: string): void => {
+  // A second click takes the rest, on a button that says what it gives back (`ArmedButton` says why not a confirm).
+  const restLabel = (restId: string, label: string): string => {
     const effects = restEffects(view, restId);
-    const question = effects.length ? `Take a ${label}? It gives back: ${effects.join(', ')}.` : `Take a ${label}? Nothing spent comes back on it.`;
-    if (window.confirm(question)) builder.rest(restId);
+    return effects.length ? `Take a ${label}: it gives back ${effects.join(', ')}` : `Take a ${label}: nothing spent comes back on it`;
   };
   return (
     <section className="sheet-section play-panel" aria-label="Play">
@@ -49,9 +51,13 @@ export function PlayPanel({ builder, view }: { builder: CharacterBuilder; view: 
       {view.rests.length > 0 && (
         <div className="play-rests">
           {view.rests.map((r) => (
-            <button key={r.id} type="button" onClick={() => rest(r.id, r.label)}>
-              {r.label}
-            </button>
+            <ArmedButton
+              key={r.id}
+              label={r.label}
+              armedLabel={restLabel(r.id, r.label)}
+              armedClassName=""
+              onConfirm={() => builder.rest(r.id)}
+            />
           ))}
         </div>
       )}

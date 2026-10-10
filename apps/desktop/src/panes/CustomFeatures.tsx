@@ -8,7 +8,7 @@
  *
  * The user's feature library (ADR 0106) is offered below the character's own: a feature there is given as a copy, a
  * copy whose original changed says so and offers Update, and any feature can be saved there. What each says is
- * `featureLibraryView`'s.
+ * `featureLibraryView`'s. Removing one from the library asks first, by a second click (`ArmedButton`).
  */
 
 import { useState, useSyncExternalStore } from 'react';
@@ -17,6 +17,7 @@ import type { BuilderState, CharacterBuilder, CustomFeatureView, FeatureLibrary,
 import {
   FEATURE_LIBRARY_HEADING,
   featureLibraryView,
+  libraryRemoveConfirmLabel,
   customFeaturesHint,
   customFeatureLines,
   customFeatureTypeChoices,
@@ -32,6 +33,8 @@ import {
   withoutCustomLine,
 } from '@incudo/ui';
 import type { CustomStatLine } from '@incudo/core';
+
+import { ArmedButton } from './ArmedButton.tsx';
 
 export function CustomFeatures({
   state,
@@ -59,8 +62,7 @@ export function CustomFeatures({
     }
   };
 
-  const removeFromLibrary = async (id: string, name: string) => {
-    if (!window.confirm(`Remove "${name}" from your feature library? Characters that have it keep their copy.`)) return;
+  const removeFromLibrary = async (id: string) => {
     setBusy(true);
     try {
       await library.remove(id);
@@ -102,9 +104,13 @@ export function CustomFeatures({
                   Give
                 </button>
               )}
-              <button type="button" className="link" onClick={() => void removeFromLibrary(entry.id, entry.name)} disabled={busy}>
-                Remove from library
-              </button>
+              <ArmedButton
+                className="link"
+                label="Remove from library"
+                armedLabel={libraryRemoveConfirmLabel(entry.name)}
+                onConfirm={() => void removeFromLibrary(entry.id)}
+                disabled={busy}
+              />
             </li>
           ))}
         </ul>
