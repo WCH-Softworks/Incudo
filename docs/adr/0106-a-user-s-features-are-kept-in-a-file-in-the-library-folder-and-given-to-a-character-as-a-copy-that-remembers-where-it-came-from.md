@@ -154,5 +154,23 @@ feature is edited where it is used and saved back.
   events): Godspeed written on one NPC and saved to the feature library, the file read back; a second NPC given it,
   its sheet reading Speed 60; the first changed to 80 and saved back as revision 2; the second offered "Godspeed has
   changed in your feature library.", updated to 80, saved, and after a reload reopened with nothing offered. The
-  character's own Save was already labelled "Save to library", so the feature's buttons name the feature library. Not
-  driven: the Tauri window, the phone.
+  character's own Save was already labelled "Save to library", so the feature's buttons name the feature library.
+- **Driven in the Tauri window on Windows** (2026-10-10; a fresh WebView2 profile, a scratch library folder, DOM events
+  over the debug port, since the screen was in use and real input was not sent): the same steps, with `incudo-features.json`
+  read off disk at revision 1 and then 2 and the second NPC's `.incu` read in Node to `library: { id, revision: 2 }` at
+  format 12; a copy whose original was removed saying "Not in your feature library any more." and saved back as a new
+  feature; a hand-broken file named as unreadable ("is not valid JSON: …"), no save to it offered, and its bytes the same
+  after a character's Save; the character list counting only the two characters. **Remove from library removed at once,
+  asking nothing**: `tauri-plugin-dialog` replaces `window.confirm` in the window with an async function, whose promise
+  is truthy, and the Sheet's rest buttons had the same call. Both ask by a second click now, on a button that says what it
+  does (`ArmedButton`, which the library card's Delete… already was), driven there: armed, disarmed after four seconds
+  with nothing written, removed on the second click with both characters' copies unchanged.
+  `tools/verify/src/desktop-dialogs.test.ts` fails on any `confirm`, `alert` or `prompt` call in the desktop shell.
+- **Driven on the phone** (the same day; the development build on the Pixel 9 Pro emulator, `adb` taps, the file read
+  with `run-as`): Godspeed written and saved (revision 1, Speed 60), given to a second NPC, changed to 80 and saved back
+  (revision 2), the second NPC's Build saying "Godspeed has changed in your feature library.", updated and saved, its
+  `character.json` recording revision 2 at format 12; Remove's Alert, Cancel keeping the feature and Remove removing it;
+  a file rewritten outside the app read again on entering Build; a broken file named as unreadable and left byte for byte
+  through a character's Save. **The first save wrote Speed 0 under a field reading 60**: the phone's `NumberField` wrote
+  only on blur or submit, and hiding the keyboard with Back does neither. It now also writes 400 ms after typing stops,
+  as `DraftField` does. Not driven: real keys and mouse in the window, Expo Go, a real phone, iOS, macOS, Linux.

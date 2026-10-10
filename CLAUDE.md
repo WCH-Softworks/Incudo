@@ -683,7 +683,14 @@ Phase 8's reuse item and its exit criterion. Things to know before touching it:
   compute nothing.
 - Tests: `packages/ui/src/feature-library.test.ts`, `tools/verify/src/feature-library.test.ts` (5e's NPC and PC, no
   content), the format in `schemas.test.ts`, each failing under its named perturbation. The oracle is untouched (no import
-  path changed). Driven in the browser build only; not the Tauri window, not the phone.
+  path changed). Driven in the browser build, the Tauri window on Windows (DOM events over the debug port, a scratch
+  folder) and the development build on the Pixel 9 Pro emulator (`adb` taps, the file read back with `run-as`): give,
+  save back, update, Remove's confirmation, a broken file left untouched, and on the phone a file changed outside the app
+  read again on entering Build. Not with real keys or mouse, not Expo Go, a real phone, iOS, macOS or Linux.
+- **Never `window.confirm`, `alert` or `prompt` in the desktop shell**: `tauri-plugin-dialog` makes them async in the
+  window, so `if (!window.confirm(…))` asked nothing (Remove from library, a rest). `ArmedButton` asks by a second
+  click; `tools/verify/src/desktop-dialogs.test.ts` fails on a call. **The phone's `NumberField` keeps a number 400 ms
+  after typing stops**: hiding the keyboard with Back does not blur the field, and a button pressed next read the old value.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:

@@ -1878,8 +1878,17 @@ and a house-rule overlay still receives upstream fixes.
       marked and not nagged, and a character always opens without the library. **Save to your feature library** on any
       feature adds it, or saves a copy's changes back, which offers them to every character holding it. On the desktop's
       Build and the phone's. **Driven in the browser build** (a private browser folder for the picker, DOM events for the
-      controls): written on one NPC, given to another, changed and saved back, offered, updated, reopened. **Not done:** an
-      editor of the library itself; the Tauri window; the phone, which typechecks and was not run.
+      controls): written on one NPC, given to another, changed and saved back, offered, updated, reopened. **Driven again in
+      the Tauri window on Windows** (a scratch folder, DOM events over the debug port) **and on the phone** (the Pixel 9 Pro
+      emulator, the development build, `adb` taps; the file read back with `run-as`): the same steps, revision 1 then 2
+      on disk, the second character's saved `character.json` recording revision 2 at format 12; Remove from library asking
+      first and leaving the copies; a broken file named as unreadable and left byte for byte through a character's Save;
+      the character list ignoring the file; on the phone, a file changed outside the app read again when Build is entered.
+      Two bugs found that way and fixed: the desktop's Remove (and the Sheet's rests) asked nothing in the Tauri window,
+      whose dialog plugin makes `window.confirm` async, so they ask by a second click now; and the phone's number fields
+      kept nothing typed until the field was left, which hiding the keyboard does not do, so Godspeed was saved to the
+      library as Speed 0. **Not done:** an editor of the library itself; real keys and mouse in the window (the screen was
+      in use); Expo Go, a real phone, iOS, macOS and Linux.
 - [ ] Validation and linting with good error messages
 - [ ] Export a homebrew source as a publishable index
 
