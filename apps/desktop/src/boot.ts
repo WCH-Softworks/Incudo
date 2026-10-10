@@ -40,6 +40,10 @@ import formMapSchema from '@repo/schemas/form-map.schema.json';
 import dnd5eOfficial2014 from '@repo/systems/dnd5e/forms/official-2014.json';
 import startingEquipmentSchema from '@repo/schemas/starting-equipment.schema.json';
 import dnd5eStartingEquipment from '@repo/systems/dnd5e/starting-equipment.json';
+import featureLibrarySchemaFile from '@repo/schemas/feature-library.schema.json';
+
+/** The user's feature library's schema (ADR 0106), which `FeatureLibrary` checks the folder's file against. */
+export const featureLibrarySchema = featureLibrarySchemaFile as JsonSchema;
 
 /**
  * Every system definition that ships with the app, in the order the launcher offers them.

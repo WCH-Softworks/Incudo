@@ -23,6 +23,7 @@ import { sha256Hex, type Character, type FileSaver, type GameSystem } from '@inc
 import {
   CharacterBuilder,
   CharacterLibrary,
+  FeatureLibrary,
   ContentSources,
   characterKindChoices,
   describeKindAndProgress,
@@ -43,7 +44,7 @@ import {
   type SheetDocument,
 } from '@incudo/ui';
 
-import { loadShippedSystems } from './boot.ts';
+import { featureLibrarySchema, loadShippedSystems } from './boot.ts';
 import { BuildScreen } from './BuildScreen.tsx';
 import { ContentScreen } from './ContentScreen.tsx';
 import { PlatformContext, usePlatform, type Platform, type Screens } from './context.ts';
@@ -74,8 +75,10 @@ export function App() {
   const platform = useMemo<Platform>(() => {
     const zip = createMobileZipCodec();
     const systems = loadShippedSystems().systems;
+    const store = new MobileCharacterStore(zip);
     return {
-      library: new CharacterLibrary(new MobileCharacterStore(zip)),
+      library: new CharacterLibrary(store),
+      features: new FeatureLibrary(store, featureLibrarySchema),
       picker: new MobileFilePicker(),
       inbox: new MobileShareInbox(),
       connection: new MobileConnection(),

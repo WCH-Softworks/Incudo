@@ -103,6 +103,7 @@ import {
   type PrintTarget,
   type FormMap,
   type WorkingCharacter,
+  FeatureLibrary,
 } from '@incudo/ui';
 
 import {
@@ -114,6 +115,7 @@ import {
   readChosenSystem,
   saveCharacter,
   schemas,
+  featureLibrarySchema,
   writeChosenSystem,
   type SystemFailure,
 } from './boot.ts';
@@ -543,6 +545,12 @@ function Shell({
 
   const library = useMemo(() => new CharacterLibrary(platform.characters), []);
   const libraryState = useLibrary(library);
+  // The user's own features, kept beside the characters (ADR 0106). Read again whenever Build opens or the folder
+  // changes: another device may have written it.
+  const featureLibrary = useMemo(() => new FeatureLibrary(platform.characters, featureLibrarySchema), []);
+  useEffect(() => {
+    if (pane === 'build') void featureLibrary.load();
+  }, [pane, libraryState.location, featureLibrary]);
 
   // ADR 0031: the library folder holds characters of every system and this one shows one
   // system's. Set before the scan, so the first render is already filtered rather than
@@ -1465,6 +1473,7 @@ function Shell({
           <BuilderPane
             builder={builder}
             state={state}
+            featureLibrary={featureLibrary}
             elements={elements}
             hasContent={content !== null || working.embedded !== undefined}
           />

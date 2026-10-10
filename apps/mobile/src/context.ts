@@ -6,7 +6,7 @@
 import { createContext, useContext } from 'react';
 
 import type { FileSaver, GameSystem } from '@incudo/core';
-import type { CharacterLibrary, ContentSources } from '@incudo/ui';
+import type { CharacterLibrary, ContentSources, FeatureLibrary } from '@incudo/ui';
 
 import type { MobileConnection, MobileFilePicker, MobileShareInbox } from './platform.ts';
 import type { createMobileZipCodec } from './zip.ts';
@@ -22,6 +22,8 @@ export type Screens = {
 
 export interface Platform {
   library: CharacterLibrary;
+  /** The user's own features, a file in the library folder (ADR 0106). */
+  features: FeatureLibrary;
   picker: MobileFilePicker;
   /** Files another app shares to this one or opens with it (ADR 0099). Only the app's own build receives any. */
   inbox: MobileShareInbox;

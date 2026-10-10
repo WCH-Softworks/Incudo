@@ -5,10 +5,18 @@
  * a number, set it or choose its mark (ADR 0094). What every line is doing (set, replaced by a typed value, overruled
  * by an earlier feature, only addable) and what each list is called is worked out in `packages/ui/src/custom-features.ts`;
  * this renders it and writes what is typed. Nothing here names a stat or a type.
+ *
+ * The user's feature library (ADR 0106) is offered below the character's own: a feature there is given as a copy, a
+ * copy whose original changed says so and offers Update, and any feature can be saved there. What each says is
+ * `featureLibraryView`'s.
  */
 
-import type { BuilderState, CharacterBuilder, CustomFeatureView } from '@incudo/ui';
+import { useState, useSyncExternalStore } from 'react';
+
+import type { BuilderState, CharacterBuilder, CustomFeatureView, FeatureLibrary, FeatureLinkView } from '@incudo/ui';
 import {
+  FEATURE_LIBRARY_HEADING,
+  featureLibraryView,
   customFeaturesHint,
   customFeatureLines,
   customFeatureTypeChoices,
@@ -28,20 +36,79 @@ import type { CustomStatLine } from '@incudo/core';
 export function CustomFeatures({
   state,
   builder,
+  library,
 }: {
   state: BuilderState;
   builder: CharacterBuilder;
+  library: FeatureLibrary;
 }): React.JSX.Element {
-  const { customFeatures } = state;
+  const { customFeatures, character } = state;
+  const libraryState = useSyncExternalStore(library.subscribe, library.getState);
+  const view = featureLibraryView(libraryState, character);
+  const [busy, setBusy] = useState(false);
+
+  const saveToLibrary = async (featureId: string) => {
+    const feature = character.customFeatures?.find((f) => f.id === featureId);
+    if (!feature) return;
+    setBusy(true);
+    try {
+      const link = await library.save(feature, character.systemId);
+      if (link) builder.linkCustomFeature(featureId, link);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeFromLibrary = async (id: string, name: string) => {
+    if (!window.confirm(`Remove "${name}" from your feature library? Characters that have it keep their copy.`)) return;
+    setBusy(true);
+    try {
+      await library.remove(id);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <p className="hint">{customFeaturesHint(customFeatures.stats)}</p>
       {customFeatures.features.map((feature) => (
-        <Feature key={feature.id} feature={feature} state={state} builder={builder} />
+        <Feature
+          key={feature.id}
+          feature={feature}
+          state={state}
+          builder={builder}
+          link={view.links.get(feature.id)}
+          busy={busy}
+          onSave={() => void saveToLibrary(feature.id)}
+        />
       ))}
       <button type="button" onClick={() => builder.addCustomFeature(NEW_CUSTOM_FEATURE_NAME)}>
         Add a feature
       </button>
+
+      <h3>{FEATURE_LIBRARY_HEADING}</h3>
+      {view.problem && <p className="hint">{view.problem}</p>}
+      {view.message && <p className="hint">{view.message}</p>}
+      {view.offers.length > 0 && (
+        <ul className="feature-library">
+          {view.offers.map(({ entry, given }) => (
+            <li key={entry.id}>
+              <span className="feature-library-name">{entry.name.trim() || 'Unnamed feature'}</span>
+              {given ? (
+                <span className="hint">On this character</span>
+              ) : (
+                <button type="button" onClick={() => builder.giveLibraryFeature(entry)} disabled={busy}>
+                  Give
+                </button>
+              )}
+              <button type="button" className="link" onClick={() => void removeFromLibrary(entry.id, entry.name)} disabled={busy}>
+                Remove from library
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
@@ -50,10 +117,16 @@ function Feature({
   feature,
   state,
   builder,
+  link,
+  busy,
+  onSave,
 }: {
   feature: CustomFeatureView;
   state: BuilderState;
   builder: CharacterBuilder;
+  link: FeatureLinkView | undefined;
+  busy: boolean;
+  onSave: () => void;
 }): React.JSX.Element {
   const { stats } = state.customFeatures;
   const lines: CustomStatLine[] = customFeatureLines(feature);
@@ -92,6 +165,7 @@ function Feature({
         </label>
       )}
       {feature.typeNote && <p className="hint">{feature.typeNote}</p>}
+      {link?.note && <p className="hint">{link.note}</p>}
       <label className="custom-feature-description">
         Description
         <textarea
@@ -179,6 +253,16 @@ function Feature({
         <button type="button" className="link" onClick={() => builder.removeCustomFeature(feature.id)}>
           Remove feature
         </button>
+        {link?.entry && (
+          <button type="button" className="link" onClick={() => builder.updateFromLibrary(feature.id, link.entry!)}>
+            Update from your feature library
+          </button>
+        )}
+        {link?.save && (
+          <button type="button" className="link" onClick={onSave} disabled={busy}>
+            {link.save}
+          </button>
+        )}
       </div>
     </div>
   );

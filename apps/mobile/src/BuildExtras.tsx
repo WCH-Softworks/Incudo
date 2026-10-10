@@ -8,8 +8,8 @@
  * or a stat is the full-screen `Picker`. Nothing here names a type or a stat.
  */
 
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import type { ElementId, ElementIndex } from '@incudo/core';
 import {
@@ -47,12 +47,14 @@ import {
   type ReferenceRow,
 } from '@incudo/ui';
 import type { CustomStatLine } from '@incudo/core';
+import { FEATURE_LIBRARY_HEADING, featureLibraryView, type FeatureLinkView } from '@incudo/ui';
 
 import { DraftField, NumberField } from './BuildParts.tsx';
 import { Body, Button, Card, Heading, Row, Tag } from './controls.tsx';
 import type { PickerRequest } from './Picker.tsx';
 import { RichText } from './RichText.tsx';
 import { usePalette } from './theme.ts';
+import { usePlatform } from './context.ts';
 
 // --- what a held element gives ----------------------------------------------------------------------------------
 
@@ -115,13 +117,74 @@ export function CustomFeaturesView({
   builder: CharacterBuilder;
   pick: (request: PickerRequest) => void;
 }) {
+  // The user's feature library (ADR 0106): read again whenever this part is shown, since a save elsewhere may change it.
+  const { features: library } = usePlatform();
+  const libraryState = useSyncExternalStore(library.subscribe, library.getState);
+  useEffect(() => {
+    void library.load();
+  }, [library]);
+  const view = featureLibraryView(libraryState, state.character);
+  const [busy, setBusy] = useState(false);
+
+  const saveToLibrary = async (featureId: string): Promise<void> => {
+    const feature = state.character.customFeatures?.find((f) => f.id === featureId);
+    if (!feature) return;
+    setBusy(true);
+    try {
+      const link = await library.save(feature, state.character.systemId);
+      if (link) builder.linkCustomFeature(featureId, link);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeFromLibrary = (id: string, name: string): void => {
+    Alert.alert(`Remove "${name}" from your feature library?`, 'Characters that have it keep their copy.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          setBusy(true);
+          void library.remove(id).finally(() => setBusy(false));
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.part}>
       <Body tone="muted">{customFeaturesHint(state.customFeatures.stats)}</Body>
       {state.customFeatures.features.map((feature) => (
-        <FeatureView key={feature.id} feature={feature} state={state} builder={builder} pick={pick} />
+        <FeatureView
+          key={feature.id}
+          feature={feature}
+          state={state}
+          builder={builder}
+          pick={pick}
+          link={view.links.get(feature.id)}
+          busy={busy}
+          onSave={() => void saveToLibrary(feature.id)}
+        />
       ))}
       <Button label="Add a feature" onPress={() => builder.addCustomFeature(NEW_CUSTOM_FEATURE_NAME)} />
+
+      <Heading>{FEATURE_LIBRARY_HEADING}</Heading>
+      {view.problem ? <Body tone="danger">{view.problem}</Body> : null}
+      {view.message ? <Body tone="muted">{view.message}</Body> : null}
+      {view.offers.map(({ entry, given }) => (
+        <Card key={entry.id}>
+          <Body>{entry.name.trim() || 'Unnamed feature'}</Body>
+          <Row>
+            {given ? (
+              <Tag label="On this character" />
+            ) : (
+              <Button label="Give" disabled={busy} onPress={() => builder.giveLibraryFeature(entry)} />
+            )}
+            <Button label="Remove from library" kind="link" disabled={busy} onPress={() => removeFromLibrary(entry.id, entry.name)} />
+          </Row>
+        </Card>
+      ))}
     </View>
   );
 }
@@ -136,11 +199,17 @@ function FeatureView({
   state,
   builder,
   pick,
+  link,
+  busy,
+  onSave,
 }: {
   feature: CustomFeatureView;
   state: BuilderState;
   builder: CharacterBuilder;
   pick: (request: PickerRequest) => void;
+  link: FeatureLinkView | undefined;
+  busy: boolean;
+  onSave: () => void;
 }) {
   const palette = usePalette();
   const { stats } = state.customFeatures;
@@ -192,6 +261,7 @@ function FeatureView({
         </>
       ) : null}
       {feature.typeNote ? <Body tone="danger">{feature.typeNote}</Body> : null}
+      {link?.note ? <Body tone="muted">{link.note}</Body> : null}
       <DraftField
         value={feature.description}
         label="Description"
@@ -261,6 +331,14 @@ function FeatureView({
         />
         <Button label="Remove feature" kind="link" onPress={() => builder.removeCustomFeature(feature.id)} />
       </Row>
+      {link?.entry || link?.save ? (
+        <Row>
+          {link.entry ? (
+            <Button label="Update from your feature library" kind="link" onPress={() => builder.updateFromLibrary(feature.id, link.entry!)} />
+          ) : null}
+          {link.save ? <Button label={link.save} kind="link" disabled={busy} onPress={onSave} /> : null}
+        </Row>
+      ) : null}
     </Card>
   );
 }

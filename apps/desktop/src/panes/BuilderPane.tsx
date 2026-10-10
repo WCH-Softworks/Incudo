@@ -22,6 +22,7 @@ import type {
   SettledPick,
   DeclinedDecision,
   StartingSource,
+  FeatureLibrary,
 } from '@incudo/ui';
 import {
   progressPrintedHint,
@@ -67,11 +68,13 @@ import { InventoryEditor } from './InventoryEditor.tsx';
 export function BuilderPane({
   builder,
   state,
+  featureLibrary,
   elements,
   hasContent,
 }: {
   builder: CharacterBuilder;
   state: BuilderState;
+  featureLibrary: FeatureLibrary;
   elements: ElementIndex;
   hasContent: boolean;
 }): React.JSX.Element {
@@ -466,7 +469,7 @@ export function BuilderPane({
           {state.customFeatures.available && (
             <section className="custom-features">
               <h2>{CUSTOM_FEATURES_HEADING}</h2>
-              <CustomFeatures state={state} builder={builder} />
+              <CustomFeatures state={state} builder={builder} library={featureLibrary} />
             </section>
           )}
 

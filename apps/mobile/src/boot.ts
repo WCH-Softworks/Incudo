@@ -19,6 +19,10 @@ import dnd5e from '@repo/systems/dnd5e/system.json';
 import cairn from '@repo/systems/cairn/system.json';
 import startingEquipmentSchema from '@repo/schemas/starting-equipment.schema.json';
 import dnd5eStartingEquipment from '@repo/systems/dnd5e/starting-equipment.json';
+import featureLibrarySchemaFile from '@repo/schemas/feature-library.schema.json';
+
+/** The user's feature library's schema (ADR 0106). */
+export const featureLibrarySchema = featureLibrarySchemaFile as JsonSchema;
 
 const SHIPPED: unknown[] = [dnd5e, cairn];
 
