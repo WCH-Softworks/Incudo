@@ -1863,11 +1863,23 @@ and a house-rule overlay still receives upstream fixes.
 *Systems are the container; this is the content inside them.*
 
 - [ ] In-app element editor — homebrew without hand-writing JSON
-- [ ] **Reuse what a user writes across characters.** A custom feature ([ADR 0063](./docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md))
+- [x] **Reuse what a user writes across characters.** A custom feature ([ADR 0063](./docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md))
       belongs to the one character it was written for, and a DM who gives three NPCs "Godspeed" writes it three times.
       This phase gives the user a library of their own features (and whatever else they author) that any character can
       pick from, and a way to move a feature already written on a character into it. Its shape is an element's on
       purpose, so the move is a copy. Not optional: the phase is not done without it.
+      **Done: [ADR 0106](./docs/adr/0106-a-user-s-features-are-kept-in-a-file-in-the-library-folder-and-given-to-a-character-as-a-copy-that-remembers-where-it-came-from.md).**
+      Measured first: "its shape is an element's" holds only for a line that adds. A line that sets where a number starts
+      (Godspeed) or marks a row is not a rule any element can carry, so the library keeps features as features. 5e's
+      three kinds name the same 34 numbers; an NPC may set 7 a player character works out, and the two share no type. The
+      library is `incudo-features.json` in the character library folder (the maintainer's choice), every system's features
+      in one file. Giving one copies it onto the character and records which feature and revision it came from (character
+      format 12): a newer revision is offered with **Update** and never applied unasked, a copy changed on the character is
+      marked and not nagged, and a character always opens without the library. **Save to your feature library** on any
+      feature adds it, or saves a copy's changes back, which offers them to every character holding it. On the desktop's
+      Build and the phone's. **Driven in the browser build** (a private browser folder for the picker, DOM events for the
+      controls): written on one NPC, given to another, changed and saved back, offered, updated, reopened. **Not done:** an
+      editor of the library itself; the Tauri window; the phone, which typechecks and was not run.
 - [ ] Validation and linting with good error messages
 - [ ] Export a homebrew source as a publishable index
 

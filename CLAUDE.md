@@ -656,6 +656,35 @@ item. Things to know before touching either:
 - Not done: the app links to the guide (waits for the published schema's address); the `$schema` lines the guide suggests
   were not tried in an editor. Driven in the browser build only.
 
+**A feature written once is kept in the user's feature library, a file beside the characters, and given to any character of
+its system as a copy that remembers where it came from**
+([ADR 0106](docs/adr/0106-a-user-s-features-are-kept-in-a-file-in-the-library-folder-and-given-to-a-character-as-a-copy-that-remembers-where-it-came-from.md)),
+Phase 8's reuse item and its exit criterion. Things to know before touching it:
+
+- **Measured first:** only a line that adds is an element rule; a set or a mark is a start the engine reads from the
+  character, so the library holds features, not elements. 5e's three kinds name the same 34 stats; an NPC may set 7 a
+  player character works out (`ac`, `hp`, the speeds), and the NPC's and PC's feature types do not overlap.
+- **`incudo-features.json` in the character library folder** (the maintainer's choice), schema
+  `schemas/feature-library.schema.json`, `formatVersion` 1, every system's features in one file, each `{ id, system,
+  revision, name, description?, type?, stats }`. A user's own file, so a public format. `checkFeatureLibrary`
+  (`packages/ui/src/feature-library.ts`) is the one checker; a missing file is an empty library, a broken one is
+  `unreadable` and **never written over**. The library scan already ignores it (only `.incu` and folders with a manifest).
+- **`CharacterStore.readFile` / `writeFile`** (optional; a plain name only, `assertPlainFileName` in core's `platform.ts`),
+  in the Tauri, browser and phone stores. `FeatureLibrary` reads the file before every write and applies one change to
+  what it read. The desktop makes one in `App.tsx` (loaded when Build opens or the folder changes); the phone's is
+  `Platform.features`, sharing the library's store.
+- **`CustomFeature.library`** (`{ id, revision, edited? }`), **format 12** only when recorded; the validator refuses it below.
+  Nothing derives from it. The builder: `giveLibraryFeature` (one copy per library feature; the library's type only where
+  the kind lists it), `updateFromLibrary` (text and lines, never the character's type), `linkCustomFeature` (after a save
+  to the library); `updateCustomFeature` marks a linked copy `edited` when its name, description or lines change.
+- **`featureLinkView` / `featureLibraryView`** word everything: an update is offered only when the library's revision is
+  higher **and** the text or lines differ; "Save to your feature library" / "Save changes to your feature library" (the
+  character's Save is already "Save to library"). Desktop `panes/CustomFeatures.tsx`, phone `BuildExtras.tsx`; both
+  compute nothing.
+- Tests: `packages/ui/src/feature-library.test.ts`, `tools/verify/src/feature-library.test.ts` (5e's NPC and PC, no
+  content), the format in `schemas.test.ts`, each failing under its named perturbation. The oracle is untouched (no import
+  path changed). Driven in the browser build only; not the Tauri window, not the phone.
+
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
 
@@ -702,7 +731,8 @@ item. Things to know before touching either:
   **5**, and since ADR 0065 one with a custom feature that records its `type` is **6**, and since ADR 0068 one that
   records `references` is **7**, and since ADR 0084 one that records `play` is **8**, and since ADR 0094 one with a custom
   feature line that marks a row is **9**, and since ADR 0097 one that records `additionBlocks` is **10**, and since ADR
-  0087 one that records `money` or `startingEquipment` is **11**; `LATEST_CHARACTER_FORMAT_VERSION` is 11.)*
+  0087 one that records `money` or `startingEquipment` is **11**, and since ADR 0106 one with a custom feature copied from the
+  feature library is **12**; `LATEST_CHARACTER_FORMAT_VERSION` is 12.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any
