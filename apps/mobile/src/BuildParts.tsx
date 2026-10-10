@@ -50,7 +50,12 @@ import { usePalette } from './theme.ts';
 
 const signed = (value: number): string => (value > 0 ? `+${value}` : String(value));
 
-/** A whole number typed and kept when the field is left or submitted; an empty field hands back `undefined`. */
+/**
+ * A number typed, kept a moment after typing stops and when the field is left or submitted; an empty field hands back
+ * `undefined`, only when left, since typing over a value passes through empty. Kept as typed, and not only on leaving:
+ * hiding the keyboard with Back does not leave the field, so a button pressed next read the old value while this one
+ * showed the new (found on the emulator: a feature saved to the library with Speed 0 under a field reading 60).
+ */
 export function NumberField({
   value,
   placeholder,
@@ -67,10 +72,13 @@ export function NumberField({
   const palette = usePalette();
   const shown = value === undefined ? '' : String(value);
   const [draft, setDraft] = useState(shown);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => setDraft(shown), [shown]);
-  const commit = (): void => {
-    if (draft === shown) return;
-    const trimmed = draft.trim();
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const commit = (value: string): void => {
+    clearTimeout(timer.current);
+    if (value === shown) return;
+    const trimmed = value.trim();
     const parsed = Number(trimmed);
     if (trimmed !== '' && !Number.isFinite(parsed)) return setDraft(shown);
     onCommit(trimmed === '' ? undefined : parsed);
@@ -78,9 +86,15 @@ export function NumberField({
   return (
     <TextInput
       value={draft}
-      onChangeText={setDraft}
-      onBlur={commit}
-      onSubmitEditing={commit}
+      onChangeText={(value) => {
+        setDraft(value);
+        clearTimeout(timer.current);
+        // Only text that reads back as itself: "0." on the way to "0.125" would come back as "0" and lose the point.
+        const trimmed = value.trim();
+        if (trimmed !== '' && String(Number(trimmed)) === trimmed) timer.current = setTimeout(() => commit(value), 400);
+      }}
+      onBlur={() => commit(draft)}
+      onSubmitEditing={() => commit(draft)}
       keyboardType="numeric"
       placeholder={placeholder ?? '—'}
       placeholderTextColor={palette.muted}
