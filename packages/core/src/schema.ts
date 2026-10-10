@@ -271,6 +271,10 @@ function checkCharacterReferences(character: Character, system?: GameSystem): Sc
     if (character.formatVersion < 6 && feature.type !== undefined) {
       errors.push({ path: `customFeatures[${i}].type`, message: 'is recorded only from format 6' });
     }
+    // A reader of 11 refuses the field outright (ADR 0106), so the number says why.
+    if (character.formatVersion < 12 && feature.library !== undefined) {
+      errors.push({ path: `customFeatures[${i}].library`, message: 'is recorded only from format 12' });
+    }
     // A reader of 8 refuses the mode outright (ADR 0094), so the number says why.
     for (const [at, line] of feature.stats.entries()) {
       if (character.formatVersion < 9 && line.mode === 'mark') {

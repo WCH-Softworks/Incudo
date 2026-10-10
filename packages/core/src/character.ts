@@ -108,7 +108,8 @@ export interface Character {
    * records `additions` (ADR 0064), 6 for one with a custom feature held as a type other than its kind's default (ADR 0065),
    * 7 for one that records `references` (ADR 0068), 8 for one that records `play` (ADR 0084), 9 for one with a custom
    * feature line that marks a row (ADR 0094), 10 for one that records `additionBlocks` (ADR 0097), 11 for one that
-   * records `money` or `startingEquipment` (ADR 0087). Readers accept all eleven. A new character is written at 2, and only a write that needs more raises it
+   * records `money` or `startingEquipment` (ADR 0087), 12 for one with a custom feature copied from the user's feature
+   * library (ADR 0106). Readers accept all twelve. A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -285,7 +286,7 @@ export interface Character {
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 /**
  * One starting package taken — ADR 0087 decision 4: which entry of the system's starting equipment, which of its
@@ -329,6 +330,21 @@ export interface CustomFeature {
   type?: string;
   /** What it does to the character's stats, in order. May be empty: a feature can be only a name. */
   stats: CustomStatLine[];
+  /**
+   * The feature in the user's feature library this one was copied from — ADR 0106. Nothing derives from it: it is how
+   * a newer revision there is offered. Only format 12 records it, because a reader of 11 refuses the field.
+   */
+  library?: CustomFeatureLink;
+}
+
+/** Where a custom feature was copied from in the user's feature library — ADR 0106. */
+export interface CustomFeatureLink {
+  /** The library feature's id. */
+  id: string;
+  /** The library feature's revision when it was copied, or last updated from or saved to. */
+  revision: number;
+  /** True once the copy has been changed on the character since then. Absent otherwise. */
+  edited?: true;
 }
 
 /**
@@ -355,9 +371,10 @@ export const CHARACTER_FORMAT_VERSION = 2;
  * `removedGrants` is at least 3, one with `customFeatures` at least 4, one with `additions` at least 5, one with a
  * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), one with `play` 8 (ADR
  * 0084), one with a custom feature line that marks a row 9 (ADR 0094), one with `additionBlocks` 10 (ADR 0097), one
- * with `money` or `startingEquipment` 11 (ADR 0087), and nothing else is raised.
+ * with `money` or `startingEquipment` 11 (ADR 0087), one with a custom feature copied from the feature library 12 (ADR
+ * 0106), and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 11;
+export const LATEST_CHARACTER_FORMAT_VERSION = 12;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -513,14 +530,16 @@ export function setGrantRemoved(character: Character, elementId: ElementId, remo
 
 /**
  * Add a custom feature, or replace the one with its id — ADR 0063. Recording one raises the character to format 4,
- * one that records its `type` to 6 (ADR 0065), and one with a line that marks a row to 9 (ADR 0094).
+ * one that records its `type` to 6 (ADR 0065), one with a line that marks a row to 9 (ADR 0094), and one copied from
+ * the feature library to 12 (ADR 0106).
  * The feature's position is kept when it is replaced, because the first of two that set one stat is the one used.
  */
 export function setCustomFeature(character: Character, feature: CustomFeature): Character {
   const current = character.customFeatures ?? [];
   const at = current.findIndex((f) => f.id === feature.id);
   const next = at < 0 ? [...current, feature] : current.map((f, i) => (i === at ? feature : f));
-  const version = feature.stats.some((line) => line.mode === 'mark') ? 9 : feature.type === undefined ? 4 : 6;
+  const version =
+    feature.library !== undefined ? 12 : feature.stats.some((line) => line.mode === 'mark') ? 9 : feature.type === undefined ? 4 : 6;
   return { ...raiseFormatVersion(character, version), customFeatures: next, updatedAt: new Date().toISOString() };
 }
 
