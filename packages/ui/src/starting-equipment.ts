@@ -27,6 +27,7 @@ import {
   setMoney,
   setRoll,
   setStartingEquipmentTaken,
+  systemLineage,
   validateJson,
   type BuildStepDef,
   type Character,
@@ -109,26 +110,11 @@ export function checkStartingEquipment(
   const errors = validateJson(raw, schema);
   if (errors.length) return { errors };
   const file = raw as StartingEquipmentFile;
-  const units = system?.currency;
-  const checkUnit = (path: string, unit: string): void => {
-    if (units && !(unit in units)) errors.push({ path, message: `"${unit}" is not a unit of money the system declares` });
-  };
-  if (system) {
-    if (file.system !== system.id) errors.push({ path: 'system', message: `is "${file.system}", and this system is "${system.id}"` });
-    const kind = system.characterKinds.find((k) => k.id === file.kind);
-    if (!kind) errors.push({ path: 'kind', message: `"${file.kind}" is not a kind this system declares` });
-    else {
-      // A kind may inherit its steps; the ones named must be the resolved kind's, which only a resolved read can say.
-      const stepIds = new Set((kind.buildSteps ?? []).map((s) => s.id));
-      if (kind.buildSteps && !stepIds.has(file.step)) errors.push({ path: 'step', message: `"${file.step}" is not a build step of "${file.kind}"` });
-      for (const [i, id] of file.from.entries()) {
-        const step = kind.buildSteps?.find((s) => s.id === id);
-        if (kind.buildSteps && (!step || !step.types.length)) {
-          errors.push({ path: `from[${i}]`, message: `"${id}" is not a build step of "${file.kind}" that chooses an element` });
-        }
-      }
-    }
-  }
+  // What the system needs: the file, kind and steps first, then each option's units where that option is reached, so the
+  // errors come in the file's order.
+  const fits = system ? startingEquipmentFits(file, system) : [];
+  errors.push(...fits.filter((e) => !e.path.startsWith('packages[')));
+  const unitsAt = (at: string): SchemaError[] => fits.filter((e) => e.path.startsWith(`${at}.wealth.`) || e.path.startsWith(`${at}.coins.`));
   const seen = new Map<string, number>();
   file.packages.forEach((entry, p) => {
     const where = `packages[${p}]`;
@@ -145,9 +131,8 @@ export function checkStartingEquipment(
       if (option.wealth) {
         const dice = parseDice(option.wealth.dice);
         if (!dice.ok) errors.push({ path: `${at}.wealth.dice`, message: dice.reason });
-        checkUnit(`${at}.wealth.unit`, option.wealth.unit);
       }
-      for (const unit of Object.keys(option.coins ?? {})) checkUnit(`${at}.coins.${unit}`, unit);
+      errors.push(...unitsAt(at));
       (option.lines ?? []).forEach((line, l) => {
         const bundles = 'choose' in line ? line.choose : [line];
         bundles.forEach((bundle, a) => {
@@ -168,6 +153,60 @@ export function checkStartingEquipment(
     });
   });
   return errors.length ? { errors } : { value: file, errors };
+}
+
+/**
+ * What a checked file needs of the system it is used for: that system is the file's or descends from it (its lineage,
+ * ADR 0104), the kind and the steps it names exist there, and every unit is one that system's `currency` declares. Asked
+ * of the shipped system a file names when it is read, and again of every user's system its lineage hands it to (ADR
+ * 0107): an overlay or a copy may change any of these, and a file used unchecked wrote money in a unit nothing declared.
+ */
+export function startingEquipmentFits(file: StartingEquipmentFile, system: GameSystem): SchemaError[] {
+  const errors: SchemaError[] = [];
+  if (!systemLineage(system).includes(file.system)) {
+    errors.push({ path: 'system', message: `is "${file.system}", and this system is "${system.id}"` });
+  }
+  const kind = system.characterKinds.find((k) => k.id === file.kind);
+  if (!kind) errors.push({ path: 'kind', message: `"${file.kind}" is not a kind this system declares` });
+  else {
+    // A kind may inherit its steps; the ones named must be the resolved kind's, which only a resolved read can say.
+    const stepIds = new Set((kind.buildSteps ?? []).map((s) => s.id));
+    if (kind.buildSteps && !stepIds.has(file.step)) errors.push({ path: 'step', message: `"${file.step}" is not a build step of "${file.kind}"` });
+    for (const [i, id] of file.from.entries()) {
+      const step = kind.buildSteps?.find((s) => s.id === id);
+      if (kind.buildSteps && (!step || !step.types.length)) {
+        errors.push({ path: `from[${i}]`, message: `"${id}" is not a build step of "${file.kind}" that chooses an element` });
+      }
+    }
+  }
+  const units = system.currency;
+  if (units) {
+    file.packages.forEach((entry, p) => {
+      entry.options.forEach((option, o) => {
+        const at = `packages[${p}].options[${o}]`;
+        if (option.wealth && !(option.wealth.unit in units)) {
+          errors.push({ path: `${at}.wealth.unit`, message: `"${option.wealth.unit}" is not a unit of money the system declares` });
+        }
+        for (const unit of Object.keys(option.coins ?? {})) {
+          if (!(unit in units)) errors.push({ path: `${at}.coins.${unit}`, message: `"${unit}" is not a unit of money the system declares` });
+        }
+      });
+    });
+  }
+  return errors;
+}
+
+/**
+ * The starting equipment a system's kind is offered: the file its lineage reaches for that kind, and only when it fits
+ * the system (`startingEquipmentFits`). One that does not fit offers nothing, and the launcher's card says why.
+ */
+export function startingEquipmentFor(
+  system: GameSystem,
+  kindId: string,
+  files: readonly StartingEquipmentFile[] | undefined,
+): StartingEquipmentFile | undefined {
+  const lineage = systemLineage(system);
+  return files?.find((file) => lineage.includes(file.system) && file.kind === kindId && startingEquipmentFits(file, system).length === 0);
 }
 
 // --- what the step offers ---------------------------------------------------------------------------------------------

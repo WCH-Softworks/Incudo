@@ -28,6 +28,7 @@ export * from './fetch-prompt.ts';
 export * from './draft.ts';
 export * from './aurora-import.ts';
 export * from './user-systems.ts';
+export * from './system-loading.ts';
 export * from './system-overlay-view.ts';
 export * from './system-problems.ts';
 export * from './system-new.ts';

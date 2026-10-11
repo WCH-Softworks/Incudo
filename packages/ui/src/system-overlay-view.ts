@@ -8,7 +8,7 @@
 
 import type { GameSystem, OverlayChange, OverlayStep } from '@incudo/core';
 
-import type { UserOverlay } from './user-systems.ts';
+import type { UserOverlay } from './system-loading.ts';
 
 export interface OverlayView {
   /** "Built on Dungeons & Dragons 5th Edition." */

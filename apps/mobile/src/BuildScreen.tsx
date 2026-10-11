@@ -19,14 +19,14 @@ import { LayeredElementIndex, MapElementIndex, type Character, type ElementIndex
 import { CharacterBuilder, beginEdit, hasUnsavedChanges, newCharacterOfKind, saveEdit, type EditSession } from '@incudo/ui';
 
 import { BuildView } from './BuildView.tsx';
-import { loadShippedStartingEquipment, loadShippedSystems } from './boot.ts';
+import { loadShippedStartingEquipment } from './boot.ts';
 import { Body, Button } from './controls.tsx';
 import { usePlatform, type Screens } from './context.ts';
 import { usePalette } from './theme.ts';
 
 const EMPTY = new MapElementIndex();
 /** What a class or background may start with (ADR 0087), checked once against the shipped systems. */
-const STARTING_EQUIPMENT = loadShippedStartingEquipment(loadShippedSystems().systems);
+const STARTING_EQUIPMENT = loadShippedStartingEquipment();
 
 interface Start {
   character: Character;

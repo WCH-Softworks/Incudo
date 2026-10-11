@@ -24,9 +24,18 @@
 
 import { useState } from 'react';
 import type { GameSystem } from '@incudo/core';
-import { systemProblemLine, systemWarningsNote, type NewSystemChoice, type NewSystemStart, type OverlayView, type SystemProblem } from '@incudo/ui';
-
-import type { SystemFailure } from '../boot.ts';
+import {
+  systemFailureNote,
+  systemOriginLabel,
+  systemProblemLine,
+  systemWarningsNote,
+  type NewSystemChoice,
+  type NewSystemStart,
+  type OverlayView,
+  type SystemLoadFailure,
+  type SystemOrigin,
+  type SystemProblem,
+} from '@incudo/ui';
 
 /** What the launcher can say about a system before anything is loaded. */
 export interface SystemSummary {
@@ -36,8 +45,8 @@ export interface SystemSummary {
   sources: number;
   /** …of which are enabled. */
   enabled: number;
-  /** True for a definition the user added themselves, which they may also remove. */
-  mine?: boolean;
+  /** Shipped with the app, or added by the user, who may also remove it: the one difference between them (ADR 0107). */
+  origin?: SystemOrigin;
   /** For an overlay: what it is built on and what it changes (ADR 0102), worded by `overlayView`. */
   overlay?: OverlayView;
   /** For a copy: what it is a copy of, worded by `copiedFromNote` (ADR 0104). */
@@ -70,7 +79,7 @@ export function LauncherPane({
   libraryLocation,
 }: {
   systems: readonly GameSystem[];
-  failures: readonly SystemFailure[];
+  failures: readonly SystemLoadFailure[];
   summaries: Record<string, SystemSummary>;
   /** Set when the user is changing systems rather than starting, so the screen can say so. */
   current?: string;
@@ -172,9 +181,8 @@ export function LauncherPane({
           <h3>Could not be loaded</h3>
           <ul>
             {failures.map((failure) => (
-              <li key={failure.id}>
-                <strong>{failure.id}</strong> — this definition does not match the system format,
-                so Incudo does not load it. Fix what is listed and add the file again.
+              <li key={`${failure.origin ?? ''}:${failure.id}`}>
+                <strong>{failure.id}</strong> — {systemFailureNote(failure.origin)}
                 <ProblemList problems={failure.problems} />
               </li>
             ))}
@@ -217,7 +225,7 @@ function SystemCard({
         <span className="system-text">
           <span className="system-name">
             {system.name}
-            {summary.mine && <span className="badge">yours</span>}
+            {summary.origin === 'user' && <span className="badge">{systemOriginLabel('user')}</span>}
             {isCurrent && <span className="badge">current</span>}
           </span>
           {system.description && <span className="system-desc">{system.description}</span>}
@@ -232,7 +240,7 @@ function SystemCard({
           <ProblemList problems={summary.warnings} />
         </div>
       )}
-      {summary.mine && (
+      {summary.origin === 'user' && (
         <button
           type="button"
           className="system-remove"

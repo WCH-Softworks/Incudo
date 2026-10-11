@@ -16,6 +16,12 @@ declare module '*.json' {
   export default value;
 }
 
+/** A file's text, which Vite gives for `?raw`: a shipped system definition, read as a user's file is (ADR 0107). */
+declare module '*?raw' {
+  const text: string;
+  export default text;
+}
+
 /** The app's version, put in by `vite.config.ts` from `package.json`. */
 declare const __INCUDO_VERSION__: string;
 

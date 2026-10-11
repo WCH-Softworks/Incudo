@@ -53,13 +53,13 @@ import {
   libraryEntryReferences,
   libraryEntryProgress,
   UserSystemStore,
+  systemCatalog,
   overlayView,
   copiedFromNote,
   newSystemChoices,
   newSystemFile,
   newSystemSavedNote,
   type NewSystemStart,
-  type UserOverlay,
   type SystemProblem,
   addContentFiles,
   describeCommand,
@@ -103,13 +103,13 @@ import {
   type PrintTarget,
   type FormMap,
   type WorkingCharacter,
+  type SystemCatalog,
   FeatureLibrary,
 } from '@incudo/ui';
 
 import {
   loadDraft,
   loadShippedForms,
-  loadShippedStartingEquipment,
   loadShippedSystems,
   newCharacter,
   readChosenSystem,
@@ -117,13 +117,13 @@ import {
   schemas,
   featureLibrarySchema,
   writeChosenSystem,
-  type SystemFailure,
 } from './boot.ts';
 import { createDesktopPlatform } from './platform.ts';
 
 /** The form maps shipped beside the systems (ADR 0079), read once. */
 const SHIPPED_FORMS: FormMap[] = loadShippedForms();
-const SHIPPED_STARTING_EQUIPMENT = loadShippedStartingEquipment(loadShippedSystems().systems);
+/** The starting equipment shipped beside the systems (ADR 0087), checked against the system each names, read once. */
+const SHIPPED_STARTING_EQUIPMENT = loadShippedSystems().startingEquipment;
 import { useBuilder } from './use-builder.ts';
 import { useLibrary } from './use-library.ts';
 import { useCommandHost, type CommandBinder, type CommandHandlers } from './use-commands.ts';
@@ -146,16 +146,11 @@ const EMPTY_INDEX: ElementIndex = new MapElementIndex();
 /** Built once. Nothing else in the app asks whether it is running in Tauri. */
 const platform = createDesktopPlatform();
 
-interface Booted {
-  /** Shipped and user-authored together, in that order. */
-  systems: GameSystem[];
-  failures: SystemFailure[];
-  /** Which of them the user added themselves, and can therefore remove. */
-  mine: Set<string>;
-  /** Which of the user's are overlays, by id, with what each is built on and changes (ADR 0102). */
-  overlays: Record<string, UserOverlay>;
-  /** What is worth checking in each of the user's that loaded, by id (ADR 0105). */
-  warnings: Record<string, SystemProblem[]>;
+/**
+ * Every system, shipped and the user's, read by the one loader (ADR 0107) and labelled by where it came from: the
+ * `origins` say which the user added and may remove.
+ */
+interface Booted extends SystemCatalog {
   /** What the user picked last time, if that system still exists. */
   remembered: GameSystem | null;
 }
@@ -180,17 +175,9 @@ export function App(): React.JSX.Element {
     // from when it was added, because Incudo's schema moves under a file written months ago.
     // An overlay is applied to its parent as the parent is on this load (ADR 0102), so the shipped systems are its bases.
     const store = new UserSystemStore(platform.storage, schemas, [], shipped.systems);
-    const user = await store.load();
+    const catalog = systemCatalog(shipped, await store.load());
     const rememberedId = await readChosenSystem((key) => platform.storage.read(key));
-    const systems = [...shipped.systems, ...user.systems];
-    return {
-      systems,
-      failures: [...shipped.failures, ...user.failures],
-      mine: new Set(user.systems.map((s) => s.id)),
-      overlays: user.overlays,
-      warnings: user.warnings,
-      remembered: systems.find((s) => s.id === rememberedId) ?? null,
-    };
+    return { ...catalog, remembered: catalog.systems.find((s) => s.id === rememberedId) ?? null };
   }, []);
 
   useEffect(() => {
@@ -413,7 +400,7 @@ function Launcher({
         next[system.id] = {
           sources: forSystem.length,
           enabled: forSystem.filter((s) => s.enabled).length,
-          mine: booted.mine.has(system.id),
+          origin: booted.origins[system.id] ?? 'shipped',
           ...(booted.overlays[system.id] ? { overlay: overlayView(system, booted.overlays[system.id]!) } : {}),
           ...(booted.warnings[system.id] ? { warnings: booted.warnings[system.id] } : {}),
           ...(system.copiedFrom !== undefined

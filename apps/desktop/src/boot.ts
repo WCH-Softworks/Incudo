@@ -11,31 +11,29 @@
 import {
   defaultCharacterKindId,
   validateCharacter,
-  validateGameSystem,
   type Character,
   type GameSystem,
   type SchemaBundle,
   type JsonSchema,
-  type SchemaError,
   type Storage,
 } from '@incudo/core';
 import {
   checkFormMap,
-  checkStartingEquipment,
-  describeSystemErrors,
+  loadShippedCatalog,
   newCharacterOfKind,
   readDraftOrigin,
   type FormMap,
-  type StartingEquipmentFile,
-  type SystemProblem,
+  type ShippedCatalog,
+  type SystemDefinitionSource,
   type WorkingCharacter,
 } from '@incudo/ui';
 
 import systemSchema from '@repo/schemas/system.schema.json';
 import characterSchema from '@repo/schemas/character.schema.json';
 import manifestSchema from '@repo/schemas/manifest.schema.json';
-import dnd5e from '@repo/systems/dnd5e/system.json';
-import cairn from '@repo/systems/cairn/system.json';
+// As text, so a shipped definition is read by the same `readJsonText` a user's file is, and a problem in it has a line.
+import dnd5e from '@repo/systems/dnd5e/system.json?raw';
+import cairn from '@repo/systems/cairn/system.json?raw';
 import formMapSchema from '@repo/schemas/form-map.schema.json';
 import dnd5eOfficial2014 from '@repo/systems/dnd5e/forms/official-2014.json';
 import startingEquipmentSchema from '@repo/schemas/starting-equipment.schema.json';
@@ -46,13 +44,13 @@ import featureLibrarySchemaFile from '@repo/schemas/feature-library.schema.json'
 export const featureLibrarySchema = featureLibrarySchemaFile as JsonSchema;
 
 /**
- * Every system definition that ships with the app, in the order the launcher offers them.
+ * Every system definition that ships with the app, in the order the launcher offers them, as the text of its file.
  *
  * A list rather than one import, because the app used to hardcode 5e and never ask — the
  * header said "Dungeons & Dragons 5th Edition" from the first frame, on a machine where the
  * user had chosen nothing (ADR 0031). Adding a system here is the whole of adding a system.
  */
-const SHIPPED: unknown[] = [dnd5e, cairn];
+const SHIPPED: SystemDefinitionSource[] = [{ text: dnd5e }, { text: cairn }];
 
 export const schemas: SchemaBundle = {
   system: systemSchema as SchemaBundle['system'],
@@ -60,43 +58,24 @@ export const schemas: SchemaBundle = {
   manifest: manifestSchema as SchemaBundle['manifest'],
 };
 
-/** A shipped definition that would not validate. Named, so the launcher can say which. */
-export interface SystemFailure {
-  /** Whatever the file called itself, when it got far enough to say. */
-  id: string;
-  errors: SchemaError[];
-  /** The errors located (ADR 0103). A shipped definition has no text here, so they carry no line. */
-  problems: SystemProblem[];
-}
-
-export interface ShippedSystems {
-  systems: GameSystem[];
-  failures: SystemFailure[];
-}
-
 /**
- * Every shipped system that validates, plus the ones that did not.
- *
- * Each is checked on its own. One broken definition used to be fatal — there was only one, so
- * "the app cannot start" and "this system cannot be used" were the same sentence. With a
- * launcher they are not: a bad Cairn file must not stop anyone building a D&D character, and
- * the launcher lists it as unavailable with its errors rather than pretending it is not there.
- *
- * Still `validateGameSystem`, the *same* function the tests call, for the reason ADR 0011
- * gives. There is no second validator here and there must never be one.
+ * The shipped definitions and the starting equipment beside them, read once, by the loader every definition goes through
+ * (ADR 0107): `readJsonText`, `validateGameSystem`, warnings and problems located. A user's definitions are read by the
+ * same function through `UserSystemStore`, and `systemCatalog` puts the two together. One broken definition is not
+ * fatal: the launcher lists it with its problems, as it does a user's.
  */
-export function loadShippedSystems(): ShippedSystems {
-  const systems: GameSystem[] = [];
-  const failures: SystemFailure[] = [];
-  for (const candidate of SHIPPED) {
-    const result = validateGameSystem(candidate, schemas);
-    if (result.value) systems.push(result.value);
-    else {
-      const id = (candidate as { id?: unknown })?.id;
-      failures.push({ id: typeof id === 'string' ? id : 'unknown', errors: result.errors, problems: describeSystemErrors(result.errors, candidate, undefined) });
-    }
+let shipped: ShippedCatalog | undefined;
+
+export function loadShippedSystems(): ShippedCatalog {
+  if (shipped) return shipped;
+  shipped = loadShippedCatalog(SHIPPED, schemas, {
+    files: SHIPPED_STARTING_EQUIPMENT,
+    schema: startingEquipmentSchema as JsonSchema,
+  });
+  for (const failure of shipped.startingEquipmentFailures) {
+    console.error('A shipped starting equipment file does not check and is left out.', failure.errors);
   }
-  return { systems, failures };
+  return shipped;
 }
 
 /**
@@ -116,25 +95,8 @@ export function loadShippedForms(): FormMap[] {
   return maps;
 }
 
-/**
- * The starting equipment shipped beside the systems (ADR 0087): what each class and background may start with. Not part
- * of the system format; each file is checked by the same `checkStartingEquipment` the tests call, against the shipped
- * system it names, and one that does not check is left out and logged, which leaves the step offering nothing rather
- * than the wrong package.
- */
+/** The starting equipment shipped beside the systems (ADR 0087), checked by `loadShippedSystems` against the system each names. */
 const SHIPPED_STARTING_EQUIPMENT: unknown[] = [dnd5eStartingEquipment];
-
-export function loadShippedStartingEquipment(systems: readonly GameSystem[]): StartingEquipmentFile[] {
-  const files: StartingEquipmentFile[] = [];
-  for (const candidate of SHIPPED_STARTING_EQUIPMENT) {
-    const id = (candidate as { system?: unknown }).system;
-    const system = systems.find((s) => s.id === id);
-    const result = checkStartingEquipment(candidate, startingEquipmentSchema as JsonSchema, system);
-    if (result.value && system) files.push(result.value);
-    else console.error('A shipped starting equipment file does not check and is left out.', result.errors);
-  }
-  return files;
-}
 
 /** Where the launcher's answer is kept between launches — ADR 0031. */
 const SYSTEM_KEY = 'system:current';

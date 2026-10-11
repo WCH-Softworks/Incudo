@@ -18,51 +18,16 @@
  * validates ends up half-loaded, which is exactly what ADR 0011 promises will not happen.
  */
 
-import {
-  readJsonText,
-  validateGameSystem,
-  type JsonPosition,
-  type GameSystem,
-  type OverlayChange,
-  type PickedFile,
-  type SchemaBundle,
-  type SchemaError,
-  type Storage,
-} from '@incudo/core';
+import { readJsonText, type GameSystem, type PickedFile, type SchemaBundle, type SchemaError, type Storage } from '@incudo/core';
 
-import { describeSystemErrors, syntaxProblem, type SystemProblem } from './system-problems.ts';
+import { loadSystemDefinitions, readSystemDefinition, type LoadedDefinitions, type UserOverlay } from './system-loading.ts';
+import { syntaxProblem, type SystemProblem } from './system-problems.ts';
 
 /** Where user systems live in the injected Storage. One document per system. */
 export const USER_SYSTEM_PREFIX = 'systems/user/';
 
-/** A definition that would not validate, named so a view can say which and why. */
-export interface SystemLoadFailure {
-  /** Whatever the file called itself, when it got far enough to say. */
-  id: string;
-  /** Where it came from, for a user system: the storage key. */
-  key?: string;
-  errors: SchemaError[];
-  /** The same errors, each with where it is in the file, by line and by the ids written there (ADR 0103). */
-  problems: SystemProblem[];
-}
-
-/** What an overlay was applied to and what it changed (ADR 0102), as `validateGameSystem` reported it. */
-export interface UserOverlay {
-  parent: GameSystem;
-  changes: OverlayChange[];
-}
-
-export interface LoadedUserSystems {
-  systems: GameSystem[];
-  failures: SystemLoadFailure[];
-  /** For each system that is an overlay, by id: its parent and its changes, as applied on this load. */
-  overlays: Record<string, UserOverlay>;
-  /**
-   * For each system that loaded with something worth checking, by id (ADR 0105): each warning with where it is in the file,
-   * as a problem is. A system with none is absent.
-   */
-  warnings: Record<string, SystemProblem[]>;
-}
+/** The user's definitions, read by the one loader every definition goes through (ADR 0107). */
+export type LoadedUserSystems = LoadedDefinitions;
 
 export type AddSystemResult =
   | { ok: true; system: GameSystem; replaced: boolean; overlay?: UserOverlay; warnings?: SystemProblem[] }
@@ -98,41 +63,19 @@ export class UserSystemStore {
    * parent is today: that is how a fix to the parent reaches an overlay written before it (ADR 0102).
    */
   async load(): Promise<LoadedUserSystems> {
-    const systems: GameSystem[] = [];
-    const failures: SystemLoadFailure[] = [];
-    const overlays: Record<string, UserOverlay> = {};
-    const warnings: Record<string, SystemProblem[]> = {};
     let keys: string[];
     try {
       keys = await this.storage.list(USER_SYSTEM_PREFIX);
     } catch {
-      return { systems, failures, overlays, warnings };
+      return { systems: [], failures: [], overlays: {}, warnings: {} };
     }
-    const read: Array<{ key: string; value: unknown; positions: ReadonlyMap<string, JsonPosition> }> = [];
+    const sources: Array<{ text: string; key: string }> = [];
     for (const key of keys.sort()) {
       const text = await this.storage.read(key).catch(() => null);
-      if (text === null) continue;
-      const parsed = readJsonText(text);
-      if (!parsed.ok) {
-        failures.push({ id: idFromKey(key), key, errors: [{ path: '', message: parsed.message }], problems: [syntaxProblem(parsed)] });
-        continue;
-      }
-      read.push({ key, value: parsed.value, positions: parsed.positions });
+      if (text !== null) sources.push({ text, key });
     }
-    // Complete systems before overlays, so an overlay of the user's own system finds it whatever the file names sort as.
-    const ordered = [...read.filter((entry) => !isOverlay(entry.value)), ...read.filter((entry) => isOverlay(entry.value))];
-    for (const { key, value, positions } of ordered) {
-      const result = validateGameSystem(value, this.schemas, { parent: (id) => this.parentAmong(systems, id) });
-      if (result.value) {
-        systems.push(result.value);
-        if (result.overlay) overlays[result.value.id] = result.overlay;
-        if (result.warnings.length) warnings[result.value.id] = describeSystemErrors(result.warnings, value, positions, result.overlay);
-      } else {
-        const problems = describeSystemErrors(result.errors, value, positions, result.overlay);
-        failures.push({ id: idOf(value) ?? idFromKey(key), key, errors: result.errors, problems });
-      }
-    }
-    return { systems, failures, overlays, warnings };
+    // The same loader the shipped definitions go through, with them as the systems an overlay may be built on.
+    return loadSystemDefinitions(sources, this.schemas, this.bases, 'user');
   }
 
   /**
@@ -168,26 +111,26 @@ export class UserSystemStore {
     }
 
     const user = isOverlay(parsed.value) ? (await this.load()).systems : [];
-    const result = validateGameSystem(parsed.value, this.schemas, { parent: (id) => this.parentAmong(user, id) });
-    if (!result.value) {
+    const result = readSystemDefinition({ text }, this.schemas, (id) => this.parentAmong(user, id));
+    if (!result.ok) {
       return {
         ok: false,
         message: `"${file.name}" is not a valid system definition.`,
         errors: result.errors,
-        problems: describeSystemErrors(result.errors, parsed.value, parsed.positions, result.overlay),
+        problems: result.problems,
       };
     }
-    if (this.reserved.has(result.value.id.toLowerCase())) {
+    if (this.reserved.has(result.system.id.toLowerCase())) {
       return {
         ok: false,
         message:
-          `"${result.value.id}" is a system Incudo ships, and two systems cannot share an id — ` +
+          `"${result.system.id}" is a system Incudo ships, and two systems cannot share an id — ` +
           `a character records only the id. To change an official system, give yours its own id ` +
           `and name the official one in "extends".`,
       };
     }
 
-    const key = keyFor(result.value.id);
+    const key = keyFor(result.system.id);
     const replaced = (await this.storage.read(key).catch(() => null)) !== null;
     // Stored verbatim rather than re-serialised, so what is re-validated on the next load is
     // the file the user actually wrote — comments they cannot have, but key order and spacing
@@ -195,12 +138,10 @@ export class UserSystemStore {
     await this.storage.write(key, text);
     return {
       ok: true,
-      system: result.value,
+      system: result.system,
       replaced,
       ...(result.overlay ? { overlay: result.overlay } : {}),
-      ...(result.warnings.length
-        ? { warnings: describeSystemErrors(result.warnings, parsed.value, parsed.positions, result.overlay) }
-        : {}),
+      ...(result.warnings.length ? { warnings: result.warnings } : {}),
     };
   }
 
@@ -220,21 +161,6 @@ function keyFor(id: string): string {
   return `${USER_SYSTEM_PREFIX}${encodeURIComponent(id.toLowerCase())}.json`;
 }
 
-function idFromKey(key: string): string {
-  const last = key.slice(USER_SYSTEM_PREFIX.length).replace(/\.json$/i, '');
-  try {
-    return decodeURIComponent(last);
-  } catch {
-    return last;
-  }
-}
-
 function isOverlay(value: unknown): boolean {
   return typeof value === 'object' && value !== null && !Array.isArray(value) && 'extends' in value;
 }
-
-function idOf(value: unknown): string | undefined {
-  const id = (value as { id?: unknown })?.id;
-  return typeof id === 'string' ? id : undefined;
-}
-

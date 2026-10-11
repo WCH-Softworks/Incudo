@@ -10,14 +10,8 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  formatSchemaErrors,
-  validateGameSystem,
-  type GameSystem,
-  type JsonSchema,
-  type SchemaBundle,
-} from '@incudo/core';
-import { checkStartingEquipment, type StartingEquipmentFile } from '@incudo/ui';
+import { formatSchemaErrors, type GameSystem, type JsonSchema, type SchemaBundle } from '@incudo/core';
+import { checkStartingEquipment, loadShippedCatalog, systemProblemLine, type StartingEquipmentFile } from '@incudo/ui';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -58,20 +52,21 @@ export async function loadSchemas(): Promise<SchemaBundle> {
  */
 export async function loadShippedSystem(id: string): Promise<GameSystem> {
   const path = join(systemsDirectory(), id, 'system.json');
-  let raw: Record<string, unknown>;
+  let text: string;
   try {
-    raw = await readJson(path);
+    text = await readFile(path, 'utf8');
   } catch (error) {
     throw new Error(`the system "${id}" is not shipped here (${path}): ${(error as Error).message}`);
   }
 
-  const result = validateGameSystem(raw, await loadSchemas());
-  if (!result.valid || !result.value) {
-    throw new Error(
-      `${path} is not a valid system definition:\n  ${formatSchemaErrors(result.errors).join('\n  ')}`,
-    );
+  // The loader the apps call for every definition, shipped or the user's (ADR 0107), from the file's text.
+  const loaded = loadShippedCatalog([{ text }], await loadSchemas());
+  const system = loaded.systems[0];
+  if (!system) {
+    const problems = loaded.failures.flatMap((failure) => failure.problems);
+    throw new Error(`${path} is not a valid system definition:\n  ${problems.map(systemProblemLine).join('\n  ')}`);
   }
-  return result.value;
+  return system;
 }
 
 /** A shipped system's starting equipment (ADR 0087), checked by the same function the apps call. Throws, as above. */

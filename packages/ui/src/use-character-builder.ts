@@ -19,7 +19,6 @@
 
 import {
   clampProgress,
-  systemLineage,
   progressCanBePrinted,
   setProgress as recordProgress,
   deriveCharacter,
@@ -139,6 +138,7 @@ import {
   planTakeStarting,
   setStartingChoice,
   setStartingPick,
+  startingEquipmentFor,
   startingEquipmentState,
   type StartingDraft,
   type StartingEquipmentFile,
@@ -520,10 +520,10 @@ export class CharacterBuilder {
     this.content = elements;
     // Sorted once: `requires` is a property of the definition, not of the character.
     this.steps = orderBuildSteps(this.kind.buildSteps);
-    // A file is the system's and names the kind it is for; one for another system or kind offers nothing here.
-    this.startingFile = options.startingEquipment?.find(
-      (file) => systemLineage(system).includes(file.system) && file.kind === this.kind.id && this.steps.some((step) => step.id === file.step),
-    );
+    // A file is the system's and names the kind it is for; one for another system or kind, or one this system's version
+    // of the game does not fit (ADR 0107), offers nothing here.
+    const startingFile = startingEquipmentFor(system, this.kind.id, options.startingEquipment);
+    this.startingFile = startingFile && this.steps.some((step) => step.id === startingFile.step) ? startingFile : undefined;
 
     for (const step of this.steps) {
       const config = multiclassConfig(step, this.kind.progression);
