@@ -1992,6 +1992,17 @@ written on a character can be moved into the user's library without being typed 
       `packages/ui/src/about.ts`; `tools/verify/src/support-links.test.ts` holds them to README, `.github/FUNDING.yml`
       and the window's capability, which lets the opener plugin open those addresses and no other. The phone has no
       About screen yet.
+- [ ] **Drive everything in the Tauri window and on the phone before 1.0.** Raised 2026-10-11, last on purpose. Many
+      features were driven only in the browser build (CLAUDE.md says "Driven in the browser build only" fifteen times),
+      and the first feature driven in both shells afterwards found two bugs no test and no browser drive could see: the
+      Tauri window's dialog plugin makes `window.confirm` async, so a Remove asked nothing, and the phone's number fields
+      kept nothing typed until the field was left (ADR 0106's evidence). So: every user-visible feature, walked in the
+      Tauri window on Windows and in the phone's development build on the emulator (Expo Go where it differs), each as its
+      ADR's own drive describes, with the files read back from disk. Real keys and mouse in the window where the screen is
+      free. The inventory starts from every "Driven in…" and "Not run" note in CLAUDE.md, the ADRs and this file. A bug
+      found is fixed with a test that fails without the fix where one can, and every note is updated to say what was
+      driven where. Done when no feature reads "browser build only" and none is missing from the phone that the phone
+      offers. macOS, Linux, iOS and a real phone stay open items of their own, not part of this one.
 
 ---
 
