@@ -656,6 +656,27 @@ item. Things to know before touching either:
 - Not done: the app links to the guide (waits for the published schema's address); the `$schema` lines the guide suggests
   were not tried in an editor. Driven in the browser build only.
 
+**Shipped and user systems are read by one loader, and differ only in where they came from**
+([ADR 0107](docs/adr/0107-shipped-and-user-systems-are-read-by-one-loader-and-differ-only-in-where-they-came-from.md)),
+Phase 7's last item. Things to know before touching it:
+
+- **`packages/ui/src/system-loading.ts` reads every definition**: `readSystemDefinition` (`readJsonText` when there is text,
+  `validateGameSystem`, `describeSystemErrors` for errors and warnings), `loadSystemDefinitions` (complete systems before
+  overlays, each loaded one a possible parent beside `bases`). `UserSystemStore.load`/`.add`, the desktop's and the phone's
+  `loadShippedSystems` (`loadShippedCatalog`, which also checks the shipped starting equipment) and the tests'
+  `loadShippedSystem` all call it. Do not write a fourth reader. The desktop imports the shipped files with Vite's `?raw`
+  (`env.d.ts` declares it), so their problems have lines; Metro gives the phone values, so its do not.
+- **`systemCatalog(shipped, user)`** is what the launcher renders: systems, failures and `origins` (`'shipped'` | `'user'`),
+  overlays, warnings. `systemFailureNote(origin)` and `systemOriginLabel` are the words: a shipped failure says it comes
+  with Incudo, only a user's says to add the file again. A user's card keeps "yours" and Remove; a shipped one has no badge.
+- **A file shipped beside a system is checked against every system its lineage hands it to**: `startingEquipmentFits` is
+  `checkStartingEquipment`'s system half (lineage, kind, steps, units); `startingEquipmentFor` is the builder's choice and
+  offers a file only when it fits, and `systemCatalog` warns on the card once per distinct reason. Measured: an overlay
+  with no gold was offered 5e's wealth roll in gold and wrote `money: { gp }`, which its own system refuses. The form map
+  has no system half.
+- Tests: `tools/verify/src/system-loading.test.ts`, each case failing under its named perturbation. Driven in the browser
+  build only (user files written into its storage). A user's system shipping starting equipment of its own is 1.x.
+
 **A feature written once is kept in the user's feature library, a file beside the characters, and given to any character of
 its system as a copy that remembers where it came from**
 ([ADR 0106](docs/adr/0106-a-user-s-features-are-kept-in-a-file-in-the-library-folder-and-given-to-a-character-as-a-copy-that-remembers-where-it-came-from.md)),

@@ -1826,7 +1826,20 @@ See [ADR 0011](./docs/adr/0011-user-systems.md).
       character with no content, held by `tools/verify/src/system-new.test.ts`, and was built in the browser build: Might 14,
       Agility 9, Wits 12, Health 16, nothing open.
 
-- [ ] User systems load through *exactly* the same path as official ones, clearly labelled
+- [x] User systems load through *exactly* the same path as official ones, clearly labelled
+      **Done: [ADR 0107](./docs/adr/0107-shipped-and-user-systems-are-read-by-one-loader-and-differ-only-in-where-they-came-from.md).**
+      Measured first, file to loaded system in the desktop, the phone and the tests: both reached the one validator, but the
+      shipped definitions were read by three copies of a loader that dropped their warnings, had no text to give a problem a
+      line and offered an overlay no parent, and a user's version of a game was handed its lineage's starting equipment
+      **unchecked**: an overlay with no gold was offered 5e's wealth roll in gold and wrote a character its own system refuses.
+      Now one loader in `packages/ui` reads every definition, from its text where there is text (the desktop imports the
+      shipped files as text), and labels each system and failure by where it came from, the one difference ADR 0011 allows.
+      Shipped starting equipment is checked against every system its lineage reaches and offered only where it fits, the card
+      saying why when it does not; a shipped definition that fails says it comes with Incudo rather than "add the file again".
+      The cards were already labelled ("yours", "Built on …", "A copy of …"). **Driven in the browser build** (the files written
+      into the app's storage as an add writes them): the silver overlay's card and warning, a broken file with its line.
+      **Not done:** a user's system shipping starting equipment or a form of its own (1.x); the phone's shipped problems have no
+      line (Metro gives JSON as a value); the Tauri window.
 - [x] Validation errors that a non-programmer can act on.
       **Done: [ADR 0103](./docs/adr/0103-a-system-error-says-where-in-the-file-by-line-and-by-the-ids-written-there.md).**
       Measured first on 33 authoring mistakes and six JSON slips: the words were mostly good, the locations were positions
