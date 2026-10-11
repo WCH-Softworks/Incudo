@@ -1983,7 +1983,7 @@ written on a character can be moved into the user's library without being typed 
     them.
 - [ ] Stable formats with a real versioning and migration policy — from here on, the system
       format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md))
-- [ ] Signed desktop installers (Windows/macOS/Linux); mobile store presence TBD
+- [ ] Signed desktop installers (Windows/macOS/Linux); the phone's store is the first item after 1.0 (Beyond 1.0, below)
 - [ ] Docs site, contribution guide, issue templates
 - [ ] `docs/LICENSING.md` complete for every shipped system
 - [x] Patreon and Ko-fi links in README and in-app About — never on a screen showing licensed material,
@@ -2009,6 +2009,25 @@ written on a character can be moved into the user's library without being typed 
 ## Beyond 1.0
 
 Committed to as *direction*, not scope. Each gets a design doc before work starts.
+
+### 1.0.x — The phone app on Google Play
+Right after 1.0, by the maintainer's call (2026-10-11), and first among these. The phone app has only ever run as a
+development build and in Expo Go on an emulator; no release build has been made, and a store build is one. What is known
+it needs, before anything is decided:
+- **A release build that works.** Never built. Things only a release build can answer: a file shared to the app while it
+  is closed (a development build's launcher drops the sender's read grant, ADR 0099), Hermes without the dev tools, size.
+- **Signing.** An upload key kept by the maintainer, Play App Signing, and where the key lives so that losing a machine
+  does not lose the app. Built by CI like the desktop installers, or by hand: to decide.
+- **Its icon, splash and store graphics are a person's work.** The app has Expo's stand-ins; `brand/`'s tile is an open
+  design decision, and nothing here is generated (CLAUDE.md, "Never generate artwork"). Screenshots of the app are fine.
+- **What the listing has to state**: a privacy policy and Play's data safety form (to be checked against the code:
+  as built, it fetches the content sources the user adds and sends nothing), a content rating, and what the app reads
+  (it ships no game content: the user adds sources). The licensing notes for shipped systems (Phase 9's `docs/LICENSING.md`) are an input.
+- **Versioning**: the phone's version beside the desktop's (`app.json` against `tauri.conf.json`), and a version code
+  that only rises.
+- **Which devices it is driven on before a listing**: the emulator and at least one real phone, which nothing has been
+  run on yet.
+An ADR first. Not iOS: that waits for the maintainer's environment, as macOS does.
 
 ### 1.x — A laid-out sheet
 After the first release, by the maintainer's call (2026-09-30), once the printed sheet had been seen on paper. The
