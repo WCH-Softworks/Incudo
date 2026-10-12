@@ -378,6 +378,8 @@ lists a character's attacks, every weapon in its bag with its bonus and damage, 
 **A spell added to a character is cast as a class the user chooses, always prepared there** (ADR 0097).
 **A character takes its first class's and its background's starting equipment, or the gold instead, and holds money**
 (ADR 0087, below).
+**A user writes feats, traits, features, spells and the like in a homebrew source of their own on the Sources pane**
+(ADR 0108, below).
 **The phone app runs and shows a character's sheet, plays it (ADR 0084, below), builds and edits one (ADR 0086, below), and
 receives a file shared to it (ADR 0099, below), an Aurora save imported on a tap (ADR 0101, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
@@ -712,6 +714,37 @@ Phase 8's reuse item and its exit criterion. Things to know before touching it:
   window, so `if (!window.confirm(…))` asked nothing (Remove from library, a rest). `ArmedButton` asks by a second
   click; `tools/verify/src/desktop-dialogs.test.ts` fails on a call. **The phone's `NumberField` keeps a number 400 ms
   after typing stops**: hiding the keyboard with Back does not blur the field, and a button pressed next read the old value.
+
+**A user writes elements in the app into a homebrew source of their own, kept in Incudo's own content format**
+([ADR 0108](docs/adr/0108-a-user-writes-elements-into-a-homebrew-source-of-their-own-kept-in-incudo-s-content-format.md)),
+the first slice of Phase 8's element editor. Things to know before touching it:
+
+- **Measured first** (`tools/verify/src/homebrew-elements.test.ts`, report-only): of the kinds' addable types, a slice of
+  name, description, setters, tags, add-a-number lines and plain grants writes 95% of the corpus's spells and 98% of its
+  languages but 22% of its class features (prerequisites) and 9% of its feats (choices). 1,078 of 1,079 spells carry the
+  support tags a class's spell list selects by, which is why tags are in the slice.
+- **`ConfiguredSource.kind: 'homebrew'`** (`packages/content/src/homebrew-source.ts`), id and URL `homebrew:<slug>`, body
+  under `sources/homebrew/<id>` (outside `content/`: the only copy), removed with the source; no update check, no refresh,
+  never converted (`keepsConverted` is true only for an index). The body is a `ContentBundle` (`{ formatVersion: 1,
+  elements }`, each element less `origin`), checked by `checkHomebrewBundle`, the one checker; one that does not read
+  fails the load with a sentence and `writeHomebrew` never writes over it. `HomebrewContentSource` re-reads the body on
+  every load and stamps `origin.format: 'incudo'` (the first producer of it). **Its one file ref ends `.json`**
+  (`homebrewFileUrl`): `isElementFile` decides by extension, and a ref named `homebrew:x` loaded nothing.
+- **`packages/ui/src/homebrew.ts` is the editor's view-model**: `homebrewTypes` (every kind's `additions.types`, system
+  order), `homebrewStats` (every kind's `customFeatureStats`, once each: ADR 0106's add line is the element rule),
+  `homebrewDraftOf` (an element with anything the editor does not write is locked, never opened), `saveHomebrewDraft`,
+  `mintHomebrewId` (`ID_HOMEBREW_<TYPE>_<NAME>`, `_2`… against the source and loaded content ignoring case; minted once,
+  a rename keeps it), the description as escaped `<p>`/`<br />` HTML and back, setter and tag suggestions read off loaded
+  elements of the type, grant options through Browse's catalog. No game noun; no character format change.
+- **Desktop**: Sources pane, "Write your own" → **Make a homebrew source**; on its line **Edit elements** opens
+  `panes/HomebrewEditor.tsx` (computes nothing); a save writes and reloads. The source's Remove is an `ArmedButton`.
+  The phone loads a homebrew source in its own profile and has no editor.
+- Tests: `packages/content/src/homebrew-source.test.ts`, `packages/ui/src/homebrew.test.ts`,
+  `tools/verify/src/homebrew-source.test.ts` (a feat and a language given to a 5e PC, reopened with no source, a later
+  edit offered by the refresh; with the corpus, a spell copying Magic Missile's setters and tags offered by a Wizard's
+  spellbook), each failing under its named perturbation. The oracle is identical. Driven in the browser build only.
+- **Not done:** choices, prerequisites, level gates; races, classes, backgrounds, items; a library feature turned into
+  content; export (Phase 8's next item); the Tauri window.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:

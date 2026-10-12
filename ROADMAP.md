@@ -1876,6 +1876,24 @@ and a house-rule overlay still receives upstream fixes.
 *Systems are the container; this is the content inside them.*
 
 - [ ] In-app element editor — homebrew without hand-writing JSON
+      **First slice done: [ADR 0108](./docs/adr/0108-a-user-writes-elements-into-a-homebrew-source-of-their-own-kept-in-incudo-s-content-format.md).**
+      Measured first (`tools/verify/src/homebrew-elements.test.ts`): of the types a character can be given whatever it is
+      (the kinds' `additions.types`), a slice of name, description, setters, tags, lines adding a whole number to a stat
+      and plain grants writes all of the corpus's conditions, 98% of its languages, 95% of its spells, 68% of its
+      background features, 67% of its proficiencies, 59% of its racial traits, 41% of its archetype features, 22% of its
+      class features and 9% of its feats; a feat is mostly a choice (200 of 320), a class feature mostly a prerequisite.
+      Built: a **homebrew source** of the user's own (`kind: 'homebrew'`), one line in the Sources pane like any other,
+      kept in the app's storage, its body a `ContentBundle` (the shape a save's `content.json` already is): the first
+      content Incudo keeps in its own format. "Make a homebrew source", then **Edit elements** on its line: types from
+      the kinds' addable ones, setter names and tags suggested from what loaded elements of the type carry, lines that
+      add to a number a written feature may name or give a loaded element. An id is minted once from type and name and
+      kept through renames; a character embeds what it holds, so its save opens with no source, and a later edit is what
+      the content refresh offers. **Driven in the browser build** (a feat adding to Speed and giving a homebrew
+      language, given to a character, edited, reloaded; a spell beside AuroraLegacy taking its suggested setters and
+      tags). **Left:** choices (`select`), prerequisites and level gates, which stop most feats and class features; races,
+      classes, subclasses, backgrounds and items; turning an add-only library feature into content; the Tauri window and
+      the phone (which loads a homebrew source and has no editor); a library save reopened with the source off, driven
+      in the app (held in Node).
 - [x] **Reuse what a user writes across characters.** A custom feature ([ADR 0063](./docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md))
       belongs to the one character it was written for, and a DM who gives three NPCs "Godspeed" writes it three times.
       This phase gives the user a library of their own features (and whatever else they author) that any character can
