@@ -1153,7 +1153,14 @@ the first slice of Phase 8's element editor. Things to know before touching it:
   - Tests: `packages/core/src/companions.test.ts`, `packages/ui/src/companions.test.ts`, `tools/verify/src/companions.test.ts`
     (every creature by type; two held together; a Battle Smith through the builder; the samples reopened with no
     source), each case failing under its named perturbation. The oracle is identical before and after.
-  - **Not done:** which creature a holder's feature is for when two are held (Improved Defender's +2 applies to both);
+  - **A holder's feature changes only the creature it is about** ([ADR 0109](docs/adr/0109-a-holder-s-feature-changes-the-creature-it-is-about-found-by-what-reached-both.md),
+    2026-10-12): about a creature when it, or what gave it, is among what reached the creature (recorded choices and
+    grants, back to the start, the creature included); in another creature's scope its rules on the scope's stats are not
+    applied (`foreignFeatures`, `scopeStatNames`, `packages/core/src/companion-features.ts`), and one about no held
+    creature applies to all. The scope's stats are what the `companions` declaration names and its formulas read, less
+    the holder's: never a prefix. The holder still sums. A Battle Smith 15 with a Homunculus Servant: defender 17,
+    homunculus 13 (was 15).
+  - **Not done:** ~~which creature a holder's feature is for when two are held (Improved Defender's +2 applies to both)~~ (ADR 0109);
     ~~a creature's challenge rating for its bonus~~ (2026-10-12: a held creature that does not take its holder's bonus
     has its print's, `companion:challenge` from its `challenge` setter, as an NPC's; the Triceratops and Tyrannosaurus
     Rex read +3); ~~`companion:attack`~~ (shown as what its holder adds since ADR 0093);

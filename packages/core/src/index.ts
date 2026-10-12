@@ -17,6 +17,7 @@ export * from './preparation.ts';
 export * from './attacks.ts';
 export * from './setter-stats.ts';
 export * from './setter-grants.ts';
+export * from './companion-features.ts';
 export * from './custom-features.ts';
 export * from './embeds.ts';
 export * from './sheet-hints.ts';

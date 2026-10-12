@@ -300,6 +300,46 @@ test('a Battle Smith\'s Steel Defender follows its artificer', { skip: corpusSki
   t.diagnostic(`${elements.get(scope.elementId)?.name} at artificer ${level}: hit points ${read(scope.stats, `${s.prefix}hp:max`)}, armour class ${read(scope.stats, `${s.prefix}ac`)}, proficiency +${read(scope.stats, `${s.prefix}proficiency`)}`);
 });
 
+test('a Battle Smith 15 holding a homunculus too: Improved Defender changes only the steel defender', { skip: corpusSkip }, async (t) => {
+  // ADR 0109. "Your steel defender gains a +2 bonus to Armor Class": the Battle Smith subclass grants the feature and
+  // leads to the defender; the Homunculus Servant comes through an infusion. Built by name, through the builder.
+  // Fails if a scope applies a holder's feature about another creature (the homunculus reads its print + 2).
+  const s = await setting();
+  const elements = await realElements();
+  const b = new CharacterBuilder(newCharacterOfKind(s.system, 'pc'), s.system, elements);
+  const named = (name: string) => (c: string) => elements.get(c)?.name === name;
+  const pick = (stepId: string, test: (e: Element) => boolean) => {
+    const decision = b.getState().decisions.find((d) => d.stepId === stepId && d.kind === 'pick');
+    const id = decision?.candidates.find((c) => test(elements.get(c)!));
+    assert.ok(decision && id, `the ${stepId} step offers what is asked for`);
+    b.choose(decision.id, [id]);
+  };
+  pick('race', (e) => e.name === 'Human' && e.source === 'Player’s Handbook');
+  pick('class', (e) => e.name === 'Artificer' && e.source === 'Tasha’s Cauldron of Everything');
+  b.setProgress(15);
+  const answer = (test: (c: string) => boolean, what: string) => {
+    const decision = b.getState().decisions.find((d) => d.candidates.some(test));
+    assert.ok(decision, `${what} is offered`);
+    b.choose(decision.id, [...decision.chosen, decision.candidates.find(test)!]);
+  };
+  answer(named('Battle Smith'), 'Battle Smith');
+  answer(named('Homunculus Servant'), 'the infusion');
+  for (const type of s.types) {
+    for (const creature of ['Steel Defender', 'Homunculus Servant']) {
+      const decision = b.getState().decisions.find((d) => d.candidates.some((c) => elements.get(c)?.type === type && elements.get(c)?.name === creature));
+      if (decision) b.choose(decision.id, [decision.candidates.find((c) => elements.get(c)?.name === creature)!]);
+    }
+  }
+  const derived = b.getState().derived;
+  const scopes = new Map(derived.companions.map((c) => [elements.get(c.elementId)!.name, c]));
+  assert.deepEqual([...scopes.keys()].sort(), ['Homunculus Servant', 'Steel Defender']);
+  const ac = (name: string) => read(scopes.get(name)!.stats, `${s.prefix}ac`);
+  const printed = (name: string) => readSetterNumber(elements.get(scopes.get(name)!.elementId)!.setters['ac']?.value);
+  t.diagnostic(`steel defender armour class ${ac('Steel Defender')}, homunculus ${ac('Homunculus Servant')}; the holder sums ${read(derived.stats, `${s.prefix}ac`)}`);
+  assert.equal(ac('Homunculus Servant'), printed('Homunculus Servant'), 'the homunculus is not the steel defender');
+  assert.equal(ac('Steel Defender'), (printed('Steel Defender') ?? 0) + 2, 'the steel defender gains +2');
+});
+
 /** Aurora's `<companion>` block: the six scores, saves and skills it recorded. */
 function recordedCompanion(xml: string) {
   const block = /<companion name="([^"]*)">([\s\S]*?)<\/companion>/.exec(xml);

@@ -58,6 +58,7 @@ import {
 } from './setter-stats.ts';
 import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
 import { placePicks } from './pool-slots.ts';
+import { foreignFeatures, scopeStatNames } from './companion-features.ts';
 import {
   customFeatureEffects,
   customFeatureElementId,
@@ -398,9 +399,14 @@ export function deriveCharacter(
   // Each creature seen alone (ADR 0073). The others are never added, so what only they gave is not reached either;
   // everything else is derived exactly as the holder is, which is what lets a creature's rules read its holder.
   const seen = new Set(derived.problems.map(problemKey));
+  // A holder's feature about one creature adds nothing to another's scope (ADR 0109): only its rules on the scope's own
+  // stats are left out there, and only when it is about some creature held.
+  const scopeStats = scopeStatNames(kind);
+  const foreign = foreignFeatures(derived.character, derived.elements, held, scopeStats);
   derived.companions = held.map((creature) => {
     const others = new Set(held.filter((other) => other.id !== creature.id).map((other) => other.id));
-    const scope = derive(recorded, system, content, { ...options, kind: scopeKind }, others);
+    const silence: Silence = { elements: foreign.get(creature.id) ?? NO_EXCLUSIONS, stats: scopeStats };
+    const scope = derive(recorded, system, content, { ...options, kind: scopeKind }, others, silence);
     return {
       elementId: creature.id,
       stats: scope.stats,
@@ -416,6 +422,13 @@ export function deriveCharacter(
 
 const NO_EXCLUSIONS: ReadonlySet<ElementId> = new Set();
 
+/** What a creature's scope does not apply: these elements' rules on these stats (ADR 0109). */
+interface Silence {
+  elements: ReadonlySet<ElementId>;
+  stats: ReadonlySet<StatKey>;
+}
+const NO_SILENCE: Silence = { elements: NO_EXCLUSIONS, stats: new Set() };
+
 function problemKey(problem: Problem): string {
   return JSON.stringify([problem.code, problem.elementId ?? '', problem.message]);
 }
@@ -430,6 +443,7 @@ function derive(
   content: ElementIndex,
   options: DeriveOptions,
   exclude: ReadonlySet<ElementId>,
+  silence: Silence = NO_SILENCE,
 ): DerivedCharacter {
   const maxPasses = options.maxPasses ?? MAX_PASSES;
   const problems: Problem[] = [];
@@ -664,6 +678,7 @@ function derive(
       nextStarts,
       custom.sets,
       countedChoices(character.choices, uncounted),
+      silence,
     );
 
     // Which recorded picks count, asked of what this pass holds and publishes: whether the pool's element is held,
@@ -1449,6 +1464,7 @@ function computeStats(
   starts: Map<StatKey, StatStart>,
   customSets: ReadonlyMap<StatKey, CustomSet>,
   choices: Character['choices'],
+  silence: Silence,
 ): Map<StatKey, ResolvedStat> {
   const buckets = new Map<StatKey, StatRule[]>();
   const owners = new Map<StatRule, ElementId>();
@@ -1469,6 +1485,7 @@ function computeStats(
     const times = repeats.get(element.id) ?? 1;
     for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
       if (rule.kind !== 'stat') continue;
+      if (silence.elements.has(element.id) && silence.stats.has(rule.name.toLowerCase())) continue;
       contribute(rule, element.id);
       // A copy each time: `owners` is keyed on the rule object, and one object listed twice
       // would be one contribution wearing two names.

@@ -1581,12 +1581,20 @@ before 1.0.*
       printed", one declaration each in 5e's system definition and no code. The derived Speed and Other Speeds rows stay,
       as Armor Class does beside its print. Every NPC export gains the line. `kind-sheets.test.ts` holds it for every
       creature in both kinds and for a hovering one held, each failing without the declaration.
-- [ ] **A holder's feature changes the creature it is about, not every creature held.** *From the ADR 0073 item.* The
+- [x] **A holder's feature changes the creature it is about, not every creature held.** *From the ADR 0073 item.* The
       book says "Your steel defender gains a +2 bonus to Armor Class", and content writes Improved Defender as
       `companion:ac` +2, so a Battle Smith who also holds a Homunculus Servant shows the +2 on both. ADR 0073 left it
       as a guess about prose; the book is explicit about which creature, so it is pre-1.0 (the maintainer's call,
       2026-10-12). How a feature is tied to its creature (most likely: what granted both) is decided in an ADR,
       measured first over every holder feature that writes a `companion:` stat.
+      **Done** ([ADR 0109](./docs/adr/0109-a-holder-s-feature-changes-the-creature-it-is-about-found-by-what-reached-both.md)):
+      measured, 10 elements outside creatures write a creature's stats, 7 of them traits a creature grants itself (already
+      right) and 3 a holder's features (the 2014 Ranger's Companion, Eberron's and Tasha's Improved Defender), each tied to
+      its creature by what reached both. A feature is about a creature when it, or what gave it, is among what reached the
+      creature; in any other held creature's scope its rules on the creature's stats are not applied, and a feature about
+      none applies to all. The character's own numbers are unchanged. A Tasha's Battle Smith 15 holding a Homunculus
+      Servant too: steel defender armour class 17, homunculus 13 (it read 15). No format change. Driven in the browser build:
+      that character built from nothing, both stat blocks on the Sheet as the test reads them.
 - [x] **A held creature's proficiency bonus follows its own challenge rating** when it does not take its holder's.
       *From the ADR 0073 item.* Every held creature but the class summons gets +2, right for challenge 0 to 4; the
       Triceratops (5) and the Tyrannosaurus Rex (8), reachable through the item that offers every creature, should get +3,
