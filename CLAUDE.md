@@ -2299,7 +2299,8 @@ built 2026-10-07; its dated note says what building it changed). Things to know 
   `equip`s. An entry per element id, options of which one is taken: `lines` (a bundle of `items` and `picks`, or `choose`
   among bundles), `coins`, a `wealth` roll alone, `unlisted` text. A pick is a `from` list or `types` + `supports` (content's
   language) + `publications` (the weapon category tags are shared across editions). The file is written by a person; a
-  scratch generator is not committed. It covers the Player's Handbooks: 24 classes, 29 backgrounds.
+  scratch generator is not committed. It covers every class and background whose book lists starting equipment (29 and
+  117; the 2014 custom background lists none of its own), by the maintainer's call (2026-10-12, ADR 0087's note).
 - **Held by `tools/verify/src/starting-equipment.test.ts`**: every id declared (236), every filtered pick offering
   something, each 2024 package agreeing with its pack item's `<extract>` (129 items; the Guard's light crossbow is an
   upstream id nothing declares). What the file does not cover is reported by book, not asserted.
@@ -2324,7 +2325,7 @@ built 2026-10-07; its dated note says what building it changed). Things to know 
   the importer's, `tools/verify/src/starting-equipment-build.test.ts` (a 2014 Fighter through the builder: armour class 18,
   reopened with no source to the same bag and purse), each failing under its named perturbation. The oracle is identical.
 - **Not done:** ~~the inventory editor, spending or making change, opening a pack, money on the Sheet and the form~~ (ADR
-  0098, below); the other books' classes and backgrounds. Driven in the browser build only (a 2014 Fighter and Soldier, a
+  0098, below); ~~the other books' classes and backgrounds~~ (2026-10-12). Driven in the browser build only (a 2014 Fighter and Soldier, a
   wealth roll, Take back, a reload); not on a phone or in the Tauri window.
 
 **The bag and the purse are edited in place at any point, and what each item gives is read off the derivation**

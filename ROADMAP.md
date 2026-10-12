@@ -1244,11 +1244,17 @@ points to where it went.*
       makes an earlier set current again. No format change, no ADR (nothing to reverse). Driven in the browser build: two
       to five switches of two sources within a fifth of a second, each ending with exactly the switched-on sources'
       content loaded and the pane idle.
-- [ ] **Every class and background whose book lists starting equipment offers it.** *From the ADR 0087 item.*
+- [x] **Every class and background whose book lists starting equipment offers it.** *From the ADR 0087 item.*
       `systems/dnd5e/starting-equipment.json` covers the two Player's Handbooks (24 classes, 29 backgrounds). Anything a
       book lists as starting equipment belongs there too (the maintainer's call, 2026-10-12: it is the book's own text,
       not a new mechanic): the Artificer in Eberron and Tasha's, and the backgrounds of the other books. Measured first:
       which classes and backgrounds in the corpus write starting equipment, and in what shape.
+      **Done** (2026-10-12, ADR 0087's note): measured, 5 classes and 89 backgrounds were missing, every one a list of the
+      shapes the file already has. Added from each book's list: the four Artificers and the Unearthed Arcana Mystic, 88
+      backgrounds from 27 books, and the 2024 Dungeon Master's Guide's custom background as 50 gp to spend. The 2014
+      custom background lists nothing of its own and is left out. 382 ids, all declared in the corpus. Driven in the
+      browser build: a Tasha's Artificer with two chosen simple weapons and studded leather, and a Sword Coast Clan
+      Crafter with smith's tools and 5 gp.
 - [x] **The 2014 replacement proficiency.** *From the ADR 0091 item.* **Not built, by the maintainer's call
       (2026-10-12):** a player whose DM allows a replacement adds the proficiency under "Added to this character" (ADR
       0064). Incudo does not make up mechanics for D&D.

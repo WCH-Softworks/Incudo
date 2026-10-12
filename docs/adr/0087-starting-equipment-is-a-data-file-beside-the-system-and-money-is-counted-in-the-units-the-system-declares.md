@@ -43,6 +43,16 @@ an inventory the player manages" and the money its second half spends · builds 
 >   toggling cannot reroll for more gold.
 > - **The file covers the Player's Handbooks**: 24 classes and 29 backgrounds (13 + 16). The test reports the 5 classes and
 >   89 backgrounds it does not cover, by book; each says so in a sentence on Build and offers nothing.
+>
+> **Note, 2026-10-12 — every class and background whose book lists starting equipment is in the file.** The maintainer's
+> call: anything a book lists as starting equipment is offered, since it is the book's own text and no new mechanic. Added
+> the same way, entry by entry from each book's list, in the shapes above: the four Artificers (Eberron, Tasha's and two
+> Unearthed Arcana; the books' 5d4 × 10 gp alternative, which the 2017 one does not state), the Unearthed Arcana Mystic,
+> and 88 backgrounds from 27 books. The 2024 Dungeon Master's Guide's custom background is its "package worth 50 GP"
+> as 50 gp to spend. Not added: the 2014 Player's Handbook's custom background, which lists nothing of its own ("use the
+> equipment package from another background"). Two shapes needed nothing new: "any two simple weapons" is a filtered pick
+> with a count, and Eberron's "house signet ring" a pick from its thirteen house rings. The file names 382 ids, all
+> declared; the test now reports 0 classes and 1 background not covered.
 
 ## Context
 
