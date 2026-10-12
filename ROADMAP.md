@@ -943,7 +943,7 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
 
 ---
 
-## Phase 3 — Content story 🟡
+## Phase 3 — Content story ✅
 
 - [x] **Update checks that see an update, and a refresh that keeps what it cannot reach**
       ([ADR 0050](./docs/adr/0050-an-update-check-asks-every-cached-file-and-a-refresh-keeps-what-it-cannot-reach.md)).
@@ -1258,6 +1258,11 @@ points to where it went.*
 - [x] **The 2014 replacement proficiency.** *From the ADR 0091 item.* **Not built, by the maintainer's call
       (2026-10-12):** a player whose DM allows a replacement adds the proficiency under "Added to this character" (ADR
       0064). Incudo does not make up mechanics for D&D.
+
+**Closed 2026-10-12.** The phase had no exit criteria of its own; it closed when nothing before 1.0 was left in it. Every
+note its items left open was sorted with the maintainer: the two kept before 1.0 are done above, the rest are in Beyond
+1.0's "Left from Phases 3 to 5" and "Finding and choosing content", and what was only not driven in the Tauri window or on
+the phone is Phase 9's drive item. "Not on macOS or Linux" notes are Beyond 1.0's "macOS, Linux and iOS".
 
 ---
 
