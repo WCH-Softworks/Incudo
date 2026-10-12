@@ -1036,8 +1036,10 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       or a file with no elements, is refused with a sentence. It has its line like any source (what it lacks, what it
       shares), and no update check or refresh. Dropped on the window while Sources is open, or "Choose files…". A corpus
       file added this way loads to the same elements the corpus load made of it. Driven in the browser build on Windows
-      by a dropped file: added, shown in Browse, replaced, kept across a reload, removed with its copy. **Not done:** the
-      picker and the Tauri window's drop were not driven; a folder or zip of files; macOS and Linux.
+      by a dropped file: added, shown in Browse, replaced, kept across a reload, removed with its copy. **Not done:** ~~the
+      picker and the Tauri window's drop were not driven~~ (both driven in the Tauri window on 2026-09-28, with the ADR
+      0065 item in Phase 4: a real OS drop and "Choose files…" through the native dialog); a folder or zip of files;
+      macOS and Linux.
 - [x] **Read Aurora's `[character:N]` and `[type:X]`, and withdraw a granted element its own requirements rule out**
       ([ADR 0071](./docs/adr/0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)).
       Measured first: an element's own requirements were read when it was offered and never once it was granted, so a
@@ -1074,7 +1076,7 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       may declare `gatedOnHeld`: an item is offered only when one of its grants is gated on a stat the character publishes
       or an element it holds. 5e's step offers nothing before a class, then that class's features (1 to 7 per class),
       each class's to a multiclass character, and Primal Companion once Beast Master is chosen.
-- [ ] **Starting equipment, and an inventory the player manages** (the maintainer's request, 2026-10-05). The bag is
+- [x] **Starting equipment, and an inventory the player manages** (the maintainer's request, 2026-10-05). The bag is
       modelled, imported, derived and saved (the five inventory steps in Phase 2), and armour class and attunement read
       it, but nothing in either app puts an item in it: a character built in Incudo starts empty and stays empty, and
       5e's "Equipment" build step is a heading with nothing to choose, so it always reads complete. Two parts:
@@ -1117,6 +1119,12 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
         phone's zip in Node).
       **Exit:** a character built from nothing in either app takes a class's package or its gold, then buys, equips and
       attunes items later; its armour class and attunement follow; the file opens identically on the other app.
+      **Done** (2026-10-12): both parts are built in both shells, from one view-model each (`starting-equipment.ts`,
+      `inventory.ts`), and a Fighter built from nothing takes its wealth, buys, equips, attunes and opens a pack, armour
+      class 18 to 19 and speed 20 to 30, with the desktop's file read by the phone's zip and reopened with no source to the
+      same bag, purse and sheet (`inventory-editor-build.test.ts`, `starting-equipment-build.test.ts`). Driven in the
+      browser build. The phone's two screens are written and not yet run on the emulator, and neither is driven in the
+      Tauri window: both are Phase 9's drive item, not open work here.
 
 *The items below were found on 2026-10-05 by an audit of what the ticked items of Phases 0 to 5 left undone, written
 inside them rather than as items of their own. The first four were buried in Phase 2, which stays closed; each keeps
@@ -1282,7 +1290,7 @@ the kind machinery is not decorative.*
       player character derivation moved. Driven in the browser build, including a save reopened with no source.
       **Not done:** senses as numbers (content states none), an editor for the other speeds and proficiencies, and a
       fly speed's hover; the Tauri window, macOS and Linux. *(The editor was answered by ADR 0063, the next item, except
-      switching a proficiency on: an open item at the end of this phase since 2026-10-05.)*
+      switching a proficiency on: an open item at the end of this phase since 2026-10-05, done by ADR 0094.)*
 - [x] **A DM may write a feature of an NPC's own that adds to or sets its numbers**
       ([ADR 0063](./docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md)). Typing a number (ADR 0059)
       gives it no reason; a feature does: "Godspeed", Speed set to 60, listed with the creature's traits and saved with
@@ -1293,9 +1301,9 @@ the kind machinery is not decorative.*
       slots, and "Strength" twice. Only a character with one moves to **character format 4**. Every creature in the
       corpus takes one and keeps it through a save opened with no source; no player character derivation moved. Driven
       in the browser build. A feature never names an ability score, for any kind: the scores have their own editor.
-      **Not done:** reusing a feature on another character (a Phase 8 item, and part of its exit criteria), features
-      for a player character (whose armour class, hit points and speed are worked out, so a feature could only add to
-      them; an open item at the end of this phase since 2026-10-05), conditions or grants
+      **Not done:** ~~reusing a feature on another character~~ (Phase 8, done by ADR 0106), ~~features
+      for a player character~~ (whose armour class, hit points and speed are worked out, so a feature could only add to
+      them; an open item at the end of this phase since 2026-10-05, done by ADR 0094), conditions or grants
       on one; the Tauri window, macOS and Linux.
 - [x] **A DM or player may put existing content on a character, whatever its prerequisites**
       ([ADR 0064](./docs/adr/0064-a-character-may-carry-elements-its-user-adds-from-loaded-content-and-an-unmet-prerequisite-is-a-flag.md)).
@@ -1311,8 +1319,8 @@ the kind machinery is not decorative.*
       mistake one. Only a character with one moves to **character format 5**. The NPC's sheet gained Feats and Features
       and Proficiencies and Conditions. Every element of the nine types in the corpus is offered, held once added,
       flagged exactly when its own requirements fail, and survives a save opened with no source; no player character
-      derivation moved. Driven in the browser build. **Not done:** casting for an added spell (it belongs to no class,
-      and the pane says so; an open item at the end of this phase since 2026-10-05), conditions in the rules' sense (the corpus's 23 `Condition` elements are damage
+      derivation moved. Driven in the browser build. **Not done:** ~~casting for an added spell~~ (it belonged to no class;
+      an open item at the end of this phase since 2026-10-05, done by ADR 0097), conditions in the rules' sense (the corpus's 23 `Condition` elements are damage
       resistances and immunities, and there is no Blinded to add), reuse across characters (Phase 8); the Tauri window,
       macOS and Linux.
 - [x] **Decide where legendary content comes from, before any UI for it**
@@ -1331,7 +1339,9 @@ the kind machinery is not decorative.*
       Driven in the browser build, with a homebrew file dropped on the Sources pane and the creature reopened with no
       source. **Not done:** an NPC's sheet lists none of the legendary content a creature it is built on grants (the
       legendary kind is for that creature); reusing a written legendary action (Phase 8); play-time tracking of uses;
-      the Tauri window, macOS and Linux. *(Closed the same day, below, except reuse, play and macOS and Linux.)*
+      the Tauri window, macOS and Linux. *(Closed the same day, below, except reuse, play and macOS and Linux. Reuse is
+      ADR 0106's feature library, which keeps a written feature's type; play is ADR 0084's, whose legendary creature
+      tracks its Legendary Action Uses.)*
 - [x] **What ADR 0065 left open** (its decision 7 and evidence). An NPC built on a creature that grants legendary
       content now lists it, under the legendary creature's two headings, each saying that setting how many it takes a
       round, or adding more, is a Legendary Creature's; an NPC whose creature grants none shows neither. The test that
@@ -1451,10 +1461,11 @@ the kind machinery is not decorative.*
       creature and prints its first line and its dice; Cairn's scores and Hit Protection are entered, and its sheet names
       the background. No oracle row moved; no character format change. Running it found the order a section lists
       things in, and a 5e sentence under Cairn's score editor. Driven in the browser build and in the Tauri window on
-      Windows, saved files reopened with the source off. **Not done:** a mark on the saves and skills a character is
-      proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice, death saves, inspiration,
+      Windows, saved files reopened with the source off. **Not done:** ~~a mark on the saves and skills a character is
+      proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice~~ (Phase 5, ADR 0079 decisions 6, 7
+      and 9), ~~death saves, inspiration~~ (tracked in play since ADR 0084, Phase 6),
       ~~personality~~ (ADR 0092) and ~~attacks~~ (ADR 0093); ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
-      stat block laid out as a stat block; the "Progress" number a level-less Cairn character is shown on Build; Cairn in
+      stat block laid out as a stat block (Beyond 1.0's "A laid-out sheet"); the "Progress" number a level-less Cairn character is shown on Build; Cairn in
       the Tauri window; macOS and Linux. *(Personality and attacks: open items at the end of this phase since
       2026-10-05.)*
 
@@ -1587,7 +1598,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       through the real save dialog, byte for byte the tests' file). **Not done:** a copy to the clipboard (a port of its
       own); a shortcut (a Ctrl+Shift chord has to be found by pressing real keys in the Windows window); feature
       descriptions, personality, notes, the bag and prepared spells, none of which the Sheet shows (~~personality and notes~~
-      are written and shown since ADR 0092; the bag is an open item at the end of Phase 3 since 2026-10-05); the save dialog's
+      are written and shown since ADR 0092; ~~the bag~~ since ADR 0098; ~~prepared spells~~ since ADR 0079 decision 8; a
+      feature's sheet line, not its whole description, since ADR 0076); the save dialog's
       replace prompt and Cancel, not exercised for an export in the window; macOS and Linux.
 - [x] **Content's sheet hints are read: a feature's sheet line, at its level, filled**
       ([ADR 0076](./docs/adr/0076-content-s-sheet-hints-are-read-every-description-kept-chosen-by-the-level-the-element-gates-at.md)).
@@ -1608,8 +1620,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       byte the tests') and the Tauri window on Windows (the same, no source ever added, exported from the native menu
       through the real save dialog, byte for byte the tests'); driving a held creature found its unfilled placeholders
       counted nowhere. **Not done:** spells, proficiencies and backgrounds described on the sheet (content writes no sheet
-      text for them); a reason beside a number a hidden feature moved (Tough; an open item at the end of this phase since
-      2026-10-05); counting uses (Phase 6); a hidden trait a
+      text for them); ~~a reason beside a number a hidden feature moved~~ (Tough; an open item at the end of this phase since
+      2026-10-05, done by ADR 0095); ~~counting uses~~ (Phase 6, ADR 0084); a hidden trait a
       stat block prints is named without its line (three Tasha's "Primal Bond"s, which no sample holds); macOS and Linux.
 - [x] **"Content has been updated — refresh?": a character whose sources changed what it carries is offered a refresh,
       reviewed as the Sheet it would make** ([ADR 0082](./docs/adr/0082-a-refresh-compares-what-a-character-carries-with-what-its-sources-load-and-shows-the-sheet-it-would-make.md)).
@@ -1636,7 +1648,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       WebView2's print preview, from which the sheet went to a real printer and to "Save as PDF" with its layout intact;
       the browser build prints the same. What did not work first: keeping every section whole, which left pages half
       empty. No oracle row moved; no system or character format change. **Not done:** a stat block drawn as the book
-      prints it; turning off the dialog's default header and footer (they print the page's address); macOS and Linux.
+      prints it (Beyond 1.0's "A laid-out sheet"); ~~turning off the dialog's default header and footer~~ (ADR 0078, the
+      next item); macOS and Linux.
 - [x] **Print options of the app's own, then the platform's print dialog; and nothing of the web page on paper.**
       Seen on paper (2026-09-30): the print dialog's default headers and footers put the date and time at the top of
       every page and the page's address and a page number at the bottom (`localhost:5173` in the dev build; an installed
