@@ -108,6 +108,8 @@ import {
   type WorkingCharacter,
   type SystemCatalog,
   FeatureLibrary,
+  SourceLoads,
+  sourcesLoadKey,
 } from '@incudo/ui';
 
 import {
@@ -649,36 +651,52 @@ function Shell({
     library.setProfile(current.sources);
   }, [library]);
 
+  // Two quick switches start two reloads, and the earlier is often the slower: only a reload whose sources are still the
+  // ones switched on when it ends publishes, and only it, or the last one running, says the pane is idle.
+  const sourceLoads = useRef(new SourceLoads()).current;
+
   const reload = useCallback(async (): Promise<void> => {
     const current = profile.current;
     if (!current) return;
+    // Only this system's, and only the enabled ones. Loading everything would put a Cairn
+    // index into a D&D character's candidate lists — and, worse, into the content a save
+    // embeds, where it would be frozen forever (ADR 0012).
+    const enabledNow = () => sourcesForSystem(current.sources, systemLineage(system)).filter((s) => s.enabled);
+    const ofSystem = sourcesForSystem(current.sources, systemLineage(system));
+    const forSystem = enabledNow();
+    const key = sourcesLoadKey(forSystem);
+    const isCurrent = () => sourcesLoadKey(enabledNow()) === key;
+    const end = sourceLoads.begin(system.id);
     setBusy(true);
     setProgress(null);
+    let loaded: LoadedContent | undefined;
+    let published = false;
     try {
-      // Only this system's, and only the enabled ones. Loading everything would put a Cairn
-      // index into a D&D character's candidate lists — and, worse, into the content a save
-      // embeds, where it would be frozen forever (ADR 0012).
-      const ofSystem = sourcesForSystem(current.sources, systemLineage(system));
-      const forSystem = ofSystem.filter((s) => s.enabled);
       // The ones switched off are not loaded; what each declared at its last load names it on a line that misses it.
-      const loaded = await loadSources(forSystem, platform, setProgress, {
+      loaded = await loadSources(forSystem, platform, (progress) => isCurrent() && setProgress(progress), {
         switchedOff: ofSystem.filter((s) => !s.enabled),
       });
-      setContent(loaded);
-      for (const source of loaded.sources) {
-        if (source.failed) continue;
-        current.update(source.id, {
-          version: source.version,
-          fileCount: source.fileCount,
-          elementCount: source.elementCount,
-          lastLoadedAt: new Date().toISOString(),
-        });
-      }
-      await persist();
     } finally {
-      setBusy(false);
-      setProgress(null);
+      const { publish, idle } = end(isCurrent());
+      if (publish && loaded) {
+        published = true;
+        setContent(loaded);
+        for (const source of loaded.sources) {
+          if (source.failed) continue;
+          current.update(source.id, {
+            version: source.version,
+            fileCount: source.fileCount,
+            elementCount: source.elementCount,
+            lastLoadedAt: new Date().toISOString(),
+          });
+        }
+      }
+      if (idle) {
+        setBusy(false);
+        setProgress(null);
+      }
     }
+    if (published) await persist();
   }, [persist]);
 
   // The startup effect runs once, before `reload` has been declared; a ref is how it reaches

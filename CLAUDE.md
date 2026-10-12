@@ -1675,6 +1675,12 @@ before touching `ContentLibrary.loadSource`:
   reads none itself. Given `switchedOff`, `loadSources` reads those sources' records only when something is missing and
   only when the record's parts match the source's now, and sets `LoadedSource.switchedOff`; an id two of them declare is
   under both. The words are `missingNote` (`packages/ui/src/source-notes.ts`). The phone does not pass `switchedOff` yet.
+- **Loads of a system's sources may overlap, and only one whose sources are still the ones switched on publishes**
+  (`SourceLoads`, `sourcesLoadKey`, `packages/ui/src/source-loads.ts`; 2026-10-12). Two quick switches start two loads
+  and the earlier is often the slower: it used to win, and the first to end cleared "loading". The desktop's `reload`
+  (`App.tsx`) and the phone's `ContentSources.load` both ask it; a phone load that does not publish returns the current
+  set's load (its import uses the result directly). Compared by the sources' key, never "begun last": a source switched
+  off and on makes an earlier set current again, and a phone load sharing a pending key would wait on itself.
 
 **The Browse pane looks through everything the enabled sources loaded, and nothing a character holds**
 ([ADR 0053](docs/adr/0053-a-content-browser-searches-everything-loaded-and-groups-by-what-the-system-declares.md)).

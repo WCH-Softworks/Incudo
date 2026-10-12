@@ -1233,10 +1233,17 @@ its original text with a pointer here.*
 maintainer chose which come before 1.0; the rest are in Beyond 1.0's "1.x — Left from Phases 3 to 5", and each note
 points to where it went.*
 
-- [ ] **Two quick source toggles cannot leave the wrong content loaded.** *From the ADR 0090 item.* Each toggle on the
+- [x] **Two quick source toggles cannot leave the wrong content loaded.** *From the ADR 0090 item.* Each toggle on the
       Sources pane starts a reload of the desktop's content, and nothing stops an earlier, slower load finishing after a
       later one: its content is then the one in use, with the source switched last in the wrong state, and the first
       load to finish says the pane is idle while the other still runs.
+      **Done** (2026-10-12): the phone's `ContentSources.load` had the same shape. A load now publishes only when the
+      sources it loaded are still the ones switched on when it ends, and "loading" ends when one publishes or the last
+      one running ends (`SourceLoads`, `packages/ui/src/source-loads.ts`, used by both shells); a phone load that does not
+      publish hands its caller the current sources' load. Not "the load begun last": switching a source off and on again
+      makes an earlier set current again. No format change, no ADR (nothing to reverse). Driven in the browser build: two
+      to five switches of two sources within a fifth of a second, each ending with exactly the switched-on sources'
+      content loaded and the pane idle.
 - [ ] **Every class and background whose book lists starting equipment offers it.** *From the ADR 0087 item.*
       `systems/dnd5e/starting-equipment.json` covers the two Player's Handbooks (24 classes, 29 backgrounds). Anything a
       book lists as starting equipment belongs there too (the maintainer's call, 2026-10-12: it is the book's own text,

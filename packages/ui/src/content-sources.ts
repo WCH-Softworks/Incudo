@@ -13,7 +13,6 @@
 import {
   SourceProfile,
   evictSourceCache,
-  keepsConverted,
   loadSources,
   refreshSource,
   removeSource,
@@ -25,6 +24,8 @@ import {
   type SourceKeep,
 } from '@incudo/content';
 import type { GameSystem, SuggestedSource } from '@incudo/core';
+
+import { SourceLoads, sourcesLoadKey } from './source-loads.ts';
 
 export interface ContentSourcesState {
   /** False until the profile has been read. */
@@ -39,11 +40,6 @@ export interface ContentSourcesState {
   message?: string;
 }
 
-/** A load's identity: which sources, in which order, kept which way. A load of the same set is not made again. */
-function loadKey(sources: readonly ConfiguredSource[]): string {
-  return JSON.stringify(sources.map((source) => [source.id, keepsConverted(source), source.excluded ?? []]));
-}
-
 export class ContentSources {
   private readonly platform: ComposeOptions;
   private readonly systems: readonly GameSystem[];
@@ -52,6 +48,7 @@ export class ContentSources {
   private readonly listeners = new Set<() => void>();
   private readonly keys = new Map<string, string>();
   private readonly pending = new Map<string, Promise<LoadedContent>>();
+  private readonly loads = new SourceLoads();
 
   constructor(platform: ComposeOptions, systems: readonly GameSystem[]) {
     this.platform = platform;
@@ -160,23 +157,31 @@ export class ContentSources {
   /**
    * A system's enabled sources, loaded: the last load when the set has not changed since, else a new one. Two callers
    * asking at once share one load. A source that fails is reported in the result's `errors`, as the desktop's are.
+   *
+   * Loads of different sets may overlap (a source switched while one runs), and only one whose sources are still the
+   * ones switched on when it ends publishes (`SourceLoads`); one that does not hands its caller the current set's load.
    */
   load = async (systemId: string): Promise<LoadedContent> => {
     const enabled = this.sourcesFor(systemId).filter((source) => source.enabled);
-    const key = loadKey(enabled);
+    const key = sourcesLoadKey(enabled);
     const done = this.state.loaded[systemId];
     if (done && this.keys.get(systemId) === key) return done;
     const running = this.pending.get(key);
     if (running) return running;
 
+    const current = (): boolean => sourcesLoadKey(this.sourcesFor(systemId).filter((source) => source.enabled)) === key;
+    const end = this.loads.begin(systemId);
     const loading = (async () => {
       this.patch({ loading: { systemId }, message: undefined });
+      let loaded: LoadedContent | undefined;
+      let failure: { error: unknown } | undefined;
       try {
         // Progress at most five times a second: every listener renders on a patch, and a load reports every file.
         let reported = 0;
-        const loaded = await loadSources(enabled, this.platform, (progress) => {
+        loaded = await loadSources(enabled, this.platform, (progress) => {
           const now = Date.now();
           if (now - reported < 200 && progress.loaded < progress.total) return;
+          if (!current()) return;
           reported = now;
           this.patch({ loading: { systemId, progress } });
         });
@@ -191,15 +196,24 @@ export class ContentSources {
           });
         }
         await this.persist();
-        this.keys.set(systemId, key);
-        this.patch({ loaded: { ...this.state.loaded, [systemId]: loaded }, loading: undefined });
-        return loaded;
       } catch (error) {
-        this.patch({ loading: undefined, message: `Could not load content: ${messageOf(error)}` });
-        throw error;
+        failure = { error };
       } finally {
         this.pending.delete(key);
       }
+
+      const { publish, idle } = end(current());
+      if (publish && failure) {
+        this.patch({ loading: undefined, message: `Could not load content: ${messageOf(failure.error)}` });
+        throw failure.error;
+      }
+      if (publish) {
+        this.keys.set(systemId, key);
+        this.patch({ loaded: { ...this.state.loaded, [systemId]: loaded! }, loading: undefined });
+        return loaded!;
+      }
+      if (idle) this.patch({ loading: undefined });
+      return this.load(systemId);
     })();
     this.pending.set(key, loading);
     return loading;
