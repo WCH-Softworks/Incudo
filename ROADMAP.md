@@ -1806,8 +1806,12 @@ before 1.0.*
       call (2026-10-12): Incudo's own sheet shows the whole text; the 2014 form if it can be made to fit. Measured first:
       ADR 0075 found descriptions add 18,635 to 93,290 characters to a sample, so what the print, the text export, the
       phone and the form's boxes do with that much is the question.
-- [ ] **A keyboard shortcut for "Export sheet as text…".** *From the ADR 0075 item.* A Ctrl+Shift chord that reaches
+- [x] **A keyboard shortcut for "Export sheet as text…".** *From the ADR 0075 item.* A Ctrl+Shift chord that reaches
       the page, found by pressing real keys in the Windows window (ADR 0038 lists those that do).
+      **Done** (2026-10-12): Ctrl+Shift+O ("out"; no free chord spells "text"), from the chords ADR 0038 saw arrive with real
+      keys in the window, and a test now refuses any Ctrl+Shift shortcut not on that list. Shown in the File menu and on
+      the Sheet's button. Driven in the browser build: claimed on every pane, runs the export on the Sheet only. Pressing it
+      in the Tauri window is Phase 9's drive.
 
 ---
 

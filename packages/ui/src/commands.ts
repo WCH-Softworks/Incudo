@@ -108,9 +108,9 @@ export const COMMANDS: readonly CommandDef[] = [
   // where it is (ADR 0038). Measured by pressing real keys: S, E, U, M, G and X are taken before the
   // page sees them; K, O, D, H, B, Y and L arrive. `commands.test.ts` keeps the taken ones out.
   { id: 'save-copy', label: 'Save a copy…', shortcut: { key: 'd', primary: true, shift: true } },
-  // The sheet on screen as text (ADR 0075). No shortcut: the free Ctrl+Shift chords are found by pressing real keys in
-  // the Windows window, as Save a copy's were, and a chord WebView2 takes before the page would be worse than none.
-  { id: 'export-sheet', label: 'Export sheet as text…' },
+  // The sheet on screen as text (ADR 0075). Ctrl+Shift+O, "out": one of the chords pressed with real keys in the Windows
+  // window and seen to reach the page (Save a copy's list above); no free one spells "text".
+  { id: 'export-sheet', label: 'Export sheet as text…', shortcut: { key: 'o', primary: true, shift: true } },
   // The sheet on paper (ADR 0077): a step of the app's own choosing what prints, then the platform's own print dialog
   // (ADR 0078). Ctrl+P is every platform's print chord, and claimed on every pane it stops the platform printing
   // whichever pane is showing; while the step is open it is claimed and runs nothing, as for any dialog.

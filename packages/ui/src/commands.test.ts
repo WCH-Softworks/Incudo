@@ -206,14 +206,14 @@ test('an export needs a save dialog, is not started twice, and waits behind a di
   assert.ok(!enabledIn({ ...READY, pane: 'sheet', modal: true }).has('export-sheet'));
 });
 
-test('an export sits below Save a copy in the File menu, labelled as a question, with no shortcut', () => {
+test('an export sits below Save a copy in the File menu, labelled as a question, on Ctrl+Shift+O', () => {
   const file = MENUS.find((menu) => menu.label === 'File')!;
   assert.equal(file.items.indexOf('export-sheet'), file.items.indexOf('save-copy') + 1);
   const entry = menuModel('other')
     .flatMap((menu) => menu.entries)
     .find((e) => e.kind === 'command' && e.id === 'export-sheet') as { label: string; shortcut?: string };
   assert.equal(entry.label, 'Export sheet as text…');
-  assert.equal(entry.shortcut, undefined);
+  assert.equal(entry.shortcut, 'Ctrl+Shift+O');
 });
 
 // --- print the sheet -------------------------------------------------------------------------------
@@ -352,6 +352,17 @@ test('no shortcut takes a chord the Windows window never delivers to the page', 
     const s = command.shortcut;
     if (!s?.shift) continue;
     assert.ok(!swallowed.includes(s.key.toLowerCase()), `${command.id} is on Ctrl+Shift+${s.key}`);
+  }
+});
+
+test('every Ctrl+Shift shortcut is a chord seen to reach the page in the Windows window', () => {
+  // The other half of the list above: pressed with real keys, K, O, D, H, B, Y and L arrived (ADR 0038). A chord nobody
+  // pressed there may be one WebView2 takes. Fails if a command is put on one before it has been pressed in the window.
+  const arrives = ['k', 'o', 'd', 'h', 'b', 'y', 'l'];
+  for (const command of COMMANDS) {
+    const s = command.shortcut;
+    if (!s?.shift) continue;
+    assert.ok(arrives.includes(s.key.toLowerCase()), `${command.id} is on Ctrl+Shift+${s.key}, never pressed in the window`);
   }
 });
 

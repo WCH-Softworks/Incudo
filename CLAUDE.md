@@ -1246,14 +1246,15 @@ the first slice of Phase 8's element editor. Things to know before touching it:
     a heading, quote, list, rule or table. Nothing else is escaped, so "Hit Dice [d8s]" reads as written.
   - **`exportSheet(saver, document)`** (`sheet-export.ts`) goes through ADR 0038's `FileSaver` and returns a name only;
     `suggestedFileName(name, 'md')`. The `export-sheet` command is **enabled on the Sheet only** (its bar prints
-    "Exported the sheet as …"), needs no library and no content, sits below Save a copy in the File menu, and has **no
-    shortcut**: a free Ctrl+Shift chord must be found with real keys in the Windows window (ADR 0038).
+    "Exported the sheet as …"), needs no library and no content, sits below Save a copy in the File menu, and is on
+    **Ctrl+Shift+O** since 2026-10-12, one of the chords ADR 0038 saw reach the page with real keys in the Windows window;
+    `commands.test.ts` now refuses a Ctrl+Shift chord not on that list.
   - Tests: the corpus test (offline identity, every section and row written, no HTML, no empty heading, the words and
     table columns of all 232 kept texts), `packages/ui`'s `html-markdown.test.ts`, `sheet-document.test.ts` and
     `commands.test.ts`, each case failing under its named perturbation. **Escaping is held by the `packages/ui` tests
     only**: the corpus gives it almost nothing to do. A count of pipes per table row did not see a spanning cell written
     as one (rows are padded to the table's width); the test compares columns. The oracle is identical before and after.
-  - **Not done:** a copy to the clipboard; a shortcut; feature descriptions, personality, notes, the bag, prepared spells.
+  - **Not done:** a copy to the clipboard; ~~a shortcut~~ (Ctrl+Shift+O); feature descriptions, personality, notes, the bag, prepared spells.
     Driven in the browser build (exports compared byte for byte with the tests' and with the source off) and the Tauri
     window on Windows (no source ever added; the native menu item and the real save dialog, by window messages); not with
     real input, not the dialog's replace prompt or Cancel, and not on macOS or Linux.

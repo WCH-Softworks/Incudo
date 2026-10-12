@@ -86,7 +86,7 @@ Everything between the picker and the library folder is `importAuroraSaveIntoLib
 What the app can be told to do is a list in `packages/ui/src/commands.ts` (ADR 0037): an id, a
 label, a shortcut, and a rule for when it is available. This app renders it and computes nothing.
 Thirteen commands: go to each of the five panes (Ctrl+1 to 4, Ctrl+,), New character (Ctrl+N), Save
-to library (Ctrl+S), Save a copy (Ctrl+Shift+D), Refresh library (Ctrl+Shift+L), Import from Aurora,
+to library (Ctrl+S), Save a copy (Ctrl+Shift+D), Export sheet as text (Ctrl+Shift+O), Refresh library (Ctrl+Shift+L), Import from Aurora,
 Choose library folder, Reload content sources, Change system. On macOS the same shortcuts read Cmd.
 
 - **The Tauri window has a native menu**, built in `platform.ts` from `menuModel()`. **The browser
