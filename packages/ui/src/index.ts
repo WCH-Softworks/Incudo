@@ -65,3 +65,4 @@ export * from './content-sources.ts';
 export * from './source-notes.ts';
 export * from './edit-session.ts';
 export * from './candidate-overlaps.ts';
+export * from './homebrew.ts';
