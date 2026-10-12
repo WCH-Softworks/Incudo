@@ -783,7 +783,8 @@ the first slice of Phase 8's element editor. Things to know before touching it:
   every internal step (`Progressed`), and publishes `DerivedCharacter.progress`; the collector, the builder
   (`BuilderState.progress`, `setProgress(undefined)` to go back) and a library card (`libraryEntryProgress`, from the
   `chosen` elements an entry keeps for a character that records none) ask the same function. 121 of 141 creatures print
-  a numeric rating; 20 print `—` and start at 0 with a warning.
+  a numeric rating; 20 print `—` and start at 0, since 2026-10-12 with no warning: a dash alone reads 0
+  (`readSetterNumber`, the maintainer's call: it is how a book prints a rating that is none, and the lowest there is).
 - **Character format 3, and only for the characters that need it.** A character with no `progress` or with
   `removedGrants` is `formatVersion` 3 (`raiseFormatVersion`, `LATEST_CHARACTER_FORMAT_VERSION`); `createCharacter`
   still writes 2, and only `setProgress(…, undefined)`, `createCharacter({ progress: null })` and `setGrantRemoved` raise
@@ -1153,7 +1154,9 @@ the first slice of Phase 8's element editor. Things to know before touching it:
     (every creature by type; two held together; a Battle Smith through the builder; the samples reopened with no
     source), each case failing under its named perturbation. The oracle is identical before and after.
   - **Not done:** which creature a holder's feature is for when two are held (Improved Defender's +2 applies to both);
-    a creature's challenge rating for its bonus; ~~`companion:attack`~~ (shown as what its holder adds since ADR 0093);
+    ~~a creature's challenge rating for its bonus~~ (2026-10-12: a held creature that does not take its holder's bonus
+    has its print's, `companion:challenge` from its `challenge` setter, as an NPC's; the Triceratops and Tyrannosaurus
+    Rex read +3); ~~`companion:attack`~~ (shown as what its holder adds since ADR 0093);
     tracking a creature's hit points. Driven in the
     browser build and the Tauri window on Windows (DOM clicks over the debug port, the saved file read back from disk and
     reopened with the source off); not with real input, and not on macOS or Linux.

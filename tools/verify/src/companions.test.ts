@@ -178,6 +178,29 @@ test('every creature a player character holds has a scope with its print, its ru
   t.diagnostic(`${creatures.length} creatures, each with a scope; ${numbers.length} of their stats kept as content makes them; ${proficiencies} proficiencies at least 2`);
 });
 
+test('a held creature that does not take its holder\'s bonus takes its own challenge rating\'s', { skip: corpusSkip }, async (t) => {
+  // ROADMAP Phase 4 (2026-10-12): +2 to challenge 4, +1 for every 4 above, as an NPC's. A creature printing "—" reads 0
+  // and says nothing (the maintainer's call), so a Steel Defender's stat block carries no note about its rating.
+  // Fails if the scope's `setterStats` stop reading `challenge` (the Triceratops reads +2), or a dash warns again.
+  const s = await setting();
+  const elements = await realElements();
+  const way = openingEverything(s, elements);
+  const above: string[] = [];
+  for (const creature of [...s.types].flatMap((type) => elements.byType(type))) {
+    const derived = holding(s, elements, [{ ruleKey: way.ruleKey, elementIds: [creature.id] }]);
+    if (!derived.elementIds.has(creature.id)) continue;
+    const scope = derived.companions[0]!;
+    assert.deepEqual(scope.problems.filter((p) => p.code === 'setter-not-a-number').map((p) => p.message), [], creature.id);
+    if (creature.rules.some((r) => r.kind === 'stat' && r.name.toLowerCase() === `${s.prefix}proficiency`)) continue;
+    const rating = readSetterNumber(creature.setters['challenge']?.value) ?? 0;
+    const expected = 2 + Math.max(0, Math.ceil((rating - 4) / 4));
+    assert.equal(read(scope.stats, `${s.prefix}proficiency`), expected, `${creature.name} (${creature.source}), challenge ${rating}`);
+    if (expected > 2) above.push(`${creature.name} +${expected}`);
+  }
+  t.diagnostic(`above +2 by their own rating: ${above.join(', ') || 'none'}`);
+  assert.ok(above.length > 0, 'some creature a character can hold is above challenge 4');
+});
+
 test('a held creature\'s stat block marks the saves and skills it is proficient in, in its own bonus', { skip: corpusSkip }, async (t) => {
   // As an NPC's does ("Stealth +5 (proficient)"), ROADMAP Phase 4 (2026-10-12). Every save and skill a stat block shows
   // whose proficiency is a whole number of the creature's own bonus is marked with that count; content writes a few as

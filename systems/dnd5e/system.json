@@ -378,6 +378,7 @@
           {"name":"companion:speed:climb","label":"Climb"},
           {"name":"companion:speed:fly","label":"Fly"},
           {"name":"companion:speed:swim","label":"Swim"},
+          {"name":"companion:challenge","label":"Challenge Rating","default":0},
           {"name":"companion:proficiency","label":"Proficiency Bonus","signed":true},
           {"name":"companion:strength","label":"Strength","default":10},
           {"name":"companion:dexterity","label":"Dexterity","default":10},
@@ -420,6 +421,7 @@
           {"name":"companion:damage","label":"Damage Rolls","signed":true}
         ],
         "setterStats": [
+          {"types":["Companion"],"setter":"challenge","stat":"companion:challenge"},
           {"types":["Companion"],"setter":"strength","stat":"companion:strength"},
           {"types":["Companion"],"setter":"dexterity","stat":"companion:dexterity"},
           {"types":["Companion"],"setter":"constitution","stat":"companion:constitution"},
@@ -428,7 +430,7 @@
           {"types":["Companion"],"setter":"charisma","stat":"companion:charisma"}
         ],
         "contributions": [
-          {"stat":"companion:proficiency","value":{"kind":"number","value":2},"bonus":"proficiency"}
+          {"stat":"companion:proficiency","value":{"kind":"binary","op":"+","left":{"kind":"number","value":2},"right":{"kind":"call","fn":"max","args":[{"kind":"number","value":0},{"kind":"call","fn":"ceil","args":[{"kind":"binary","op":"/","left":{"kind":"binary","op":"-","left":{"kind":"ref","stat":"companion:challenge"},"right":{"kind":"number","value":4}},"right":{"kind":"number","value":4}}]}]}},"bonus":"proficiency"}
         ],
         "setterGrants": [
           {"types":["Companion"],"setter":"traits"},

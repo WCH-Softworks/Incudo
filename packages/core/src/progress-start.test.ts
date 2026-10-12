@@ -54,7 +54,9 @@ const RATING: Progression = { kind: 'rating', stat: 'grade', min: 0, max: 30 };
 
 const ox = element('OX', 'Beast', { rank: '5' });
 const calf = element('CALF', 'Beast', { rank: '1/4' });
-const shade = element('SHADE', 'Beast', { rank: '—' });
+const shade = element('SHADE', 'Beast', { rank: 'see below' });
+// A dash is how a book prints a rating that is none: 0, and nothing to warn about.
+const wisp = element('WISP', 'Beast', { rank: '—' });
 // A charm grants a beast; what it grants is not what the keeper chose.
 const charm = element('CHARM', 'Charm', {}, [{ kind: 'grant', key: 'g', type: 'Beast', id: 'OX' }]);
 // A rule gated on the rating: reached only at grade 5 or more.
@@ -62,7 +64,7 @@ const gated = element('GATED', 'Charm', {}, [
   { kind: 'stat', key: 's', name: 'seen', value: { kind: 'number', value: 1 }, level: 5 },
 ]);
 const index = new MapElementIndex();
-index.addAll([ox, calf, shade, charm, gated]);
+index.addAll([ox, calf, shade, wisp, charm, gated]);
 
 function keeper(chosen: string[], progress?: number): Character {
   let character = createCharacter('test', 'keeper', { progress: progress ?? null });
@@ -100,6 +102,10 @@ test('a fraction reads as one, and a print that is not a number starts where the
   // A typed value makes the print irrelevant, and its note noise.
   const typed = deriveCharacter(keeper(['SHADE'], 3), system(RATING), index);
   assert.equal(typed.problems.filter((p) => p.code === 'setter-not-a-number').length, 0);
+  // A dash starts at 0 and says nothing.
+  const dashed = deriveCharacter(keeper(['WISP']), system(RATING), index);
+  assert.equal(value(dashed, 'grade'), 0);
+  assert.equal(dashed.problems.filter((p) => p.code === 'setter-not-a-number').length, 0);
 });
 
 test('an element the character was granted and did not choose does not set it', () => {

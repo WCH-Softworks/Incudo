@@ -1587,11 +1587,16 @@ before 1.0.*
       as a guess about prose; the book is explicit about which creature, so it is pre-1.0 (the maintainer's call,
       2026-10-12). How a feature is tied to its creature (most likely: what granted both) is decided in an ADR,
       measured first over every holder feature that writes a `companion:` stat.
-- [ ] **A held creature's proficiency bonus follows its own challenge rating** when it does not take its holder's.
+- [x] **A held creature's proficiency bonus follows its own challenge rating** when it does not take its holder's.
       *From the ADR 0073 item.* Every held creature but the class summons gets +2, right for challenge 0 to 4; the
       Triceratops (5) and the Tyrannosaurus Rex (8), reachable through the item that offers every creature, should get +3,
       so every proficient save and skill on their stat blocks reads one low. The NPC already reads its creature's
       printed rating; a class summon prints "—" and must not be warned about.
+      **Done** (2026-10-12): the creature's scope reads its printed `challenge` into a challenge rating of its own, and
+      its default bonus is the book's, +2 to challenge 4 and +1 for every 4 above, as an NPC's; a creature supplying its
+      own (a class summon) is unchanged. A lone dash, which all 20 creatures without a number print, now reads 0 and warns
+      nowhere (the maintainer's call: the lowest rating there is), so no Steel Defender carries a note; ADR 0060 amended.
+      The Triceratops and Tyrannosaurus Rex read +3. `companions.test.ts` fails without the declaration or the dash.
 - [x] **A held creature's stat block marks its proficient saves and skills**, as an NPC's does ("Stealth +5
       (proficient)"). *From the ADR 0094 item.*
       **Done** (2026-10-12): the held creature's Saving Throws and Skills declare a mark counted in the creature's own

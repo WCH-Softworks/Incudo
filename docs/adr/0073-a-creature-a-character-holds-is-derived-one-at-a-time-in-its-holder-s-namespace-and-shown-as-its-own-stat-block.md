@@ -159,7 +159,9 @@ what it keeps for reference, and computes nothing.
 - **Read a creature's challenge rating for its proficiency bonus.** The 2014 Triceratops (challenge 5) and Tyrannosaurus
   Rex (8) held by a player character read +2 where the book says +3; they are reachable only through the item that
   offers every creature. Reading it through `setterStats` warns on every class summon that prints "—", which is the
-  common case, and the samples witness only 2.
+  common case, and the samples witness only 2. *Done 2026-10-12:* the scope reads `challenge` into
+  `companion:challenge`, and the default bonus is 2 + max(0, ceil((rating − 4) / 4)) in the same bucket; a dash reads 0
+  with no warning (ADR 0060's amendment). The two read +3.
 - **Agree with Aurora on the 2025 Owl.** Its stat block prints Perception +5 and Incudo derives +5; Aurora recorded +1.
   Reported, not asserted.
 - **Show a creature's attack bonus.** `companion:attack` and `companion:damage` are written (the Ranger's Companion) and

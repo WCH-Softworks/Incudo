@@ -49,6 +49,7 @@ export interface SetterStarts {
 }
 
 const PRINTED_NUMBER = /^\s*(\d+)(?:\s*\/\s*(\d+))?\s*(?:\([^()]*\))?\s*$/;
+const DASH = /^\s*[—–-]\s*$/;
 
 /**
  * A setter's text as a number, or undefined when it is not one.
@@ -56,9 +57,14 @@ const PRINTED_NUMBER = /^\s*(\d+)(?:\s*\/\s*(\d+))?\s*(?:\([^()]*\))?\s*$/;
  * A whole number or a fraction, optionally followed by one parenthesised note: `12`, `1/4`,
  * `13 (natural armor)`, `2 (1d4)`. Nothing else — `14 + PB (natural armor)` is not 14, it is 14 plus
  * something, and reading the leading digits would publish a confident wrong number (ADR 0005).
+ *
+ * A dash alone (`—`, `–`, `-`) is 0: it is how a book prints a number that is none, and the lowest challenge rating
+ * there is (the maintainer's call, 2026-10-12, amending ADR 0060's warning). 20 creatures print their challenge rating
+ * so, 11 of them class summons.
  */
 export function readSetterNumber(text: string | undefined): number | undefined {
   if (text === undefined) return undefined;
+  if (DASH.test(text)) return 0;
   const match = PRINTED_NUMBER.exec(text);
   if (!match) return undefined;
   const whole = Number(match[1]);

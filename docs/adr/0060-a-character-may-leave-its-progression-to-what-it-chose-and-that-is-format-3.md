@@ -46,6 +46,12 @@ When it is present it is what the user set, and it replaces the print exactly as
 one (ADR 0057). A print that is not a number (`—`) supplies nothing and the derivation warns, naming the creature,
 as it does for a score; with a recorded rating the note is not reported, because the print no longer matters.
 
+> **Amended 2026-10-12 — a dash alone reads 0, and says nothing.** The maintainer's call: a lone dash is how a book
+> prints a number that is none, and 0 is the lowest challenge rating there is. All 20 creatures that print no number
+> print a dash, so they start at 0 as before and no longer warn. It came up because a held creature's scope reads its
+> rating too (ROADMAP Phase 4), and every Steel Defender's stat block would otherwise have carried the warning. Other
+> text that is not a number still warns.
+
 The print is read from what the character chose and from nothing it was granted. A grant can sit behind a gate that
 reads this very number; reading only the choices settles it once, before the fixed point, with no loop. The corpus
 costs nothing for this: no element grants a creature.

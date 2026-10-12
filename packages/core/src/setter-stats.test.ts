@@ -131,7 +131,10 @@ test('reading a printed number', () => {
   assert.equal(readSetterNumber('2 (1d4)'), 2);
   assert.equal(readSetterNumber('14 + PB (natural armor)'), undefined);
   assert.equal(readSetterNumber('40 ft., climb 30 ft.'), undefined);
-  assert.equal(readSetterNumber('—'), undefined);
+  // Fails if a dash is read as no number: a creature printing "—" for its rating would warn on every stat block.
+  assert.equal(readSetterNumber('—'), 0);
+  assert.equal(readSetterNumber(' - '), 0);
+  assert.equal(readSetterNumber('—5'), undefined);
   assert.equal(readSetterNumber(''), undefined);
   assert.equal(readSetterNumber('1/0'), undefined);
   assert.equal(readSetterNumber('13 (a) (b)'), undefined);
