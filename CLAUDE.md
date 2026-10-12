@@ -857,7 +857,11 @@ the first slice of Phase 8's element editor. Things to know before touching it:
   - **A sheet `mark` may declare `none`** (5e: "not proficient"), offered by the editor and never shown beside a row.
   - **5e's NPC and legendary creature declare their saves' and skills' marks**, so their sheets read "+5 (proficient)",
     "+7 (expertise)" (the maintainer's call; every NPC export changed). Measured: all 300 rows the 141 creatures show
-    hold a whole number of the NPC's bonus. A held creature's stat block declares none.
+    hold a whole number of the NPC's bonus. ~~A held creature's stat block declares none.~~ It does since 2026-10-12, in
+    its own bonus (`companion:proficiency`): measured over all 141 creatures, 294 of 300 shown rows hold a whole number of
+    it (25 skills read "expertise", as content doubles them: the 2025 Owl's Perception, the Steel Defender's); the 6 that
+    do not are fixed numbers content writes (a UA Ancient Companion, upstream's Eberron homunculus) and read the whole
+    bonuses they hold. `companions.test.ts` holds the rest.
   - **The editor** (`customLineModes`, `customLineModeAllowed`, `customMarkChoices`, `customFeaturesHint`, in
     `packages/ui/src/custom-features.ts`): "marked" only where a row may be, its value a list of names; the hint is worded
     from what the kind's lines can do (a PC's says only that a line adds). Desktop `CustomFeatures.tsx`, phone

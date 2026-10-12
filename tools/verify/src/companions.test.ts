@@ -38,7 +38,7 @@ import {
   type ResolvedCharacterKind,
   type SelectRule,
 } from '@incudo/core';
-import { CharacterBuilder, newCharacterOfKind, packCharacter } from '@incudo/ui';
+import { CharacterBuilder, companionsView, newCharacterOfKind, packCharacter } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { summarize } from './derived-summary.ts';
@@ -176,6 +176,42 @@ test('every creature a player character holds has a scope with its print, its ru
   t.diagnostic(`creatures supplying their own bonus from their holder's: ${suppliers.length}; reading other than the holder's +${read(holding(s, elements, []).stats, 'proficiency')}: ${offBy.join(', ') || 'none'}`);
   t.diagnostic(`reading a stat only the scope declares, and so different from the holder: ${improved.join('; ') || 'none'}`);
   t.diagnostic(`${creatures.length} creatures, each with a scope; ${numbers.length} of their stats kept as content makes them; ${proficiencies} proficiencies at least 2`);
+});
+
+test('a held creature\'s stat block marks the saves and skills it is proficient in, in its own bonus', { skip: corpusSkip }, async (t) => {
+  // As an NPC's does ("Stealth +5 (proficient)"), ROADMAP Phase 4 (2026-10-12). Every save and skill a stat block shows
+  // whose proficiency is a whole number of the creature's own bonus is marked with that count; content writes a few as
+  // fixed numbers (a UA creature, upstream's Eberron homunculus), which read the whole bonuses they hold and are reported.
+  // Fails if the scope's saves or skills lose their `mark`, or the mark reads the holder's bonus instead of the creature's.
+  const s = await setting();
+  const elements = await realElements();
+  const way = openingEverything(s, elements);
+  const labels = new Map<string, number>();
+  const fixed: string[] = [];
+  const wrong: string[] = [];
+  for (const creature of [...s.types].flatMap((type) => elements.byType(type))) {
+    const derived = holding(s, elements, [{ ruleKey: way.ruleKey, elementIds: [creature.id] }]);
+    if (!derived.elementIds.has(creature.id)) continue;
+    const scope = derived.companions[0]!;
+    const per = read(scope.stats, `${s.prefix}proficiency`) ?? 0;
+    const view = companionsView(derived, s.pc, elements)!;
+    for (const section of view.creatures[0]!.sections.filter((x) => x.id === 'saves' || x.id === 'skills')) {
+      for (const row of section.rows) {
+        const held = read(scope.stats, `${row.stat}:proficiency`) ?? 0;
+        if (per > 0 && held % per !== 0) {
+          fixed.push(`${creature.name} ${row.stat} ${held} of +${per}`);
+          continue;
+        }
+        const count = per > 0 ? held / per : 0;
+        if ((row.mark?.count ?? 0) !== count) wrong.push(`${creature.name} ${row.stat}: ${held} of +${per}, marked ${JSON.stringify(row.mark)}`);
+        if (row.mark) labels.set(`${section.id} ${row.mark.label}`, (labels.get(`${section.id} ${row.mark.label}`) ?? 0) + 1);
+      }
+    }
+  }
+  t.diagnostic(`marked: ${[...labels].map(([k, n]) => `${n} ${k}`).join(', ')}`);
+  t.diagnostic(`written by content as a number that is not a whole bonus: ${fixed.join('; ') || 'none'}`);
+  assert.deepEqual(wrong, []);
+  assert.ok(labels.size > 0, 'some creature is proficient in something');
 });
 
 test('two creatures held together each read what they read alone, and the holder sums as before', { skip: corpusSkip }, async (t) => {

@@ -1592,8 +1592,13 @@ before 1.0.*
       Triceratops (5) and the Tyrannosaurus Rex (8), reachable through the item that offers every creature, should get +3,
       so every proficient save and skill on their stat blocks reads one low. The NPC already reads its creature's
       printed rating; a class summon prints "—" and must not be warned about.
-- [ ] **A held creature's stat block marks its proficient saves and skills**, as an NPC's does ("Stealth +5
+- [x] **A held creature's stat block marks its proficient saves and skills**, as an NPC's does ("Stealth +5
       (proficient)"). *From the ADR 0094 item.*
+      **Done** (2026-10-12): the held creature's Saving Throws and Skills declare a mark counted in the creature's own
+      bonus. Measured over all 141 creatures: 294 of the 300 rows shown hold a whole number of it (203 skills proficient,
+      25 expertise where content doubles the bonus, as the 2025 Owl's Perception +5; 66 saves); the other 6 are fixed
+      numbers content writes (a UA Ancient Companion, upstream's Eberron homunculus) and read the whole bonuses they hold.
+      No code; `companions.test.ts` fails without the declaration. Every held creature's export gains its marks.
 - [ ] **Attacks a character makes beyond a weapon's single row.** *From the ADR 0093 item; essential before 1.0, the
       maintainer's call (2026-10-12).* An unarmed strike and a Monk's Martial Arts die; spell attacks as rows ("Fire
       Bolt: +5, 1d10 fire"); two-weapon fighting (the off-hand attack's damage without the ability modifier, unless a
