@@ -968,7 +968,7 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       index naming it is read, within the same six requests in flight, and applied in the same order. Adding the source
       on a fresh profile in the Tauri window went from 36.7 s to 25.7 s; the rest is 740 files from a host that keeps
       them five minutes. A test loads the real corpus both ways and compares every element and diagnostic. Driven in
-      the Tauri window and the browser build on Windows. **Not done:** anything that makes the element files faster;
+      the Tauri window and the browser build on Windows. **Not done:** anything that makes the element files faster *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*;
       macOS and Linux.
 - [x] Download mode: versioned cache, update checks against the index version — ADR 0029 built the cache, the
       version stamp and the check, and ADR 0050 made the check look at files rather than the index version, which a
@@ -995,7 +995,7 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       each source's line says what it shares with each other source, how many differ and whose version is used, with
       the ids behind a click. Nothing is blocked or chosen per id, and a saved character keeps what it embeds. Driven
       in the browser build on Windows with the original's Core beside AuroraLegacy, reordered both ways. **Not done:**
-      a per-id override; "also defined by" on the Browse pane; the Tauri window, macOS and Linux. *("Also defined
+      a per-id override *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*; "also defined by" on the Browse pane; the Tauri window, macOS and Linux. *("Also defined
       by" is in "Beyond 1.0" since 2026-10-05.)*
 - [x] **Say when a source refers to content no enabled source has** ([ADR 0052](./docs/adr/0052-a-source-that-refers-to-content-no-enabled-source-has-is-reported-and-never-blocked.md)).
       Any inner index can be added as a source, and 58 of AuroraLegacy's 60 grant ids only another declares: the 2014
@@ -1038,7 +1038,7 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
       file added this way loads to the same elements the corpus load made of it. Driven in the browser build on Windows
       by a dropped file: added, shown in Browse, replaced, kept across a reload, removed with its copy. **Not done:** ~~the
       picker and the Tauri window's drop were not driven~~ (both driven in the Tauri window on 2026-09-28, with the ADR
-      0065 item in Phase 4: a real OS drop and "Choose files…" through the native dialog); a folder or zip of files;
+      0065 item in Phase 4: a real OS drop and "Choose files…" through the native dialog); a folder or zip of files *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*;
       macOS and Linux.
 - [x] **Read Aurora's `[character:N]` and `[type:X]`, and withdraw a granted element its own requirements rule out**
       ([ADR 0071](./docs/adr/0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)).
@@ -1212,8 +1212,8 @@ its original text with a pointer here.*
       made with its current parts, has some of it: "Core, which is switched off, had all of them when it was last loaded."
       Never enforced, never a guess. Found on the way: a source loaded after one holding the same files reads none of them,
       so the record walks the indexes rather than counting what the load read. Driven in the browser build; not in the
-      Tauri window, on the phone (which shows no missing content yet) or on macOS and Linux. Seen and not fixed: two quick
-      toggles start two desktop reloads, and the slower first can finish last.
+      Tauri window, on the phone (which shows no missing content yet *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*) or on macOS and Linux. Seen and not fixed: two quick
+      toggles start two desktop reloads, and the slower first can finish last *(an open item at the end of this phase since 2026-10-12)*.
 - [x] **Mark an offer whose proficiency the character already has** (the maintainer's request, 2026-10-05). When a
       candidate in a build step (a background, say) would grant a proficiency the character already has from another
       choice (an Elf's Perception), the picker marks it, so the player sees what is redundant before choosing. A pool's
@@ -1227,7 +1227,24 @@ its original text with a pointer here.*
       walk follows a candidate's grants through content, gated by level and by requirements read against the character
       (203 overlaps exist only if requirements are ignored, nearly all Tasha's customised origin); a settled slot is judged
       without its own answer. A fresh 2014 Elf sees 13 of 118 backgrounds marked. Display only. Driven in the browser build;
-      not on the phone or in the Tauri window. Still open: the 2014 replacement proficiency.
+      not on the phone or in the Tauri window. Still open: the 2014 replacement proficiency *(an open item at the end of this phase since 2026-10-12)*.
+
+*The items below were found on 2026-10-12 by sorting every note the ticked items of Phases 3 to 5 left open. The
+maintainer chose which come before 1.0; the rest are in Beyond 1.0's "1.x — Left from Phases 3 to 5", and each note
+points to where it went.*
+
+- [ ] **Two quick source toggles cannot leave the wrong content loaded.** *From the ADR 0090 item.* Each toggle on the
+      Sources pane starts a reload of the desktop's content, and nothing stops an earlier, slower load finishing after a
+      later one: its content is then the one in use, with the source switched last in the wrong state, and the first
+      load to finish says the pane is idle while the other still runs.
+- [ ] **Every class and background whose book lists starting equipment offers it.** *From the ADR 0087 item.*
+      `systems/dnd5e/starting-equipment.json` covers the two Player's Handbooks (24 classes, 29 backgrounds). Anything a
+      book lists as starting equipment belongs there too (the maintainer's call, 2026-10-12: it is the book's own text,
+      not a new mechanic): the Artificer in Eberron and Tasha's, and the backgrounds of the other books. Measured first:
+      which classes and backgrounds in the corpus write starting equipment, and in what shape.
+- [x] **The 2014 replacement proficiency.** *From the ADR 0091 item.* **Not built, by the maintainer's call
+      (2026-10-12):** a player whose DM allows a replacement adds the proficiency under "Added to this character" (ADR
+      0064). Incudo does not make up mechanics for D&D.
 
 ---
 
@@ -1289,7 +1306,7 @@ the kind machinery is not decorative.*
       Derived and compared with the print: other speeds 91 agree and 0 differ, skills 113 and 1, saves 8 and 2. No
       player character derivation moved. Driven in the browser build, including a save reopened with no source.
       **Not done:** senses as numbers (content states none), an editor for the other speeds and proficiencies, and a
-      fly speed's hover; the Tauri window, macOS and Linux. *(The editor was answered by ADR 0063, the next item, except
+      fly speed's hover *(an open item at the end of this phase since 2026-10-12)*; the Tauri window, macOS and Linux. *(The editor was answered by ADR 0063, the next item, except
       switching a proficiency on: an open item at the end of this phase since 2026-10-05, done by ADR 0094.)*
 - [x] **A DM may write a feature of an NPC's own that adds to or sets its numbers**
       ([ADR 0063](./docs/adr/0063-a-character-may-carry-features-its-user-writes-which-add-to-a-stat-or-set-where-it-starts.md)). Typing a number (ADR 0059)
@@ -1304,7 +1321,7 @@ the kind machinery is not decorative.*
       **Not done:** ~~reusing a feature on another character~~ (Phase 8, done by ADR 0106), ~~features
       for a player character~~ (whose armour class, hit points and speed are worked out, so a feature could only add to
       them; an open item at the end of this phase since 2026-10-05, done by ADR 0094), conditions or grants
-      on one; the Tauri window, macOS and Linux.
+      on one *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*; the Tauri window, macOS and Linux.
 - [x] **A DM or player may put existing content on a character, whatever its prerequisites**
       ([ADR 0064](./docs/adr/0064-a-character-may-carry-elements-its-user-adds-from-loaded-content-and-an-unmet-prerequisite-is-a-flag.md)).
       ADR 0063's sibling: an element a source declares rather than one the user writes. Aurora's users wrapped these
@@ -1388,15 +1405,17 @@ the kind machinery is not decorative.*
       the 2014 Owl agree with it on every score, save and skill. Running it found the proficiency bonus's bucket: 11 of
       the 12 class summons that supply their own read their holder's bonus. Driven in the browser build and in the
       Tauri window on Windows, the saved file read back from disk and reopened with the source off. **Not done:** which
-      creature a holder's feature is for when two are held (Improved Defender's +2 applies to both); the Eberron
+      creature a holder's feature is for when two are held (Improved Defender's +2 applies to both) *(an open item at the end of this phase since 2026-10-12)*; the Eberron
       homunculus's bonus row (+2 over, upstream's content); a creature's challenge rating for its bonus (two
-      creatures above challenge 4); ~~a creature's attack bonus~~ (`companion:attack` is shown as what its
-      holder adds since ADR 0093; its actions' own numbers are prose); tracking a creature's hit points;
+      creatures above challenge 4) *(an open item at the end of this phase since 2026-10-12)*; ~~a creature's attack bonus~~ (`companion:attack` is shown as what its
+      holder adds since ADR 0093; its actions' own numbers are prose); tracking a creature's hit points *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*;
       macOS and Linux.
 - [ ] Sidekicks. *Split from "Companions and sidekicks" by ADR 0073's measurement:* the corpus has no sidekick content
       (one `Source` element for "Unearthed Arcana: Sidekicks", holding nothing), so there is nothing to read yet.
       Content first, from upstream or a user's own file; then whether a sidekick is an NPC with a class track or a held
-      creature.
+      creature. *Measured again on 2026-10-12 at upstream's head (c28ce6c): still only that empty `Source`, and Tasha's
+      names sidekicks only in its book's description. Kept in this phase by the maintainer's call (2026-10-12), so the
+      phase stays open while it waits for content.*
 - [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
       ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
       *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the
@@ -1427,7 +1446,7 @@ the kind machinery is not decorative.*
       descriptions resolving with no source. No derivation moved. Running it found two more: five markers sit inside
       XML comments (content switching an embed off), which the first reader counted; and every prose stat block
       rendered inside its own opening `<h4 />`, which an HTML parser leaves open, since ADR 0068 showed the first.
-      Driven in the browser build. **Not done:** searching embedded text, linking an embed to its element, saves
+      Driven in the browser build. **Not done:** searching embedded text, linking an embed to its element *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*, saves
       written before this (they carry what they reached); the Tauri window, macOS and Linux.
 - [x] **Let a player character keep text for reference, and say on a library card what a character keeps**
       ([ADR 0070](./docs/adr/0070-a-player-character-keeps-text-for-reference-and-a-creature-it-holds-is-not-a-reference.md)).
@@ -1441,8 +1460,8 @@ the kind machinery is not decorative.*
       holder, and most carry no text (shown as held since ADR 0073, above). A library card names what a character keeps
       ("For reference: Kraken, Rat, Bat and 1 more"). No player character derivation moved. Driven in the browser build
       and in the Tauri window on Windows, the saved file read back from disk and reopened with the source off.
-      **Not done:** ~~a held creature on the sheet~~ (ADR 0073, above); a 2014 druid's Wild Shape forms (structured beasts only); a held
-      element's own text on the Sheet; macOS and Linux.
+      **Not done:** ~~a held creature on the sheet~~ (ADR 0073, above); a 2014 druid's Wild Shape forms (structured beasts only; the tier
+      the druid is at, *(an open item at the end of this phase since 2026-10-12)*); a held element's own text on the Sheet (Phase 5's open item, 2026-10-12); macOS and Linux.
 - [x] **Each kind's sheet shows its printed page, and every row says what it is**
       ([ADR 0074](./docs/adr/0074-a-kind-s-sheet-shows-its-printed-page-and-every-row-says-what-it-is.md)).
       *Reworded by its measurement;* was "Kind-specific sheets and exports". Every kind already drew its sheet from its
@@ -1465,7 +1484,7 @@ the kind machinery is not decorative.*
       proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice~~ (Phase 5, ADR 0079 decisions 6, 7
       and 9), ~~death saves, inspiration~~ (tracked in play since ADR 0084, Phase 6),
       ~~personality~~ (ADR 0092) and ~~attacks~~ (ADR 0093); ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
-      stat block laid out as a stat block (Beyond 1.0's "A laid-out sheet"); the "Progress" number a level-less Cairn character is shown on Build; Cairn in
+      stat block laid out as a stat block (Beyond 1.0's "A laid-out sheet"); the "Progress" number a level-less Cairn character is shown on Build *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*; Cairn in
       the Tauri window; macOS and Linux. *(Personality and attacks: open items at the end of this phase since
       2026-10-05.)*
 
@@ -1504,7 +1523,7 @@ items; each keeps its original text with a pointer here.*
       attacks, and a held creature's stat block shows what its holder adds to its attack and damage rolls. A save carries the weapon properties its attacks are named by. Driven in the browser build with
       no source; not in the Tauri window or on the phone. Not done: unarmed strikes and martial arts, spell attacks as
       rows, two-weapon fighting and Dueling (commented out upstream), a melee weapon's reach as a distance, rewriting a
-      creature's actions with its holder's bonus.
+      creature's actions with its holder's bonus *(an open item at the end of this phase since 2026-10-12)*.
 - [x] **An added spell can be cast.** *Buried in the ADR 0064 item.* A spell put on a character through "Added to this
       character" belongs to no casting block: no save DC, no attack bonus, no slots, not preparable, and the pane says
       so. Which block it is cast through (the user's choice, or the character's only one) wants deciding.
@@ -1527,7 +1546,40 @@ items; each keeps its original text with a pointer here.*
       proficient" takes a printed one away (character format 9). Measured: all 300 saves and skills the 141 creatures show
       hold a whole number of the NPC's bonus. No player character derivation moved; the oracle is identical. Driven in the
       browser build (a Wolf NPC and a Human Fighter); not in the Tauri window or on the phone. Not done: a mark on a held
-      creature's stat block.
+      creature's stat block *(an open item at the end of this phase since 2026-10-12)*.
+
+*The items below were found on 2026-10-12 by the sorting described at the end of Phase 3. The maintainer chose them for
+before 1.0.*
+
+- [ ] **Every speed a creature prints is on its sheet as printed, hover included.** *From the ADR 0062 item.* A
+      creature's speeds are shown as numbers its rules give (Speed 30, Fly Speed 30), and the line it prints, "30 ft., fly
+      30 ft. (hover)", is shown nowhere, so a hovering creature reads as any flier. Four structured creatures print
+      "(hover)": the Wildfire Spirit, its Unearthed Arcana version, the Inkling Mascot and the Puppeteer Parasite. The
+      maintainer's call (2026-10-12): every speed a stat block declares (walking, burrowing, climbing, swimming, flying,
+      hovering) is printed explicitly, on an NPC's sheet and a held creature's stat block, as armour class and hit points
+      already are; a speed the block does not declare is not shown, and what hovering does in play is the DM's.
+- [ ] **A holder's feature changes the creature it is about, not every creature held.** *From the ADR 0073 item.* The
+      book says "Your steel defender gains a +2 bonus to Armor Class", and content writes Improved Defender as
+      `companion:ac` +2, so a Battle Smith who also holds a Homunculus Servant shows the +2 on both. ADR 0073 left it
+      as a guess about prose; the book is explicit about which creature, so it is pre-1.0 (the maintainer's call,
+      2026-10-12). How a feature is tied to its creature (most likely: what granted both) is decided in an ADR,
+      measured first over every holder feature that writes a `companion:` stat.
+- [ ] **A held creature's proficiency bonus follows its own challenge rating** when it does not take its holder's.
+      *From the ADR 0073 item.* Every held creature but the class summons gets +2, right for challenge 0 to 4; the
+      Triceratops (5) and the Tyrannosaurus Rex (8), reachable through the item that offers every creature, should get +3,
+      so every proficient save and skill on their stat blocks reads one low. The NPC already reads its creature's
+      printed rating; a class summon prints "—" and must not be warned about.
+- [ ] **A held creature's stat block marks its proficient saves and skills**, as an NPC's does ("Stealth +5
+      (proficient)"). *From the ADR 0094 item.*
+- [ ] **Attacks a character makes beyond a weapon's single row.** *From the ADR 0093 item; essential before 1.0, the
+      maintainer's call (2026-10-12).* An unarmed strike and a Monk's Martial Arts die; spell attacks as rows ("Fire
+      Bolt: +5, 1d10 fire"); two-weapon fighting (the off-hand attack's damage without the ability modifier, unless a
+      fighting style says otherwise); reach and range for a melee weapon; a held creature's actions with what its holder
+      adds applied. Each is measured first, and nothing is read out of prose (ADR 0005).
+- [ ] **A druid's Wild Shape tier on the sheet.** *From the ADR 0070 item.* The 2014 Player's Handbook's Beast Shapes
+      table sets the highest challenge rating and the limits (no swimming, no flying speed) by druid level, and the beast
+      must be one the druid has seen. The maintainer's call (2026-10-12): the sheet shows the tier the character is at,
+      not the whole table. Measured first: whether content states the tiers as rules or only as prose.
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the
 engine has no code that names any of them.
@@ -1596,10 +1648,11 @@ pane draws and every export renders: the PDF and the print layout start from it,
       an NPC keeping a stat block, a Cairn character; the first two exported again with the source off, byte for byte the
       same) and in the Tauri window on Windows (a sample opened with no source ever added, exported from the native menu
       through the real save dialog, byte for byte the tests' file). **Not done:** a copy to the clipboard (a port of its
-      own); a shortcut (a Ctrl+Shift chord has to be found by pressing real keys in the Windows window); feature
+      own; *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*); a shortcut (a Ctrl+Shift chord has to be found by pressing real keys in the Windows window;
+      *(an open item at the end of this phase since 2026-10-12)*); feature
       descriptions, personality, notes, the bag and prepared spells, none of which the Sheet shows (~~personality and notes~~
       are written and shown since ADR 0092; ~~the bag~~ since ADR 0098; ~~prepared spells~~ since ADR 0079 decision 8; a
-      feature's sheet line, not its whole description, since ADR 0076); the save dialog's
+      feature's sheet line, not its whole description, since ADR 0076; the whole description is *(an open item at the end of this phase since 2026-10-12)*); the save dialog's
       replace prompt and Cancel, not exercised for an export in the window; macOS and Linux.
 - [x] **Content's sheet hints are read: a feature's sheet line, at its level, filled**
       ([ADR 0076](./docs/adr/0076-content-s-sheet-hints-are-read-every-description-kept-chosen-by-the-level-the-element-gates-at.md)).
@@ -1622,7 +1675,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       counted nowhere. **Not done:** spells, proficiencies and backgrounds described on the sheet (content writes no sheet
       text for them); ~~a reason beside a number a hidden feature moved~~ (Tough; an open item at the end of this phase since
       2026-10-05, done by ADR 0095); ~~counting uses~~ (Phase 6, ADR 0084); a hidden trait a
-      stat block prints is named without its line (three Tasha's "Primal Bond"s, which no sample holds); macOS and Linux.
+      stat block prints is named without its line (three Tasha's "Primal Bond"s, which no sample holds; part of the whole
+      descriptions *(an open item at the end of this phase since 2026-10-12)*); macOS and Linux.
 - [x] **"Content has been updated — refresh?": a character whose sources changed what it carries is offered a refresh,
       reviewed as the Sheet it would make** ([ADR 0082](./docs/adr/0082-a-refresh-compares-what-a-character-carries-with-what-its-sources-load-and-shows-the-sheet-it-would-make.md)).
       Measured first against older checkouts of AuroraLegacy/elements: the index's version was 0.0.1 then and now, so
@@ -1700,6 +1754,19 @@ pane draws and every export renders: the PDF and the print layout start from it,
     A row's `including` reads the derivation's contributions and follows the kind's `derive` formulas by name, never
     evaluating them; `rowAside` words it, so the Sheet, print, text export, phone and refresh review all show it. 19 rows
     on 9 samples now name something; the oracle is identical. Driven in the browser build.
+
+*The items below were found on 2026-10-12 by the sorting described at the end of Phase 3. The maintainer chose them for
+before 1.0.*
+
+- [ ] **Incudo's sheet shows a listed element's whole description, and the official form does too where it fits.**
+      *From the ADR 0070 item (a held element's own text on the Sheet), the ADR 0075 item (feature descriptions) and the
+      ADR 0076 item (a hidden trait a stat block names without its line, "Primal Bond", folded in by the maintainer's
+      call).* The Sheet shows a feature's one sheet line, and a description only for a kept reference. The maintainer's
+      call (2026-10-12): Incudo's own sheet shows the whole text; the 2014 form if it can be made to fit. Measured first:
+      ADR 0075 found descriptions add 18,635 to 93,290 characters to a sample, so what the print, the text export, the
+      phone and the form's boxes do with that much is the question.
+- [ ] **A keyboard shortcut for "Export sheet as text…".** *From the ADR 0075 item.* A Ctrl+Shift chord that reaches
+      the page, found by pressing real keys in the Windows window (ADR 0038 lists those that do).
 
 ---
 
@@ -2124,6 +2191,27 @@ the audit described at the end of that phase.
 - **Editions and a default book list** (the ADR 0049 item): a 2014 / 2024 switch over a character's Books list, where the
   two Player's Handbooks are separate books and a table drops one by unticking, and a per-user default list for new
   characters, which today start offered every book.
+
+### 1.x — Left from Phases 3 to 5
+After the first release, by the maintainer's call (2026-10-12), when every note the ticked items of Phases 3 to 5 left
+open was sorted. Each item names where it came from.
+- **A source's first download, faster** (ADR 0051). Adding AuroraLegacy cold takes about 25 s, 740 files from a host
+  that keeps them five minutes; every later load is under a second from the cache.
+- **Saying which source a race or class comes from, when two define it** (ADR 0054). Not a per-id override: two sources
+  defining a class may differ in more than one of its elements, so the user names the source the character takes its
+  race or class from. Wants more planning than an override.
+- **A folder or a zip of Aurora files as one source** (ADR 0056), as another way of reading a source, beside the one
+  file a source of today and not in its place.
+- **The phone's Sources screen says what the desktop's does** (ADRs 0052, 0054, 0090): what a source refers to that no
+  enabled source has, which switched-off source had it, and what two sources share.
+- **A written feature that grants elements** (ADR 0063): a line that gives the character a language or a resistance,
+  held and removed with the feature. "Added to this character" (ADR 0064) does it today as a separate step.
+- **Tracking a held creature's hit points in play** (ADR 0073), and how it is decided: features used mid-play are not the
+  priority before 1.0.
+- **Searching the text a description embeds** (ADR 0069), soon after 1.0; and **an embed linking to its element**.
+- **Copying the sheet as text to the clipboard** (ADR 0075), low priority; the text must read clearly as plain text.
+- **Cairn**: everything Cairn is after 1.0, first the "Progress" field a level-less Cairn character shows on Build
+  (ADR 0074).
 
 ### 1.x — Systems for authors
 After the first release, by the maintainer's call (2026-10-09): everything about creating a system or copying one waits
