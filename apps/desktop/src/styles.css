@@ -2195,6 +2195,62 @@ ul.browse-categories {
   background: var(--bg-sunken);
 }
 
+/* A homebrew source's elements, opened under its line (ADR 0108). */
+.homebrew {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.homebrew-list,
+.homebrew-lines,
+.homebrew-search ul {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.homebrew-list > li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.homebrew-draft {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  background: var(--bg-sunken);
+}
+
+.homebrew-draft h4,
+.homebrew-draft h5 {
+  margin: 10px 0 4px;
+}
+
+.homebrew-description {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.homebrew-description textarea,
+.homebrew-tags {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.homebrew-lines input[type='number'] {
+  width: 6em;
+}
+
 /* What a character keeps beside it for reference (ADR 0068): a stat block's prose in the narrow first column of the
    Build pane, and after the sheet. Its ability table is twelve cells wide, so it scrolls sideways rather than
    pushing the column out. */

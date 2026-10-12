@@ -38,6 +38,9 @@ import {
   readIndexTree,
   refreshSource,
   removeSource,
+  createHomebrewSource,
+  readHomebrew,
+  writeHomebrew,
   sourcesForSystem,
   unassignedSources,
   refreshSourceRefs,
@@ -754,6 +757,22 @@ function Shell({
           await persist();
           await reload();
         }
+      },
+      // ADR 0108: a homebrew source is made empty under the system in view, added last, and loaded at once.
+      createHomebrew: async (name) => {
+        const current = profile.current;
+        if (!current) return;
+        await createHomebrewSource(current, platform.storage, { name, systemId: system.id });
+        await persist();
+        await reload();
+      },
+      homebrew: {
+        read: (id) => readHomebrew(platform.storage, id),
+        // Written, then reloaded, so what was written is offered and found in Browse at once.
+        save: async (id, bundle) => {
+          await writeHomebrew(platform.storage, id, bundle);
+          await reload();
+        },
       },
       pickFiles: async () => {
         const picked = await platform.files.pick({

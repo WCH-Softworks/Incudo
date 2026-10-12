@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import {
   fileSourceName,
   isFileSource,
+  isHomebrewSource,
   type ConfiguredSource,
   type IndexTreeNode,
   type MissingContent,
@@ -29,7 +30,7 @@ import {
   type SwitchedOffSupply,
   type UpdateStatus,
 } from '@incudo/content';
-import { systemLineage, type GameSystem, type PickedFile, type SuggestedSource } from '@incudo/core';
+import { MapElementIndex, systemLineage, type ElementIndex, type GameSystem, type PickedFile, type SuggestedSource } from '@incudo/core';
 import {
   describeContentFiles,
   missingNote,
@@ -43,6 +44,11 @@ import {
 
 import { type LoadProgress, type LoadedContent } from '@incudo/content';
 
+import { ArmedButton } from './ArmedButton.tsx';
+import { HomebrewEditor, type HomebrewActions } from './HomebrewEditor.tsx';
+
+const EMPTY_INDEX: ElementIndex = new MapElementIndex();
+
 export interface SourcesActions {
   add: (url: string, options?: Partial<ConfiguredSource>) => Promise<void>;
   /** Read a source's tree of parts from its indexes alone — ADR 0055. */
@@ -53,6 +59,10 @@ export interface SourcesActions {
   addFiles: (files: PickedFile[]) => Promise<void>;
   /** Open the file picker for them. */
   pickFiles: () => Promise<void>;
+  /** Make an empty homebrew source under the system in view, and reload — ADR 0108. */
+  createHomebrew: (name: string) => Promise<void>;
+  /** Read and write a homebrew source's elements; a write reloads. */
+  homebrew: HomebrewActions;
   /** Claim an untagged source for the system in view — ADR 0031. */
   assignToSystem: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
@@ -136,6 +146,7 @@ export function SourcesPane({
   const [url, setUrl] = useState('');
   const [keep, setKeep] = useState<SourceKeep>('converted');
   const [failure, setFailure] = useState<string | null>(null);
+  const [homebrewName, setHomebrewName] = useState('');
   /** A source about to be added with some of its parts chosen first (ADR 0055): what to add it with once they are. */
   const [choosing, setChoosing] = useState<{ url: string; options?: Partial<ConfiguredSource> } | null>(null);
 
@@ -309,6 +320,35 @@ export function SourcesPane({
         </div>
       )}
 
+      {/* ADR 0108: elements written here are a source of their own, kept in Incudo's own format. */}
+      <h3>Write your own</h3>
+      <div className="row">
+        <input
+          value={homebrewName}
+          disabled={busy}
+          placeholder="My homebrew"
+          aria-label="Name for a new homebrew source"
+          onChange={(event) => setHomebrewName(event.target.value)}
+        />
+        <button
+          type="button"
+          disabled={busy || !homebrewName.trim()}
+          onClick={() => {
+            setFailure(null);
+            void actions.createHomebrew(homebrewName).then(
+              () => setHomebrewName(''),
+              (error: unknown) => setFailure(error instanceof Error ? error.message : String(error)),
+            );
+          }}
+        >
+          Make a homebrew source
+        </button>
+      </div>
+      <p className="hint">
+        A homebrew source holds feats, traits, features, spells and the like that you write here. It is listed below with
+        your other sources; <strong>Edit elements</strong> on it opens them.
+      </p>
+
       {progress && (
         <p className="progress">
           {progress.source}: {progress.loaded} / {progress.total} — {progress.current}
@@ -353,6 +393,8 @@ export function SourcesPane({
                 source.systemId !== undefined && source.systemId !== system.id ? nameOfSystem(source.systemId) : undefined
               }
               loaded={loadedById.get(source.id)}
+              system={system}
+              index={content?.elements ?? EMPTY_INDEX}
               update={updates[source.id]}
               refreshed={refreshes[source.id]}
               busy={busy}
@@ -493,6 +535,8 @@ function SourceRow({
   nameOf,
   sharedWith,
   loaded,
+  system,
+  index,
   update,
   refreshed,
   busy,
@@ -500,6 +544,9 @@ function SourceRow({
   shell,
 }: {
   source: ConfiguredSource;
+  system: GameSystem;
+  /** Everything loaded, which a homebrew element's lines are written against (ADR 0108). */
+  index: ElementIndex;
   /** Where it sits among this system's sources, which is which one is used when two define the same id. */
   first: boolean;
   last: boolean;
@@ -524,8 +571,11 @@ function SourceRow({
 }): React.JSX.Element {
   const [name, setName] = useState(source.name);
   const [choosing, setChoosing] = useState(false);
-  // A file the user added has nothing upstream (ADR 0056): no update check, no refresh, no parts.
-  const file = isFileSource(source);
+  const [editing, setEditing] = useState(false);
+  // A file the user added, or elements written here, have nothing upstream (ADR 0056, 0108): no update check, no
+  // refresh, no parts.
+  const homebrew = isHomebrewSource(source);
+  const file = isFileSource(source) || homebrew;
   const off = source.excluded?.length ?? 0;
 
   return (
@@ -555,7 +605,9 @@ function SourceRow({
       </div>
 
       <p className="card-meta">
-        {file ? (
+        {homebrew ? (
+          <>Written in Incudo, made {new Date(source.addedAt).toLocaleDateString()}.</>
+        ) : file ? (
           <>
             A copy of <code>{fileSourceName(source)}</code>, added {new Date(source.addedAt).toLocaleDateString()}. Add
             a file with the same name to replace it.
@@ -571,9 +623,11 @@ function SourceRow({
         </p>
       )}
       <p className="card-meta">
-        {source.version ? `version ${source.version}` : 'no version declared'}
+        {homebrew ? '' : source.version ? `version ${source.version}` : 'no version declared'}
         {/* What it contributes, which is the question "see what each source contributes" asks. */}
-        {loaded && !loaded.failed
+        {loaded && !loaded.failed && homebrew
+          ? `${loaded.elementCount.toLocaleString()} ${loaded.elementCount === 1 ? 'element' : 'elements'}`
+          : loaded && !loaded.failed
           ? ` · ${loaded.elementCount.toLocaleString()} ${loaded.elementCount === 1 ? 'element' : 'elements'} from ${
               loaded.fileCount
             } ${loaded.fileCount === 1 ? 'file' : 'files'}`
@@ -598,6 +652,9 @@ function SourceRow({
         <OverlapNote key={overlap.sourceId} overlap={overlap} other={nameOf(overlap.sourceId)} />
       ))}
       {update && <UpdateNote status={update} />}
+      {homebrew && editing && (
+        <HomebrewEditor source={source} system={system} index={index} busy={busy} actions={actions.homebrew} />
+      )}
       {refreshed && <RefreshNote report={refreshed} />}
 
       {choosing && (
@@ -640,9 +697,24 @@ function SourceRow({
         <button type="button" onClick={() => void actions.move(source.id, 'down')} disabled={busy || last}>
           Move down
         </button>
-        <button type="button" onClick={() => void actions.remove(source.id)} disabled={busy}>
-          Remove
-        </button>
+        {homebrew && (
+          <button type="button" onClick={() => setEditing(!editing)} aria-expanded={editing}>
+            {editing ? 'Close the elements' : 'Edit elements'}
+          </button>
+        )}
+        {homebrew ? (
+          // Its body is the only copy of what the user wrote, so removing it asks first. A character keeps its own copy.
+          <ArmedButton
+            label="Remove"
+            armedLabel="Remove it and everything written in it"
+            disabled={busy}
+            onConfirm={() => void actions.remove(source.id)}
+          />
+        ) : (
+          <button type="button" onClick={() => void actions.remove(source.id)} disabled={busy}>
+            Remove
+          </button>
+        )}
       </div>
     </article>
   );
