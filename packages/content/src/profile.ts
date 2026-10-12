@@ -69,9 +69,10 @@ export interface ConfiguredSource {
   excluded?: string[];
   /**
    * `file`: one Aurora elements file the user added, kept as a copy in the app's own storage (`fileSourceKey`) and
-   * addressed as `local:<file name>` — ADR 0056. Absent: an index at `url`.
+   * addressed as `local:<file name>` — ADR 0056. `homebrew`: elements the user wrote in the app, kept in Incudo's own
+   * content format and addressed as `homebrew:<slug>` — ADR 0108. Absent: an index at `url`.
    */
-  kind?: 'file';
+  kind?: 'file' | 'homebrew';
   /** The version last seen in the index. The cache's stamp, mirrored here for display. */
   version?: string;
   addedAt: string;
@@ -86,7 +87,7 @@ export type SourceKeep = 'converted' | 'files';
 
 /** Whether a source keeps its content converted (the default) rather than as the files it fetched. */
 export function keepsConverted(source: Pick<ConfiguredSource, 'keep' | 'kind'>): boolean {
-  return source.kind !== 'file' && source.keep !== 'files';
+  return source.kind === undefined && source.keep !== 'files';
 }
 
 export interface SourceProfileData {

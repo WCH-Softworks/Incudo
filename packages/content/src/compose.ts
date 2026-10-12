@@ -14,6 +14,7 @@
 import type { Fetcher, Storage } from '@incudo/core';
 import { CachedContentSource } from './cached-source.ts';
 import { FILE_SOURCE_HAS_NO_UPSTREAM, FileContentSource, isFileSource } from './file-source.ts';
+import { HOMEBREW_HAS_NO_UPSTREAM, HomebrewContentSource, isHomebrewSource } from './homebrew-source.ts';
 import { HttpContentSource, cacheKey, etagKey, etagPrefix } from './http-source.ts';
 import { LayeredContentSource } from './layered-source.ts';
 import { ContentLibrary } from './library.ts';
@@ -67,6 +68,10 @@ export function composeForLoad(
 ): { source: ContentSource; finish: () => Promise<void> } {
   // A file the user added is its own copy, read from storage and never from a network (ADR 0056).
   if (isFileSource(source)) return { source: new FileContentSource(source.id, options.storage), finish: async () => undefined };
+  // Elements the user wrote, kept in Incudo's own format, read from storage and never from a network (ADR 0108).
+  if (isHomebrewSource(source)) {
+    return { source: new HomebrewContentSource(source.id, options.storage, source.name), finish: async () => undefined };
+  }
   const http = new HttpContentSource({
     id: source.id,
     fetcher: options.fetcher,
@@ -136,6 +141,7 @@ export async function checkSourceForUpdates(
   options: ComposeOptions,
 ): Promise<UpdateStatus> {
   if (isFileSource(source)) return { state: 'unknown', reason: FILE_SOURCE_HAS_NO_UPSTREAM };
+  if (isHomebrewSource(source)) return { state: 'unknown', reason: HOMEBREW_HAS_NO_UPSTREAM };
   if (options.fetcher.conditional) {
     const byFile = await checkEveryCachedFile(source, options);
     if (byFile) return byFile;
@@ -245,6 +251,7 @@ export interface RefreshReport {
  */
 export async function refreshSource(source: ConfiguredSource, options: ComposeOptions): Promise<RefreshReport> {
   if (isFileSource(source)) throw new Error(FILE_SOURCE_HAS_NO_UPSTREAM);
+  if (isHomebrewSource(source)) throw new Error(HOMEBREW_HAS_NO_UPSTREAM);
   const http = new HttpContentSource({
     id: source.id,
     fetcher: options.fetcher,
