@@ -1674,16 +1674,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
     nothing of the dialog and the app's items where chosen; the choices survive a restart. **One limit found**: the
     preview's own Margins list (Minimum, Custom) brings the headers option back, can print the dialog's date and title on
     page 1 and drops the app's page numbers, and is remembered by the preview. It opens on Default, which the rules hold
-    for; nothing in the page was found to hold against it (ADR 0078, "What this does not do"). Not on macOS or Linux (the
-    item below).
-- [ ] **"Print sheet…" on macOS and Linux: does it print at all?** Open until the maintainer's macOS and Linux
-      environments exist. The command calls `window.print()`, which Tauri's own documentation says works on every
-      platform. But the same documentation says Tauri's Rust `print()` is only supported on macOS, and the wry version
-      the lockfile pins has no handling of the page's `window.print()` in its macOS webview that could be found (its macOS
-      print is `NSPrintOperation`, reached only through that `print()`), so on macOS the command may do nothing. On Linux
-      wry's `print()` opens GTK's print dialog; whether `window.print()` does the same in WebKitGTK is unseen. What
-      settles it: pressing "Print sheet…" and Ctrl+P (⌘P) in the window on each, and, where it does nothing, printing
-      through a Tauri command that calls `print()` instead. Neither platform has run any of ADR 0077.
+    for; nothing in the page was found to hold against it (ADR 0078, "What this does not do"). Not on macOS or Linux (Beyond
+    1.0's "macOS, Linux and iOS").
 - [x] **Say why a number moved when what moved it is hidden.** *Buried in the ADR 0076 item; found on 2026-10-05 by
       the audit described at the end of Phase 3.* A section declaring `omitHidden` leaves out what content marks
       `display="false"`, so Tough is not on the feature list and the hit points it adds have no reason beside them, as on
@@ -1698,7 +1690,7 @@ pane draws and every export renders: the PDF and the print layout start from it,
 
 ---
 
-## Phase 6 — Mobile app 🟡
+## Phase 6 — Mobile app ✅
 
 *Deliberately after the desktop builder: the shared core must be proven first.*
 
@@ -1784,11 +1776,13 @@ pane draws and every export renders: the PDF and the print layout start from it,
       build, and the Sources pane in the browser build. **Not yet:** the desktop, a real phone, iOS.
 
 **Exit criteria:** the same `.incu` file opens identically on desktop and mobile, and
-`@incudo/core` still has zero platform-specific code.
+`@incudo/core` still has zero platform-specific code. Met on the emulator, every sheet held to the desktop's checksum.
+The items' "not on a real phone" and "not iOS" notes moved after 1.0 (2026-10-12): a real phone is driven before the
+Google Play listing, iOS with macOS (Beyond 1.0, below).
 
 ---
 
-## Phase 7 — Systems as a first-class user surface ⬜
+## Phase 7 — Systems as a first-class user surface ✅
 
 *This is the phase that makes or breaks the project's premise. It should not slip.*
 See [ADR 0011](./docs/adr/0011-user-systems.md).
@@ -1866,8 +1860,9 @@ See [ADR 0011](./docs/adr/0011-user-systems.md).
 - Publishing the schema and a second official system were moved to "Beyond 1.0" by the maintainer's call
   (2026-10-09).
 
-**Exit criteria:** someone who is not the maintainer adds a system without touching engine code,
-and a house-rule overlay still receives upstream fixes.
+**Exit criteria:** ~~someone who is not the maintainer adds a system without touching engine code,~~ and a house-rule
+overlay still receives upstream fixes (ADR 0102). The first half moved to Beyond 1.0's "Systems for authors" by the
+maintainer's call (2026-10-12): systems written by someone else come after 1.0.
 
 ---
 
@@ -2014,7 +2009,8 @@ written on a character can be moved into the user's library without being typed 
     them.
 - [ ] Stable formats with a real versioning and migration policy — from here on, the system
       format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md))
-- [ ] Signed desktop installers (Windows/macOS/Linux); the phone's store is the first item after 1.0 (Beyond 1.0, below)
+- [ ] Signed desktop installer for Windows; macOS and Linux are after 1.0, and the phone's store is the first item after
+      1.0 (Beyond 1.0, below)
 - [ ] Docs site, contribution guide, issue templates
 - [ ] `docs/LICENSING.md` complete for every shipped system
 - [x] Patreon and Ko-fi links in README and in-app About — never on a screen showing licensed material,
@@ -2033,7 +2029,8 @@ written on a character can be moved into the user's library without being typed 
       free. The inventory starts from every "Driven in…" and "Not run" note in CLAUDE.md, the ADRs and this file. A bug
       found is fixed with a test that fails without the fix where one can, and every note is updated to say what was
       driven where. Done when no feature reads "browser build only" and none is missing from the phone that the phone
-      offers. macOS, Linux, iOS and a real phone stay open items of their own, not part of this one.
+      offers. A real phone is driven right after 1.0, before the Google Play listing, and macOS, Linux and iOS after that
+      (Beyond 1.0, below): neither is part of this one.
 
 ---
 
@@ -2059,6 +2056,25 @@ it needs, before anything is decided:
 - **Which devices it is driven on before a listing**: the emulator and at least one real phone, which nothing has been
   run on yet.
 An ADR first. Not iOS: that waits for the maintainer's environment, as macOS does.
+- **Real phones are driven here** (the maintainer's call, 2026-10-12): every feature walked on at least one real Android
+  phone, right before the listing. Before 1.0 the phone is driven on the emulator only (Phase 9's drive item).
+
+### 1.x — macOS, Linux and iOS
+After 1.0, by the maintainer's call (2026-10-12): none of the three has an environment to run on yet, and testing on them
+is not an immediate priority. Linux will probably come first. Until then every "not on macOS or Linux" and "not iOS" note
+in this file and the ADRs is an open question of this section, not a gap in its phase.
+- **Drive the desktop app on macOS and Linux** as Phase 9 drives it on Windows: the native menus (written for macOS and
+  never run, ADR 0037), the shortcuts, the file dialogs and drops, the fetch command, saving and opening a library.
+- **"Print sheet…": does it print at all?** Moved from Phase 5. The command calls `window.print()`, which Tauri's own
+  documentation says works on every platform. But the same documentation says Tauri's Rust `print()` is only supported
+  on macOS, and the wry version the lockfile pins has no handling of the page's `window.print()` in its macOS webview
+  that could be found (its macOS print is `NSPrintOperation`, reached only through that `print()`), so on macOS the
+  command may do nothing. On Linux wry's `print()` opens GTK's print dialog; whether `window.print()` does the same in
+  WebKitGTK is unseen. What settles it: pressing "Print sheet…" and Ctrl+P (⌘P) in the window on each, and, where it does
+  nothing, printing through a Tauri command that calls `print()` instead. Neither platform has run any of ADR 0077.
+- **Signed installers for macOS and Linux.** The release workflow builds them (unsigned, never installed); Phase 9 signs
+  the Windows one.
+- **The phone app on iOS**: a build, signing, and the App Store, after the Google Play listing has shown what a store needs.
 
 ### 1.x — A laid-out sheet
 After the first release, by the maintainer's call (2026-09-30), once the printed sheet had been seen on paper. The
@@ -2112,6 +2128,9 @@ for it. The first two were Phase 7 items, and neither is in its exit criteria.
   what the overlay writes. Either locate it at the overlay's `derive` and say `null` removes the leftover (amends ADR
   0103; docs/SYSTEM-GUIDE.md section 7 and its test change), or replace a formula whole (an overlay format change, and
   the guide's partial edit would stop working). Measure first how many places hold a formula.
+- **Someone who is not the maintainer adds a system without touching engine code**, from docs/SYSTEM-GUIDE.md and the
+  app alone: Phase 7's exit criterion, moved here (2026-10-12). What they stumble on is the guide's and the error
+  messages' next work.
 - **Also left from Phase 7's items:** forking a user's own system from the app, an in-app system editor, overlays of
   overlays and placing a new entry before another.
 
