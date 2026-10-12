@@ -204,7 +204,8 @@ test('every weapon in a sample\'s bag is an attack on its sheet, and every row A
     const attacks = sheetView(derived, kind).sections.find((s) => s.id === 'attacks')?.attacks ?? [];
     // Aurora writes a row for every weapon in the bag, carried too; so does the sheet.
     const weapons = (run.imported.character.inventory ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Weapon').map((e) => e.instanceId);
-    assert.deepEqual(attacks.map((a) => a.instanceId), weapons, `${sample.id}: an attack per weapon in the bag, in bag order`);
+    // And after them the rows the kind always has (an unarmed strike, ADR 0110), which Aurora records none of.
+    assert.deepEqual(attacks.filter((a) => !a.innate).map((a) => a.instanceId), weapons, `${sample.id}: an attack per weapon in the bag, in bag order`);
     for (const row of recorded) {
       const attack = attacks.find((a) => a.instanceId === row.identifier);
       compared++;
@@ -253,6 +254,81 @@ test("a Beast Master's companion shows what its ranger adds to its attack and da
     ['Attack Rolls', '+2'],
     ['Damage Rolls', '+2'],
   ]);
-  // A ranger with no weapon has no attacks; one is not invented.
-  assert.equal(state.sheet.sections.find((s) => s.id === 'attacks'), undefined);
+  // A ranger with no weapon attacks unarmed and with nothing else (ADR 0110); no weapon is invented.
+  assert.deepEqual(state.sheet.sections.find((s) => s.id === 'attacks')?.attacks?.map((a) => a.name), ['Unarmed Strike']);
+});
+
+// --- ADR 0110: an unarmed strike, an off-hand row and a melee weapon's reach, on the real corpus ---------------------
+
+/** A character built by name through the builder: a race and a class of one book, a level, scores, and what it takes. */
+async function built(book: string, className: string, level: number, scores: Record<string, number>) {
+  const system = await loadShippedSystem('dnd5e');
+  const elements = await realElements();
+  const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements);
+  const pick = (stepId: string, test: (e: Element) => boolean) => {
+    const decision = b.getState().decisions.find((d) => d.stepId === stepId && d.kind === 'pick');
+    const id = decision?.candidates.find((c) => test(elements.get(c)!));
+    assert.ok(decision && id, `the ${stepId} step offers what is asked for`);
+    b.choose(decision.id, [id]);
+  };
+  pick('race', (e) => e.name === 'Human' && e.source.startsWith('Player’s Handbook'));
+  pick('class', (e) => e.name === className && e.source === book);
+  b.setProgress(level);
+  for (const [stat, value] of Object.entries(scores)) b.setBaseStat(stat, value);
+  const answer = (name: string) => {
+    const decision = b.getState().decisions.find((d) => d.candidates.some((c) => elements.get(c)?.name === name));
+    assert.ok(decision, `${name} is offered`);
+    b.choose(decision.id, [...decision.chosen, decision.candidates.find((c) => elements.get(c)?.name === name)!]);
+  };
+  const wield = (name: string, from = 'Player’s Handbook') => {
+    const weapon = elements.byType('Weapon').find((e) => e.name === name && e.source === from)!;
+    b.addItem(weapon.id);
+    const entry = b.getState().character.inventory!.at(-1)!;
+    assert.equal(b.equipItem(entry.instanceId, true), undefined, `${name} is equipped`);
+  };
+  const attacks = () => b.getState().sheet.sections.find((s) => s.id === 'attacks')?.attacks ?? [];
+  return { answer, wield, attacks };
+}
+
+test('an unarmed strike: Strength and 1 for anyone, the Martial Arts die and the better ability for a Monk', { skip: corpusSkip }, async () => {
+  // Fails if the innate row is not declared, if Martial Arts' die or Dexterity is not read, or if a die replaces the 1.
+  const fighter = await built('Player’s Handbook', 'Fighter', 1, { strength: 16, dexterity: 10 });
+  const unarmed = (rows: ReturnType<typeof fighter.attacks>) => rows.find((a) => a.innate);
+  assert.deepEqual(
+    [unarmed(fighter.attacks())?.name, unarmed(fighter.attacks())?.bonus, unarmed(fighter.attacks())?.damage],
+    ['Unarmed Strike', '+5', '1+3 bludgeoning'],
+  );
+  const monk = await built('Player’s Handbook', 'Monk', 5, { strength: 10, dexterity: 16 });
+  assert.deepEqual([unarmed(monk.attacks())?.bonus, unarmed(monk.attacks())?.damage], ['+6', '1d6+3 bludgeoning'], 'a 2014 Monk 5: d6, Dexterity');
+  const monk24 = await built('Player’s Handbook (2024)', 'Monk', 1, { strength: 10, dexterity: 16 });
+  assert.deepEqual([unarmed(monk24.attacks())?.bonus, unarmed(monk24.attacks())?.damage], ['+5', '1d6+3 bludgeoning'], 'a 2024 Monk 1: d6');
+});
+
+test('two Light weapons in hand each show an off-hand row, its ability added only with the style', { skip: corpusSkip }, async () => {
+  // Fails if slots do not publish support tags, if the variant is not declared, or if the style is not read.
+  const rogue = await built('Player’s Handbook', 'Rogue', 1, { strength: 10, dexterity: 16 });
+  rogue.wield('Shortsword');
+  assert.deepEqual(rogue.attacks().find((a) => a.name === 'Shortsword')?.alternatives, [], 'one Light weapon held');
+  rogue.wield('Shortsword');
+  const swords = rogue.attacks().filter((a) => a.name === 'Shortsword');
+  assert.equal(swords.length, 2);
+  for (const sword of swords) {
+    assert.equal(sword.damage, '1d6+3 piercing');
+    assert.deepEqual(sword.alternatives, [{ label: 'off-hand', damage: '1d6 piercing' }]);
+  }
+  const fighter = await built('Player’s Handbook', 'Fighter', 1, { strength: 10, dexterity: 16 });
+  fighter.answer('Two-Weapon Fighting');
+  fighter.wield('Shortsword');
+  fighter.wield('Scimitar');
+  assert.deepEqual(fighter.attacks().find((a) => a.name === 'Scimitar')?.alternatives, [{ label: 'off-hand', damage: '1d6+3 slashing' }]);
+});
+
+test('a melee weapon writing no range shows its reach, 5 ft or 10 ft with Reach; one writing a range keeps it', { skip: corpusSkip }, async () => {
+  // Fails if `reach` is not declared, or if it overrides a range the weapon writes.
+  const fighter = await built('Player’s Handbook', 'Fighter', 1, { strength: 16 });
+  // The 2014 Reach weapons write "10 ft" themselves; the 2024 ones write none, and the rule gives it.
+  for (const name of ['Glaive', 'Longsword', 'Longbow']) fighter.wield(name);
+  fighter.wield('Pike', 'Player’s Handbook (2024)');
+  const range = (name: string) => fighter.attacks().find((a) => a.name === name)?.range;
+  assert.deepEqual([range('Glaive'), range('Pike'), range('Longsword'), range('Longbow')], ['10 ft', '10 ft', '5 ft', '150/600']);
 });

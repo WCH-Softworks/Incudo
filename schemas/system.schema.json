@@ -546,6 +546,63 @@
                 "types": { "type": "array", "items": { "type": "string", "minLength": 1 } },
                 "labels": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } }
               }
+            },
+            "innate": {
+              "type": "array",
+              "description": "Attack rows the kind always has, no item giving them (ADR 0110): an unarmed strike. Each adds up its own stats, as an attack's, {name} its name and no setter to read; its bonus and damage are the kind's bonus and damage stats.",
+              "items": {
+                "type": "object",
+                "required": ["name", "stats"],
+                "additionalProperties": false,
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "description": "User-facing name on the sheet." },
+                  "stats": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["stat", "value"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "stat": { "type": "string", "minLength": 1 },
+                        "value": { "$ref": "#/$defs/expr" },
+                        "requirements": { "type": "string", "description": "A condition in content's requirement language." }
+                      }
+                    }
+                  },
+                  "sides": { "$ref": "#/$defs/expr", "description": "Its damage die's sides; 0 or less writes flat, or no die." },
+                  "flat": { "type": "string", "minLength": 1, "description": "What is written as the die when sides gives none, as content writes a blowgun's: 1." },
+                  "damageType": { "type": "string", "minLength": 1 },
+                  "range": { "type": "string", "minLength": 1 },
+                  "properties": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+                }
+              }
+            },
+            "variants": {
+              "type": "array",
+              "description": "Another row of an attack with a die, shown when its condition holds in the attack's scope, its own attack stat added to the die (ADR 0110): an off-hand attack.",
+              "items": {
+                "type": "object",
+                "required": ["label", "damage"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string", "minLength": 1, "description": "User-facing: \"off-hand\"." },
+                  "requirements": { "type": "string", "description": "A condition in content's requirement language." },
+                  "damage": { "type": "string", "minLength": 1, "description": "The attack stat added to its die." }
+                }
+              }
+            },
+            "reach": {
+              "type": "array",
+              "description": "The range of an attack whose element writes none, the first entry whose condition holds (ADR 0110): a melee weapon's reach.",
+              "items": {
+                "type": "object",
+                "required": ["text"],
+                "additionalProperties": false,
+                "properties": {
+                  "text": { "type": "string", "minLength": 1, "description": "User-facing: \"5 ft.\"." },
+                  "requirements": { "type": "string", "description": "A condition in content's requirement language." }
+                }
+              }
             }
           }
         },
@@ -916,6 +973,10 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "description": "Setters whose *presence* becomes a tag, named after the setter rather than its value. `<set name=\"versatile\">1d8</set>` is how a quarterstaff says it is versatile, and `[primary:versatile]` is the corpus asking; the die is not what the question is about."
+        },
+        "tagSupports": {
+          "type": "boolean",
+          "description": "Whether a slot publishes its item's support tags too, lowercased (ADR 0110), so `[primary:<tag>]` reads what kind of weapon a hand holds. Content asks a slot for none."
         },
         "slots": { "type": "array", "items": { "$ref": "#/$defs/slot" } },
         "attunement": { "$ref": "#/$defs/attunement" },

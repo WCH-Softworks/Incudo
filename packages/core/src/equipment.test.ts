@@ -90,6 +90,14 @@ test("a slot's tags are the occupied tag, the element's name, setter values and 
   assert.equal(state.tags.get('cost'), undefined, 'an unnamed setter publishes nothing');
 });
 
+test('a slot publishes its item\'s support tags only when the declaration says so', () => {
+  // ADR 0110. Fails if support tags are published unasked (every derivation's slot tags would change), or not when asked.
+  const knife = { ...item('KNIFE', 'Knife', { worn: 'grip' }), supports: ['TAG_QUICK'] };
+  const held = (def: InventoryDef) => [...resolveEquipment(bag({ instanceId: 'k', elementId: 'KNIFE', equipped: true }), indexWith(knife), def).tags.get('held')!].sort();
+  assert.deepEqual(held(declaration()), ['any', 'knife']);
+  assert.deepEqual(held({ ...declaration(), tagSupports: true }), ['any', 'knife', 'tag_quick']);
+});
+
 test('the stats list is the capacity: two hands fill in order, a third reports', () => {
   const index = indexWith(
     item('SWORD', 'Sword', { worn: 'grip' }),

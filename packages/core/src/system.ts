@@ -520,6 +520,11 @@ export interface InventoryDef {
    * `[primary:versatile]` is the corpus asking. The die is not what the question is about.
    */
   flagSetters?: string[];
+  /**
+   * Whether a slot publishes its item's support tags too, lowercased (ADR 0110): `[primary:<tag>]` then reads one, as
+   * an attack's off-hand row asks whether both hands hold a Light weapon. Content asks a slot for none.
+   */
+  tagSupports?: boolean;
   slots: SlotDef[];
   /** Omit for a system with no such concept, and nothing is ever gated. */
   attunement?: AttunementDef;
@@ -1502,6 +1507,37 @@ export interface AttacksDef {
    * a tag that names no element by `labels`. A tag neither answers is not a property.
    */
   properties?: { types?: ElementType[]; labels?: Record<string, string> };
+  /** Attack rows the kind always has, no item giving them: an unarmed strike (ADR 0110). */
+  innate?: InnateAttackDef[];
+  /** Another row of a bag attack, shown when its condition holds, with damage of its own: an off-hand attack (ADR 0110). */
+  variants?: AttackVariantDef[];
+  /** The range of an attack whose element writes none, the first whose condition holds: a melee weapon's reach (ADR 0110). */
+  reach?: Array<{ text: string; requirements?: string }>;
+}
+
+/** An attack row the kind always has — ADR 0110. */
+export interface InnateAttackDef {
+  /** Its name on the sheet, and what `{name}` is filled with in its contributions. */
+  name: string;
+  /** What it adds up, in order, as a bag attack's `stats`; no setter to read. */
+  stats: AttackStatDef[];
+  /** Its damage die's sides; 0 or less writes `flat`, or no die. */
+  sides?: StatExpr;
+  /** What is written as the die when `sides` gives none, as content writes a blowgun's: "1". */
+  flat?: string;
+  damageType?: string;
+  range?: string;
+  properties?: string[];
+}
+
+/** Another row of a bag attack — ADR 0110. */
+export interface AttackVariantDef {
+  /** What the row is called beside the attack: "off-hand". */
+  label: string;
+  /** When it is shown, read in the attack's scope. */
+  requirements?: string;
+  /** The attack stat added to its die instead of the attack's damage. */
+  damage: StatKey;
 }
 
 /** One contribution to an attack's own numbers — ADR 0093. The shape of a kind's {@link ContributionDef}, unbucketed. */

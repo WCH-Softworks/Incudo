@@ -138,8 +138,11 @@ export interface SheetListedElement {
  * after it and the type, "1d8+3 slashing", and the same for each other die it may be rolled with.
  */
 export interface SheetAttack {
-  instanceId: string;
-  elementId: ElementId;
+  /** The bag entry; absent for a row the kind always has (ADR 0110). */
+  instanceId?: string;
+  elementId?: ElementId;
+  /** A row the kind always has, no item giving it: an unarmed strike (ADR 0110). */
+  innate?: true;
   name: string;
   /** Whether it is worn or wielded rather than carried. Both are listed. */
   equipped: boolean;
@@ -268,15 +271,17 @@ export function attackDamage(dice: string | undefined, modifier: number, type: s
 /** An attack as a sheet writes it. */
 export function sheetAttack(attack: DerivedAttack): SheetAttack {
   return {
-    instanceId: attack.instanceId,
-    elementId: attack.elementId,
+    ...(attack.instanceId !== undefined ? { instanceId: attack.instanceId } : {}),
+    ...(attack.elementId !== undefined ? { elementId: attack.elementId } : {}),
+    ...(attack.innate ? { innate: true as const } : {}),
     name: attack.name,
     equipped: attack.equipped,
     bonus: attack.bonus >= 0 ? `+${attack.bonus}` : String(attack.bonus),
     damage: attackDamage(attack.dice, attack.damageBonus, attack.damageType),
     alternatives: attack.alternatives.map((alternative) => ({
       label: alternative.label,
-      damage: attackDamage(alternative.dice, attack.damageBonus, attack.damageType),
+      // A variant (an off-hand row, ADR 0110) adds its own; another die adds the attack's.
+      damage: attackDamage(alternative.dice, alternative.damageBonus ?? attack.damageBonus, attack.damageType),
     })),
     ...(attack.range !== undefined ? { range: attack.range } : {}),
     properties: attack.properties,

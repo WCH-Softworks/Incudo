@@ -206,3 +206,61 @@ test('the die, its type, another die and the range are written as content writes
   assert.deepEqual(knife!.properties, ['Keen', 'Quick']);
   assert.deepEqual(sword!.properties, []);
 });
+
+// --- ADR 0110: rows no item gives, another row of a held attack, and a range an element does not write ---------------
+
+const INNATE: AttacksDef['innate'] = [
+  {
+    name: 'Fist',
+    stats: [
+      { stat: 'strike:ability', value: ref('might') },
+      { stat: 'strike:bonus', value: ref('strike:ability') },
+      { stat: 'strike:bonus', value: ref('{name}:bonus') },
+      { stat: 'strike:damage', value: ref('strike:ability') },
+    ],
+    sides: ref('fist:die'),
+    flat: '1',
+    damageType: 'crushing',
+    range: 'touch',
+  },
+];
+
+test('a row the kind always has adds up its own stats, its die from a stat or its flat text', () => {
+  // Fails if innate rows are not derived, if `{name}` is not filled with the row's name, or if `sides` or `flat` is
+  // not read.
+  const [bare] = deriveAttacks(bag(), index(), declaration({ innate: INNATE }), reader({ might: 3, 'fist:bonus': 1 }), INVENTORY);
+  assert.equal(bare?.innate, true);
+  assert.equal(bare?.instanceId, undefined);
+  assert.deepEqual([bare?.name, bare?.bonus, bare?.damageBonus, bare?.dice, bare?.damageType, bare?.range], ['Fist', 4, 3, '1', 'crushing', 'touch']);
+  const [trained] = deriveAttacks(bag(), index(), declaration({ innate: INNATE }), reader({ might: 3, 'fist:die': 6 }), INVENTORY);
+  assert.equal(trained?.dice, '1d6');
+});
+
+const OFF_HAND: AttacksDef['variants'] = [{ label: 'other hand', requirements: '[blade:TAG_KEEN],[left:TAG_KEEN]', damage: 'strike:other' }];
+
+test('a variant is another row of a held attack, with damage of its own, while its condition holds', () => {
+  // Fails if a variant is shown on a carried entry, when its condition is false, or adds the attack's damage.
+  const stats = [...declaration().stats, { stat: 'strike:other', value: { kind: 'number', value: 0 } as const }];
+  const held = { ...reader(STATS), statTags: (stat: string) => (stat === 'left' ? new Set(['tag_keen']) : undefined) };
+  const def = declaration({ variants: OFF_HAND, stats });
+  const [carried, equipped, sword] = deriveAttacks(
+    bag({ instanceId: 'c', elementId: 'KNIFE' }, { instanceId: 'e', elementId: 'KNIFE', equipped: true }, { instanceId: 's', elementId: 'SWORD', equipped: true }),
+    index(SWORD, KNIFE, QUICK),
+    def,
+    held,
+    INVENTORY,
+  );
+  assert.deepEqual(carried?.alternatives, []);
+  assert.deepEqual(equipped?.alternatives, [{ label: 'other hand', dice: '1d4', damageBonus: 0 }]);
+  assert.deepEqual(sword?.alternatives.map((a) => a.label), ['two-handed'], 'the sword is not keen');
+  const [, emptyHand] = deriveAttacks(bag({ instanceId: 'c', elementId: 'KNIFE' }, { instanceId: 'e', elementId: 'KNIFE', equipped: true }), index(KNIFE, QUICK), def, reader(STATS), INVENTORY);
+  assert.deepEqual(emptyHand?.alternatives, [], 'nothing keen in the other hand');
+});
+
+test('an element writing no range takes the first reach whose condition holds', () => {
+  // Fails if reach overrides a range the element writes, or the first holding entry is not the one taken.
+  const def = declaration({ range: 'reach', reach: [{ text: 'far', requirements: '[blade:TAG_KEEN]' }, { text: 'near' }] });
+  const [knife, sword] = deriveAttacks(bag({ instanceId: 'k', elementId: 'KNIFE' }, { instanceId: 's', elementId: 'SWORD' }), index(SWORD, KNIFE, QUICK), def, reader(STATS), INVENTORY);
+  assert.equal(knife?.range, '20/60', 'its own range');
+  assert.equal(sword?.range, 'near');
+});

@@ -35,6 +35,7 @@ export const OVERLAY_KEYED_ARRAYS: Readonly<Record<string, string>> = {
   'characterKinds[].play.trackers': 'id',
   'characterKinds[].blockFilters': 'key',
   'characterKinds[].freeform.fields': 'key',
+  'characterKinds[].attacks.innate': 'name',
 };
 
 /** String lists written with ADR 0009's `+Type` / `-Type` delta, applied to the parent's list when they are one. */

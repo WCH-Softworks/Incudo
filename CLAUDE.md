@@ -2460,8 +2460,16 @@ before touching it:
   text-only frontier), so Vex survives a reopen with no source; `sheet-export.test.ts` catches it, `self-contained.test.ts`
   does not (its fixtures carry no weapon). Its personal-text check exempts an `attacks.*` freeform value equal to the
   properties the sheet's own attack writes: Aurora copies them there.
-- **Not done:** unarmed strikes and martial arts, spell attacks as rows, two-weapon fighting, Dueling (commented out
-  upstream), reach as a distance (a melee weapon shows no range), the inventory naming an adorned item by `name-format`.
+- **Rows no item gives, an off-hand row and reach** ([ADR 0110](docs/adr/0110-a-kind-declares-attacks-no-item-gives-an-off-hand-row-and-a-melee-reach.md),
+  2026-10-12): `attacks.innate` (5e: Unarmed Strike, Strength or with a Martial Arts die the better of Strength and
+  Dexterity, plus proficiency; the Martial Arts or Unarmed Fighting die, else a flat "1"), `attacks.variants` (5e:
+  "off-hand" on an equipped Light melee weapon while both hands hold one; no positive ability modifier unless either
+  Two-Weapon Fighting is held) and `attacks.reach` (5e: "10 ft" with Reach, else "5 ft", for a weapon writing no range;
+  the 2014 Reach weapons write their own). `inventory.tagSupports` makes a slot publish support tags; nothing in content
+  asks a slot for one. `DerivedAttack`/`SheetAttack` `instanceId` and `elementId` are optional (an innate row has
+  neither) and an alternative may carry its own `damageBonus`. Aurora records no unarmed row: the book is the referee.
+- **Not done:** ~~unarmed strikes and martial arts~~, spell attacks as rows (cantrips only, the maintainer's call), ~~two-weapon
+  fighting~~, Dueling (commented out upstream), ~~reach as a distance~~ (ADR 0110), the inventory naming an adorned item by `name-format`.
   Driven in the browser build with no source (two packed samples and a built Beast Master); not the Tauri window, the phone,
   the print dialog or a filled form.
 

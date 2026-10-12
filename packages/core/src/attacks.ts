@@ -17,13 +17,16 @@ import type { Character, InventoryEntry } from './character.ts';
 import { evaluateExpr, type ExpressionContext, type StatExpr } from './expression.ts';
 import type { Element, ElementId, ElementIndex, StatKey } from './model.ts';
 import { evaluateRequirements, parseRequirements, type RequirementContext, type RequirementExpr } from './requirements.ts';
-import type { AttacksDef, AttackStatDef, InventoryDef } from './system.ts';
+import type { AttacksDef, AttackStatDef, InnateAttackDef, InventoryDef } from './system.ts';
 
 /** One attack, with everything a sheet writes of it. */
 export interface DerivedAttack {
-  /** The bag entry it is. */
-  instanceId: string;
-  elementId: ElementId;
+  /** The bag entry it is; absent for a row the kind always has (ADR 0110). */
+  instanceId?: string;
+  /** Absent for a row the kind always has. */
+  elementId?: ElementId;
+  /** A row the kind always has, no item giving it: an unarmed strike (ADR 0110). */
+  innate?: true;
   /** The user's name for the entry, else an adornment's naming setter, else the element's name. */
   name: string;
   equipped: boolean;
@@ -34,8 +37,11 @@ export interface DerivedAttack {
   /** Its damage die as content writes it, when the element carries one. */
   dice?: string;
   damageType?: string;
-  /** Other dice it may be rolled with, the same modifier added: a versatile weapon's two-handed die. */
-  alternatives: Array<{ label: string; dice: string }>;
+  /**
+   * Other ways it may be rolled: a versatile weapon's two-handed die, with the same modifier; or a variant of the attack
+   * (ADR 0110), its own die and its own `damageBonus` (an off-hand attack's, with no positive ability modifier).
+   */
+  alternatives: Array<{ label: string; dice: string; damageBonus?: number }>;
   range?: string;
   /** What it is, by name, in order of name. */
   properties: string[];
@@ -212,7 +218,10 @@ export function deriveAttacks(
     };
     const dice = setter(def.dice);
     const damageType = def.damageType ? element.setters[def.dice]?.attrs?.[def.damageType]?.trim() : undefined;
-    const range = setter(def.range);
+    // A range the element writes, else the first reach whose condition holds (ADR 0110): a melee weapon writes none.
+    const range = setter(def.range) ?? (def.reach ?? []).find((r) => holds(r.requirements, element, scope))?.text;
+    // A variant is a way to swing what is held: a carried weapon has none.
+    const variants = dice === undefined || entry.equipped !== true ? [] : (def.variants ?? []).filter((v) => holds(v.requirements, element, scope));
     attacks.push({
       instanceId: entry.instanceId,
       elementId: element.id,
@@ -222,16 +231,60 @@ export function deriveAttacks(
       damageBonus: own.get(def.damage.toLowerCase()) ?? 0,
       ...(dice !== undefined ? { dice } : {}),
       ...(damageType ? { damageType } : {}),
-      alternatives: (def.alternatives ?? []).flatMap((alternative) => {
-        const other = setter(alternative.setter);
-        return other !== undefined ? [{ label: alternative.label, dice: other }] : [];
-      }),
+      alternatives: [
+        ...(def.alternatives ?? []).flatMap((alternative) => {
+          const other = setter(alternative.setter);
+          return other !== undefined ? [{ label: alternative.label, dice: other }] : [];
+        }),
+        ...variants.map((variant) => ({ label: variant.label, dice: dice!, damageBonus: own.get(variant.damage.toLowerCase()) ?? 0 })),
+      ],
       ...(range !== undefined ? { range } : {}),
       properties: propertiesOf(read, def, index),
       stats: Object.fromEntries(own),
     });
   }
+  for (const innate of def.innate ?? []) attacks.push(innateAttack(innate, def, reader));
   return attacks;
+}
+
+/**
+ * A row the kind always has (ADR 0110): its own contributions, `{name}` its name, no element or setter to read, its die's
+ * sides worked out against the character.
+ */
+function innateAttack(innate: InnateAttackDef, def: AttacksDef, reader: AttackReader): DerivedAttack {
+  const self: Element = { id: '', type: '', name: innate.name, source: '', setters: {}, rules: [], supports: [], origin: { sourceId: '', format: 'incudo' } };
+  const own = new Map<StatKey, number>();
+  const scope: AttackReader = {
+    ...reader,
+    hasElement: (id) => reader.hasElement(id),
+    statNumber: (stat) => own.get(stat.toLowerCase()) ?? reader.statNumber(stat),
+    statString: (stat) => reader.statString(stat),
+    statTags: (stat) => reader.statTags?.(stat),
+    hasFlag: (name) => reader.hasFlag(name),
+    setterValues: () => [],
+  };
+  for (const contribution of innate.stats) addContribution(contribution, self, scope, own);
+  const sides = innate.sides ? Math.floor(evaluateExpr(innate.sides, scope)) : 0;
+  return {
+    innate: true,
+    name: innate.name,
+    equipped: true,
+    bonus: own.get(def.bonus.toLowerCase()) ?? 0,
+    damageBonus: own.get(def.damage.toLowerCase()) ?? 0,
+    ...(sides > 0 ? { dice: `1d${sides}` } : innate.flat ? { dice: innate.flat } : {}),
+    ...(innate.damageType ? { damageType: innate.damageType } : {}),
+    alternatives: [],
+    ...(innate.range ? { range: innate.range } : {}),
+    properties: [...(innate.properties ?? [])],
+    stats: Object.fromEntries(own),
+  };
+}
+
+/** A condition read in an attack's scope, its placeholders filled from the element; none always holds. */
+function holds(requirements: string | undefined, element: Element, scope: AttackReader): boolean {
+  if (requirements === undefined) return true;
+  const text = fillAttackPlaceholders(requirements, element, false);
+  return text !== undefined && evaluateRequirements(condition(text), scope);
 }
 
 function addContribution(contribution: AttackStatDef, element: Element, scope: AttackReader, own: Map<StatKey, number>): void {

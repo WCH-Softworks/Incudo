@@ -690,13 +690,22 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           errors.push({ path: `${where}.attacks.types`, message: `names "${type}", which the system's elementTypes does not declare` });
         }
       }
-      for (const [at, stat] of attacks.stats.entries()) {
-        if (stat.requirements === undefined) continue;
+      // Every condition an attack reads (ADR 0093, 0110). A placeholder is filled from the attack's element; any one id
+      // stands for it here.
+      const conditions: Array<[string, string | undefined]> = [
+        ...attacks.stats.map((s, at): [string, string | undefined] => [`stats[${at}]`, s.requirements]),
+        ...(attacks.variants ?? []).map((v, at): [string, string | undefined] => [`variants[${at}]`, v.requirements]),
+        ...(attacks.reach ?? []).map((r, at): [string, string | undefined] => [`reach[${at}]`, r.requirements]),
+        ...(attacks.innate ?? []).flatMap((innate, i) =>
+          innate.stats.map((s, at): [string, string | undefined] => [`innate[${i}].stats[${at}]`, s.requirements]),
+        ),
+      ];
+      for (const [at, requirements] of conditions) {
+        if (requirements === undefined) continue;
         try {
-          // A placeholder is filled from the attack's element; any one id stands for it here.
-          parseRequirements(stat.requirements.replace(/\{[^{}]*\}/g, 'X'));
+          parseRequirements(requirements.replace(/\{[^{}]*\}/g, 'X'));
         } catch (err) {
-          errors.push({ path: `${where}.attacks.stats[${at}].requirements`, message: (err as Error).message });
+          errors.push({ path: `${where}.attacks.${at}.requirements`, message: (err as Error).message });
         }
       }
     }

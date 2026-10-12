@@ -222,6 +222,8 @@ function tagsFor(element: Element, declaration: InventoryDef): ReadonlySet<strin
   for (const setter of declaration.flagSetters ?? []) {
     if (element.setters[setter] !== undefined) tags.add(setter.trim().toLowerCase());
   }
+  // Opt-in (ADR 0110): what kind of weapon a hand holds is a support tag, and nothing in content asks a slot for one.
+  if (declaration.tagSupports) for (const tag of element.supports) tags.add(tag.trim().toLowerCase());
   return tags;
 }
 
