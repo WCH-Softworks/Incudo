@@ -818,7 +818,11 @@ the first slice of Phase 8's element editor. Things to know before touching it:
   Defenders' own `-2` "PB removal" zeroes every proficiency they have. It is the one `companion:` stat the kind writes, and an input, not a name
   on the sheet. `speed:<mode>`, `<skill>:proficiency` and `<ability>:save:proficiency` `startsFrom` the creature's
   `companion:<same>`; `<skill>`, `<ability>:save` and `perception:passive` derive, reading `…:misc` so content written
-  for a character adds. Senses, defences and languages are prose in every creature and are shown, never parsed.
+  for a character adds. Senses, defences and languages are prose in every creature and are shown, never parsed. **So is
+  the speed line** (2026-10-12, the maintainer's call: every speed a stat block declares is printed explicitly): the NPC,
+  the legendary creature and a held creature's Stat Block print "Speed, as printed" beside the derived numbers, which is
+  where "(hover)" (4 creatures), a swim-only speed and "see bad flier below" are; all 141 creatures print one.
+  `kind-sheets.test.ts` holds it for every creature in both kinds and a hovering one held.
   **A sheet section may declare `showWhen`** (a row shows only when that stat, `{stat}` for the row, is non-zero),
   **`printed`** (a held element's setter as written) and **`description`**; `renderSheetSection` takes a `SheetReader`
   and decides all three, so the pane still computes nothing. No editor for the new stats: only the walking speed has one.

@@ -209,10 +209,10 @@ test('the samples\' sheets: labelled rows, no sections of zeros, and the saves, 
   assert.deepEqual(slotMismatch, []);
 });
 
-test('a creature\'s NPC prints its first line and its scores\' modifiers, and what else it prints', { skip: corpusSkip }, async (t) => {
+for (const kindId of ['npc', 'legendary']) test(`a creature's ${kindId} prints its first line, its speed and its scores' modifiers, and what else it prints`, { skip: corpusSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
-  const npc = resolveCharacterKind(system, 'npc');
+  const npc = resolveCharacterKind(system, kindId);
   const elements = await realElements();
   const creatureTypes = new Set(npc.buildSteps.find((s) => s.id === 'creature')?.types ?? []);
   const creatures = [...elements.all()].filter((e) => creatureTypes.has(e.type));
@@ -228,7 +228,7 @@ test('a creature\'s NPC prints its first line and its scores\' modifiers, and wh
       tally(unshown, statSetters.has(lower) ? `${name} (read as a stat)` : name);
     }
     const derived = deriveCharacter(
-      { ...newCharacterOfKind(system, 'npc'), choices: [{ ruleKey: 'build/creature', elementIds: [creature.id] }] },
+      { ...newCharacterOfKind(system, kindId), choices: [{ ruleKey: 'build/creature', elementIds: [creature.id] }] },
       system,
       elements,
       { kind: npc },
@@ -236,7 +236,9 @@ test('a creature\'s NPC prints its first line and its scores\' modifiers, and wh
     const sheet = sheetView(derived, npc);
     const first = sheet.sections[0];
     if (first?.elements[0]?.elementId !== creature.id) wrong.push(`${creature.name}: the first section does not name it`);
-    for (const setter of ['size', 'type', 'alignment', 'ac', 'hp']) {
+    // Speed as the creature prints it: the derived rows are numbers, and "(hover)" or a swim-only speed is only in the
+    // print (the maintainer's call, 2026-10-12: every speed a stat block declares is printed explicitly).
+    for (const setter of ['size', 'type', 'alignment', 'ac', 'hp', 'speed']) {
       const text = creature.setters[setter]?.value.trim();
       const lines = sheet.sections.flatMap((s) => s.printed).map((p) => p.text);
       if (text && !lines.includes(text)) wrong.push(`${creature.name}: its ${setter} is not printed`);
@@ -248,9 +250,9 @@ test('a creature\'s NPC prints its first line and its scores\' modifiers, and wh
   }
   t.diagnostic(`creatures: ${creatures.length}`);
   t.diagnostic(`setters a creature prints that no NPC section prints, by creatures carrying one: ${show(unshown)}`);
-  const blank = sheetView(deriveCharacter(newCharacterOfKind(system, 'npc'), system, elements, { kind: npc }), npc);
-  t.diagnostic(`an NPC from nothing draws ${blank.sections.map((s) => s.id).join(', ')}`);
-  // Fails if the NPC's first line is not printed, or its scores' modifiers are not beside them.
+  const blank = sheetView(deriveCharacter(newCharacterOfKind(system, kindId), system, elements, { kind: npc }), npc);
+  t.diagnostic(`a ${kindId} from nothing draws ${blank.sections.map((s) => s.id).join(', ')}`);
+  // Fails if the first line or the speed is not printed, or the scores' modifiers are not beside them.
   assert.deepEqual(wrong, []);
 });
 
@@ -284,8 +286,29 @@ test('a held creature\'s stat block shows its scores\' modifiers and its first l
   const view = companionsView(derived, pc, elements)!;
   const sections = view.creatures[0]!.sections;
   const printed = sections.flatMap((s) => s.printed).map((p) => p.text);
-  // Fails if the scope's sheet loses its first line, or its scores' modifiers.
+  // Fails if the scope's sheet loses its first line, its printed speed, or its scores' modifiers.
   assert.ok(printed.includes(owl.setters['size']!.value.trim()) && printed.includes(owl.setters['alignment']!.value.trim()), printed.join(' | '));
+  assert.ok(printed.includes(owl.setters['speed']!.value.trim()), printed.join(' | '));
+
+  // A creature that hovers says so in its print and nowhere else.
+  const hovering = [...elements.all()].find((e) => creatureTypes.has(e.type) && /\(hover\)/.test(e.setters['speed']?.value ?? ''))!;
+  const held = companionsView(
+    deriveCharacter(
+      {
+        ...newCharacterOfKind(system, 'pc'),
+        progress: 5,
+        inventory: [{ instanceId: 'holding', elementId: way.element.id, equipped: true }],
+        choices: [{ ruleKey: way.ruleKey, elementIds: [hovering.id] }],
+      },
+      system,
+      elements,
+      { kind: pc },
+    ),
+    pc,
+    elements,
+  )!;
+  const lines = held.creatures[0]!.sections.flatMap((s) => s.printed);
+  assert.ok(lines.some((p) => p.label === 'Speed, as printed' && p.text.includes('(hover)')), `${hovering.name}: ${JSON.stringify(lines)}`);
   for (const r of sections.find((s) => s.id === 'abilities')!.rows) assert.equal(r.beside, signed(Math.floor((Number(r.value) - 10) / 2)), r.stat);
 });
 

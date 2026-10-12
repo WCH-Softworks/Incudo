@@ -1569,13 +1569,18 @@ items; each keeps its original text with a pointer here.*
 *The items below were found on 2026-10-12 by the sorting described at the end of Phase 3. The maintainer chose them for
 before 1.0.*
 
-- [ ] **Every speed a creature prints is on its sheet as printed, hover included.** *From the ADR 0062 item.* A
+- [x] **Every speed a creature prints is on its sheet as printed, hover included.** *From the ADR 0062 item.* A
       creature's speeds are shown as numbers its rules give (Speed 30, Fly Speed 30), and the line it prints, "30 ft., fly
       30 ft. (hover)", is shown nowhere, so a hovering creature reads as any flier. Four structured creatures print
       "(hover)": the Wildfire Spirit, its Unearthed Arcana version, the Inkling Mascot and the Puppeteer Parasite. The
       maintainer's call (2026-10-12): every speed a stat block declares (walking, burrowing, climbing, swimming, flying,
       hovering) is printed explicitly, on an NPC's sheet and a held creature's stat block, as armour class and hit points
       already are; a speed the block does not declare is not shown, and what hovering does in play is the DM's.
+      **Done** (2026-10-12): measured, all 141 creatures print a speed line, 4 with "(hover)", 3 swimming only and one "see
+      bad flier below". The NPC's and the legendary creature's Stat Block and a held creature's print it as "Speed, as
+      printed", one declaration each in 5e's system definition and no code. The derived Speed and Other Speeds rows stay,
+      as Armor Class does beside its print. Every NPC export gains the line. `kind-sheets.test.ts` holds it for every
+      creature in both kinds and for a hovering one held, each failing without the declaration.
 - [ ] **A holder's feature changes the creature it is about, not every creature held.** *From the ADR 0073 item.* The
       book says "Your steel defender gains a +2 bonus to Armor Class", and content writes Improved Defender as
       `companion:ac` +2, so a Battle Smith who also holds a Homunculus Servant shows the +2 on both. ADR 0073 left it
