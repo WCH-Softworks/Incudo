@@ -49,6 +49,25 @@ body {
   font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+/*
+ * The app's own controls and headings are not text to select. Dragging across the header picked up "INCUDO /
+ * Characters / Build / Sheet …" and a pane's heading, as a web page does. Kept selectable: everything a user may
+ * want to copy, which is the Sheet (its headings too, so a copied sheet keeps them), content's own text and its
+ * headings, an element's name in Browse, and every text field. A drag that starts on a button never selected
+ * anything (it is a press); this is about one that passes over it.
+ */
+:is(button, summary, label, legend, h1, h2, h3, h4, h5, h6) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+:is(.sheet, .picker-description) :is(h1, h2, h3, h4, h5, h6, label),
+.browse-title,
+:is(input, textarea) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 code {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   font-size: 0.9em;
