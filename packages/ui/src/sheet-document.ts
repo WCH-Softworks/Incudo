@@ -16,6 +16,7 @@ import type { Character, ElementId } from '@incudo/core';
 import { sheetFreeform, type FreeformState, type SheetFreeform } from './freeform.ts';
 import type { ReferenceRow, ReferencesState } from './references.ts';
 import type { CompanionsView } from './companions.ts';
+import type { SheetDescriptions } from './sheet-descriptions.ts';
 import type { SheetAttack, SheetBagEntry, SheetListedElement, SheetRow, SheetSectionView, SheetView } from './sheet.ts';
 import { purseLine, type PurseRow } from './money.ts';
 
@@ -188,6 +189,11 @@ export interface SheetDocument {
    * the held creatures and before what it keeps, on every sheet.
    */
   freeform?: SheetFreeform;
+  /**
+   * The whole descriptions of what the describing sections list (ADR 0114), after what the user wrote and before what it
+   * keeps, when any section describes an element with a description.
+   */
+  descriptions?: SheetDescriptions;
   /** What it keeps beside it, when it keeps anything. */
   references?: { label: string; entries: SheetDocumentReference[] };
 }
@@ -200,6 +206,8 @@ export interface SheetDocumentSource {
   references: Pick<ReferencesState, 'label' | 'rows'>;
   /** Required, so a caller picking parts cannot leave it out (the phone's sheet did, until it was run). */
   freeform: FreeformState;
+  /** The whole descriptions (ADR 0114); required for the same reason, undefined when there are none. */
+  descriptions: SheetDescriptions | undefined;
 }
 
 export function sheetDocument(state: SheetDocumentSource): SheetDocument {
@@ -230,6 +238,7 @@ export function sheetDocument(state: SheetDocumentSource): SheetDocument {
         }
       : {}),
     ...(freeform ? { freeform } : {}),
+    ...(state.descriptions ? { descriptions: state.descriptions } : {}),
     ...(references.rows.length ? { references: { label: references.label, entries: references.rows.map(referenceEntry) } } : {}),
   };
 }

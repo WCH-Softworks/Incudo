@@ -191,6 +191,8 @@ export interface SheetSectionView {
   section?: string;
   block?: string;
   description?: string;
+  /** The section's elements' whole descriptions go in the Descriptions part (ADR 0114). */
+  describe?: true;
   rows: SheetRow[];
   printed: PrintedSheetLine[];
   elements: SheetListedElement[];
@@ -505,6 +507,7 @@ export function sheetSections(
         section: section.id,
         ...(rendering.blockName !== undefined ? { block: rendering.blockName } : {}),
         ...(rendering.description !== undefined ? { description: rendering.description } : {}),
+        ...(section.describe ? { describe: true as const } : {}),
         rows,
         printed: rendering.printed,
         elements,

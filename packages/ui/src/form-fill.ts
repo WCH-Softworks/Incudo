@@ -21,6 +21,7 @@ import { validateJson, type JsonSchema, type SchemaError } from '@incudo/core';
 
 import { bagEntryHead, listedHead, listedName, type SheetDocument } from './sheet-document.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
+import { htmlToRuns, runsText } from './html-blocks.ts';
 
 /** What kind of box a field is. A button is a box the form has and no rule fills (a portrait). */
 export type FormFieldType = 'text' | 'check' | 'button';
@@ -69,7 +70,7 @@ export type FormRule =
    * form's automatic size would write a short list huge and shrink a long one past reading); what is past the last is
    * left off.
    */
-  | { flow: { fields: string[]; capacity: Array<{ lines: number; perLine: number; fontSize: number }> }; list: ListRef & { join: string } }
+  | { flow: { fields: string[]; capacity: Array<{ lines: number; perLine: number; fontSize: number }> }; list: ListRef & { join: string; describe?: boolean } }
   /** Rows matched by `{n}`, one field per n: the first source that has any; any other source with rows is left off. */
   | { table: { sources: RowRef[]; fields: Record<string, string> } }
   /** A section's attacks, one row of boxes each, in order: name, bonus, damage (ADR 0093). What is past the last row is left off. */
@@ -202,6 +203,23 @@ function named(view: SheetSectionView): string {
 }
 
 /** How many lines text takes at `perLine` characters a line, wrapping at spaces. */
+/** A listed element's head, then its whole description in plain words when the document's Descriptions part has one. */
+function describedItem(document: SheetDocument, element: SheetListedElement): string {
+  const html = document.descriptions?.groups.flatMap((g) => g.entries).find((entry) => entry.elementId === element.elementId)?.html;
+  const text = html ? runsText(htmlToRuns(html)).trim() : '';
+  return text ? `${listedHead(element)}: ${text}` : listedHead(element);
+}
+
+/** Whether every item fits a flow's boxes, packed as the fill packs them: whole items, box by box, in order. */
+function flowFits(items: readonly string[], capacity: ReadonlyArray<{ lines: number; perLine: number }>, join: string): boolean {
+  let next = 0;
+  for (const { lines, perLine } of capacity) {
+    const taken: string[] = [];
+    while (next < items.length && wrappedLines([...taken, items[next]!].join(join), perLine) <= lines) taken.push(items[next++]!);
+  }
+  return next === items.length;
+}
+
 export function wrappedLines(text: string, perLine: number): number {
   let lines = 0;
   for (const paragraph of text.split('\n')) {
@@ -288,10 +306,12 @@ export function formValues(document: SheetDocument, map: FormMap): FormValues {
       const section = views(document, rule.rows[0]?.section ?? '')[0]?.label ?? 'values';
       if (values.length > rule.fields.length) leftOff.push(`${values.length - rule.fields.length} of ${values.length} ${section} past the form's ${rule.fields.length} lines`);
     } else if ('flow' in rule) {
-      const items = [
-        ...listed(document, rule.list).map((e) => listedHead(e)),
-        ...(views(document, rule.list.section)[0]?.bag ?? []).map(bagEntryHead),
-      ];
+      const bag = (views(document, rule.list.section)[0]?.bag ?? []).map(bagEntryHead);
+      const heads = [...listed(document, rule.list).map((e) => listedHead(e)), ...bag];
+      // Whole texts where they fit (ADR 0114): every listed element's head and its description in plain words, used only
+      // when all of them fit the flow's boxes; otherwise the heads, as before.
+      const whole = rule.list.describe ? [...listed(document, rule.list).map((e) => describedItem(document, e)), ...bag] : undefined;
+      const items = whole && flowFits(whole, rule.flow.capacity, rule.list.join) ? whole : heads;
       let next = 0;
       rule.flow.fields.forEach((field, i) => {
         const { lines, perLine, fontSize } = rule.flow.capacity[i]!;

@@ -63,10 +63,12 @@ import {
   escapeMarkdown,
   expandDescription,
   htmlToMarkdown,
+  htmlToRuns,
   listedName,
   newCharacterOfKind,
   openSelfClosingTags,
   packCharacter,
+  runsText,
   sheetDocument,
   sheetMarkdown,
   type BuilderState,
@@ -285,7 +287,10 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
     // Aurora copies a background feature's text into the save whether or not its user changed it; a value that is text a
     // held element writes itself (its description or its sheet text, ADR 0076) is content's words, not the user's.
     const words = (text: string): string => text.replace(/\s+/g, ' ').trim();
-    const contentTexts = state.derived.elements.flatMap((element) => [element.description ?? '', ...sheetDescriptions(element.sheet).map((d) => d.text)]).map(words);
+    // A description in plain words too: the sheet's Descriptions part (ADR 0114) writes it as text, and Aurora's copy is text.
+    const contentTexts = state.derived.elements
+      .flatMap((element) => [element.description ?? '', runsText(htmlToRuns(element.description ?? '')), ...sheetDescriptions(element.sheet).map((d) => d.text)])
+      .map(words);
     // Twenty characters or more, so a number or a word is not taken for a quotation.
     const contents = (value: string): boolean => words(value).length >= 20 && contentTexts.some((text) => text.includes(words(value)));
     for (const [key, value] of Object.entries(character.freeform)) {

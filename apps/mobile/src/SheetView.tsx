@@ -89,6 +89,23 @@ export function SheetView({ document }: { document: SheetDocument }) {
         </View>
       ) : null}
 
+      {document.descriptions ? (
+        <View style={styles.part}>
+          <Heading text={document.descriptions.label} level={2} palette={palette} />
+          {document.descriptions.groups.map((group) => (
+            <View key={group.label}>
+              <Heading text={group.label} level={3} palette={palette} />
+              {group.entries.map((entry) => (
+                <View key={entry.elementId} style={styles.reference}>
+                  <Heading text={entry.name} level={4} palette={palette} />
+                  <RichText blocks={htmlToBlocks(entry.html, { headingLevel: 5 })} />
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {document.references ? (
         <View style={styles.part}>
           <Heading text={document.references.label} level={2} palette={palette} />

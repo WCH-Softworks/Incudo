@@ -18,7 +18,7 @@
 
 import type { CharacterBuilder, PlayView, PrintRendering, SheetDocument } from '@incudo/ui';
 import { PlayPanel } from './PlayPanel.tsx';
-import { ReferenceText } from './References.tsx';
+import { DescriptionText, ReferenceText } from './References.tsx';
 import { Companions, SheetRows } from './Companions.tsx';
 import { FreeformSheet } from './Freeform.tsx';
 
@@ -68,6 +68,24 @@ export function SheetPane({
 
       {/* What the user wrote about the character (ADR 0092): after its sections and creatures, before what it keeps. */}
       {document.freeform && <FreeformSheet part={document.freeform} />}
+
+      {/* The whole descriptions of what the describing sections list (ADR 0114): after what the user wrote, before what it keeps. */}
+      {document.descriptions && (
+        <section className="sheet-section sheet-descriptions">
+          <h3>{document.descriptions.label}</h3>
+          {document.descriptions.groups.map((group) => (
+            <div key={group.label} className="sheet-description-group">
+              <h4>{group.label}</h4>
+              {group.entries.map((entry) => (
+                <article key={entry.elementId}>
+                  <h5>{entry.name}</h5>
+                  <DescriptionText html={entry.html} />
+                </article>
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* What the character keeps beside it for reference (ADR 0068), after the sheet: text, not the character's own. */}
       {document.references && (

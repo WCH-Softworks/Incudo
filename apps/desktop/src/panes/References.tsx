@@ -34,6 +34,12 @@ export function ReferenceText({ entry }: { entry: SheetDocumentReference }): Rea
   );
 }
 
+/** A whole description on the Sheet (ADR 0114), sanitized as every description is. */
+export function DescriptionText({ html }: { html: string }): React.JSX.Element {
+  const safe = useMemo(() => sanitizeDescriptionHtml(html), [html]);
+  return <div className="picker-description reference-text" dangerouslySetInnerHTML={{ __html: safe }} />;
+}
+
 export function References({
   state,
   builder,

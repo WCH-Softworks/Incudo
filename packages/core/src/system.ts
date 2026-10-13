@@ -950,6 +950,11 @@ export interface SheetSectionDef {
    */
   elementNote?: { text: string; showWhen?: string };
   /**
+   * Put the whole descriptions of the elements the section lists into the sheet's Descriptions part — ADR 0114: 5e's
+   * features, spells and a held creature's traits and actions. The section itself keeps its one line per element.
+   */
+  describe?: boolean;
+  /**
    * Write a listed element a track is rooted on with that track's count — ADR 0079: a player character's Character
    * section reads "Paladin 3", "Sorcerer 3". The count is what the derivation publishes under the progression's
    * `trackStatPattern` (ADR 0015), a single-class character's from its implicit track (ADR 0044), and only when the

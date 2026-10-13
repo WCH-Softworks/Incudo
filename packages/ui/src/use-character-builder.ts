@@ -125,6 +125,7 @@ import { companionsView, type CompanionsView } from './companions.ts';
 import { sheetView, type SheetView } from './sheet.ts';
 import { freeformState, type FreeformState } from './freeform.ts';
 import { spellAttackRefusal, spellAttacksState, type SpellAttacksState } from './spell-attacks.ts';
+import { sheetDescriptions, type SheetDescriptions } from './sheet-descriptions.ts';
 import { adjustPlay, playView, restPlay, setPlayCondition, setPlaySpent, setPlayTemporary, type PlayView } from './play.ts';
 import {
   equipOffer,
@@ -358,6 +359,12 @@ export interface BuilderState {
    * 0073. Undefined when the kind declares none or the character holds none.
    */
   companions?: CompanionsView;
+  /**
+   * The whole descriptions of what the describing sections list, the character's and its creatures' — ADR 0114.
+   * Undefined when none lists an element with a description; required, so a caller picking parts for a sheet document
+   * names it.
+   */
+  descriptions: SheetDescriptions | undefined;
   /**
    * The character's own sheet as it is drawn: its kind's sections, each row labelled and written, empty sections left
    * out — ADR 0074. What the user added with its prerequisites unmet is marked, as `additions` says.
@@ -1994,6 +2001,8 @@ export class CharacterBuilder {
       (id) => this.elements.get(id),
     );
     const play = playView({ character: this.character, kind: this.kind, derived, sheet });
+    const companions = companionsView(derived, this.kind, this.elements);
+    const descriptions = sheetDescriptions(sheet.sections, companions, this.elements);
     const inventory = inventoryState({ ...this.inventoryContext(), derived, sheet });
     return {
       character: this.character,
@@ -2018,7 +2027,8 @@ export class CharacterBuilder {
       withdrawn: withdrawnRows(derived, this.elements),
       uncounted: uncountedRows(derived, this.elements),
       references: referencesState(this.character, this.kind, this.elements, derived.elements),
-      companions: companionsView(derived, this.kind, this.elements),
+      companions,
+      descriptions,
       sheet,
       ...(play ? { play } : {}),
       freeform: freeformState(this.character, this.kind),

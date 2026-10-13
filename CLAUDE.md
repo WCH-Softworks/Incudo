@@ -746,6 +746,25 @@ the first slice of Phase 8's element editor. Things to know before touching it:
 - **Not done:** choices, prerequisites, level gates; races, classes, backgrounds, items; a library feature turned into
   content; export (Phase 8's next item); the Tauri window.
 
+**The sheet ends with the whole descriptions of what its sections list**
+([ADR 0114](docs/adr/0114-the-sheet-ends-with-the-whole-descriptions-of-what-its-sections-list.md), Phase 5). Things to
+know before touching it:
+
+- **Measured first** (`tools/verify/src/whole-descriptions.test.ts`): 18,000 to 83,000 characters a sample, 61% of it the
+  race, class and background chapters. The maintainer chose features, spells and a held creature's traits, actions and
+  reactions (about 11,000 a sample), in a part after the sheet.
+- **`describe` on a sheet section** (system format): 5e's `pc` Features & Traits and Spells, and its held creature's
+  Traits, Actions and Reactions. `SheetSectionView.describe`; `sheetDescriptions` (`packages/ui/src/sheet-descriptions.ts`)
+  builds `BuilderState.descriptions` through the builder's index (a save reopened with no source shows the same), once
+  per element, a creature's groups "<creature>: <section>". **`SheetDocumentSource.descriptions` is required** (as
+  `freeform`): the phone's App passes it.
+- Renderers: desktop `SheetPane.tsx` (`DescriptionText` in `References.tsx`), phone `SheetView.tsx`, Markdown (`##`, `###`
+  group, `####` element, content's headings from `#####`), print part `descriptions` (`print-options.ts`; CSS
+  `.sheet-descriptions`, a page of its own).
+- **The form**: a flow's list may declare `describe`; `formValues` writes each head and its whole description in plain
+  words (`runsText(htmlToRuns(…))`) when all of them fit (`flowFits`), else the heads. 5e's Features and Traits: whole on 5
+  of 30 samples.
+
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:
 

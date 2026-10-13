@@ -26,9 +26,9 @@ import type { PaperSize, Storage } from '@incudo/core';
 import type { SheetDocument } from './sheet-document.ts';
 
 /** A part of a sheet, named by the document's own field. */
-export type PrintPart = 'sections' | 'companions' | 'freeform' | 'references';
+export type PrintPart = 'sections' | 'companions' | 'freeform' | 'descriptions' | 'references';
 
-export const PRINT_PARTS: readonly PrintPart[] = ['sections', 'companions', 'freeform', 'references'];
+export const PRINT_PARTS: readonly PrintPart[] = ['sections', 'companions', 'freeform', 'descriptions', 'references'];
 
 /** The papers a PDF is written on. A print's paper is the platform dialog's. */
 export type Paper = 'a4' | 'letter';
@@ -115,6 +115,7 @@ export function printPartsOf(document: SheetDocument): PrintPart[] {
   const parts: PrintPart[] = ['sections'];
   if (document.companions && document.companions.creatures.length > 0) parts.push('companions');
   if (document.freeform && document.freeform.groups.length > 0) parts.push('freeform');
+  if (document.descriptions && document.descriptions.groups.length > 0) parts.push('descriptions');
   if (document.references && document.references.entries.length > 0) parts.push('references');
   return parts;
 }
@@ -123,6 +124,7 @@ function partLabel(document: SheetDocument, part: PrintPart): string {
   if (part === 'companions') return document.companions!.label;
   if (part === 'references') return document.references!.label;
   if (part === 'freeform') return document.freeform!.label;
+  if (part === 'descriptions') return document.descriptions!.label;
   return OWN_SECTIONS_LABEL;
 }
 

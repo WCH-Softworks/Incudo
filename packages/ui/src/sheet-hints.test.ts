@@ -175,7 +175,7 @@ test('a multiclass character reads a feature\'s text at its track\'s level, and 
   assert.deepEqual(listedGadget.unfilled, ['die']);
   assert.equal(view.unfilled, 1);
 
-  const markdown = sheetMarkdown(sheetDocument({ character, sheet: view, references: { label: 'For reference', rows: [] }, freeform: { available: false, label: '', groups: [] } }));
+  const markdown = sheetMarkdown(sheetDocument({ character, sheet: view, references: { label: 'For reference', rows: [] }, freeform: { available: false, label: '', groups: [] }, descriptions: undefined }));
   assert.match(markdown, /^- \*\*G\*\* \(Action; 3\/Long Rest\): From three, —\.$/m);
 });
 
@@ -203,6 +203,7 @@ test('the export writes each line of a sheet text as a line of the item, and rea
     },
     references: { label: 'For reference', rows: [] },
     freeform: { available: false, label: '', groups: [] },
+    descriptions: undefined,
   });
   const lines = sheetMarkdown(document).split('\n');
   const at = lines.indexOf('- **Natural Weapons**: You gain *these*:  ');

@@ -87,6 +87,7 @@ const source: SheetDocumentSource = {
   companions,
   references: { label: 'For reference', rows },
   freeform: { available: false, label: '', groups: [] },
+  descriptions: undefined,
 };
 
 test('the document holds what the pane showed, with the sentences the pane used to compose', () => {

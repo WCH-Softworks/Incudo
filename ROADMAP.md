@@ -1824,13 +1824,20 @@ pane draws and every export renders: the PDF and the print layout start from it,
 *The items below were found on 2026-10-12 by the sorting described at the end of Phase 3. The maintainer chose them for
 before 1.0.*
 
-- [ ] **Incudo's sheet shows a listed element's whole description, and the official form does too where it fits.**
+- [x] **Incudo's sheet shows a listed element's whole description, and the official form does too where it fits.**
       *From the ADR 0070 item (a held element's own text on the Sheet), the ADR 0075 item (feature descriptions) and the
       ADR 0076 item (a hidden trait a stat block names without its line, "Primal Bond", folded in by the maintainer's
       call).* The Sheet shows a feature's one sheet line, and a description only for a kept reference. The maintainer's
       call (2026-10-12): Incudo's own sheet shows the whole text; the 2014 form if it can be made to fit. Measured first:
       ADR 0075 found descriptions add 18,635 to 93,290 characters to a sample, so what the print, the text export, the
       phone and the form's boxes do with that much is the question.
+      **Done** (2026-10-13, [ADR 0114](./docs/adr/0114-the-sheet-ends-with-the-whole-descriptions-of-what-its-sections-list.md)):
+      measured, whole descriptions are 3 to 14 printed pages a sample, 61% of it race, class and background chapters. The
+      maintainer's calls: features, spells and a held creature's traits, actions and reactions get their whole text
+      (about 2 pages a sample), in a Descriptions part after the sheet. A sheet section may declare `describe`; the pane,
+      the phone, the Markdown and print (a part the print step can leave out, starting a page) all show it, so "Primal
+      Bond" is read whole there. The 2014 form's Features and Traits box gets the whole texts when all of them fit (5 of
+      the 30 samples) and the lines otherwise. Driven in the browser build.
 - [x] **A keyboard shortcut for "Export sheet as text…".** *From the ADR 0075 item.* A Ctrl+Shift chord that reaches
       the page, found by pressing real keys in the Windows window (ADR 0038 lists those that do).
       **Done** (2026-10-12): Ctrl+Shift+O ("out"; no free chord spells "text"), from the chords ADR 0038 saw arrive with real

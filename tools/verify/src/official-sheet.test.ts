@@ -154,6 +154,12 @@ test("every sample fills the form as its own sheet reads, and names what it leav
       notes.set(kind, (notes.get(kind) ?? 0) + 1);
     }
   }
+  // Features and Traits takes whole texts where they all fit and the lines otherwise (ADR 0114): both happen on the
+  // samples. Fails if the rule's describe is dropped (no sample whole) or the fit check is (no sample with lines alone).
+  const features = all.map(({ values }) => [values.text['Features and Traits'] ?? '', values.text['Feat+Traits'] ?? ''].join(' '));
+  const whole = all.filter(({ doc }, i) => (doc.descriptions?.groups.find((g) => g.label === 'Features & Traits')?.entries ?? []).some((e) => features[i]!.includes(`${e.name}: `)));
+  t.diagnostic(`Features and Traits written whole on ${whole.length} of ${all.length} samples: ${whole.map((s) => s.id).join(', ')}`);
+  assert.ok(whole.length > 0 && whole.length < all.length, 'some samples fit whole and some do not');
   const sorted = [...filled].sort((a, b) => a - b);
   t.diagnostic(`${all.length} samples; fields filled ${sorted[0]} to ${sorted[sorted.length - 1]} (median ${sorted[Math.floor(sorted.length / 2)]}) of 334`);
   for (const [note, n] of [...notes].sort((a, b) => b[1] - a[1])) t.diagnostic(`left off on ${n} samples: ${note}`);

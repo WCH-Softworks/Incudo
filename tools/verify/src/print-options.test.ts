@@ -92,11 +92,15 @@ function offerProblem(document: SheetDocument): string | undefined {
     has.push('freeform');
     labels.push(document.freeform!.label);
   }
+  if ((document.descriptions?.groups.length ?? 0) > 0) {
+    has.push('descriptions');
+    labels.push(document.descriptions!.label);
+  }
   if ((document.references?.entries.length ?? 0) > 0) {
     has.push('references');
     labels.push(document.references!.label);
   }
-  for (const omit of [[], ['sections', 'companions', 'freeform', 'references']] as const) {
+  for (const omit of [[], ['sections', 'companions', 'freeform', 'descriptions', 'references']] as const) {
     const view = printOptionsView(document, { ...DEFAULT_PRINT_OPTIONS, omit: [...omit] });
     const offered = view.parts?.choices.map((c) => c.part) ?? ['sections'];
     if (has.length === 1 && view.parts) return `${document.title}: offered parts on a sheet of one part`;

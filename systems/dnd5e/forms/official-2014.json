@@ -1013,7 +1013,8 @@
       },
       "list": {
         "section": "features",
-        "join": "\n"
+        "join": "\n",
+        "describe": true
       }
     },
     {

@@ -172,7 +172,7 @@ test('the Markdown lists the attacks under their section, the name in bold, esca
   const attacks = sheet.sections.find((s) => s.id === 'attacks')!.attacks!;
   attacks[1] = { ...attacks[1]!, name: 'Night_*Knife*' };
   const markdown = sheetMarkdown(
-    sheetDocument({ character: { name: 'Nyx' }, sheet, references: { label: 'For reference', rows: [] }, freeform: { available: false, label: '', groups: [] } }),
+    sheetDocument({ character: { name: 'Nyx' }, sheet, references: { label: 'For reference', rows: [] }, freeform: { available: false, label: '', groups: [] }, descriptions: undefined }),
   );
   // Fails if the export leaves the attacks out, or writes a name unescaped.
   assert.match(markdown, /## Attacks\n\n- \*\*Sword \+1\*\*: \+6, 1d8\+4 cutting \(two-handed 1d10\+4 cutting\)\n- \*\*Night\\_\\\*Knife\\\*\*\*: \+1, 1d4\+1 \(range 20\/60; Keen\)\n/);

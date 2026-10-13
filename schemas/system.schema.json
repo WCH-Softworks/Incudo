@@ -1262,6 +1262,10 @@
             }
           }
         },
+        "describe": {
+          "type": "boolean",
+          "description": "Put the whole descriptions of the elements the section lists into the sheet's Descriptions part, after the sheet (ADR 0114). The section keeps its one line per element. Only meaningful beside types."
+        },
         "elementNote": {
           "type": "object",
           "required": ["text"],

@@ -88,6 +88,19 @@ export function sheetMarkdown(document: SheetDocument): string {
     }
   }
 
+  // The whole descriptions (ADR 0114): a group per describing section, an element under each, content's headings below.
+  if (document.descriptions) {
+    heading(2, document.descriptions.label);
+    for (const group of document.descriptions.groups) {
+      heading(3, group.label);
+      for (const entry of group.entries) {
+        heading(4, entry.name);
+        const text = htmlToMarkdown(entry.html, { headingLevel: 5 });
+        if (text) blocks.push(text);
+      }
+    }
+  }
+
   if (document.references) {
     heading(2, document.references.label);
     for (const entry of document.references.entries) {

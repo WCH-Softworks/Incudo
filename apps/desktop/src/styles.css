@@ -2346,6 +2346,18 @@ ul.browse-categories {
   white-space: pre-line;
 }
 
+/* The Descriptions part (ADR 0114): a group per section, then each element's name above content's own subheadings. */
+.sheet-descriptions h4 {
+  font-size: 15px;
+  margin: 16px 0 4px;
+}
+
+.sheet-descriptions article > h5 {
+  font-size: 14px;
+  margin: 8px 0 4px;
+}
+
+.sheet-descriptions article + article,
 .sheet-references article + article {
   margin-top: 16px;
 }
@@ -2509,13 +2521,16 @@ ul.browse-categories {
   .print-omit-sections .sheet-flow > .sheet-section:not(.sheet-companions),
   .print-omit-companions .sheet-companions,
   .print-omit-freeform .sheet-freeform,
+  .print-omit-descriptions .sheet-descriptions,
   .print-omit-references .sheet-references {
     display: none;
   }
 
   /* With nothing printed before them, what the character keeps starts on the first page, under the title. */
   .print-omit-sections:not(:has(.sheet-companions)) .sheet-references,
-  .print-omit-sections.print-omit-companions .sheet-references {
+  .print-omit-sections.print-omit-companions .sheet-references,
+  .print-omit-sections:not(:has(.sheet-companions)) .sheet-descriptions,
+  .print-omit-sections.print-omit-companions .sheet-descriptions {
     break-before: auto;
   }
 
@@ -2611,14 +2626,21 @@ ul.browse-categories {
   /* A section that lists no elements is a heading, a sentence and a grid of rows or printed lines, never a column long:
      kept whole, so the skills' heading does not end one column with their numbers starting the next. Chosen by what it
      holds, not by what it is called. The creatures' part and the kept texts are parts, not sections, and may be long. */
-  .sheet-section:not(.sheet-companions, .sheet-references, .sheet-freeform, :has(.sheet-elements)) {
+  .sheet-section:not(.sheet-companions, .sheet-references, .sheet-freeform, .sheet-descriptions, :has(.sheet-elements)) {
     break-inside: avoid;
   }
 
   /* What the character keeps is content's own pages, up to a page and more with tables twelve columns wide: a page of
      its own at the page's full width, breaking between its blocks and never inside a table row. */
-  .sheet-references {
+  .sheet-references,
+  .sheet-descriptions {
     break-before: page;
+  }
+
+  /* A description is kept with its name, and a group's heading with its first description. */
+  .sheet-descriptions h4,
+  .sheet-descriptions h5 {
+    break-after: avoid;
   }
 
   .reference-text {

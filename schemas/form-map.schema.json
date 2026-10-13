@@ -59,7 +59,8 @@
       "properties": {
         "section": { "type": "string", "minLength": 1 },
         "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-        "join": { "type": "string" }
+        "join": { "type": "string" },
+        "describe": { "type": "boolean", "description": "In a flow: write each listed element's whole description after its head when all of them fit the flow's boxes, and the heads alone when they do not (ADR 0114)." }
       }
     },
     "field": { "type": "string", "minLength": 1 },

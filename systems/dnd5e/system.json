@@ -459,10 +459,10 @@
           {"id":"skills","label":"Skills","description":"The skills the creature is proficient in. Any other is the ability modifier.","stats":["companion:acrobatics","companion:animal handling","companion:arcana","companion:athletics","companion:deception","companion:history","companion:insight","companion:intimidation","companion:investigation","companion:medicine","companion:nature","companion:perception","companion:performance","companion:persuasion","companion:religion","companion:sleight of hand","companion:stealth","companion:survival"],"showWhen":"{stat}:proficiency","mark":{"stat":"{stat}:proficiency","per":"companion:proficiency","labels":["proficient","expertise"],"none":"not proficient"}},
           {"id":"senses","label":"Senses","stats":["companion:perception:passive"],"printed":[{"types":["Companion"],"setter":"senses","label":"As printed"}]},
           {"id":"defences","label":"Defences and Languages","description":"As the creature’s stat block prints them.","printed":[{"types":["Companion"],"setter":"vulnerabilities","label":"Damage Vulnerabilities"},{"types":["Companion"],"setter":"resistances","label":"Damage Resistances"},{"types":["Companion"],"setter":"damage resistances","label":"Damage Resistances"},{"types":["Companion"],"setter":"immunities","label":"Damage Immunities"},{"types":["Companion"],"setter":"damage immunities","label":"Damage Immunities"},{"types":["Companion"],"setter":"conditionImmunities","label":"Condition Immunities"},{"types":["Companion"],"setter":"condition immunities","label":"Condition Immunities"},{"types":["Companion"],"setter":"languages","label":"Languages"}]},
-          {"id":"traits","label":"Traits","types":["Companion Trait"]},
+          {"id":"traits","label":"Traits","describe":true,"types":["Companion Trait"]},
           {"id":"holder","label":"Added by Its Holder","description":"What the character's features add to this creature's attack and damage rolls. Its actions print their numbers without it.","stats":["companion:attack","companion:damage"],"showWhen":"{stat}"},
-          {"id":"actions","label":"Actions","types":["Companion Action"],"elementNote":{"text":"If it is an attack, its holder adds {{companion:attack}} to the attack roll and {{companion:damage}} to the damage.","showWhen":"companion:attack"}},
-          {"id":"reactions","label":"Reactions","types":["Companion Reaction"]}
+          {"id":"actions","label":"Actions","describe":true,"types":["Companion Action"],"elementNote":{"text":"If it is an attack, its holder adds {{companion:attack}} to the attack roll and {{companion:damage}} to the damage.","showWhen":"companion:attack"}},
+          {"id":"reactions","label":"Reactions","describe":true,"types":["Companion Reaction"]}
         ]
       },
 
@@ -672,12 +672,12 @@
           { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "types": ["Vision"] },
           { "id": "wild-shape", "label": "Wild Shape", "description": "The beasts the character can turn into at its druid level: the highest challenge rating and what the beast may not have. It must also be a beast the character has seen.", "stats": ["wild shape:max cr", "wild shape:limits"], "showWhen": "wild shape:tier" },
           { "id": "worn", "label": "Worn & Wielded", "stats": ["armor", "shield", "primary", "secondary", "attunement:current", "attunement:max"] },
-          { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"], "omitHidden": true },
+          { "id": "features", "label": "Features & Traits", "describe": true, "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"], "omitHidden": true },
           { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language", "Condition"], "omitHidden": true },
           { "id": "spellcasting", "label": "Spellcasting", "perBlock": true, "stats": ["{name}:spellcasting:dc", "{name}:spellcasting:attack"] },
           { "id": "slots", "label": "Spell Slots", "description": "Shared by the character's spellcasting classes.", "stats": ["spellcasting:slots:1", "spellcasting:slots:2", "spellcasting:slots:3", "spellcasting:slots:4", "spellcasting:slots:5", "spellcasting:slots:6", "spellcasting:slots:7", "spellcasting:slots:8", "spellcasting:slots:9"], "showWhen": "{stat}" },
           { "id": "block-slots", "label": "Spell Slots", "perBlock": true, "stats": ["{name}:spellcasting:table:1", "{name}:spellcasting:table:2", "{name}:spellcasting:table:3", "{name}:spellcasting:table:4", "{name}:spellcasting:table:5", "{name}:spellcasting:table:6", "{name}:spellcasting:table:7", "{name}:spellcasting:table:8", "{name}:spellcasting:table:9"], "showWhen": "{stat}" },
-          { "id": "spells", "label": "Spells", "types": ["Spell"], "group": { "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }, "preparedMark": { "always": "always prepared", "chosen": "prepared" } },
+          { "id": "spells", "label": "Spells", "describe": true, "types": ["Spell"], "group": { "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }, "preparedMark": { "always": "always prepared", "chosen": "prepared" } },
           { "id": "inventory", "label": "Inventory", "types": ["Item", "Weapon", "Armor", "Magic Item"], "bag": true }
         ]
       }
