@@ -2500,6 +2500,12 @@ before touching it:
   attack, its holder adds {{companion:attack}} to the attack roll and {{companion:damage}} to the damage." when
   `companion:attack` is not zero. Measured: 196 Companion Actions, none tagged an attack, and only the 2014 Ranger's
   Companion writes `companion:attack`/`damage`. Driven in the browser build.
+- **A 2014 Druid's Wild Shape tier** ([ADR 0113](docs/adr/0113-a-2014-druid-s-wild-shape-tier-is-a-table-in-the-system-definition.md),
+  2026-10-13): no engine change. 5e's `pc` declares `wild shape:tier` (unshown, 1 while the 2014 Wild Shape is held),
+  `wild shape:max cr` and `wild shape:limits` as gated literal contributions by `[level:druid:N]` (a literal contribution
+  is text), the Moon's rating read from content's `circle forms:cr` while Circle Forms is held; a Wild Shape section after
+  Senses with `showWhen: "wild shape:tier"`. The 2024 Druid needs nothing: its sheet line states its tier per level.
+  `tools/verify/src/wild-shape.test.ts`.
 - **Not done:** ~~unarmed strikes and martial arts~~, ~~cantrips as rows~~ (ADR 0111; levelled spells after 1.0), ~~two-weapon
   fighting~~, Dueling (commented out upstream), ~~reach as a distance~~ (ADR 0110), the inventory naming an adorned item by `name-format`.
   Driven in the browser build with no source (two packed samples and a built Beast Master); not the Tauri window, the phone,

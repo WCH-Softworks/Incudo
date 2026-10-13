@@ -133,6 +133,9 @@
 
       "stats": [
         { "name": "level", "label": "Level", "default": 1 },
+        { "name": "wild shape:tier" },
+        { "name": "wild shape:max cr", "label": "Highest Challenge Rating" },
+        { "name": "wild shape:limits", "label": "Limitations" },
         { "name": "hp", "label": "Hit Points", "default": 0,
           "derive": { "kind": "binary", "op": "+", "left": { "kind": "binary", "op": "+", "left": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "hp:average" }, "right": { "kind": "ref", "stat": "hp:average:dice" } }, "right": { "kind": "binary", "op": "*", "left": { "kind": "binary", "op": "-", "left": { "kind": "number", "value": 1 }, "right": { "kind": "ref", "stat": "hp:average" } }, "right": { "kind": "rolls", "pattern": "hp:level:{n}" } } }, "right": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "constitution:modifier" }, "right": { "kind": "ref", "stat": "level" } } } },
 
@@ -301,6 +304,15 @@
 
       "contributions": [
         { "stat": "hp:average", "value": { "kind": "number", "value": 1 }, "requirements": "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" },
+
+        { "stat": "wild shape:tier", "value": { "kind": "number", "value": 1 }, "requirements": "ID_WOTC_PHB_CLASS_FEATURE_DRUID_WILDSHAPE" },
+        { "stat": "wild shape:max cr", "value": { "kind": "literal", "value": "1/4" }, "requirements": "ID_WOTC_PHB_CLASS_FEATURE_DRUID_WILDSHAPE,!ID_WOTC_PHB_ARCHETYPE_FEATURE_CIRCLE_MOON_CIRCLE_FORMS,![level:druid:4]" },
+        { "stat": "wild shape:max cr", "value": { "kind": "literal", "value": "1/2" }, "requirements": "ID_WOTC_PHB_CLASS_FEATURE_DRUID_WILDSHAPE,!ID_WOTC_PHB_ARCHETYPE_FEATURE_CIRCLE_MOON_CIRCLE_FORMS,[level:druid:4],![level:druid:8]" },
+        { "stat": "wild shape:max cr", "value": { "kind": "literal", "value": "1" }, "requirements": "ID_WOTC_PHB_CLASS_FEATURE_DRUID_WILDSHAPE,!ID_WOTC_PHB_ARCHETYPE_FEATURE_CIRCLE_MOON_CIRCLE_FORMS,[level:druid:8]" },
+        { "stat": "wild shape:max cr", "value": { "kind": "ref", "stat": "circle forms:cr" }, "requirements": "ID_WOTC_PHB_CLASS_FEATURE_DRUID_WILDSHAPE,ID_WOTC_PHB_ARCHETYPE_FEATURE_CIRCLE_MOON_CIRCLE_FORMS" },
+        { "stat": "wild shape:limits", "value": { "kind": "literal", "value": "No flying or swimming speed" }, "requirements": "ID_WOTC_PHB_CLASS_FEATURE_DRUID_WILDSHAPE,![level:druid:4]" },
+        { "stat": "wild shape:limits", "value": { "kind": "literal", "value": "No flying speed" }, "requirements": "ID_WOTC_PHB_CLASS_FEATURE_DRUID_WILDSHAPE,[level:druid:4],![level:druid:8]" },
+        { "stat": "wild shape:limits", "value": { "kind": "literal", "value": "None" }, "requirements": "ID_WOTC_PHB_CLASS_FEATURE_DRUID_WILDSHAPE,[level:druid:8]" },
 
         { "stat": "ac:armored:armor", "value": { "kind": "number", "value": 10 }, "requirements": "[armor:none]" },
 
@@ -658,6 +670,7 @@
           { "id": "saves", "label": "Saving Throws", "description": "The ability modifier, plus the proficiency bonus for a saving throw the character is proficient in (listed under Proficiencies).", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"] , "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"] } },
           { "id": "skills", "label": "Skills", "description": "The ability modifier, plus the proficiency bonus for a skill the character is proficient in (listed under Proficiencies), twice it with expertise.", "stats": ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"] , "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient", "expertise"] } },
           { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "types": ["Vision"] },
+          { "id": "wild-shape", "label": "Wild Shape", "description": "The beasts the character can turn into at its druid level: the highest challenge rating and what the beast may not have. It must also be a beast the character has seen.", "stats": ["wild shape:max cr", "wild shape:limits"], "showWhen": "wild shape:tier" },
           { "id": "worn", "label": "Worn & Wielded", "stats": ["armor", "shield", "primary", "secondary", "attunement:current", "attunement:max"] },
           { "id": "features", "label": "Features & Traits", "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature"], "omitHidden": true },
           { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language", "Condition"], "omitHidden": true },

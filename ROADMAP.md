@@ -1636,10 +1636,16 @@ before 1.0.*
       an attack, its holder adds 2 to the attack roll and 2 to the damage." Content tags no action as an attack and only
       the 2014 Ranger's Companion adds anything, so the line says "if" and nothing is read out of prose. A sheet section
       may declare `elementNote`. Driven in the browser build (a Beast Master's Wolf).
-- [ ] **A druid's Wild Shape tier on the sheet.** *From the ADR 0070 item.* The 2014 Player's Handbook's Beast Shapes
+- [x] **A druid's Wild Shape tier on the sheet.** *From the ADR 0070 item.* The 2014 Player's Handbook's Beast Shapes
       table sets the highest challenge rating and the limits (no swimming, no flying speed) by druid level, and the beast
       must be one the druid has seen. The maintainer's call (2026-10-12): the sheet shows the tier the character is at,
       not the whole table. Measured first: whether content states the tiers as rules or only as prose.
+      **Done** (2026-10-13, [ADR 0113](./docs/adr/0113-a-2014-druid-s-wild-shape-tier-is-a-table-in-the-system-definition.md)):
+      the 2014 table is prose only, so 5e's player character declares it (the maintainer's call: a table in the system
+      definition), keyed on holding the 2014 Wild Shape feature. A Wild Shape section reads "Highest Challenge Rating: 1/2"
+      and "Limitations: No flying speed" at druid 4; a 2014 Moon druid reads its Circle Forms' rating (content's
+      `circle forms:cr`) with the table's limits. The 2024 Druid needed nothing: its own sheet line states its tier at
+      each level. No engine or format change. Driven in the browser build.
 
 **Exit criteria:** a DM can build a PC, an NPC and a legendary creature in one app, and the
 engine has no code that names any of them.
