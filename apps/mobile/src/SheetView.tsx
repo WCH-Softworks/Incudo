@@ -175,6 +175,11 @@ function Listed({ element, palette }: { element: SheetListedElement; palette: Pa
           <Runs runs={runs} />
         </Text>
       ))}
+      {element.note !== undefined ? (
+        <Text style={[styles.body, styles.listedText, { color: palette.muted }]} selectable>
+          {element.note}
+        </Text>
+      ) : null}
     </View>
   );
 }

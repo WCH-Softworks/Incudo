@@ -1262,6 +1262,16 @@
             }
           }
         },
+        "elementNote": {
+          "type": "object",
+          "required": ["text"],
+          "additionalProperties": false,
+          "description": "A line written under each element the section lists (ADR 0112): text with {{stat}} placeholders filled as a sheet line's are, shown when showWhen names a stat that is not zero, always when it is absent. The sheet's words, kept apart from content's.",
+          "properties": {
+            "text": { "type": "string", "minLength": 1, "description": "User-facing." },
+            "showWhen": { "type": "string", "minLength": 1 }
+          }
+        },
         "omitHidden": {
           "type": "boolean",
           "description": "Leave out a listed element whose own sheet hints say not to show it (Aurora's <sheet display=\"false\">, ADR 0076). Content marks a feature that way when its effect is shown elsewhere or a choice beside it names it better, and also every race and class, which a header names: so a section that lists features declares it and one that names what a character is does not. The element is still held, derived and saved. Only meaningful beside types."

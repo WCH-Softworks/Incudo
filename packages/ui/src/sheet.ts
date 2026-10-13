@@ -106,6 +106,8 @@ export interface SheetListedElement {
   action?: string;
   /** The stats its text, usage or action names and nothing publishes, each written as "—" in their place. */
   unfilled?: string[];
+  /** The section's own line under it (ADR 0112), filled: what a held creature's holder adds to its action. */
+  note?: string;
   /**
    * The count of the track it roots, when its section writes one (`trackProgress`, ADR 0079): a class's level, 3 in
    * "Paladin 3". What the derivation published, never recomputed.
@@ -472,6 +474,10 @@ export function sheetSections(
       if (section.group) {
         shown.sort((a, b) => compareSheetGroups(a.group, b.group) || (a.group && b.group ? a.element.name.localeCompare(b.element.name) : 0));
       }
+      // The section's own line under each element (ADR 0112), the same for all of them.
+      const note = section.elementNote && (section.elementNote.showWhen === undefined || (resolved(section.elementNote.showWhen)?.value ?? 0) !== 0)
+        ? fillPlaceholders(section.elementNote.text, source.stats, false).text
+        : undefined;
       const elements = shown.map(({ element: e, group }): SheetListedElement => {
         const progress = section.trackProgress && vocabulary.progression ? trackProgress(vocabulary.progression, e, source.stats) : undefined;
         const sides = section.trackDie !== undefined && progress !== undefined && progress > 0 ? trackDie(e, section.trackDie) : undefined;
@@ -488,6 +494,7 @@ export function sheetSections(
           ...(group ? { group } : {}),
           ...(prepared ? { prepared: { label: section.preparedMark![prepared], always: prepared === 'always' } } : {}),
           ...(cast !== undefined ? { cast } : {}),
+          ...(note !== undefined ? { note } : {}),
         };
       });
       const attacks = section.attacks ? (source.attacks ?? []).map(sheetAttack) : [];

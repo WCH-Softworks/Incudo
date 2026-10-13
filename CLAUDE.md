@@ -2493,6 +2493,13 @@ before touching it:
     desktop `panes/SpellAttacks.tsx` (Build, after Inventory), phone `SpellAttacksView` in `BuildExtras.tsx`.
   - **Only regular scaling**, the maintainer's call: Eldritch Blast reads as more dice, Magic Stone scales. Driven in the
     browser build (a Wizard 5's Fire Bolt and Acid Splash); not the Tauri window or the phone.
+- **A line under each of a held creature's actions** ([ADR 0112](docs/adr/0112-a-sheet-section-may-write-a-note-under-each-element-it-lists.md),
+  2026-10-13): a sheet section may declare `elementNote: { text, showWhen? }`, its `{{stat}}` placeholders filled as a
+  sheet line's (ADR 0076); `SheetListedElement.note`, kept apart from content's `text`, written as its own line by the
+  desktop's `ListedElement`, the phone's `Listed` and the Markdown. 5e's held creature's Actions section: "If it is an
+  attack, its holder adds {{companion:attack}} to the attack roll and {{companion:damage}} to the damage." when
+  `companion:attack` is not zero. Measured: 196 Companion Actions, none tagged an attack, and only the 2014 Ranger's
+  Companion writes `companion:attack`/`damage`. Driven in the browser build.
 - **Not done:** ~~unarmed strikes and martial arts~~, ~~cantrips as rows~~ (ADR 0111; levelled spells after 1.0), ~~two-weapon
   fighting~~, Dueling (commented out upstream), ~~reach as a distance~~ (ADR 0110), the inventory naming an adorned item by `name-format`.
   Driven in the browser build with no source (two packed samples and a built Beast Master); not the Tauri window, the phone,

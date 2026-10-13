@@ -1612,7 +1612,7 @@ before 1.0.*
       25 expertise where content doubles the bonus, as the 2025 Owl's Perception +5; 66 saves); the other 6 are fixed
       numbers content writes (a UA Ancient Companion, upstream's Eberron homunculus) and read the whole bonuses they hold.
       No code; `companions.test.ts` fails without the declaration. Every held creature's export gains its marks.
-- [ ] **Attacks a character makes beyond a weapon's single row.** *From the ADR 0093 item; essential before 1.0, the
+- [x] **Attacks a character makes beyond a weapon's single row.** *From the ADR 0093 item; essential before 1.0, the
       maintainer's call (2026-10-12).* An unarmed strike and a Monk's Martial Arts die; spell attacks as rows ("Fire
       Bolt: +5, 1d10 fire"); two-weapon fighting (the off-hand attack's damage without the ability modifier, unless a
       fighting style says otherwise); reach and range for a melee weapon; a held creature's actions with what its holder
@@ -1630,8 +1630,12 @@ before 1.0.*
       states no die, damage type or save ability as a rule, so the user chooses them on Build (kept on the character,
       format 13; "rolls nothing" and Toll the Dead's two dice allowed), and a cantrip no class casts (High Elf, Magic
       Initiate) is cast as a class the user names. Only regular scaling: Eldritch Blast reads as more dice. Driven in the
-      browser build: "Fire Bolt: +3, 2d10 fire", "Acid Splash: DC 11 Dexterity, 2d6 acid". **Left:** a held creature's
-      actions with what its holder adds.
+      browser build: "Fire Bolt: +3, 2d10 fire", "Acid Splash: DC 11 Dexterity, 2d6 acid".
+      **Done** (2026-10-13, [ADR 0112](./docs/adr/0112-a-sheet-section-may-write-a-note-under-each-element-it-lists.md)):
+      a held creature's actions with what its holder adds, as a line under each action (the maintainer's call): "If it is
+      an attack, its holder adds 2 to the attack roll and 2 to the damage." Content tags no action as an attack and only
+      the 2014 Ranger's Companion adds anything, so the line says "if" and nothing is read out of prose. A sheet section
+      may declare `elementNote`. Driven in the browser build (a Beast Master's Wolf).
 - [ ] **A druid's Wild Shape tier on the sheet.** *From the ADR 0070 item.* The 2014 Player's Handbook's Beast Shapes
       table sets the highest challenge rating and the limits (no swimming, no flying speed) by druid level, and the beast
       must be one the druid has seen. The maintainer's call (2026-10-12): the sheet shows the tier the character is at,

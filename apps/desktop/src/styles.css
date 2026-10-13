@@ -582,6 +582,11 @@ ul.problems li.error {
   color: var(--fg-muted);
 }
 
+/* The sheet's own line under a listed element (ADR 0112): its words, not content's. */
+.sheet-note {
+  color: var(--fg-muted);
+}
+
 .sheet-elements {
   list-style: none;
   margin: 6px 0 0;

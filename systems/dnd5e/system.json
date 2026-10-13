@@ -449,7 +449,7 @@
           {"id":"defences","label":"Defences and Languages","description":"As the creature’s stat block prints them.","printed":[{"types":["Companion"],"setter":"vulnerabilities","label":"Damage Vulnerabilities"},{"types":["Companion"],"setter":"resistances","label":"Damage Resistances"},{"types":["Companion"],"setter":"damage resistances","label":"Damage Resistances"},{"types":["Companion"],"setter":"immunities","label":"Damage Immunities"},{"types":["Companion"],"setter":"damage immunities","label":"Damage Immunities"},{"types":["Companion"],"setter":"conditionImmunities","label":"Condition Immunities"},{"types":["Companion"],"setter":"condition immunities","label":"Condition Immunities"},{"types":["Companion"],"setter":"languages","label":"Languages"}]},
           {"id":"traits","label":"Traits","types":["Companion Trait"]},
           {"id":"holder","label":"Added by Its Holder","description":"What the character's features add to this creature's attack and damage rolls. Its actions print their numbers without it.","stats":["companion:attack","companion:damage"],"showWhen":"{stat}"},
-          {"id":"actions","label":"Actions","types":["Companion Action"]},
+          {"id":"actions","label":"Actions","types":["Companion Action"],"elementNote":{"text":"If it is an attack, its holder adds {{companion:attack}} to the attack roll and {{companion:damage}} to the damage.","showWhen":"companion:attack"}},
           {"id":"reactions","label":"Reactions","types":["Companion Reaction"]}
         ]
       },

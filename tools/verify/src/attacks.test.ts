@@ -255,6 +255,12 @@ test("a Beast Master's companion shows what its ranger adds to its attack and da
     ['Attack Rolls', '+2'],
     ['Damage Rolls', '+2'],
   ]);
+  // Each action says where those apply (ADR 0112). Fails if the Actions section's elementNote is removed.
+  const actions = creature.sections.find((s) => s.section === 'actions')?.elements ?? [];
+  assert.ok(actions.length > 0, 'the beast has actions');
+  for (const action of actions) {
+    assert.equal(action.note, 'If it is an attack, its holder adds 2 to the attack roll and 2 to the damage.', action.name);
+  }
   // A ranger with no weapon attacks unarmed and with nothing else (ADR 0110); no weapon is invented.
   assert.deepEqual(state.sheet.sections.find((s) => s.id === 'attacks')?.attacks?.map((a) => a.name), ['Unarmed Strike']);
 });

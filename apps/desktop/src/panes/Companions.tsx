@@ -120,6 +120,8 @@ function ListedElement({ element }: { element: SheetListedElement }): React.JSX.
           <span className="sheet-text" dangerouslySetInnerHTML={{ __html: html }} />
         </>
       )}
+      {/* The sheet's own line under it, not content's (ADR 0112). */}
+      {element.note !== undefined && <div className="sheet-note">{element.note}</div>}
     </li>
   );
 }

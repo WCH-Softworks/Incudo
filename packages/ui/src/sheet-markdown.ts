@@ -135,5 +135,8 @@ function elementItem(element: SheetListedElement): string {
     .split('\n')
     .map((line) => htmlToMarkdown(line).replace(/\s*\n\s*/g, ' ').trim())
     .filter(Boolean);
-  return lines.length ? `${head}: ${lines.join('  \n  ')}` : head;
+  // The section's own line (ADR 0112) is a line of the item after content's.
+  const note = element.note !== undefined ? e(element.note) : undefined;
+  if (!lines.length) return note !== undefined ? `${head}  \n  ${note}` : head;
+  return `${head}: ${[...lines, ...(note !== undefined ? [note] : [])].join('  \n  ')}`;
 }

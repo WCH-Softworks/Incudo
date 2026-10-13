@@ -944,6 +944,12 @@ export interface SheetSectionDef {
    */
   omitHidden?: boolean;
   /**
+   * A line the sheet writes under each element the section lists — ADR 0112: `text` with its `{{stat}}` placeholders
+   * filled as a sheet line's are, shown when `showWhen` names a stat that is not zero (always when absent). The sheet's
+   * words, not content's: 5e's held creature's actions say what its holder adds.
+   */
+  elementNote?: { text: string; showWhen?: string };
+  /**
    * Write a listed element a track is rooted on with that track's count — ADR 0079: a player character's Character
    * section reads "Paladin 3", "Sorcerer 3". The count is what the derivation publishes under the progression's
    * `trackStatPattern` (ADR 0015), a single-class character's from its implicit track (ADR 0044), and only when the

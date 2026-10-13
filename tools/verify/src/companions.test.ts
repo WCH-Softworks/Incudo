@@ -297,6 +297,10 @@ test('a Battle Smith\'s Steel Defender follows its artificer', { skip: corpusSki
   assert.equal(level, 5);
   assert.equal(read(scope.stats, `${s.prefix}hp:max`), 2 + intelligence + 5 * level, 'hit points follow the artificer');
   assert.equal(read(scope.stats, `${s.prefix}proficiency`), read(derived.stats, 'proficiency'), 'its bonus is the artificer\'s');
+  // Its holder adds nothing to its actions, which print their numbers in its own bonus, so they carry no note (ADR 0112).
+  const actions = b.getState().companions?.creatures[0]?.sections.find((section) => section.section === 'actions')?.elements ?? [];
+  assert.ok(actions.length > 0, 'the defender has actions');
+  assert.deepEqual(actions.filter((action) => action.note !== undefined).map((action) => action.name), []);
   t.diagnostic(`${elements.get(scope.elementId)?.name} at artificer ${level}: hit points ${read(scope.stats, `${s.prefix}hp:max`)}, armour class ${read(scope.stats, `${s.prefix}ac`)}, proficiency +${read(scope.stats, `${s.prefix}proficiency`)}`);
 });
 
