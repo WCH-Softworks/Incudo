@@ -205,6 +205,12 @@ export interface OpenDecision {
    * element's own track, not the character's total — "Rogue 4", not "character level 9".
    */
   openedAt?: number;
+  /**
+   * When the character meets it, as its own progression: a select's `PendingChoice.opensAt`, the first level still to
+   * roll for hit points, and the start for everything else (race, class, background, scores, campaign options, starting
+   * equipment and the sets beside them). Open decisions are listed by it, then by their step's rank.
+   */
+  opensAt?: number;
   /** A select's remaining picks, or a budget's unspent points. */
   remaining: number;
   /**
@@ -1614,6 +1620,7 @@ export class CharacterBuilder {
         blocking: !choice.optional,
         from: choice.from,
         openedAt: choice.level,
+        ...(choice.opensAt !== undefined ? { opensAt: choice.opensAt } : {}),
         remaining: choice.remaining,
         candidates: choice.candidates,
         chosen,
@@ -1863,7 +1870,6 @@ export class CharacterBuilder {
       );
     };
     const decisions: OpenDecision[] = [...pickDecisions, ...selectDecisions];
-    decisions.sort((a, b) => rankOf(a) - rankOf(b));
 
     const budgets = new Map<string, BudgetState>();
     for (const step of this.steps) {
@@ -1912,6 +1918,7 @@ export class CharacterBuilder {
           label: 'Hit Points',
           stepId: step.id,
           blocking: true,
+          ...(state.pending[0] ? { opensAt: state.pending[0].level } : {}),
           remaining: state.pending.length,
           // A per-level roll assigns a number, not an element.
           candidates: [],
@@ -1941,6 +1948,16 @@ export class CharacterBuilder {
         unresolved: [],
       });
     }
+
+    // In the order the character meets them: by the level each opens at, and within a level by its step's rank (ADR
+    // 0034, above). Everything at or before the progression's start is one level, so creation reads in the system's own
+    // step order — scores, race, class, background — and a level 1 Fighting Style is not put after a background's
+    // languages for being gated at 1 rather than at nothing. Ranking alone listed a Fighter 6's Martial Archetype and
+    // both improvements ahead of its first-level Fighting Style and skills, and a Wizard's first cantrips last.
+    // `Array.prototype.sort` is stable, so ties keep the order they were pushed in.
+    const start = this.kind.progression.kind === 'none' ? 0 : (this.kind.progression.min ?? 0);
+    const levelOf = (decision: OpenDecision): number => Math.max(decision.opensAt ?? 0, start);
+    decisions.sort((a, b) => levelOf(a) - levelOf(b) || rankOf(a) - rankOf(b));
 
     // A non-blocking decision the user declined (ADR 0033) leaves `decisions` the same way an
     // answered one does, and for the same reason: a step whose only outstanding items are

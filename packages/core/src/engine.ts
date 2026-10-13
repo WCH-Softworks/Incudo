@@ -162,6 +162,14 @@ export interface PendingChoice {
    * means wizard 3, which arrived at character level 8.
    */
   level?: number;
+  /**
+   * The point of the character's own progression this opens at: the later of when what opened it arrived and the
+   * level its next slot is gated at, both read as the character's total. A Rogue 5 / Wizard 3's wizard `level: 3` is 8
+   * here, and an Arcane Tradition select on a marker a wizard is granted at level 2 is 2, though the select itself
+   * names no level. What lets a builder list open choices in the order the character meets them. 0 for what is there
+   * from the start; absent for a kind with no progression.
+   */
+  opensAt?: number;
 }
 
 /**
@@ -753,6 +761,12 @@ function derive(
     equipment,
     blockFilters,
   );
+
+  // When each open choice became available, as the character's own progression (see `PendingChoice.opensAt`).
+  if (kind.progression.kind !== 'none') {
+    const opensAt = arrivalLevels(active, character, kind, ctx, finalLevelFor, equipment, tracks, recordedChoices);
+    for (const choice of pendingChoices) choice.opensAt = opensAt(choice.from, choice.level);
+  }
 
   // Which block each addition is cast through (ADR 0097), before the prepared lists, which hold them always.
   const additionBlocks = resolveAdditionBlocks(character, kind, active, problems);
@@ -1373,6 +1387,80 @@ function reportAttunementLimit(
     code: 'over-attuned',
     message: `Attuned to ${equipment.attunedCount} items, and "${attunement.maxStat}" allows ${limit}. Unattune from ${equipment.attunedCount - limit} of them, or expect a sheet the rules do not permit.`,
   });
+}
+
+/**
+ * When each held element arrived, as a point of the character's own progression, and from that when a select one of
+ * them declares opens. Read off the finished derivation and never fed back into it: an element arrives at the latest
+ * of when its granter arrived and the level its grant is gated at; a recorded pick, when the select that holds it
+ * opened. A seed nothing reaches (a race, a class, the kind's baseline) is there from the start, 0; so is a pick whose
+ * chooser has gone. A level in a track is turned into the character's total through `advancement`: a class's third
+ * level is the `at` of the third entry naming it. With no advancement a track's level and the total are the same.
+ */
+function arrivalLevels(
+  active: Map<ElementId, Element>,
+  character: Character,
+  kind: ResolvedCharacterKind,
+  ctx: EngineContext,
+  levelFor: TrackLevelReader,
+  equipment: EquipmentState,
+  tracks: Map<ElementId, ElementId>,
+  recordedChoices: Map<string, ElementId[]>,
+): (from: ElementId, level: number | undefined) => number {
+  const entries = new Map<ElementId, number[]>();
+  for (const entry of [...(character.advancement ?? [])].sort((a, b) => a.at - b.at)) {
+    const list = entries.get(entry.elementId);
+    if (list) list.push(entry.at);
+    else entries.set(entry.elementId, [entry.at]);
+  }
+  const total = (id: ElementId, level: number | undefined): number => {
+    if (level === undefined) return 0;
+    const root = tracks.get(id);
+    const ats = root === undefined ? undefined : entries.get(root);
+    return ats?.[level - 1] ?? level;
+  };
+  const removed = new Set(character.removedGrants ?? []);
+  // Once per element, the edges it opens: a target and the point that edge is gated at.
+  const edges = new Map<ElementId, Array<[ElementId, number]>>();
+  const edgesOf = (element: Element): Array<[ElementId, number]> => {
+    let out = edges.get(element.id);
+    if (out) return out;
+    out = [];
+    for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
+      if (rule.kind === 'grant') out.push([rule.id, total(element.id, rule.level)]);
+    }
+    for (const id of setterGrantIds(kind.setterGrants, element, removed)) out.push([id, 0]);
+    for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor, equipment)) {
+      const at = total(element.id, rules[0]!.level);
+      for (const id of recordedChoices.get(ruleKey) ?? []) out.push([id, at]);
+    }
+    edges.set(element.id, out);
+    return out;
+  };
+  const reached = new Set<ElementId>();
+  for (const element of active.values()) for (const [id] of edgesOf(element)) if (id !== element.id) reached.add(id);
+  const arrival = new Map<ElementId, number>();
+  const queue: ElementId[] = [];
+  for (const id of active.keys()) {
+    if (reached.has(id)) continue;
+    arrival.set(id, 0);
+    queue.push(id);
+  }
+  // The earliest arrival over every path, relaxed until nothing moves: an arrival only falls, and never below 0.
+  for (let at = 0; at < queue.length; at++) {
+    const id = queue[at]!;
+    const element = active.get(id);
+    if (!element) continue;
+    const from = arrival.get(id)!;
+    for (const [target, gate] of edgesOf(element)) {
+      if (!active.has(target)) continue;
+      const next = Math.max(from, gate);
+      if ((arrival.get(target) ?? Number.MAX_SAFE_INTEGER) <= next) continue;
+      arrival.set(target, next);
+      queue.push(target);
+    }
+  }
+  return (from, level) => Math.max(arrival.get(from) ?? 0, total(from, level));
 }
 
 /** How many points of progression apply to an element's rules — its track's, or the total. */

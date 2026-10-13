@@ -1622,3 +1622,57 @@ test('a setter outside a track value reads 0 and says so', () => {
     'inside trackStats it is not reported',
   );
 });
+
+// --- when an open choice opens, as the character's own progression ------------------------------
+
+test('an open choice says when the character meets it: its track\'s level read as the total, and when its granter arrived', () => {
+  // Alpha takes levels 1, 2 and 6, Beta 3 to 5. Fails if `opensAt` is the track's own level (Alpha's level 3 select would
+  // read 3, Beta's marker 2), if a select naming no level opens from the start (BETA_MARKER's would read 0), or if a
+  // select's own level is ignored for when its granter arrived (ALPHA_EARLY's would read 2).
+  const character = createCharacter('test', 'levelled');
+  character.progress = 6;
+  character.advancement = [
+    { at: 1, elementId: 'Alpha' },
+    { at: 2, elementId: 'Alpha' },
+    { at: 3, elementId: 'Beta' },
+    { at: 4, elementId: 'Beta' },
+    { at: 5, elementId: 'Beta' },
+    { at: 6, elementId: 'Alpha' },
+  ];
+  const pick = (name: string, level?: number): Rule => ({
+    kind: 'select',
+    key: `select:${name}`,
+    type: 'Gadget',
+    name,
+    number: 1,
+    ...(level !== undefined ? { level } : {}),
+  });
+  const index = indexWith(
+    element('Alpha', 'Widget', [
+      pick('First'),
+      { kind: 'grant', key: 'g1', type: 'Gadget', id: 'ALPHA_EARLY', level: 2 },
+    ]),
+    element('ALPHA_EARLY', 'Gadget', [pick('Third', 3)]),
+    element('Beta', 'Widget', [{ kind: 'grant', key: 'g1', type: 'Gadget', id: 'BETA_MARKER', level: 2 }]),
+    element('BETA_MARKER', 'Gadget', [pick('Marker')]),
+    element('ANY', 'Gadget'),
+  );
+
+  const derived = deriveCharacter(character, trackedSystem(), index);
+  const opens = Object.fromEntries(derived.pendingChoices.map((c) => [c.label, c.opensAt]));
+  assert.deepEqual(opens, { First: 0, Third: 6, Marker: 4 });
+});
+
+test('a kind with no progression publishes no opening point', () => {
+  const base = system();
+  base.characterKinds[0]!.progression = { kind: 'none' };
+  const character = createCharacter('test', 'levelled');
+  const index = indexWith(
+    element('Alpha', 'Widget', [{ kind: 'select', key: 'select:First', type: 'Gadget', name: 'First', number: 1 }]),
+    element('ANY', 'Gadget'),
+  );
+  character.choices = [{ ruleKey: 'seed', elementIds: ['Alpha'] }];
+  const derived = deriveCharacter(character, base, index);
+  assert.equal(derived.pendingChoices.length, 1);
+  assert.equal(derived.pendingChoices[0]!.opensAt, undefined);
+});

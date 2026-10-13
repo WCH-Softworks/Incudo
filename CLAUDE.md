@@ -2220,6 +2220,17 @@ A budget is written through `setBudgetStat`, `adjustBudgetStat`, `rollBudget`, `
 and `setGenerationMethod` — all validated, all on the builder. `setBaseStat` still exists and
 bypasses every rule; it is for a caller that has no budget, not for an editor.
 
+**Open decisions are listed by the level they open at, then by step rank** (2026-10-13). Measured first
+(`tools/verify/src/decision-order.test.ts`): an Elf Sage taken straight to Fighter 6 listed Martial Archetype (3) and
+both improvements ahead of its level 1 Fighting Style and skills, a Wizard 6 its first cantrips and spellbook last, and
+the scores and hit points were appended after the sort. The engine publishes `PendingChoice.opensAt` (`arrivalLevels`,
+after the fixed point, never fed back): the later of when the select's owner arrived (its grants' `level=`, a pick's
+select, back to a seed at 0) and the next slot's level, each a track's level turned into the character's total through
+`advancement` — so an Arcane Tradition select naming no level opens at 2, and a Rogue 5 / Wizard 3's wizard 3 at 8.
+`OpenDecision.opensAt` carries it (hit points: the first level still to roll); the builder sorts by it, everything at
+or before the progression's start being one level, so creation keeps the system's step order (ADR 0034's `priority`).
+The phone reads the same list. Driven in the browser build.
+
 **Hit points have no oracle in the save file, and a referee on the screen** (ADR 0019, ADR 0044). Aurora's
 saves record the per-level rolls and never the total, so `aurora verify` has nothing to diff; the referee is
 the maintainer's readout, and `aurora-oracle.test.ts` holds `hp` to it on all 30 samples. Say "agrees with a
