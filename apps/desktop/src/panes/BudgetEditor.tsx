@@ -21,6 +21,7 @@
 
 import { useState } from 'react';
 import type { BudgetRow, BudgetState, CharacterBuilder } from '@incudo/ui';
+import { budgetTotalText } from '@incudo/ui';
 import type { ResolvedCharacterKind, StatKey } from '@incudo/core';
 
 /**
@@ -68,7 +69,7 @@ export function CompactBudget({
         {budget.rows.map((row) => (
           <div key={row.stat}>
             <dt>{labelOf(row.stat)}</dt>
-            <dd>{row.total}</dd>
+            <dd>{budgetTotalText(row)}</dd>
           </div>
         ))}
       </dl>
@@ -200,7 +201,7 @@ export function BudgetEditor({
                 <Base stepId={stepId} budget={budget} row={row} builder={builder} />
               </td>
               <td className="numeric muted">{row.bonus === 0 ? '—' : signed(row.bonus)}</td>
-              <td className="numeric total">{row.total}</td>
+              <td className="numeric total">{budgetTotalText(row)}</td>
               {budget.pooled && <td className="numeric muted">{row.cost}</td>}
             </tr>
           ))}

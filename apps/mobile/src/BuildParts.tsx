@@ -30,6 +30,7 @@ import {
   withoutSplitRow,
   preparedItemText,
   scoreLabel,
+  budgetTotalText,
   searchCandidates,
   shortfallText,
   unavailableReason,
@@ -214,7 +215,7 @@ export function BudgetView({
         <View key={row.stat} style={[styles.scoreRow, { borderColor: palette.border }]}>
           <View style={styles.scoreHead}>
             <Text style={[styles.scoreName, { color: palette.text }]}>{labelOf(row.stat)}</Text>
-            <Text style={[styles.scoreTotal, { color: palette.text }]}>{row.total}</Text>
+            <Text style={[styles.scoreTotal, { color: palette.text }]}>{budgetTotalText(row)}</Text>
           </View>
           <Row>
             <Base stepId={stepId} budget={budget} row={row} builder={builder} label={labelOf(row.stat)} />

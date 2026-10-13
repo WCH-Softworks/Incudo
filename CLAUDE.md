@@ -2231,6 +2231,12 @@ select, back to a seed at 0) and the next slot's level, each a track's level tur
 or before the progression's start being one level, so creation keeps the system's step order (ADR 0034's `priority`).
 The phone reads the same list. Driven in the browser build.
 
+**A score in the build shows its modifier, "16 (+3)", read off the sheet's `beside`** (2026-10-13). `statBeside`
+(`sheet.ts`) finds the kind's first sheet section listing the stat with a `beside` template and writes that published
+stat as the sheet does; `BudgetRow.beside` and `budgetTotalText` carry it to the desktop's editor and settled scores and
+the phone's. Nothing in `budget.ts` knows a modifier's formula; a kind whose sheet shows nothing beside a score shows the
+total alone. Driven in the browser build.
+
 **Hit points have no oracle in the save file, and a referee on the screen** (ADR 0019, ADR 0044). Aurora's
 saves record the per-level rolls and never the total, so `aurora verify` has nothing to diff; the referee is
 the maintainer's readout, and `aurora-oracle.test.ts` holds `hp` to it on all 30 samples. Say "agrees with a

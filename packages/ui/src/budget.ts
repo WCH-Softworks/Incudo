@@ -28,6 +28,7 @@ import {
 } from '@incudo/core';
 
 import { parseDice, rollDice, type DiceRoll } from './dice.ts';
+import { statBeside } from './sheet.ts';
 
 /**
  * Which kind of question a method asks. The three are genuinely different, which is why one
@@ -63,6 +64,11 @@ export interface BudgetRow {
   featureNote?: string;
   /** What the derivation reads for this stat: the base plus everything content adds. */
   total: number;
+  /**
+   * What the kind's sheet shows beside this stat, read off the derivation (`statBeside`): a score's modifier, "+3".
+   * Undefined when the sheet shows nothing beside it. Nothing here works it out: the system's formula is the sheet's.
+   */
+  beside?: string;
   /**
    * What the derivation adds on top of the base — the racial +2, a feat's +1, an ASI.
    *
@@ -248,6 +254,7 @@ export function computeBudgetState(
   const printedOf = (stat: StatKey): number | undefined => derived.starts.get(stat.toLowerCase())?.value;
 
   const attainable = attainableValues(method);
+  const beside = (stat: StatKey): string | undefined => statBeside(kind, derived.stats, stat);
   const rows: BudgetRow[] = budget.targets.map((stat) => {
     const current = valueOf(stat);
     const resolved = derived.stats.get(stat.toLowerCase());
@@ -282,6 +289,7 @@ export function computeBudgetState(
       printed: printedOf(stat),
       ...featureNoteOf(derived.starts.get(stat.toLowerCase()), current),
       total,
+      ...(beside(stat) !== undefined ? { beside: beside(stat) } : {}),
       bonus: total - (current ?? fallback),
       cost,
       increase,
@@ -521,4 +529,9 @@ function featureNoteOf(
         ? `${name} sets this to ${start.value}.`
         : `The ${base} entered here replaces the ${start.value} that ${name} sets. Clear it to use ${name}.`,
   };
+}
+
+/** A row's total as the build shows it, with what the sheet shows beside it: "16 (+3)", or "16" when nothing is. */
+export function budgetTotalText(row: BudgetRow): string {
+  return row.beside === undefined ? String(row.total) : `${row.total} (${row.beside})`;
 }

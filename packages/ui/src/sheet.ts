@@ -271,6 +271,25 @@ export function formatStatValue(stat: ResolvedStat | undefined, signed: boolean)
 }
 
 /**
+ * What the kind's sheet shows beside a stat, wherever else the stat is shown: the first section that lists it and
+ * declares `beside` (ADR 0074), its `{stat}` filled with the stat and the value written as the sheet writes it — a
+ * score's modifier, "+3". Undefined when no section shows anything beside it. The build's score editor reads it, so
+ * the number beside a score there is the derivation's own and the same as the sheet's.
+ */
+export function statBeside(kind: ResolvedCharacterKind, stats: ReadonlyMap<string, ResolvedStat>, stat: string): string | undefined {
+  const key = stat.toLowerCase();
+  const section = kind.sheet.sections.find(
+    (s) => !s.perBlock && s.beside !== undefined && (s.stats ?? []).some((listed) => listed.toLowerCase() === key),
+  );
+  if (!section) return undefined;
+  const besideKey = section.beside!.replaceAll('{stat}', stat).toLowerCase();
+  const resolved = stats.get(besideKey);
+  if (!resolved) return undefined;
+  const def = kind.stats.find((s) => s.name.toLowerCase() === besideKey);
+  return formatStatValue(resolved, def?.signed === true);
+}
+
+/**
  * An attack's damage as a sheet writes it (ADR 0093): the die as content writes it, the modifier after it with its sign
  * (none when 0), and the type, "1d8+3 slashing". No die is "—", or the modifier alone when there is one.
  */
