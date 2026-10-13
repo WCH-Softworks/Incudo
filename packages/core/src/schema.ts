@@ -240,6 +240,10 @@ function checkCharacterReferences(character: Character, system?: GameSystem): Sc
       errors.push({ path: `additionBlocks.${id}`, message: `"${id}" is not an element added to this character` });
     }
   }
+  // A cantrip's attack choices are dropped by a reader of 12 (ADR 0111), and a die has at least two sides.
+  if (character.formatVersion < 13 && character.spellAttacks !== undefined) {
+    errors.push({ path: 'spellAttacks', message: 'is recorded only from format 13' });
+  }
   // A reference is dropped by a reader of 6 (ADR 0068).
   if (character.formatVersion < 7 && character.references !== undefined) {
     errors.push({ path: 'references', message: 'is recorded only from format 7' });
@@ -700,6 +704,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           innate.stats.map((s, at): [string, string | undefined] => [`innate[${i}].stats[${at}]`, s.requirements]),
         ),
       ];
+      // A spell row of a type nothing declares is never one (ADR 0111).
+      for (const type of attacks.spells?.types ?? []) {
+        if (!typeNames.has(type)) {
+          errors.push({ path: `${where}.attacks.spells.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+        }
+      }
       for (const [at, requirements] of conditions) {
         if (requirements === undefined) continue;
         try {

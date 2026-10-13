@@ -43,6 +43,7 @@ export * from './content-files.ts';
 export * from './custom-features.ts';
 export * from './feature-library.ts';
 export * from './additions.ts';
+export * from './spell-attacks.ts';
 export * from './references.ts';
 export * from './companions.ts';
 export * from './sheet.ts';

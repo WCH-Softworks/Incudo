@@ -156,7 +156,16 @@ export interface SheetAttack {
   range?: string;
   /** "Ammunition", "Heavy": by name, in order of name. */
   properties: string[];
+  /** What a spell's row still lacks, in plain words (ADR 0111): its damage, or the class it is cast as. */
+  notes?: string[];
 }
+
+/** A spell row with no class to read its numbers from (ADR 0111). */
+export const SPELL_NO_CLASS = 'choose the class it is cast as on Build';
+/** A spell row whose damage nothing states and the user has not chosen (ADR 0111). */
+export const SPELL_NO_DAMAGE = 'its damage is chosen on Build';
+/** A spell row the user said rolls nothing (ADR 0111). */
+export const SPELL_ROLLS_NOTHING = 'no damage';
 
 /** One section with nothing left to decide. */
 /** One bag entry as a sheet lists it (ADR 0098): its name as the inventory shows it, how many, and how it is carried. */
@@ -268,8 +277,47 @@ export function attackDamage(dice: string | undefined, modifier: number, type: s
   return type ? `${amount} ${type}` : amount;
 }
 
+/**
+ * A spell's row as a sheet writes it (ADR 0111): an attack's bonus or a saving throw's "DC 13 Dexterity", "—" with no
+ * class; its dice, "1d8 or 1d12 necrotic" when there are two, "no damage" when it rolls nothing; and what it still lacks.
+ */
+function sheetSpellAttack(attack: DerivedAttack, spell: NonNullable<DerivedAttack['spell']>): SheetAttack {
+  const notes: string[] = [];
+  let bonus: string;
+  if (spell.block === undefined) {
+    bonus = '—';
+    notes.push(SPELL_NO_CLASS);
+  } else if (spell.kind === 'attack') {
+    bonus = attack.bonus >= 0 ? `+${attack.bonus}` : String(attack.bonus);
+  } else {
+    bonus = [`DC ${spell.dc ?? 0}`, ...(spell.ability ? [spell.ability] : [])].join(' ');
+  }
+  let damage: string;
+  if (attack.dice !== undefined) {
+    const dice = [attack.dice, ...(spell.orDice ?? [])].join(' or ');
+    damage = attack.damageType ? `${dice} ${attack.damageType}` : dice;
+  } else if (spell.dice === 'chosen') {
+    damage = SPELL_ROLLS_NOTHING;
+  } else {
+    damage = '—';
+    notes.push(SPELL_NO_DAMAGE);
+  }
+  return {
+    ...(attack.elementId !== undefined ? { elementId: attack.elementId } : {}),
+    name: attack.name,
+    equipped: attack.equipped,
+    bonus,
+    damage,
+    alternatives: [],
+    ...(attack.range !== undefined ? { range: attack.range } : {}),
+    properties: [],
+    ...(notes.length ? { notes } : {}),
+  };
+}
+
 /** An attack as a sheet writes it. */
 export function sheetAttack(attack: DerivedAttack): SheetAttack {
+  if (attack.spell) return sheetSpellAttack(attack, attack.spell);
   return {
     ...(attack.instanceId !== undefined ? { instanceId: attack.instanceId } : {}),
     ...(attack.elementId !== undefined ? { elementId: attack.elementId } : {}),

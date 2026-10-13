@@ -94,8 +94,9 @@ function joinNames(names: readonly string[]): string {
  * What a sheet writes after an attack's damage (ADR 0093): each other die it may be rolled with, its range and its
  * properties, "two-handed 1d10+3 slashing; Versatile", "range 150/600; Ammunition, Heavy, Two-Handed", or nothing.
  */
-export function attackAside(attack: Pick<SheetAttack, 'alternatives' | 'range' | 'properties'>): string | undefined {
+export function attackAside(attack: Pick<SheetAttack, 'alternatives' | 'range' | 'properties' | 'notes'>): string | undefined {
   const parts = [
+    ...(attack.notes ?? []),
     ...attack.alternatives.map((alternative) => `${alternative.label} ${alternative.damage}`),
     ...(attack.range !== undefined ? [`range ${attack.range}`] : []),
     ...(attack.properties.length ? [attack.properties.join(', ')] : []),

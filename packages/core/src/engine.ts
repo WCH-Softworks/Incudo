@@ -75,7 +75,7 @@ import {
   type PreparationProblem,
   type PreparedBlock,
 } from './preparation.ts';
-import { deriveAttacks, type DerivedAttack } from './attacks.ts';
+import { deriveAttacks, type DerivedAttack, type SpellCasting } from './attacks.ts';
 import {
   evaluateExpr,
   evaluateExprAsString,
@@ -778,7 +778,10 @@ function derive(
     : [];
 
   // The attacks, against the settled stats and what the character holds (ADR 0093). Nothing reads them back.
-  const attacks = deriveAttacks(character, index, kind.attacks, ctx, kind.inventory);
+  // A spell row (ADR 0111) reads the block that holds the spell, for every declared block, not only the preparing ones.
+  const attacks = deriveAttacks(character, index, kind.attacks, ctx, kind.inventory, kind.attacks?.spells
+    ? spellCasting(active, character, kind, ctx, finalLevelFor, equipment, recordedChoices, additionBlocks)
+    : undefined);
 
   // The progression's start is published beside every other start, so an editor shows the creature's
   // challenge rating beside a typed one and can go back to it.
@@ -854,6 +857,41 @@ function allowedAdditions(
     out.push(id);
   }
   return out;
+}
+
+/**
+ * Which declared block holds each held element — ADR 0111: one a grant with a block names, or one a select with a block
+ * recorded, or an addition cast through (ADR 0097); the first found, in the order elements are held. Every declared
+ * block counts, so a 2014 Warlock's cantrips are its pact magic's.
+ */
+function spellCasting(
+  active: Map<ElementId, Element>,
+  character: Character,
+  kind: ResolvedCharacterKind,
+  ctx: EngineContext,
+  levelFor: TrackLevelReader,
+  equipment: EquipmentState,
+  recordedChoices: Map<string, ElementId[]>,
+  additionBlocks: AdditionBlock[],
+): SpellCasting {
+  const blocks = new Map<string, string>();
+  for (const block of collectDeclaredBlocks(active.values())) blocks.set(block.name.trim().toLowerCase(), block.name);
+  const held = new Map<ElementId, string>();
+  const attach = (id: ElementId, name: string | undefined): void => {
+    const block = name === undefined ? undefined : blocks.get(name);
+    if (block !== undefined && active.has(id) && !held.has(id)) held.set(id, block);
+  };
+  for (const element of active.values()) {
+    for (const rule of activeRules(element, character, kind, ctx, levelFor, equipment)) {
+      if (rule.kind === 'grant') attach(rule.id, declaredBlockName(rule));
+    }
+    for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor, equipment)) {
+      const name = declaredBlockName(rules.find((r) => declaredBlockName(r)) ?? {});
+      for (const id of recordedChoices.get(ruleKey) ?? []) attach(id, name);
+    }
+  }
+  for (const { elementId, block } of additionBlocks) attach(elementId, block.trim().toLowerCase());
+  return { held: [...active.values()], blockOf: (id) => held.get(id), blockNamed: (key) => blocks.get(key.trim().toLowerCase()) };
 }
 
 /**

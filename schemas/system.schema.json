@@ -603,6 +603,38 @@
                   "requirements": { "type": "string", "description": "A condition in content's requirement language." }
                 }
               }
+            },
+            "spells": {
+              "type": "object",
+              "required": ["types", "setter", "values", "count", "sides"],
+              "additionalProperties": false,
+              "description": "Spells that are attack rows (ADR 0111): a held element of these types whose setter reads one of the values and that carries the attack or the save tag. Its die and damage type are read from content when it states them, else chosen by the user (Character.spellAttacks).",
+              "properties": {
+                "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+                "setter": { "type": "string", "minLength": 1, "description": "The setter that says which spells: 5e's level." },
+                "values": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "Its values that make a row: 5e's \"0\", a cantrip." },
+                "attack": {
+                  "type": "object", "required": ["tag", "bonus"], "additionalProperties": false,
+                  "properties": {
+                    "tag": { "type": "string", "minLength": 1, "description": "The support tag of a spell that makes an attack roll." },
+                    "bonus": { "type": "string", "minLength": 1, "description": "The stat its bonus is, {name} the block's name." }
+                  }
+                },
+                "save": {
+                  "type": "object", "required": ["tag", "dc"], "additionalProperties": false,
+                  "properties": {
+                    "tag": { "type": "string", "minLength": 1, "description": "The support tag of a spell that calls for a saving throw." },
+                    "dc": { "type": "string", "minLength": 1, "description": "The stat its DC is, {name} the block's name." }
+                  }
+                },
+                "count": { "$ref": "#/$defs/expr", "description": "How many dice it rolls, read against the character." },
+                "dice": { "type": "string", "minLength": 1, "description": "A setter stating its die, as a weapon's does; read when content writes it." },
+                "damageType": { "type": "string", "minLength": 1, "description": "That setter's attribute naming the damage type." },
+                "range": { "type": "string", "minLength": 1, "description": "The setter whose text is its range." },
+                "sides": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 2 }, "description": "The dice the user is offered, by sides." },
+                "damageTypes": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "The damage types the user is offered." },
+                "abilities": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "The abilities a saving throw is offered with." }
+              }
             }
           }
         },

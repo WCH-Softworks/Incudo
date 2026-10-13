@@ -33,6 +33,8 @@ import {
   setGrantRemoved,
   setAdded,
   setAdditionBlock,
+  setSpellAttack,
+  type SpellAttackChoice,
   setReferenced,
   setCustomFeature,
   customFeatureTypes,
@@ -122,6 +124,7 @@ import { referenceOptions, referencesState, type ReferencesState } from './refer
 import { companionsView, type CompanionsView } from './companions.ts';
 import { sheetView, type SheetView } from './sheet.ts';
 import { freeformState, type FreeformState } from './freeform.ts';
+import { spellAttackRefusal, spellAttacksState, type SpellAttacksState } from './spell-attacks.ts';
 import { adjustPlay, playView, restPlay, setPlayCondition, setPlaySpent, setPlayTemporary, type PlayView } from './play.ts';
 import {
   equipOffer,
@@ -370,6 +373,8 @@ export interface BuilderState {
    * `available` is false for a kind that declares none.
    */
   freeform: FreeformState;
+  /** The spell attack rows and what the user chose about each — ADR 0111. `available` is false for a kind with none. */
+  spellAttacks: SpellAttacksState;
   /**
    * What the derivation withdrew because its own requirements are false (ADR 0071), named — ADR 0072. Taking a feature
    * that replaces another withdraws the other, and Build lists it here rather than letting it disappear.
@@ -775,6 +780,23 @@ export class CharacterBuilder {
     this.character = setAdditionBlock(this.character, elementId, key);
     this.invalidate();
     return true;
+  };
+
+  /**
+   * Record what the user chose about a spell's attack row, or forget it with `undefined` — ADR 0111. Refused, writing
+   * nothing and returning the reason, for a spell with no row, a die, type, ability or class not offered, and a die for a
+   * spell whose content states one.
+   */
+  setSpellAttack = (elementId: ElementId, choice: SpellAttackChoice | undefined): string | undefined => {
+    if (choice !== undefined) {
+      const refused = spellAttackRefusal(this.getState().spellAttacks, elementId, choice);
+      if (refused !== undefined) return refused;
+    } else if (!this.getState().spellAttacks.rows.some((r) => r.elementId === elementId)) {
+      return 'That spell has no attack row on this character.';
+    }
+    this.character = setSpellAttack(this.character, elementId, choice);
+    this.invalidate();
+    return undefined;
   };
 
   /**
@@ -2000,6 +2022,7 @@ export class CharacterBuilder {
       sheet,
       ...(play ? { play } : {}),
       freeform: freeformState(this.character, this.kind),
+      spellAttacks: spellAttacksState(derived, this.kind),
       ...(startingEquipment ? { startingEquipment } : {}),
       ...(inventory ? { inventory } : {}),
       focusedId: this.focusedId,

@@ -1623,8 +1623,15 @@ before 1.0.*
       on each equipped Light melee weapon while both hands hold one (no positive ability modifier to its damage unless a
       Two-Weapon Fighting style is held), and a melee weapon's reach where content writes no range ("10 ft" with Reach,
       else "5 ft"). Driven in the browser build: a new Monk reads "Unarmed Strike: +5, 1d4+3 bludgeoning", two equipped
-      Shortswords "off-hand 1d6 piercing", a 2024 Pike "range 10 ft". **Left:** cantrips as attack rows (levelled spells
-      are after 1.0, the maintainer's call) and a held creature's actions with what its holder adds.
+      Shortswords "off-hand 1d6 piercing", a 2024 Pike "range 10 ft".
+      **Done** (2026-10-13, [ADR 0111](./docs/adr/0111-a-cantrip-is-an-attack-row-its-roll-read-from-content-or-chosen-by-the-user.md)):
+      cantrips as attack rows (levelled spells are after 1.0, the maintainer's call). A cantrip tagged "Spell Attack" or
+      "Spell Saving Throw" is a row, its bonus or DC its casting class's, its dice counted by character level. Content
+      states no die, damage type or save ability as a rule, so the user chooses them on Build (kept on the character,
+      format 13; "rolls nothing" and Toll the Dead's two dice allowed), and a cantrip no class casts (High Elf, Magic
+      Initiate) is cast as a class the user names. Only regular scaling: Eldritch Blast reads as more dice. Driven in the
+      browser build: "Fire Bolt: +3, 2d10 fire", "Acid Splash: DC 11 Dexterity, 2d6 acid". **Left:** a held creature's
+      actions with what its holder adds.
 - [ ] **A druid's Wild Shape tier on the sheet.** *From the ADR 0070 item.* The 2014 Player's Handbook's Beast Shapes
       table sets the highest challenge rating and the limits (no swimming, no flying speed) by druid level, and the beast
       must be one the druid has seen. The maintainer's call (2026-10-12): the sheet shows the tier the character is at,

@@ -64,6 +64,7 @@ import { References } from './References.tsx';
 import { FreeformEditor } from './Freeform.tsx';
 import { StartingEquipmentSettled, StartingOptions } from './StartingEquipment.tsx';
 import { InventoryEditor } from './InventoryEditor.tsx';
+import { SpellAttacksEditor } from './SpellAttacks.tsx';
 
 export function BuilderPane({
   builder,
@@ -360,6 +361,14 @@ export function BuilderPane({
             <section className="inventory-section">
               <h2>{INVENTORY_HEADING}</h2>
               <InventoryEditor state={state.inventory} builder={builder} elements={elements} candidateLabel={candidateLabel} />
+            </section>
+          )}
+
+          {/* A spell's attack row and what content does not say about it (ADR 0111): shown only once one is held. */}
+          {state.spellAttacks.rows.length > 0 && (
+            <section className="spell-attacks-section">
+              <h2>{state.spellAttacks.label}</h2>
+              <SpellAttacksEditor state={state.spellAttacks} builder={builder} />
             </section>
           )}
 

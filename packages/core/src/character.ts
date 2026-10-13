@@ -109,7 +109,8 @@ export interface Character {
    * 7 for one that records `references` (ADR 0068), 8 for one that records `play` (ADR 0084), 9 for one with a custom
    * feature line that marks a row (ADR 0094), 10 for one that records `additionBlocks` (ADR 0097), 11 for one that
    * records `money` or `startingEquipment` (ADR 0087), 12 for one with a custom feature copied from the user's feature
-   * library (ADR 0106). Readers accept all twelve. A new character is written at 2, and only a write that needs more raises it
+   * library (ADR 0106), 13 for one that records `spellAttacks` (ADR 0111). Readers accept all thirteen.
+   * A new character is written at 2, and only a write that needs more raises it
    * (`raiseFormatVersion`): an older reader would silently get those characters wrong, and gets every other one
    * right.
    */
@@ -253,6 +254,12 @@ export interface Character {
    */
   additionBlocks?: Record<ElementId, string>;
   /**
+   * What the user chose about a cantrip's attack row — ADR 0111: its damage die, damage type, the save's ability, and the
+   * class it is cast as when no block holds it. Content states none of these as a rule, so nothing derives them. Keyed
+   * by the spell's id. Absent when empty; only format 13 records it, because a reader of 12 would drop it.
+   */
+  spellAttacks?: Record<ElementId, SpellAttackChoice>;
+  /**
    * Elements shown beside this character as a reference, in the order chosen — ADR 0068. A DM's NPC built by hand
    * next to a stat block that exists only as prose. **Not held**: nothing derives from one, no requirement reads one,
    * no sheet section lists one; it is text the character keeps beside it, embedded in the save so it still shows with
@@ -286,7 +293,18 @@ export interface Character {
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+
+/** What the user chose about one cantrip's attack row — ADR 0111. Every field optional; an empty choice is not recorded. */
+export interface SpellAttackChoice {
+  /** Its damage die's sides: one die, two to choose between (Toll the Dead), or none for a cantrip that rolls nothing. */
+  sides?: number[];
+  damageType?: string;
+  /** The ability a saving throw cantrip is saved with, as the system's `attacks.spells.abilities` names it. */
+  ability?: string;
+  /** The lowercased name of the block it is cast as, replacing the block content gives (ADR 0097's key). */
+  block?: string;
+}
 
 /**
  * One starting package taken — ADR 0087 decision 4: which entry of the system's starting equipment, which of its
@@ -372,9 +390,9 @@ export const CHARACTER_FORMAT_VERSION = 2;
  * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), one with `play` 8 (ADR
  * 0084), one with a custom feature line that marks a row 9 (ADR 0094), one with `additionBlocks` 10 (ADR 0097), one
  * with `money` or `startingEquipment` 11 (ADR 0087), one with a custom feature copied from the feature library 12 (ADR
- * 0106), and nothing else is raised.
+ * 0106), one with `spellAttacks` 13 (ADR 0111), and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 12;
+export const LATEST_CHARACTER_FORMAT_VERSION = 13;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -586,6 +604,32 @@ function withAdditionBlock(character: Character, elementId: ElementId, key: stri
   else next[elementId] = key;
   const { additionBlocks: _previous, ...rest } = character;
   return Object.keys(next).length ? { ...raiseFormatVersion(rest, 10), additionBlocks: next } : rest;
+}
+
+/**
+ * Record what the user chose about a cantrip's attack row, or forget it with `undefined` — ADR 0111. A choice with no
+ * field set is forgotten too. Recording one raises the character to format 13; forgetting the last leaves the field absent
+ * and the version where it is. Says nothing about whether the element is held or the values offered: the builder refuses
+ * those.
+ */
+export function setSpellAttack(character: Character, elementId: ElementId, choice: SpellAttackChoice | undefined): Character {
+  const cleaned: SpellAttackChoice = {};
+  if (choice?.sides !== undefined) cleaned.sides = [...choice.sides];
+  const damageType = choice?.damageType?.trim();
+  if (damageType) cleaned.damageType = damageType;
+  const ability = choice?.ability?.trim();
+  if (ability) cleaned.ability = ability;
+  const block = choice?.block?.trim().toLowerCase();
+  if (block) cleaned.block = block;
+  const empty = Object.keys(cleaned).length === 0;
+  const current = character.spellAttacks?.[elementId];
+  if (empty ? current === undefined : JSON.stringify(current) === JSON.stringify(cleaned)) return character;
+  const next: Record<ElementId, SpellAttackChoice> = { ...(character.spellAttacks ?? {}) };
+  if (empty) delete next[elementId];
+  else next[elementId] = cleaned;
+  const { spellAttacks: _previous, ...rest } = character;
+  const written: Character = Object.keys(next).length ? { ...raiseFormatVersion(rest, 13), spellAttacks: next } : rest;
+  return { ...written, updatedAt: new Date().toISOString() };
 }
 
 /** The block an added element is cast through, by its lowercased name, when one is recorded — ADR 0097. */

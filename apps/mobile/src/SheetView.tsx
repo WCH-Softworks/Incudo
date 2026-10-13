@@ -122,8 +122,8 @@ function Section({ section, level, palette }: { section: SheetSectionView; level
           </View>
         );
       })}
-      {(section.attacks ?? []).map((attack) => (
-        <Text key={attack.instanceId} style={[styles.body, text]} selectable>
+      {(section.attacks ?? []).map((attack, index) => (
+        <Text key={attack.instanceId ?? attack.elementId ?? `row-${index}`} style={[styles.body, text]} selectable>
           <Text style={styles.bold}>{attack.name}</Text>
           {`: ${attack.bonus}, ${attack.damage}`}
           {attackAside(attack) !== undefined ? <Text style={{ color: palette.muted }}>{` (${attackAside(attack)})`}</Text> : null}

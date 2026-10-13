@@ -794,7 +794,7 @@ the first slice of Phase 8's element editor. Things to know before touching it:
   records `references` is **7**, and since ADR 0084 one that records `play` is **8**, and since ADR 0094 one with a custom
   feature line that marks a row is **9**, and since ADR 0097 one that records `additionBlocks` is **10**, and since ADR
   0087 one that records `money` or `startingEquipment` is **11**, and since ADR 0106 one with a custom feature copied from the
-  feature library is **12**; `LATEST_CHARACTER_FORMAT_VERSION` is 12.)*
+  feature library is **12**, and since ADR 0111 one that records `spellAttacks` is **13**; `LATEST_CHARACTER_FORMAT_VERSION` is 13.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any
@@ -2469,7 +2469,31 @@ before touching it:
   asks a slot for one. `DerivedAttack`/`SheetAttack` `instanceId` and `elementId` are optional (an innate row has
   neither) and an alternative may carry its own `damageBonus`. Aurora records no unarmed row: the book is the referee.
   Driven in the browser build (a new Monk with two Shortswords and a 2024 Pike); not the Tauri window or the phone.
-- **Not done:** ~~unarmed strikes and martial arts~~, spell attacks as rows (cantrips only, the maintainer's call), ~~two-weapon
+- **A cantrip is an attack row** ([ADR 0111](docs/adr/0111-a-cantrip-is-an-attack-row-its-roll-read-from-content-or-chosen-by-the-user.md),
+  2026-10-13). Things to know before touching it:
+  - **Measured first** (`tools/verify/src/cantrip-attacks.test.ts`): 145 cantrips, 20 tagged `Spell Attack` and 31
+    `Spell Saving Throw`; none states its die, type or save ability as a rule (only prose; `keywords` are search words
+    and are not read); 53 of 129 cantrip selects attach to no casting block (High Elf, Magic Initiate, feats).
+  - **`attacks.spells`** (system format, optional): `types`, `setter`/`values` (5e: `level` "0"), `attack` and `save`
+    (a tag and the block stat, `{name}` the block's name), `count` (5e: a table on `level`, 1/2/3/4 at 1/5/11/17), `dice`
+    and `damageType` (a setter content may state, as a weapon's: an Incudo-format spell's `dN` scales, any other shape
+    is written as it is), `range`, and what the user is offered: `sides`, `damageTypes`, `abilities`.
+  - **`Character.spellAttacks`** (by spell id: `sides` one, two, or `[]` for "rolls nothing"; `damageType`; `ability`;
+    `block`), **format 13** only when recorded (`setSpellAttack`, core); the validator refuses it below 13. An input:
+    the maintainer's calls are that a die nothing states is the user's, a save's ability is the user's, and a cantrip no
+    block holds is cast as a class the user names (as ADR 0097's additions).
+  - **The engine** (`spellCasting` in `engine.ts`) finds the block holding each held element over *every* declared block
+    (a grant or a recorded pick with a `spellcasting`, or an addition's block), and `deriveAttacks` appends a row per
+    tagged cantrip after the bag's and the innate rows: `DerivedAttack.spell` (`kind`, `block`, `given`, `dc`,
+    `ability`, `dice`: content | chosen | unchosen, `orDice`). No damage bonus is added.
+  - **Words** (`sheetSpellAttack`, `sheet.ts`): "Fire Bolt: +6, 2d10 fire (range 120 feet)", "Sacred Flame: DC 13
+    Dexterity, 1d8 radiant", "1d8 or 1d12 necrotic", "no damage", and "—" with `SheetAttack.notes` for what is not yet
+    chosen, so every renderer (pane, phone, Markdown, form rows) needs no change. The editor's state is
+    `packages/ui/src/spell-attacks.ts` (`BuilderState.spellAttacks`, the builder's `setSpellAttack` returns a refusal);
+    desktop `panes/SpellAttacks.tsx` (Build, after Inventory), phone `SpellAttacksView` in `BuildExtras.tsx`.
+  - **Only regular scaling**, the maintainer's call: Eldritch Blast reads as more dice, Magic Stone scales. Driven in the
+    browser build (a Wizard 5's Fire Bolt and Acid Splash); not the Tauri window or the phone.
+- **Not done:** ~~unarmed strikes and martial arts~~, ~~cantrips as rows~~ (ADR 0111; levelled spells after 1.0), ~~two-weapon
   fighting~~, Dueling (commented out upstream), ~~reach as a distance~~ (ADR 0110), the inventory naming an adorned item by `name-format`.
   Driven in the browser build with no source (two packed samples and a built Beast Master); not the Tauri window, the phone,
   the print dialog or a filled form.

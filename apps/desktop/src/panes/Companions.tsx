@@ -49,8 +49,9 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
       )}
       {section.attacks && (
         <ul className="sheet-elements sheet-attacks">
-          {section.attacks.map((attack) => (
-            <li key={attack.instanceId}>
+          {section.attacks.map((attack, index) => (
+            // An unarmed strike has no bag entry and a spell row no entry either (ADRs 0110, 0111).
+            <li key={attack.instanceId ?? attack.elementId ?? `row-${index}`}>
               <strong>{attack.name}</strong>
               {`: ${attack.bonus}, ${attack.damage}`}
               {attackAside(attack) !== undefined && <span className="sheet-beside"> ({attackAside(attack)})</span>}

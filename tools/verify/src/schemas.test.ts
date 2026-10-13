@@ -20,6 +20,7 @@ import {
   resolveCharacterKind,
   setAdded,
   setAdditionBlock,
+  setSpellAttack,
   setMoney,
   setStartingEquipmentTaken,
   setReferenced,
@@ -403,7 +404,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 13 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 14 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -536,6 +537,22 @@ test('only format 10 may record the block an addition is cast through, and only 
   assert.deepEqual(validateCharacter({ ...ten, additionBlocks: { ID_B: 'wizard' } }, schemas).errors, [
     { path: 'additionBlocks.ID_B', message: '"ID_B" is not an element added to this character' },
   ]);
+});
+
+test("only format 13 may record what the user chose about a cantrip's attack — ADR 0111", async () => {
+  // Fails if the schema refuses the field or its shape, or if the check stops refusing it in a file that claims 12 (a
+  // reader of 12 would drop it), or the schema accepts a die of one side or three dice.
+  const schemas = await loadSchemas();
+  const pc = createCharacter('dnd5e', 'pc', { name: 'Sample', progress: 1 });
+  const chose = setSpellAttack(pc, 'ID_A', { sides: [8, 12], damageType: 'necrotic', ability: 'Wisdom', block: 'Cleric' });
+  assert.equal(chose.formatVersion, 13);
+  assert.deepEqual(validateCharacter(chose, schemas).errors, []);
+  assert.deepEqual(validateCharacter({ ...chose, formatVersion: 12 }, schemas).errors, [
+    { path: 'spellAttacks', message: 'is recorded only from format 13' },
+  ]);
+  assert.notDeepEqual(validateCharacter({ ...chose, spellAttacks: { ID_A: { sides: [1] } } }, schemas).errors, []);
+  assert.notDeepEqual(validateCharacter({ ...chose, spellAttacks: { ID_A: { sides: [4, 6, 8] } } }, schemas).errors, []);
+  assert.deepEqual(validateCharacter(setSpellAttack(pc, 'ID_A', { sides: [] }), schemas).errors, []);
 });
 
 test('only format 11 may record money or a starting package, and money only in the units the system declares — ADR 0087', async () => {
@@ -688,8 +705,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 13 } as unknown as Character, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 14 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13' },
   ]);
   // Play state (ADR 0084) is recorded only from format 8, whole positive counts only. Fails if the format check in
   // `checkCharacterReferences` is removed, or if the schema's `minimum` is.

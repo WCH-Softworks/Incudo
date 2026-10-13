@@ -11,8 +11,12 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import type { ElementId, ElementIndex } from '@incudo/core';
+import type { ElementId, ElementIndex, SpellAttackChoice } from '@incudo/core';
 import {
+  DIE_NONE,
+  DIE_UNCHOSEN,
+  dieLabel,
+  givenBlockLabel,
   additionGroups,
   additionOptionLabel,
   ALL_ADDITION_TYPES,
@@ -538,3 +542,73 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 120 },
   small: { paddingVertical: 6, paddingHorizontal: 12 },
 });
+
+/**
+ * The spell attack rows and what content does not say about them (ADR 0111): the die, the damage type, the save's
+ * ability, the class a spell is cast as, each a list in the Picker. What is offered and the row's line are
+ * `packages/ui/src/spell-attacks.ts`'s.
+ */
+export function SpellAttacksView({ state, builder, pick }: { state: BuilderState; builder: CharacterBuilder; pick: (request: PickerRequest) => void }) {
+  const palette = usePalette();
+  const { spellAttacks } = state;
+  const [refused, setRefused] = useState<{ id: string; message: string } | null>(null);
+  const write = (id: string, choice: SpellAttackChoice): void => {
+    const message = builder.setSpellAttack(id, choice);
+    setRefused(message === undefined ? null : { id, message });
+  };
+  const UNSET = ' unset';
+  const NONE = ' none';
+  const list = (title: string, options: Array<[string, string]>, current: string, onPick: (key: string) => void): void =>
+    pick({ title, options: options.map(([key]) => key), labels: new Map(options), details: false, current, onPick });
+  return (
+    <View style={styles.part}>
+      <Body tone="muted">{spellAttacks.description}</Body>
+      {spellAttacks.rows.map((row) => {
+        const first = row.choice.sides?.[0];
+        const dieText = row.choice.sides === undefined ? DIE_UNCHOSEN : first === undefined ? DIE_NONE : row.choice.sides.map(dieLabel).join(' or ');
+        const sides: Array<[string, string]> = spellAttacks.sides.map((s) => [String(s), dieLabel(s)]);
+        const without = <K extends keyof SpellAttackChoice>(key: K): SpellAttackChoice => {
+          const { [key]: _gone, ...rest } = row.choice;
+          return rest;
+        };
+        return (
+          <Card key={row.elementId}>
+            <Text style={{ color: palette.text, fontSize: 15 }}>{row.line}</Text>
+            {!row.stated ? (
+              <>
+                <Row>
+                  <Text style={[styles.grow, { color: palette.text, fontSize: 14 }]}>Die: {dieText}</Text>
+                  <Button label="Change" kind="link" onPress={() => list('Die', [[UNSET, DIE_UNCHOSEN], [NONE, DIE_NONE], ...sides], row.choice.sides === undefined ? UNSET : first === undefined ? NONE : String(first), (key) => write(row.elementId, key === UNSET ? without('sides') : { ...row.choice, sides: key === NONE ? [] : [Number(key)] }))} />
+                  {first !== undefined ? (
+                    <Button label="Or" kind="link" onPress={() => list('Or another die', [[UNSET, 'no other die'], ...sides], row.choice.sides?.[1] !== undefined ? String(row.choice.sides[1]) : UNSET, (key) => write(row.elementId, { ...row.choice, sides: key === UNSET ? [first] : [first, Number(key)] }))} />
+                  ) : null}
+                </Row>
+                {spellAttacks.damageTypes.length ? (
+                  <Row>
+                    <Text style={[styles.grow, { color: palette.text, fontSize: 14 }]}>Damage type: {row.choice.damageType ?? DIE_UNCHOSEN}</Text>
+                    <Button label="Change" kind="link" onPress={() => list('Damage type', [[UNSET, DIE_UNCHOSEN], ...spellAttacks.damageTypes.map((t): [string, string] => [t, t])], row.choice.damageType ?? UNSET, (key) => write(row.elementId, key === UNSET ? without('damageType') : { ...row.choice, damageType: key }))} />
+                  </Row>
+                ) : null}
+              </>
+            ) : null}
+            {row.kind === 'save' && spellAttacks.abilities.length ? (
+              <Row>
+                <Text style={[styles.grow, { color: palette.text, fontSize: 14 }]}>Saving throw: {row.choice.ability ?? DIE_UNCHOSEN}</Text>
+                <Button label="Change" kind="link" onPress={() => list('Saving throw', [[UNSET, DIE_UNCHOSEN], ...spellAttacks.abilities.map((a): [string, string] => [a, a])], row.choice.ability ?? UNSET, (key) => write(row.elementId, key === UNSET ? without('ability') : { ...row.choice, ability: key }))} />
+              </Row>
+            ) : null}
+            {spellAttacks.blocks.length ? (
+              <Row>
+                <Text style={[styles.grow, { color: palette.text, fontSize: 14 }]}>
+                  Cast as: {spellAttacks.blocks.find((b) => b.key === row.choice.block)?.name ?? givenBlockLabel(row)}
+                </Text>
+                <Button label="Change" kind="link" onPress={() => list('Cast as', [[UNSET, givenBlockLabel(row)], ...spellAttacks.blocks.map((b): [string, string] => [b.key, b.name])], row.choice.block ?? UNSET, (key) => write(row.elementId, key === UNSET ? without('block') : { ...row.choice, block: key }))} />
+              </Row>
+            ) : null}
+            {refused?.id === row.elementId ? <Body tone="muted">{refused.message}</Body> : null}
+          </Card>
+        );
+      })}
+    </View>
+  );
+}

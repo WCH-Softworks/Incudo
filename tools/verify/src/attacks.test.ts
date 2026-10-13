@@ -204,8 +204,9 @@ test('every weapon in a sample\'s bag is an attack on its sheet, and every row A
     const attacks = sheetView(derived, kind).sections.find((s) => s.id === 'attacks')?.attacks ?? [];
     // Aurora writes a row for every weapon in the bag, carried too; so does the sheet.
     const weapons = (run.imported.character.inventory ?? []).filter((e) => run.elements.get(e.elementId)?.type === 'Weapon').map((e) => e.instanceId);
-    // And after them the rows the kind always has (an unarmed strike, ADR 0110), which Aurora records none of.
-    assert.deepEqual(attacks.filter((a) => !a.innate).map((a) => a.instanceId), weapons, `${sample.id}: an attack per weapon in the bag, in bag order`);
+    // And after them the rows no bag entry gives, which Aurora records none of: the kind's own (an unarmed strike, ADR
+    // 0110) and the cantrips' (ADR 0111).
+    assert.deepEqual(attacks.filter((a) => a.instanceId !== undefined).map((a) => a.instanceId), weapons, `${sample.id}: an attack per weapon in the bag, in bag order`);
     for (const row of recorded) {
       const attack = attacks.find((a) => a.instanceId === row.identifier);
       compared++;

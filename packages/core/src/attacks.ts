@@ -14,10 +14,10 @@
  */
 
 import type { Character, InventoryEntry } from './character.ts';
-import { evaluateExpr, type ExpressionContext, type StatExpr } from './expression.ts';
+import { dieSides, evaluateExpr, type ExpressionContext, type StatExpr } from './expression.ts';
 import type { Element, ElementId, ElementIndex, StatKey } from './model.ts';
 import { evaluateRequirements, parseRequirements, type RequirementContext, type RequirementExpr } from './requirements.ts';
-import type { AttacksDef, AttackStatDef, InnateAttackDef, InventoryDef } from './system.ts';
+import type { AttacksDef, AttackStatDef, InnateAttackDef, InventoryDef, SpellAttacksDef } from './system.ts';
 
 /** One attack, with everything a sheet writes of it. */
 export interface DerivedAttack {
@@ -47,6 +47,34 @@ export interface DerivedAttack {
   properties: string[];
   /** Every attack stat its contributions summed, lowercased keys. */
   stats: Record<StatKey, number>;
+  /** A spell's row (ADR 0111): an attack roll or a saving throw, cast through a block or none. */
+  spell?: SpellAttack;
+}
+
+/** What a spell's attack row adds to an attack — ADR 0111. */
+export interface SpellAttack {
+  kind: 'attack' | 'save';
+  /** The block it is cast through, as content wrote its name; absent when none holds it and none is chosen. */
+  block?: string;
+  /** The block content gives it, before a chosen one replaces it. */
+  given?: string;
+  /** A saving throw's DC, read from the block. */
+  dc?: number;
+  /** The ability a saving throw is saved with, as the user chose it. */
+  ability?: string;
+  /** Where the die came from: content's own setter, the user's choice, or nowhere yet. */
+  dice: 'content' | 'chosen' | 'unchosen';
+  /** The dice to choose between beyond the first (Toll the Dead's "or 1d12"), written as the first. */
+  orDice?: string[];
+}
+
+/** What a spell row reads of the derivation (ADR 0111): what is held and the block that holds each. */
+export interface SpellCasting {
+  held: Iterable<Element>;
+  /** The block that holds an element, as content wrote its name. */
+  blockOf(id: ElementId): string | undefined;
+  /** A declared block by its lowercased name, as content wrote it; undefined when nothing held declares it. */
+  blockNamed(key: string): string | undefined;
 }
 
 /** What an attack's scope reads of the finished derivation: the character's own context, its slots' tags included. */
@@ -187,6 +215,7 @@ export function deriveAttacks(
   def: AttacksDef | undefined,
   reader: AttackReader,
   inventory: InventoryDef | undefined,
+  spells?: SpellCasting,
 ): DerivedAttack[] {
   if (!def) return [];
   const types = new Set(def.types);
@@ -244,7 +273,74 @@ export function deriveAttacks(
     });
   }
   for (const innate of def.innate ?? []) attacks.push(innateAttack(innate, def, reader));
+  if (def.spells && spells) attacks.push(...spellAttacks(character, def.spells, reader, spells));
   return attacks;
+}
+
+/**
+ * A row per held spell the kind's `spells` names — ADR 0111, in the order held. Its bonus or DC is its block's stat, the
+ * block the user chose replacing the one content gives; its die is content's `dN` when content states one, else the
+ * user's, the count read against the character either way. A die content writes in another shape is written as it is.
+ */
+function spellAttacks(character: Character, def: SpellAttacksDef, reader: AttackReader, casting: SpellCasting): DerivedAttack[] {
+  const types = new Set(def.types);
+  const values = new Set(def.values.map((v) => v.trim().toLowerCase()));
+  const count = Math.max(1, Math.floor(evaluateExpr(def.count, reader)));
+  const out: DerivedAttack[] = [];
+  for (const element of casting.held) {
+    if (!types.has(element.type)) continue;
+    if (!values.has(element.setters[def.setter]?.value.trim().toLowerCase() ?? '')) continue;
+    const kind = def.attack && element.supports.includes(def.attack.tag) ? 'attack' : def.save && element.supports.includes(def.save.tag) ? 'save' : undefined;
+    if (kind === undefined) continue;
+    const choice = character.spellAttacks?.[element.id];
+    const given = casting.blockOf(element.id);
+    const block = (choice?.block !== undefined ? casting.blockNamed(choice.block) : undefined) ?? given;
+    const stat = (template: string): number | undefined =>
+      block === undefined ? undefined : reader.statNumber(template.replace(/\{name\}/gi, block.trim().toLowerCase()));
+    const stated = def.dice ? element.setters[def.dice] : undefined;
+    const statedText = stated?.value.trim() || undefined;
+    const roll = (sides: number): string => `${count}d${sides}`;
+    let dice: string | undefined;
+    let orDice: string[] = [];
+    let source: SpellAttack['dice'] = 'unchosen';
+    let damageType: string | undefined;
+    if (statedText !== undefined) {
+      const sides = dieSides(statedText);
+      dice = sides > 0 ? roll(sides) : statedText;
+      source = 'content';
+      damageType = def.damageType ? stated?.attrs?.[def.damageType]?.trim() || undefined : undefined;
+    } else if (choice?.sides !== undefined) {
+      source = 'chosen';
+      [dice, ...orDice] = choice.sides.map(roll);
+    }
+    damageType ??= choice?.damageType;
+    const range = def.range ? element.setters[def.range]?.value.trim() || undefined : undefined;
+    const bonus = kind === 'attack' ? stat(def.attack!.bonus) : undefined;
+    const dc = kind === 'save' ? stat(def.save!.dc) : undefined;
+    out.push({
+      elementId: element.id,
+      name: element.name,
+      equipped: true,
+      bonus: bonus ?? 0,
+      damageBonus: 0,
+      ...(dice !== undefined ? { dice } : {}),
+      ...(damageType ? { damageType } : {}),
+      alternatives: [],
+      ...(range !== undefined ? { range } : {}),
+      properties: [],
+      stats: {},
+      spell: {
+        kind,
+        ...(block !== undefined ? { block } : {}),
+        ...(given !== undefined ? { given } : {}),
+        ...(dc !== undefined ? { dc } : {}),
+        ...(kind === 'save' && choice?.ability ? { ability: choice.ability } : {}),
+        dice: source,
+        ...(orDice.length ? { orDice } : {}),
+      },
+    });
+  }
+  return out;
 }
 
 /**

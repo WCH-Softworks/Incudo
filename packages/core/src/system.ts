@@ -1513,6 +1513,32 @@ export interface AttacksDef {
   variants?: AttackVariantDef[];
   /** The range of an attack whose element writes none, the first whose condition holds: a melee weapon's reach (ADR 0110). */
   reach?: Array<{ text: string; requirements?: string }>;
+  /** Spells that are attack rows: 5e's cantrips (ADR 0111). */
+  spells?: SpellAttacksDef;
+}
+
+/**
+ * Which spells are attack rows and how they add up — ADR 0111. A held element of `types` whose `setter` reads one of
+ * `values` and that carries the `attack` or the `save` tag. Its bonus or DC is its block's stat; its die and damage
+ * type are content's when content states them, else the user's (`Character.spellAttacks`). Core names no game.
+ */
+export interface SpellAttacksDef {
+  types: ElementType[];
+  setter: string;
+  values: string[];
+  attack?: { tag: string; bonus: StatKey };
+  save?: { tag: string; dc: StatKey };
+  /** How many dice, read against the character: 5e's table on character level. */
+  count: StatExpr;
+  /** A setter stating the die, as a weapon's; Aurora's spells write none. */
+  dice?: string;
+  /** That setter's attribute naming the damage type. */
+  damageType?: string;
+  range?: string;
+  /** The dice the user is offered, by sides. */
+  sides: number[];
+  damageTypes?: string[];
+  abilities?: string[];
 }
 
 /** An attack row the kind always has — ADR 0110. */
