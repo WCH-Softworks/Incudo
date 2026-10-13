@@ -2468,6 +2468,7 @@ before touching it:
   the 2014 Reach weapons write their own). `inventory.tagSupports` makes a slot publish support tags; nothing in content
   asks a slot for one. `DerivedAttack`/`SheetAttack` `instanceId` and `elementId` are optional (an innate row has
   neither) and an alternative may carry its own `damageBonus`. Aurora records no unarmed row: the book is the referee.
+  Driven in the browser build (a new Monk with two Shortswords and a 2024 Pike); not the Tauri window or the phone.
 - **Not done:** ~~unarmed strikes and martial arts~~, spell attacks as rows (cantrips only, the maintainer's call), ~~two-weapon
   fighting~~, Dueling (commented out upstream), ~~reach as a distance~~ (ADR 0110), the inventory naming an adorned item by `name-format`.
   Driven in the browser build with no source (two packed samples and a built Beast Master); not the Tauri window, the phone,

@@ -1617,6 +1617,14 @@ before 1.0.*
       Bolt: +5, 1d10 fire"); two-weapon fighting (the off-hand attack's damage without the ability modifier, unless a
       fighting style says otherwise); reach and range for a melee weapon; a held creature's actions with what its holder
       adds applied. Each is measured first, and nothing is read out of prose (ADR 0005).
+      **Done** (2026-10-12/13, [ADR 0110](./docs/adr/0110-a-kind-declares-attacks-no-item-gives-an-off-hand-row-and-a-melee-reach.md)):
+      three of the five parts. The kind declares rows no item gives (5e: Unarmed Strike, with Strength or, with a Martial
+      Arts die, the better of Strength and Dexterity; the Martial Arts or Unarmed Fighting die, else 1), an "off-hand" row
+      on each equipped Light melee weapon while both hands hold one (no positive ability modifier to its damage unless a
+      Two-Weapon Fighting style is held), and a melee weapon's reach where content writes no range ("10 ft" with Reach,
+      else "5 ft"). Driven in the browser build: a new Monk reads "Unarmed Strike: +5, 1d4+3 bludgeoning", two equipped
+      Shortswords "off-hand 1d6 piercing", a 2024 Pike "range 10 ft". **Left:** cantrips as attack rows (levelled spells
+      are after 1.0, the maintainer's call) and a held creature's actions with what its holder adds.
 - [ ] **A druid's Wild Shape tier on the sheet.** *From the ADR 0070 item.* The 2014 Player's Handbook's Beast Shapes
       table sets the highest challenge rating and the limits (no swimming, no flying speed) by druid level, and the beast
       must be one the druid has seen. The maintainer's call (2026-10-12): the sheet shows the tier the character is at,
@@ -2254,6 +2262,8 @@ open was sorted. Each item names where it came from.
 - **Tracking a held creature's hit points in play** (ADR 0073), and how it is decided: features used mid-play are not the
   priority before 1.0.
 - **Searching the text a description embeds** (ADR 0069), soon after 1.0; and **an embed linking to its element**.
+- **Levelled spells as attack rows** (ADR 0110's item in Phase 4): by the maintainer's call (2026-10-12), only cantrips
+  get rows before 1.0; a levelled spell's dice change with the slot it is cast with.
 - **Copying the sheet as text to the clipboard** (ADR 0075), low priority; the text must read clearly as plain text.
 - **Cairn**: everything Cairn is after 1.0, first the "Progress" field a level-less Cairn character shows on Build
   (ADR 0074).

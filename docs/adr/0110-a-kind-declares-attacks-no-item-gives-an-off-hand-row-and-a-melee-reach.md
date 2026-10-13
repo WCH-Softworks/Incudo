@@ -80,6 +80,11 @@ Only an equipped attack shows a variant: a carried shortsword is not in a hand.
   a shortsword and a scimitar, "off-hand: 1d6+3 slashing"; the 2014 Glaive's own "10 ft", the 2024 Pike's "10 ft" from the
   rule, a longsword's "5 ft", a longbow's "150/600". Each fails with its declaration taken out. The samples' attack rows
   still all agree with Aurora's, and the Unarmed Strike follows them; Aurora records no unarmed row.
+- **Driven in the browser build** (2026-10-13): a new 2014 Human Monk 1 reads "Unarmed Strike: +2, 1d4 bludgeoning (range
+  5 ft)"; with Strength 13 and Dexterity 16, two Shortswords equipped and a 2024 Pike carried, each Shortsword reads "+5,
+  1d6+3 piercing (off-hand 1d6 piercing; range 5 ft; Finesse, Light)", the Pike "+1, 1d10+1 piercing (range 10 ft; …)"
+  (Strength, no proficiency) and the Unarmed Strike "+5, 1d4+3", the same after a reload. The Attacks section's
+  description now names the unarmed strike and the off-hand rule. Not the Tauri window or the phone.
 
 ## What this does not do
 
