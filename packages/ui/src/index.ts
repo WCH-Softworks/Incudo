@@ -54,6 +54,7 @@ export * from './freeform.ts';
 export * from './sheet-markdown.ts';
 export * from './sheet-export.ts';
 export * from './print-options.ts';
+export * from './build-preferences.ts';
 export * from './form-fill.ts';
 export * from './official-sheet.ts';
 export * from './content-refresh.ts';

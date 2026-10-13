@@ -88,6 +88,10 @@ import {
   PAPERS,
   paperForLocales,
   printOptionsView,
+  DEFAULT_BUILD_PREFERENCES,
+  readBuildPreferences,
+  writeBuildPreferences,
+  type BuildPreferences,
   printRendering,
   readPrintOptions,
   resolveCommands,
@@ -613,7 +617,26 @@ function Shell({
     return layers.length === 1 ? layers[0]! : new LayeredElementIndex(layers);
   }, [working.embedded, content]);
 
-  const { builder, state } = useBuilder(working.character, system, elements, SHIPPED_STARTING_EQUIPMENT);
+  // How this user likes the Build pane (ADR 0115): read once, written on every change, never in a character.
+  const [buildPreferences, setBuildPreferences] = useState<BuildPreferences>(DEFAULT_BUILD_PREFERENCES);
+  useEffect(() => {
+    void readBuildPreferences(platform.storage).then(setBuildPreferences);
+  }, []);
+  const changeBuildPreferences = useCallback((change: Partial<BuildPreferences>) => {
+    setBuildPreferences((before) => {
+      const next = { ...before, ...change };
+      void writeBuildPreferences(platform.storage, next);
+      return next;
+    });
+  }, []);
+
+  const { builder, state } = useBuilder(
+    working.character,
+    system,
+    elements,
+    SHIPPED_STARTING_EQUIPMENT,
+    buildPreferences.showAdvanced,
+  );
 
   // What the open character carries against what its sources load now (ADR 0082). Only with both: listing and opening
   // never reach for content, and with no source loaded there is nothing to compare with.
@@ -1500,6 +1523,8 @@ function Shell({
             featureLibrary={featureLibrary}
             elements={elements}
             hasContent={content !== null || working.embedded !== undefined}
+            preferences={buildPreferences}
+            onPreferences={changeBuildPreferences}
           />
         </>
       )}

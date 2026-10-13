@@ -153,7 +153,7 @@ async function baseline(level: number): Promise<{ builder: CharacterBuilder; ele
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
   const character: Character = { ...newCharacterOfKind(system, 'pc'), progress: level };
-  const builder = new CharacterBuilder(character, system, elements);
+  const builder = new CharacterBuilder(character, system, elements, { showAdvanced: true });
   const pick = (stepId: string, name: string): void => {
     const decision = builder.getState().decisions.find((d) => d.stepId === stepId && d.kind === 'pick');
     const id = decision?.candidates.find((c) => elements.get(c)?.name === name && elements.get(c)?.source === 'Player’s Handbook');
@@ -180,7 +180,7 @@ test('each hidden item equipped on a fresh character: what it gives, opens and s
   t.diagnostic(`baseline: a 2014 Human Fighter 4, ${before.derived.elementIds.size} elements, ${beforeLines.size} sheet lines`);
   for (const item of family) {
     const character = setInventoryEntry(before.character, { instanceId: 'hidden-item', elementId: item.id, equipped: true });
-    const after = new CharacterBuilder(character, system, elements).getState();
+    const after = new CharacterBuilder(character, system, elements, { showAdvanced: true }).getState();
     const added = [...after.derived.elementIds].filter((id) => !before.derived.elementIds.has(id) && id !== item.id);
     const lost = [...before.derived.elementIds].filter((id) => !after.derived.elementIds.has(id));
     const value = (state: BuilderState, stat: string): number | undefined => state.derived.stats.get(stat)?.value;
@@ -218,7 +218,7 @@ test('the feat unlockers: how many feats a character qualifies for with each equ
     const reading = [...elements.all()].filter((e) => [...namedIds(e.requirements)].some((id) => markers.has(id)));
     const readingFeats = feats.filter((f) => reading.includes(f));
     const character = setInventoryEntry(before.character, { instanceId: 'unlocker', elementId: item.id, equipped: true });
-    const after = new CharacterBuilder(character, system, elements).getState();
+    const after = new CharacterBuilder(character, system, elements, { showAdvanced: true }).getState();
     t.diagnostic(
       `${item.name} (${item.source}): read by ${reading.length} (${tally(reading.map((e) => e.type), 4)}); ` +
         `of its ${readingFeats.length} feats a 2014 Human Fighter 1 qualifies for ${holding(before, readingFeats)} before and ${holding(after, readingFeats)} after`,
@@ -240,7 +240,7 @@ test('the multiclass unlocker: what a short score flags with it equipped', { ski
     let character: Character = { ...newCharacterOfKind(system, 'pc'), progress: 3 };
     for (const ability of ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']) character = { ...character, baseStats: { ...character.baseStats, [ability]: 3 } };
     if (equipped) character = setInventoryEntry(character, { instanceId: 'unlocker', elementId: item.id, equipped: true });
-    const builder = new CharacterBuilder(character, system, elements);
+    const builder = new CharacterBuilder(character, system, elements, { showAdvanced: true });
     const fighter = elements.byType('Class').find((c) => c.name === 'Fighter' && c.source === 'Player’s Handbook')!;
     builder.choose('build/class', [fighter.id]);
     return builder.classLevelsFor('levels')!.options;

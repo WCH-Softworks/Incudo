@@ -16,7 +16,18 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-na
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { LayeredElementIndex, MapElementIndex, type Character, type ElementIndex, type GameSystem } from '@incudo/core';
-import { CharacterBuilder, beginEdit, hasUnsavedChanges, newCharacterOfKind, saveEdit, type EditSession } from '@incudo/ui';
+import {
+  CharacterBuilder,
+  DEFAULT_BUILD_PREFERENCES,
+  beginEdit,
+  hasUnsavedChanges,
+  newCharacterOfKind,
+  readBuildPreferences,
+  saveEdit,
+  writeBuildPreferences,
+  type BuildPreferences,
+  type EditSession,
+} from '@incudo/ui';
 
 import { BuildView } from './BuildView.tsx';
 import { loadShippedStartingEquipment } from './boot.ts';
@@ -81,9 +92,19 @@ function Building({
   navigation: NativeStackScreenProps<Screens, 'Build'>['navigation'];
   sources: ReturnType<typeof usePlatform>['sources'];
 }) {
-  const { library } = usePlatform();
+  const { library, storage } = usePlatform();
   const palette = usePalette();
   const content = useSyncExternalStore(sources.subscribe, sources.getState);
+  // How this user likes the build (ADR 0115), the desktop's record: only the advanced switch is the phone's so far.
+  const [preferences, setPreferences] = useState<BuildPreferences>(DEFAULT_BUILD_PREFERENCES);
+  useEffect(() => {
+    void readBuildPreferences(storage).then(setPreferences);
+  }, [storage]);
+  const showAdvanced = (shown: boolean): void => {
+    const next = { ...preferences, showAdvanced: shown };
+    setPreferences(next);
+    void writeBuildPreferences(storage, next);
+  };
   const systemId = start.system.id;
 
   // Content is asked for here, once the screen is open, and again when this system's sources are switched on or off
@@ -108,10 +129,19 @@ function Building({
 
   // Made again when the elements change, from the character as it now stands.
   const current = useRef(start.character);
+  const advanced = useRef(preferences.showAdvanced);
+  advanced.current = preferences.showAdvanced;
   const builder = useMemo(
-    () => new CharacterBuilder(current.current, start.system, elements, { startingEquipment: STARTING_EQUIPMENT }),
+    () =>
+      new CharacterBuilder(current.current, start.system, elements, {
+        startingEquipment: STARTING_EQUIPMENT,
+        showAdvanced: advanced.current,
+      }),
     [elements, start.system],
   );
+  useEffect(() => {
+    builder.setShowAdvanced(preferences.showAdvanced);
+  }, [builder, preferences.showAdvanced]);
   const state = useSyncExternalStore(builder.subscribe, builder.getState);
   useEffect(() => {
     current.current = state.character;
@@ -214,7 +244,14 @@ function Building({
           <Body tone="danger">{content.message}</Body>
         </View>
       ) : null}
-      <BuildView builder={builder} state={state} elements={elements} hasContent={loaded !== undefined || loading !== undefined} />
+      <BuildView
+        builder={builder}
+        state={state}
+        elements={elements}
+        hasContent={loaded !== undefined || loading !== undefined}
+        showAdvanced={preferences.showAdvanced}
+        onShowAdvanced={showAdvanced}
+      />
     </ScrollView>
   );
 }

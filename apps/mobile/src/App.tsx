@@ -76,6 +76,7 @@ export function App() {
     const zip = createMobileZipCodec();
     const systems = loadShippedSystems().systems;
     const store = new MobileCharacterStore(zip);
+    const storage = new MobileStorage();
     return {
       library: new CharacterLibrary(store),
       features: new FeatureLibrary(store, featureLibrarySchema),
@@ -86,7 +87,8 @@ export function App() {
       shareSaver: new MobileShareSaver(),
       zip,
       systems,
-      sources: new ContentSources({ fetcher: new MobileFetcher(), storage: new MobileStorage() }, systems),
+      sources: new ContentSources({ fetcher: new MobileFetcher(), storage }, systems),
+      storage,
     };
   }, []);
 

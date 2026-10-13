@@ -170,6 +170,14 @@ this is usually why.
 
 `description` is a sentence shown under the step's label. `requires` lists steps that must be usable before this one is.
 
+```json $defs/buildStep
+{ "id": "boons", "label": "Boons", "types": ["Boon"], "multiple": true, "advanced": true }
+```
+
+**`advanced`**: offered only when the user switches on "Show advanced options" on Build. For what a table grants
+beyond the rules a character is built by, which most characters never take. Anything a character already took through
+the step still shows. Only on a step that may be left unanswered: `multiple`, `pick`, or one that equips.
+
 ### Scores: budgets and how they are set
 
 The starter's Scores step has a `budget`:

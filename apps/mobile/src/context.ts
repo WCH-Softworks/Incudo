@@ -5,7 +5,7 @@
 
 import { createContext, useContext } from 'react';
 
-import type { FileSaver, GameSystem } from '@incudo/core';
+import type { FileSaver, GameSystem, Storage } from '@incudo/core';
 import type { CharacterLibrary, ContentSources, FeatureLibrary } from '@incudo/ui';
 
 import type { MobileConnection, MobileFilePicker, MobileShareInbox } from './platform.ts';
@@ -36,6 +36,8 @@ export interface Platform {
   connection: MobileConnection;
   /** The content a build loads (ADR 0086). Nothing else asks for it. */
   sources: ContentSources;
+  /** The app's own key-value store: the content sources' and the user's preferences (ADR 0115). */
+  storage: Storage;
 }
 
 export const PlatformContext = createContext<Platform | null>(null);

@@ -9,10 +9,12 @@
  */
 
 import { memo, useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { ElementId, ElementIndex } from '@incudo/core';
 import {
+  ADVANCED_OPTIONS_LABEL,
+  advancedOptionsHint,
   ADDITIONS_HEADING,
   candidateLabel,
   CUSTOM_FEATURES_HEADING,
@@ -52,12 +54,17 @@ export const BuildView = memo(function BuildView({
   state,
   elements,
   hasContent,
+  showAdvanced,
+  onShowAdvanced,
 }: {
   builder: CharacterBuilder;
   state: BuilderState;
   elements: ElementIndex;
   /** Whether any content is loaded: with none, a choice offers nothing, and the screen says why. */
   hasContent: boolean;
+  /** The user's advanced options switch (ADR 0115), and how to change it. */
+  showAdvanced: boolean;
+  onShowAdvanced: (shown: boolean) => void;
 }) {
   const palette = usePalette();
   const [request, setRequest] = useState<PickerRequest | null>(null);
@@ -131,6 +138,17 @@ export const BuildView = memo(function BuildView({
           </Row>
         );
       })}
+
+      {/* Steps a system marks advanced are left out until this is on (ADR 0115); what was taken that way still shows. */}
+      {state.advanced.steps.length > 0 ? (
+        <>
+          <Row>
+            <Text style={[styles.stepLabel, { color: palette.text }]}>{ADVANCED_OPTIONS_LABEL}</Text>
+            <Switch value={showAdvanced} onValueChange={onShowAdvanced} accessibilityLabel={ADVANCED_OPTIONS_LABEL} />
+          </Row>
+          <Body tone="muted">{advancedOptionsHint(state.advanced.steps)}</Body>
+        </>
+      ) : null}
 
       <Heading>Open decisions ({decisions.length})</Heading>
       {decisions.length === 0 ? <Body tone="muted">Nothing outstanding.</Body> : null}

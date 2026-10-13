@@ -439,6 +439,14 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           message: `step "${step.id}" names what allows another class, and is not a per-level step with a levelRoll`,
         });
       }
+      // An advanced step is left out of what is offered until a user asks for advanced options (ADR 0115), so only a step
+      // nothing owes an answer to may be one: a set, a step that equips, or a pick that is not required.
+      if (step.advanced && !(step.multiple || step.equip || (step.pick && !step.required))) {
+        errors.push({
+          path: `${where}.buildSteps`,
+          message: `step "${step.id}" is advanced and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be left out of what is offered`,
+        });
+      }
       // A pick is of one and a set of any number (ADR 0068): the same refusal, for the same reason.
       if (step.pick && step.multiple) {
         errors.push({

@@ -750,6 +750,16 @@ export interface BuildStepDef {
    * neither sees a heading for the selects content opens, and offers nothing, so `formatVersion` did not move.
    */
   equip?: EquipStepDef;
+  /**
+   * This step is offered only when the user asks for advanced options — ADR 0115. For what a table grants beyond the
+   * rules a character is built by, which most characters never take: 5e's additional features and ability score
+   * adjustments. While advanced options are off, the step opens no decision and has no line among the character's
+   * parts; what a character already took through it still shows, and can be changed or taken back. A user preference,
+   * never part of the character. Only on a step a character may leave unanswered (a set, a step that equips, a pick
+   * that is not required); validation refuses it elsewhere. A reader that does not know the key offers the step as
+   * before, so `formatVersion` did not move.
+   */
+  advanced?: boolean;
   description?: string;
   /**
    * Ids of steps that must be usable before this one is — ADR 0017.

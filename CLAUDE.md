@@ -2237,6 +2237,15 @@ stat as the sheet does; `BudgetRow.beside` and `budgetTotalText` carry it to the
 the phone's. Nothing in `budget.ts` knows a modifier's formula; a kind whose sheet shows nothing beside a score shows the
 total alone. Driven in the browser build.
 
+**A build step may be `advanced`, offered only when the user switches on "Show advanced options"**
+([ADR 0115](docs/adr/0115-a-build-step-may-be-advanced-and-how-a-user-likes-the-build-is-a-preference.md)). 5e marks
+"Additional features" and "Ability score adjustments" (the maintainer's call; Tasha's optional class features stay
+offered). Off, the step opens no decision and has no line, unless something was taken through it, which stays a settled
+pick; nothing is declined or written to the character. `CharacterBuilder` takes `showAdvanced` (default off) and
+`setShowAdvanced`; `BuilderState.advanced` names the steps. The preference is `build/view` in `Storage`
+(`build-preferences.ts`), never `character.json`; the desktop and the phone both have the switch. Validation refuses it on
+a step that must be answered. A test that measures what those steps offer passes `{ showAdvanced: true }`.
+
 **Hit points have no oracle in the save file, and a referee on the screen** (ADR 0019, ADR 0044). Aurora's
 saves record the per-level rolls and never the total, so `aurora verify` has nothing to diff; the referee is
 the maintainer's readout, and `aurora-oracle.test.ts` holds `hp` to it on all 30 samples. Say "agrees with a

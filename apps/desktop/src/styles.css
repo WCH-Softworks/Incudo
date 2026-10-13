@@ -2674,3 +2674,19 @@ ul.browse-categories {
     break-inside: avoid;
   }
 }
+
+/* The advanced options switch under the character's parts (ADR 0115). */
+.advanced-switch {
+  margin: 16px 0;
+}
+
+.advanced-switch label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.advanced-switch .hint {
+  margin: 4px 0 0;
+}

@@ -24,7 +24,11 @@ export function useBuilder(
   elements: ElementIndex,
   /** The starting equipment shipped beside the systems (ADR 0087). A list made once, so it never rebuilds the builder. */
   startingEquipment: readonly StartingEquipmentFile[] = [],
+  /** Whether the steps a system marks advanced are offered (ADR 0115): the user's preference, never a rebuild. */
+  showAdvanced = false,
 ): { builder: CharacterBuilder; state: BuilderState } {
+  const advanced = useRef(showAdvanced);
+  advanced.current = showAdvanced;
   /**
    * The character as it stands, so a rebuild resumes rather than reverts.
    *
@@ -63,10 +67,18 @@ export function useBuilder(
     // Same object as last time: only the content changed, so resume from the latest state, which
     // is what fixes bug one. A new object: start from it, whatever its id.
     () =>
-      new CharacterBuilder(handed.current === character ? current.current : character, system, elements, { startingEquipment }),
+      new CharacterBuilder(handed.current === character ? current.current : character, system, elements, {
+        startingEquipment,
+        showAdvanced: advanced.current,
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [system, elements, character, startingEquipment],
   );
+
+  // A change of the switch is a view of the same builder, so it is handed over rather than rebuilt.
+  useEffect(() => {
+    builder.setShowAdvanced(showAdvanced);
+  }, [builder, showAdvanced]);
 
   // After the render that used it, so a second call of the memo (React's development double
   // render) makes the same choice as the first.

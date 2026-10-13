@@ -48,6 +48,9 @@ import {
   withoutSlot,
   STARTING_EQUIPMENT_HEADING,
   INVENTORY_HEADING,
+  ADVANCED_OPTIONS_LABEL,
+  advancedOptionsHint,
+  type BuildPreferences,
 } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
 
@@ -72,12 +75,17 @@ export function BuilderPane({
   featureLibrary,
   elements,
   hasContent,
+  preferences,
+  onPreferences,
 }: {
   builder: CharacterBuilder;
   state: BuilderState;
   featureLibrary: FeatureLibrary;
   elements: ElementIndex;
   hasContent: boolean;
+  /** How this user likes the pane (ADR 0115), and how to change it. */
+  preferences: BuildPreferences;
+  onPreferences: (change: Partial<BuildPreferences>) => void;
 }): React.JSX.Element {
   const { kind, derived, decisions, steps, picks, declined, preparation, publications, progress, holderGrants } = state;
   const progression = kind.progression;
@@ -231,6 +239,24 @@ export function BuilderPane({
               </li>
             ))}
           </ul>
+
+          {/*
+            Steps a system marks advanced (ADR 0115) are left out of Open decisions until this is on: a preference of
+            the user's, never the character's. Anything already taken through one is still listed above and settled.
+          */}
+          {state.advanced.steps.length > 0 && (
+            <div className="advanced-switch">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={preferences.showAdvanced}
+                  onChange={(event) => onPreferences({ showAdvanced: event.target.checked })}
+                />
+                {ADVANCED_OPTIONS_LABEL}
+              </label>
+              <p className="hint">{advancedOptionsHint(state.advanced.steps)}</p>
+            </div>
+          )}
 
           {/*
             What the character keeps beside it for reference (ADR 0068): a stat block printed only as prose, read

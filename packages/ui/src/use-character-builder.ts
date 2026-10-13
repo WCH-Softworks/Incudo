@@ -297,6 +297,12 @@ export interface BuilderStep {
 export interface BuilderState {
   character: Character;
   derived: DerivedCharacter;
+  /**
+   * The labels of the steps the system marks advanced (ADR 0115) and whether they are offered. `steps` is empty for a kind that marks
+   * none, and a shell offers no switch then. While `shown` is false an advanced step opens no decision and has no line
+   * in `steps` unless the character already took something through it, which stays in `picks`, changeable.
+   */
+  advanced: { steps: string[]; shown: boolean };
   /** The kind being built. ADR 0009. */
   kind: ResolvedCharacterKind;
   /** Everything still outstanding, always current, in no particular order of obligation. */
@@ -520,13 +526,17 @@ export class CharacterBuilder {
     | { stepId: string; config: MulticlassConfig; classStepId: string | undefined }
     | undefined;
 
+  /** Whether steps the system marks `advanced` are offered (ADR 0115): the user's preference, never the character's. */
+  private showAdvanced: boolean;
+
   constructor(
     character: Character,
     system: GameSystem,
     elements: ElementIndex,
-    options: { random?: () => number; startingEquipment?: readonly StartingEquipmentFile[] } = {},
+    options: { random?: () => number; startingEquipment?: readonly StartingEquipmentFile[]; showAdvanced?: boolean } = {},
   ) {
     this.character = character;
+    this.showAdvanced = options.showAdvanced ?? false;
     this.system = system;
     // Injected for the reason every other platform dependency is (CODE-REUSE-POLICY rule 1):
     // a test needs a sequence it chose. Nothing below cares where the numbers come from, and
@@ -1252,6 +1262,16 @@ export class CharacterBuilder {
     this.setPublications(togglePublication(this.content, this.system, this.character, name, offered));
   };
 
+  /**
+   * Offer the steps the system marks advanced, or stop offering them (ADR 0115). A view of the character, not an input
+   * to it: nothing is recorded, and what was taken through such a step stays.
+   */
+  setShowAdvanced = (shown: boolean): void => {
+    if (this.showAdvanced === shown) return;
+    this.showAdvanced = shown;
+    this.invalidate();
+  };
+
   /** Rename the character. An input like any other; nothing derives what a player calls them. */
   setName = (name: string): void => {
     this.character = setName(this.character, name);
@@ -1967,7 +1987,12 @@ export class CharacterBuilder {
     // the list, which is the same refusal `decline()` itself makes.
     const declinedIds = new Set(this.character.declinedDecisions ?? []);
     const declined: DeclinedDecision[] = [];
+    // A step the system marks advanced offers nothing while the user has not asked for advanced options (ADR 0115). Only
+    // the step's own offer goes: what it already took is a settled pick, and stays changeable whatever the switch says.
+    // Not declined either: hiding is the user's view, and a declined decision is recorded on the character.
+    const hidden = new Set(this.showAdvanced ? [] : this.steps.filter((step) => step.advanced).map((step) => step.id));
     const openDecisions = decisions.filter((decision) => {
+      if (decision.kind === 'pick' && hidden.has(decision.stepId)) return false;
       if (decision.blocking || !declinedIds.has(decision.id)) return true;
       declined.push({
         id: decision.id,
@@ -1980,7 +2005,7 @@ export class CharacterBuilder {
     });
 
     const available = new Set<string>();
-    const steps: BuilderStep[] = this.steps.map((step) => {
+    const steps: BuilderStep[] = this.steps.map((step): BuilderStep => {
       const blockedBy = (step.requires ?? []).filter((id) => !available.has(id));
       const isAvailable = blockedBy.length === 0;
       if (isAvailable) available.add(step.id);
@@ -2005,7 +2030,7 @@ export class CharacterBuilder {
               )
             : undefined,
       };
-    });
+    }).filter((step) => !hidden.has(step.id) || picks.some((pick) => pick.stepId === step.id));
 
     const additions = additionsState(this.character, derived, this.kind, this.system, this.elements);
     // What the user added whose prerequisites are not met (ADR 0064) is on the sheet like anything held, and marked.
@@ -2027,6 +2052,7 @@ export class CharacterBuilder {
       kind: this.kind,
       decisions: openDecisions,
       steps,
+      advanced: { steps: this.steps.filter((step) => step.advanced).map((step) => step.label), shown: this.showAdvanced },
       picks,
       declined,
       preparation: preparationRows(derived, this.elements),

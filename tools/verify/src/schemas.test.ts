@@ -1068,6 +1068,33 @@ test('a step may be a pick without being required, and a pick cannot also be a s
   );
 });
 
+test('a step a character may leave unanswered may be advanced, and no other — ADR 0115', async () => {
+  // Perturbation: drop `advanced` from the schema and the first assertion fails on an unknown key; drop the check in
+  // `validateGameSystem` and the second one fails.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        delete step.required;
+        step.multiple = true;
+        step.advanced = true;
+      }),
+    ),
+    [],
+    'a set left out of what is offered until advanced options are on is a valid one',
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.buildSteps![0]!.advanced = true;
+      }),
+    ),
+    [
+      'characterKinds[0].buildSteps: step "one" is advanced and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be left out of what is offered',
+    ],
+  );
+});
+
 test('a step may equip, and equipping takes none of the keys that make a step something else — ADR 0072', async () => {
   // Perturbation: drop `equip` or `hiddenSetter` from the schema and the first assertion fails on an unknown key; drop
   // the checks in `validateGameSystem` and the clash and no-types assertions fail.
