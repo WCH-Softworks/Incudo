@@ -2141,7 +2141,7 @@ written on a character can be moved into the user's library without being typed 
     content is not Incudo's to do; whether a translated content source a community publishes can stand beside or in
     place of the English one is the open question, and ADR 0054's "the later source wins" may already answer it.
   - **Which languages ship first**, and whether right-to-left is in scope, are the maintainer's call.
-- [ ] **The desktop app behaves like an application, not a web page.** Raised by the maintainer after using it
+- [x] **The desktop app behaves like an application, not a web page.** Raised by the maintainer after using it
       (2026-09-30). Each part is small; together they are most of why the window still feels like a browser tab. Some
       are Tauri or WebView2 settings rather than page code, and the one that needs a picture already has one:
   - **No right-click menu.** Today a right click opens WebView2's own menu (Back, Refresh, Save as, Print, and Inspect
@@ -2183,11 +2183,28 @@ written on a character can be moved into the user's library without being typed 
     inspector 9229). `apps/desktop/dev-port.json` holds it; `vite.config.ts` and `check-port.mjs` read it, and
     `tauri.conf.json`'s `devUrl`, which cannot read a file, is held to it by `tools/verify/src/desktop-start.test.ts`. Run:
     the browser build and the Tauri window both open on it.
-  - **Also worth a look, not yet decided or tried:** the browser's own keys and gestures that may still act in the
-    window (reloading the page, a find bar, zooming the whole app), to be found by pressing real keys in it, as the
-    command chords were; WebView2 has settings for browser keys and zoom that a release build could switch off while
-    the browser build keeps them for development. And selecting the text of buttons and headings by dragging across
-    them.
+  - **The browser's own keys and gestures, and selecting the text of buttons and headings by dragging across them.**
+    **Done** (2026-10-13). Measured first with real key and mouse events (`keybd_event`, `mouse_event`) in the Windows
+    window, a release and a dev build, on a scratch WebView2 profile: F5, Ctrl+R and Ctrl+Shift+R reloaded the page;
+    Ctrl+F, F3 and Ctrl+G opened a find bar; F7 offered caret browsing; Ctrl+J opened a downloads panel; Alt+Left, the
+    BrowserBack key and the mouse's back button went back a page; a dev build's F12 opened DevTools. Already inert:
+    Ctrl+plus, Ctrl+minus, Ctrl+0 and Ctrl+wheel (Tauri's `zoomHotkeysEnabled`, false by default, also turns off pinch),
+    Alt+Right, the forward button, middle click, Backspace off a field, F11, Ctrl+U, Ctrl+T, Ctrl+H, Ctrl+W,
+    Ctrl+Shift+Delete, and Ctrl+Shift+I, J and C (a release build has no DevTools; the keys reach the page as Shift only).
+    So `src-tauri/src/lib.rs` switches WebView2's `AreBrowserAcceleratorKeysEnabled` off in every build, and a dev build
+    opens DevTools on F12 by hand. After, in both builds: none of those keys does anything; every chord of
+    `commands.ts` (Ctrl+1 to 5, Ctrl+comma, Ctrl+N, Ctrl+S, Ctrl+P, Ctrl+Shift+D, O and L) still reaches the page and is
+    claimed; typing, Ctrl+A, C, X, V, Z, Y and Backspace work in a text field (the Sheet's name). The mouse's back button
+    still goes back, but only over a history entry, and the app never makes one (it was the test's own `pushState`).
+    Ctrl+Shift+S, E, M, U, G and X are still swallowed before the page, as ADR 0038 found: not browser accelerators.
+    Selection: buttons, labels, legends, summaries and headings are `user-select: none` (`styles.css`), but for the
+    Sheet's headings, content's own, Browse's element name and text fields. Dragged with the real mouse in both builds:
+    the header's tabs and a pane's heading select nothing (they gave "INCUDO / Characters / Build / …"), prose and the
+    Sheet's headings with its rows do; Ctrl+A off a field copies the page without its headings and buttons.
+    `tools/verify/src/desktop-window.test.ts` holds the setting, the dev-only F12, zoom off and the two CSS rules. Not
+    driven: a real touch pinch (an injected one did nothing, with no control case showing injection works), Esc while a
+    load is in progress (the release build loads too fast to catch), the browser build (it keeps every browser key),
+    macOS and Linux.
 - [ ] Stable formats with a real versioning and migration policy — from here on, the system
       format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md))
 - [ ] Signed desktop installer for Windows; macOS and Linux are after 1.0, and the phone's store is the first item after
