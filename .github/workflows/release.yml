@@ -7,7 +7,9 @@ name: Release
 # public until someone reads it and presses Publish on GitHub.
 #
 # Nothing goes to npm (CLAUDE.md), and no rulebook content is bundled: an installer is the engine and the shipped
-# system definitions. The builds are unsigned, and the notes say so.
+# system definitions. The builds are unsigned, and the notes say so. The macOS bundle is signed ad hoc
+# (`bundle.macOS.signingIdentity: "-"` in tauri.conf.json), which proves no publisher: Apple silicon will not run code
+# with no signature at all, and a downloaded app with none reads as "damaged" rather than as unverified.
 
 on:
   push:
@@ -111,7 +113,7 @@ jobs:
           releaseBody: |
             Incudo ${{ github.ref_name }}, a free, open-source character builder that reads Aurora's content.
 
-            **These installers are not signed.** Windows SmartScreen will say the publisher is unknown ("More info", then "Run anyway"), and macOS will refuse to open the app the first time (right-click it, then Open).
+            **These installers are not signed.** Windows SmartScreen will say the publisher is unknown ("More info", then "Run anyway"). On macOS the app carries only an ad-hoc signature, so macOS refuses it the first time it is opened: then open System Settings, Privacy & Security, and press "Open Anyway" beside Incudo. On Linux, make the AppImage executable before running it, or install the .deb or .rpm.
 
             **Which platforms were tried:** only Windows has been run by hand. The macOS (Apple silicon and Intel) and Linux builds were produced by this workflow and have not been installed or opened by anyone yet. Reports from those platforms are welcome as issues.
 
