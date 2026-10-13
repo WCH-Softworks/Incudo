@@ -51,7 +51,7 @@ function shape(library: ContentLibrary, skip: ReadonlySet<string>): Map<string, 
 const missed = (library: ContentLibrary): number =>
   library.diagnostics.filter((d) => d.message.startsWith('An <append> targets')).length;
 
-test('the corpus split into sources loads the same forwards, backwards and whole', { skip: corpusSkip }, async () => {
+test('the corpus split into sources loads the same forwards, backwards and whole', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
   const fetcher = fetcherFor(location);
   const top = await new HttpContentSource({ id: location.index, fetcher, resolveByName: location.layout === 'aurora-folder' }).loadIndex(location.index);
@@ -72,9 +72,9 @@ test('the corpus split into sources loads the same forwards, backwards and whole
   const overlapping = new Set(
     [...backwards.sourceOverlaps().values()].flat().flatMap((overlap) => overlap.differ),
   );
-  console.log(`ℹ ${corpusProvenance()}`);
-  console.log(
-    `ℹ ${groups.length} sources, ${whole.size} elements, ${duplicated.size} id(s) declared twice, ${overlapping.size} of them differently in two sources`,
+  t.diagnostic(corpusProvenance());
+  t.diagnostic(
+    `${groups.length} sources, ${whole.size} elements, ${duplicated.size} id(s) declared twice, ${overlapping.size} of them differently in two sources`,
   );
 
   for (const id of overlapping) assert.ok(duplicated.has(id), `${id} overlaps across sources and is a warning loaded whole`);

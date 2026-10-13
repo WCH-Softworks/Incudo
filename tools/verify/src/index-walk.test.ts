@@ -46,7 +46,7 @@ function seen(corpus: LoadedCorpus) {
   };
 }
 
-test('the corpus loads the same with its indexes fetched ahead as walked one at a time', { skip: corpusSkip }, async () => {
+test('the corpus loads the same with its indexes fetched ahead as walked one at a time', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
   const oneAtATime = await loadCorpus(location, { concurrency: 1 });
   const asked: string[] = [];
@@ -59,8 +59,8 @@ test('the corpus loads the same with its indexes fetched ahead as walked one at 
 
   const reference = seen(oneAtATime);
   const subject = seen(ahead);
-  console.log(`ℹ ${corpusProvenance()}`);
-  console.log(`ℹ ${reference.indexes.length} indexes, ${reference.filesLoaded} files, ${reference.elements.length} elements`);
+  t.diagnostic(corpusProvenance());
+  t.diagnostic(`${reference.indexes.length} indexes, ${reference.filesLoaded} files, ${reference.elements.length} elements`);
 
   assert.ok(reference.indexes.length > 1 && reference.filesLoaded > 0, 'the corpus loaded something');
   assert.equal(asked.length, new Set(asked).size, 'nothing is fetched twice');

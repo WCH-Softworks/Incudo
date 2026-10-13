@@ -49,16 +49,16 @@ function compare(library: ContentLibrary, sources: string[], label: string): { r
   return { references: reported.size, additions };
 }
 
-test('what each source is reported as missing is, together, what the load is missing', { skip: corpusSkip }, async () => {
+test('what each source is reported as missing is, together, what the load is missing', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
   const top = await sourceFor(location, location.index).loadIndex(location.index);
   const groups = top.files.filter((ref) => ref.isIndex).map((ref) => ref.url);
-  console.log(`ℹ ${corpusProvenance()}`);
+  t.diagnostic(corpusProvenance());
 
   const whole = compare(await load(location, [location.index]), [location.index], 'the whole index');
   const split = compare(await load(location, [...groups].reverse()), groups, 'its groups as sources, backwards');
   // One group on its own: whichever group the top index names last, which in AuroraLegacy leans on core.
   const alone = groups.at(-2) ?? groups[0]!;
   const one = compare(await load(location, [alone]), [alone], 'one group alone');
-  console.log(`ℹ whole: ${whole.references} missing, ${whole.additions} waiting; split: ${split.references}, ${split.additions}; one group alone: ${one.references}, ${one.additions}`);
+  t.diagnostic(`whole: ${whole.references} missing, ${whole.additions} waiting; split: ${split.references}, ${split.additions}; one group alone: ${one.references}, ${one.additions}`);
 });

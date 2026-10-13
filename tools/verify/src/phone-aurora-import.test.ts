@@ -36,7 +36,7 @@ function memoryLibrary(): CharacterLibrary {
   return new CharacterLibrary(store);
 }
 
-test('importing the samples with the whole corpus, its core part only, and nothing', { skip: corpusSkip }, async () => {
+test('importing the samples with the whole corpus, its core part only, and nothing', { skip: corpusSkip }, async (t) => {
   const system = await loadShippedSystem('dnd5e');
   const location = requireCorpus();
   const whole = await realElements();
@@ -45,7 +45,7 @@ test('importing the samples with the whole corpus, its core part only, and nothi
   const core = parts.find((url) => /\/core\.index$/i.test(url));
   assert.ok(core, 'the top index names a core part');
   const coreOnly = (await loadCorpus(location, { excluded: parts.filter((url) => url !== core) })).library.elements;
-  console.log(`ℹ ${corpusProvenance()}`);
+  t.diagnostic(corpusProvenance());
 
   const samples = readManifest().samples;
   for (const [label, elements] of [
@@ -72,8 +72,8 @@ test('importing the samples with the whole corpus, its core part only, and nothi
       for (const d of report.diagnostics) levels.set(d.level, (levels.get(d.level) ?? 0) + d.count);
     }
     times.sort((a, b) => a - b);
-    console.log(
-      `ℹ ${label}: ${ok} of ${samples.length} import; ${unresolvedSaves} with ids nothing loaded declares (${unresolved} in all); ` +
+    t.diagnostic(
+      `${label}: ${ok} of ${samples.length} import; ${unresolvedSaves} with ids nothing loaded declares (${unresolved} in all); ` +
         `${diagnosed} with diagnostics (${[...levels].map(([level, n]) => `${n} ${level}`).join(', ') || 'none'}); ` +
         `median ${times[times.length >> 1]!.toFixed(0)} ms, slowest ${times[times.length - 1]!.toFixed(0)} ms in Node`,
     );
@@ -85,10 +85,10 @@ test('importing the samples with the whole corpus, its core part only, and nothi
   await library.restore();
 
   const none = await importAuroraSaveIntoLibrary(library, { name: basename(first), bytes }, { system, elements: new MapElementIndex() });
-  console.log(`ℹ nothing loaded: ok ${none.ok}: ${none.message}`);
+  t.diagnostic(`nothing loaded: ok ${none.ok}: ${none.message}`);
 
   const nameless = await importAuroraSaveIntoLibrary(library, { name: 'msf:44', bytes }, { system, elements: whole });
-  console.log(`ℹ a provider id for a name: ok ${nameless.ok}: ${nameless.message}`);
+  t.diagnostic(`a provider id for a name: ok ${nameless.ok}: ${nameless.message}`);
 
   // UTF-16LE with its byte order mark, from the UTF-8 text without its own.
   const text = new TextDecoder().decode(bytes).replace(/^﻿/, '').replace('encoding="utf-8"', 'encoding="utf-16"');
@@ -100,7 +100,7 @@ test('importing the samples with the whole corpus, its core part only, and nothi
     utf16[3 + i * 2] = text.charCodeAt(i) >> 8;
   }
   const wide = await importAuroraSaveIntoLibrary(library, { name: basename(first), bytes: utf16 }, { system, elements: whole });
-  console.log(`ℹ UTF-16: ok ${wide.ok}: ${wide.message ?? ''} ${wide.diagnostics.map((d) => d.message).join(' | ')}`);
+  t.diagnostic(`UTF-16: ok ${wide.ok}: ${wide.message ?? ''} ${wide.diagnostics.map((d) => d.message).join(' | ')}`);
 });
 
 /** A library entry's sheet as the phone opens it (`openSheet` in `apps/mobile/src/App.tsx`), as text and its checksum. */
@@ -111,7 +111,7 @@ async function sheetOf(library: CharacterLibrary, system: GameSystem, name: stri
   return { length: markdown.length, sha256: sha256Hex(new TextEncoder().encode(markdown)) };
 }
 
-test("the phone's import of every sample, named by a provider id, opens to the desktop's sheet", { skip: corpusSkip }, async () => {
+test("the phone's import of every sample, named by a provider id, opens to the desktop's sheet", { skip: corpusSkip }, async (t) => {
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
   const desktop = memoryLibrary();
@@ -130,6 +130,6 @@ test("the phone's import of every sample, named by a provider id, opens to the d
     const expected = await sheetOf(desktop, system, report.entry.name);
     // Fails if the phone's import differs from the desktop's in anything the sheet shows.
     assert.deepEqual(await sheetOf(phone, system, outcome!.entry.name), expected, basename(path));
-    if (i < 3) console.log(`ℹ ${basename(path)}: sheet ${expected.length} characters, sha256 ${expected.sha256}`);
+    if (i < 3) t.diagnostic(`${basename(path)}: sheet ${expected.length} characters, sha256 ${expected.sha256}`);
   }
 });
