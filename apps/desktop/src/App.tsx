@@ -1378,6 +1378,7 @@ function Shell({
 
   const handlers: CommandHandlers = {
     'new-character': startNew,
+    'switch-build-tab': () => changeBuildPreferences({ tab: buildPreferences.tab === 'build' ? 'details' : 'build' }),
     'save-character': () => void saveToLibrary(),
     'save-copy': () => void copyToFile(),
     'export-sheet': () => void exportToFile(),

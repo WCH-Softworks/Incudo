@@ -682,3 +682,12 @@ test('About Incudo is the Help menu, live on every pane and on none behind a dia
   assert.equal(command.shortcut, undefined);
   assert.equal(command.destination, undefined);
 });
+
+test('Switch Build tab is live on Build only, and its chord is claimed everywhere — ADR 0115', () => {
+  // Fails if the command is enabled where its tabs are not on screen, or if its chord falls through to the browser.
+  for (const pane of ['library', 'build', 'sheet', 'sources', 'browse', 'settings'] as const) {
+    assert.equal(isEnabled(resolveCommands({ ...READY, pane }), 'switch-build-tab'), pane === 'build', pane);
+    const outcome = keyOutcome(key('H', { ctrlKey: true, shiftKey: true }), 'other', resolveCommands({ ...READY, pane }));
+    assert.equal(outcome?.id, 'switch-build-tab', pane);
+  }
+});

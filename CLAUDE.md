@@ -2244,7 +2244,12 @@ offered). Off, the step opens no decision and has no line, unless something was 
 pick; nothing is declined or written to the character. `CharacterBuilder` takes `showAdvanced` (default off) and
 `setShowAdvanced`; `BuilderState.advanced` names the steps. The preference is `build/view` in `Storage`
 (`build-preferences.ts`), never `character.json`; the desktop and the phone both have the switch. Validation refuses it on
-a step that must be answered. A test that measures what those steps offer passes `{ showAdvanced: true }`.
+a step that must be answered. A test that measures what those steps offer passes `{ showAdvanced: true }`. The same
+record holds whether the option preview is folded to its title line (`previewCollapsed`, Hide/Show description) and which
+of Build's two tabs is open: **Build** (progression, cantrip dice included) and **Equipment & notes** (taken starting
+packages, inventory and money, prepared spells, About the character, For reference, Books), `BUILD_TABS`. The command
+`switch-build-tab` (View menu, Build only, Ctrl+Shift+H, not yet pressed with real keys in the window) moves between
+them. The phone has the switch and not the tabs or the fold.
 
 **Hit points have no oracle in the save file, and a referee on the screen** (ADR 0019, ADR 0044). Aurora's
 saves record the per-level rolls and never the total, so `aurora verify` has nothing to diff; the referee is

@@ -39,6 +39,7 @@ export const COMMAND_IDS = [
   'go-sources',
   'go-browse',
   'go-settings',
+  'switch-build-tab',
   'new-character',
   'save-character',
   'save-copy',
@@ -100,6 +101,9 @@ export const COMMANDS: readonly CommandDef[] = [
   { id: 'go-browse', label: 'Browse', shortcut: { key: '5', primary: true }, destination: 'browse' },
   // The comma is the macOS Preferences convention and reads as "settings" on the other two.
   { id: 'go-settings', label: 'Settings', shortcut: { key: ',', primary: true }, destination: 'settings' },
+  // Build's two tabs, what the character is built from and what stays open while it is played (ADR 0115). One command
+  // that moves to the other, so two tabs cost one chord; Shift+H is one of those seen to reach the page in the window.
+  { id: 'switch-build-tab', label: 'Switch Build tab', shortcut: { key: 'h', primary: true, shift: true } },
   { id: 'new-character', label: 'New character', shortcut: { key: 'n', primary: true } },
   { id: 'save-character', label: 'Save to library', shortcut: { key: 's', primary: true } },
   // Ctrl+Shift+D, for "duplicate". Not Ctrl+Shift+S, the Save As chord, which was the first choice:
@@ -166,7 +170,7 @@ export const MENUS: MenuLayout = [
       'change-system',
     ],
   },
-  { label: 'View', items: ['go-library', 'go-build', 'go-sheet', 'go-sources', 'go-browse', 'go-settings'] },
+  { label: 'View', items: ['go-library', 'go-build', 'switch-build-tab', 'go-sheet', 'go-sources', 'go-browse', 'go-settings'] },
   { label: 'Help', items: ['about'] },
 ];
 
@@ -263,6 +267,8 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   // Always, like the other panes: with nothing loaded it says so and points at Sources.
   'go-browse': () => true,
   'go-settings': () => true,
+  // On Build, where the tabs are and where the switch is seen.
+  'switch-build-tab': (c) => c.pane === 'build',
   // The button lives on the library screen, only when there is a library to put one in.
   'new-character': (c) => c.pane === 'library' && libraryListed(c),
   // The pane bar's button, and the only place its outcome ("Saved to …") is printed.

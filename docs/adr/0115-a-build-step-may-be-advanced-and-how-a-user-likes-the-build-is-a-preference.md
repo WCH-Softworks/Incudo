@@ -45,6 +45,18 @@ part of the books' class rules, and the step already offers nothing until a clas
    to 60 pixels; the choice is `previewCollapsed` in the same record. At the window's minimum, 880×600, nothing
    changes: below 1001 pixels the columns stack and the dock is not drawn, each picker floating its own preview, as
    before.
+6. **Build has two tabs: Build, and Equipment & notes.** The maintainer reported that what is never finished (the bag,
+   the purse, the play of a character) read as among the choices already made, which are the character's progression.
+   Agreed with the maintainer: Build keeps the parts, the level and classes, Open decisions, the choices made, the scores
+   and hit points, a cantrip's dice and damage type (the maintainer's call: a fixed choice, so a build one), what was
+   skipped, not held or not counting, what a creature gives, written features and additions. Equipment & notes holds the
+   starting packages once taken, the inventory and money, the prepared spells, the text written about the character, what
+   it keeps for reference, and the books it is offered. A starting package still to take stays an open decision on Build.
+   The tabs are inside the Build pane, not a pane of their own: Ctrl+2 still opens Build, no chord moves, and the last tab
+   is remembered (`tab` in the same record). One command, **Switch Build tab** (View menu, live on Build only), moves to
+   the other on **Ctrl+Shift+H**, one of the chords ADR 0038 saw reach the page with real keys in the Windows window;
+   this command's own press with real keys there has not been seen. The wording is `BUILD_TABS`. **The phone does not
+   get the tabs yet**: its Build screen is one scrolling list, in the order it had.
 
 A reader that does not know the key offers the step as before, so `formatVersion` did not move.
 
@@ -63,6 +75,10 @@ A reader that does not know the key offers the step as before, so `formatVersion
 - The preview, driven in the browser build at 1280×860: open 387 pixels tall, folded 39 with nothing pointed at and 60
   naming a long option, and open again on Show description; at 880×600 no dock is drawn. The screenshot tool could not
   draw the window while it was behind others, so the folded dock was measured, not photographed.
+- The tabs, driven in the browser build at 1280×860: Build lists the parts, Level and classes, Open decisions, Choices
+  already made, the user's own features and additions; Equipment & notes the inventory, About the character, For
+  reference and Books; a dispatched Ctrl+Shift+H moves between them. `commands.test.ts` holds the command to Build and
+  its chord to every pane. Not driven: the Tauri window, real keys, the native menu item.
 
 ## Consequences
 

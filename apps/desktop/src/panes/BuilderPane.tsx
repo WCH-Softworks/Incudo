@@ -49,6 +49,7 @@ import {
   STARTING_EQUIPMENT_HEADING,
   INVENTORY_HEADING,
   ADVANCED_OPTIONS_LABEL,
+  BUILD_TABS,
   advancedOptionsHint,
   type BuildPreferences,
 } from '@incudo/ui';
@@ -165,6 +166,25 @@ export function BuilderPane({
         )}
       </section>
 
+      {/*
+        Two tabs (ADR 0115): what the character is built from, which is finished one day, and what stays open for as long
+        as it is played. The user's last choice is remembered; Switch Build tab in the View menu moves between them.
+      */}
+      <nav className="build-tabs" role="tablist" aria-label="Build">
+        {BUILD_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={preferences.tab === tab.id}
+            className={preferences.tab === tab.id ? 'build-tab active' : 'build-tab'}
+            onClick={() => onPreferences({ tab: tab.id })}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
       {!hasContent && (
         <div className="problem warning">
           <strong>No content loaded.</strong>
@@ -189,6 +209,7 @@ export function BuilderPane({
         want for tabs — outstanding, then settled.
       */}
       <PreviewDockProvider>
+      {preferences.tab === 'build' && (
       <div className="columns">
         <section>
           {/*
@@ -258,24 +279,6 @@ export function BuilderPane({
             </div>
           )}
 
-          {/*
-            What the character keeps beside it for reference (ADR 0068): a stat block printed only as prose, read
-            here while its numbers are entered in Open decisions beside it. Nothing is worked out from it.
-          */}
-          {state.references.available && (
-            <div className="references-section">
-              <h2>{state.references.label}</h2>
-              <References state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} />
-            </div>
-          )}
-
-          {/* What the user writes about the character (ADR 0092): no rule reads it, and the sheet shows it. */}
-          {state.freeform.available && (
-            <div className="freeform-section">
-              <h2>{state.freeform.label}</h2>
-              <FreeformEditor state={state.freeform} builder={builder} />
-            </div>
-          )}
         </section>
 
         <section>
@@ -369,29 +372,6 @@ export function BuilderPane({
                   />
                 </div>
               ))}
-            </section>
-          )}
-
-          {/*
-            What the first class and the background started with (ADR 0087): taken, used, or nothing written for it, and
-            the purse. An option still to take is an open decision; this is what has been settled, and Take back undoes it
-            while none of it has been used.
-          */}
-          {state.startingEquipment && state.startingEquipment.sources.some((source) => source.status !== 'open') && (
-            <section className="starting-equipment">
-              <h2>{STARTING_EQUIPMENT_HEADING}</h2>
-              <StartingEquipmentSettled state={state.startingEquipment} builder={builder} nameOf={nameOf} />
-            </section>
-          )}
-
-          {/*
-            The bag and the purse, edited at any point (ADR 0098): add or buy, equip, attune, attach, open, name, and the
-            coins. Not a decision: nothing is owed, and what each item gives is said beside it.
-          */}
-          {state.inventory && (
-            <section className="inventory-section">
-              <h2>{INVENTORY_HEADING}</h2>
-              <InventoryEditor state={state.inventory} builder={builder} elements={elements} candidateLabel={candidateLabel} />
             </section>
           )}
 
@@ -524,37 +504,6 @@ export function BuilderPane({
             </section>
           )}
 
-          {/*
-            The list each casting block prepares. Not a decision either: nothing is owed, and a
-            character may prepare none. Shown for any character with a block that prepares, and
-            it can be reached on a save opened with no content source, where what is already on
-            the list still reads and only offering more needs content.
-          */}
-          {preparation.length > 0 && kind.preparation && (
-            <section>
-              <h2>Prepared {kind.preparation.elementType.toLowerCase()}s</h2>
-              <PreparedSpells
-                rows={preparation}
-                builder={builder}
-                elements={elements}
-                candidateLabel={candidateLabel}
-                noun={kind.preparation.elementType.toLowerCase()}
-              />
-            </section>
-          )}
-
-          {/*
-            Which books this character is offered. Not a decision: nothing is owed, and a character
-            that never opens it is offered every book. Shown whenever there is a list to show, which
-            with no content loaded is only the names the character recorded.
-          */}
-          {publications.rows.length > 0 && (
-            <section>
-              <h2>Books</h2>
-              <PublicationsEditor list={publications} builder={builder} />
-            </section>
-          )}
-
           {settled.length > 0 && (
             <section>
               <h2>Values already set</h2>
@@ -605,6 +554,95 @@ export function BuilderPane({
           )}
         </aside>
       </div>
+      )}
+
+      {/*
+        What stays open for as long as the character is played (ADR 0115): what it carries and its money, what it has
+        prepared today, which books it is offered, what is written about it and what it keeps for reference. None of it is
+        ever finished, so none of it sits among the choices the build asks for. A starting package still to take is an
+        open decision on Build; once taken it is listed here with the bag it went into.
+      */}
+      {preferences.tab === 'details' && (
+        <div className="columns details">
+          <section>
+            {state.startingEquipment && state.startingEquipment.sources.some((source) => source.status !== 'open') && (
+              <section className="starting-equipment">
+                <h2>{STARTING_EQUIPMENT_HEADING}</h2>
+                <StartingEquipmentSettled state={state.startingEquipment} builder={builder} nameOf={nameOf} />
+              </section>
+            )}
+
+            {/*
+              The bag and the purse, edited at any point (ADR 0098): add or buy, equip, attune, attach, open, name, and the
+              coins. Not a decision: nothing is owed, and what each item gives is said beside it.
+            */}
+            {state.inventory && (
+              <section className="inventory-section">
+                <h2>{INVENTORY_HEADING}</h2>
+                <InventoryEditor state={state.inventory} builder={builder} elements={elements} candidateLabel={candidateLabel} />
+              </section>
+            )}
+
+            {/*
+              The list each casting block prepares. Not a decision either: nothing is owed, and a character may prepare
+              none. It can be reached on a save opened with no content source, where what is already on the list still
+              reads and only offering more needs content.
+            */}
+            {preparation.length > 0 && kind.preparation && (
+              <section>
+                <h2>Prepared {kind.preparation.elementType.toLowerCase()}s</h2>
+                <PreparedSpells
+                  rows={preparation}
+                  builder={builder}
+                  elements={elements}
+                  candidateLabel={candidateLabel}
+                  noun={kind.preparation.elementType.toLowerCase()}
+                />
+              </section>
+            )}
+          </section>
+
+          <aside className="settled-column">
+            <PreviewDock
+              elements={elements}
+              candidateLabel={candidateLabel}
+              collapsed={preferences.previewCollapsed}
+              onCollapsed={(collapsed) => onPreferences({ previewCollapsed: collapsed })}
+            />
+
+            {/* What the user writes about the character (ADR 0092): no rule reads it, and the sheet shows it. */}
+            {state.freeform.available && (
+              <section className="freeform-section">
+                <h2>{state.freeform.label}</h2>
+                <FreeformEditor state={state.freeform} builder={builder} />
+              </section>
+            )}
+
+            {/*
+              What the character keeps beside it for reference (ADR 0068): a stat block printed only as prose. Nothing is
+              worked out from it.
+            */}
+            {state.references.available && (
+              <section className="references-section">
+                <h2>{state.references.label}</h2>
+                <References state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} />
+              </section>
+            )}
+
+            {/*
+              Which books this character is offered. Not a decision: nothing is owed, and a character that never opens it
+              is offered every book. Shown whenever there is a list to show, which with no content loaded is only the
+              names the character recorded.
+            */}
+            {publications.rows.length > 0 && (
+              <section>
+                <h2>Books</h2>
+                <PublicationsEditor list={publications} builder={builder} />
+              </section>
+            )}
+          </aside>
+        </div>
+      )}
       </PreviewDockProvider>
 
       {derived.problems.length > 0 && (
