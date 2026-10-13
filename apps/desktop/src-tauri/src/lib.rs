@@ -351,12 +351,36 @@ mod context_menu {
     pub fn install(_window: &tauri::WebviewWindow) {}
 }
 
+/// The page's background in the light and dark scheme: `styles.css`'s `--bg`, which `index.html` repeats for the moment
+/// before the bundle loads. tools/verify's desktop-start test holds the three to each other.
+const LIGHT_BACKGROUND: tauri::window::Color = tauri::window::Color(0xff, 0xff, 0xff, 0xff);
+const DARK_BACKGROUND: tauri::window::Color = tauri::window::Color(0x17, 0x18, 0x1b, 0xff);
+
+/// Show the window, which `tauri.conf.json` creates hidden, in the colour the page will draw.
+///
+/// A window and its webview start white, and stayed white until the page's styles arrived: measured on a release build,
+/// 0.5 s warm and 0.7 s cold, in the dark scheme too. The page follows the system's scheme, so the window takes the same
+/// one, before it is shown, rather than one fixed colour in the config. It is shown here, where it used to appear.
+fn show_in_its_colour(window: &tauri::WebviewWindow) {
+    let colour = match window.theme() {
+        Ok(tauri::Theme::Dark) => DARK_BACKGROUND,
+        _ => LIGHT_BACKGROUND,
+    };
+    if let Err(error) = window.set_background_color(Some(colour)) {
+        eprintln!("The window's background could not be set: {error}");
+    }
+    if let Err(error) = window.show() {
+        eprintln!("The window could not be shown: {error}");
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             use tauri::Manager;
             for window in app.webview_windows().values() {
                 context_menu::install(window);
+                show_in_its_colour(window);
             }
             Ok(())
         })

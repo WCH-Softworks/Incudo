@@ -9,6 +9,15 @@
       oversight. A real icon, drawn by a person, goes here and in apps/desktop/icons/.
     -->
     <title>Incudo</title>
+    <!--
+      The page's own background, before the bundle brings styles.css: without it the window is white until the
+      app's code has loaded, half a second in the dark scheme. The same two colours as styles.css's --bg, and as the
+      window's own in src-tauri/src/lib.rs; tools/verify's desktop-start test holds the three to each other.
+    -->
+    <style>
+      :root { color-scheme: light dark; background: #ffffff; }
+      @media (prefers-color-scheme: dark) { :root { background: #17181b; } }
+    </style>
   </head>
   <body>
     <div id="root"></div>

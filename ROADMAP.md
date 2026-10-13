@@ -2163,6 +2163,14 @@ written on a character can be moved into the user's library without being typed 
     replaces, which covers the browser build as well. **No new artwork is needed**: the window's background is a colour,
     and a loading screen can use the logo in `brand/` (downscaling supplied art is allowed, generating it is not).
     Measure how long the blank window lasts first, cold and warm, so the fix can be shown to work.
+    **Done** (2026-10-13). Measured on a release build in the dark scheme, sampling the window with `PrintWindow`: it
+    appeared white at 0.15 s (0.41 s cold, a fresh WebView2 profile) and stayed white until 0.67 s (1.08 s). Setting the
+    colour in Rust's setup with the window visible changed nothing (setup runs about when the page paints). So the window
+    is created hidden (`tauri.conf.json`), coloured by the system's scheme and shown in setup (`src-tauri/src/lib.rs`),
+    and `index.html` gives the page its background before the bundle loads (the browser build too). After: no white frame,
+    cold or warm; the window appears at 0.6 s (0.95 s cold), already the app's colour, and the first screen draws at the
+    same moment as before. `tools/verify/src/desktop-start.test.ts` holds the three copies of the colour to `styles.css`.
+    No loading screen was added. Not measured in the light scheme, where the white was already the page's own colour.
   - **The dev server stays off the common ports.** An installed build runs no server: Tauri serves the built files
     through its own protocol (`http://tauri.localhost` on Windows), with no port to collide. Only development does:
     `npm run desktop` and `npm run desktop:app` run Vite on 5173, Vite's own default and the port every other Vite
