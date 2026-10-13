@@ -2115,8 +2115,34 @@ written on a character can be moved into the user's library without being typed 
     background (`apps/desktop/src-tauri/icons/README.md` names the tile colour as an open brand
     decision), and an installer is the first place a user sees it.
     Localization is after 1.0 (Beyond 1.0, below) and does not hold RC1 back.
-  - **Not verified when written:** nothing here has run. Ticked on a real RC tag that produced
+  - **Not verified when written:** nothing here had run. Ticked on a real RC tag that produced
     installers, downloaded from the release page and installed, not on a green workflow.
+  - **It has run, twice** (found 2026-10-13, reviewing it): `v0.1.0-rc.1` (published as a pre-release, 2026-10-07)
+    and `v0.1.0-rc.2` (still a draft) each went green on every job (the tag check, both CI jobs, four installer
+    builds) in about 15 minutes and made one release with nine assets: the Windows `.msi` and `-setup.exe`, a `.dmg`
+    and `.app.tar.gz` per Mac chip, and Linux's `.deb`, `.rpm` and `.AppImage`. The runs' only notices are GitHub's
+    (`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19, which reaches the check and CI jobs; the installers stay on
+    `ubuntu-22.04`) and dependency deprecations. Every action version, the `workflow_call` wiring and its inherited
+    read permission, the corpus checkout, the Linux packages and the macOS targets are therefore checked by a run, not
+    by reading.
+  - **Changed in the review:** the macOS bundle is signed ad hoc (`bundle.macOS.signingIdentity: "-"`, Tauri's
+    advice: Apple silicon will not run unsigned code, and a downloaded app with no signature reads as "damaged"), and
+    the notes give today's macOS route ("Open Anyway" under Privacy & Security; right-click Open no longer does it
+    since macOS 15) and Linux's (an AppImage needs making executable). `tools/verify/src/release-workflow.test.ts`
+    holds the three version fields to each other and to X.Y.Z, runs the workflow's own tag pattern against what this
+    item accepts and refuses, and holds the CI gate, the draft, both Mac targets and the ad-hoc identity.
+  - **Since rc.2, not yet built off Windows:** the Windows-only Rust (context menu, browser keys, the PDF writer, each
+    with a `cfg(not(windows))` stub that reads right), `tauri-plugin-opener`, the window created hidden and shown in
+    setup, and the ad-hoc identity. The next tag is the first macOS and Linux compile of them; a failure there stops
+    only that platform's job (`fail-fast: false`), and the draft lacks its files.
+  - **Built and started locally on Windows** (2026-10-13): `tauri build` made `Incudo_0.1.0_x64_en-US.msi`
+    (4.93 MB) and `Incudo_0.1.0_x64-setup.exe` (3.55 MB), against rc.2's 4.70 and 3.38 MB. Not installed over the
+    maintainer's own install: the `.msi` was extracted (`msiexec /a`) and its `incudo-desktop.exe` (13.6 MB) run with a
+    scratch WebView2 profile, which showed its window at the configured size and closed cleanly. The page inside was
+    not driven.
+  - **Open, the maintainer's:** whether rc.1's installer, downloaded once from its release page, was installed and
+    run (an Incudo 0.1.0 is installed on the maintainer's machine), which would meet this item's condition for
+    Windows; what to do with rc.2's unpublished draft; and the icon's tile colour, above.
 - [x] **The desktop app behaves like an application, not a web page.** Raised by the maintainer after using it
       (2026-09-30). Each part is small; together they are most of why the window still feels like a browser tab. Some
       are Tauri or WebView2 settings rather than page code, and the one that needs a picture already has one:
