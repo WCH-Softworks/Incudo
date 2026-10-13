@@ -1652,7 +1652,7 @@ engine has no code that names any of them.
 
 ---
 
-## Phase 5 — Export & sharing 🟡
+## Phase 5 — Export & sharing ✅
 
 *An export is a rendering of the sheet, which is already one view per kind (ADR 0074, `packages/ui/src/sheet.ts`): an
 NPC's export is its stat block and a player character's its page, with nothing kind-specific of the export's own. What the
@@ -1844,6 +1844,11 @@ before 1.0.*
       keys in the window, and a test now refuses any Ctrl+Shift shortcut not on that list. Shown in the File menu and on
       the Sheet's button. Driven in the browser build: claimed on every pane, runs the export on the Sheet only. Pressing it
       in the Tauri window is Phase 9's drive.
+
+**Closed 2026-10-13.** The phase had no exit criteria of its own; it closed when nothing before 1.0 was left in it: the
+last item, a listed element's whole description (ADR 0114), is done above. What its items left for after the first release
+is in Beyond 1.0's "Left from Phases 3 to 5"; what was only not driven in the Tauri window or on the phone is Phase 9's
+drive item, and "not on macOS or Linux" notes are Beyond 1.0's "macOS, Linux and iOS".
 
 ---
 
