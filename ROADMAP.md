@@ -2149,6 +2149,12 @@ written on a character can be moved into the user's library without being typed 
     app's own. Either the page declines the `contextmenu` event or WebView2's default menus are switched off from
     Rust; the second also covers a moment before the page has loaded. What goes with it: a text field loses right-click
     Cut, Copy, Paste and spelling suggestions (the keyboard chords stay). Decide whether text fields keep theirs.
+    **Done** (2026-10-13): text fields keep theirs, without what is about the page (the maintainer's call). WebView2's
+    `ContextMenuRequested` in `src-tauri/src/lib.rs`: off a text field the menu is not shown; in one, only the items
+    named on an allowlist stay (spelling suggestions, Emoji, Undo, Redo, Cut, Copy, Paste, Paste as plain text, Select
+    all), with a separator only between two groups that keep something. Measured in the window (WebView2 154): Print,
+    More tools, Inspect and Writing direction went. Driven in the Tauri window on Windows by right-clicks over the debug
+    port and the menu captured with `PrintWindow`; not with a real mouse, and the browser build keeps its menu.
   - **No blank white window while it starts.** The window is shown before the page has drawn anything, so it is white
     until React renders, even in the dark scheme. Tauri's window config has what it needs: `visible: false` and showing
     the window once the first screen has rendered, and a `backgroundColor` so what is shown first is the app's colour

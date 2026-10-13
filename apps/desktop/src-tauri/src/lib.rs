@@ -231,8 +231,135 @@ mod pdf {
     }
 }
 
+/// The window's right-click menu: none, but for a text field's editing items.
+///
+/// WebView2's own menu is a browser's (Back, Refresh, Save as, Print, Inspect), none of it the app's, so a right click on
+/// the page shows nothing. A text field keeps its menu, less every item that is about the page rather than the text:
+/// whatever WebView2 names that is not on `EDITING`, so an item a later runtime adds is left out until it is listed. Done
+/// here, not in the page, so that it also holds before the page has loaded, and in every page the window shows.
+#[cfg(windows)]
+mod context_menu {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2ContextMenuItemCollection, ICoreWebView2ContextMenuRequestedEventArgs, ICoreWebView2_11,
+        COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND, COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR,
+    };
+    use webview2_com::{take_pwstr, ContextMenuRequestedEventHandler};
+    use windows::core::{Interface, BOOL, PWSTR};
+
+    /// What a text field's menu keeps, by the names WebView2 gives its items: measured in the window (WebView2 Runtime
+    /// 154), where a misspelled word's suggestions and "Add to dictionary" are all `spellcheck`, and what goes is
+    /// `print`, `moreTools`, `inspectElement` and the "Writing direction" submenu, named `other`.
+    const EDITING: &[&str] = &["spellcheck", "emoji", "undo", "redo", "cut", "copy", "paste", "pasteAndMatchStyle", "selectAll"];
+
+    pub fn install(window: &tauri::WebviewWindow) {
+        let installed = window.with_webview(|platform| {
+            // SAFETY: COM calls on the WebView2 objects Tauri created, on the thread that owns them.
+            if let Err(error) = unsafe { register(&platform) } {
+                eprintln!("The window's right-click menu could not be changed: {error}");
+            }
+        });
+        if let Err(error) = installed {
+            eprintln!("The window's right-click menu could not be reached: {error}");
+        }
+    }
+
+    unsafe fn register(platform: &tauri::webview::PlatformWebview) -> windows::core::Result<()> {
+        let core: ICoreWebView2_11 = platform.controller().CoreWebView2()?.cast()?;
+        let handler = ContextMenuRequestedEventHandler::create(Box::new(|_, args| {
+            if let Some(args) = args {
+                // SAFETY: the event's own arguments, during the event.
+                unsafe { decide(&args) }?;
+            }
+            Ok(())
+        }));
+        let mut token = 0i64;
+        core.add_ContextMenuRequested(&handler, &mut token)
+    }
+
+    unsafe fn decide(args: &ICoreWebView2ContextMenuRequestedEventArgs) -> windows::core::Result<()> {
+        let mut editable = BOOL(0);
+        args.ContextMenuTarget()?.IsEditable(&mut editable)?;
+        if !editable.as_bool() {
+            // Handled with no item chosen: WebView2 shows nothing.
+            return args.SetHandled(true);
+        }
+        keep_editing(&args.MenuItems()?)
+    }
+
+    unsafe fn keep_editing(items: &ICoreWebView2ContextMenuItemCollection) -> windows::core::Result<()> {
+        let mut count = 0u32;
+        items.Count(&mut count)?;
+        let mut kept = Vec::with_capacity(count as usize);
+        for index in 0..count {
+            let item = items.GetValueAtIndex(index)?;
+            let mut kind = COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND::default();
+            item.Kind(&mut kind)?;
+            let mut name = PWSTR::null();
+            item.Name(&mut name)?;
+            kept.push(if kind == COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR {
+                Kept::Separator
+            } else if EDITING.contains(&take_pwstr(name).as_str()) {
+                Kept::Item
+            } else {
+                Kept::Not
+            });
+        }
+        let keep = separate(&kept);
+        for index in (0..count).rev() {
+            if !keep[index as usize] {
+                items.RemoveValueAtIndex(index)?;
+            }
+        }
+        Ok(())
+    }
+
+    #[derive(Clone, Copy, PartialEq)]
+    enum Kept {
+        Item,
+        Not,
+        Separator,
+    }
+
+    /// Which entries stay: every kept item, and a separator only where it parts two groups that keep something.
+    fn separate(kept: &[Kept]) -> Vec<bool> {
+        let mut keep = vec![false; kept.len()];
+        let mut since_separator = false;
+        let mut pending: Option<usize> = None;
+        for (index, entry) in kept.iter().enumerate() {
+            match entry {
+                Kept::Item => {
+                    if let Some(separator) = pending.take() {
+                        keep[separator] = true;
+                    }
+                    keep[index] = true;
+                    since_separator = true;
+                }
+                Kept::Separator if since_separator => {
+                    pending = Some(index);
+                    since_separator = false;
+                }
+                _ => {}
+            }
+        }
+        keep
+    }
+}
+
+#[cfg(not(windows))]
+mod context_menu {
+    /// Only Windows has been run; on macOS and Linux the menu is still WebKit's own.
+    pub fn install(_window: &tauri::WebviewWindow) {}
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            use tauri::Manager;
+            for window in app.webview_windows().values() {
+                context_menu::install(window);
+            }
+            Ok(())
+        })
         .manage(ContentClient::new())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
