@@ -1719,6 +1719,32 @@ button.primary:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
+.preview-dock-title.hint {
+  font-weight: 400;
+}
+
+/* The option's name, and the control that folds the description away (ADR 0115). */
+.preview-dock-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.preview-dock-head .link {
+  flex: none;
+}
+
+/* Folded to its title line: as tall as that line, so the settled choices beneath it have the column. */
+.preview-dock.collapsed {
+  height: auto;
+  padding: 8px 14px;
+}
+
+.preview-dock.collapsed .preview-dock-title {
+  margin: 0;
+}
+
 /* The row whose text is showing, kept marked after the pointer leaves it. */
 .picker-row {
   position: relative;

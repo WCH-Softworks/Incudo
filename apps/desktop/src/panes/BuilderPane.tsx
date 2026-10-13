@@ -334,7 +334,12 @@ export function BuilderPane({
             pointer leaves, which is what lets a long description be scrolled. It renders nothing
             when the columns are stacked or the device cannot hover; see `PreviewDock`.
           */}
-          <PreviewDock elements={elements} candidateLabel={candidateLabel} />
+          <PreviewDock
+            elements={elements}
+            candidateLabel={candidateLabel}
+            collapsed={preferences.previewCollapsed}
+            onCollapsed={(collapsed) => onPreferences({ previewCollapsed: collapsed })}
+          />
 
           {/*
             A budget that is finished leaves `decisions`, which is correct — it is not

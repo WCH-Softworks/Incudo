@@ -20,6 +20,8 @@ import type { ElementId, ElementIndex } from '@incudo/core';
 
 import { useCanHover } from '../use-can-hover.ts';
 import { useMediaQuery } from '../use-media-query.ts';
+import { PREVIEW_EMPTY, PREVIEW_HIDE_LABEL, PREVIEW_SHOW_LABEL, PREVIEW_TITLE } from '@incudo/ui';
+
 import { CandidateDescription } from './CandidateDescription.tsx';
 
 /** The complement of the `max-width: 1000px` breakpoint that stacks `.columns`. */
@@ -57,23 +59,36 @@ export function usePreviewDock(): Dock | null {
 export function PreviewDock({
   elements,
   candidateLabel,
+  collapsed,
+  onCollapsed,
 }: {
   elements: ElementIndex;
   candidateLabel: (id: ElementId) => string;
+  /**
+   * Folded to its title line, so the settled choices beneath it have the column (ADR 0115): the user's preference. The
+   * row being pointed at is still named, so what the description would be about is never lost.
+   */
+  collapsed: boolean;
+  onCollapsed: (collapsed: boolean) => void;
 }): React.JSX.Element | null {
   const dock = usePreviewDock();
   if (!dock?.docked) return null;
 
   return (
-    <section className="preview-dock" id={dock.regionId} aria-label="Option preview">
-      {dock.currentId === null ? (
-        <p className="hint">Point at an option to read its description here.</p>
-      ) : (
-        <>
-          <p className="preview-dock-title">{candidateLabel(dock.currentId)}</p>
-          <CandidateDescription id={dock.currentId} elements={elements} />
-        </>
-      )}
+    <section
+      className={collapsed ? 'preview-dock collapsed' : 'preview-dock'}
+      id={dock.regionId}
+      aria-label={PREVIEW_TITLE}
+    >
+      <div className="preview-dock-head">
+        <p className={dock.currentId === null ? 'preview-dock-title hint' : 'preview-dock-title'}>
+          {dock.currentId === null ? (collapsed ? PREVIEW_TITLE : PREVIEW_EMPTY) : candidateLabel(dock.currentId)}
+        </p>
+        <button type="button" className="link" aria-expanded={!collapsed} onClick={() => onCollapsed(!collapsed)}>
+          {collapsed ? PREVIEW_SHOW_LABEL : PREVIEW_HIDE_LABEL}
+        </button>
+      </div>
+      {!collapsed && dock.currentId !== null && <CandidateDescription id={dock.currentId} elements={elements} />}
     </section>
   );
 }

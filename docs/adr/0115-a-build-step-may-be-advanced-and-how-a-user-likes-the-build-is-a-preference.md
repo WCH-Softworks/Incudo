@@ -36,6 +36,15 @@ part of the books' class rules, and the step already offers nothing until a clas
    the rest of the pane is laid out, which is the same kind of thing.
 4. **The phone gets the same switch**, on its Build screen above Open decisions, reading and writing the same record
    through its own storage. It builds with the same builder, so without one it would have lost both steps.
+5. **The option preview folds to its title line.** The maintainer reported that the hover preview (a fixed-height dock
+   at the top of the settled column, `min(45vh, 420px)`: 387 of 860 pixels at 1280×860) left too little room to see the
+   choices already made. Three layouts were tried in the running app at 1280×860 and shown to the maintainer: a fourth
+   column for the preview (every column narrower, the left one scrolling sideways), the preview pinned under Open
+   decisions (it covered the list being pointed at), and the dock kept where it is with a Hide description / Show
+   description control. The maintainer chose the last. Folded, the dock is the option's name and the control, about 40
+   to 60 pixels; the choice is `previewCollapsed` in the same record. At the window's minimum, 880×600, nothing
+   changes: below 1001 pixels the columns stack and the dock is not drawn, each picker floating its own preview, as
+   before.
 
 A reader that does not know the key offers the step as before, so `formatVersion` did not move.
 
@@ -51,6 +60,9 @@ A reader that does not know the key offers the step as before, so `formatVersion
 - Driven in the browser build: a new 5e character offers neither step; the switch offers both and lists them; a Bonus
   Feats taken and the switch turned off leaves it listed with Change and Remove; the switch survives a reload. Not driven
   on the phone or in the Tauri window.
+- The preview, driven in the browser build at 1280×860: open 387 pixels tall, folded 39 with nothing pointed at and 60
+  naming a long option, and open again on Show description; at 880×600 no dock is drawn. The screenshot tool could not
+  draw the window while it was behind others, so the folded dock was measured, not photographed.
 
 ## Consequences
 

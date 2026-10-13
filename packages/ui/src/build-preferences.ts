@@ -81,3 +81,9 @@ export async function writeBuildPreferences(storage: Storage, preferences: Build
     // See above.
   }
 }
+
+/** The option preview's words: what folds it to its title line and back, and what it says before anything is pointed at. */
+export const PREVIEW_HIDE_LABEL = 'Hide description';
+export const PREVIEW_SHOW_LABEL = 'Show description';
+export const PREVIEW_EMPTY = 'Point at an option to read its description here.';
+export const PREVIEW_TITLE = 'Option preview';
