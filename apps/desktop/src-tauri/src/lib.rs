@@ -351,6 +351,76 @@ mod context_menu {
     pub fn install(_window: &tauri::WebviewWindow) {}
 }
 
+/// The browser's own keys: off, so the window is an application and not a browser tab.
+///
+/// Measured with real keys in the Windows window (WebView2 Runtime 154), a release and a dev build alike: F5, Ctrl+R and
+/// Ctrl+Shift+R reloaded the page (an unsaved edit lives in the page), Ctrl+F, F3 and Ctrl+G opened a find bar, F7 offered
+/// caret browsing, Ctrl+J opened a downloads panel and Alt+Left and the BrowserBack key went back a page, and in a dev
+/// build F12 opened DevTools. WebView2's `AreBrowserAcceleratorKeysEnabled` switches off exactly those and leaves the
+/// editing keys (cut, copy, paste, select all, undo, redo) and every key the page claims, so the app's chords
+/// (`packages/ui/src/commands.ts`) still arrive. Zoom needs nothing here: Tauri's `zoomHotkeysEnabled`, false by default,
+/// already turns off Ctrl+plus, Ctrl+minus, Ctrl+0, Ctrl+wheel and pinch. The browser build keeps all of it.
+///
+/// A dev build keeps one: F12 opens DevTools, by hand, since the setting took it with the rest.
+#[cfg(windows)]
+mod browser_keys {
+    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+    use windows::core::Interface;
+
+    pub fn install(window: &tauri::WebviewWindow) {
+        let installed = window.with_webview(|platform| {
+            // SAFETY: COM calls on the WebView2 objects Tauri created, on the thread that owns them.
+            if let Err(error) = unsafe { switch_off(&platform) } {
+                eprintln!("The browser's keys could not be switched off: {error}");
+            }
+        });
+        if let Err(error) = installed {
+            eprintln!("The window's keys could not be reached: {error}");
+        }
+    }
+
+    unsafe fn switch_off(platform: &tauri::webview::PlatformWebview) -> windows::core::Result<()> {
+        let core = platform.controller().CoreWebView2()?;
+        let settings: ICoreWebView2Settings3 = core.Settings()?.cast()?;
+        settings.SetAreBrowserAcceleratorKeysEnabled(false)?;
+        #[cfg(debug_assertions)]
+        dev_tools_on_f12(platform)?;
+        Ok(())
+    }
+
+    #[cfg(debug_assertions)]
+    unsafe fn dev_tools_on_f12(platform: &tauri::webview::PlatformWebview) -> windows::core::Result<()> {
+        use webview2_com::AcceleratorKeyPressedEventHandler;
+        use webview2_com::Microsoft::Web::WebView2::Win32::{
+            COREWEBVIEW2_KEY_EVENT_KIND, COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN,
+        };
+        const VK_F12: u32 = 0x7b;
+        let handler = AcceleratorKeyPressedEventHandler::create(Box::new(|controller, args| {
+            let (Some(controller), Some(args)) = (controller, args) else { return Ok(()) };
+            let mut kind = COREWEBVIEW2_KEY_EVENT_KIND::default();
+            let mut key = 0u32;
+            // SAFETY: the event's own arguments, during the event, and the webview it came from.
+            unsafe {
+                args.KeyEventKind(&mut kind)?;
+                args.VirtualKey(&mut key)?;
+                if kind == COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN && key == VK_F12 {
+                    args.SetHandled(true)?;
+                    controller.CoreWebView2()?.OpenDevToolsWindow()?;
+                }
+            }
+            Ok(())
+        }));
+        let mut token = 0i64;
+        platform.controller().add_AcceleratorKeyPressed(&handler, &mut token)
+    }
+}
+
+#[cfg(not(windows))]
+mod browser_keys {
+    /// Only Windows has been run; on macOS and Linux the webview's own keys are as they were.
+    pub fn install(_window: &tauri::WebviewWindow) {}
+}
+
 /// The page's background in the light and dark scheme: `styles.css`'s `--bg`, which `index.html` repeats for the moment
 /// before the bundle loads. tools/verify's desktop-start test holds the three to each other.
 const LIGHT_BACKGROUND: tauri::window::Color = tauri::window::Color(0xff, 0xff, 0xff, 0xff);
@@ -380,6 +450,7 @@ pub fn run() {
             use tauri::Manager;
             for window in app.webview_windows().values() {
                 context_menu::install(window);
+                browser_keys::install(window);
                 show_in_its_colour(window);
             }
             Ok(())
