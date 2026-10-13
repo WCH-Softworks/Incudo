@@ -2114,33 +2114,9 @@ written on a character can be moved into the user's library without being typed 
   - **Settle before RC1, not by the pipeline:** the app icon reads only against a dark
     background (`apps/desktop/src-tauri/icons/README.md` names the tile colour as an open brand
     decision), and an installer is the first place a user sees it.
-    Localization (the next item) is decided before RC1 too, even if no translation ships in it.
+    Localization is after 1.0 (Beyond 1.0, below) and does not hold RC1 back.
   - **Not verified when written:** nothing here has run. Ticked on a real RC tag that produced
     installers, downloaded from the release page and installed, not on a green workflow.
-- [ ] **Localization: decide it before the first release candidate, and before the formats are frozen.** No ADR
-      covers it and nothing is built for it: every string on screen is English written inline, in
-      `apps/desktop` panes and in some `packages/ui` view-models, and counts and dates follow the platform's
-      locale only where a pane happened to call `toLocaleString`. It goes before the next item because two of the
-      places text lives are public formats, and a translation mechanism added after they are declared stable is a
-      breaking change to both. Wants an ADR first; what it has to settle:
-  - **The app's own text.** Where strings live and which layer owns them: the rule that panes compute nothing
-    means a sentence built in a view-model is a view-model's string, and the native menu's labels come from
-    `packages/ui/src/commands.ts`. How a missing translation falls back, plural rules (English "1 match / 2
-    matches" is hand-written in panes today) and number and date formats.
-  - **Derivation problems.** Each `Problem` in `packages/core` carries a stable `code` and an English `message`;
-    whether the shell renders from the code and its data, so core stays free of any language, or the message is
-    translated where it is written.
-  - **System definitions (ADR 0011, a public format).** A system's `label`, `plural`, `description` and sheet and
-    step headings are user-facing text written by whoever authored the system: 5e's alone has 219 of them. Whether a
-    system may carry translations of its own text, and in what shape, is a system format question, and `plural` as
-    a single English word does not survive languages with more plural forms.
-  - **Saves (ADR 0012, a public format).** Probably nothing, since a character stores choices and ids, not text;
-    to be confirmed, including what a custom feature's name or a written description means in another language
-    (it is the user's own words and is not translated).
-  - **Content.** AuroraLegacy's elements are English and Aurora import is frozen (ADR 0008). Translating game
-    content is not Incudo's to do; whether a translated content source a community publishes can stand beside or in
-    place of the English one is the open question, and ADR 0054's "the later source wins" may already answer it.
-  - **Which languages ship first**, and whether right-to-left is in scope, are the maintainer's call.
 - [x] **The desktop app behaves like an application, not a web page.** Raised by the maintainer after using it
       (2026-09-30). Each part is small; together they are most of why the window still feels like a browser tab. Some
       are Tauri or WebView2 settings rather than page code, and the one that needs a picture already has one:
@@ -2354,6 +2330,36 @@ for it. The first two were Phase 7 items, and neither is in its exit criteria.
   messages' next work.
 - **Also left from Phase 7's items:** forking a user's own system from the app, an in-app system editor, overlays of
   overlays and placing a new entry before another.
+
+### 1.x — Localization
+
+- **Localization.** Moved here from Phase 9 (2026-10-13, the maintainer's call: it is after 1.0). No ADR
+  covers it and nothing is built for it: every string on screen is English written inline, in
+  `apps/desktop` panes and in some `packages/ui` view-models, and counts and dates follow the platform's
+  locale only where a pane happened to call `toLocaleString`. Two of the
+  places text lives are public formats, and a translation mechanism added after they are declared stable is a
+  breaking change to both. Wants an ADR first; what it has to settle:
+  - **The app's own text.** Where strings live and which layer owns them: the rule that panes compute nothing
+    means a sentence built in a view-model is a view-model's string, and the native menu's labels come from
+    `packages/ui/src/commands.ts`. How a missing translation falls back, plural rules (English "1 match / 2
+    matches" is hand-written in panes today) and number and date formats.
+  - **Derivation problems.** Each `Problem` in `packages/core` carries a stable `code` and an English `message`;
+    whether the shell renders from the code and its data, so core stays free of any language, or the message is
+    translated where it is written.
+  - **System definitions (ADR 0011, a public format).** A system's `label`, `plural`, `description` and sheet and
+    step headings are user-facing text written by whoever authored the system: 5e's alone has 219 of them. Whether a
+    system may carry translations of its own text, and in what shape, is a system format question, and `plural` as
+    a single English word does not survive languages with more plural forms.
+  - **Saves (ADR 0012, a public format).** Probably nothing, since a character stores choices and ids, not text;
+    to be confirmed, including what a custom feature's name or a written description means in another language
+    (it is the user's own words and is not translated).
+  - **Content.** AuroraLegacy's elements are English and Aurora import is frozen (ADR 0008). Translating game
+    content is not Incudo's to do; whether a translated content source a community publishes can stand beside or in
+    place of the English one is the open question, and ADR 0054's "the later source wins" may already answer it.
+  - **Which languages ship first**, and whether right-to-left is in scope, are the maintainer's call.
+  - **The formats will be stable by then.** A system's own translations and anything a save might need arrive
+    as a change to two public formats after 1.0 has declared them stable: a `formatVersion` bump with a migration,
+    under the policy Phase 9's stable-formats item writes, not a quiet addition.
 
 ### 2.x — Story building tools ❄️
 Campaign and session notes, NPC and faction tracking, timelines, relationship maps, linking
