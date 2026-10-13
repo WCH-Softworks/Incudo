@@ -57,7 +57,7 @@ written and maintained by people. Incudo reads that content and does not change 
 
 ```bash
 npm install
-npm run desktop       # the app, at http://localhost:5173
+npm run desktop       # the app, at http://localhost:41730
 npm run corpus:sync   # optional: download the AuroraLegacy content for the full test suite
 npm test
 ```

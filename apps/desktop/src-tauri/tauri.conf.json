@@ -5,7 +5,7 @@
   "identifier": "dev.incudo.desktop",
   "build": {
     "beforeDevCommand": "npm run dev -w @incudo/desktop",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:41730",
     "beforeBuildCommand": "npm run build -w @incudo/desktop",
     "frontendDist": "../dist"
   },

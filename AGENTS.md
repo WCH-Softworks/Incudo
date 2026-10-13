@@ -11,7 +11,7 @@ when something here looks odd, the ADR usually says why.
 
 ```bash
 npm install            # ~25s. If it starts pulling Expo, apps/mobile got added to workspaces — don't.
-npm run desktop        # the app, at http://localhost:5173. No Rust, no icon, start here.
+npm run desktop        # the app, at http://localhost:41730. No Rust, no icon, start here.
                        # Opens on the character library; pick a folder to see anything in it.
 npm run desktop:app    # the real Tauri window — needs Rust. Builds now; the icon arrived.
 npm run typecheck      # tsc --build --force

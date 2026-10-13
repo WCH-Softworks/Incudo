@@ -8,7 +8,7 @@ allowed to know it is running in Tauri.
 ## Running it
 
 ```bash
-npm run desktop          # Vite dev server at http://localhost:5173 — no Rust, no icon needed
+npm run desktop          # Vite dev server at http://localhost:41730 — no Rust, no icon needed
 npm run desktop:app      # the real Tauri window (see "Icons" below)
 npm run desktop:build    # production web bundle into apps/desktop/dist
 ```
@@ -30,9 +30,10 @@ may need one click on **Choose folder** to reconnect. Firefox and Safari have no
 all, and there the app says so and offers nothing rather than faking a library.
 
 If the port is busy, `npm run desktop` names the process holding it and prints the command to
-kill it. The port is fixed rather than auto-selected because Tauri points its window at
-`http://localhost:5173` exactly; a server that quietly moved to 5174 would leave that window
-blank. A leftover *detached* dev server has no console, so it appears under Task Manager’s
+kill it. The port, 41730, is `dev-port.json`'s, and it is fixed rather than auto-selected because
+Tauri points its window at exactly that address; a server that quietly moved would leave that
+window blank. It is not Vite's own 5173, which every other Vite project on the machine wants.
+A leftover *detached* dev server has no console, so it appears under Task Manager’s
 Background processes rather than under Apps — which is why it can look like there is nothing to
 kill.
 

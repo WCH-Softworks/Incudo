@@ -7,6 +7,8 @@
  * `src-tauri/src/lib.rs` shows the window, which `tauri.conf.json` creates hidden, once it has the system scheme's colour.
  * After it, no frame of a release build sampled white, cold or warm.
  *
+ * The dev server's port is held here too, at the end.
+ *
  * Perturbation: change `--bg` in the dark block of `styles.css`, or either colour in `index.html` or `lib.rs`, or drop
  * `"visible": false`, and this fails naming which.
  */
@@ -53,4 +55,18 @@ test('the window is created hidden and shown in the same colours', () => {
   assert.match(rust, /show_in_its_colour\(window\)/, 'setup shows each window');
   const config = JSON.parse(read('src-tauri/tauri.conf.json')) as { app: { windows: { visible?: boolean }[] } };
   for (const window of config.app.windows) assert.equal(window.visible, false, 'a configured window starts hidden');
+});
+
+/**
+ * The dev server's port is `dev-port.json`'s, which `vite.config.ts` and `scripts/check-port.mjs` read; `tauri.conf.json`
+ * cannot read a file, so its `devUrl` repeats it, and is held to it here. Not Vite's own 5173, which every other Vite
+ * project on the machine wants. Perturbation: change either number and this fails.
+ */
+test("the window's dev address is the dev server's port", () => {
+  const { port } = JSON.parse(read('dev-port.json')) as { port: number };
+  const config = JSON.parse(read('src-tauri/tauri.conf.json')) as { build: { devUrl: string } };
+  assert.equal(new URL(config.build.devUrl).port, String(port));
+  assert.notEqual(port, 5173, "not Vite's default");
+  assert.match(read('vite.config.ts'), /readFileSync\(resolve\(here, 'dev-port\.json'\)/, 'vite.config.ts reads it');
+  assert.match(read('scripts/check-port.mjs'), /dev-port\.json/, 'check-port.mjs reads it');
 });

@@ -2,7 +2,7 @@
  * Say *who* is holding the dev port, before Vite refuses to start.
  *
  * `vite.config.ts` sets `strictPort`, on purpose: Tauri's `devUrl` points at exactly
- * `http://localhost:5173`, so a dev server that quietly moved to 5174 would leave the desktop
+ * the port in `dev-port.json`, so a dev server that quietly moved would leave the desktop
  * window blank with no error worth reading. The cost of that choice is this failure mode, and it
  * is a nasty one — the usual culprit is a *detached* dev server from an earlier session, which
  * has no console window and so appears nowhere a person thinks to look. "Port in use, but there
@@ -15,8 +15,9 @@
 import { createServer } from 'node:net';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { readFileSync } from 'node:fs';
 
-const PORT = 5173;
+const { port: PORT } = JSON.parse(readFileSync(new URL('../dev-port.json', import.meta.url), 'utf8'));
 const run = promisify(execFile);
 
 /** Resolve without throwing: this script must never be the reason `npm run desktop` fails. */

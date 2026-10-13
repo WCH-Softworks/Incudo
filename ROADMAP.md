@@ -2178,6 +2178,11 @@ written on a character can be moved into the user's library without being typed 
     holding it (a dev server that moved would leave the Tauri window blank). Move it to a fixed port no popular
     framework or database uses, named in one place: `vite.config.ts`, `tauri.conf.json`'s `devUrl` and
     `check-port.mjs` all repeat 5173 today, and so do the READMEs and CLAUDE.md.
+    **Done** (2026-10-13): 41730, below Windows' dynamic range (49152 and up, where Hyper-V's reservations fall on this
+    machine) and clear of the common defaults (Vite 5173, Tauri's template 1420, Metro 8081, Expo 19000+, Node's
+    inspector 9229). `apps/desktop/dev-port.json` holds it; `vite.config.ts` and `check-port.mjs` read it, and
+    `tauri.conf.json`'s `devUrl`, which cannot read a file, is held to it by `tools/verify/src/desktop-start.test.ts`. Run:
+    the browser build and the Tauri window both open on it.
   - **Also worth a look, not yet decided or tried:** the browser's own keys and gestures that may still act in the
     window (reloading the page, a find bar, zooming the whole app), to be found by pressing real keys in it, as the
     command chords were; WebView2 has settings for browser keys and zoom that a release build could switch off while
