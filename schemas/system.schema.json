@@ -1034,6 +1034,11 @@
           "minLength": 1,
           "description": "A setter naming the type of item an item is made from (ADR 0098): an item whose setter reads one of the types is attached to a host of that type, and the host is admitted by the item's setter named after that type, lowercased, read as a filter with the host's name as one more operand; absent, any host of the type. 5e's content writes `type`: a Mithral Armor's is Armor, and its `armor` setter names the hosts."
         },
+        "groupSetter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A setter whose value names the group an item is offered under when one is added (ADR 0117): the list shows the groups first, then one group's items, and an item with no value is under Other. Absent, the list is not grouped. 5e's content writes `category`."
+        },
         "price": {
           "type": "object",
           "required": ["setter", "unitAttribute"],

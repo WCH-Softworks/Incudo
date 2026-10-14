@@ -547,6 +547,12 @@ export interface InventoryDef {
    */
   adornSetter?: string;
   /**
+   * A setter whose value names the group an item is offered under when one is added — ADR 0117: the add list shows the
+   * groups first, then one group's items. An item that writes no value is under "Other". Absent, the list is not
+   * grouped. 5e's content writes `category`: Wondrous Items, Adventuring Gear, Potions and so on.
+   */
+  groupSetter?: string;
+  /**
    * Where an item states its price — ADR 0098: the setter whose value is the amount and the attribute beside it naming
    * the unit, one of the system's `currency` units. An amount that is not a number above 0, or a unit the system does
    * not declare, is no price. 5e's content writes `<set name="cost" currency="gp">15</set>`.

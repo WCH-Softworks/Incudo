@@ -2265,6 +2265,12 @@ deities). A freeform field may declare `suggestedBy` (select names): while blank
 those selects, one per line, on Build and the sheet, stored nowhere (`chosenUnderSelect`, `freeform.ts`). Aurora copies
 the same text into the save, so an import shows its own copy. Driven in the browser build.
 
+**The add-item list is grouped by a setter the system names**
+([ADR 0117](docs/adr/0117-the-add-item-list-is-grouped-by-a-setter-the-system-names.md)): `inventory.groupSetter` (5e
+`category`, 23 groups over 2,798 items); `inventoryOfferGroups` gives "All items", the groups by name, then "Other". The
+desktop's `GroupedPicker` (`InventoryEditor.tsx`) slides from the groups to one group's picker; the phone's `Picker` takes
+`groups`. Driven in the browser build.
+
 **Hit points have no oracle in the save file, and a referee on the screen** (ADR 0019, ADR 0044). Aurora's
 saves record the per-level rolls and never the total, so `aurora verify` has nothing to diff; the referee is
 the maintainer's readout, and `aurora-oracle.test.ts` holds `hp` to it on all 30 samples. Say "agrees with a

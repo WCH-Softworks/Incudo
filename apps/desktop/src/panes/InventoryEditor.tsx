@@ -11,12 +11,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ElementId, ElementIndex } from '@incudo/core';
 import {
+  ALL_ITEMS_LABEL,
   INVENTORY_HINT,
+  offerGroupLine,
   TAKEN_ON_BUILD,
   TAKEN_ON_BUILD_HINT,
   type CharacterBuilder,
   type InventoryRow,
   type InventoryState,
+  type OfferGroup,
   type PurseRow,
 } from '@incudo/ui';
 
@@ -38,6 +41,7 @@ export function InventoryEditor({
   const [paying, setPaying] = useState(false);
   // Asked of the builder only while the picker is open: it is every item loaded.
   const options = useMemo(() => (adding ? builder.inventoryOptionsFor() : []), [adding, builder]);
+  const groups = useMemo(() => (adding ? builder.inventoryGroupsFor() : []), [adding, builder]);
   const notes = useMemo(() => new Map(options.map((id) => [id, builder.inventoryOptionNote(id)])), [options, builder]);
   const say = (result: string | undefined): void => setMessage(result);
 
@@ -65,13 +69,17 @@ export function InventoryEditor({
                 Done
               </button>
             </div>
-            <CandidatePicker
-              candidates={options}
-              elements={elements}
-              candidateLabel={candidateLabel}
-              notes={notes}
-              onSelect={(id) => say(builder.addItem(id, paying))}
-            />
+            {groups.length > 0 ? (
+              <GroupedPicker groups={groups} elements={elements} candidateLabel={candidateLabel} notes={notes} onSelect={(id) => say(builder.addItem(id, paying))} />
+            ) : (
+              <CandidatePicker
+                candidates={options}
+                elements={elements}
+                candidateLabel={candidateLabel}
+                notes={notes}
+                onSelect={(id) => say(builder.addItem(id, paying))}
+              />
+            )}
           </div>
         ) : (
           <button type="button" onClick={() => setAdding(true)}>
@@ -99,6 +107,75 @@ export function InventoryEditor({
       )}
 
       {message && <p className="hint error">{message}</p>}
+    </div>
+  );
+}
+
+/**
+ * The add list in its groups (ADR 0117): the groups, and on choosing one the list slides left to that group's items, with a
+ * way back. "All items" heads the groups, for a search that does not know where an item is. The groups and their words
+ * are the view-model's; this holds only which group is open.
+ */
+function GroupedPicker({
+  groups,
+  elements,
+  candidateLabel,
+  notes,
+  onSelect,
+}: {
+  groups: OfferGroup[];
+  elements: ElementIndex;
+  candidateLabel: (id: ElementId) => string;
+  notes: ReadonlyMap<ElementId, string>;
+  onSelect: (id: ElementId) => void;
+}): React.JSX.Element {
+  const [open, setOpen] = useState<OfferGroup | null>(null);
+  // The last group shown stays in the right-hand panel while it slides away, so the slide back is not to a blank.
+  const [shown, setShown] = useState<OfferGroup | null>(null);
+  const choose = (group: OfferGroup): void => {
+    setShown(group);
+    setOpen(group);
+  };
+  return (
+    <div className="offer-groups">
+      <div className={open ? 'offer-groups-track open' : 'offer-groups-track'}>
+        <div className="offer-groups-panel" inert={open !== null}>
+          <ul className="offer-group-list">
+            {groups.map((group) => (
+              <li key={group.label}>
+                <button
+                  type="button"
+                  className={group.label === ALL_ITEMS_LABEL ? 'offer-group all' : 'offer-group'}
+                  onClick={() => choose(group)}
+                >
+                  {offerGroupLine(group)}
+                  <span aria-hidden="true">›</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="offer-groups-panel" inert={open === null}>
+          {shown && (
+            <>
+              <div className="decision-head">
+                <button type="button" className="link" onClick={() => setOpen(null)}>
+                  ‹ All groups
+                </button>
+                <span className="label">{shown.label}</span>
+              </div>
+              <CandidatePicker
+                key={shown.label}
+                candidates={shown.options}
+                elements={elements}
+                candidateLabel={candidateLabel}
+                notes={notes}
+                onSelect={onSelect}
+              />
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

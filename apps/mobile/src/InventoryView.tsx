@@ -41,9 +41,11 @@ export function InventoryView({
   const add = (buy: boolean): void => {
     // Asked of the builder only when the list is opened: it is every item loaded.
     const options = builder.inventoryOptionsFor();
+    const groups = builder.inventoryGroupsFor();
     pick({
       title: buy ? 'Buy an item' : 'Add an item',
       options,
+      ...(groups.length ? { groups } : {}),
       notes: new Map(options.map((id) => [id, builder.inventoryOptionNote(id)])),
       onPick: (id) => say(builder.addItem(id, buy)),
     });

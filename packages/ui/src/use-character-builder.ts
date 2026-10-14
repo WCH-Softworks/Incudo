@@ -152,6 +152,8 @@ import {
 import {
   adornmentOffer,
   inventoryOffer,
+  inventoryOfferGroups,
+  type OfferGroup,
   inventoryOfferNote,
   inventoryState,
   openMissingNote,
@@ -1001,6 +1003,9 @@ export class CharacterBuilder {
 
   /** What could be added to the bag, by name. Computed on request: it is thousands of items. */
   inventoryOptionsFor = (): ElementId[] => inventoryOffer(this.kind, this.steps, this.elements);
+
+  /** The same offer in the groups the kind names (ADR 0117), "All items" first; empty when it names none. */
+  inventoryGroupsFor = (): OfferGroup[] => inventoryOfferGroups(this.kind, this.inventoryOptionsFor(), this.elements);
 
   /** What a candidate is, beside its name: its price, attunement and what it is attached to. */
   inventoryOptionNote = (elementId: ElementId): string => {

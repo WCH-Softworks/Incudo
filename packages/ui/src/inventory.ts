@@ -191,6 +191,55 @@ export function inventoryOffer(kind: ResolvedCharacterKind, steps: readonly Buil
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).map((e) => e.id);
 }
 
+/** One group of the add list: its name as content writes it, and its items in the offer's order. */
+export interface OfferGroup {
+  label: string;
+  options: ElementId[];
+}
+
+/** The first entry of a grouped add list: everything, for a search that does not know the group. */
+export const ALL_ITEMS_LABEL = 'All items';
+/** The group of items that write no value for the kind's `groupSetter`. */
+export const OTHER_ITEMS_LABEL = 'Other';
+
+/**
+ * The add list in groups — ADR 0117: "All items" first, then one group per value of the kind's `groupSetter`, by name,
+ * with "Other" last for items that write none. Values are joined ignoring case and surrounding space, under the first
+ * spelling met. Empty when the kind names no setter: the list is not grouped.
+ */
+export function inventoryOfferGroups(
+  kind: ResolvedCharacterKind,
+  offer: readonly ElementId[],
+  elements: Pick<ElementIndex, 'get'>,
+): OfferGroup[] {
+  const setter = kind.inventory?.groupSetter;
+  if (!setter) return [];
+  const groups = new Map<string, OfferGroup>();
+  const other: ElementId[] = [];
+  for (const id of offer) {
+    const value = elements.get(id)?.setters[setter]?.value?.trim();
+    if (!value) {
+      other.push(id);
+      continue;
+    }
+    const key = value.toLowerCase();
+    const group = groups.get(key);
+    if (group) group.options.push(id);
+    else groups.set(key, { label: value, options: [id] });
+  }
+  const named = [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
+  return [
+    { label: ALL_ITEMS_LABEL, options: [...offer] },
+    ...named,
+    ...(other.length ? [{ label: OTHER_ITEMS_LABEL, options: other }] : []),
+  ];
+}
+
+/** What a group's entry in the list says: "Potions (99)". */
+export function offerGroupLine(group: OfferGroup): string {
+  return `${group.label} (${group.options.length})`;
+}
+
 /** What a candidate is, beside its name in the picker: "15 gp · requires attunement · made from Armor". */
 export function inventoryOfferNote(element: Element, kind: ResolvedCharacterKind, system: GameSystem): string {
   const parts = [priceText(itemPrice(element, kind, system)) ?? 'no price'];

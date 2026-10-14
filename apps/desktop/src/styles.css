@@ -2758,3 +2758,60 @@ ul.browse-categories {
     grid-template-columns: 1fr;
   }
 }
+
+/*
+ * The add list in groups (ADR 0117): two panels side by side in a track twice the width, the groups and one group's
+ * items, and the track slides left to show the second. Only the track moves, so the picker inside keeps its own scroll.
+ */
+.offer-groups {
+  overflow: hidden;
+}
+
+.offer-groups-track {
+  display: flex;
+  align-items: flex-start;
+  width: 200%;
+  transition: transform 200ms ease;
+}
+
+/* The panel slid out of view takes no height, so the list below the picker sits under what is shown. */
+.offer-groups-track:not(.open) > .offer-groups-panel:last-child,
+.offer-groups-track.open > .offer-groups-panel:first-child {
+  height: 0;
+  overflow: hidden;
+}
+
+.offer-groups-track.open {
+  transform: translateX(-50%);
+}
+
+.offer-groups-panel {
+  width: 50%;
+  min-width: 0;
+}
+
+.offer-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.offer-group {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0 0 4px;
+  text-align: left;
+}
+
+.offer-group.all {
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-groups-track {
+    transition: none;
+  }
+}

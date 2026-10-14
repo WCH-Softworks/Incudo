@@ -12,7 +12,7 @@ import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ElementId, ElementIndex } from '@incudo/core';
-import { expandDescription, htmlToBlocks, searchCandidates } from '@incudo/ui';
+import { expandDescription, htmlToBlocks, offerGroupLine, searchCandidates, type OfferGroup } from '@incudo/ui';
 
 import { Button } from './controls.tsx';
 import { RichText } from './RichText.tsx';
@@ -30,6 +30,11 @@ export interface PickerRequest {
   notes?: ReadonlyMap<ElementId, string>;
   /** False when the options are not elements (a written feature's stats), so there is no text to show. */
   details?: boolean;
+  /**
+   * The options in groups, shown first; choosing one shows its options, with a way back (ADR 0117: the add list's
+   * categories). `options` is still the whole list.
+   */
+  groups?: readonly OfferGroup[];
 }
 
 export function Picker({
@@ -64,10 +69,41 @@ function PickerBody({
   const palette = usePalette();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<ElementId | null>(null);
+  const [group, setGroup] = useState<OfferGroup | null>(null);
+  const shown = group?.options ?? request.options;
   const options = useMemo(
-    () => request.options.map((id) => ({ id, label: request.labels?.get(id) ?? labelOf(id) })),
-    [request.options, request.labels, labelOf],
+    () => shown.map((id) => ({ id, label: request.labels?.get(id) ?? labelOf(id) })),
+    [shown, request.labels, labelOf],
   );
+
+  if (request.groups?.length && group === null) {
+    return (
+      <SafeAreaView style={[styles.page, { backgroundColor: palette.background }]}>
+        <View style={styles.head}>
+          <Text style={[styles.title, { color: palette.text }]} numberOfLines={2} accessibilityRole="header">
+            {request.title}
+          </Text>
+          <Button label="Close" kind="link" onPress={onClose} />
+        </View>
+        <FlatList
+          data={request.groups}
+          keyExtractor={(entry) => entry.label}
+          renderItem={({ item }) => (
+            <Pressable
+              style={({ pressed }) => [styles.option, { borderColor: palette.border, opacity: pressed ? 0.6 : 1 }]}
+              onPress={() => {
+                setQuery('');
+                setGroup(item);
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.label, { color: palette.text }]}>{offerGroupLine(item)} ›</Text>
+            </Pressable>
+          )}
+        />
+      </SafeAreaView>
+    );
+  }
   const { matches } = searchCandidates(options, query);
 
   return (
@@ -78,6 +114,7 @@ function PickerBody({
         </Text>
         <Button label="Close" kind="link" onPress={onClose} />
       </View>
+      {group ? <Button label={`‹ All groups (${group.label})`} kind="link" onPress={() => setGroup(null)} /> : null}
       <TextInput
         value={query}
         onChangeText={setQuery}

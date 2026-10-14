@@ -356,6 +356,7 @@
         "hiddenSetter": "inventory-hidden",
         "types": ["Item", "Weapon", "Armor", "Magic Item"],
         "adornSetter": "type",
+        "groupSetter": "category",
         "price": { "setter": "cost", "unitAttribute": "currency" }
       },
 
