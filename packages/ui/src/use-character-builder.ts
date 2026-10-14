@@ -124,7 +124,7 @@ import { additionOptions, additionsState, heldBlocks, type AdditionOption, type 
 import { referenceOptions, referencesState, type ReferencesState } from './references.ts';
 import { companionsView, type CompanionsView } from './companions.ts';
 import { sheetView, type SheetView } from './sheet.ts';
-import { freeformState, type FreeformState } from './freeform.ts';
+import { chosenUnderSelect, freeformState, type FreeformState } from './freeform.ts';
 import { spellAttackRefusal, spellAttacksState, type SpellAttacksState } from './spell-attacks.ts';
 import { sheetDescriptions, type SheetDescriptions } from './sheet-descriptions.ts';
 import { adjustPlay, playView, restPlay, setPlayCondition, setPlaySpent, setPlayTemporary, type PlayView } from './play.ts';
@@ -1563,9 +1563,14 @@ export class CharacterBuilder {
     if (next === this.character) return;
     this.character = next;
     const state = this.getState();
-    this.cached = { ...state, character: next, freeform: freeformState(next, this.kind) };
+    this.cached = { ...state, character: next, freeform: freeformState(next, this.kind, this.chosenUnderSelect(next, state.derived)) };
     for (const listener of this.listeners) listener();
   };
+
+  /** What a freeform field's `suggestedBy` reads: the held elements chosen under a select of that name. */
+  private chosenUnderSelect(character: Character, derived: DerivedCharacter): (select: string) => string[] {
+    return chosenUnderSelect(character, derived.elementIds, (id) => this.elements.get(id)?.name);
+  }
 
   private playEdit(edit: (view: PlayView) => Character): void {
     const state = this.getState();
@@ -2091,7 +2096,7 @@ export class CharacterBuilder {
       descriptions,
       sheet,
       ...(play ? { play } : {}),
-      freeform: freeformState(this.character, this.kind),
+      freeform: freeformState(this.character, this.kind, this.chosenUnderSelect(this.character, derived)),
       spellAttacks: spellAttacksState(derived, this.kind),
       ...(startingEquipment ? { startingEquipment } : {}),
       ...(inventory ? { inventory } : {}),

@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { createCharacter, MapElementIndex, setFreeform, type Character, type GameSystem } from '@incudo/core';
 
 import { formValues, type FormMap } from './form-fill.ts';
-import { freeformState, sheetFreeform } from './freeform.ts';
+import { chosenUnderSelect, freeformState, sheetFreeform } from './freeform.ts';
 import { DEFAULT_PRINT_OPTIONS, printOptionsView, printPartsOf } from './print-options.ts';
 import { sheetDocument } from './sheet-document.ts';
 import { sheetMarkdown } from './sheet-markdown.ts';
@@ -143,4 +143,32 @@ test('a form fills a box from a field, writes long text whole and names it as ru
   assert.deepEqual(values.leftOff, ["Story runs past the form's box"]);
   b.setFreeform('story', 'short');
   assert.deepEqual(formValues(sheetDocument(b.getState()), map).leftOff, []);
+});
+
+test('a field stands in with what was chosen under the selects it names, until something is typed', () => {
+  // Fails if `suggestedBy` is not read (the field and the sheet stay empty), if a pick the character no longer holds is
+  // read, if the suggestion is written to the character, or if typed text does not win.
+  const kind = {
+    freeform: { label: 'About', fields: [{ key: 'story', label: 'Story', multiline: true, suggestedBy: ['Quirk'] }] },
+  };
+  const character: Character = {
+    ...createCharacter('test', 'hero'),
+    choices: [
+      { ruleKey: 'BACKGROUND/select:Quirk', elementIds: ['Q1', 'Q2'] },
+      { ruleKey: 'OTHER/select:Not a quirk', elementIds: ['Q3'] },
+    ],
+  };
+  const names: Record<string, string> = { Q1: 'Hums.', Q2: 'Counts steps.', Q3: 'Never shown.' };
+  const chosen = chosenUnderSelect(character, new Set(['Q1', 'Q2', 'Q3']), (id) => names[id]);
+  const state = freeformState(character, kind as never, chosen);
+  assert.equal(state.groups[0]!.fields[0]!.suggested, 'Hums.\nCounts steps.');
+  assert.equal(state.groups[0]!.fields[0]!.value, '');
+  assert.deepEqual(character.freeform, {});
+  assert.equal(sheetFreeform(state)!.groups[0]!.entries[0]!.text, 'Hums.\nCounts steps.');
+
+  const notHeld = chosenUnderSelect(character, new Set(['Q2']), (id) => names[id]);
+  assert.equal(freeformState(character, kind as never, notHeld).groups[0]!.fields[0]!.suggested, 'Counts steps.');
+
+  const typed = setFreeform(character, 'story', 'Whistles.');
+  assert.equal(sheetFreeform(freeformState(typed, kind as never, chosen))!.groups[0]!.entries[0]!.text, 'Whistles.');
 });

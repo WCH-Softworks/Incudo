@@ -2251,6 +2251,20 @@ packages, inventory and money, prepared spells, About the character, For referen
 `switch-build-tab` (View menu, Build only, Ctrl+Shift+H, not yet pressed with real keys in the window) moves between
 them. The phone has the switch and not the tabs or the fold.
 
+**Each level's hit points are a card of their own** (2026-10-14, the maintainer's call): a `hitpoints` decision per level
+still to record or under review (`OpenDecision.hitPointLevel`, "Hit Points, level 4", `hitPointDecisionLabel`), opening at
+that level, so a new level asks for its own roll among its own choices. A roll is not an acceptance: the card stays
+until its Done (`confirmHitPoints(stepId, level)`; with no level, every level). `HitPointState.reviewingLevels`; the
+desktop's `HitPointEditor` and the phone's `HitPointsView` take `only`. The whole table is in "Values already set" once
+any level is not an open card (`settledSteps`).
+
+**Alignment and Deity are skippable picks, and a background's chosen suggestions stand in for the personality text**
+([ADR 0116](docs/adr/0116-a-text-field-may-stand-in-with-what-a-character-chose-and-alignment-and-deity-are-picks.md)).
+5e's "Details" step offered nothing (not required, a pick or a set); it is two `pick: true` steps now (9 alignments, 296
+deities). A freeform field may declare `suggestedBy` (select names): while blank it shows the held elements chosen under
+those selects, one per line, on Build and the sheet, stored nowhere (`chosenUnderSelect`, `freeform.ts`). Aurora copies
+the same text into the save, so an import shows its own copy. Driven in the browser build.
+
 **Hit points have no oracle in the save file, and a referee on the screen** (ADR 0019, ADR 0044). Aurora's
 saves record the per-level rolls and never the total, so `aurora verify` has nothing to diff; the referee is
 the maintainer's readout, and `aurora-oracle.test.ts` holds `hp` to it on all 30 samples. Say "agrees with a

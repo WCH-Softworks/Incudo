@@ -20,9 +20,9 @@ export function FreeformEditor({ state, builder }: { state: FreeformState; build
             <label key={field.key} className={field.multiline ? 'freeform-field multiline' : 'freeform-field'}>
               <span>{field.label}</span>
               {field.multiline ? (
-                <textarea rows={3} value={field.value} onChange={(event) => builder.setFreeform(field.key, event.target.value)} />
+                <textarea rows={3} value={field.value || field.suggested || ''} onChange={(event) => builder.setFreeform(field.key, event.target.value)} />
               ) : (
-                <input type="text" value={field.value} onChange={(event) => builder.setFreeform(field.key, event.target.value)} />
+                <input type="text" value={field.value || field.suggested || ''} onChange={(event) => builder.setFreeform(field.key, event.target.value)} />
               )}
             </label>
           ))}

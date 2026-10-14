@@ -507,7 +507,8 @@
           "description": "A score raised or lowered by one beyond what the scores and the build give, for a table that grants or imposes one. Taking none is the ordinary answer." },
         { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
         { "id": "spells", "label": "Spells", "types": ["Spell"], "requires": ["class"] },
-        { "id": "details", "label": "Details", "types": ["Alignment", "Deity"] }
+        { "id": "alignment", "label": "Alignment", "types": ["Alignment"], "pick": true },
+        { "id": "deity", "label": "Deity", "types": ["Deity"], "pick": true }
       ],
 
       "freeform": {
@@ -558,25 +559,29 @@
             "key": "background-traits",
             "label": "Personality Traits",
             "group": "Personality",
-            "multiline": true
+            "multiline": true,
+            "suggestedBy": ["Personality Trait"]
           },
           {
             "key": "background-ideals",
             "label": "Ideals",
             "group": "Personality",
-            "multiline": true
+            "multiline": true,
+            "suggestedBy": ["Ideal"]
           },
           {
             "key": "background-bonds",
             "label": "Bonds",
             "group": "Personality",
-            "multiline": true
+            "multiline": true,
+            "suggestedBy": ["Bond"]
           },
           {
             "key": "background-flaws",
             "label": "Flaws",
             "group": "Personality",
-            "multiline": true
+            "multiline": true,
+            "suggestedBy": ["Flaw"]
           },
           {
             "key": "background-trinket",

@@ -240,6 +240,10 @@ there, because a name in JSON is always text).
 `freeform` declares boxes of text no rule reads: appearance, backstory, notes. Build shows them; the sheet shows what is
 written in them. A `key` is how the text is stored in the character: do not rename one once characters use it.
 
+A field may also say `"suggestedBy": ["Personality Trait"]`: while nothing is typed in it, it shows what the character
+chose in any `select` of that name (a background's suggested traits, one per line), and the sheet prints that. Nothing
+is stored until the user types, and what they type replaces it.
+
 ### The sheet
 
 ```json $defs/sheetSection

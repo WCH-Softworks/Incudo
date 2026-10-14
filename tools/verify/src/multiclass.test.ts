@@ -290,7 +290,7 @@ test(
     const builder = new CharacterBuilder(reference, system, elements);
     const before = builder.getState();
     assert.deepEqual(
-      before.decisions.filter((d) => d.kind === 'pick' && !d.multiple).map((d) => d.stepId),
+      before.decisions.filter((d) => d.kind === 'pick' && !d.multiple && ['race', 'class', 'background'].includes(d.stepId)).map((d) => d.stepId),
       [],
       'no race, class or background is reported as open',
     );
@@ -321,7 +321,7 @@ test(
     );
     assert.equal(after.derived.elementIds.has(race.chosen[0]!), false);
     assert.equal(after.derived.elementIds.has(replacement), true);
-    assert.deepEqual(after.decisions.filter((d) => d.kind === 'pick' && !d.multiple), []);
+    assert.deepEqual(after.decisions.filter((d) => d.kind === 'pick' && !d.multiple && ['race', 'class', 'background'].includes(d.stepId)), []);
 
     // Changing the class re-homes what the old first class held, exactly as it does for a
     // character the builder wrote: the Paladin's three levels go to the new class, the Sorcerer's

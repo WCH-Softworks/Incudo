@@ -1616,6 +1616,12 @@ export interface FreeformFieldDef {
   group?: string;
   /** Whether the text runs to more than one line: a backstory, not an age. */
   multiline?: boolean;
+  /**
+   * The names of the `select`s whose chosen elements stand in for this field while nothing is typed in it: a background's
+   * suggested "Personality Trait". Each chosen element's name, one per line, in the order chosen. Read off the choices
+   * every time and stored nowhere; text the user types replaces it.
+   */
+  suggestedBy?: string[];
 }
 
 /**

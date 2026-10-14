@@ -459,7 +459,7 @@ export function FreeformView({ state, builder }: { state: BuilderState; builder:
           {group.fields.map((field) => (
             <View key={field.key}>
               <Body tone="muted">{field.label}</Body>
-              <DraftField value={field.value} label={field.label} multiline={field.multiline} onCommit={(value) => builder.setFreeform(field.key, value)} />
+              <DraftField value={field.value || field.suggested || ''} label={field.label} multiline={field.multiline} onCommit={(value) => builder.setFreeform(field.key, value)} />
             </View>
           ))}
         </Card>
