@@ -270,8 +270,20 @@ function Base({ stepId, budget, row, builder, label }: { stepId: string; budget:
 
 // --- hit points ---------------------------------------------------------------------------------------------------
 
-export function HitPointsView({ stepId, state, builder }: { stepId: string; state: HitPointState; builder: CharacterBuilder }) {
+export function HitPointsView({
+  stepId,
+  state,
+  builder,
+  only,
+}: {
+  stepId: string;
+  state: HitPointState;
+  builder: CharacterBuilder;
+  /** One level's card among the open decisions: just that level, with its own Done. */
+  only?: number;
+}) {
   const palette = usePalette();
+  const levels = only === undefined ? state.levels : state.levels.filter((level) => level.level === only);
   if (state.fixed) {
     return (
       <View style={styles.part}>
@@ -282,7 +294,7 @@ export function HitPointsView({ stepId, state, builder }: { stepId: string; stat
   }
   return (
     <View style={styles.part}>
-      {state.levels.map((level) => (
+      {levels.map((level) => (
         <View key={level.level} style={[styles.scoreRow, { borderColor: palette.border }]}>
           <View style={styles.scoreHead}>
             <Text style={[styles.scoreName, { color: palette.text }]}>
@@ -316,7 +328,9 @@ export function HitPointsView({ stepId, state, builder }: { stepId: string; stat
           )}
         </View>
       ))}
-      {state.reviewing && state.pending.length === 0 ? <Button label="Done" kind="primary" onPress={() => builder.confirmHitPoints(stepId)} /> : null}
+      {only !== undefined && state.reviewingLevels.includes(only) && !state.pending.some((level) => level.level === only) ? (
+        <Button label="Done" kind="primary" onPress={() => builder.confirmHitPoints(stepId, only)} />
+      ) : null}
     </View>
   );
 }

@@ -70,6 +70,11 @@ export interface HitPointState {
    */
   reviewing: boolean;
   /**
+   * The levels recorded in this session and not yet confirmed, each its own open decision: a roll is not an acceptance,
+   * so a level's card stays until its Done. Empty when `reviewing` is false.
+   */
+  reviewingLevels: number[];
+  /**
    * The character has the step's `fixedWhen` element, so every level is fixed and nothing is
    * offered to roll. Recorded rolls stay on the character and are not read (ADR 0044).
    */
@@ -96,7 +101,8 @@ export function computeHitPointState(
   character: Character,
   derived: DerivedCharacter,
   progression: Progression,
-  reviewing = false,
+  /** The levels recorded in this session and not yet confirmed (`HitPointState.reviewingLevels`). */
+  reviewing: ReadonlySet<number> = new Set(),
 ): HitPointState | undefined {
   const config = step.levelRoll;
   if (!config) return undefined;
@@ -154,7 +160,8 @@ export function computeHitPointState(
     levels,
     // Nothing is outstanding while the levels are fixed: there is no die to roll.
     pending: fixed ? [] : levels.filter((l) => l.dieSides !== undefined && l.recorded === undefined),
-    reviewing: fixed ? false : reviewing,
+    reviewing: fixed ? false : levels.some((l) => reviewing.has(l.level)),
+    reviewingLevels: fixed ? [] : levels.filter((l) => reviewing.has(l.level)).map((l) => l.level),
     fixed,
   };
 }
@@ -230,4 +237,9 @@ export function planHitPointChange(
     return { key, value: Math.min(level.dieSides, Math.max(1, Math.round(change.value))) };
   }
   return { key, value: valueFor(change, level.dieSides, level.average!, random) };
+}
+
+/** What one level's card is called among the open decisions: "Hit Points, level 4". */
+export function hitPointDecisionLabel(level: number): string {
+  return `Hit Points, level ${level}`;
 }

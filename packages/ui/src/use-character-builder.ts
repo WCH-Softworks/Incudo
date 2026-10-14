@@ -102,6 +102,7 @@ import {
 
 import {
   computeHitPointState,
+  hitPointDecisionLabel,
   planHitPointChange,
   planHitPointRecord,
   type HitPointChange,
@@ -211,6 +212,8 @@ export interface OpenDecision {
    * equipment and the sets beside them). Open decisions are listed by it, then by their step's rank.
    */
   opensAt?: number;
+  /** A `hitpoints` decision's level: each level still to record, or still under review, is a decision of its own. */
+  hitPointLevel?: number;
   /** A select's remaining picks, or a budget's unspent points. */
   remaining: number;
   /**
@@ -511,7 +514,8 @@ export class CharacterBuilder {
   private readonly steps: BuildStepDef[];
   private focusedId: string | undefined;
   private readonly listeners = new Set<() => void>();
-  private readonly reviewingHitPoints = new Set<string>();
+  /** Per step, the levels recorded in this session and not yet confirmed: each keeps its own card open. */
+  private readonly reviewingHitPoints = new Map<string, Set<number>>();
   private cached: BuilderState | undefined;
   private readonly random: () => number;
   /** The system's starting equipment for this kind (ADR 0087), and the answers given to its options, never saved. */
@@ -1482,8 +1486,12 @@ export class CharacterBuilder {
    * Recording the last pending level does not close it on its own (see `HitPointState.reviewing`):
    * whoever just rolled has not necessarily accepted the roll.
    */
-  confirmHitPoints = (stepId: string): void => {
-    if (!this.reviewingHitPoints.delete(stepId)) return;
+  confirmHitPoints = (stepId: string, level?: number): void => {
+    const reviewing = this.reviewingHitPoints.get(stepId);
+    if (!reviewing) return;
+    if (level === undefined) reviewing.clear();
+    else if (!reviewing.delete(level)) return;
+    if (reviewing.size === 0) this.reviewingHitPoints.delete(stepId);
     this.invalidate();
   };
 
@@ -1492,7 +1500,11 @@ export class CharacterBuilder {
     // the user already being in the middle of editing it, and bouncing the card back into Open
     // decisions under their cursor would undo the point of having an Edit button. Level 1 never
     // does either: there is nothing about it to reconsider.
-    if (entry.recorded === undefined && !entry.isFirst) this.reviewingHitPoints.add(stepId);
+    if (entry.recorded === undefined && !entry.isFirst) {
+      const reviewing = this.reviewingHitPoints.get(stepId) ?? new Set<number>();
+      reviewing.add(entry.level);
+      this.reviewingHitPoints.set(stepId, reviewing);
+    }
     this.character = setRoll(this.character, plan.key, plan.value);
     this.invalidate();
   }
@@ -1927,19 +1939,24 @@ export class CharacterBuilder {
         this.character,
         derived,
         this.kind.progression,
-        this.reviewingHitPoints.has(step.id),
+        this.reviewingHitPoints.get(step.id),
       );
       if (!state) continue;
       hitPoints.set(step.id, state);
-      if (state.pending.length > 0 || (state.reviewing && state.levels.length > 0)) {
+      // One card per level still to record or still under review, opening at that level, so a character taken from 1
+      // to 6 is asked for level 4's roll among level 4's choices rather than for every roll at once.
+      const pending = new Set(state.pending.map((level) => level.level));
+      for (const level of state.levels) {
+        if (!pending.has(level.level) && !state.reviewingLevels.includes(level.level)) continue;
         decisions.push({
-          id: `hitpoints:${step.id}`,
+          id: `hitpoints:${step.id}:${level.level}`,
           kind: 'hitpoints',
-          label: 'Hit Points',
+          label: hitPointDecisionLabel(level.level),
           stepId: step.id,
           blocking: true,
-          ...(state.pending[0] ? { opensAt: state.pending[0].level } : {}),
-          remaining: state.pending.length,
+          hitPointLevel: level.level,
+          opensAt: level.level,
+          remaining: pending.has(level.level) ? 1 : 0,
           // A per-level roll assigns a number, not an element.
           candidates: [],
           chosen: [],

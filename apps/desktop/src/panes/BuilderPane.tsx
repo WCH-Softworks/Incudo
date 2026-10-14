@@ -511,7 +511,7 @@ export function BuilderPane({
                 <div key={step.id} className="settled">
                   <div className="decision-head">
                     <span className="label">{step.label}</span>
-                    <span className="tag done">complete</span>
+                    {step.complete && <span className="tag done">complete</span>}
                   </div>
                   {step.budget && (
                     <CompactBudget stepId={step.id} budget={step.budget} builder={builder} kind={kind} />
@@ -729,14 +729,13 @@ function Decision({
       ) : decision.kind === 'hitpoints' ? (
         hitPoints ? (
           <>
-            <HitPointEditor stepId={decision.stepId} state={hitPoints} builder={builder} />
+            <HitPointEditor stepId={decision.stepId} state={hitPoints} builder={builder} only={decision.hitPointLevel} />
             {/*
-              Only once nothing is left to record. The decision has stayed open for this on
-              purpose — a roll is not an acceptance — and this is what closes it. Until then
-              the rows above are the way forward, so a Done here would be a way to skip them.
+              Only once this level is recorded. The card has stayed open for this on purpose — a roll is not an
+              acceptance — and this is what closes it. Until then the buttons above are the way forward.
             */}
-            {hitPoints.reviewing && hitPoints.pending.length === 0 && (
-              <button type="button" onClick={() => builder.confirmHitPoints(decision.stepId)}>
+            {decision.remaining === 0 && decision.hitPointLevel !== undefined && (
+              <button type="button" onClick={() => builder.confirmHitPoints(decision.stepId, decision.hitPointLevel)}>
                 Done
               </button>
             )}

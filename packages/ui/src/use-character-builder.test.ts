@@ -19,6 +19,7 @@ import {
   type Setter,
 } from '@incudo/core';
 import { CharacterBuilder } from './use-character-builder.ts';
+import { settledSteps } from './build-view.ts';
 
 function element(
   id: string,
@@ -1600,6 +1601,34 @@ test('the last roll does not close the decision until the user confirms it', () 
   assert.equal(hpDecision(), undefined);
   assert.equal(levelsStep().complete, true);
   assert.equal(b.hitPointsFor('levels')!.reviewing, false);
+});
+
+test('each level is a card of its own, opening at that level, and Done closes only its own', () => {
+  // Fails if the levels are one decision again (one card for 2 to 4), if a card does not open at its level (it would
+  // sort before the level's other choices), or if confirming one level closes another's review.
+  const b = new CharacterBuilder(
+    createCharacter('test', 'pc', { progress: 4 }),
+    systemWithLevelRoll(),
+    indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } })),
+    { random: sequence([3, 5, 7], 8) },
+  );
+  b.choose('build/kit', ['CLASSY']);
+  const cards = () => b.getState().decisions.filter((d) => d.kind === 'hitpoints');
+  assert.deepEqual(cards().map((d) => [d.label, d.hitPointLevel, d.opensAt, d.remaining]), [
+    ['Hit Points, level 1', 1, 1, 1],
+    ['Hit Points, level 2', 2, 2, 1],
+    ['Hit Points, level 3', 3, 3, 1],
+    ['Hit Points, level 4', 4, 4, 1],
+  ]);
+
+  b.recordHitPoints('levels', 1, 'average');
+  b.recordHitPoints('levels', 2, 'roll');
+  b.recordHitPoints('levels', 3, 'roll');
+  assert.deepEqual(cards().map((d) => [d.hitPointLevel, d.remaining]), [[2, 0], [3, 0], [4, 1]], 'a roll is not an acceptance');
+  assert.equal(settledSteps(b.getState()).some((s) => s.id === 'levels'), true, 'the recorded ones are listed as set');
+
+  b.confirmHitPoints('levels', 2);
+  assert.deepEqual(cards().map((d) => d.hitPointLevel), [3, 4], 'level 2 closes, level 3 stays under review');
 });
 
 test('rolling a confirmed level again does not reopen the decision', () => {

@@ -391,7 +391,7 @@ function DecisionView({
     );
   } else if (decision.kind === 'hitpoints') {
     body = step?.hitPoints ? (
-      <HitPointsView stepId={decision.stepId} state={step.hitPoints} builder={builder} />
+      <HitPointsView stepId={decision.stepId} state={step.hitPoints} builder={builder} only={decision.hitPointLevel} />
     ) : (
       <Body tone="danger">Incudo could not show this step. This is a bug in Incudo.</Body>
     );

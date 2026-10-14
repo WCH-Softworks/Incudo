@@ -40,7 +40,8 @@ export function withoutSlot(pick: SettledPick, index: number): ElementId[] {
 
 /**
  * Steps whose values are set and still editable: a budget nothing is outstanding on, and a step's per-level hit points
- * once nothing is left to record. A finished budget leaves `decisions`, and would take its editor with it otherwise.
+ * once some level is not an open card of its own (each level still to record is one). A finished budget leaves
+ * `decisions`, and would take its editor with it otherwise.
  */
 export function settledSteps(state: Pick<BuilderState, 'steps' | 'decisions'>): BuilderStep[] {
   const open = (kind: OpenDecision['kind'], stepId: string): boolean =>
@@ -48,7 +49,9 @@ export function settledSteps(state: Pick<BuilderState, 'steps' | 'decisions'>): 
   return state.steps.filter(
     (step) =>
       (step.budget !== undefined && !open('budget', step.id)) ||
-      (step.hitPoints !== undefined && step.hitPoints.levels.length > 0 && !open('hitpoints', step.id)),
+      (step.hitPoints !== undefined &&
+        step.hitPoints.levels.length >
+          state.decisions.filter((decision) => decision.kind === 'hitpoints' && decision.stepId === step.id).length),
   );
 }
 

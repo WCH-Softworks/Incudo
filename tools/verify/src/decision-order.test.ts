@@ -59,7 +59,13 @@ test('a Fighter taken to 6 meets its first-level choices before its later ones',
   const sixth = at(decisions, 'Improvement Option (Fighter 6)');
   assert.ok(style < archetype && skills < archetype, 'level 1 before level 3');
   assert.ok(archetype < fourth && fourth < sixth, 'level 3, then 4, then 6');
-  assert.equal(decisions.findIndex((d) => (d.opensAt ?? 0) > 1), archetype, 'nothing at level 1 after the first later choice');
+  const levels = decisions.map((d) => Math.max(d.opensAt ?? 0, 1));
+  assert.deepEqual(levels, [...levels].sort((a, b) => a - b), 'no choice is listed after one that opens later');
+  // Each level's hit points are a card of their own, among that level's choices.
+  assert.deepEqual(
+    decisions.filter((d) => d.kind === 'hitpoints').map((d) => d.opensAt),
+    [1, 2, 3, 4, 5, 6],
+  );
 });
 
 test('a Wizard taken to 6 meets its first cantrips and spellbook before its tradition and improvement', { skip: corpusSkip }, async (t) => {

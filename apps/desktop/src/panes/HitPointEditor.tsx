@@ -70,17 +70,21 @@ export function HitPointEditor({
   stepId,
   state,
   builder,
+  only,
 }: {
   stepId: string;
   state: HitPointState;
   builder: CharacterBuilder;
+  /** One level's card in Open decisions: just that level. The settled card's Edit shows them all. */
+  only?: number;
 }): React.JSX.Element {
-  const anyEditable = state.levels.some((level) => !level.isFirst && level.dieSides !== undefined);
+  const levels = only === undefined ? state.levels : state.levels.filter((level) => level.level === only);
+  const anyEditable = only === undefined && levels.some((level) => !level.isFirst && level.dieSides !== undefined);
 
   return (
     <>
       <div className="hp-levels">
-        {state.levels.map((level) => (
+        {levels.map((level) => (
           <div key={level.level} className="hp-level">
             <div className="hp-level-head">
               <span className="label">Level {level.level}</span>
