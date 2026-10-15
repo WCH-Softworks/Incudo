@@ -49,5 +49,7 @@ trait, ideal, bond and flaw have been chosen, and pointed out that there is no a
   character's parts, and the Personality Traits box holding the chosen trait. In the Tauri window on Windows (2026-10-15,
   real mouse and keys): Chaotic Good, two traits and an ideal taken, a bond typed; the Sheet shows all four, and the saved
   file records the alignment and the picks as choices and only the typed bond as text. Not driven on the phone.
-- **Open:** a pick that is not required reads "complete" among the character's parts with nothing taken, as every optional
-  step does; for Alignment and Deity that reads as if one were chosen.
+- ~~**Open:** a pick that is not required reads "complete" among the character's parts with nothing taken~~ Fixed
+  2026-10-15: a step says "complete" only once something is taken there (`BuilderStep.taken`), else "optional",
+  "skipped" (`BuilderStep.skipped`) or "nothing to choose" (`stepStatus`, `stepTone`, `build-view.ts`). Driven in the
+  Tauri window: Alignment chosen reads complete, Deity optional and then skipped, a Fighter's Spells nothing to choose.

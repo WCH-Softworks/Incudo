@@ -68,10 +68,31 @@ export function decisionTags(decision: OpenDecision): string[] {
   return tags;
 }
 
-/** What a step's line says of it: "complete", "2 open", or what it waits for. */
-export function stepStatus(step: BuilderStep, labelOf: (stepId: string) => string = (id) => id): string {
+/**
+ * What a step's line says of it: what it waits for, "2 open" while it owes an answer, and otherwise what is true of it.
+ * "complete" only once something is taken there: a step nothing obliges, with nothing taken, says "optional" while
+ * something may still be taken, "skipped" when it was skipped, and "nothing to choose" when nothing is offered. It
+ * used to say "complete" for all of them, so an alignment never chosen read as chosen.
+ */
+export function stepStatus(
+  step: Pick<BuilderStep, 'available' | 'blockedBy' | 'complete' | 'openCount' | 'taken' | 'skipped'>,
+  labelOf: (stepId: string) => string = (id) => id,
+): string {
   if (!step.available) return `needs ${step.blockedBy.map(labelOf).join(', ')}`;
-  return step.complete ? 'complete' : `${step.openCount} open`;
+  if (!step.complete) return `${step.openCount} open`;
+  if (step.taken) return 'complete';
+  if (step.openCount > 0) return 'optional';
+  if (step.skipped) return 'skipped';
+  return 'nothing to choose';
+}
+
+/** How a step's status is drawn: done once complete, open while it owes an answer, blocked, quiet otherwise. */
+export function stepTone(
+  step: Pick<BuilderStep, 'available' | 'complete' | 'taken'>,
+): 'done' | 'open' | 'blocked' | 'quiet' {
+  if (!step.available) return 'blocked';
+  if (!step.complete) return 'open';
+  return step.taken ? 'done' : 'quiet';
 }
 
 /** The scores a class asks for and the character lacks: "Strength 13 (you have 10) or Dexterity 13 (you have 8)". */

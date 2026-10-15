@@ -34,6 +34,7 @@ import {
   settledSteps,
   slotOptions,
   stepStatus,
+  stepTone,
   unplacedNote,
   UNCOUNTED_HEADING,
   UNCOUNTED_HINT,
@@ -245,11 +246,8 @@ export function BuilderPane({
                       {pick.chosen.map(candidateLabel).join(', ')}
                     </span>
                   ))}
-                {step.available ? (
-                  <span className={step.complete ? 'tag done' : 'tag open'}>{stepStatus(step)}</span>
-                ) : (
-                  <span className="tag blocked">{stepStatus(step)}</span>
-                )}
+                {/* "quiet" is a plain tag: optional, skipped or nothing to choose, none of them done or owed. */}
+                <span className={`tag ${stepTone(step)}`}>{stepStatus(step)}</span>
                 {step.budget && (
                   <span className="tag">
                     {step.budget.pooled

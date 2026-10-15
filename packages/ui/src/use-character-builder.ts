@@ -288,6 +288,13 @@ export interface BuilderStep {
   openCount: number;
   /** No *blocking* decisions outstanding. An available step with optional picks is complete. */
   complete: boolean;
+  /**
+   * Something is answered here: a pick or a select's answer under this step, its scores all set, or a level's hit
+   * points recorded or fixed. What tells "complete" from "nothing taken" on a step nothing obliges (`stepStatus`).
+   */
+  taken: boolean;
+  /** A decision of this step was skipped (ADR 0033). */
+  skipped: boolean;
   budget?: BudgetState;
   /** This step's per-level rolls, when it declares a `levelRoll` — ADR 0019. */
   hitPoints?: HitPointState;
@@ -2045,6 +2052,11 @@ export class CharacterBuilder {
         blockedBy,
         openCount: open.length,
         complete: !open.some((decision) => decision.blocking),
+        taken:
+          picks.some((pick) => pick.stepId === step.id && pick.chosen.length > 0) ||
+          (budgets.get(step.id) !== undefined && budgets.get(step.id)!.unassigned.length === 0) ||
+          (hitPoints.get(step.id)?.levels.some((level) => level.recorded !== undefined || level.fixedValue !== undefined) ?? false),
+        skipped: declined.some((decision) => decision.stepId === step.id),
         budget: budgets.get(step.id),
         hitPoints: hitPoints.get(step.id),
         classLevels:

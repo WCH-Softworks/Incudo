@@ -25,6 +25,7 @@ import {
   shortfallText,
   slotOptions,
   stepStatus,
+  stepTone,
   unavailableReason,
   withSlot,
   withoutSlot,
@@ -69,6 +70,8 @@ const step = (patch: Partial<BuilderStep>): BuilderStep => ({
   blockedBy: [],
   openCount: 0,
   complete: true,
+  taken: true,
+  skipped: false,
   ...patch,
 });
 
@@ -113,6 +116,21 @@ test("a step's status names what holds it shut", () => {
   assert.equal(stepStatus(step({ available: false, blockedBy: ['class'] }), (id) => (id === 'class' ? 'Class' : id)), 'needs Class');
   assert.equal(stepStatus(step({ complete: false, openCount: 2 })), '2 open');
   assert.equal(stepStatus(step({})), 'complete');
+});
+
+test('a step nothing obliges says complete only once something is taken there', () => {
+  // Fails with the old wording, where every step with nothing blocking read "complete": an alignment never chosen read
+  // as chosen. Each line names a state the Build pane shows.
+  assert.equal(stepStatus(step({ taken: false, openCount: 1 })), 'optional', 'offered and not taken');
+  assert.equal(stepStatus(step({ taken: false, skipped: true })), 'skipped');
+  assert.equal(stepStatus(step({ taken: false, skipped: true, openCount: 1 })), 'optional', 'something else still offered');
+  assert.equal(stepStatus(step({ taken: false })), 'nothing to choose');
+  assert.equal(stepStatus(step({ taken: true, openCount: 1 })), 'complete', 'a set with more on offer is still answered');
+  assert.equal(stepStatus(step({ taken: false, complete: false, openCount: 2 })), '2 open', 'an obligation wins');
+  assert.deepEqual(
+    [step({}), step({ taken: false }), step({ complete: false }), step({ available: false })].map(stepTone),
+    ['done', 'quiet', 'open', 'blocked'],
+  );
 });
 
 const stats: StatDef[] = [{ name: 'str', derive: { kind: 'ref', stat: 'strength' } } as StatDef, { name: 'strength', label: 'Strength' } as StatDef];
