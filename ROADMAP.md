@@ -1433,7 +1433,26 @@ the kind machinery is not decorative.*
       Content first, from upstream or a user's own file; then whether a sidekick is an NPC with a class track or a held
       creature. *Measured again on 2026-10-12 at upstream's head (c28ce6c): still only that empty `Source`, and Tasha's
       names sidekicks only in its book's description. Kept in this phase by the maintainer's call (2026-10-12), so the
-      phase stays open while it waits for content.*
+      phase stays open while it waits for content.* **Required for 1.0** (the maintainer's call, 2026-10-15), and
+      **planned** in [ADR 0118](./docs/adr/0118-a-sidekick-is-a-character-of-its-own-built-on-a-creature-and-levelled-in-a-class-content-marks.md)
+      (proposed; its open decisions A to F are the maintainer's). Measured again on 2026-10-15, upstream still at
+      `c28ce6c` with no sidekick content, so the classes come from a user's own Aurora file and Incudo ships none (not
+      SRD). A sidekick is a character of its own, of a new 5e kind built on the NPC: a creature's stat block as its start,
+      levels 1 to 20 in one `Class` that content tags `Sidekick`, the creature's printed die for its hit points. Steps,
+      in order:
+      1. Settle the open decisions (tag or type; leader link; the kind with no content; hit points and hit dice; feats;
+         starting level).
+      2. Write the generic fixture `tools/verify/fixtures/sidekicks/` (three tagged classes in the project's own words)
+         and `tools/verify/src/sidekicks.test.ts` report-only against the base, recording what is not yet offered.
+      3. A build step may declare `supports` (system format, schema, validator, `top-level-pick.ts` and the class
+         options in `multiclass.ts`); 5e's player character steps declare `!Sidekick`. The oracle must not move.
+      4. A level's die read off a held element of a named type (`levelRoll.dieFrom`, the `setter` reading's `from`,
+         `as: "printedDie"`), with core tests by perturbation.
+      5. The `sidekick` kind in `systems/dnd5e/system.json`: progression, proficiency by level, steps, casting, hit
+         points, sheet and play; the test's assertions switched on.
+      6. What the app says with no sidekick class loaded (the kind's description, the class step's sentence).
+      7. Drive it: browser build and the Tauri window on Windows with the fixture dropped, packed and reopened with no
+         source, exported and printed; the phone emulator, built, played and exported.
 - [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
       ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
       *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the
