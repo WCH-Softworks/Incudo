@@ -8,7 +8,7 @@
  * sentence a change returned.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ElementId, ElementIndex } from '@incudo/core';
 import {
   ALL_ITEMS_LABEL,
@@ -136,16 +136,35 @@ function GroupedPicker({
     setShown(group);
     setOpen(group);
   };
+  // The keyboard follows the slide: into the group's search box, and back to the group's own entry. Without it the
+  // focus was left on a control the slide had made inert, so the next Tab started again from the top of the page.
+  // After the render that lifted `inert`, since nothing in an inert panel takes the focus.
+  const groupsPanel = useRef<HTMLDivElement>(null);
+  const itemsPanel = useRef<HTMLDivElement>(null);
+  const moved = useRef(false);
+  useEffect(() => {
+    if (!moved.current) {
+      moved.current = true;
+      return;
+    }
+    if (open) (itemsPanel.current?.querySelector<HTMLElement>('input') ?? itemsPanel.current?.querySelector<HTMLElement>('button'))?.focus();
+    else if (shown) {
+      const entries = [...(groupsPanel.current?.querySelectorAll<HTMLButtonElement>('button.offer-group') ?? [])];
+      entries.find((entry) => entry.dataset.group === shown.label)?.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   return (
     <div className="offer-groups">
       <div className={open ? 'offer-groups-track open' : 'offer-groups-track'}>
-        <div className="offer-groups-panel" inert={open !== null}>
+        <div className="offer-groups-panel" inert={open !== null} ref={groupsPanel}>
           <ul className="offer-group-list">
             {groups.map((group) => (
               <li key={group.label}>
                 <button
                   type="button"
                   className={group.label === ALL_ITEMS_LABEL ? 'offer-group all' : 'offer-group'}
+                  data-group={group.label}
                   onClick={() => choose(group)}
                 >
                   {offerGroupLine(group)}
@@ -155,7 +174,7 @@ function GroupedPicker({
             ))}
           </ul>
         </div>
-        <div className="offer-groups-panel" inert={open === null}>
+        <div className="offer-groups-panel" inert={open === null} ref={itemsPanel}>
           {shown && (
             <>
               <div className="decision-head">

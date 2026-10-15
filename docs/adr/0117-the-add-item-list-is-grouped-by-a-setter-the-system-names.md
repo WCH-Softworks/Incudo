@@ -31,5 +31,8 @@ Adventuring Gear 238, Treasure 236, Magic Armor 163, Supernatural Gifts 154, Pot
 - `tools/verify/src/inventory-groups.test.ts`: on the corpus every offered item is in exactly one group.
 - Driven in the browser build at 1280×860: 25 entries, Potions shows 99 and adds one to the bag, Rings 97, and back. The
   slide's end position was measured. In the Tauri window on Windows (2026-10-15, real mouse): captured 90 ms after the
-  click the panel is half-way, finished at 500 ms; an item added from Potions, and back. Not driven on the phone. After
-  "‹ All groups" the keyboard focus is left on nothing: open.
+  click the panel is half-way, finished at 500 ms; an item added from Potions, and back. Not driven on the phone.
+- The keyboard follows the slide (2026-10-15): opening a group focuses its search box, going back focuses that group's
+  entry. It used to be left on a control the slide had made inert. Driven with real keys in the Tauri window: a group
+  opened, "rope" typed into its search, Shift+Tab to "‹ All groups", Enter back onto the same group, Tab and Enter into
+  the next.

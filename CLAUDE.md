@@ -2269,7 +2269,12 @@ the same text into the save, so an import shows its own copy. Driven in the brow
 ([ADR 0117](docs/adr/0117-the-add-item-list-is-grouped-by-a-setter-the-system-names.md)): `inventory.groupSetter` (5e
 `category`, 23 groups over 2,798 items); `inventoryOfferGroups` gives "All items", the groups by name, then "Other". The
 desktop's `GroupedPicker` (`InventoryEditor.tsx`) slides from the groups to one group's picker; the phone's `Picker` takes
-`groups`. Driven in the browser build.
+`groups`. Driven in the browser build and the Tauri window. Opening a group focuses its search box and going back focuses
+the group's entry.
+
+**A step says "complete" only once something is taken there** (2026-10-15): `BuilderStep.taken` and `.skipped`;
+`stepStatus` reads "optional", "skipped" or "nothing to choose" for a step nothing obliges and nothing answers, and
+`stepTone` draws it plain. An alignment never chosen used to read as chosen.
 
 **Hit points have no oracle in the save file, and a referee on the screen** (ADR 0019, ADR 0044). Aurora's
 saves record the per-level rolls and never the total, so `aurora verify` has nothing to diff; the referee is
