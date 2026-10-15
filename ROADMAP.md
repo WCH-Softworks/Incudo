@@ -2045,11 +2045,16 @@ maintainer's call (2026-10-12): systems written by someone else come after 1.0.
 
 ---
 
-## Phase 8 — Homebrew content authoring 🟡
+## Phase 8 — Homebrew content authoring ✅
 
 *Systems are the container; this is the content inside them.*
 
-- [ ] In-app element editor — homebrew without hand-writing JSON
+*Closed 2026-10-15 by the maintainer's call: what is built ships in 1.0, and the rest of writing game content (the
+element editor's next parts, validating a whole source, exporting it) is after 1.0, in Beyond 1.0's "1.x — Writing game
+content".*
+
+- [x] In-app element editor — homebrew without hand-writing JSON. *Its first slice is 1.0's; what it left is in
+      "1.x — Writing game content" (2026-10-15).*
       **First slice done: [ADR 0108](./docs/adr/0108-a-user-writes-elements-into-a-homebrew-source-of-their-own-kept-in-incudo-s-content-format.md).**
       Measured first (`tools/verify/src/homebrew-elements.test.ts`): of the types a character can be given whatever it is
       (the kinds' `additions.types`), a slice of name, description, setters, tags, lines adding a whole number to a stat
@@ -2094,11 +2099,11 @@ maintainer's call (2026-10-12): systems written by someone else come after 1.0.
       kept nothing typed until the field was left, which hiding the keyboard does not do, so Godspeed was saved to the
       library as Speed 0. **Not done:** an editor of the library itself; real keys and mouse in the window (the screen was
       in use); Expo Go, a real phone, iOS, macOS and Linux.
-- [ ] Validation and linting with good error messages
-- [ ] Export a homebrew source as a publishable index
+- Validation and linting with good error messages, and exporting a homebrew source as a publishable index, moved to
+  "1.x — Writing game content" (2026-10-15).
 
 **Exit criteria:** a feature written once is offered to every character of its system, and a feature already
-written on a character can be moved into the user's library without being typed again.
+written on a character can be moved into the user's library without being typed again. **Met** (ADR 0106).
 
 ---
 
@@ -2228,7 +2233,17 @@ written on a character can be moved into the user's library without being typed 
       format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md)). *Found 2026-10-15, reviewing readiness:* no
       ADR states the policy yet. The character format is at 13 (`LATEST_CHARACTER_FORMAT_VERSION`) and the system format
       still reads 1 after many optional additions; what 1.0 freezes, and what a later change to either must carry, is
-      undecided.
+      undecided. *Decided by the maintainer the same day, for the ADR to record:* only 1.0's formats are supported; the
+      numbers are kept and 1.0's are the baseline (character format 13, or what ADR 0119 makes it), and a file from the
+      betas opens if it opens; converting older formats is after 1.0, capped at breaking changes. Waits for ADR 0119,
+      which changes the content, system and character formats first.
+- [ ] **Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora**
+      ([ADR 0119](./docs/adr/0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md),
+      proposed 2026-10-15). The maintainer's rule: Incudo converts Aurora files into Incudo files and never reads Aurora
+      past that point; reusing Aurora's ids and names is fine, carrying its limitations is not. The readiness review
+      found the 5e definition naming 34 Aurora ids, the content library inventing Aurora's app elements on every load,
+      Aurora's expression quirks read by the engine at evaluation, and the character format keyed and shaped as
+      Aurora's saves are. Before 1.0, because 1.0 freezes the formats these live in. The ADR's open questions come first.
 - [ ] Signed desktop installer for Windows; macOS and Linux are after 1.0, and the phone's store is the first item after
       1.0 (Beyond 1.0, below)
 - [ ] Docs site, contribution guide, issue templates. *As of 2026-10-15:* the contribution guide exists
@@ -2381,6 +2396,15 @@ for it. The first two were Phase 7 items, and neither is in its exit criteria.
   messages' next work.
 - **Also left from Phase 7's items:** forking a user's own system from the app, an in-app system editor, overlays of
   overlays and placing a new entry before another.
+
+### 1.x — Writing game content
+After the first release, by the maintainer's call (2026-10-15), which closed Phase 8 with what was built: the feature
+library (ADR 0106) and the element editor's first slice (ADR 0108). Its content format is decided by ADR 0119 first.
+- **The element editor's next parts** (ADR 0108's "Left"): choices (`select`), prerequisites and level gates, which stop
+  most feats and class features; races, classes, subclasses, backgrounds and items; turning an add-only library feature
+  into content; an editor on the phone, which loads a homebrew source and has none; the Tauri window.
+- **Validation and linting with good error messages** over a whole homebrew source, not only the element being saved.
+- **Export a homebrew source as a publishable index**, so others can add it as a source.
 
 ### 1.x — Localization
 
