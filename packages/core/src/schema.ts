@@ -181,8 +181,8 @@ function checkPlay(play: PlayDef | undefined, sections: readonly SheetSectionDef
         errors.push({ path: at, message: `"${tracker.id}" reads the sheet section "${section}", which the kind does not declare` });
       }
     }
-    if (tracker.dice !== undefined && byId.get(tracker.dice) && byId.get(tracker.dice)!.trackDie === undefined) {
-      errors.push({ path: at, message: `"${tracker.id}" reads dice from "${tracker.dice}", which writes none (trackDie)` });
+    if (tracker.dice !== undefined && byId.get(tracker.dice) && byId.get(tracker.dice)!.trackDie === undefined && byId.get(tracker.dice)!.trackDice === undefined) {
+      errors.push({ path: at, message: `"${tracker.id}" reads dice from "${tracker.dice}", which writes none (trackDie or trackDice)` });
     }
     if (tracker.restoresWhen && !(tracker.rows !== undefined && byId.get(tracker.rows)?.perBlock)) {
       errors.push({ path: at, message: `"${tracker.id}" has restoresWhen, which only a rows tracker over a perBlock section reads` });
@@ -680,6 +680,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         errors.push({ path: `${where}.additions.blocks.types`, message: `names "${type}", which is not among the kind's additions types` });
       }
     }
+    // A kind made available by a type nothing declares would never be available (ADR 0118).
+    for (const type of resolved.available?.types ?? []) {
+      if (!typeNames.has(type)) {
+        errors.push({ path: `${where}.available.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+      }
+    }
     for (const type of resolved.references?.types ?? []) {
       if (!typeNames.has(type)) {
         errors.push({ path: `${where}.references.types`, message: `names "${type}", which the system's elementTypes does not declare` });
@@ -792,7 +798,7 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         if (section.trackProgress) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" writes a track's count, which a creature's stat block has none of` });
         }
-        if (section.trackDie !== undefined) {
+        if (section.trackDie !== undefined || section.trackDice !== undefined) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" writes a track's dice, which a creature's stat block has no tracks for` });
         }
         // Nor prepared lists of its own (ADR 0079): its scope publishes none.
@@ -889,8 +895,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         }
       }
       // A track's dice are its count of a die (ADR 0079), so a section writing them writes the count.
-      if (section.trackDie !== undefined && !section.trackProgress) {
+      if ((section.trackDie !== undefined || section.trackDice !== undefined) && !section.trackProgress) {
         errors.push({ path: `${where}.sheet`, message: `section "${section.id}" writes a track's dice and not its count (no trackProgress)` });
+      }
+      // The dice are read from a setter or from two stats (ADR 0118), never both.
+      if (section.trackDie !== undefined && section.trackDice !== undefined) {
+        errors.push({ path: `${where}.sheet`, message: `section "${section.id}" reads a track's dice from a setter and from stats, and must name one` });
       }
       // A group and a prepared mark are written beside listed elements (ADR 0079), and a prepared mark only of what the
       // kind's prepared lists hold: a section of other types, or a kind that prepares nothing, would never show one.

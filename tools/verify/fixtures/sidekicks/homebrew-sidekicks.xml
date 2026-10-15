@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	A user's own content file of sidekick classes, written for the tests of ADR 0118. Original, generic content: no
+	book's text, tables or names. Three classes of the type `Sidekick Class`, a creature to build one on, and two
+	invented styles for the martial class's choice. The skill and spell tags it selects by (Skill, Wizard) are the
+	official corpus's, so the file is loaded beside it.
+-->
+<elements>
+	<info>
+		<name>Homebrew Sidekicks Test</name>
+		<description>Three sidekick classes and a creature, for tests.</description>
+		<update version="1.0.0" />
+	</info>
+
+	<element name="Homebrew Sidekicks Test" type="Source" source="Homebrew Sidekicks Test" id="ID_TEST_SOURCE_HOMEBREW_SIDEKICKS">
+		<description><p>A test book.</p></description>
+	</element>
+
+	<!-- A creature to build a sidekick on: its print is where the sidekick starts. -->
+	<element name="Lantern Bearer" type="Companion" source="Homebrew Sidekicks Test" id="ID_TEST_COMPANION_LANTERN_BEARER">
+		<description><p>A hired hand who carries the light and keeps the camp.</p></description>
+		<setters>
+			<set name="strength">11</set>
+			<set name="dexterity">14</set>
+			<set name="constitution">12</set>
+			<set name="intelligence">10</set>
+			<set name="wisdom">13</set>
+			<set name="charisma">10</set>
+			<set name="ac">12</set>
+			<set name="hp">11 (2d8 + 2)</set>
+			<set name="speed">30 ft.</set>
+			<set name="senses">passive Perception 11</set>
+			<set name="languages">Common</set>
+			<set name="type">Humanoid</set>
+			<set name="size">Medium</set>
+			<set name="alignment">any alignment</set>
+			<set name="challenge">1/8</set>
+		</setters>
+		<rules>
+			<stat name="companion:ac" value="12" />
+			<stat name="companion:hp:max" value="11" />
+			<stat name="companion:speed" value="30" />
+		</rules>
+	</element>
+
+	<!-- A martial class: armour, a style chosen at level 1, a feature at 3 and improvements. -->
+	<element name="Sample Martial" type="Sidekick Class" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_CLASS_SAMPLE_MARTIAL">
+		<description><p>A sidekick who fights at the front.</p></description>
+		<rules>
+			<grant type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_LIGHT_ARMOR" />
+			<grant type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_MEDIUM_ARMOR" />
+			<grant type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_SIMPLE_WEAPONS" />
+			<grant type="Proficiency" id="ID_PROFICIENCY_WEAPON_PROFICIENCY_MARTIAL_WEAPONS" />
+			<grant type="Proficiency" id="ID_PROFICIENCY_SAVINGTHROW_CONSTITUTION" />
+			<select type="Proficiency" name="Skill Proficiency (Sample Martial)" supports="Skill" number="1" />
+			<grant type="Class Feature" id="ID_TEST_SIDEKICK_FEATURE_SAMPLE_STYLE" level="1" />
+			<grant type="Class Feature" id="ID_TEST_SIDEKICK_FEATURE_STEADY_GUARD" level="3" />
+			<grant type="Class Feature" id="ID_TEST_SIDEKICK_FEATURE_IMPROVEMENT_SAMPLE_MARTIAL" level="4" />
+		</rules>
+	</element>
+	<element name="Sample Style" type="Class Feature" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_FEATURE_SAMPLE_STYLE">
+		<description><p>Choose how this sidekick prefers to fight.</p></description>
+		<rules>
+			<select type="Class Feature" name="Sample Style" supports="Sample Style" level="1" />
+		</rules>
+	</element>
+	<element name="Shield Wall Habit" type="Class Feature" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_STYLE_SHIELD_WALL">
+		<supports>Sample Style</supports>
+		<description><p>Stands close to an ally and covers them.</p></description>
+		<rules>
+			<stat name="ac" value="1" equipped="[armor:any]" />
+		</rules>
+	</element>
+	<element name="Quick Feet Habit" type="Class Feature" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_STYLE_QUICK_FEET">
+		<supports>Sample Style</supports>
+		<description><p>Never stands still for long.</p></description>
+		<rules>
+			<stat name="speed:misc" value="5" />
+		</rules>
+	</element>
+	<element name="Steady Guard" type="Class Feature" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_FEATURE_STEADY_GUARD">
+		<description><p>Hard to knock down.</p></description>
+		<sheet usage="1/Long Rest">
+			<description>Shrug off one hit, once between long rests.</description>
+		</sheet>
+	</element>
+	<element name="Ability Score Improvement" type="Class Feature" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_FEATURE_IMPROVEMENT_SAMPLE_MARTIAL">
+		<description><p>Improve an ability score, or take a feat where the table allows them.</p></description>
+		<sheet display="false" />
+		<rules>
+			<select type="Class Feature" name="Improvement Option (Sample Martial 4)" supports="Improvement Option,Sample Martial,4" level="4" />
+			<select type="Class Feature" name="Improvement Option (Sample Martial 8)" supports="Improvement Option,Sample Martial,8" level="8" />
+			<select type="Class Feature" name="Improvement Option (Sample Martial 12)" supports="Improvement Option,Sample Martial,12" level="12" />
+			<select type="Class Feature" name="Improvement Option (Sample Martial 16)" supports="Improvement Option,Sample Martial,16" level="16" />
+			<select type="Class Feature" name="Improvement Option (Sample Martial 19)" supports="Improvement Option,Sample Martial,19" level="19" />
+		</rules>
+	</element>
+
+	<!-- A skilled class: more skills and one feature. -->
+	<element name="Sample Skilled" type="Sidekick Class" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_CLASS_SAMPLE_SKILLED">
+		<description><p>A sidekick who knows a trick for everything.</p></description>
+		<rules>
+			<grant type="Proficiency" id="ID_PROFICIENCY_ARMOR_PROFICIENCY_LIGHT_ARMOR" />
+			<grant type="Proficiency" id="ID_PROFICIENCY_SAVINGTHROW_DEXTERITY" />
+			<select type="Proficiency" name="Skill Proficiency (Sample Skilled)" supports="Skill" number="3" />
+			<grant type="Class Feature" id="ID_TEST_SIDEKICK_FEATURE_HANDY" level="2" />
+		</rules>
+	</element>
+	<element name="Handy" type="Class Feature" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_FEATURE_HANDY">
+		<description><p>Helps an ally quickly.</p></description>
+		<sheet action="Bonus Action">
+			<description>Help an ally.</description>
+		</sheet>
+	</element>
+
+	<!-- A caster: a casting block over a list the corpus tags, spells known by select, and its own slots. -->
+	<element name="Sample Caster" type="Sidekick Class" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_CLASS_SAMPLE_CASTER">
+		<description><p>A sidekick who casts a few spells.</p></description>
+		<spellcasting name="Sample Caster" ability="Wisdom">
+			<list>Wizard</list>
+		</spellcasting>
+		<rules>
+			<grant type="Grants" id="ID_INTERNAL_GRANTS_SPELLCASTING_FEATURE" />
+			<grant type="Proficiency" id="ID_PROFICIENCY_SAVINGTHROW_WISDOM" />
+			<stat name="sample caster:spellcasting:slots:1" value="2" level="1" />
+			<stat name="sample caster:spellcasting:slots:1" value="1" level="2" />
+			<stat name="sample caster:spellcasting:slots:2" value="2" level="3" />
+			<select type="Spell" name="Cantrip (Sample Caster)" supports="$(spellcasting:list),0" level="1" number="2" spellcasting="Sample Caster" />
+			<select type="Spell" name="Spell (Sample Caster)" supports="$(spellcasting:list),$(spellcasting:slots)" level="1" number="1" spellcasting="Sample Caster" />
+			<select type="Spell" name="Spell (Sample Caster)" supports="$(spellcasting:list),$(spellcasting:slots)" level="3" spellcasting="Sample Caster" />
+		</rules>
+	</element>
+</elements>

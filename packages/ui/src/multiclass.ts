@@ -484,8 +484,9 @@ function forbiddenBy(
   }
 }
 
-function dieSides(element: Element | undefined, dieSetter: string): number | undefined {
-  const notation = element?.setters[dieSetter]?.value;
+// With no die setter the die is not the class's (ADR 0118's `dieStat`), so moving a level between classes moves none.
+function dieSides(element: Element | undefined, dieSetter: string | undefined): number | undefined {
+  const notation = dieSetter === undefined ? undefined : element?.setters[dieSetter]?.value;
   if (notation === undefined) return undefined;
   const parsed = parseDice(notation);
   return parsed.ok ? parsed.spec.sides : undefined;

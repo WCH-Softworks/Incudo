@@ -407,6 +407,16 @@
           "type": "string",
           "description": "The id of another kind in this system. \"legendary\" is a delta on \"npc\", not a copy of it."
         },
+        "available": {
+          "type": "object",
+          "required": ["types", "note"],
+          "additionalProperties": false,
+          "description": "What must be loaded before a character of this kind can be made (ADR 0118). While no loaded element is of one of types, New character lists the kind as unavailable with note beside it, and Build says the same on a character of it; one already made still opens, derives and shows. Not inherited along extends.",
+          "properties": {
+            "types": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+            "note": { "type": "string", "minLength": 1, "description": "What the user is told while nothing of types is loaded." }
+          }
+        },
         "progression": { "$ref": "#/$defs/progression" },
         "elementTypes": {
           "type": "array",
@@ -890,7 +900,11 @@
           "description": "Element types whose setter is read."
         },
         "setter": { "type": "string", "minLength": 1, "description": "The setter's name as content writes it. Compared lowercased." },
-        "stat": { "type": "string", "minLength": 1, "description": "The stat it starts." }
+        "stat": { "type": "string", "minLength": 1, "description": "The stat it starts." },
+        "read": {
+          "enum": ["number", "dieSides", "diceCount"],
+          "description": "How the setter's text is read (ADR 0118). \"number\", the default, is a printed number as above. \"dieSides\" and \"diceCount\" read the first NdM the text prints: a creature's \"11 (2d8 + 2)\" gives 8 and 2, a sidekick's hit die and the dice it starts with. A text with no NdM starts nothing and the derivation says so."
+        }
       }
     },
 
@@ -1166,7 +1180,8 @@
     "levelRoll": {
       "description": "A per-level recorded roll a perLevel step owns (ADR 0019) — 5e's hit points, and anything shaped like them. The engine already sums character.rolls through a `rolls` expression; what varies per character, and what content already declares, is which die a given level owes. `classType` names the element type that governs a level (5e's \"Class\"); when the character's advancement does not record which element that was for a given level — every character built in the app today, with no multiclass UI yet — the character's single element of that type stands in for all of them, the same fallback the engine itself uses for an element in no track.",
       "type": "object",
-      "required": ["pattern", "dieSetter", "classType"],
+      "required": ["pattern", "classType"],
+      "oneOf": [{ "required": ["dieSetter"] }, { "required": ["dieStat"] }],
       "additionalProperties": false,
       "properties": {
         "pattern": {
@@ -1177,7 +1192,17 @@
         "dieSetter": {
           "type": "string",
           "minLength": 1,
-          "description": "The setter naming the die, read off the governing element. Aurora's content writes this as `hd`, e.g. `<set name=\"hd\">d6</set>`."
+          "description": "The setter naming the die, read off the governing element. Aurora's content writes this as `hd`, e.g. `<set name=\"hd\">d6</set>`. Exactly one of this and dieStat."
+        },
+        "dieStat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A stat whose value is the die's face count, read off the derivation instead of a governing element (ADR 0118): a sidekick's die is the one its creature prints, whatever its class. Exactly one of this and dieSetter."
+        },
+        "from": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The first level that owes a value (ADR 0118). Levels below it are covered by something else, a sidekick's first level by its creature's printed hit points, and are neither offered nor read; none is then taken at the die's maximum. Absent: every level, the progression's first at its maximum."
         },
         "classType": {
           "type": "string",
@@ -1303,6 +1328,16 @@
           "type": "string",
           "minLength": 1,
           "description": "The setter naming the die a listed element's track adds once per count (ADR 0079): a player character's classes read \"Paladin 3 (3d10)\", the track's count of the die the class's hd names. A value that is not a dN die reads as none. Only beside trackProgress; not in a creature's stat block."
+        },
+        "trackDice": {
+          "type": "object",
+          "required": ["count", "sides"],
+          "additionalProperties": false,
+          "description": "Stats a listed track root's dice are read from instead of a setter on it (ADR 0118): a sidekick's hit dice are its creature's printed count plus one per level after the first, of the creature's die, and the kind derives both. Written as trackDie's are (\"Sample Martial 3 (4d8)\"); nothing is written while either reads 0. Only beside trackProgress, and not beside trackDie.",
+          "properties": {
+            "count": { "type": "string", "minLength": 1 },
+            "sides": { "type": "string", "minLength": 1 }
+          }
         },
         "group": {
           "type": "object",

@@ -1269,7 +1269,7 @@ the phone is Phase 9's drive item. "Not on macOS or Linux" notes are Beyond 1.0'
 
 ---
 
-## Phase 4 — More than one kind of character 🟡
+## Phase 4 — More than one kind of character ✅
 
 *The first real use of [ADR 0009](./docs/adr/0009-character-kinds.md). Also the first proof that
 the kind machinery is not decorative.*
@@ -1431,29 +1431,24 @@ the kind machinery is not decorative.*
       creatures above challenge 4) *(an open item at the end of this phase since 2026-10-12)*; ~~a creature's attack bonus~~ (`companion:attack` is shown as what its
       holder adds since ADR 0093; its actions' own numbers are prose); tracking a creature's hit points *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*;
       macOS and Linux.
-- [ ] Sidekicks. *Split from "Companions and sidekicks" by ADR 0073's measurement:* the corpus has no sidekick content
-      (one `Source` element for "Unearthed Arcana: Sidekicks", holding nothing), so there is nothing to read yet.
-      Content first, from upstream or a user's own file; then whether a sidekick is an NPC with a class track or a held
-      creature. *Measured again on 2026-10-12 at upstream's head (c28ce6c): still only that empty `Source`, and Tasha's
-      names sidekicks only in its book's description. Kept in this phase by the maintainer's call (2026-10-12), so the
-      phase stays open while it waits for content.* **Required for 1.0** (the maintainer's call, 2026-10-15), and
-      **planned** in [ADR 0118](./docs/adr/0118-a-sidekick-is-a-character-of-its-own-built-on-a-creature-and-levelled-in-a-sidekick-class.md)
-      (accepted with the maintainer's answers, not built). Measured again on 2026-10-15, upstream still at `c28ce6c`
-      with no sidekick content, so the classes come from a user's own content file and Incudo ships none (not SRD). A
-      sidekick is a character of its own, of a new 5e kind built on the NPC: a creature's stat block as its start, levels
-      1 to 20 in one element of a new `Sidekick Class` type, hit points and hit dice from the creature's printed dice.
-      The character sheet only, no play state. Steps, in order:
-      1. Write the generic fixture `tools/verify/fixtures/sidekicks/` (three `Sidekick Class` elements in the project's
-         own words) and `tools/verify/src/sidekicks.test.ts`, report-only against the base.
-      2. A level's die and a character's hit dice read off a held element's print (`levelRoll.dieFrom`, the `setter`
-         reading's `from`, `as: "printedDie"` and `"printedDiceCount"`, `trackDie`'s `dieFrom`), with core tests by
-         perturbation.
-      3. A kind's `available` (system format, schema, validator; New character on the desktop and the phone).
-      4. The `Sidekick Class` type and the `sidekick` kind in `systems/dnd5e/system.json`: progression, proficiency by
-         level, steps (creature, sidekick class, levels, campaign options), casting, hit points, sheet; the test's
-         assertions switched on. The oracle must not move.
-      5. Drive it: the browser build and the Tauri window on Windows with the fixture dropped, saved and reopened with
-         no source, exported, printed and the official form filled; the phone emulator, built and its sheet exported.
+- [x] **Sidekicks**
+      ([ADR 0118](./docs/adr/0118-a-sidekick-is-a-character-of-its-own-built-on-a-creature-and-levelled-in-a-sidekick-class.md)).
+      *Split from "Companions and sidekicks" by ADR 0073's measurement*, and required for 1.0 by the maintainer's call
+      (2026-10-15). Measured first: upstream is still at `c28ce6c` and has no sidekick content (one empty "Unearthed
+      Arcana: Sidekicks" `Source`), and the rules are not SRD, so Incudo ships none: the classes come from a user's own
+      content file. A sidekick is **a character of its own**, of a new 5e kind built on the NPC: its creature's stat block
+      is where it starts, it levels 1 to 20 in one element of a new **`Sidekick Class`** type (an explicit type, not a
+      tagged `Class`: Aurora compatibility is not a goal, the maintainer's call), its proficiency bonus comes from its
+      level, and its hit points and hit dice from the creature's printed dice (level 1 is the print; each later level adds
+      one of the creature's dice, rolled or averaged, plus Constitution). Feats follow the campaign option, as for a player
+      character; no leader is recorded. Four small system-format additions, none naming a game: a `setterStats` entry may
+      read a printed die or dice count, a level roll may read its die from a stat and start after level 1, a sheet section
+      may read a class's dice from two stats, and a kind may say what must be loaded before it can be made (New character
+      lists "Sidekick (needs content)" with the reason until a sidekick class is loaded). No character format change.
+      `tools/verify/fixtures/sidekicks/` is a generic file of three sample classes in the project's own words. The
+      character sheet only: a sidekick inherits the NPC's play state and nothing was added. Driven in the browser build.
+      **Not done:** the Tauri window and the phone; a homebrew source cannot write a class yet (Phase 8); the level panel
+      still says further levels "can go to other classes".
 - [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
       ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
       *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the

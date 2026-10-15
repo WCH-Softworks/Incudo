@@ -569,9 +569,15 @@ function Shell({
   /**
    * The kinds this system lets you start, default first, and which one New character makes. Kept
    * here rather than in the library pane so the New character command makes the same kind the
-   * button beside the chooser would. `Shell` is keyed on the system, so a switch starts it afresh.
+   * button beside the chooser would. `Shell` is keyed on the system, so a switch starts it afresh. Given what is
+   * loaded, a kind that needs content none of it has says so (ADR 0118), and New character makes nothing of it.
    */
-  const kinds = useMemo(() => characterKindChoices(system), [system]);
+  // With no source of this system enabled nothing is loaded, which is judged too; while one loads, nothing is judged.
+  const noSource = !sourcesForSystem(sources, systemLineage(system)).some((source) => source.enabled);
+  const kinds = useMemo(
+    () => characterKindChoices(system, content?.elements ?? (noSource ? EMPTY_INDEX : undefined)),
+    [system, content, noSource],
+  );
   const [newKind, setNewKind] = useState<string | undefined>(() => kinds[0]?.id);
 
   const chooseFolder = useCallback(async (): Promise<void> => {
@@ -1030,10 +1036,12 @@ function Shell({
   );
 
   const startNew = useCallback(() => {
+    // The chooser says why a kind cannot be made yet (ADR 0118); the command makes nothing of it either.
+    if (kinds.find((kind) => kind.id === newKind)?.unavailable !== undefined) return;
     setWorking({ character: newCharacter(system, newKind) });
     setSaveNote(null);
     setPane('build');
-  }, [system, newKind]);
+  }, [system, newKind, kinds]);
 
   /**
    * Write the character to `entry`, or — with `entry` left `undefined` — to a freshly chosen

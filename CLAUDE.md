@@ -2458,6 +2458,29 @@ Things to know before touching it:
   an exchange; AC 18 → 19, speed 20 → 30; the desktop's file read with the phone's zip, reopened with no source the same).
   The oracle is identical. Driven in the browser build; **not on the phone emulator or in the Tauri window**.
 
+**A sidekick is a character of its own, built on a creature and levelled in a `Sidekick Class`**
+([ADR 0118](docs/adr/0118-a-sidekick-is-a-character-of-its-own-built-on-a-creature-and-levelled-in-a-sidekick-class.md)).
+Things to know before touching it:
+
+- **No sidekick content exists upstream, and Incudo ships none** (not SRD): the classes come from a user's own file.
+  `tools/verify/fixtures/sidekicks/homebrew-sidekicks.xml` is the generic one the tests load beside the corpus; never
+  copy a book's classes into it.
+- **5e's `sidekick` kind extends `npc`** and is data only: a `level` progression whose `trackType` is the new
+  `Sidekick Class` type (so no player character step ever offers one), `proficiency` from `level`, the player
+  character's campaign options and casting declarations copied, the NPC's stat block sheet with a Sidekick Class section.
+  A change to the NPC's or the player character's casting, options or sheet may need making here too.
+- **Four kind-agnostic format additions:** `setterStats` `read: "dieSides" | "diceCount"` (`readPrintedDice`, the
+  first `NdM` a setter prints); `levelRoll.dieStat` (exactly one of it and `dieSetter`) and `levelRoll.from` (levels below
+  owe nothing and none is taken at the maximum); a sheet section's `trackDice: { count, sides }`; a kind's
+  `available: { types, note }` (`kindUnavailable`, `KindChoice.unavailable`, `BuilderState.unavailable`; not
+  inherited along `extends`). `dieSides` in `expression.ts` is untouched on purpose.
+- **Hit points:** `hp` starts from the creature's `companion:hp:max` and derives the later levels on top
+  (`(level − 1)` dice of `hit die`, rolled or averaged, plus Constitution); a typed total replaces the start only.
+- A sidekick class with no `<multiclass>` block is never a second class, which is what keeps a sidekick to one class;
+  no leader is recorded; no attacks, no bag, and the NPC's play state inherited unchanged.
+- Tests: `tools/verify/src/sidekicks.test.ts`, `packages/ui/src/kind-from-creature.test.ts`, the dice cases in
+  `packages/core/src/setter-stats.test.ts`, each failing under its named perturbation. Driven in the browser build only.
+
 **A pool never offers what the character already has.** `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,
 which is the only place the question can be asked — a background's "two languages of your

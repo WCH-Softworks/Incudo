@@ -117,8 +117,12 @@ export function computeHitPointState(
     config.fixedWhen !== undefined && derived.elements.some((element) => element.id === config.fixedWhen);
 
   const min = progressionMin(progression);
+  // A die the derivation publishes (ADR 0118): a sidekick's is its creature's, whatever the level's class.
+  const statSides = config.dieStat !== undefined ? derived.stats.get(config.dieStat.toLowerCase())?.value : undefined;
+  // Levels below `from` are covered by something else, and none is then the first taken at the maximum (ADR 0118).
+  const first = Math.max(min, config.from ?? min);
   const levels: HitPointLevel[] = [];
-  for (let level = min; level <= (character.progress ?? min); level += 1) {
+  for (let level = first; level <= (character.progress ?? min); level += 1) {
     const advanced = character.advancement?.find((entry) => entry.at === level);
     // Advancement recorded and this level is in it: that element, however its die reads.
     // Advancement recorded and this level is not: genuinely unknown, so no fallback.
@@ -129,9 +133,15 @@ export function computeHitPointState(
         ? undefined
         : fallback;
 
-    const dieNotation = element?.setters[config.dieSetter]?.value;
+    const dieNotation = config.dieSetter !== undefined ? element?.setters[config.dieSetter]?.value : undefined;
     const parsed = dieNotation !== undefined ? parseDice(dieNotation) : undefined;
-    const dieSides = parsed?.ok ? parsed.spec.sides : undefined;
+    const dieSides =
+      config.dieStat !== undefined
+        ? (statSides !== undefined && statSides > 0 ? statSides : undefined)
+        : parsed?.ok
+          ? parsed.spec.sides
+          : undefined;
+    const isFirst = config.from === undefined && level === min;
     const key = hitPointRollKey(config.pattern, level);
 
     levels.push({
@@ -142,16 +152,19 @@ export function computeHitPointState(
       unreadable:
         element === undefined
           ? undefined
-          : dieNotation === undefined
-            ? `"${element.name}" names no hit die`
-            : parsed && !parsed.ok
-              ? parsed.reason
-              : undefined,
+          : config.dieStat !== undefined
+            ? dieSides === undefined
+              ? 'No hit die is known for this level'
+              : undefined
+            : dieNotation === undefined
+              ? `"${element.name}" names no hit die`
+              : parsed && !parsed.ok
+                ? parsed.reason
+                : undefined,
       recorded: character.rolls[key],
       average: dieSides !== undefined ? Math.floor(dieSides / 2) + 1 : undefined,
-      isFirst: level === min,
-      fixedValue:
-        fixed && dieSides !== undefined ? (level === min ? dieSides : Math.floor(dieSides / 2) + 1) : undefined,
+      isFirst,
+      fixedValue: fixed && dieSides !== undefined ? (isFirst ? dieSides : Math.floor(dieSides / 2) + 1) : undefined,
     });
   }
 
