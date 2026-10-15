@@ -30,5 +30,6 @@ Adventuring Gear 238, Treasure 236, Magic Armor 163, Supernatural Gifts 154, Pot
   where the kind names no setter; each fails under the change it names.
 - `tools/verify/src/inventory-groups.test.ts`: on the corpus every offered item is in exactly one group.
 - Driven in the browser build at 1280×860: 25 entries, Potions shows 99 and adds one to the bag, Rings 97, and back. The
-  slide's end position was measured; the animation itself was not seen running, since the window was behind others. Not
-  driven on the phone or in the Tauri window.
+  slide's end position was measured. In the Tauri window on Windows (2026-10-15, real mouse): captured 90 ms after the
+  click the panel is half-way, finished at 500 ms; an item added from Potions, and back. Not driven on the phone. After
+  "‹ All groups" the keyboard focus is left on nothing: open.

@@ -2248,7 +2248,7 @@ a step that must be answered. A test that measures what those steps offer passes
 record holds whether the option preview is folded to its title line (`previewCollapsed`, Hide/Show description) and which
 of Build's two tabs is open: **Build** (progression, cantrip dice included) and **Equipment & notes** (taken starting
 packages, inventory and money, prepared spells, About the character, For reference, Books), `BUILD_TABS`. The command
-`switch-build-tab` (View menu, Build only, Ctrl+Shift+H, not yet pressed with real keys in the window) moves between
+`switch-build-tab` (View menu, Build only, Ctrl+Shift+H, which reaches the page with real keys in the Windows window) moves between
 them. The phone has the switch and not the tabs or the fold.
 
 **Each level's hit points are a card of their own** (2026-10-14, the maintainer's call): a `hitpoints` decision per level

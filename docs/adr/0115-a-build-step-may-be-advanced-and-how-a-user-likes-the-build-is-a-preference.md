@@ -78,7 +78,10 @@ A reader that does not know the key offers the step as before, so `formatVersion
 - The tabs, driven in the browser build at 1280×860: Build lists the parts, Level and classes, Open decisions, Choices
   already made, the user's own features and additions; Equipment & notes the inventory, About the character, For
   reference and Books; a dispatched Ctrl+Shift+H moves between them. `commands.test.ts` holds the command to Build and
-  its chord to every pane. Not driven: the Tauri window, real keys, the native menu item.
+  its chord to every pane. In the Tauri window on Windows (2026-10-15, real keys and mouse, a fresh profile and a
+  scratch folder): real Ctrl+Shift+H arrives as a key-down and switches both ways, the native menu item does too and is
+  greyed off Build, the switch and the fold were clicked for real, and after the window was closed and started again it
+  opened on the tab, fold and switch it was left with. The saved file names no preference. Not on macOS, Linux or the phone.
 
 ## Consequences
 

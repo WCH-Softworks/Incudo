@@ -46,5 +46,8 @@ trait, ideal, bond and flaw have been chosen, and pointed out that there is no a
   deities, skippable, and the sheet lists the one taken; a Sage's chosen trait stands in for the written one until text
   is typed.
 - Driven in the browser build: a Human Wizard Sage offered Alignment and Deity, Neutral Good taken and listed among the
-  character's parts, and the Personality Traits box holding the chosen trait. Not driven on the phone or in the Tauri
-  window.
+  character's parts, and the Personality Traits box holding the chosen trait. In the Tauri window on Windows (2026-10-15,
+  real mouse and keys): Chaotic Good, two traits and an ideal taken, a bond typed; the Sheet shows all four, and the saved
+  file records the alignment and the picks as choices and only the typed bond as text. Not driven on the phone.
+- **Open:** a pick that is not required reads "complete" among the character's parts with nothing taken, as every optional
+  step does; for Alignment and Deity that reads as if one were chosen.
