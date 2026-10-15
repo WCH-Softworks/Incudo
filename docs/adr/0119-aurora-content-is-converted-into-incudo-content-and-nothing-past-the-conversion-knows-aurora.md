@@ -1,6 +1,7 @@
 # 0119 — Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora
 
-**Status:** Proposed · 2026-10-15 · answers the maintainer's rule "we convert Aurora files to Incudo files", stated
+**Status:** Accepted, not built · 2026-10-15, with the maintainer's answers (below) · lifts ADR 0008's freeze on
+`packages/aurora-import` · answers the maintainer's rule "we convert Aurora files to Incudo files", stated
 during the 1.0 readiness review · supersedes the "native input format" and "superset of Aurora's semantics" decisions of
 [0005](./0005-aurora-import.md) · amends [0008](./0008-aurora-compatibility-frozen.md) (what is frozen),
 [0085](./0085-a-source-is-kept-converted-into-incudo-s-own-form-and-loaded-from-that.md) (what conversion means),
@@ -72,9 +73,8 @@ the shape Aurora's app needed in 2015.
      (a `$(…)` naming a casting block), the converter writes Incudo's own construct for it, and the system definition
      declares that construct in Incudo's terms;
    - starting equipment: the converter reads each class's and background's equipment prose and writes it as rules on
-     that element in the converted source, matching item names to item ids, and **reports every line it cannot match**
-     rather than guessing (ADR 0005's "diagnostics over guessing" holds: a name lookup with a report is not a guess).
-     `systems/dnd5e/starting-equipment.json` goes, and with it every non-SRD id the app ships;
+     that element in the converted source, matching item names to item ids. `systems/dnd5e/starting-equipment.json`
+     goes, and with it every non-SRD id the app ships. What the lookup does not match is handled by decision 9;
    - Tasha's optional class features and the "hidden item" switches become what they are (options a character takes)
      instead of invisible items in the bag.
 
@@ -88,10 +88,12 @@ the shape Aurora's app needed in 2015.
    ids it names (Wild Shape, Circle Forms, two-weapon fighting) are reviewed one by one: a system definition naming one
    content source's element is a dependency on that source.
 
-6. **What is frozen.** ADR 0008's freeze applies to **reading** Aurora: the XML and save parsers in
-   `packages/aurora-import` stay bugfix-only. The converter is new code, not frozen, because it is where Incudo's side of
-   the boundary is decided. Aurora-only logic now outside that package (`generated-elements.ts` and
-   `improvement-options.ts` as the library calls them, the evaluation-time quirks in `core`) moves to the converter.
+6. **`packages/aurora-import` is unfrozen and is the converter** (the maintainer's call). It is the same converter,
+   not working as it should, so this is a fix and not new work beside it: ADR 0008's freeze is lifted, and the package
+   is where Aurora XML and `.dnd5e` saves become Incudo content and Incudo characters. Aurora-only logic now outside it
+   (the library's calls to `generated-elements.ts` and `improvement-options.ts`, the `<append>` folding in
+   `packages/content`, the evaluation-time quirks in `core`) moves into it. ADR 0008's other decisions stand: import
+   only, no export, no speculative support for Aurora formats that will never exist.
 
 7. **The character format follows.** The builder stops finding records by Aurora's key shape. Keys may keep Aurora's
    strings (decision 2), but what a record *means* is said by the format, not by its spelling. Optional features taken
@@ -103,6 +105,26 @@ the shape Aurora's app needed in 2015.
    is verification, not compatibility, and it is how the converter is proved: a sample converted and derived must agree
    with Aurora exactly where it agrees today.
 
+9. **Starting equipment the lookup does not match** (the maintainer's call):
+   - **A pattern is codified only when it covers a good share of the misses.** "Fine clothes" against an item named
+     "Clothes, Fine" is such a pattern; a rule that rescues one line is not worth writing. The measurement of what is
+     missed, and how much each candidate pattern rescues, comes before any rule.
+   - **A generic line becomes a pick.** "Any one musical instrument" is written as one pick among the items of that
+     kind, as "a simple weapon" already is.
+   - **What is left is a pending item.** The converter keeps the line's name, and Build shows a "Pending items" card
+     listing it. The user decides: pick an item for it, or give it a name of their own, which lands in the bag as an
+     entry with that name (an inventory entry's user-given name, ADR 0024), so "fine clothes" may show in the bag as
+     "tuxedo".
+
+10. **No Aurora file is kept** (the maintainer's call). A source is downloaded to be converted, and only the converted
+    source is kept. ADR 0085's `keep: files` choice and its raw cache go. Converting again (a refresh, or a new converter
+    version) downloads again.
+
+11. **A converted source is a file the user can see and open** (the maintainer's call), in Incudo's content format, the
+    format every future Incudo source follows, so it is not hidden in the app's storage as ADR 0085's conversion is.
+
+12. **All of it is 1.0** (the maintainer's call).
+
 ## Order of work
 
 Each step is held by the oracle being identical before and after, as every engine change here has been.
@@ -110,26 +132,27 @@ Each step is held by the oracle being identical before and after, as every engin
 1. **Measure the converter's input.** Every Aurora construct the library and the engine still interpret, with its count
    in the corpus and where it is read. The table above is the start; the measurement is a test in `tools/verify`.
 2. **The content format**: schema, version, validator; a save's `content.json` and a homebrew source read through it.
-3. **The converter**, writing that format, with the run-time overlay, the improvement options and the appends moved
-   into it. The library loses its `aurora` branch.
+3. **The converter**: `packages/aurora-import` unfrozen (its FROZEN banner in `src/index.ts` rewritten), writing that
+   format, with the run-time overlay, the improvement options and the appends moved into it. The library loses its
+   `aurora` branch; ADR 0085's `keep: files` and raw cache go (decision 10); a converted source is a file the user can
+   open (decision 11).
 4. **The expression quirks** moved from evaluation to conversion, one at a time, each with its own perturbation test.
-5. **Starting equipment** written by the converter; the data file removed.
+5. **Starting equipment** written by the converter, after measuring what the lookup misses and which patterns rescue a
+   good share of it; generic lines as picks; the rest as pending items on Build (decision 9); the data file removed.
 6. **The system definition** reviewed id by id (decision 5).
 7. **The character format**: records by meaning, optional features as choices, the save import through the converter.
 8. **CLAUDE.md, the ADRs this amends, and docs/ARCHITECTURE.md** rewritten to say where the boundary is.
 
-## Open questions for the maintainer
+## The maintainer's answers (2026-10-15)
 
-- **Where the converter lives**: a new package (`packages/aurora-convert`, importing the frozen parser) or the frozen
-  package reopened for it. The first keeps ADR 0008's freeze honest.
-- **Whether a converted source is a file the user sees**, exports and can open in the homebrew editor, or stays in the
-  app's storage as ADR 0085's conversion does.
-- **`keep: files`**: whether a source may still be kept as Aurora XML (reconverted on load) for space, or whether a
-  source is always kept converted.
-- **Unmatched starting equipment**: shown on the source's line as ADR 0052's missing content is, and offered to the
-  user as a plain text line, or left out.
-- **How much of this is 1.0**: all of it touches the formats 1.0 freezes, which argues for all of it; the converter's
-  breadth argues for a staged 1.0 with the format decisions (steps 2 and 7) first.
+- **Where the converter lives**: in `packages/aurora-import`, unfrozen. "It's the same converter. It's not working as it
+  should. Unfreeze and fix it. This is effectively a bug." (decision 6)
+- **A converted source is visible**: future content written for Incudo follows this format, so it should be
+  accessible. (decision 11)
+- **No Aurora files are kept**: a source is downloaded to be converted. (decision 10)
+- **Unmatched starting equipment**: codify a pattern only when it covers a good share of the misses; generic lines are
+  picks; the rest are pending items the user resolves on Build, by an item or a name of their own. (decision 9)
+- **Scope**: all of it in 1.0. (decision 12)
 
 ## Consequences
 
@@ -144,5 +167,7 @@ Each step is held by the oracle being identical before and after, as every engin
 - A large change, close to 1.0, across the content library, the engine, the 5e definition and the character format.
 - The conversion becomes a real program with its own bugs, where today the parse is faithful by construction. The oracle
   and the 30 samples are what keep it honest.
-- Converting starting equipment from prose will miss some lines, and says so.
+- Converting starting equipment from prose will miss some lines; they reach the user as pending items, not as silence.
+- A refresh, or a new converter version, downloads the source again, since no Aurora file is kept.
+- The one package ADR 0008 let the project call finished is open again.
 - Saves from the betas may not open in 1.0 (accepted by the maintainer's rule).

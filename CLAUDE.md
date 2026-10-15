@@ -135,7 +135,11 @@ formula produces — and it is a list of instances rather than a set of element 
 element subset the character uses, plus assets as real bytes. This is the product requirement,
 not an optimization — if a change makes a save depend on configured sources to open, it is wrong.
 
-**Aurora is import-only and frozen when done** (ADR 0008). No export. No speculative support.
+**Aurora is import-only, and Aurora files are converted into Incudo files** (ADR 0008, ADR 0119). No export. No
+speculative support. Since ADR 0119 (accepted 2026-10-15, not built yet) `packages/aurora-import` is **unfrozen**: it
+is the converter, and nothing past it may know Aurora. Reusing Aurora's ids and names is fine; carrying its app's
+behaviour or shape into Incudo's formats, the engine or a system definition is not. No Aurora file is kept once
+converted. The sections below that say "frozen importer" describe the code as it was; ADR 0119 is where it is going.
 
 **Nothing is ever published to npm.** Every package stays `"private": true`. The `@incudo/`
 prefix is a local workspace naming convention, not a registry claim — the app is the product,
@@ -2182,7 +2186,7 @@ has anything to do with 0032 despite the numbers. The element picker is also not
 any more: `CandidatePicker.tsx` is searchable and uncapped, hovering a candidate reads its
 description in a fixed dock (`PreviewDock.tsx`), and none of that has an ADR — it is presentation.
 Phase 1 is done — **`packages/aurora-import`
-is frozen to bugfix-only** (ADR 0008). `GameSystem` declares `characterKinds[]`, each owning its
+was frozen to bugfix-only** (ADR 0008), and is open again as the converter (ADR 0119). `GameSystem` declares `characterKinds[]`, each owning its
 `buildSteps`, `sheet`, element types, baseline `grants` and `progression`
 (level | rating | xp | none); `Character` has `kind`, `progress`, `rolls`, `baseStats`,
 `advancement`, `generation`, `inventory` and `assets`. A `.incu` is a zip of `manifest.json` + `character.json` + `content.json` + `assets/`,
@@ -2197,8 +2201,8 @@ Three things Phase 1 changed that are easy to trip over:
   passed in or the save will not embed them and ADR 0012 quietly breaks.
 - **`packages/aurora-import` supplies 83 elements no content file declares** (plus 146 it
   derives from what is loaded, ADR 0035). The 5e system definition names seven of them in
-  `kind.grants`. That coupling is deliberate — 5e content in
-  this project *is* Aurora content — but it is why a missing kind grant warns rather than errors.
+  `kind.grants`. That coupling was deliberate, and ADR 0119 removes it: the converter writes these elements into converted content,
+  and the system names only what the converter guarantees. Until then it is why a missing kind grant warns rather than errors.
   The last three arrived with the bag: Aurora's inventory proxies, which only a real
   `<equipment>` block names.
 - **Six Aurora constructs were being silently dropped**: element-level `<supports>`

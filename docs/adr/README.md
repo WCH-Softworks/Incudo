@@ -26,10 +26,10 @@ new one that supersedes it.
 | [0002](./0002-monorepo-and-code-reuse.md) | Single monorepo with layered packages | Accepted |
 | [0003](./0003-system-agnostic-content-model.md) | Game systems are data, not code | Accepted |
 | [0004](./0004-live-vs-downloaded-content.md) | Content sources are composable; live and offline are both first-class | Accepted |
-| [0005](./0005-aurora-import.md) | Aurora import is a first-class, day-one feature | Accepted |
+| [0005](./0005-aurora-import.md) | Aurora import is a first-class, day-one feature | Accepted; its "native input format" and "superset of Aurora" decisions superseded by 0119 |
 | [0006](./0006-derived-character-state.md) | Characters store choices, never derived numbers | Accepted |
 | [0007](./0007-native-formats.md) | Incudo's own formats are JSON; images are never inlined | Accepted |
-| [0008](./0008-aurora-compatibility-frozen.md) | Aurora compatibility is import-only, and it gets to be finished | Accepted |
+| [0008](./0008-aurora-compatibility-frozen.md) | Aurora compatibility is import-only, and it gets to be finished | Accepted; the freeze lifted by 0119 (import-only and no export stand) |
 | [0009](./0009-character-kinds.md) | A system declares several character kinds, not one | Accepted |
 | [0010](./0010-licensing-and-funding.md) | A system ships officially only if its licence permits donation-funded tools | Accepted |
 | [0011](./0011-user-systems.md) | Users can fork official systems and author entirely new ones | Accepted |
@@ -140,4 +140,4 @@ new one that supersedes it.
 | [0116](./0116-a-text-field-may-stand-in-with-what-a-character-chose-and-alignment-and-deity-are-picks.md) | A text field may stand in with what a character chose, and alignment and deity are picks | Accepted (answers the maintainer's Build pane report; system format `suggestedBy` on a freeform field) |
 | [0117](./0117-the-add-item-list-is-grouped-by-a-setter-the-system-names.md) | The add-item list is grouped by a setter the system names | Accepted (answers the maintainer's inventory report; system format `inventory.groupSetter`) |
 | [0118](./0118-a-sidekick-is-a-character-of-its-own-built-on-a-creature-and-levelled-in-a-sidekick-class.md) | A sidekick is a character of its own, built on a creature and levelled in a sidekick class | Accepted, not built (plans Phase 4's sidekicks item; system format: a `Sidekick Class` type, a level's die read off a held creature's print, a kind's `available`; no character format change) |
-| [0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md) | Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora | Proposed (the maintainer's rule from the 1.0 readiness review; supersedes 0005's "native input format", amends 0008, 0085, 0087, 0108; content format versioned; character format change likely) |
+| [0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md) | Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora | Accepted, not built (the maintainer's rule from the 1.0 readiness review; lifts 0008's freeze; supersedes 0005's "native input format", amends 0008, 0085, 0087, 0108; content format versioned; character format change likely) |

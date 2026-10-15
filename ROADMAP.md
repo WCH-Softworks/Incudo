@@ -72,11 +72,14 @@ identically with no sources, which is what ADR 0012 actually asks for.
 
 ---
 
-## Phase 1 — Aurora compatibility, finished 🔒
+## Phase 1 — Aurora compatibility, finished ✅
 
 *Goal: read everything Aurora ever produced, then close the book on it.*
 See [ADR 0008](./docs/adr/0008-aurora-compatibility-frozen.md) — this phase has an end, and
 this is it.
+
+*Unfrozen 2026-10-15 by [ADR 0119](./docs/adr/0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md):
+the importer is the converter, and it was not converting. Import-only and no export stand; the fix is a Phase 9 item.*
 
 - [x] Elements XML importer, validated against 12,058 elements with 0 errors
 - [x] `.dnd5e` **character save importer**: decisions, abilities, `rndhp`, freeform, appearance
@@ -91,7 +94,7 @@ this is it.
       inventory proxies — and finding them needed a *bag*, not a reading of the format.
 - [x] **Differential verification**: `incudo aurora verify` (now `tools/verify/src/aurora-oracle.test.ts`) re-derives each imported character
       and diffs against the `<sum>` / `<magic>` Aurora itself wrote.
-- [x] Mark `packages/aurora-import` 🔒 **DONE** — bugfix-only from here
+- [x] Mark `packages/aurora-import` 🔒 **DONE** — bugfix-only from here *(lifted by ADR 0119, 2026-10-15)*
 
 **Exit criteria met.** All 8 import and re-derive with **0 `element-missing`, 0 `spell-missing`,
 0 `stat-mismatch`** across 951 compared element ids. The 52 remaining differences are one
@@ -2239,11 +2242,14 @@ written on a character can be moved into the user's library without being typed 
       which changes the content, system and character formats first.
 - [ ] **Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora**
       ([ADR 0119](./docs/adr/0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md),
-      proposed 2026-10-15). The maintainer's rule: Incudo converts Aurora files into Incudo files and never reads Aurora
+      accepted 2026-10-15, not built). The maintainer's rule: Incudo converts Aurora files into Incudo files and never reads Aurora
       past that point; reusing Aurora's ids and names is fine, carrying its limitations is not. The readiness review
       found the 5e definition naming 34 Aurora ids, the content library inventing Aurora's app elements on every load,
       Aurora's expression quirks read by the engine at evaluation, and the character format keyed and shaped as
-      Aurora's saves are. Before 1.0, because 1.0 freezes the formats these live in. The ADR's open questions come first.
+      Aurora's saves are. All of it in 1.0 (the maintainer's call), because 1.0 freezes the formats these live in.
+      Decided with it: `packages/aurora-import` is unfrozen and is the converter; no Aurora file is kept; a converted
+      source is a file the user can open; unmatched starting equipment becomes a codified pattern only when one covers a
+      good share of the misses, a pick when it is generic, and otherwise a pending item the user resolves on Build.
 - [ ] Signed desktop installer for Windows; macOS and Linux are after 1.0, and the phone's store is the first item after
       1.0 (Beyond 1.0, below)
 - [ ] Docs site, contribution guide, issue templates. *As of 2026-10-15:* the contribution guide exists
@@ -2428,7 +2434,7 @@ library (ADR 0106) and the element editor's first slice (ADR 0108). Its content 
   - **Saves (ADR 0012, a public format).** Probably nothing, since a character stores choices and ids, not text;
     to be confirmed, including what a custom feature's name or a written description means in another language
     (it is the user's own words and is not translated).
-  - **Content.** AuroraLegacy's elements are English and Aurora import is frozen (ADR 0008). Translating game
+  - **Content.** AuroraLegacy's elements are English and Aurora import is converted into Incudo content (ADR 0119). Translating game
     content is not Incudo's to do; whether a translated content source a community publishes can stand beside or in
     place of the English one is the open question, and ADR 0054's "the later source wins" may already answer it.
   - **Which languages ship first**, and whether right-to-left is in scope, are the maintainer's call.
@@ -2463,5 +2469,5 @@ work** — that is the trigger to revisit [ADR 0001](./docs/adr/0001-tech-stack.
   `docs/adr/` and link it from here.
 - When a phase ships, mark it ✅ and note what actually shipped vs what was planned.
 - If a phase is deferred or dropped, say so here rather than silently deleting it.
-- 🔒 means done **and frozen** — bugfix-only. So far only Aurora compatibility earns that, and
-  only because the format it targets can no longer change.
+- 🔒 means done **and frozen** — bugfix-only. Nothing holds it today: Aurora compatibility did until ADR 0119
+  (2026-10-15) reopened its importer as the converter.
