@@ -2028,7 +2028,7 @@ maintainer's call (2026-10-12): systems written by someone else come after 1.0.
 
 ---
 
-## Phase 8 — Homebrew content authoring ⬜
+## Phase 8 — Homebrew content authoring 🟡
 
 *Systems are the container; this is the content inside them.*
 
@@ -2085,7 +2085,7 @@ written on a character can be moved into the user's library without being typed 
 
 ---
 
-## Phase 9 — 1.0 ⬜
+## Phase 9 — 1.0 🟡
 
 - [ ] **Release pipeline: main builds the installers and puts them on GitHub.** Written 2026-10-07 as
       `.github/workflows/release.yml`, for the first public release candidate, to the shape below; the release it
@@ -2208,11 +2208,19 @@ written on a character can be moved into the user's library without being typed 
     load is in progress (the release build loads too fast to catch), the browser build (it keeps every browser key),
     macOS and Linux.
 - [ ] Stable formats with a real versioning and migration policy — from here on, the system
-      format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md))
+      format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md)). *Found 2026-10-15, reviewing readiness:* no
+      ADR states the policy yet. The character format is at 13 (`LATEST_CHARACTER_FORMAT_VERSION`) and the system format
+      still reads 1 after many optional additions; what 1.0 freezes, and what a later change to either must carry, is
+      undecided.
 - [ ] Signed desktop installer for Windows; macOS and Linux are after 1.0, and the phone's store is the first item after
       1.0 (Beyond 1.0, below)
-- [ ] Docs site, contribution guide, issue templates
-- [ ] `docs/LICENSING.md` complete for every shipped system
+- [ ] Docs site, contribution guide, issue templates. *As of 2026-10-15:* the contribution guide exists
+      (`CONTRIBUTING.md`); there is no docs site, and `.github/` holds no issue templates.
+- [ ] `docs/LICENSING.md` complete for every shipped system. *Found 2026-10-15, reviewing readiness:* two things are
+      open. 5e's `licence.attribution` (the SRD 5.2.1's CC-BY-4.0 notice) is read by no screen, though LICENSING.md says
+      the About screen shows it: About Incudo (`packages/ui/src/about.ts`) names only Incudo's own MIT licence, and rc.1
+      was published so. And `cairn` ships in `systems/` while the register reads "structural sketch only; replace the
+      content before shipping", with no licence assessed and no `licence` block in its definition.
 - [x] Patreon and Ko-fi links in README and in-app About — never on a screen showing licensed material,
       never gating anything. Done 2026-10-07: README's Support section, and an About Incudo section at the foot of
       Settings (the one pane that shows no content), reached from Help > About Incudo too. The words and addresses are
