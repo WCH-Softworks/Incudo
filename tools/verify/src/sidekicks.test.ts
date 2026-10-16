@@ -36,7 +36,7 @@ import {
   type Fetcher,
   type GameSystem,
 } from '@incudo/core';
-import { CharacterBuilder, characterKindChoices, newCharacterOfKind, packCharacter, sheetDocument } from '@incudo/ui';
+import { CharacterBuilder, characterKindChoices, firstClassHint, newCharacterOfKind, packCharacter, sheetDocument } from '@incudo/ui';
 
 import { loadCorpus } from './corpus.ts';
 import { loadShippedSystem, repoRoot } from './node-system.ts';
@@ -123,6 +123,16 @@ test('the kind is unavailable until a sidekick class is loaded, and a player cha
   b.choose('build/creature', [creature.id]);
   const offered = b.getState().decisions.find((d) => d.id === 'build/class');
   assert.deepEqual([...offered!.candidates].sort(), [...classes].sort());
+
+  // Before a class is chosen the level control names the step's type and promises other classes only where one could
+  // be taken second: none of the file's classes writes a multiclass block. Perturbation: the old fixed sentence, or
+  // `secondClassPossible` read as "multiclassing is on", tells a sidekick its later levels can go to other classes.
+  const levelsStep = (kindId: string) => resolveCharacterKind(system, kindId).buildSteps.find((step) => step.perLevel)!.id;
+  const sidekickLevels = b.classLevelsFor(levelsStep(kind.id))!;
+  assert.equal(sidekickLevels.secondClassPossible, false);
+  assert.equal(firstClassHint(sidekickLevels), 'Choose a sidekick class in Open decisions.');
+  const pcLevels = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, loaded).classLevelsFor(levelsStep('pc'))!;
+  assert.equal(firstClassHint(pcLevels), 'Choose a class in Open decisions. Further levels can then go to other classes.');
 });
 
 test('a sidekick starts from its creature and grows by its class', { skip }, async () => {
@@ -145,6 +155,20 @@ test('a sidekick starts from its creature and grows by its class', { skip }, asy
   assert.equal(stat(b, 'proficiency'), 2);
   const grants = martial.rules.flatMap((rule) => (rule.kind === 'grant' && rule.level !== undefined ? [{ id: rule.id, level: rule.level }] : []));
   for (const grant of grants) assert.equal(b.getState().derived.elementIds.has(grant.id), grant.level <= 1, `${grant.id} at level 1`);
+  // A class feature written as a player character's adds to the print: content adds speed and armour class in
+  // `speed:misc` and `ac:misc`, which the NPC's printed `speed` and `ac` do not read. Found in the Tauri window: the
+  // martial's style moved nothing on the Sheet. Perturbation: drop the sidekick's own `speed` or `ac`.
+  const style = b.getState().decisions.find((d) => d.label === 'Sample Style')!;
+  const styleOf = (name: string) => style.candidates.find((id) => elements.get(id)?.name === name)!;
+  const printedSpeed = stat(b, 'speed')!;
+  const printedAc = stat(b, 'ac')!;
+  assert.equal(printedSpeed, 30);
+  assert.equal(printedAc, 12);
+  b.choose(style.id, [styleOf('Quick Feet Habit')]);
+  assert.deepEqual([stat(b, 'speed'), stat(b, 'ac')], [printedSpeed + 5, printedAc]);
+  b.choose(style.id, [styleOf('Shield Wall Habit')]);
+  assert.deepEqual([stat(b, 'speed'), stat(b, 'ac')], [printedSpeed, printedAc + 1]);
+
   // The first level owes no roll: the print covers it.
   const levels = b.getState().steps.find((step) => step.id === 'levels');
   assert.equal(levels?.hitPoints?.levels.length ?? 0, 0);
@@ -166,6 +190,21 @@ test('a sidekick starts from its creature and grows by its class', { skip }, asy
   b.choose('build/options', []);
   const without = b.getState().decisions.find((d) => d.id === improvement!.id);
   assert.ok(without && !without.candidates.some((id) => id.includes('_FEAT_')), 'and not once it is off');
+
+  // The ability score half is +1 to a score picked twice (ADR 0035), so the second slot still offers the score the first
+  // took, and both apply. Found in the Tauri window: the kind did not declare the player character's `repeatableSetter`,
+  // and a sidekick could not take +2 to one score. Perturbation: remove it from the sidekick kind.
+  const asi = without!.candidates.find((id) => !id.includes('_FEAT_'))!;
+  b.choose(without!.id, [asi]);
+  const increase = b.getState().decisions.find((d) => d.id.startsWith(`${asi}/select:`));
+  assert.ok(increase, 'the improvement opens its ability score increases');
+  const conBefore = stat(b, 'constitution')!;
+  const plusCon = increase!.candidates.find((id) => elements.get(id)?.name.startsWith('Constitution'))!;
+  b.choose(increase!.id, [plusCon]);
+  const second = b.getState().decisions.find((d) => d.id === increase!.id);
+  assert.ok(second?.candidates.includes(plusCon), 'the second slot still offers the score the first took');
+  b.choose(increase!.id, [plusCon, plusCon]);
+  assert.equal(stat(b, 'constitution'), conBefore + 2);
 
   // Each later level: a recorded roll, or the average, plus the Constitution modifier.
   const con = stat(b, 'constitution:modifier')!;

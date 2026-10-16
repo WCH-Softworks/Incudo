@@ -233,6 +233,12 @@ export interface LevelControlView {
   down?: { level: number; label: string };
   /** The class a level up goes to unless another is chosen: the last level's, else the first class. */
   nextClass?: ElementId;
+  /**
+   * Whether a screen offers a choice of class for the next level: once a class is chosen, while another class could be
+   * taken (`secondClassPossible`) or the character already has more than one. A sidekick's classes cannot be taken second,
+   * and a choice of one class beside every other listed as "cannot be taken as an additional class" says nothing.
+   */
+  choosesClass: boolean;
 }
 
 export function levelControlView(
@@ -253,12 +259,23 @@ export function levelControlView(
     ...(canUp ? { up: { level: level + 1, label: `Level up to ${level + 1}` } } : {}),
     ...(level > min ? { down: { level: level - 1, label: `Remove level ${level}${removed}` } } : {}),
     ...(nextClass ? { nextClass } : {}),
+    choosesClass: state?.firstClassId !== undefined && (state.secondClassPossible || state.classes.length > 1),
   };
 }
 
 /** What the level control says under its buttons. */
 export const LEVEL_HINT =
   'What a new level opens arrives in Open decisions, tagged with the level that raised it. Removing a level keeps what was chosen for it: those choices wait under Not counting and count again if the level comes back.';
+
+/**
+ * What the level control says before a first class is chosen: where to choose it, named by the class type ("a class",
+ * "a sidekick class"), and that later levels may go to other classes only when one could (`secondClassPossible`).
+ */
+export function firstClassHint(state: Pick<ClassLevelState, 'classType' | 'secondClassPossible'>): string {
+  const type = state.classType.toLowerCase();
+  const choose = `Choose ${/^[aeiou]/.test(type) ? 'an' : 'a'} ${type} in Open decisions.`;
+  return state.secondClassPossible ? `${choose} Further levels can then go to other classes.` : choose;
+}
 
 /** What it says beside the class a level up goes to, when another class may be added. */
 export const LEVEL_MULTICLASS_HINT = 'Choose another class here to take this level in it.';
@@ -331,6 +348,24 @@ export function withAddedSplitRow(rows: readonly ClassSegment[], state: Pick<Cla
 /** What the split editor says first. */
 export const SPLIT_HINT =
   'Say how many levels go to each class, in the order they were taken. The first row is the class the character started as, which decides its starting proficiencies and its highest hit die.';
+
+/**
+ * The split editor's name, first sentence and whether it offers another row, for this character. While one class is all it
+ * can have (no other could be taken second, `secondClassPossible`, and it holds one), the editor sets the level at once:
+ * a sidekick's classes cannot be combined, and its hit die is its creature's, so the class split's words are untrue of it.
+ */
+export function splitWording(state: Pick<ClassLevelState, 'secondClassPossible' | 'classes'>): {
+  label: string;
+  hint: string;
+  addsClass: boolean;
+} {
+  if (state.secondClassPossible || state.classes.length > 1) return { label: SPLIT_LABEL, hint: SPLIT_HINT, addsClass: true };
+  return { label: SPLIT_ONE_CLASS_LABEL, hint: SPLIT_ONE_CLASS_HINT, addsClass: false };
+}
+
+/** The split editor's name and first sentence for a character that can have only its one class. */
+export const SPLIT_ONE_CLASS_LABEL = 'Set the level at once';
+export const SPLIT_ONE_CLASS_HINT = 'Type the level the character should have. Every level goes to its class.';
 
 /** What it says when `applySplit` refused the rows. */
 export const SPLIT_REFUSED = 'These classes cannot be combined, so nothing was changed.';

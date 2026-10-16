@@ -68,7 +68,7 @@
 		<supports>Sample Style</supports>
 		<description><p>Stands close to an ally and covers them.</p></description>
 		<rules>
-			<stat name="ac" value="1" equipped="[armor:any]" />
+			<stat name="ac:misc" value="1" />
 		</rules>
 	</element>
 	<element name="Quick Feet Habit" type="Class Feature" source="Homebrew Sidekicks Test" id="ID_TEST_SIDEKICK_STYLE_QUICK_FEET">

@@ -162,6 +162,12 @@ export interface ClassLevelState {
    * `multiclassing-off`; a character that holds more than one class anyway keeps them, and a screen says so.
    */
   allowedBy?: ElementId;
+  /**
+   * Whether a later level could go to a class other than the first: what allows another class is not off, and some loaded
+   * class of the type declares a multiclass block that is loaded. Read before a first class is chosen too, so a screen
+   * does not promise other classes to a kind whose classes cannot be taken second (a sidekick class, ADR 0118).
+   */
+  secondClassPossible: boolean;
 }
 
 /**
@@ -659,6 +665,9 @@ export function computeClassLevelState(
     canAddLevel: config.max === undefined || (character.progress ?? config.min) < config.max,
     ...(config.max !== undefined ? { maxLevel: config.max } : {}),
     ...(off ? { allowedBy: config.allowedBy } : {}),
+    secondClassPossible:
+      !off &&
+      elements.byType(config.classType).some((element) => element.multiclass !== undefined && elements.get(element.multiclass.id) !== undefined),
     interleaved: levels.filter((row, index) => row.classId !== undefined && row.classId !== levels[index - 1]?.classId).length > counts.size,
   };
 }

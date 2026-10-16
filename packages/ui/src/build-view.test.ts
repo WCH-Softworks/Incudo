@@ -12,7 +12,11 @@ import {
   currentSplit,
   levelControlView,
   movedSplitRow,
+  firstClassHint,
   multiclassOffNote,
+  splitWording,
+  SPLIT_HINT,
+  SPLIT_LABEL,
   progressPrintedHint,
   progressResetLabel,
   splitDraftView,
@@ -241,6 +245,7 @@ test('the level control offers one level up and one down, and names the class th
     up: { level: 4, label: 'Level up to 4' },
     down: { level: 2, label: 'Remove level 3 (Wizard 1)' },
     nextClass: 'W',
+    choosesClass: true,
   });
   // At the top, the class state says no room; at the bottom, nothing to remove.
   const top = levelControlView(20, { min: 1, max: 20 }, { ...state, canAddLevel: false }, nameOf);
@@ -251,4 +256,39 @@ test('the level control offers one level up and one down, and names the class th
   assert.deepEqual(bare.up, { level: 2, label: 'Level up to 2' });
   assert.equal(bare.summary, undefined);
   assert.equal(levelControlView(20, { min: 1, max: 20 }, undefined, nameOf).up, undefined);
+  assert.equal(bare.choosesClass, false);
+});
+
+test('the level control offers a choice of class only where another class could be taken', () => {
+  const one = {
+    levels: [{ level: 1, classId: 'S', classLevel: 1, first: true }],
+    firstClassId: 'S',
+    classes: [{ id: 'S', levels: 1 }],
+    canAddLevel: true,
+  };
+  const view = (patch: object) => levelControlView(1, { min: 1, max: 20 }, { ...one, ...patch } as unknown as ClassLevelState, String);
+  // Perturbation: offering it whenever a class is chosen gives a sidekick a list of one class and two it cannot take.
+  assert.equal(view({ secondClassPossible: false }).choosesClass, false);
+  assert.equal(view({ secondClassPossible: true }).choosesClass, true);
+  // A character holding two classes keeps the choice between them, whatever allows a third.
+  assert.equal(view({ secondClassPossible: false, classes: [{ id: 'S', levels: 1 }, { id: 'T', levels: 1 }] }).choosesClass, true);
+});
+
+test('the split editor sets the level at once where one class is all a character can have', () => {
+  const one = [{ id: 'S', levels: 4 }];
+  // Perturbation: the class split's words for every character tell a sidekick to order its classes and offer it another.
+  const sidekick = splitWording({ secondClassPossible: false, classes: one });
+  assert.deepEqual(sidekick, { label: 'Set the level at once', hint: 'Type the level the character should have. Every level goes to its class.', addsClass: false });
+  assert.deepEqual(splitWording({ secondClassPossible: true, classes: one }), { label: SPLIT_LABEL, hint: SPLIT_HINT, addsClass: true });
+  assert.equal(splitWording({ secondClassPossible: false, classes: [...one, { id: 'T', levels: 1 }] }).addsClass, true, 'two held stay a split');
+});
+
+test('before a first class, the level control names the class type and promises other classes only where one could be taken', () => {
+  assert.equal(
+    firstClassHint({ classType: 'Class', secondClassPossible: true }),
+    'Choose a class in Open decisions. Further levels can then go to other classes.',
+  );
+  // Perturbation: the old fixed sentence tells a sidekick its later levels can go to other classes.
+  assert.equal(firstClassHint({ classType: 'Sidekick Class', secondClassPossible: false }), 'Choose a sidekick class in Open decisions.');
+  assert.equal(firstClassHint({ classType: 'Order', secondClassPossible: false }), 'Choose an order in Open decisions.');
 });

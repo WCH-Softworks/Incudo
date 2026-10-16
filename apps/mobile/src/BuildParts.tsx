@@ -15,16 +15,16 @@ import type { ElementId, ResolvedCharacterKind, StatDef } from '@incudo/core';
 import {
   LEVEL_HINT,
   LEVEL_UP_OTHER,
-  SPLIT_LABEL,
   levelControlView,
-  SPLIT_HINT,
   SPLIT_INTERLEAVED,
   SPLIT_REFUSED,
   classOptionGroups,
+  firstClassHint,
   multiclassOffNote,
   currentSplit,
   movedSplitRow,
   splitDraftView,
+  splitWording,
   withAddedSplitRow,
   withSplitRow,
   withoutSplitRow,
@@ -404,7 +404,7 @@ export function ClassLevelsView({
         ) : null}
       </Row>
       {down ? <Button label={down.label} kind="link" onPress={() => builder.setProgress(down.level)} /> : null}
-      {state && !classes ? <Body tone="muted">Choose a class in Open decisions. Further levels can then go to other classes.</Body> : null}
+      {state && !classes ? <Body tone="muted">{firstClassHint(state)}</Body> : null}
       {classes && offNote ? <Body tone={classes.classes.length > 1 ? 'danger' : 'muted'}>{offNote}</Body> : null}
       {classes?.options
         .filter((option) => option.taken && option.flag)
@@ -425,7 +425,7 @@ export function ClassLevelsView({
       {classes && stepId !== undefined ? (
         <>
           <Row>
-            <Button label={splitOpen ? 'Close' : SPLIT_LABEL} onPress={() => setSplitOpen(!splitOpen)} />
+            <Button label={splitOpen ? 'Close' : splitWording(classes).label} onPress={() => setSplitOpen(!splitOpen)} />
           </Row>
           {splitOpen ? (
             <SplitEditor stepId={stepId} state={classes} builder={builder} labelOf={labelOf} offer={offer} onApplied={() => setSplitOpen(false)} />
@@ -438,16 +438,18 @@ export function ClassLevelsView({
               ) : (
                 <>
                   <Body>{row.classId ? `${nameOf(row.classId)} ${row.classLevel}` : 'no class'}</Body>
+                  {view.choosesClass || row.classId === undefined ? (
                   <Button
                     label="Change"
                     kind="link"
                     onPress={() => offer(`Level ${row.level} goes to`, (id) => builder.setLevelClass(stepId, row.level, id), row.classId)}
                   />
+                  ) : null}
                 </>
               )}
             </Row>
           ))}
-          {groups.unavailable.length > 0 ? (
+          {view.choosesClass && groups.unavailable.length > 0 ? (
             <Body tone="muted">
               Not available: {groups.unavailable.map((option) => `${labelOf(option.id)} (${unavailableReason(option, labelOf)})`).join('; ')}.
             </Body>
@@ -482,13 +484,14 @@ function SplitEditor({
   const [refused, setRefused] = useState(false);
   const draft = splitDraftView(state, rows ?? currentSplit(state));
   const shown = draft.rows;
+  const wording = splitWording(state);
   const edit = (next: ClassSegment[]): void => {
     setRows(next);
     setRefused(false);
   };
   return (
     <Card>
-      <Body tone="muted">{SPLIT_HINT}</Body>
+      <Body tone="muted">{wording.hint}</Body>
       {shown.map((row, index) => (
         <Row key={index}>
           <Button
@@ -508,7 +511,7 @@ function SplitEditor({
         </Row>
       ))}
       <Row>
-        <Button label="Add a class" kind="link" onPress={() => edit(withAddedSplitRow(shown, state))} />
+        {wording.addsClass ? <Button label="Add a class" kind="link" onPress={() => edit(withAddedSplitRow(shown, state))} /> : null}
         <Body tone={draft.valid ? 'muted' : 'danger'}>{draft.totalText}</Body>
       </Row>
       <Button

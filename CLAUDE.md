@@ -2479,7 +2479,16 @@ Things to know before touching it:
 - A sidekick class with no `<multiclass>` block is never a second class, which is what keeps a sidekick to one class;
   no leader is recorded; no attacks, no bag, and the NPC's play state inherited unchanged.
 - Tests: `tools/verify/src/sidekicks.test.ts`, `packages/ui/src/kind-from-creature.test.ts`, the dice cases in
-  `packages/core/src/setter-stats.test.ts`, each failing under its named perturbation. Driven in the browser build only.
+  `packages/core/src/setter-stats.test.ts`, each failing under its named perturbation.
+- **The kind declares the player character's `repeatableSetter`** (the NPC it extends has none, so +2 to one score was
+  impossible) **and its own `speed` and `ac`**: the creature's print with `speed:misc` and `ac:misc` added, where class
+  content writes them. Found in the Tauri window.
+- **The level panel reads `ClassLevelState.secondClassPossible`** (not off, and some loaded class of the type writes a
+  loaded multiclass block): `firstClassHint`, `LevelControlView.choosesClass` and `splitWording` (`build-view.ts`) word a
+  sidekick's panel as one class, "Set the level at once", with no class choice; desktop and phone both call them.
+- Driven in the browser build, the Tauri window on Windows (DOM clicks and window messages; saved, reopened with no
+  source to an identical Sheet, text and PDF export) and the phone emulator. **The phone cannot add a user's own content
+  file**, so a sidekick is only shown, edited and exported there from a file made elsewhere.
 
 **A pool never offers what the character already has.** `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,

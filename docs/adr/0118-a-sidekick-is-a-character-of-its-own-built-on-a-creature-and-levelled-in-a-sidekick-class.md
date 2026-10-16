@@ -203,6 +203,41 @@ the user adds.
   "Sample Martial 4 (5d8)", hit points 29, proficiency +2. **Not driven:** the Tauri window, the phone, save and reopen
   in the app (the tests cover it), print, the official form (a sidekick is not a player character, so no form is
   offered).
+- **Driven in the Tauri window on Windows (2026-10-15)**, a fresh profile and a scratch library, DOM clicks over the
+  debug port and the native dialogs by window messages (not real input): AuroraLegacy added from its suggestion
+  (14,320 elements); the chooser read "Sidekick (needs content)" with the note and New character greyed with no source
+  and with the corpus alone; the fixture added through "Choose files…" and the native open dialog, after which it was
+  selectable. On the Lantern Bearer, Sample Martial levelled 1 to 4 with the buttons (a skill, a style, hit points rolled
+  at 2 and averaged at 3 and 4, the improvement at 4), then to 20 at once, every later level rolled or averaged by its
+  own button, the four later improvements taken: "Sample Martial 20 (21d8)", hit points 136 (11 printed, 87 from the
+  recorded values, 19 × Constitution +2), proficiency +6. Sample Caster levelled to 4 with the buttons (two cantrips and
+  a spell at 1, a 2nd-level spell at 3, offered nothing higher) and to 20 at once: DC 11 then 15, attack +3, 3 1st- and
+  2 2nd-level slots, hit points 121. Both saved to the library, every source switched off, reopened: the Sheet's text
+  identical, the text export byte for byte the same as before, and "Export sheet as PDF…" two pages holding every word
+  of it. The print dialog was not driven. **Three findings, fixed with tests that fail under their perturbation:**
+  - a second "Constitution +1" was not offered, so no score could take +2: the kind did not declare the player
+    character's `repeatableSetter` (it extends the NPC, which has none). Declared;
+  - the martial's own style (`speed:misc` 5) moved nothing: the NPC's `speed` and `ac` start from the creature and read
+    no `:misc`, where class content writes speed (10 rules in the corpus) and armour class (43). The sidekick redeclares
+    both to add their `:misc` on top of the print, as its `hp` does; the fixture's other style now writes `ac:misc`
+    (its `equipped=` gate meant nothing on a kind with no bag);
+  - the level panel: before a class it said "Further levels can then go to other classes", and after one it offered a
+    class select of one class and two greyed "cannot be taken as an additional class", a per-level class list, and a split
+    editor with "Add a class" whose words spoke of class order and "highest hit die". `ClassLevelState.secondClassPossible`
+    (another class could be taken second: what allows one is not off and some loaded class of the type writes a loaded
+    multiclass block) decides `firstClassHint` ("Choose a sidekick class in Open decisions."), `LevelControlView.choosesClass`
+    and `splitWording` ("Set the level at once", no "Add a class"), in `packages/ui/src/build-view.ts` for both shells.
+  Not fixed: nothing in the corpus or the overlay declares `ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP`, so the campaign option
+  this ADR's hit points read cannot be chosen in the app for any kind (it reaches a character only from an Aurora import);
+  each level's Average button can.
+- **Driven on the phone emulator (2026-10-15)**, Expo Go on the Pixel 9 Pro image, by `adb`: New character offers the
+  kind, and its Build screen shows the note (the note named the desktop's "Sources pane", which the phone does not have;
+  the note and the description are reworded to name no pane). **The phone cannot add a user's own content file** (its
+  Content screen offers only the system's suggested source), so a sidekick cannot be built there from the fixture. The
+  two sidekicks saved in the window were added through the Android picker, shown, and their sheet checksums equalled
+  Node's from the same files and the window's text export; the caster was edited there from its embedded class alone (set
+  to level 4 at once, the new wording on screen), saved, exported with "Save to a folder…", and that file read in Node
+  gives the phone's own checksum.
 
 ## Decided with the maintainer (2026-10-15)
 
@@ -242,8 +277,8 @@ the user adds.
   a second class (ADR 0036), so a sidekick class written as the fixture's is never offered as one ("cannot be taken as
   an additional class"); a file that writes such a block makes a second sidekick class possible, and Incudo does not
   refuse it.
-- The Build pane's level panel still says "Further levels can then go to other classes" for a sidekick; true only of a
-  file that writes a multiclass block. Not reworded.
+- ~~The Build pane's level panel still says "Further levels can then go to other classes" for a sidekick~~: reworded
+  after the Tauri window drive (above), from whether a second class could be taken.
 
 ## Alternatives considered
 

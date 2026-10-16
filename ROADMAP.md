@@ -1446,9 +1446,16 @@ the kind machinery is not decorative.*
       may read a class's dice from two stats, and a kind may say what must be loaded before it can be made (New character
       lists "Sidekick (needs content)" with the reason until a sidekick class is loaded). No character format change.
       `tools/verify/fixtures/sidekicks/` is a generic file of three sample classes in the project's own words. The
-      character sheet only: a sidekick inherits the NPC's play state and nothing was added. Driven in the browser build.
-      **Not done:** the Tauri window and the phone; a homebrew source cannot write a class yet (Phase 8); the level panel
-      still says further levels "can go to other classes".
+      character sheet only: a sidekick inherits the NPC's play state and nothing was added. Driven in the browser build,
+      then (2026-10-15) in the Tauri window on Windows and on the phone emulator. The window drive found three things,
+      fixed: a sidekick could not take +2 to one score (the kind lacked the player character's repeatable +1), a class
+      feature's speed or armour class bonus (`speed:misc`, `ac:misc`, as class content writes them) moved nothing on its
+      printed numbers, and the level panel promised other classes and offered a class choice, a per-level class list and
+      an "Add a class" that a sidekick can never use; it now names the sidekick class and sets the level at once.
+      **Not done:** the phone cannot add a user's own content file, so a sidekick cannot be built there, only shown,
+      edited and exported from a file made elsewhere; a homebrew source cannot write a class yet (Phase 8); nothing loaded
+      declares the average hit points campaign option, so it cannot be chosen for any character in the app (each level's
+      Average button can); the print dialog (only "Export sheet as PDF…", the same layout, was driven); macOS and Linux.
 - [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
       ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
       *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the
