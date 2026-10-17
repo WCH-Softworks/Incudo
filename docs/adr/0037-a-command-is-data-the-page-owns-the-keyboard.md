@@ -3,6 +3,8 @@
 **Status:** Accepted · 2026-09-19 · builds on [0001](./0001-tech-stack.md) and the layering in
 [`CODE-REUSE-POLICY.md`](../CODE-REUSE-POLICY.md)
 
+> **Amended by [ADR 0120](./0120-the-shell-knows-whether-the-character-on-screen-is-saved-and-asks-before-replacing-unsaved-changes.md) (2026-10-17):** New character asks before it replaces unsaved changes, so it is live on every pane with a library, not only the Characters screen.
+
 > **Amended the same day, after pressing the keys.** Decision 3 first said the opposite: that a
 > native menu should own the shortcuts through its accelerators, with the page listener attached
 > only where there was no menu. Real keystrokes in the Tauri window on Windows showed the menu

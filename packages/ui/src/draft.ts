@@ -53,6 +53,11 @@ export interface DraftOrigin {
    * Always set together with `entry`; undefined exactly when `entry` is.
    */
   savedName?: string;
+  /**
+   * The character as it was last opened, saved or started, which the one on screen is compared with to say whether
+   * anything is unsaved (ADR 0120). Absent before any character is started, and in a record written before it was kept.
+   */
+  baseline?: Character;
 }
 
 /** The character being edited, and everything else the shell holds about it. */
@@ -70,9 +75,10 @@ interface StoredOrigin {
   entry?: LibraryEntryRef;
   readAt?: string;
   savedName?: string;
+  baseline?: Character;
 }
 
-/** The record for `origin`, or undefined when there is nothing to keep (a new character). */
+/** The record for `origin`, or undefined when there is nothing to keep (nothing started yet). */
 export function encodeDraftOrigin(characterId: string, origin: DraftOrigin): string | undefined {
   const stored: StoredOrigin = { formatVersion: 1, characterId };
   if (origin.embedded) stored.elements = [...origin.embedded.all()];
@@ -85,7 +91,8 @@ export function encodeDraftOrigin(characterId: string, origin: DraftOrigin): str
     if (origin.readAt !== undefined) stored.readAt = origin.readAt;
     if (origin.savedName !== undefined) stored.savedName = origin.savedName;
   }
-  if (!stored.elements && !stored.assets && !stored.entry) return undefined;
+  if (origin.baseline) stored.baseline = origin.baseline;
+  if (!stored.elements && !stored.assets && !stored.entry && !stored.baseline) return undefined;
   return JSON.stringify(stored);
 }
 
@@ -127,6 +134,11 @@ export function decodeDraftOrigin(text: string | null, characterId: string): Dra
       origin.entry = { name: entry.name, form: entry.form };
       origin.savedName = stored.savedName;
       if (stored.readAt !== undefined) origin.readAt = stored.readAt;
+    }
+    if (stored.baseline !== undefined) {
+      // Only compared with, never derived or saved, so it is trusted as far as being this character's.
+      if (!isObject(stored.baseline) || stored.baseline.id !== characterId) return {};
+      origin.baseline = stored.baseline as unknown as Character;
     }
     return origin;
   } catch {

@@ -250,7 +250,7 @@ test('a record kept for another character keeps nothing for this one', async () 
   assert.deepEqual(await readDraftOrigin(storage, 'someone-else'), {});
 });
 
-test('a new character keeps no record, and removes the one before it', async () => {
+test('nothing started keeps no record, and removes the one before it', async () => {
   const { opened, origin } = await openedFromLibrary();
   const storage = new MemoryStorage();
   await writeDraftOrigin(storage, opened.character.id, origin);

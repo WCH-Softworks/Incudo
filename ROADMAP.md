@@ -197,7 +197,8 @@ before any code, both touching a public API:
         (Chromium reserves Ctrl+N); New character and Save in the Tauri window, which would have
         written to the developer's own library. New character and Import are live only on the
         characters screen, Save only on Build: New replaces the character being edited without
-        asking, and nothing tracks unsaved work yet. **"Save a copy…" was left out on purpose** and
+        asking, and nothing tracks unsaved work yet. *(Since ADR 0120 the shell tracks it, asks before
+        replacing unsaved changes, and New character is live on every pane.)* **"Save a copy…" was left out on purpose** and
         arrived with the explicit export below, as the thirteenth command.
   - [x] **`$(...)` in a `<select supports=…>` resolves**
         ([ADR 0030](./docs/adr/0030-a-declared-block-answers-a-filter.md)), so a caster can
@@ -2267,6 +2268,15 @@ written on a character can be moved into the user's library without being typed 
       `packages/ui/src/about.ts`; `tools/verify/src/support-links.test.ts` holds them to README, `.github/FUNDING.yml`
       and the window's capability, which lets the opener plugin open those addresses and no other. The phone has no
       About screen yet.
+- [x] **Unsaved edits are never replaced without a word, and nothing points at Build before a character is started**
+      ([ADR 0120](./docs/adr/0120-the-shell-knows-whether-the-character-on-screen-is-saved-and-asks-before-replacing-unsaved-changes.md)).
+      Found by a hands-on pass on 2026-10-17: Open on the card of the character being edited read the file over the
+      edits under a bar still saying "Saved to …", and the Build tab counted a blank character's decisions on a first
+      launch. Done the same day: the working state keeps the character as last opened, saved or started, so the bar says
+      "Unsaved changes"; Open on that card shows Build without reading the file; New character (now on every pane),
+      opening another character and Change system ask "Save first", "Discard changes" or "Keep editing"; before anything
+      is started Build and the Sheet say "No character yet" and nothing acts on the blank one. Driven in the browser build
+      only. Left: the Build tab still counts optional decisions, and the phone keeps its own check (`edit-session.ts`).
 - [ ] **Drive everything in the Tauri window and on the phone before 1.0.** Raised 2026-10-11, last on purpose. Many
       features were driven only in the browser build (CLAUDE.md says "Driven in the browser build only" fifteen times),
       and the first feature driven in both shells afterwards found two bugs no test and no browser drive could see: the

@@ -5,6 +5,8 @@
 **stored format:** a new record in the app's own `Storage`, `character:current:origin`, `formatVersion` 1. Neither the
 `.incu` format nor `character.json` changes.
 
+> **Amended by [ADR 0120](./0120-the-shell-knows-whether-the-character-on-screen-is-saved-and-asks-before-replacing-unsaved-changes.md) (2026-10-17):** the record also keeps the character as last opened, saved or started (`baseline`), so a reload still knows whether the character on screen is saved.
+
 ## Context
 
 The shell autosaves the character being edited to `Storage` as a draft, `character:current` (ADR 0027): the character

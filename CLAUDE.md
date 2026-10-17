@@ -1949,10 +1949,9 @@ rule for when each is available — under `node --test`; `apps/desktop/src/use-c
   them and it passed every check that needed no keyboard — then pressing the keys in the Windows
   window did nothing, because WebView2 hands the page the key and the host's accelerator table never
   runs the item. Do not put accelerators back without pressing the keys in the window.
-- **A command is enabled where its outcome can be seen**, on purpose. New character replaces the
-  character being edited without asking, so it is live only on the characters screen, where its
-  button is; Save only on Build, where "Saved to …" is printed. Enabling New everywhere wants a dirty
-  flag nothing tracks yet.
+- **A command is enabled where its outcome can be seen**, on purpose: Save only on Build, where "Saved to …" is
+  printed. New character was the Characters screen's only, because it replaced the character being edited without
+  asking; since ADR 0120 it asks first, and is live on every pane with a library.
 - **A disabled command still claims its key** (Ctrl+S on the Sheet pane must not become the browser's
   "save page"), and no shortcut may be a bare printable key, use Alt (Ctrl+Alt is AltGr on a Brazilian
   keyboard) or take Ctrl+A/C/V/X/Z/Y. Tests hold each of these.
@@ -2132,6 +2131,23 @@ deliberately **not** fixed:
   none, and written on an open, a new character or a save, never a keystroke. It keeps what the session held, not what
   the character reaches: an element taken from a source after opening is not kept, because a reload must change
   nothing. `packages/ui/src/draft.ts`; `boot.ts`'s `loadDraft` reads it. Driven in the browser build only.
+- **~~Open on the card of the character being edited read the file over unsaved edits, without a word.~~** Fixed
+  ([ADR 0120](docs/adr/0120-the-shell-knows-whether-the-character-on-screen-is-saved-and-asks-before-replacing-unsaved-changes.md)),
+  found by a hands-on pass, not a test. Things to know before touching it:
+  - **`WorkingCharacter.baseline`** is the character as last opened, saved or started with New character, kept in the
+    draft's origin record (so a reload knows it). Every `setWorking` that hands over a new character sets it; a save sets
+    it to what it wrote; a content refresh keeps the old one, so the refreshed character reads unsaved.
+  - **`editState` (`packages/ui/src/unsaved.ts`)** compares the *builder's* character with it, ignoring `updatedAt` and
+    key order, and says `started` and `unsaved`. A draft with no baseline (written before) is unsaved if filed or not
+    blank, and not started if blank. `openOutcome` says what Open does (`show` the unsaved on-screen character, `ask`
+    before another, else `open`, which still rereads a saved one); `replacePrompt` words the question.
+  - **New character, another Open and Change system ask** ("Save first", "Discard changes", "Keep editing"; Escape
+    keeps). Save first is not offered with no library or for a character renamed since its save (the rename question is
+    the bar's). Import replaces nothing on screen and does not ask. The draft holds one character, so whatever replaces
+    the one on screen replaces it there too: the library file is all that is left.
+  - **Before a character is started** (first launch, no draft) Build and the Sheet show "No character yet", the Build tab
+    counts nothing, and `CommandContext.started` turns off what acts on the character.
+  - Driven in the browser build only (an origin-private folder standing in for the folder picker).
 - **~~Importing N saves rescans the library N times.~~** Fixed (ADR 0086's third pass, measured on a phone, where a
   rescan was most of a Save): `CharacterLibrary.save` puts the entry it wrote into the listing from the files it wrote,
   which is also what the collision suffix reads next, and rescans nothing. A scan still reads every container in full.

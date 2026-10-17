@@ -54,6 +54,7 @@ const READY: CommandContext = {
   pdfAvailable: true,
   formAvailable: true,
   contentUpdates: true,
+  started: true,
 };
 
 function enabledIn(context: CommandContext): Set<CommandId> {
@@ -110,12 +111,14 @@ test('on the library screen with everything loaded, the library commands are ena
   assert.ok(!on.has('save-character'));
 });
 
-test('mid-edit on the build pane: save is live, and new character and import are not', () => {
+test('mid-edit on the build pane: save and new character are live, and import is not', () => {
   const on = enabledIn({ ...READY, pane: 'build' });
   assert.ok(on.has('save-character'));
-  // New character replaces the character being edited without asking. It stays where its
-  // button is, so a shortcut is never a quicker way to lose unsaved work than the button.
-  assert.ok(!on.has('new-character'));
+  // New character asks before it replaces unsaved changes (ADR 0120), so it is live on every pane with a library.
+  // Fails if it goes back to the library screen only.
+  for (const pane of ['build', 'sheet', 'sources', 'browse', 'settings'] as Destination[]) {
+    assert.ok(enabledIn({ ...READY, pane }).has('new-character'), pane);
+  }
   assert.ok(!on.has('import-aurora'), 'its report is shown on the library screen');
   for (const pane of ['sheet', 'sources', 'browse', 'settings'] as Destination[]) {
     assert.ok(!enabledIn({ ...READY, pane }).has('save-character'), pane);
@@ -224,7 +227,7 @@ test('printing is live on the sheet and nowhere else, needing no library, conten
   for (const pane of ['library', 'build', 'sources', 'browse', 'settings'] as Destination[]) {
     assert.ok(!enabledIn({ ...READY, pane }).has('print-sheet'), pane);
   }
-  const bare = { ...NO_WORKSPACE, workspace: true, pane: 'sheet' as const };
+  const bare = { ...NO_WORKSPACE, workspace: true, started: true, pane: 'sheet' as const };
   assert.ok(enabledIn(bare).has('print-sheet'), 'no library, no content, no pickers');
   assert.ok(enabledIn({ ...READY, pane: 'sheet', exporting: true }).has('print-sheet'), 'an export in flight does not stop a print');
   assert.ok(!enabledIn({ ...READY, pane: 'sheet', modal: true }).has('print-sheet'));
@@ -690,4 +693,26 @@ test('Switch Build tab is live on Build only, and its chord is claimed everywher
     const outcome = keyOutcome(key('H', { ctrlKey: true, shiftKey: true }), 'other', resolveCommands({ ...READY, pane }));
     assert.equal(outcome?.id, 'switch-build-tab', pane);
   }
+});
+
+test('before a character is started, nothing acts on the blank one behind Build and the Sheet — ADR 0120', () => {
+  // Fails if a command stops reading `started`: Ctrl+S on Build's "No character yet" would save a blank character.
+  const acting: CommandId[] = [
+    'switch-build-tab',
+    'save-character',
+    'save-copy',
+    'export-sheet',
+    'print-sheet',
+    'export-sheet-pdf',
+    'fill-official-sheet',
+    'review-content-updates',
+  ];
+  for (const pane of ['build', 'sheet'] as Destination[]) {
+    const on = enabledIn({ ...READY, pane, started: false });
+    for (const id of acting) assert.ok(!on.has(id), `${id} on ${pane}`);
+    assert.ok(on.has('new-character'), 'starting one is what is offered there');
+  }
+  // Each of them is live somewhere once one is started, so each case above failed on `started`.
+  const somewhere = new Set([...enabledIn({ ...READY, pane: 'build' }), ...enabledIn({ ...READY, pane: 'sheet' })]);
+  for (const id of acting) assert.ok(somewhere.has(id), id);
 });

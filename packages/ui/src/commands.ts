@@ -208,6 +208,11 @@ export interface CommandContext {
   pdfAvailable: boolean;
   /** The character's system ships a form for its kind (ADR 0079): the 5e player character's 2014 sheet. */
   formAvailable: boolean;
+  /**
+   * A character has been started: opened, made with New character, or kept by the draft from one of those (ADR 0120).
+   * Before one, Build and the Sheet say there is nothing yet, and nothing acts on the blank character behind them.
+   */
+  started: boolean;
   /** The open character's copies differ from what its sources load now (ADR 0082). */
   contentUpdates: boolean;
 }
@@ -231,6 +236,7 @@ export const NO_WORKSPACE: CommandContext = {
   pdfAvailable: false,
   formAvailable: false,
   contentUpdates: false,
+  started: false,
 };
 
 /**
@@ -268,26 +274,27 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   'go-browse': () => true,
   'go-settings': () => true,
   // On Build, where the tabs are and where the switch is seen.
-  'switch-build-tab': (c) => c.pane === 'build',
-  // The button lives on the library screen, only when there is a library to put one in.
-  'new-character': (c) => c.pane === 'library' && libraryListed(c),
+  'switch-build-tab': (c) => c.pane === 'build' && c.started,
+  // On every pane, wherever there is a library to put one in: it asks before it replaces unsaved changes (ADR 0120), so a
+  // shortcut is no quicker way to lose work than the button on the library screen.
+  'new-character': (c) => libraryListed(c),
   // The pane bar's button, and the only place its outcome ("Saved to …") is printed.
-  'save-character': (c) => c.pane === 'build' && c.library === 'ready' && !c.saving && !c.copying,
+  'save-character': (c) => c.pane === 'build' && c.started && c.library === 'ready' && !c.saving && !c.copying,
   // Beside Save, and for the same reason: "Saved a copy as …" is printed there. It needs no
   // library at all — the file goes wherever the user says — so it is live with none chosen.
-  'save-copy': (c) => c.pane === 'build' && c.saverAvailable && !c.saving && !c.copying,
+  'save-copy': (c) => c.pane === 'build' && c.started && c.saverAvailable && !c.saving && !c.copying,
   // On the Sheet, whose bar prints "Exported the sheet as …": what is exported is what is on screen there. Like a copy it
   // needs no library, and no content either (ADR 0075).
-  'export-sheet': (c) => c.pane === 'sheet' && c.saverAvailable && !c.exporting,
+  'export-sheet': (c) => c.pane === 'sheet' && c.started && c.saverAvailable && !c.exporting,
   // On the Sheet, which is what prints (ADR 0077). The options step is the app's and the dialog the platform's, so it
   // needs no library, no content and no save dialog; it prints what is on screen, not a file.
-  'print-sheet': (c) => c.pane === 'sheet',
+  'print-sheet': (c) => c.pane === 'sheet' && c.started,
   // The print as a file (ADR 0079): on the Sheet, whose bar prints "Exported the sheet as …", where the shell can write a
   // PDF and show a save dialog, and not while an export is in flight.
-  'export-sheet-pdf': (c) => c.pane === 'sheet' && c.pdfAvailable && c.saverAvailable && !c.exporting,
+  'export-sheet-pdf': (c) => c.pane === 'sheet' && c.started && c.pdfAvailable && c.saverAvailable && !c.exporting,
   // On the Sheet, whose bar prints what was filled and left off, for a character whose kind has a form, where a filled
   // copy can be saved; not while an export is in flight. Choosing the copy is inside the step, which says when it cannot.
-  'fill-official-sheet': (c) => c.pane === 'sheet' && c.formAvailable && c.saverAvailable && !c.exporting,
+  'fill-official-sheet': (c) => c.pane === 'sheet' && c.started && c.formAvailable && c.saverAvailable && !c.exporting,
   // Its report is printed on the library screen, so that is where it can be started.
   'import-aurora': (c) => c.pane === 'library' && !c.importing && importBlock(c) === undefined,
   // Settings holds this one, but the first-run dialog and the library screen do too.
@@ -295,7 +302,7 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   'refresh-library': (c) => c.library === 'ready' && !c.libraryBusy,
   'reload-sources': (c) => c.hasEnabledSource && !c.contentBusy,
   // Where the line offering it is shown, Build and the Sheet, and only while there is something to refresh (ADR 0082).
-  'review-content-updates': (c) => (c.pane === 'build' || c.pane === 'sheet') && c.contentUpdates && !c.contentBusy,
+  'review-content-updates': (c) => (c.pane === 'build' || c.pane === 'sheet') && c.started && c.contentUpdates && !c.contentBusy,
   'change-system': () => true,
   'about': () => true,
 };

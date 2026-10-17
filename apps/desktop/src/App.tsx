@@ -102,6 +102,14 @@ import {
   withPrintPart,
   withRunningName,
   writeDraftOrigin,
+  editState,
+  isEnabled,
+  openOutcome,
+  replacePrompt,
+  NOTHING_STARTED,
+  UNSAVED_CHANGES,
+  type Replacement,
+  type ReplacePrompt,
   type AuroraImportReport,
   type ContentFileResult,
   type Destination,
@@ -505,6 +513,10 @@ function Shell({
    */
   const [working, setWorking] = useState<WorkingCharacter>(initial);
   const [saveNote, setSaveNote] = useState<string | null>(null);
+  /** The file the last Save wrote, said on the bar only while nothing has changed since (ADR 0120). */
+  const [savedTo, setSavedTo] = useState<string | null>(null);
+  /** What would replace unsaved changes, waiting on the user's answer (ADR 0120). */
+  const [replacing, setReplacing] = useState<{ replacement: Replacement; run: () => void } | null>(null);
   /** A save in flight. A second one would race the first on `working.readAt`. */
   const [saving, setSaving] = useState(false);
   /** A copy being written: a dialog is open, or bytes are going to disk. */
@@ -643,6 +655,9 @@ function Shell({
     SHIPPED_STARTING_EQUIPMENT,
     buildPreferences.showAdvanced,
   );
+
+  // Whether a character has been started, and whether it has changes its library file does not (ADR 0120).
+  const edit = useMemo(() => editState(working, state.character, system), [working, state.character, system]);
 
   // What the open character carries against what its sources load now (ADR 0082). Only with both: listing and opening
   // never reach for content, and with no source loaded there is nothing to compare with.
@@ -1011,7 +1026,19 @@ function Shell({
     }
   }, [library, system, content]);
 
-  const openFromLibrary = useCallback(
+  /**
+   * Run `run` now, or ask first when it would replace unsaved changes (ADR 0120). The draft (ADR 0066) keeps only the
+   * character on screen, so what replaces it is gone from there too: nothing but the library file is left.
+   */
+  const unlessUnsaved = useCallback(
+    (replacement: Replacement, run: () => void): void => {
+      if (edit.unsaved) setReplacing({ replacement, run });
+      else run();
+    },
+    [edit.unsaved],
+  );
+
+  const readFromLibrary = useCallback(
     async (entry: LibraryEntry) => {
       const opened = await library.open(entry.name);
       if (!opened) return;
@@ -1022,7 +1049,9 @@ function Shell({
         entry: { name: entry.name, form: entry.form },
         readAt: entry.updatedAt,
         savedName: opened.character.name,
+        baseline: opened.character,
       });
+      setSavedTo(null);
       setSaveNote(
         opened.problems.length
           ? `Opened with ${opened.problems.length} problem(s): ${opened.problems
@@ -1035,13 +1064,33 @@ function Shell({
     [library],
   );
 
+  /**
+   * Open on a library card. The character on screen with unsaved changes is shown, not read again: reading it put the
+   * file over the edits without a word, under a bar still saying "Saved to …" (ADR 0120). Another character asks first.
+   */
+  const openFromLibrary = useCallback(
+    (entry: LibraryEntry) => {
+      const outcome = openOutcome(working, edit, entry);
+      if (outcome === 'show') setPane('build');
+      else if (outcome === 'ask') setReplacing({ replacement: { kind: 'open', name: entry.title }, run: () => void readFromLibrary(entry) });
+      else void readFromLibrary(entry);
+    },
+    [working, edit, readFromLibrary],
+  );
+
   const startNew = useCallback(() => {
     // The chooser says why a kind cannot be made yet (ADR 0118); the command makes nothing of it either.
     if (kinds.find((kind) => kind.id === newKind)?.unavailable !== undefined) return;
-    setWorking({ character: newCharacter(system, newKind) });
-    setSaveNote(null);
-    setPane('build');
-  }, [system, newKind, kinds]);
+    unlessUnsaved({ kind: 'new' }, () => {
+      const character = newCharacter(system, newKind);
+      setWorking({ character, baseline: character });
+      setSaveNote(null);
+      setSavedTo(null);
+      setPane('build');
+    });
+  }, [system, newKind, kinds, unlessUnsaved]);
+
+  const changeSystem = useCallback(() => unlessUnsaved({ kind: 'system' }, onChangeSystem), [unlessUnsaved, onChangeSystem]);
 
   /**
    * Write the character to `entry`, or — with `entry` left `undefined` — to a freshly chosen
@@ -1049,7 +1098,7 @@ function Shell({
    * just confirmed. Either way `working` ends up pointing at whichever file now holds it.
    */
   const performSave = useCallback(
-    async (entry: LibraryEntryRef | undefined): Promise<void> => {
+    async (entry: LibraryEntryRef | undefined): Promise<boolean> => {
       const previousEntry = working.entry;
       setSaving(true);
       let result: Awaited<ReturnType<typeof library.save>>;
@@ -1065,8 +1114,9 @@ function Shell({
         setSaving(false);
       }
       if (!result.ok) {
+        setSavedTo(null);
         setSaveNote(result.message);
-        return;
+        return false;
       }
       // A rename save lands under a brand new name before the old file is touched — removing
       // it only once the new one is confirmed written, so a crash in between leaves a harmless
@@ -1079,8 +1129,11 @@ function Shell({
         entry: result.entry,
         readAt: state.character.updatedAt,
         savedName: state.character.name,
+        baseline: state.character,
       }));
-      setSaveNote(`Saved to ${result.entry.name}.`);
+      setSaveNote(null);
+      setSavedTo(result.entry.name);
+      return true;
     },
     [library, state.character, system, elements, working.entry, working.readAt, working.assets],
   );
@@ -1356,10 +1409,35 @@ function Shell({
     [performSave, working.entry],
   );
 
+  /**
+   * Save first only where a Save would not ask about the file's name: that question is the rename prompt's, and a
+   * character renamed since its last Save is saved from the bar, where it is asked.
+   */
+  const canSaveFirst =
+    libraryState.status === 'ready' && !(working.entry && working.savedName !== undefined && working.savedName !== state.character.name);
+  const prompt: ReplacePrompt | null = replacing ? replacePrompt(replacing.replacement, state.character.name, canSaveFirst) : null;
+
+  /** The question's three answers: save then carry on, carry on and lose the changes, or carry on editing. */
+  const resolveReplace = useCallback(
+    async (answer: 'save' | 'discard' | 'keep') => {
+      const pending = replacing;
+      setReplacing(null);
+      if (!pending || answer === 'keep') return;
+      // A Save that fails says why on the bar and leaves the character on screen.
+      if (answer === 'save' && !(await performSave(working.entry))) {
+        setPane('build');
+        return;
+      }
+      pending.run();
+    },
+    [replacing, performSave, working.entry],
+  );
+
   // The menu, the shortcuts and the nav below are one list (ADR 0037). "Modal" is whatever
   // dialog is open: nothing behind it should react to a shortcut.
   const modal =
     renamePrompt !== null ||
+    replacing !== null ||
     printDraft !== null ||
     officialOpen ||
     refreshOpen ||
@@ -1382,6 +1460,7 @@ function Shell({
     pdfAvailable: platform.pdf.available,
     formAvailable: formMap !== undefined,
     contentUpdates: notice !== undefined,
+    started: edit.started,
   });
 
   const handlers: CommandHandlers = {
@@ -1398,7 +1477,7 @@ function Shell({
     'choose-library-folder': () => void chooseFolder(),
     'refresh-library': () => void library.refresh(),
     'reload-sources': () => void reload(),
-    'change-system': onChangeSystem,
+    'change-system': changeSystem,
     'about': () => {
       setPane('settings');
       setShowAbout(true);
@@ -1433,7 +1512,7 @@ function Shell({
                 title={describeCommand(command.id, commands.os)}
               >
                 {command.label}
-                {id === 'build' && state.decisions.length > 0 && (
+                {id === 'build' && edit.started && state.decisions.length > 0 && (
                   <span className="badge">{state.decisions.length}</span>
                 )}
                 {id === 'library' && libraryState.entries.length > 0 && (
@@ -1448,7 +1527,7 @@ function Shell({
             The system is a *choice* now, so it is a control rather than a label. It used to
             read "Dungeons & Dragons 5th Edition" to a user who had never been asked — ADR 0031.
           */}
-          <button type="button" className="system-switch" onClick={onChangeSystem} title="Change system">
+          <button type="button" className="system-switch" onClick={changeSystem} title="Change system">
             {system.name}
           </button>
           {' · '}
@@ -1467,11 +1546,11 @@ function Shell({
           nameOfSystem={nameOfSystem}
           needsSource={!mySources.some((source) => source.enabled)}
           onOpenSources={() => setPane('sources')}
-          onChangeSystem={onChangeSystem}
+          onChangeSystem={changeSystem}
           shell={platform.shell}
           onChooseFolder={() => void chooseFolder()}
           onRefresh={() => void library.refresh()}
-          onOpen={(entry) => void openFromLibrary(entry)}
+          onOpen={openFromLibrary}
           onNew={startNew}
           kinds={kinds}
           newKind={newKind}
@@ -1489,13 +1568,21 @@ function Shell({
           onDismissAsk={() => setAskDismissed(true)}
         />
       )}
-      {pane === 'build' && (
+      {(pane === 'build' || pane === 'sheet') && !edit.started && (
+        <NothingStarted
+          onNew={startNew}
+          canStart={isEnabled(resolved, 'new-character') && kinds.find((kind) => kind.id === newKind)?.unavailable === undefined}
+          onCharacters={() => setPane('library')}
+        />
+      )}
+      {pane === 'build' && edit.started && (
         <>
           <div className="pane-bar">
             <span className="status">
               {working.entry ? (
                 <>
                   Editing <code>{working.entry.name}</code>
+                  {edit.unsaved && <strong className="unsaved"> · {UNSAVED_CHANGES}</strong>}
                 </>
               ) : (
                 'Not saved to your library yet'
@@ -1521,6 +1608,7 @@ function Shell({
             >
               Save a copy…
             </button>
+            {savedTo && !edit.unsaved && <span className="status">Saved to {savedTo}.</span>}
             {saveNote && <span className="status">{saveNote}</span>}
           </div>
           {notice && !refreshDismissed && (
@@ -1537,7 +1625,7 @@ function Shell({
           />
         </>
       )}
-      {pane === 'sheet' && (
+      {pane === 'sheet' && edit.started && (
         <>
           <div className="pane-bar">
             <span className="status">
@@ -1657,6 +1745,12 @@ function Shell({
         onPrint={() => void finishPrint('print')}
         onCancel={() => void finishPrint('cancel')}
       />
+      <ReplaceDialog
+        prompt={prompt}
+        onSave={() => void resolveReplace('save')}
+        onDiscard={() => void resolveReplace('discard')}
+        onKeep={() => void resolveReplace('keep')}
+      />
       <RenameFileDialog
         prompt={renamePrompt}
         onRenameFile={() => void resolveRename(true)}
@@ -1664,6 +1758,86 @@ function Shell({
         onDismiss={() => setRenamePrompt(null)}
       />
     </div>
+  );
+}
+
+/**
+ * Build and the Sheet before any character is started (ADR 0120). The app has a blank character only because the builder
+ * needs one; its open decisions were counted on the Build tab before the user had chosen to build anything.
+ */
+function NothingStarted({
+  onNew,
+  canStart,
+  onCharacters,
+}: {
+  onNew: () => void;
+  canStart: boolean;
+  onCharacters: () => void;
+}): React.JSX.Element {
+  return (
+    <main className="pane">
+      <h2>{NOTHING_STARTED.title}</h2>
+      <p className="lede">{NOTHING_STARTED.text}</p>
+      <div className="row">
+        {canStart && (
+          <button type="button" className="on" onClick={onNew}>
+            New character
+          </button>
+        )}
+        <button type="button" onClick={onCharacters}>
+          Go to Characters
+        </button>
+      </div>
+    </main>
+  );
+}
+
+/**
+ * "Save your changes first?", asked before a new character, another one opened or a change of system replaces unsaved
+ * changes (ADR 0120). Escape keeps editing, the answer that loses nothing.
+ */
+function ReplaceDialog({
+  prompt,
+  onSave,
+  onDiscard,
+  onKeep,
+}: {
+  prompt: ReplacePrompt | null;
+  onSave: () => void;
+  onDiscard: () => void;
+  onKeep: () => void;
+}): React.JSX.Element | null {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (prompt && !dialog.open) dialog.showModal();
+    if (!prompt && dialog.open) dialog.close();
+  }, [prompt]);
+
+  return (
+    <dialog ref={ref} className="ask" onCancel={onKeep}>
+      {prompt && (
+        <>
+          <h2>{prompt.title}</h2>
+          <p className="lede">{prompt.lede}</p>
+          <div className="row">
+            {prompt.save && (
+              <button type="button" className="on" onClick={onSave}>
+                {prompt.save}
+              </button>
+            )}
+            <button type="button" onClick={onDiscard}>
+              {prompt.discard}
+            </button>
+            <button type="button" onClick={onKeep} autoFocus={!prompt.save}>
+              {prompt.keep}
+            </button>
+          </div>
+        </>
+      )}
+    </dialog>
   );
 }
 
