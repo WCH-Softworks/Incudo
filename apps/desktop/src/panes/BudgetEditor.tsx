@@ -218,11 +218,11 @@ export function BudgetEditor({
 
       {budget.rows.some((row) => row.printed !== undefined) ? (
         // ADR 0057, ADR 0059: what the creature states is where the stat starts, and a typed one
-        // replaces it — a printed score, or the creature's own armour class rule.
+        // replaces it — a printed score, the creature's own armour class rule, or its race's speed (ADR 0122).
         <p className="hint">
           {budget.rows.some((row) => row.printedBy !== undefined)
-            ? "A faded number is what the creature states or what a feature you wrote sets, and it is used until you type another. Clear what you typed to go back to it. "
-            : "A faded number is the creature's own, and it is used until you type another. Clear what you typed to go back to it. "}
+            ? "A faded number is what the creature or its race states, or what a feature you wrote sets, and it is used until you type another. Clear what you typed to go back to it. "
+            : "A faded number is what the creature or its race states, and it is used until you type another. Clear what you typed to go back to it. "}
           <strong>Total</strong> is the number the stat block uses.
         </p>
       ) : stated && description !== undefined ? (

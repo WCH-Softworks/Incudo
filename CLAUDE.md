@@ -788,6 +788,20 @@ know before touching it:
   Tyrannosaurus (found by `npc-creatures.test.ts`, not foreseen).
 - **A fresh NPC is offered 117 of 141**: 24 creatures carry their own requirements naming a PC's subclass, feat or
   class level, and a candidate list leaves them out. Content being right, not a filter.
+- **An NPC may be built on a race** ([ADR 0122](docs/adr/0122-an-npc-may-be-built-on-a-race-and-a-race-s-speed-is-where-its-speed-starts.md)),
+  the maintainer's ruling (every corpus creature is a beast, familiar or summon). A system-definition change only:
+  - The NPC's and legendary creature's **Race step** (`pick`, types `Race`) sits beside Creature; both are skippable.
+    Subraces and the rest are the race's own selects. A recorded race already derived in full before this (the engine
+    seeds any recorded choice); what was lost was the offer, the speed, the vision and the race on the sheet.
+  - **Speed**: kind contributions put `innate speed + innate speed:misc` (and each mode's) into `companion:speed…`, gated
+    on `[type:race],![type:companion]`, so the NPC's `startsFrom` reads it. Do not drop the first term: a 0 contribution
+    still counts as a start, and a bare NPC's entry step would read speed as set. With a creature too, its speed wins and
+    the race's increases add to its print.
+  - Creature lists `Race`, `Sub Race`, `Race Variant`, `Size`; Senses lists `Vision`. Proficiency still follows challenge
+    rating; a race's per-level numbers read 0 (no `level` on an NPC); natural armour is typed.
+  - `tools/verify/src/npc-races.test.ts` builds every race as an NPC and as a level 1 player character and holds the six
+    scores and five speeds equal, every vision and the race named, and the sheet the same reopened with no source. The
+    oracle is identical. Driven in the browser build only.
 - **A stat may start where another stat is** ([ADR 0059](docs/adr/0059-a-stat-may-start-where-another-stat-is-and-a-typed-value-replaces-it.md)).
   `startsFrom` on a stat names another stat; when content contributes to that one, its value is where this one starts.
   The order of starts, most general first: `default`, `startsFrom`, a held element's printed setter, the user's

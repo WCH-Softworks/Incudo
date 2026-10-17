@@ -698,6 +698,7 @@
 
       "elementTypes": [
         "Creature", "Companion", "Companion Trait", "Companion Action", "Companion Reaction",
+        "Race", "Sub Race", "Race Variant", "Size",
         "Spell", "Item", "Magic Item", "Weapon", "Armor",
         "Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature",
         "Proficiency", "Language", "Condition", "Alignment", "Vision", "Information", "Rule"
@@ -773,7 +774,12 @@
       ],
 
       "contributions": [
-        { "stat": "companion:proficiency", "value": { "kind": "ref", "stat": "proficiency" } }
+        { "stat": "companion:proficiency", "value": { "kind": "ref", "stat": "proficiency" } },
+        { "stat": "companion:speed", "value": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "innate speed" }, "right": { "kind": "ref", "stat": "innate speed:misc" } }, "requirements": "[type:race],![type:companion]" },
+        { "stat": "companion:speed:burrow", "value": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "innate speed:burrow" }, "right": { "kind": "ref", "stat": "innate speed:burrow:misc" } }, "requirements": "[type:race],![type:companion]" },
+        { "stat": "companion:speed:climb", "value": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "innate speed:climb" }, "right": { "kind": "ref", "stat": "innate speed:climb:misc" } }, "requirements": "[type:race],![type:companion]" },
+        { "stat": "companion:speed:fly", "value": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "innate speed:fly" }, "right": { "kind": "ref", "stat": "innate speed:fly:misc" } }, "requirements": "[type:race],![type:companion]" },
+        { "stat": "companion:speed:swim", "value": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "innate speed:swim" }, "right": { "kind": "ref", "stat": "innate speed:swim:misc" } }, "requirements": "[type:race],![type:companion]" }
       ],
 
       "customFeatures": { "type": "Companion Trait", "types": ["Companion Trait", "Companion Action", "Companion Reaction"], "sections": ["header", "speeds", "saves", "skills", "senses"] },
@@ -812,9 +818,10 @@
 
       "buildSteps": [
         { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
-        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.",
+        { "id": "race", "label": "Race", "types": ["Race"], "pick": true, "description": "The race this one is, if it has one: a dwarf guard, a human bandit. The race adds to its scores and gives its speed, senses, languages and traits. Skip it for a creature, or to build one by hand." },
+        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one, and what its race adds is added to either.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
-        { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block gives, or what you enter. A number you enter replaces the creature's.",
+        { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block or its race gives, or what you enter. A number you enter replaces theirs.",
           "budget": { "stat": "stat block points", "targets": ["ac", "hp", "speed"], "methods": ["entry"] } },
         { "id": "traits", "label": "Traits", "types": ["Companion Trait"], "multiple": true },
         { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"], "multiple": true },
@@ -855,7 +862,7 @@
       },
       "sheet": {
         "sections": [
-          { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"],
+          { "id": "creature", "label": "Creature", "types": ["Creature", "Companion", "Race", "Sub Race", "Race Variant", "Size"],
             "printed": [{ "types": ["Companion"], "setter": "size", "label": "Size" }, { "types": ["Companion"], "setter": "type", "label": "Type" }, { "types": ["Companion"], "setter": "alignment", "label": "Alignment" }] },
           { "id": "header", "label": "Stat Block", "stats": ["challenge", "ac", "hp", "speed", "initiative", "proficiency"],
             "printed": [{ "types": ["Companion"], "setter": "ac", "label": "Armor Class, as printed" }, { "types": ["Companion"], "setter": "hp", "label": "Hit Points, as printed" }, { "types": ["Companion"], "setter": "speed", "label": "Speed, as printed" }] },
@@ -863,7 +870,7 @@
           { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}" },
           { "id": "saves", "label": "Saving Throws", "description": "The saving throws the creature is proficient in. Any other is the ability modifier.", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"], "none": "not proficient" } },
           { "id": "skills", "label": "Skills", "description": "The skills the creature is proficient in. Any other is the ability modifier.", "stats": ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient", "expertise"], "none": "not proficient" } },
-          { "id": "senses", "label": "Senses", "stats": ["perception:passive"],
+          { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "types": ["Vision"],
             "printed": [{ "types": ["Companion"], "setter": "senses", "label": "As printed" }] },
           { "id": "defences", "label": "Defences and Languages", "description": "As the creature’s stat block prints them.",
             "printed": [
@@ -909,9 +916,10 @@
 
       "buildSteps": [
         { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
-        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.",
+        { "id": "race", "label": "Race", "types": ["Race"], "pick": true, "description": "The race this one is, if it has one: a dwarf guard, a human bandit. The race adds to its scores and gives its speed, senses, languages and traits. Skip it for a creature, or to build one by hand." },
+        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one, and what its race adds is added to either.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
-        { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block gives, or what you enter. A number you enter replaces the creature's.",
+        { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block or its race gives, or what you enter. A number you enter replaces theirs.",
           "budget": { "stat": "stat block points", "targets": ["ac", "hp", "speed"], "methods": ["entry"] } },
         { "id": "traits", "label": "Traits", "types": ["Companion Trait"], "multiple": true },
         { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"], "multiple": true },
@@ -940,7 +948,7 @@
       },
       "sheet": {
         "sections": [
-          { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"],
+          { "id": "creature", "label": "Creature", "types": ["Creature", "Companion", "Race", "Sub Race", "Race Variant", "Size"],
             "printed": [{ "types": ["Companion"], "setter": "size", "label": "Size" }, { "types": ["Companion"], "setter": "type", "label": "Type" }, { "types": ["Companion"], "setter": "alignment", "label": "Alignment" }] },
           { "id": "header", "label": "Stat Block", "stats": ["challenge", "ac", "hp", "speed", "initiative", "proficiency"],
             "printed": [{ "types": ["Companion"], "setter": "ac", "label": "Armor Class, as printed" }, { "types": ["Companion"], "setter": "hp", "label": "Hit Points, as printed" }, { "types": ["Companion"], "setter": "speed", "label": "Speed, as printed" }] },
@@ -948,7 +956,7 @@
           { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}" },
           { "id": "saves", "label": "Saving Throws", "description": "The saving throws the creature is proficient in. Any other is the ability modifier.", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"], "none": "not proficient" } },
           { "id": "skills", "label": "Skills", "description": "The skills the creature is proficient in. Any other is the ability modifier.", "stats": ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient", "expertise"], "none": "not proficient" } },
-          { "id": "senses", "label": "Senses", "stats": ["perception:passive"],
+          { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "types": ["Vision"],
             "printed": [{ "types": ["Companion"], "setter": "senses", "label": "As printed" }] },
           { "id": "defences", "label": "Defences and Languages", "description": "As the creature’s stat block prints them.",
             "printed": [

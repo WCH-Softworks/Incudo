@@ -1441,8 +1441,21 @@ the kind machinery is not decorative.*
       for a user writing their own file. An NPC already covers a sidekick: its creature's print is where it starts, any
       feature, feat, proficiency or spell is added through Additions whatever its prerequisites, the DM writes features of
       its own, hit points and armour class are typed, and its proficiency bonus follows the challenge rating the DM types.
-      The kind's four system-format additions went with it. Letting an NPC be built on a race as well as a creature is a
-      separate item.
+      The kind's four system-format additions went with it. Letting an NPC be built on a race as well as a creature is the
+      next item.
+- [x] **An NPC may be built on a race**
+      ([ADR 0122](./docs/adr/0122-an-npc-may-be-built-on-a-race-and-a-race-s-speed-is-where-its-speed-starts.md)). The
+      maintainer's ruling after a UX pass found no goblin among the NPC's creatures: the official content writes only beasts,
+      familiars and summons as creatures. Measured first, as a test, by building each of the 139 races as an NPC and as a
+      player character: a race recorded on an NPC already derived its increases, traits, languages, proficiencies and
+      selects, but nothing offered one, its speed read 0, and its vision, size and the race itself were on no sheet. The NPC
+      and the legendary creature now have a Race step beside the Creature step (both skippable); a race's increases add to
+      the printed or typed scores; its speeds are where the NPC's speeds start while no creature is held (a gated kind
+      contribution to `companion:speed`, no engine change), and a typed speed replaces them; Creature lists the race,
+      subrace and size and Senses its vision. With a creature as well, the creature's speed is used. Proficiency still
+      follows challenge rating. Every race derives the player character's six scores and five speeds and reopens with no
+      source to the same sheet. **Not done:** a race's per-level numbers (a breath weapon's dice, Dwarven Toughness) read 0
+      on an NPC, which has no level; natural armour is typed. Driven in the browser build.
 - [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
       ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
       *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the

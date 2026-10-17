@@ -439,8 +439,9 @@ test("every creature's other speeds, saving throws and skills are what its own r
   // creature's `companion:initiative` is reported with the rest nothing reads.
   const declared = new Map(kind(system).stats.filter((s) => s.startsFrom).map((s) => [s.name.toLowerCase(), s]));
   const own = (rule: string) => declared.get(rule.replace(/^companion:/, ''));
-  // What the kind supplies to the creature's rules rather than reads from them: its proficiency bonus.
-  const supplied = new Set(kind(system).contributions.map((c) => c.stat.toLowerCase()));
+  // What the kind supplies to the creature's rules rather than reads from them: its proficiency bonus. Not a race's
+  // speeds, which the kind writes under the creature's names only while no creature is held (ADR 0122).
+  const supplied = new Set(kind(system).contributions.filter((c) => c.requirements === undefined).map((c) => c.stat.toLowerCase()));
   assert.ok(supplied.size > 0, 'the kind supplies what the creature calls its proficiency bonus');
   const wrong: string[] = [];
   const noBonus: string[] = [];
