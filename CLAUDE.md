@@ -2145,6 +2145,13 @@ deliberately **not** fixed:
   none, and written on an open, a new character or a save, never a keystroke. It keeps what the session held, not what
   the character reaches: an element taken from a source after opening is not kept, because a reload must change
   nothing. `packages/ui/src/draft.ts`; `boot.ts`'s `loadDraft` reads it. Driven in the browser build only.
+- **~~A draft whose kind the system no longer declares blanked the window.~~** Fixed (2026-10-17, found with a sidekick
+  draft after ADR 0121): `CharacterBuilder` resolves the kind and throws, and `Shell` built one from the draft before
+  anything was on screen. **Ask `characterKindMissing(system, character)` (`character-kinds.ts`) before handing a builder
+  a character from storage or a file.** `readDraftCharacter` (`draft.ts`) copies such a draft and its origin record under
+  `character:set-aside/<id>` (nothing reads it back; it is only not destroyed by the next autosave) and the library says
+  so; opening such a file from the library says the same sentence on the library, and the phone's two open paths return
+  it as their error. `unknown-kind.test.ts`; driven in the browser build only.
 - **~~Open on the card of the character being edited read the file over unsaved edits, without a word.~~** Fixed
   ([ADR 0120](docs/adr/0120-the-shell-knows-whether-the-character-on-screen-is-saved-and-asks-before-replacing-unsaved-changes.md)),
   found by a hands-on pass, not a test. Things to know before touching it:

@@ -18,9 +18,11 @@ import {
   type Storage,
 } from '@incudo/core';
 import {
+  DRAFT_KEY,
   checkFormMap,
   loadShippedCatalog,
   newCharacterOfKind,
+  readDraftCharacter,
   readDraftOrigin,
   type FormMap,
   type ShippedCatalog,
@@ -118,8 +120,6 @@ export async function writeChosenSystem(
   await write(SYSTEM_KEY, systemId ?? '');
 }
 
-const CHARACTER_KEY = 'character:current';
-
 /**
  * Read the draft the shell last held, or start a new one **of this system**.
  *
@@ -130,34 +130,29 @@ const CHARACTER_KEY = 'character:current';
  * system is not corrupt and is not discarded: it is simply not this system's, so this system
  * starts fresh and the draft stays in storage until its own system claims it.
  */
-export async function loadCharacter(
-  system: GameSystem,
-  read: (key: string) => Promise<string | null>,
-): Promise<Character> {
-  try {
-    const saved = await read(CHARACTER_KEY);
-    if (saved) {
-      // Validated, not trusted. This came out of storage, which the user can edit and which an
-      // older version of this app may have written — so it goes through the published character
-      // schema exactly as a `.incu` would.
-      const result = validateCharacter(JSON.parse(saved) as unknown, schemas);
-      if (result.value && result.value.systemId === system.id) return result.value;
-    }
-  } catch {
-    // A corrupt draft is not worth losing the app over; start fresh rather than refusing to boot.
-  }
-  return newCharacter(system);
+export async function loadCharacter(system: GameSystem, storage: Storage): Promise<{ character: Character; setAside?: string }> {
+  // Validated, not trusted. This came out of storage, which the user can edit and which an older version of this app
+  // may have written — so it goes through the published character schema exactly as a `.incu` would. A corrupt draft
+  // is not worth losing the app over; it starts fresh rather than refusing to boot. So does one whose kind the system
+  // no longer declares, which `readDraftCharacter` sets aside and says so.
+  const read = await readDraftCharacter(system, storage, (value) => validateCharacter(value, schemas).value);
+  return { character: read.character ?? newCharacter(system), ...(read.setAside ? { setAside: read.setAside } : {}) };
+}
+
+/** The draft the shell starts from, and the sentence to say when the last one could not be opened. */
+export interface LoadedDraft extends WorkingCharacter {
+  setAside?: string;
 }
 
 /**
  * The draft and what was kept beside it (ADR 0066): the embedded content, assets and library entry
  * of the file it was opened from, so a reload hands the shell back what it held. A record kept for
  * any other character is not this one's, which includes the fresh character `loadCharacter` starts
- * when the draft is another system's.
+ * when the draft is another system's or was set aside.
  */
-export async function loadDraft(system: GameSystem, storage: Storage): Promise<WorkingCharacter> {
-  const character = await loadCharacter(system, (key) => storage.read(key));
-  return { ...(await readDraftOrigin(storage, character.id)), character };
+export async function loadDraft(system: GameSystem, storage: Storage): Promise<LoadedDraft> {
+  const { character, setAside } = await loadCharacter(system, storage);
+  return { ...(await readDraftOrigin(storage, character.id)), character, ...(setAside ? { setAside } : {}) };
 }
 
 /**
@@ -176,5 +171,5 @@ export async function saveCharacter(
   character: Character,
   write: (key: string, value: string) => Promise<void>,
 ): Promise<void> {
-  await write(CHARACTER_KEY, JSON.stringify(character));
+  await write(DRAFT_KEY, JSON.stringify(character));
 }

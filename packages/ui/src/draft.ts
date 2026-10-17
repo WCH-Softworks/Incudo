@@ -25,13 +25,64 @@ import {
   type ContainerFiles,
   type Element,
   type ElementIndex,
+  type GameSystem,
   type LibraryEntryRef,
   type Storage,
 } from '@incudo/core';
 import { decodeBase64 } from '@incudo/aurora-import';
 
-/** Beside `character:current`, the draft's own key, which the shell's boot code owns. */
+import { characterKindMissing } from './character-kinds.ts';
+
+/** The draft itself: the character the shell last held, as `character.json`. */
+export const DRAFT_KEY = 'character:current';
+
+/** Beside `character:current`, what the shell held besides the character. */
 export const DRAFT_ORIGIN_KEY = 'character:current:origin';
+
+/**
+ * Where a draft that cannot be opened is kept, one per character id, with its origin record under the same key plus
+ * `:origin`. Nothing reads it back; it is kept so that a draft the app cannot show is not destroyed by the next autosave.
+ */
+export const DRAFT_SET_ASIDE_PREFIX = 'character:set-aside/';
+
+/** What the draft gave the shell: its character when it is this system's and can be opened, and a sentence when not. */
+export interface DraftRead {
+  character?: Character;
+  /** Said to the user when the draft was set aside rather than opened. */
+  setAside?: string;
+}
+
+/**
+ * The draft character for `system`, read and judged.
+ *
+ * Nothing when there is no draft, it does not read (`validate` says), or it is another system's: a draft of another
+ * system is not this one's and stays where it is until its own system claims it. A draft of this system whose kind the
+ * system no longer declares cannot be opened (every builder resolves the kind and throws, which blanked the window), and
+ * will never be claimed, while the next autosave would write over it. So it is copied, with its origin record, under
+ * `DRAFT_SET_ASIDE_PREFIX`, and the shell is given the sentence to say. A storage that throws gives nothing.
+ */
+export async function readDraftCharacter(
+  system: GameSystem,
+  storage: Storage,
+  validate: (value: unknown) => Character | undefined,
+): Promise<DraftRead> {
+  try {
+    const text = await storage.read(DRAFT_KEY);
+    if (!text) return {};
+    const character = validate(JSON.parse(text) as unknown);
+    if (!character || character.systemId !== system.id) return {};
+    const missing = characterKindMissing(system, character);
+    if (missing === undefined) return { character };
+
+    const key = `${DRAFT_SET_ASIDE_PREFIX}${encodeURIComponent(character.id)}`;
+    await storage.write(key, text);
+    const origin = await storage.read(DRAFT_ORIGIN_KEY);
+    if (origin) await storage.write(`${key}:origin`, origin);
+    return { setAside: `${missing} It was the character you were editing last, and it has been set aside, not deleted.` };
+  } catch {
+    return {};
+  }
+}
 
 /** Where the character being edited came from, and what that brought with it. */
 export interface DraftOrigin {

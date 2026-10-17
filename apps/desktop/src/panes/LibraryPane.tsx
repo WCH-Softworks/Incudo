@@ -41,6 +41,8 @@ export function LibraryPane({
   importReports,
   askForFolder,
   onDismissAsk,
+  notice,
+  onDismissNotice,
   shell,
 }: {
   state: LibraryState;
@@ -82,6 +84,9 @@ export function LibraryPane({
   /** First run: nobody has chosen a folder and nobody has waved the question away yet. */
   askForFolder: boolean;
   onDismissAsk: () => void;
+  /** Why a character could not be opened, said until the user dismisses it. */
+  notice?: string;
+  onDismissNotice: () => void;
   shell: 'tauri' | 'browser';
 }): React.JSX.Element {
   const newKindDescription = kinds.length > 1 ? kinds.find((kind) => kind.id === newKind)?.description : undefined;
@@ -89,6 +94,7 @@ export function LibraryPane({
     return (
       <main className="pane">
         <h2>Characters</h2>
+        <Notice text={notice} onDismiss={onDismissNotice} />
         <div className="problem warning">
           <strong>There is no character library in this browser.</strong>
           <p>{state.unavailableReason}</p>
@@ -115,6 +121,7 @@ export function LibraryPane({
           shell={shell}
         />
         <h2>Characters</h2>
+        <Notice text={notice} onDismiss={onDismissNotice} />
         <p className="lede">
           Incudo does not know where you keep your characters yet.{' '}
           <button type="button" className="link" onClick={onChooseFolder}>
@@ -185,6 +192,8 @@ export function LibraryPane({
       {importBlockedBecause !== undefined && (
         <p className="hint">{importBlockedBecause}</p>
       )}
+
+      <Notice text={notice} onDismiss={onDismissNotice} />
 
       {importReports && <ImportReport reports={importReports} onDismiss={onDismissImport} />}
 
@@ -554,4 +563,21 @@ function useObjectUrl(bytes: Uint8Array | undefined, type: string): string | und
 /** Deleting someone's file is a two-click action, and the second click says what it deletes. */
 function RemoveButton({ name, onRemove }: { name: string; onRemove: () => void }): React.JSX.Element {
   return <ArmedButton label="Delete…" armedLabel={`Delete "${name}" from the folder`} onConfirm={onRemove} />;
+}
+
+/** A sentence about a character that could not be opened, with a way to put it away. */
+function Notice({ text, onDismiss }: { text: string | undefined; onDismiss: () => void }): React.JSX.Element | null {
+  if (!text) return null;
+  return (
+    <div className="problem warning" role="status">
+      <div className="library-head">
+        <span>{text}</span>
+        <div className="row">
+          <button type="button" onClick={onDismiss}>
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

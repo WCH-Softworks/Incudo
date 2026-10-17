@@ -20,6 +20,7 @@ import {
   CharacterBuilder,
   DEFAULT_BUILD_PREFERENCES,
   beginEdit,
+  characterKindMissing,
   hasUnsavedChanges,
   newCharacterOfKind,
   readBuildPreferences,
@@ -273,6 +274,9 @@ async function openForBuild(
     if (!opened) return { error: `"${params.name}" did not open as a character.` };
     const system = systems.find((candidate) => candidate.id === opened.character.systemId);
     if (!system) return { error: `This character is for a game this app does not have (${opened.character.systemId}).` };
+    // A kind the game no longer declares would throw in the builder with an internal message.
+    const missing = characterKindMissing(system, opened.character);
+    if (missing) return { error: missing };
     return {
       character: opened.character,
       system,

@@ -52,6 +52,7 @@ import {
   CharacterLibrary,
   COMMANDS,
   characterKindChoices,
+  characterKindMissing,
   describeKindAndProgress,
   libraryEntryReferences,
   libraryEntryProgress,
@@ -134,6 +135,7 @@ import {
   schemas,
   featureLibrarySchema,
   writeChosenSystem,
+  type LoadedDraft,
 } from './boot.ts';
 import { createDesktopPlatform } from './platform.ts';
 
@@ -177,7 +179,7 @@ export function App(): React.JSX.Element {
   /** The system in play. Null means the launcher is on screen. */
   const [system, setSystem] = useState<GameSystem | null>(null);
   /** The draft the shell starts from, with what was kept beside it (ADR 0066). */
-  const [character, setCharacter] = useState<WorkingCharacter | null>(null);
+  const [character, setCharacter] = useState<LoadedDraft | null>(null);
   /** Set while the user is deliberately changing systems, so the launcher can say "current". */
   const [changing, setChanging] = useState(false);
   /**
@@ -481,7 +483,7 @@ function Shell({
   nameOfSystem,
 }: {
   system: GameSystem;
-  initial: WorkingCharacter;
+  initial: LoadedDraft;
   commands: CommandBinder;
   onChangeSystem: () => void;
   /**
@@ -511,12 +513,20 @@ function Shell({
    * field is for is on `WorkingCharacter` (`packages/ui`), since all of it but the character is
    * kept beside the draft too (ADR 0066).
    */
-  const [working, setWorking] = useState<WorkingCharacter>(initial);
+  const [working, setWorking] = useState<WorkingCharacter>(() => {
+    const { setAside: _setAside, ...held } = initial;
+    return held;
+  });
   const [saveNote, setSaveNote] = useState<string | null>(null);
   /** The file the last Save wrote, said on the bar only while nothing has changed since (ADR 0120). */
   const [savedTo, setSavedTo] = useState<string | null>(null);
   /** What would replace unsaved changes, waiting on the user's answer (ADR 0120). */
   const [replacing, setReplacing] = useState<{ replacement: Replacement; run: () => void } | null>(null);
+  /**
+   * Why a character could not be opened: the draft set aside at boot, or a library file, because this system does not
+   * declare its kind. Said on the library, where the user is left, and cleared by the user.
+   */
+  const [libraryNotice, setLibraryNotice] = useState<string | undefined>(initial.setAside);
   /** A save in flight. A second one would race the first on `working.readAt`. */
   const [saving, setSaving] = useState(false);
   /** A copy being written: a dialog is open, or bytes are going to disk. */
@@ -1036,6 +1046,10 @@ function Shell({
     async (entry: LibraryEntry) => {
       const opened = await library.open(entry.name);
       if (!opened) return;
+      // A kind this system does not declare would throw in the builder and blank the window.
+      const missing = characterKindMissing(system, opened.character);
+      setLibraryNotice(missing);
+      if (missing) return;
       setWorking({
         character: opened.character,
         embedded: opened.elements,
@@ -1055,7 +1069,7 @@ function Shell({
       );
       setPane('build');
     },
-    [library],
+    [library, system],
   );
 
   /**
@@ -1558,6 +1572,8 @@ function Shell({
           importReports={importReports}
           askForFolder={libraryState.status === 'no-location' && !askDismissed}
           onDismissAsk={() => setAskDismissed(true)}
+          notice={libraryNotice}
+          onDismissNotice={() => setLibraryNotice(undefined)}
         />
       )}
       {(pane === 'build' || pane === 'sheet') && !edit.started && (

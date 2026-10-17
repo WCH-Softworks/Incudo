@@ -26,6 +26,7 @@ import {
   FeatureLibrary,
   ContentSources,
   characterKindChoices,
+  characterKindMissing,
   describeKindAndProgress,
   exportEntry,
   importReceivedSaves,
@@ -582,6 +583,9 @@ async function openSheet(library: CharacterLibrary, systems: readonly GameSystem
     if (!opened) return { error: `"${name}" did not open as a character.` };
     const system = systems.find((candidate) => candidate.id === opened.character.systemId);
     if (!system) return { error: `This character is for a game this app does not have (${opened.character.systemId}).` };
+    // A kind the game no longer declares would throw in the builder with an internal message.
+    const missing = characterKindMissing(system, opened.character);
+    if (missing) return { error: missing };
     const builder = new CharacterBuilder(opened.character, system, opened.elements);
     const document = sheetDocument(builder.getState());
     if (__DEV__) {

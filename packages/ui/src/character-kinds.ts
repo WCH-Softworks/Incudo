@@ -21,6 +21,20 @@ import {
 
 import { DEFAULT_REFERENCES_LABEL } from './references.ts';
 
+/**
+ * Why `character` cannot be opened in `system` because of its kind, or undefined when its kind is declared.
+ *
+ * A character records its kind by id, and a system can stop declaring one: 5e's sidekick was removed, and a user's own
+ * system can be edited. `CharacterBuilder`, `packCharacter` and every derivation resolve the kind and throw on one the
+ * system lacks, so a shell asks this first and says it, rather than mounting a builder that takes the window down. The
+ * id is named because it is all the file says: the definition that once declared the kind, and its name, are gone.
+ */
+export function characterKindMissing(system: GameSystem, character: Pick<Character, 'kind' | 'name'>): string | undefined {
+  if (system.characterKinds.some((kind) => kind.id === character.kind)) return undefined;
+  const name = character.name.trim() ? `“${character.name.trim()}”` : 'This character';
+  return `${name} is a kind of character (${character.kind}) that ${system.name} does not have, so it cannot be opened.`;
+}
+
 /** One kind a new character can be, as a chooser shows it. */
 export interface KindChoice {
   id: string;
