@@ -1,6 +1,6 @@
 # 0118 — A sidekick is a character of its own, built on a creature and levelled in a sidekick class
 
-**Status:** Accepted · 2026-10-15 · answers ROADMAP Phase 4's "Sidekicks" item · builds on
+**Status:** Superseded by [0121](./0121-an-npc-serves-as-a-sidekick-and-the-sidekick-kind-is-removed.md) (2026-10-17: an NPC serves as a sidekick, and the kind and its format additions are removed) · Accepted · 2026-10-15 · answers ROADMAP Phase 4's "Sidekicks" item · builds on
 [0015](./0015-class-levels.md), [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md),
 [0044](./0044-hit-points-follow-the-method-the-character-uses.md),
 [0045](./0045-a-class-split-is-one-input-and-an-unmet-ability-score-minimum-is-a-flag.md),

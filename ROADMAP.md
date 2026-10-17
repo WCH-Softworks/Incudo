@@ -1432,31 +1432,17 @@ the kind machinery is not decorative.*
       creatures above challenge 4) *(an open item at the end of this phase since 2026-10-12)*; ~~a creature's attack bonus~~ (`companion:attack` is shown as what its
       holder adds since ADR 0093; its actions' own numbers are prose); tracking a creature's hit points *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*;
       macOS and Linux.
-- [x] **Sidekicks**
-      ([ADR 0118](./docs/adr/0118-a-sidekick-is-a-character-of-its-own-built-on-a-creature-and-levelled-in-a-sidekick-class.md)).
-      *Split from "Companions and sidekicks" by ADR 0073's measurement*, and required for 1.0 by the maintainer's call
-      (2026-10-15). Measured first: upstream is still at `c28ce6c` and has no sidekick content (one empty "Unearthed
-      Arcana: Sidekicks" `Source`), and the rules are not SRD, so Incudo ships none: the classes come from a user's own
-      content file. A sidekick is **a character of its own**, of a new 5e kind built on the NPC: its creature's stat block
-      is where it starts, it levels 1 to 20 in one element of a new **`Sidekick Class`** type (an explicit type, not a
-      tagged `Class`: Aurora compatibility is not a goal, the maintainer's call), its proficiency bonus comes from its
-      level, and its hit points and hit dice from the creature's printed dice (level 1 is the print; each later level adds
-      one of the creature's dice, rolled or averaged, plus Constitution). Feats follow the campaign option, as for a player
-      character; no leader is recorded. Four small system-format additions, none naming a game: a `setterStats` entry may
-      read a printed die or dice count, a level roll may read its die from a stat and start after level 1, a sheet section
-      may read a class's dice from two stats, and a kind may say what must be loaded before it can be made (New character
-      lists "Sidekick (needs content)" with the reason until a sidekick class is loaded). No character format change.
-      `tools/verify/fixtures/sidekicks/` is a generic file of three sample classes in the project's own words. The
-      character sheet only: a sidekick inherits the NPC's play state and nothing was added. Driven in the browser build,
-      then (2026-10-15) in the Tauri window on Windows and on the phone emulator. The window drive found three things,
-      fixed: a sidekick could not take +2 to one score (the kind lacked the player character's repeatable +1), a class
-      feature's speed or armour class bonus (`speed:misc`, `ac:misc`, as class content writes them) moved nothing on its
-      printed numbers, and the level panel promised other classes and offered a class choice, a per-level class list and
-      an "Add a class" that a sidekick can never use; it now names the sidekick class and sets the level at once.
-      **Not done:** the phone cannot add a user's own content file, so a sidekick cannot be built there, only shown,
-      edited and exported from a file made elsewhere; a homebrew source cannot write a class yet (Phase 8); nothing loaded
-      declares the average hit points campaign option, so it cannot be chosen for any character in the app (each level's
-      Average button can); the print dialog (only "Export sheet as PDF…", the same layout, was driven); macOS and Linux.
+- [x] **Sidekicks: an NPC serves as one**
+      ([ADR 0121](./docs/adr/0121-an-npc-serves-as-a-sidekick-and-the-sidekick-kind-is-removed.md), superseding
+      [ADR 0118](./docs/adr/0118-a-sidekick-is-a-character-of-its-own-built-on-a-creature-and-levelled-in-a-sidekick-class.md)).
+      *Split from "Companions and sidekicks" by ADR 0073's measurement.* ADR 0118 built a sidekick kind levelled in a
+      `Sidekick Class`, and it was removed on 2026-10-17 (the maintainer's call): no sidekick class content exists anywhere
+      a user has it (AuroraLegacy has none, and the rules are not SRD, so Incudo cannot ship them), so the kind only worked
+      for a user writing their own file. An NPC already covers a sidekick: its creature's print is where it starts, any
+      feature, feat, proficiency or spell is added through Additions whatever its prerequisites, the DM writes features of
+      its own, hit points and armour class are typed, and its proficiency bonus follows the challenge rating the DM types.
+      The kind's four system-format additions went with it. Letting an NPC be built on a race as well as a creature is a
+      separate item.
 - [x] **Show the 2025 Monster Manual's prose stat blocks as a reference beside an NPC**
       ([ADR 0068](./docs/adr/0068-a-character-may-keep-content-beside-it-as-a-reference-shown-and-embedded-and-never-held.md)).
       *Reworded by ADR 0057's measurement;* was "Wire up the 2025 Monster Manual creature content already in the

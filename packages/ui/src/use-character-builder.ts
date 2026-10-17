@@ -57,7 +57,6 @@ import {
   type StatKey,
 } from '@incudo/core';
 
-import { kindUnavailable } from './character-kinds.ts';
 import { candidateOverlaps, overlapNotes, type CandidateOverlaps } from './candidate-overlaps.ts';
 import {
   budgetRollKey,
@@ -316,11 +315,6 @@ export interface BuilderState {
    * in `steps` unless the character already took something through it, which stays in `picks`, changeable.
    */
   advanced: { steps: string[]; shown: boolean };
-  /**
-   * What the kind needs loaded before a character of it can be made, while nothing of it is (ADR 0118): its `available`
-   * note, which Build shows above everything else. Absent while the kind needs nothing or it is loaded.
-   */
-  unavailable?: string;
   /** The kind being built. ADR 0009. */
   kind: ResolvedCharacterKind;
   /** Everything still outstanding, always current, in no particular order of obligation. */
@@ -2098,7 +2092,6 @@ export class CharacterBuilder {
       decisions: openDecisions,
       steps,
       advanced: { steps: this.steps.filter((step) => step.advanced).map((step) => step.label), shown: this.showAdvanced },
-      ...(kindUnavailable(this.kind, this.content) !== undefined ? { unavailable: kindUnavailable(this.kind, this.content) } : {}),
       picks,
       declined,
       preparation: preparationRows(derived, this.elements),

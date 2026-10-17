@@ -1261,7 +1261,7 @@ function setterNoteProblem(note: SetterStartNote): Problem {
         level: 'warning',
         code: 'setter-not-a-number',
         elementId: note.elementId,
-        message: `"${note.setter}" on ${note.elementId} reads "${note.text}", which ${note.read ? 'prints no dice' : 'is not a number'}, so it does not set where "${note.stat}" starts.`,
+        message: `"${note.setter}" on ${note.elementId} reads "${note.text}", which is not a number, so it does not set where "${note.stat}" starts.`,
       }
     : {
         level: 'warning',

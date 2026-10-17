@@ -18,7 +18,6 @@ import {
   initialProgress,
   progressionStat,
   type ResolvedCharacterKind,
-  type SetterRead,
   type SetterStatDef,
 } from './system.ts';
 
@@ -39,8 +38,6 @@ export interface SetterStartNote {
   elementId: ElementId;
   /** The setter's text, for `not-a-number`. */
   text?: string;
-  /** How the setter was read, when not as a number: then `not-a-number` means it prints no dice (ADR 0118). */
-  read?: SetterRead;
   /** The element whose value is used instead, for `two-suppliers`. */
   usedFrom?: ElementId;
 }
@@ -76,28 +73,6 @@ export function readSetterNumber(text: string | undefined): number | undefined {
   return denominator === 0 ? undefined : whole / denominator;
 }
 
-const PRINTED_DICE = /(\d+)\s*d\s*(\d+)/i;
-
-/**
- * The first `NdM` a setter's text prints, or undefined when it prints none — ADR 0118. A creature prints its hit
- * points as `11 (2d8 + 2)`: two dice of eight sides. Only the first is read, and a text with none (a class summon's
- * "5 + five times your ranger level") gives nothing rather than a die guessed from its size.
- */
-export function readPrintedDice(text: string | undefined): { count: number; sides: number } | undefined {
-  const match = text === undefined ? null : PRINTED_DICE.exec(text);
-  if (!match) return undefined;
-  const count = Number(match[1]);
-  const sides = Number(match[2]);
-  return count > 0 && sides > 0 ? { count, sides } : undefined;
-}
-
-/** A setter's text read as a `setterStats` entry says — a printed number unless it names a dice reading. */
-function readSetter(text: string, read: SetterRead | undefined): number | undefined {
-  if (read === 'dieSides') return readPrintedDice(text)?.sides;
-  if (read === 'diceCount') return readPrintedDice(text)?.count;
-  return readSetterNumber(text);
-}
-
 /**
  * The starting value each declared stat takes from the elements the character holds.
  *
@@ -120,9 +95,9 @@ export function setterStartingValues(
       const setter = findSetter(element, def.setter);
       if (setter === undefined) continue;
       const key = def.stat.toLowerCase();
-      const value = readSetter(setter, def.read);
+      const value = readSetterNumber(setter);
       if (value === undefined) {
-        notes.push({ kind: 'not-a-number', stat: def.stat, setter: def.setter, elementId: element.id, text: setter, ...(def.read && def.read !== 'number' ? { read: def.read } : {}) });
+        notes.push({ kind: 'not-a-number', stat: def.stat, setter: def.setter, elementId: element.id, text: setter });
         continue;
       }
       const existing = values.get(key);

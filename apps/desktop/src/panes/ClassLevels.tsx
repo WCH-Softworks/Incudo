@@ -23,17 +23,17 @@ import {
   LEVEL_HINT,
   LEVEL_MULTICLASS_HINT,
   LEVEL_ROWS_LABEL,
+  SPLIT_LABEL,
+  SPLIT_HINT,
   SPLIT_INTERLEAVED,
   SPLIT_REFUSED,
   classOptionGroups,
   currentSplit,
   levelControlView,
   movedSplitRow,
-  firstClassHint,
   multiclassOffNote,
   shortfallText,
   splitDraftView,
-  splitWording,
   unavailableReason,
   withAddedSplitRow,
   withSplitRow,
@@ -152,7 +152,7 @@ export function ClassLevels({
         <button type="button" className="primary" disabled={!view.up} onClick={up}>
           {view.up ? view.up.label : 'Highest level reached'}
         </button>
-        {classes && view.choosesClass && (
+        {classes && (
           <label className="level-class">
             in
             <select
@@ -176,7 +176,7 @@ export function ClassLevels({
       </div>
 
       {state && state.firstClassId === undefined && (
-        <p className="hint">{firstClassHint(state)}</p>
+        <p className="hint">Choose a class in Open decisions. Further levels can then go to other classes.</p>
       )}
 
       {offNote && <p className={classes!.classes.length > 1 ? 'class-flag' : 'hint'}>{offNote}</p>}
@@ -209,7 +209,6 @@ export function ClassLevels({
             stats={stats}
           />
 
-          {(view.choosesClass || classes.unassigned.length > 0) && (
           <details open={classes.unassigned.length > 0}>
             <summary>{LEVEL_ROWS_LABEL}</summary>
             <div className="class-level-rows">
@@ -249,7 +248,6 @@ export function ClassLevels({
               character as it is now. Changing a level's class clears a hit point roll made on a different die.
             </p>
           </details>
-          )}
         </>
       )}
     </div>
@@ -278,7 +276,6 @@ function ClassSplit({
   const [refused, setRefused] = useState(false);
   const draft = splitDraftView(state, rows ?? currentSplit(state));
   const shown = draft.rows;
-  const wording = splitWording(state);
 
   const edit = (next: ClassSegment[]): void => {
     setRows(next);
@@ -287,9 +284,9 @@ function ClassSplit({
 
   return (
     <details>
-      <summary>{wording.label}</summary>
+      <summary>{SPLIT_LABEL}</summary>
       <div className="class-split">
-        <p className="hint">{wording.hint}</p>
+        <p className="hint">{SPLIT_HINT}</p>
         {shown.map((row, index) => (
           <div key={index} className="class-split-row">
             <select
@@ -331,11 +328,13 @@ function ClassSplit({
           </div>
         ))}
         <div className="class-split-actions">
-          {wording.addsClass && (
-            <button type="button" className="link" onClick={() => edit(withAddedSplitRow(shown, state))}>
-              Add a class
-            </button>
-          )}
+          <button
+            type="button"
+            className="link"
+            onClick={() => edit(withAddedSplitRow(shown, state))}
+          >
+            Add a class
+          </button>
           <span className="hint">{draft.totalText}</span>
           <button
             type="button"

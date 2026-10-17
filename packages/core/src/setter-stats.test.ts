@@ -12,7 +12,7 @@ import { deriveCharacter } from './engine.ts';
 import { createCharacter, type Character } from './character.ts';
 import { MapElementIndex, type Element, type Rule, type Setter } from './model.ts';
 import type { GameSystem, SetterStatDef } from './system.ts';
-import { readPrintedDice, readSetterNumber, setterStartingValues } from './setter-stats.ts';
+import { readSetterNumber, setterStartingValues } from './setter-stats.ts';
 
 function element(id: string, type: string, setters: Record<string, string> = {}, rules: Rule[] = []): Element {
   const out: Record<string, Setter> = {};
@@ -153,27 +153,3 @@ function indexOf(...elements: Element[]): MapElementIndex {
   for (const e of elements) index.add(e);
   return index;
 }
-
-test('a setter may be read for the dice it prints — ADR 0118', () => {
-  // Fails if `read` is ignored (the 11 of "11 (2d6 + 2)" would start both stats, or nothing would), if the reading takes
-  // a die from text that prints none, or if dieSides and diceCount are swapped.
-  assert.deepEqual(readPrintedDice('11 (2d6 + 2)'), { count: 2, sides: 6 });
-  assert.deepEqual(readPrintedDice('150 (16D10+64)'), { count: 16, sides: 10 });
-  assert.equal(readPrintedDice('5 + five times your level [d10s]'), undefined);
-  assert.equal(readPrintedDice('7'), undefined);
-  const defs: SetterStatDef[] = [
-    { types: ['Beast'], setter: 'might', stat: 'vigour', read: 'dieSides' },
-    { types: ['Beast'], setter: 'might', stat: 'grade', read: 'diceCount' },
-  ];
-  const starts = setterStartingValues(defs, [element('owl', 'Beast', { might: '11 (2d6 + 2)' })]);
-  assert.equal(starts.values.get('vigour')?.value, 6);
-  assert.equal(starts.values.get('grade')?.value, 2);
-  const none = setterStartingValues(defs, [element('drake', 'Beast', { might: '5 + five times your level' })]);
-  assert.equal(none.values.size, 0);
-  assert.deepEqual(none.notes.map((note) => [note.kind, note.read]), [['not-a-number', 'dieSides'], ['not-a-number', 'diceCount']]);
-  // The derivation says so in words that fit the reading, not "is not a number".
-  const drake = element('DRAKE', 'Beast', { might: '5 + five times your level' });
-  const problems = deriveCharacter(holding(['DRAKE']), system(defs), indexOf(drake)).problems.filter((p) => p.code === 'setter-not-a-number');
-  assert.equal(problems.length, 2);
-  assert.ok(problems.every((p) => p.message.includes('prints no dice')));
-});

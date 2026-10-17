@@ -397,16 +397,6 @@ export function fillPlaceholders(text: string, stats: ReadonlyMap<string, Resolv
   return { text: out + text.slice(at), unfilled };
 }
 
-/** A track's dice read off two stats the kind derives (ADR 0118), or none while either reads 0. */
-function statDice(
-  def: { count: string; sides: string },
-  resolved: (key: string) => ResolvedStat | undefined,
-): { count: number; sides: number } | undefined {
-  const count = resolved(def.count)?.value ?? 0;
-  const sides = resolved(def.sides)?.value ?? 0;
-  return count > 0 && sides > 0 ? { count, sides } : undefined;
-}
-
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -511,10 +501,7 @@ export function sheetSections(
         : undefined;
       const elements = shown.map(({ element: e, group }): SheetListedElement => {
         const progress = section.trackProgress && vocabulary.progression ? trackProgress(vocabulary.progression, e, source.stats) : undefined;
-        const tracked = progress !== undefined && progress > 0;
-        const sides = section.trackDie !== undefined && tracked ? trackDie(e, section.trackDie) : undefined;
-        // Or the kind derives the dice (ADR 0118): a sidekick's are its creature's print and its levels, not its class's.
-        const dice = tracked && section.trackDice ? statDice(section.trackDice, resolved) : undefined;
+        const sides = section.trackDie !== undefined && progress !== undefined && progress > 0 ? trackDie(e, section.trackDie) : undefined;
         const prepared = section.preparedMark ? preparedState(preparation, e.id) : undefined;
         const cast = source.cast?.get(e.id);
         return {
@@ -524,7 +511,7 @@ export function sheetSections(
           ...(unmet.has(e.id) ? { prerequisitesUnmet: true } : {}),
           ...sheetHintsOf(e, source),
           ...(progress !== undefined ? { progress } : {}),
-          ...(sides !== undefined ? { dice: { count: progress!, sides } } : dice ? { dice } : {}),
+          ...(sides !== undefined ? { dice: { count: progress!, sides } } : {}),
           ...(group ? { group } : {}),
           ...(prepared ? { prepared: { label: section.preparedMark![prepared], always: prepared === 'always' } } : {}),
           ...(cast !== undefined ? { cast } : {}),

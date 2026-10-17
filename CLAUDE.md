@@ -2474,37 +2474,11 @@ Things to know before touching it:
   an exchange; AC 18 → 19, speed 20 → 30; the desktop's file read with the phone's zip, reopened with no source the same).
   The oracle is identical. Driven in the browser build; **not on the phone emulator or in the Tauri window**.
 
-**A sidekick is a character of its own, built on a creature and levelled in a `Sidekick Class`**
-([ADR 0118](docs/adr/0118-a-sidekick-is-a-character-of-its-own-built-on-a-creature-and-levelled-in-a-sidekick-class.md)).
-Things to know before touching it:
-
-- **No sidekick content exists upstream, and Incudo ships none** (not SRD): the classes come from a user's own file.
-  `tools/verify/fixtures/sidekicks/homebrew-sidekicks.xml` is the generic one the tests load beside the corpus; never
-  copy a book's classes into it.
-- **5e's `sidekick` kind extends `npc`** and is data only: a `level` progression whose `trackType` is the new
-  `Sidekick Class` type (so no player character step ever offers one), `proficiency` from `level`, the player
-  character's campaign options and casting declarations copied, the NPC's stat block sheet with a Sidekick Class section.
-  A change to the NPC's or the player character's casting, options or sheet may need making here too.
-- **Four kind-agnostic format additions:** `setterStats` `read: "dieSides" | "diceCount"` (`readPrintedDice`, the
-  first `NdM` a setter prints); `levelRoll.dieStat` (exactly one of it and `dieSetter`) and `levelRoll.from` (levels below
-  owe nothing and none is taken at the maximum); a sheet section's `trackDice: { count, sides }`; a kind's
-  `available: { types, note }` (`kindUnavailable`, `KindChoice.unavailable`, `BuilderState.unavailable`; not
-  inherited along `extends`). `dieSides` in `expression.ts` is untouched on purpose.
-- **Hit points:** `hp` starts from the creature's `companion:hp:max` and derives the later levels on top
-  (`(level − 1)` dice of `hit die`, rolled or averaged, plus Constitution); a typed total replaces the start only.
-- A sidekick class with no `<multiclass>` block is never a second class, which is what keeps a sidekick to one class;
-  no leader is recorded; no attacks, no bag, and the NPC's play state inherited unchanged.
-- Tests: `tools/verify/src/sidekicks.test.ts`, `packages/ui/src/kind-from-creature.test.ts`, the dice cases in
-  `packages/core/src/setter-stats.test.ts`, each failing under its named perturbation.
-- **The kind declares the player character's `repeatableSetter`** (the NPC it extends has none, so +2 to one score was
-  impossible) **and its own `speed` and `ac`**: the creature's print with `speed:misc` and `ac:misc` added, where class
-  content writes them. Found in the Tauri window.
-- **The level panel reads `ClassLevelState.secondClassPossible`** (not off, and some loaded class of the type writes a
-  loaded multiclass block): `firstClassHint`, `LevelControlView.choosesClass` and `splitWording` (`build-view.ts`) word a
-  sidekick's panel as one class, "Set the level at once", with no class choice; desktop and phone both call them.
-- Driven in the browser build, the Tauri window on Windows (DOM clicks and window messages; saved, reopened with no
-  source to an identical Sheet, text and PDF export) and the phone emulator. **The phone cannot add a user's own content
-  file**, so a sidekick is only shown, edited and exported there from a file made elsewhere.
+**An NPC serves as a sidekick; there is no sidekick kind**
+([ADR 0121](docs/adr/0121-an-npc-serves-as-a-sidekick-and-the-sidekick-kind-is-removed.md), superseding ADR 0118). No
+sidekick class content exists anywhere a user has it, so the kind and its four system-format additions were removed
+before 1.0; do not bring back `setterStats.read`, `levelRoll.dieStat`/`from`, `trackDice` or a kind's `available` without
+content that needs them.
 
 **A pool never offers what the character already has.** `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,

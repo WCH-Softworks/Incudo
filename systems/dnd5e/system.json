@@ -23,7 +23,6 @@
     { "name": "Racial Trait", "plural": "Racial Traits" },
     { "name": "Class", "plural": "Classes", "selectable": true, "browsable": true, "children": ["Archetype", "Class Feature"] },
     { "name": "Multiclass", "plural": "Multiclasses" },
-    { "name": "Sidekick Class", "plural": "Sidekick Classes", "selectable": true, "browsable": true, "children": ["Class Feature"] },
     { "name": "Class Feature", "plural": "Class Features" },
     { "name": "Archetype", "plural": "Subclasses", "selectable": true, "children": ["Archetype Feature"] },
     { "name": "Archetype Feature", "plural": "Subclass Features" },
@@ -970,98 +969,6 @@
           { "id": "legendary", "label": "Legendary Actions", "stats": ["legendary actions"], "types": ["Legendary Action"] },
           { "id": "lair", "label": "Lair Actions and Regional Effects", "types": ["Lair Action", "Regional Effect"] },
           { "id": "spells", "label": "Spellcasting", "types": ["Spell"] }
-        ]
-      }
-    },
-
-    {
-      "id": "sidekick",
-      "name": "Sidekick",
-      "description": "A creature that gains levels in a sidekick class. Its stat block is where it starts, and each level adds hit points, a proficiency bonus by level and the class's features. Sidekick classes are not part of the game's open rules, so they come from content you add yourself, such as a content file of your own.",
-      "extends": "npc",
-      "available": { "types": ["Sidekick Class"], "note": "A sidekick needs a sidekick class, and no loaded source has one. Add a content source or file that has sidekick classes." },
-      "repeatableSetter": "allow duplicate",
-      "progression": { "kind": "level", "min": 1, "max": 20, "stat": "level", "elementIdPattern": "ID_LEVEL_{n}", "trackStatPattern": "level:{name}", "trackType": "Sidekick Class" },
-      "elementTypes": ["+Sidekick Class", "+Option"],
-      "stats": [
-        { "name": "proficiency", "label": "Proficiency Bonus", "signed": true, "derive": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 2 }, "right": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "level" }, "right": { "kind": "number", "value": 1 } }, "right": { "kind": "number", "value": 4 } }] } } },
-        { "name": "level", "label": "Level", "default": 1 },
-        { "name": "ac", "label": "Armor Class", "default": 0, "startsFrom": "companion:ac", "derive": { "kind": "ref", "stat": "ac:misc" } },
-        { "name": "speed", "label": "Speed", "default": 0, "startsFrom": "companion:speed", "derive": { "kind": "ref", "stat": "speed:misc" } },
-        { "name": "hit die", "label": "Hit Die", "default": 0 },
-        { "name": "hit dice:printed", "label": "Hit Dice, as printed", "default": 0 },
-        { "name": "hit dice", "label": "Hit Dice", "derive": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "hit dice:printed" }, "right": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "level" }, "right": { "kind": "number", "value": 1 } } } },
-        { "name": "hp", "label": "Hit Points", "default": 0, "startsFrom": "companion:hp:max", "derive": { "kind": "binary", "op": "+", "left": { "kind": "binary", "op": "+", "left": { "kind": "binary", "op": "*", "left": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "hp:average" }, "right": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "level" }, "right": { "kind": "number", "value": 1 } } }, "right": { "kind": "binary", "op": "+", "left": { "kind": "call", "fn": "floor", "args": [{ "kind": "binary", "op": "/", "left": { "kind": "ref", "stat": "hit die" }, "right": { "kind": "number", "value": 2 } }] }, "right": { "kind": "number", "value": 1 } } }, "right": { "kind": "binary", "op": "*", "left": { "kind": "binary", "op": "-", "left": { "kind": "number", "value": 1 }, "right": { "kind": "ref", "stat": "hp:average" } }, "right": { "kind": "rolls", "pattern": "hp:level:{n}" } } }, "right": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "constitution:modifier" }, "right": { "kind": "binary", "op": "-", "left": { "kind": "ref", "stat": "level" }, "right": { "kind": "number", "value": 1 } } } } }
-      ],
-      "setterStats": [
-        { "types": ["Companion"], "setter": "strength", "stat": "strength" },
-        { "types": ["Companion"], "setter": "dexterity", "stat": "dexterity" },
-        { "types": ["Companion"], "setter": "constitution", "stat": "constitution" },
-        { "types": ["Companion"], "setter": "intelligence", "stat": "intelligence" },
-        { "types": ["Companion"], "setter": "wisdom", "stat": "wisdom" },
-        { "types": ["Companion"], "setter": "charisma", "stat": "charisma" },
-        { "types": ["Companion"], "setter": "hp", "stat": "hit die", "read": "dieSides" },
-        { "types": ["Companion"], "setter": "hp", "stat": "hit dice:printed", "read": "diceCount" }
-      ],
-      "contributions": [
-        { "stat": "companion:proficiency", "value": { "kind": "ref", "stat": "proficiency" } },
-        { "stat": "hp:average", "value": { "kind": "number", "value": 1 }, "requirements": "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" }
-      ],
-      "blockStats": [
-        { "stat": "{name}:spellcasting:dc", "label": "Spell Save DC", "value": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 8 }, "right": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "proficiency" }, "right": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "{ability}:modifier" }, "right": { "kind": "ref", "stat": "spellcasting:dc" } } } } },
-        { "stat": "{name}:spellcasting:attack", "label": "Spell Attack Bonus", "signed": true, "value": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "proficiency" }, "right": { "kind": "binary", "op": "+", "left": { "kind": "ref", "stat": "{ability}:modifier" }, "right": { "kind": "ref", "stat": "spellcasting:attack" } } } },
-        { "stat": "{name}:spellcasting:table", "value": { "kind": "call", "fn": "max", "args": [{ "kind": "ref", "stat": "{name}:spellcasting:solo" },{ "kind": "binary", "op": "-", "left": { "kind": "number", "value": 1 }, "right": { "kind": "call", "fn": "min", "args": [{ "kind": "number", "value": 1 },{ "kind": "ref", "stat": "multiclass:spellcasting:level" }] } }] } },
-        { "stat": "{name}:spellcasting:table:1", "label": "1st-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:1" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } },
-        { "stat": "{name}:spellcasting:table:2", "label": "2nd-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:2" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } },
-        { "stat": "{name}:spellcasting:table:3", "label": "3rd-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:3" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } },
-        { "stat": "{name}:spellcasting:table:4", "label": "4th-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:4" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } },
-        { "stat": "{name}:spellcasting:table:5", "label": "5th-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:5" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } },
-        { "stat": "{name}:spellcasting:table:6", "label": "6th-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:6" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } },
-        { "stat": "{name}:spellcasting:table:7", "label": "7th-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:7" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } },
-        { "stat": "{name}:spellcasting:table:8", "label": "8th-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:8" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } },
-        { "stat": "{name}:spellcasting:table:9", "label": "9th-level Spell Slots", "value": { "kind": "binary", "op": "*", "left": { "kind": "ref", "stat": "{name}:spellcasting:slots:9" }, "right": { "kind": "ref", "stat": "{name}:spellcasting:table" } } }
-      ],
-      "blockFilters": [
-        { "key": "spellcasting:list", "tags": ["{list}", "{name}"] },
-        { "key": "spellcasting:slots", "tagsFromStats": ["{name}:spellcasting:slots:*", "spellcasting:slots:*"], "fillFrom": 1 }
-      ],
-      "setterTags": [
-        { "setter": "isRitual", "tag": "Ritual" }
-      ],
-      "preparation": { "blockAttribute": "prepare", "limit": "{name}:spellcasting:prepare", "elementType": "Spell", "heldSelect": "Spellbook", "listFilter": "$(spellcasting:list), $(spellcasting:slots)", "heldFilter": "$(spellcasting:slots)", "minimum": 1 },
-      "buildSteps": [
-        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "required": true, "description": "The creature that becomes the sidekick. Its stat block is where the sidekick starts: its scores, armor class, hit points and hit die." },
-        { "id": "options", "label": "Campaign options", "types": ["Option"], "multiple": true, "initial": ["ID_INTERNAL_OPTION_ALLOW_FEATS", "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING"], "description": "Optional rules a table may use, such as feats or customized ability score increases. A new character starts with feats and multiclassing on, as most tables play; switch off what yours does not use." },
-        { "id": "class", "label": "Sidekick class", "types": ["Sidekick Class"], "required": true, "requires": ["creature"] },
-        { "id": "levels", "label": "Levels", "types": ["Sidekick Class"], "perLevel": true, "requires": ["class"], "priority": 2.5, "levelRoll": { "pattern": "hp:level:{n}", "dieStat": "hit die", "from": 2, "classType": "Sidekick Class", "fixedWhen": "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" }, "multiclassWhen": "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING" },
-        { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one.", "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
-        { "id": "combat", "label": "Armor Class, Hit Points and Speed", "types": [], "required": true, "description": "What the creature's stat block gives, or what you enter. A number you enter replaces the creature's; each level after the first still adds to hit points.", "budget": { "stat": "stat block points", "targets": ["ac", "hp", "speed"], "methods": ["entry"] } },
-        { "id": "traits", "label": "Traits", "types": ["Companion Trait"], "multiple": true },
-        { "id": "actions", "label": "Actions", "types": ["Companion Action", "Companion Reaction"], "multiple": true },
-        { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency"], "priority": 3.5 },
-        { "id": "languages", "label": "Languages", "types": ["Language"], "priority": 2.9 },
-        { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
-        { "id": "spells", "label": "Spells", "types": ["Spell"], "requires": ["class"] }
-      ],
-      "sheet": {
-        "sections": [
-          { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "printed": [{ "types": ["Companion"], "setter": "size", "label": "Size" },{ "types": ["Companion"], "setter": "type", "label": "Type" },{ "types": ["Companion"], "setter": "alignment", "label": "Alignment" }] },
-          { "id": "class", "label": "Sidekick Class", "types": ["Sidekick Class"], "trackProgress": true, "trackDice": { "count": "hit dice", "sides": "hit die" } },
-          { "id": "header", "label": "Stat Block", "stats": ["level", "ac", "hp", "speed", "initiative", "proficiency"], "printed": [{ "types": ["Companion"], "setter": "ac", "label": "Armor Class, as printed" },{ "types": ["Companion"], "setter": "hp", "label": "Hit Points, as printed" },{ "types": ["Companion"], "setter": "speed", "label": "Speed, as printed" }] },
-          { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "beside": "{stat}:modifier" },
-          { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}" },
-          { "id": "saves", "label": "Saving Throws", "description": "The saving throws the creature is proficient in. Any other is the ability modifier.", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"], "none": "not proficient" } },
-          { "id": "skills", "label": "Skills", "description": "The skills the creature is proficient in. Any other is the ability modifier.", "stats": ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient", "expertise"], "none": "not proficient" } },
-          { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "printed": [{ "types": ["Companion"], "setter": "senses", "label": "As printed" }] },
-          { "id": "defences", "label": "Defences and Languages", "description": "As the creature’s stat block prints them.", "printed": [{ "types": ["Companion"], "setter": "vulnerabilities", "label": "Damage Vulnerabilities" },{ "types": ["Companion"], "setter": "resistances", "label": "Damage Resistances" },{ "types": ["Companion"], "setter": "damage resistances", "label": "Damage Resistances" },{ "types": ["Companion"], "setter": "immunities", "label": "Damage Immunities" },{ "types": ["Companion"], "setter": "damage immunities", "label": "Damage Immunities" },{ "types": ["Companion"], "setter": "conditionImmunities", "label": "Condition Immunities" },{ "types": ["Companion"], "setter": "condition immunities", "label": "Condition Immunities" },{ "types": ["Companion"], "setter": "languages", "label": "Languages" }] },
-          { "id": "traits", "label": "Traits", "types": ["Companion Trait"] },
-          { "id": "actions", "label": "Actions", "types": ["Companion Action"] },
-          { "id": "reactions", "label": "Reactions", "types": ["Companion Reaction"] },
-          { "id": "features", "label": "Feats and Features", "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature"], "omitHidden": true },
-          { "id": "proficiencies", "label": "Proficiencies and Conditions", "types": ["Proficiency", "Language", "Condition"], "omitHidden": true },
-          { "id": "spellcasting", "label": "Spellcasting", "perBlock": true, "stats": ["{name}:spellcasting:dc", "{name}:spellcasting:attack"] },
-          { "id": "block-slots", "label": "Spell Slots", "perBlock": true, "stats": ["{name}:spellcasting:table:1", "{name}:spellcasting:table:2", "{name}:spellcasting:table:3", "{name}:spellcasting:table:4", "{name}:spellcasting:table:5", "{name}:spellcasting:table:6", "{name}:spellcasting:table:7", "{name}:spellcasting:table:8", "{name}:spellcasting:table:9"], "showWhen": "{stat}" },
-          { "id": "spells", "label": "Spells", "describe": true, "types": ["Spell"], "group": { "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }, "preparedMark": { "always": "always prepared", "chosen": "prepared" } }
         ]
       }
     }

@@ -84,10 +84,7 @@ export function LibraryPane({
   onDismissAsk: () => void;
   shell: 'tauri' | 'browser';
 }): React.JSX.Element {
-  const chosenKind = kinds.find((kind) => kind.id === newKind);
-  const newKindDescription = kinds.length > 1 ? chosenKind?.description : undefined;
-  // What the chosen kind needs loaded before one can be made (ADR 0118), said where its description is.
-  const newKindUnavailable = chosenKind?.unavailable;
+  const newKindDescription = kinds.length > 1 ? kinds.find((kind) => kind.id === newKind)?.description : undefined;
   if (state.status === 'unavailable') {
     return (
       <main className="pane">
@@ -156,12 +153,12 @@ export function LibraryPane({
             >
               {kinds.map((kind) => (
                 <option key={kind.id} value={kind.id}>
-                  {kind.unavailable !== undefined ? `${kind.name} (needs content)` : kind.name}
+                  {kind.name}
                 </option>
               ))}
             </select>
           )}
-          <button type="button" className="on" onClick={onNew} disabled={newKindUnavailable !== undefined} title={newKindUnavailable}>
+          <button type="button" className="on" onClick={onNew}>
             New character
           </button>
           <button
@@ -184,7 +181,6 @@ export function LibraryPane({
         place that says where its legendary actions come from.
       */}
       {newKindDescription && <p className="hint">{newKindDescription}</p>}
-      {newKindUnavailable !== undefined && <p className="hint">{newKindUnavailable}</p>}
 
       {importBlockedBecause !== undefined && (
         <p className="hint">{importBlockedBecause}</p>

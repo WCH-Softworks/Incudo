@@ -257,16 +257,7 @@ export interface SetterStatDef {
   setter: string;
   /** The stat it starts. */
   stat: StatKey;
-  /**
-   * How the setter's text is read — ADR 0118. `number` (the default) is a printed number, as ADR 0057 reads a score.
-   * `dieSides` and `diceCount` read the first `NdM` the text prints, a creature's `11 (2d8 + 2)` giving 8 and 2: a
-   * sidekick's hit die and the dice it starts with. A text with no `NdM` supplies nothing and is noted.
-   */
-  read?: SetterRead;
 }
-
-/** How a `setterStats` entry reads its setter's text — ADR 0057, ADR 0118. */
-export type SetterRead = 'number' | 'dieSides' | 'diceCount';
 
 /**
  * A setter on a held element that names elements its holder has — ADR 0058.
@@ -841,22 +832,8 @@ export interface EquipStepDef {
 export interface LevelRollDef {
   /** The key a roll is recorded under, with `{n}` replaced by the level — "hp:level:{n}". */
   pattern: string;
-  /**
-   * The setter naming the die, read off the governing element — Aurora's convention is `hd`. Exactly one of this and
-   * `dieStat`.
-   */
-  dieSetter?: string;
-  /**
-   * A stat whose value is the die's face count, read off the derivation instead of a governing element — ADR 0118: a
-   * sidekick's die is the one its creature prints (a `setterStats` entry reading `dieSides`), whatever its class.
-   */
-  dieStat?: StatKey;
-  /**
-   * The first level that owes a value — ADR 0118. Levels below it are covered by something else (a sidekick's first
-   * level is its creature's printed hit points) and are neither offered nor read; none of the levels is then the
-   * progression's first, so none is taken at the die's maximum. Absent: every level, the first at its maximum.
-   */
-  from?: number;
+  /** The setter naming the die, read off the governing element — Aurora's convention is `hd`. */
+  dieSetter: string;
   /**
    * The element type that governs a level — 5e's `Class`. `character.advancement` (ADR 0015)
    * names the element for a level directly when it is recorded; where it is not — every
@@ -1008,13 +985,6 @@ export interface SheetSectionDef {
    * none. Only meaningful beside `trackProgress`.
    */
   trackDie?: string;
-  /**
-   * Stats a listed track root's dice are read from instead of a setter on it — ADR 0118: a sidekick's hit dice are its
-   * creature's printed count plus one per level after the first, of the creature's die, and the kind derives both.
-   * Written as `trackDie`'s are ("Sample Martial 3 (4d8)"); nothing is written while either reads 0. Only beside
-   * `trackProgress`, and not beside `trackDie`.
-   */
-  trackDice?: { count: StatKey; sides: StatKey };
   /**
    * Group the listed elements by a setter they carry, in its order — ADR 0079: a player character's spells are listed
    * cantrips first, then level 1, level 2, …, each called "Cantrip", "Level 1" (`labels` before `label`, as a candidate
@@ -1376,13 +1346,6 @@ export interface LicenceRef {
  * its differences — "legendary" is a delta on "npc", not a copy of it. Use
  * {@link resolveCharacterKind} to get the merged, complete form.
  */
-/** What must be loaded before a kind's character can be made — ADR 0118. */
-export interface KindAvailability {
-  types: ElementType[];
-  /** What the user is told while nothing of `types` is loaded. */
-  note: string;
-}
-
 export interface CharacterKindDef {
   id: string;
   name?: string;
@@ -1391,13 +1354,6 @@ export interface CharacterKindDef {
   default?: boolean;
   /** Id of another kind in this system to inherit from. ADR 0009. */
   extends?: string;
-  /**
-   * What must be loaded before a character of this kind can be made — ADR 0118. While no loaded element is of one of
-   * `types`, New character lists the kind as unavailable with `note` beside it, and Build says the same on a
-   * character of it. A character already made still opens, derives and shows. Not inherited along `extends`: it is
-   * about this kind.
-   */
-  available?: KindAvailability;
   progression?: Progression;
   /**
    * Element types this kind may use. When `extends` is set the list may be written as a
@@ -1843,8 +1799,6 @@ export interface ResolvedCharacterKind {
   id: string;
   name: string;
   description?: string;
-  /** The kind's own `available` — ADR 0118. */
-  available?: KindAvailability;
   default: boolean;
   progression: Progression;
   elementTypes: ElementType[];
@@ -2237,7 +2191,6 @@ export function resolveCharacterKind(
     id: def.id,
     name,
     description,
-    ...(def.available ? { available: def.available } : {}),
     default: def.default ?? false,
     progression,
     elementTypes,

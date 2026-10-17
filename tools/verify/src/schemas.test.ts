@@ -89,7 +89,7 @@ test('the 5e kinds are the ones ADR 0009 describes', async () => {
   const raw = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8'));
   const system = validateGameSystem(raw, schemas).value!;
 
-  assert.deepEqual(system.characterKinds.map((k) => k.id), ['pc', 'npc', 'legendary', 'sidekick']);
+  assert.deepEqual(system.characterKinds.map((k) => k.id), ['pc', 'npc', 'legendary']);
 
   const pc = resolveCharacterKind(system, 'pc');
   assert.deepEqual(pc.progression, {
@@ -421,10 +421,8 @@ test('a custom feature section that names no section of the sheet is caught befo
   assert.deepEqual(validateGameSystem(system, schemas).errors, []);
   const npc = system.characterKinds.find((k) => k.id === 'npc')!;
   npc.customFeatures = { ...npc.customFeatures!, sections: [...npc.customFeatures!.sections!, 'nowhere'] };
-  // For the NPC and the sidekick, which inherits the NPC's (ADR 0118); not for the legendary kind, which declares its own
-  // (ADR 0065).
+  // Once: the legendary kind declares its own (ADR 0065), where it used to inherit the NPC's and repeat the error.
   assert.deepEqual(validateGameSystem(system, schemas).errors.map((e) => e.message), [
-    'names "nowhere", which is not a section of this kind\'s sheet',
     'names "nowhere", which is not a section of this kind\'s sheet',
   ]);
 });
@@ -645,12 +643,11 @@ test('a reference type the system does not declare is caught before the app load
   const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
   const npc = system.characterKinds.find((k) => k.id === 'npc')!;
   npc.references = { ...npc.references!, types: [...npc.references!.types, 'Informaton'] };
-  // For the NPC, and for the legendary creature and the sidekick, which inherit the NPC's.
+  // For the NPC and for the legendary creature, which inherits the NPC's.
   const message = `names "Informaton", which the system's elementTypes does not declare`;
   assert.deepEqual(validateGameSystem(system, schemas).errors, [
     { path: 'characterKinds[1].references.types', message },
     { path: 'characterKinds[2].references.types', message },
-    { path: 'characterKinds[3].references.types', message },
   ]);
 });
 
@@ -682,7 +679,7 @@ test('a play declaration naming a rest, a section or a source it does not have i
     { path: `${at}.trackers`, message: 'declares the tracker "hp" twice' },
     { path: `${at}.trackers`, message: '"both" names 2 of stat, rows, dice, uses and max, and must name one' },
     { path: `${at}.trackers`, message: '"nowhere" reads the sheet section "slotz", which the kind does not declare' },
-    { path: `${at}.trackers`, message: '"no-dice" reads dice from "abilities", which writes none (trackDie or trackDice)' },
+    { path: `${at}.trackers`, message: '"no-dice" reads dice from "abilities", which writes none (trackDie)' },
     { path: `${at}.trackers`, message: '"when" has restoresWhen, which only a rows tracker over a perBlock section reads' },
     { path: `${at}.trackers`, message: '"used" reads uses, which the rest their usage names gives back; it takes no restores' },
     { path: `${at}.trackers`, message: '"dawn" is given back by "dawn", which is not a declared rest' },
@@ -1405,21 +1402,5 @@ test('an inventory editor offering an undeclared type, or a section listing the 
   npc.sheet = { sections: [...npc.sheet!.sections, { id: 'bag', label: 'Bag', bag: true }] };
   assert.deepEqual(validateGameSystem(none, schemas).errors, [
     { path: `characterKinds[${none.characterKinds.indexOf(npc)}].sheet.sections`, message: '"bag" lists the bag, and the kind declares no inventory' },
-  ]);
-});
-
-test('a kind made available by a type nothing declares, and a section reading dice two ways, are caught — ADR 0118', async () => {
-  // Fails if either referential check is removed: the kind would never be offered, or the sheet would pick one reading
-  // and say nothing.
-  const schemas = await loadSchemas();
-  const system = JSON.parse(await readFile(join(systemsDirectory(), 'dnd5e', 'system.json'), 'utf8')) as GameSystem;
-  assert.deepEqual(validateGameSystem(system, schemas).errors, []);
-  const sidekick = system.characterKinds.find((k) => k.available !== undefined)!;
-  sidekick.available = { ...sidekick.available!, types: ['Sidekick Clas'] };
-  const section = sidekick.sheet!.sections.find((s) => s.trackDice !== undefined)!;
-  section.trackDie = 'hd';
-  assert.deepEqual(validateGameSystem(system, schemas).errors.map((e) => e.message), [
-    `names "Sidekick Clas", which the system's elementTypes does not declare`,
-    `section "${section.id}" reads a track's dice from a setter and from stats, and must name one`,
   ]);
 });

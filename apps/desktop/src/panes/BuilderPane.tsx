@@ -198,12 +198,6 @@ export function BuilderPane({
           </p>
         </div>
       )}
-      {/* What the kind needs loaded before it can be made, in the system's own words (ADR 0118). */}
-      {hasContent && state.unavailable !== undefined && (
-        <div className="problem warning">
-          <p>{state.unavailable}</p>
-        </div>
-      )}
 
       {/*
         Three columns, not two. Outstanding work (what to decide) and settled work (what you

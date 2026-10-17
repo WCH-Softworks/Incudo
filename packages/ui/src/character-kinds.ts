@@ -15,7 +15,6 @@ import {
   resolveCharacterKind,
   type Character,
   type Element,
-  type ElementIndex,
   type GameSystem,
   type ResolvedCharacterKind,
 } from '@incudo/core';
@@ -30,43 +29,21 @@ export interface KindChoice {
   default: boolean;
   /** What the kind's progression is called — "Level", "Challenge Rating" — or undefined when it has none. */
   progressLabel?: string;
-  /**
-   * Why a character of this kind cannot be made with what is loaded (its `available` note, ADR 0118), when the chooser
-   * was given the loaded content and nothing of what the kind needs is in it. A chooser lists the kind and does not offer it.
-   */
-  unavailable?: string;
 }
 
-/**
- * Every kind the system declares, the default first and the rest in declaration order. Given what is loaded, a kind that
- * needs something none of it is says why (`unavailable`); without it, every kind is offered, as a shell that has not
- * loaded content yet cannot tell.
- */
-export function characterKindChoices(system: GameSystem, loaded?: ElementIndex): KindChoice[] {
-  const choices = system.characterKinds.map((def): KindChoice => {
+/** Every kind the system declares, the default first and the rest in declaration order. */
+export function characterKindChoices(system: GameSystem): KindChoice[] {
+  const choices = system.characterKinds.map((def) => {
     const kind = resolveCharacterKind(system, def.id);
-    const unavailable = loaded ? kindUnavailable(kind, loaded) : undefined;
     return {
       id: kind.id,
       name: kind.name,
       description: kind.description,
       default: kind.default,
       progressLabel: progressLabel(kind),
-      ...(unavailable !== undefined ? { unavailable } : {}),
     };
   });
   return [...choices.filter((c) => c.default), ...choices.filter((c) => !c.default)];
-}
-
-/**
- * Why a character of this kind cannot be made with what is loaded — ADR 0118: the kind's `available` note, while no
- * loaded element is of one of the types it names. Undefined when the kind names none or one is loaded. Read from the
- * loaded index, never from a list of sources, so a user's own file declaring the type is enough.
- */
-export function kindUnavailable(kind: ResolvedCharacterKind, loaded: ElementIndex): string | undefined {
-  const available = kind.available;
-  if (!available) return undefined;
-  return available.types.some((type) => loaded.byType(type).length > 0) ? undefined : available.note;
 }
 
 /**

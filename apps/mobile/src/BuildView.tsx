@@ -109,8 +109,6 @@ export const BuildView = memo(function BuildView({
       {progression.kind !== 'none' && progressPrintedHint(progress, nameOf) ? <Body tone="muted">{progressPrintedHint(progress, nameOf)}</Body> : null}
 
       {!hasContent ? <Body tone="danger">No content is loaded, so nothing can be chosen yet. Add a source under Content.</Body> : null}
-      {/* What the kind needs loaded before it can be made, in the system's own words (ADR 0118). */}
-      {hasContent && state.unavailable !== undefined ? <Body tone="danger">{state.unavailable}</Body> : null}
 
       {/* How the character grows, and where a second class is taken: ahead of everything it opens. */}
       {progression.kind === 'level' ? (
