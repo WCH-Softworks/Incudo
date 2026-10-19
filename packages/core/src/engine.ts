@@ -58,6 +58,7 @@ import {
 } from './setter-stats.ts';
 import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
 import { placePicks } from './pool-slots.ts';
+import { HeldPrintings, printingTypes } from './printings.ts';
 import { foreignFeatures, scopeStatNames } from './companion-features.ts';
 import {
   customFeatureEffects,
@@ -153,6 +154,12 @@ export interface PendingChoice {
    */
   unplaced: ElementId[];
   /**
+   * What the pool's rules accept and `candidates` leaves out only because one of this pool's own picks is another
+   * printing of it — ADR 0125. Not offered to the pool, and offered to the slot holding that printing: changing the
+   * Player's Handbook's Acid Splash to the 2024 one is one slot's change of book. Empty in every other case.
+   */
+  otherPrintings: ElementId[];
+  /**
    * The progression point this became available at — the `level` on the rule that opened
    * it, where it has one. What lets a builder say "Rogue 4: Ability Score Improvement"
    * instead of listing an unexplained choice (ADR 0017).
@@ -207,6 +214,8 @@ export interface AnsweredChoice {
   from: ElementId;
   /** As on `PendingChoice`: which of `chosen` fit none of the pool's slots. */
   unplaced: ElementId[];
+  /** As on `PendingChoice`: what is left out only because a pick of this pool is another printing of it. */
+  otherPrintings: ElementId[];
 }
 
 /**
@@ -242,6 +251,9 @@ export interface Problem {
     // A recorded pick no assignment of the pool's picks to its slots can place: no rule of the pool would have offered
     // it — ADR 0096. It still counts, and is flagged; never refused or deleted.
     | 'choice-unplaced'
+    // One thing held from two books, of a type the system identifies by name — ADR 0125. Both stay held; the
+    // character is warned, never changed.
+    | 'printing-twice'
     // Attuned to more items than the limit allows — ADR 0023 decision 3, ADR 0026. In
     // `over-prepared`'s family: reported, and never a refusal to derive.
     | 'over-attuned'
@@ -750,6 +762,9 @@ function derive(
   const ctx = makeContext(active, stats, character, kind, equipment);
   const finalLevelFor = trackLevelReader(tracks, trackLevels, character.progress);
   const blockFilters = makeBlockFilterResolver(kind, active, stats);
+  // What the character holds, by printing (ADR 0125): what a pool does not offer again, and what is held twice.
+  const printings = new HeldPrintings(active.values(), printingTypes(system));
+  reportPrintingsTwice(printings, kind, problems);
   const { pending: pendingChoices, answered: answeredChoices } = collectPendingChoices(
     active,
     character,
@@ -760,6 +775,7 @@ function derive(
     finalLevelFor,
     equipment,
     blockFilters,
+    printings,
   );
 
   // When each open choice became available, as the character's own progression (see `PendingChoice.opensAt`).
@@ -1156,6 +1172,28 @@ function reportUnmetAdditions(
  * 0096 decision 5): a warning, never a refusal, and the pick still counts. Once per element, whichever records name it;
  * an element the user also added is already reported as an addition.
  */
+/**
+ * One thing held from two books — ADR 0125: a warning, once per thing, naming every book. Both stay held and derive as
+ * they did; what the kind lets be taken again is not reported.
+ */
+function reportPrintingsTwice(printings: HeldPrintings, kind: ResolvedCharacterKind, problems: Problem[]): void {
+  for (const group of printings.heldTwice()) {
+    if (group.every((element) => isRepeatable(element, kind))) continue;
+    const books = [...new Set(group.map((element) => element.source.trim() || 'no book'))];
+    problems.push({
+      level: 'warning',
+      code: 'printing-twice',
+      elementId: group[0]!.id,
+      message: `${group[0]!.name.trim()} is held ${group.length === 2 ? 'twice' : `${group.length} times`}, from ${listed(books)}. It is one ${group[0]!.type.toLowerCase()} printed in more than one book.`,
+    });
+  }
+}
+
+/** "A", "A and B", "A, B and C". */
+function listed(items: string[]): string {
+  return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
+}
+
 function reportUnmetPicks(
   choices: Character['choices'],
   added: ReadonlySet<ElementId>,
@@ -2063,9 +2101,20 @@ function collectPendingChoices(
   levelFor: TrackLevelReader,
   equipment: EquipmentState,
   filters: BlockFilterResolver | undefined,
+  printings: HeldPrintings,
 ): { pending: PendingChoice[]; answered: AnsweredChoice[] } {
   const pending: PendingChoice[] = [];
   const answered: AnsweredChoice[] = [];
+
+  // Another printing of what the character holds is not offered — ADR 0125: Acid Splash from the 2024 book once it has
+  // the Player's Handbook's. `own` when every held printing is one of this pool's own picks: then it is that pick's
+  // slot's to change to (`otherPrintings`), not the pool's to offer. What the kind lets be taken again is offered again.
+  const printingOf = (candidate: Element, own: ReadonlySet<ElementId>): 'offer' | 'own' | 'held' => {
+    if (isRepeatable(candidate, kind)) return 'offer';
+    const others = printings.otherPrintings(candidate);
+    if (!others.length) return 'offer';
+    return others.every((other) => own.has(other.id)) ? 'own' : 'held';
+  };
 
   // What a pool's own answers exclude from what it offers next: everything except an element
   // the kind lets be taken again (ADR 0035).
@@ -2099,6 +2148,8 @@ function collectPendingChoices(
       }
 
       const remaining = allowed - chosen.length;
+      const own = new Set(chosen);
+      const otherPrintings = new Set<ElementId>();
       if (remaining <= 0) {
         // Full, not gone: what a slot could hold instead is the same question `candidatesFor`
         // answers while a pool is open, asked of every rule rather than just the ones with
@@ -2108,6 +2159,9 @@ function collectPendingChoices(
         for (const rule of rules) {
           for (const candidate of candidatesFor(rule, index, unrepeatable(chosen), ctx, filters, soft)) {
             if (active.has(candidate.id) && !isRepeatable(candidate, kind)) continue;
+            const printing = printingOf(candidate, own);
+            if (printing === 'own') otherPrintings.add(candidate.id);
+            if (printing !== 'offer') continue;
             candidates.add(candidate.id);
           }
           for (const key of supportsInterpolations(rule.supports)) {
@@ -2125,6 +2179,7 @@ function collectPendingChoices(
           unresolvedSupports: [...unresolvedSupports],
           from: element.id,
           unplaced,
+          otherPrintings: [...otherPrintings],
         });
         continue;
       }
@@ -2161,6 +2216,9 @@ function collectPendingChoices(
           //
           // Except what the kind marks repeatable, which is offered again by design — ADR 0035.
           if (active.has(candidate.id) && !isRepeatable(candidate, kind)) continue;
+          const printing = printingOf(candidate, own);
+          if (printing === 'own') otherPrintings.add(candidate.id);
+          if (printing !== 'offer') continue;
           candidates.add(candidate.id);
         }
       }
@@ -2191,6 +2249,7 @@ function collectPendingChoices(
         ],
         from: element.id,
         unplaced,
+        otherPrintings: [...otherPrintings],
         level: next.level,
       });
     }

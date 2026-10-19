@@ -17,12 +17,25 @@ import type { BuilderState, BuilderStep, HolderGrant, OpenDecision, ProgressStat
 /**
  * What slot `index` of an answered decision may hold instead: its own answer, anything no other slot holds, and anything
  * that may be taken twice (ADR 0035: a +1 chosen in both slots is a +2). `pick.candidates` covers every slot; keeping two
- * slots from agreeing is this.
+ * slots from agreeing is this. Two slots never hold one thing from two books either (ADR 0125): a slot is offered the
+ * other printing of its own answer, as a change of book, and not of another slot's.
  */
 export function slotOptions(pick: SettledPick, index: number): ElementId[] {
   const own = pick.chosen[index];
+  const others = pick.chosen.filter((_, at) => at !== index);
+  const reprinted = (candidate: ElementId): boolean => {
+    const printing = pick.printings?.[candidate];
+    if (!printing) return false;
+    return others.some((answer) => {
+      const theirs = pick.printings?.[answer];
+      return theirs !== undefined && theirs.thing === printing.thing && theirs.book !== printing.book;
+    });
+  };
   return pick.candidates.filter(
-    (candidate) => candidate === own || !pick.chosen.includes(candidate) || pick.repeatable.includes(candidate),
+    (candidate) =>
+      candidate === own ||
+      pick.repeatable.includes(candidate) ||
+      (!pick.chosen.includes(candidate) && !reprinted(candidate)),
   );
 }
 

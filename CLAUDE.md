@@ -2349,6 +2349,33 @@ The maintainer's calls on Build's layout. Things to know before touching it:
   each failing under its named perturbation; the oracle is unaffected. Driven in the browser build at 1280×800 and
   1024×700 (a wizard, a Warlock 2 with invocations); the phone is typechecked, not driven.
 
+**A character is not offered a second printing of what it has**
+([ADR 0125](docs/adr/0125-a-system-names-the-types-whose-name-is-the-thing-and-a-character-is-not-offered-another-printing-of-what-it-holds.md)).
+The UX pass's two printings of Acid Splash. Things to know before touching it:
+
+- **Measured first** (`tools/verify/src/printings.test.ts`, report lines): 2,238 names printed in more than one book (430
+  spells, 82 feats, 9 proficiencies, 6 languages among them); content links 386 same-name pairs by a requirement, none a
+  spell; within one book a name repeats on purpose (Elemental Adept five times so it can be taken five times) or names
+  different things (every class's Ability Score Improvement, a deer's and a rat's Agile). The samples hold no two printings.
+- **`identifiedByName: true` on an element type** (system format; 5e Spell, Feat, Language, Proficiency): two elements of
+  such a type are one thing when their names match ignoring case and space **and their `source` differs**. Never name and
+  type alone, never a text-similarity threshold. `packages/core/src/printings.ts` (`printingTypes`, `printingKey`,
+  `isOtherPrinting`, `HeldPrintings`) is the only reader.
+- **`collectPendingChoices`** leaves out another printing of what is held, as it leaves out the id; a printing held only
+  by this pool's own pick is published as `otherPrintings` (pending and answered), not offered to the pool, and the
+  builder adds it to the `SettledPick`'s candidates with `printings` so `slotOptions` offers it to that slot alone (a
+  change of book). What the kind repeats (ADR 0035) is offered again.
+- **`preparationPool` is not filtered, on purpose**: Aurora lists both printings on a class's list and the oracle holds
+  Incudo's list to it (filtering there failed it on six samples). The offer to prepare is (`preparationOptions`).
+- **Held twice is `printing-twice`**, a warning; nothing is dropped. Additions mark the other printing
+  (`AdditionOption.heldFrom`, "already has it from …"); ADR 0091's walk marks a grant of another printing.
+- **`candidateLabel(element, notes, index)`** names what gives an element when another shares its type, name and book
+  (`candidateGiver`, cached per index): "Agile (from Deer) — Monster Manual (2025)". The desktop's and phone's labels pass
+  the index. The NPC's Traits list had 55 identical rows, now 0.
+- Tests: `packages/core/src/printings.test.ts`, `packages/ui/src/printings.test.ts`, the corpus test, each failing under
+  its named perturbation; the oracle and the rebuild of every sample are unchanged. Driven in the browser build (a 2014
+  Wizard's cantrips, an NPC's traits); the phone is typechecked, not driven.
+
 **Each level's hit points are a card of their own** (2026-10-14, the maintainer's call): a `hitpoints` decision per level
 still to record or under review (`OpenDecision.hitPointLevel`, "Hit Points, level 4", `hitPointDecisionLabel`), opening at
 that level, so a new level asks for its own roll among its own choices. A roll is not an acceptance: the card stays
@@ -2558,7 +2585,8 @@ sidekick class content exists anywhere a user has it, so the kind and its four s
 before 1.0; do not bring back `setterStats.read`, `levelRoll.dieStat`/`from`, `trackDice` or a kind's `available` without
 content that needs them.
 
-**A pool never offers what the character already has.** `candidatesFor` has always excluded a
+**A pool never offers what the character already has** (by id, and since ADR 0125 by printing: Acid Splash from the
+2024 book once it has the Player's Handbook's, for the types a system marks `identifiedByName`). `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,
 which is the only place the question can be asked — a background's "two languages of your
 choice" is a support-tag select and a race's Elvish is a plain `<grant>`, and neither file can

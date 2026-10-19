@@ -188,6 +188,10 @@
           "type": "string",
           "minLength": 1,
           "description": "On a publication type: the setter that, reading true, marks a publication every character is offered whatever it records (ADR 0049). Such a book is listed as always on and cannot be switched off."
+        },
+        "identifiedByName": {
+          "type": "boolean",
+          "description": "Two elements of this type with the same name, from different books, are one thing printed twice (ADR 0125): a character offered one is not offered the other once it has one, and holding both is a warning. Within one book a repeated name is two things."
         }
       }
     },

@@ -16,7 +16,9 @@
  */
 
 import {
+  HeldPrintings,
   evaluateRequirements,
+  printingTypes,
   requirementContextFor,
   setterGrantIds,
   type DerivedCharacter,
@@ -57,8 +59,11 @@ export function candidateOverlaps(
   const result = new Map<ElementId, ElementId[]>();
   if (types.size === 0 || candidates.length === 0) return result;
   const context = options.requirements === false ? undefined : requirementContextFor(held);
+  // Another printing of what is held is held as far as a mark goes (ADR 0125): a 2024 feat granting a spell the
+  // character knows from the Player's Handbook gives it nothing new.
+  const printings = new HeldPrintings(held.elements, printingTypes(held.system));
   for (const candidate of candidates) {
-    const found = reachedHeld(candidate, held, kind, elements, types, options.level, context);
+    const found = reachedHeld(candidate, held, kind, elements, types, options.level, context, printings);
     if (found.length) result.set(candidate, found);
   }
   return result;
@@ -72,6 +77,7 @@ function reachedHeld(
   types: ReadonlySet<string>,
   level: number | undefined,
   context: ReturnType<typeof requirementContextFor> | undefined,
+  printings: HeldPrintings,
 ): ElementId[] {
   const found: ElementId[] = [];
   const seen = new Set<ElementId>([candidate]);
@@ -86,6 +92,13 @@ function reachedHeld(
         // Held, so what it gives is held too (or withdrawn for the character's own reasons): the walk stops here.
         const type = elements.get(id)?.type;
         if (type !== undefined && types.has(type)) found.push(id);
+        continue;
+      }
+      const given = elements.get(id);
+      const reprinted = given ? printings.otherPrintings(given)[0] : undefined;
+      if (reprinted) {
+        // The same thing from another book: named as the character holds it, and the walk stops as it does above.
+        if (types.has(reprinted.type) && !found.includes(reprinted.id)) found.push(reprinted.id);
         continue;
       }
       queue.push(id);

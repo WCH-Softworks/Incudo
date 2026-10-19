@@ -2293,7 +2293,19 @@ written on a character can be moved into the user's library without being typed 
       an invocation that needs Eldritch Blast is offered with a warning instead of hidden (10 such in the corpus, a kind's
       `softRequirements`); a short window scrolls the pane as one page, picker lists are taller and the description dock
       smaller. Driven in the browser build (a wizard and a Warlock 2); the phone, one page with a spells heading, is
-      typechecked only. Left: the top bar's Build badge still counts optional decisions, and duplicate printings.
+      typechecked only. Left: the top bar's Build badge still counts optional decisions, and ~~duplicate printings~~
+      (ADR 0125, below).
+- [x] **A character is not offered a second printing of what it has, and two identical rows are told apart**
+      ([ADR 0125](./docs/adr/0125-a-system-names-the-types-whose-name-is-the-thing-and-a-character-is-not-offered-another-printing-of-what-it-holds.md)).
+      From the UX pass of 2026-10-19 (a cantrip pool took Acid Splash from both Player's Handbooks; an NPC's Traits list
+      showed "Agile — Monster Manual (2025)" twice). Measured first: 430 spell names, 82 feat names, 9 proficiency and 6
+      language names are printed in more than one book, content links none of the spells, and one book repeats a feat on
+      purpose. Done 2026-10-19: a system marks the types whose name is the thing (`identifiedByName`; 5e Spell, Feat,
+      Language, Proficiency); both printings are listed until one is taken, then the other is not offered, and the slot
+      holding one may change book; the offer to prepare leaves out a second printing; a character holding two is warned
+      and unchanged; an addition or a candidate's grant that is another printing is marked; two rows a list would print
+      the same name what gives them ("Agile (from Deer)"). Driven in the browser build (a 2014 Wizard's cantrips, a new
+      NPC's traits); the phone typechecked only.
 - [ ] **Drive everything in the Tauri window and on the phone before 1.0.** Raised 2026-10-11, last on purpose. Many
       features were driven only in the browser build (CLAUDE.md says "Driven in the browser build only" fifteen times),
       and the first feature driven in both shells afterwards found two bugs no test and no browser drive could see: the

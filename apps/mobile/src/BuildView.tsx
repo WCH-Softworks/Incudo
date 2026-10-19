@@ -100,7 +100,7 @@ export const BuildView = memo(function BuildView({
   const labelOf = useCallback(
     (id: ElementId): string => {
       const element = elements.get(id);
-      return element ? candidateLabel(element, kind.candidateNotes) : id;
+      return element ? candidateLabel(element, kind.candidateNotes, elements) : id;
     },
     [elements, kind.candidateNotes],
   );

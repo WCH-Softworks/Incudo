@@ -14,6 +14,7 @@ export * from './character.ts';
 export * from './equipment.ts';
 export * from './engine.ts';
 export * from './preparation.ts';
+export * from './printings.ts';
 export * from './attacks.ts';
 export * from './setter-stats.ts';
 export * from './setter-grants.ts';

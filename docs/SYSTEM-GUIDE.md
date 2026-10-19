@@ -652,7 +652,8 @@ body of existing content. When you need one of these, find it there, and read it
 - **Play**: `play` (rests, trackers, conditions).
 - **What a user may add or write**: `customFeatures`, `additions`, `references`.
 - **Creatures a character holds**: `companions`.
-- **Books**: `publication` and `requiredWhen` on an element type.
+- **Books**: `publication` and `requiredWhen` on an element type, and `identifiedByName` on one whose name is the thing
+  whichever book prints it (5e's spells and feats): a character is not offered a second printing of what it has.
 - **The sheet**: `mark`, `group`, `preparedMark`, `trackProgress`, `trackDie`, `omitHidden`, `printed`, `bag`.
 
 The schema's descriptions mention decision records (`ADR 0062` and so on). Those are in [docs/adr](./adr/README.md),

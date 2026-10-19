@@ -41,6 +41,12 @@ export interface ElementTypeDef {
    * book refers to, so switching it off would leave a character offered no skill at all.
    */
   requiredWhen?: string;
+  /**
+   * Two elements of this type with the same name from different books are one thing printed twice — ADR 0125. A pool
+   * does not offer another printing of what the character holds, and holding two is a warning. Within one book a
+   * repeated name is two things (a feat printed five times so it can be taken five times).
+   */
+  identifiedByName?: boolean;
 }
 
 export type StatValueKind = 'number' | 'string';

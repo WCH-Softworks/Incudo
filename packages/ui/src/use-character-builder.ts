@@ -42,6 +42,9 @@ import {
   newCustomFeatureId,
   type CustomStatLine,
   holderGivenIds,
+  isOtherPrinting,
+  printingKey,
+  printingTypes,
   setGenerationMethod,
   setName,
   setFreeform,
@@ -529,6 +532,18 @@ export interface SettledPick {
    * Which of `chosen` fit none of the choice's slots any more (ADR 0096): still counted, and flagged. Absent when none.
    */
   unplaced?: ElementId[];
+  /**
+   * Which of `candidates` are printings of one thing — ADR 0125: each id to the thing it is and the book it is from,
+   * only for an id another here reprints. A slot is offered another printing of its own answer (a change of book) and
+   * never one of another slot's; a copy from the same book is not a printing. Absent when nothing here is reprinted.
+   */
+  printings?: Record<ElementId, PrintingOf>;
+}
+
+/** One printing of a thing — ADR 0125: what the thing is (the same for every printing) and which book printed this one. */
+export interface PrintingOf {
+  thing: string;
+  book: string;
 }
 
 export class CharacterBuilder {
@@ -966,6 +981,35 @@ export class CharacterBuilder {
     const held = deriveCharacter(without, this.system, this.elements, { kind: this.kind });
     return candidateOverlaps(pick.candidates, held, this.kind, this.elements, { level: candidateLevel(ruleKey, held) });
   };
+
+  /**
+   * Which of `ids` are printings of one thing another of them is (ADR 0125), each to the thing, or undefined when none
+   * are. What `slotOptions` reads to keep one slot from taking another printing of a second slot's answer.
+   */
+  private printingsAmong(ids: readonly ElementId[]): Record<ElementId, PrintingOf> | undefined {
+    const types = printingTypes(this.system);
+    if (!types.size) return undefined;
+    const byKey = new Map<string, ElementId[]>();
+    for (const id of ids) {
+      const element = this.elements.get(id);
+      const key = element ? printingKey(element, types) : undefined;
+      if (key === undefined) continue;
+      const group = byKey.get(key);
+      if (group) group.push(id);
+      else byKey.set(key, [id]);
+    }
+    const out: Record<ElementId, PrintingOf> = {};
+    let any = false;
+    for (const [key, group] of byKey) {
+      const elements = group.map((id) => this.elements.get(id)!);
+      for (const element of elements) {
+        if (!elements.some((other) => isOtherPrinting(element, other, types))) continue;
+        out[element.id] = { thing: key, book: element.source.trim().toLowerCase() };
+        any = true;
+      }
+    }
+    return any ? out : undefined;
+  }
 
   /** `overlapsFor` worded: the line a picker shows under each marked candidate (`overlapNote`). */
   overlapNotesFor = (ruleKey: string, slot?: number): Map<ElementId, string> =>
@@ -1776,14 +1820,18 @@ export class CharacterBuilder {
         // showing it — the same trick a fully answered pool uses below.
         //
         // Deduplicated: an element the kind lets be taken again (ADR 0035) is in both lists.
+        // With the other printings of its own picks (ADR 0125), which the pool no longer offers and a slot may change to.
+        const candidates = [...new Set([...choice.candidates, ...chosen, ...choice.otherPrintings])];
+        const printings = this.printingsAmong(candidates);
         picks.push({
           ruleKey: choice.ruleKey,
           stepId,
           label: choice.label,
           chosen,
-          candidates: [...new Set([...choice.candidates, ...chosen])],
+          candidates,
           repeatable: choice.repeatable,
           ...(choice.unplaced.length ? { unplaced: choice.unplaced } : {}),
+          ...(printings ? { printings } : {}),
         });
       }
     }
@@ -1938,14 +1986,17 @@ export class CharacterBuilder {
     // could be chosen instead always includes what is chosen now. Keeping one slot's answer
     // out of another slot's list is the pane's job, not this file's — see `BuilderPane.tsx`.
     for (const answered of derived.answeredChoices) {
+      const candidates = [...new Set([...answered.candidates, ...answered.chosen, ...answered.otherPrintings])];
+      const printings = this.printingsAmong(candidates);
       picks.push({
         ruleKey: answered.ruleKey,
         stepId: stepForType.get(answered.type) ?? '',
         label: answered.label,
         chosen: answered.chosen,
-        candidates: [...new Set([...answered.candidates, ...answered.chosen])],
+        candidates,
         repeatable: answered.repeatable,
         ...(answered.unplaced.length ? { unplaced: answered.unplaced } : {}),
+        ...(printings ? { printings } : {}),
       });
       addChoiceEdge(answered.from, answered.chosen);
     }

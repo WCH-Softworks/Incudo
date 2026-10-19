@@ -12,8 +12,10 @@
  */
 
 import {
+  HeldPrintings,
   collectDeclaredBlocks,
   evaluateRequirements,
+  printingTypes,
   requirementContextFor,
   type Character,
   type DerivedCharacter,
@@ -95,6 +97,11 @@ export interface AdditionOption {
   type: string;
   /** Whether its own prerequisites hold for the character as it is. It is offered either way. */
   prerequisitesMet: boolean;
+  /**
+   * The book of a printing of the same thing the character already holds — ADR 0125: Acid Splash from the 2024 book,
+   * offered to a character holding the Player's Handbook's. Offered all the same, and marked. Absent when none is held.
+   */
+  heldFrom?: string;
 }
 
 export function additionsState(
@@ -198,6 +205,7 @@ export function additionOptions(
   const declared = kind.additions?.types ?? [];
   const types = type === undefined ? declared : declared.filter((t) => t === type);
   const context = requirementContextFor(derived);
+  const printings = new HeldPrintings(derived.elements, printingTypes(derived.system));
   const out: AdditionOption[] = [];
   for (const t of types) {
     const offered = elements
@@ -205,10 +213,12 @@ export function additionOptions(
       .filter((element) => !derived.elementIds.has(element.id))
       .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
     for (const element of offered) {
+      const held = printings.otherPrintings(element)[0];
       out.push({
         elementId: element.id,
         type: t,
         prerequisitesMet: evaluateRequirements(element.requirements, context),
+        ...(held ? { heldFrom: held.source.trim() || held.name } : {}),
       });
     }
   }
@@ -245,6 +255,18 @@ export function additionGroups(state: Pick<AdditionsState, 'types' | 'rows'>): A
 }
 
 /** An option's line in the add list: its label, and that its prerequisites do not hold when they do not. */
-export function additionOptionLabel(label: string, option: Pick<AdditionOption, 'prerequisitesMet'>): string {
-  return option.prerequisitesMet ? label : `${label} · ${PREREQUISITES_UNMET}`;
+export function additionOptionLabel(
+  label: string,
+  option: Pick<AdditionOption, 'prerequisitesMet' | 'heldFrom'>,
+): string {
+  const marks = [
+    ...(option.prerequisitesMet ? [] : [PREREQUISITES_UNMET]),
+    ...(option.heldFrom ? [heldFromNote(option.heldFrom)] : []),
+  ];
+  return [label, ...marks].join(' · ');
+}
+
+/** The mark on an offer the character already holds from another book (ADR 0125): "already has it from …". */
+export function heldFromNote(book: string): string {
+  return `already has it from ${book}`;
 }

@@ -14,8 +14,10 @@
  */
 
 import {
+  HeldPrintings,
   getPrepared,
   preparationPool,
+  printingTypes,
   setPrepared,
   type Character,
   type DerivedCharacter,
@@ -107,7 +109,8 @@ export function preparationRows(derived: DerivedCharacter, elements: ElementInde
 /**
  * What one block could still have prepared, level then name. Never something the character does not
  * have: a book offers what it holds, and a list offers what the block's filter admits from the content
- * loaded (or embedded in the save), less what is already on the list.
+ * loaded (or embedded in the save), less what is already on the list, and less another printing of what is (ADR 0125:
+ * Bless is prepared once, whichever book). The pool itself is the class's list, both printings on it, as Aurora lists it.
  */
 export function preparationOptions(
   derived: DerivedCharacter,
@@ -115,7 +118,15 @@ export function preparationOptions(
   blockKey: string,
 ): PreparedItem[] {
   const notes = derived.kind.candidateNotes;
+  const block = derived.preparation.find((b) => b.key === blockKey.trim().toLowerCase());
+  const prepared = new HeldPrintings(
+    [...(block?.always ?? []), ...(block?.chosen ?? [])]
+      .map((id) => elements.get(id))
+      .filter((element): element is Element => element !== undefined),
+    printingTypes(derived.system),
+  );
   return preparationPool(derived, elements, blockKey)
+    .filter((element) => !prepared.otherPrintings(element).length)
     .map((element) => itemFor(element.id, derived, elements, notes))
     .sort(byNoteThenName);
 }

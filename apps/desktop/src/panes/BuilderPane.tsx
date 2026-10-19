@@ -137,7 +137,7 @@ export function BuilderPane({
     if (!element) return id;
     // What a system asks a picker to say beside a candidate — a spell's level — is data on the
     // kind, and the formatting is `candidateLabel` in `packages/ui`, which the search matches too.
-    return describeCandidate(element, kind.candidateNotes);
+    return describeCandidate(element, kind.candidateNotes, elements);
   };
 
   const classLevelsStep = steps.find((step) => step.classLevels);
