@@ -14,6 +14,7 @@ import {
   PREREQUISITES_UNMET,
   ALL_ADDITION_TYPES,
   NO_ADDITION_OPTIONS,
+  type AdditionsState,
   type BuilderState,
   type CharacterBuilder,
 } from '@incudo/ui';
@@ -26,22 +27,27 @@ export function Additions({
   builder,
   elements,
   candidateLabel,
+  additions = state.additions,
 }: {
   state: BuilderState;
   builder: CharacterBuilder;
   elements: ElementIndex;
   candidateLabel: (id: ElementId) => string;
+  /** Some of the types and what was added of them (`additionsOnTab`): the Spells tab lists spells, Build the rest. */
+  additions?: AdditionsState;
 }): React.JSX.Element {
-  const { additions } = state;
   const [type, setType] = useState(additions.types[0]?.type ?? '');
   const [adding, setAdding] = useState(false);
+  // Only the list's own types, when it shows some of the kind's.
+  const some = additions.types.length < state.additions.types.length;
 
   // Asked of the builder only while the picker is open: it is every element of the type, and the state changes on
   // every keystroke elsewhere in the pane.
-  const options = useMemo(
-    () => (adding ? builder.additionOptionsFor(type || undefined) : []),
-    [adding, type, builder, state],
-  );
+  const options = useMemo(() => {
+    if (!adding) return [];
+    const listed = new Set(additions.types.map((t) => t.type));
+    return builder.additionOptionsFor(type || undefined).filter((option) => !some || listed.has(option.type));
+  }, [adding, type, builder, state, additions, some]);
   const byId = useMemo(() => new Map(options.map((o) => [o.elementId, o])), [options]);
   const optionLabel = (id: ElementId): string => {
     const option = byId.get(id);
@@ -107,6 +113,7 @@ export function Additions({
       {adding ? (
         <div className="settled">
           <div className="decision-head">
+            {additions.types.length > 1 && (
             <label>
               Type{' '}
               <select value={type} onChange={(event) => setType(event.target.value)}>
@@ -118,6 +125,7 @@ export function Additions({
                 <option value="">{ALL_ADDITION_TYPES}</option>
               </select>
             </label>
+            )}
             <button type="button" className="link" onClick={() => setAdding(false)}>
               Done
             </button>

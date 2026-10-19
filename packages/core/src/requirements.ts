@@ -217,3 +217,63 @@ export function referencedIds(expr: RequirementExpr | undefined, into = new Set<
   }
   return into;
 }
+
+/**
+ * Whether an expression holds with some element terms read as met: the ones `soft` names, wherever a term counts in
+ * the expression's favour. Under a `not` such a term is read for real, since "met" there would refuse rather than
+ * offer. A kind's `softRequirements` (ADR 0124) is what names them: a candidate short only of those is offered, and
+ * what it lacks is a warning, not a filter.
+ */
+export function evaluateRequirementsSoftly(
+  expr: RequirementExpr | undefined,
+  ctx: RequirementContext,
+  soft: (id: string) => boolean,
+  negated = false,
+): boolean {
+  if (!expr) return true;
+  switch (expr.kind) {
+    case 'has':
+      return ctx.hasElement(expr.id) || (!negated && soft(expr.id));
+    case 'and':
+      return expr.children.every((child) => evaluateRequirementsSoftly(child, ctx, soft, negated));
+    case 'or':
+      return expr.children.some((child) => evaluateRequirementsSoftly(child, ctx, soft, negated));
+    case 'not':
+      return !evaluateRequirementsSoftly(expr.child, ctx, soft, !negated);
+    default:
+      return evaluateRequirements(expr, ctx);
+  }
+}
+
+/**
+ * What a softly met expression still lacks: one list of the soft element terms that are false per way of meeting it,
+ * the ways that need fewest first, or `[]` when it holds as it is. Read only for an expression that holds softly.
+ */
+export function softShortfalls(
+  expr: RequirementExpr | undefined,
+  ctx: RequirementContext,
+  soft: (id: string) => boolean,
+): string[][] {
+  if (!expr || evaluateRequirements(expr, ctx)) return [];
+  switch (expr.kind) {
+    case 'has':
+      return soft(expr.id) ? [[expr.id]] : [];
+    case 'and': {
+      let ways: string[][] = [[]];
+      for (const child of expr.children) {
+        const short = softShortfalls(child, ctx, soft);
+        if (short.length) ways = ways.flatMap((have) => short.map((add) => [...have, ...add]));
+      }
+      return ways;
+    }
+    case 'or': {
+      const ways = expr.children
+        .filter((child) => evaluateRequirementsSoftly(child, ctx, soft))
+        .flatMap((child) => softShortfalls(child, ctx, soft));
+      const fewest = Math.min(...ways.map((way) => way.length));
+      return ways.filter((way) => way.length === fewest);
+    }
+    default:
+      return [];
+  }
+}

@@ -2288,10 +2288,10 @@ pick; nothing is declined or written to the character. `CharacterBuilder` takes 
 (`build-preferences.ts`), never `character.json`; the desktop and the phone both have the switch. Validation refuses it on
 a step that must be answered. A test that measures what those steps offer passes `{ showAdvanced: true }`. The same
 record holds whether the option preview is folded to its title line (`previewCollapsed`, Hide/Show description) and which
-of Build's two tabs is open: **Build** (progression, cantrip dice included) and **Equipment & notes** (taken starting
-packages, inventory and money, prepared spells, About the character, For reference, Books), `BUILD_TABS`. The command
-`switch-build-tab` (View menu, Build only, Ctrl+Shift+H, which reaches the page with real keys in the Windows window) moves between
-them. The phone has the switch and not the tabs or the fold.
+of Build's tabs is open: **Build** (progression), **Spells** (since ADR 0124, below, only for a character with spells) and
+**Equipment & notes** (taken starting packages, inventory and money, About the character, For reference, Books),
+`BUILD_TABS`; which a character has is `buildTabs`. The command `switch-build-tab` (View menu, Build only, Ctrl+Shift+H,
+which reaches the page with real keys in the Windows window) cycles them. The phone has the switch and not the tabs or the fold.
 
 **Required decisions come first, and what shapes the build is asked before it**
 ([ADR 0123](docs/adr/0123-required-decisions-come-first-and-what-shapes-the-build-is-asked-before-it.md)). The
@@ -2321,6 +2321,33 @@ maintainer's six calls on the hands-on pass. Things to know before touching it:
 - Tests: `packages/ui/src/build-flow.test.ts`, each case failing under its named perturbation, plus
   `decision-order.test.ts`'s report of a fresh 2014 and 2024 Fighter 3. Driven in the browser build (a wizard started,
   a Fighter 2 / Rogue 1); the phone is typechecked, not driven.
+
+**Spells have a tab, a settled choice is changed in the middle column, and a spell a feature needs is a warning**
+([ADR 0124](docs/adr/0124-spells-get-a-tab-a-settled-choice-is-changed-in-the-middle-column-and-a-spell-a-feature-needs-is-a-warning.md)).
+The maintainer's calls on Build's layout. Things to know before touching it:
+
+- **Editing in the middle column**: the pane holds a `SettledEdit` (a slot of a settled choice, or a step's values);
+  `settledEditView` (`packages/ui/src/build-layout.ts`) reads it from the state now, undefined once it is gone (the pane
+  then drops it). The editor replaces the level panel and open decisions; Back, Escape, a new answer, Done or a tab switch
+  closes it. `ChosenCandidate.onChangeRequest` and `CompactBudget`/`CompactHitPoints`' `onEdit` hand Change and Edit to
+  the pane; without them they still open inline (additions, references). `CandidatePicker.current` marks the answer, and
+  `searchCandidates(…, first)` puts it first while nothing is typed.
+- **The Spells tab**: a kind's spell type is its `preparation.elementType`; `buildTabContent` splits decisions and picks by
+  their pool's type (`pendingChoices`/`answeredChoices`, else a one-type build step). It holds spell choices, spell attack
+  settings, prepared lists, spells chosen and spells added (`additionsOnTab`), and exists only when `hasSpellWork`; with
+  no tab, Build's additions offer spells. Tabs carry their required count; Build says how many wait on Spells. The phone
+  lists the same under a "Spell choices" heading on its one page.
+- **`softRequirements: { types }`** on a kind (system format; 5e `pc`: Spell): `candidatesFor` reads such a `has` term as
+  met through `evaluateRequirementsSoftly` (for real under a `not`), so an open pool and a settled slot offer the
+  candidate. Measured: 10 invocations, all naming Eldritch Blast. The warning is `softNotesFor(ruleKey)`
+  (`soft-requirements.ts`, from core's `softShortfalls`): "Needs Eldritch Blast, which this character does not have", on the
+  picker row and the settled card, both apps. A held one is `requirement-unmet` as before, now worded "are not met".
+- **Layout**: at 860 px tall or less the pane scrolls as one page; picker lists `max(260px, min(55vh, 560px))`; the dock
+  `min(32vh, 320px)` and it lets go 1.2 s after the pointer leaves a list (`PreviewDock` `release`/`hold`). The editor is
+  brought into view with `scrollIntoView`, whichever box scrolls.
+- Tests: `packages/ui/src/soft-requirements.test.ts`, `build-layout.test.ts`, `tools/verify/src/soft-requirements.test.ts`,
+  each failing under its named perturbation; the oracle is unaffected. Driven in the browser build at 1280×800 and
+  1024×700 (a wizard, a Warlock 2 with invocations); the phone is typechecked, not driven.
 
 **Each level's hit points are a card of their own** (2026-10-14, the maintainer's call): a `hitpoints` decision per level
 still to record or under review (`OpenDecision.hitPointLevel`, "Hit Points, level 4", `hitPointDecisionLabel`), opening at

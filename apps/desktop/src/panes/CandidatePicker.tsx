@@ -35,7 +35,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { placePreview, searchCandidates, type PreviewPlacement } from '@incudo/ui';
+import { CURRENT_CHOICE, placePreview, searchCandidates, type PreviewPlacement } from '@incudo/ui';
 import type { ElementId, ElementIndex } from '@incudo/core';
 
 import { useCanHover } from '../use-can-hover.ts';
@@ -57,6 +57,8 @@ export function CandidatePicker({
   elements,
   candidateLabel,
   notes,
+  warnings,
+  current,
   onSelect,
 }: {
   candidates: ElementId[];
@@ -68,6 +70,10 @@ export function CandidatePicker({
    * (`overlapNote`). Not part of the label, so a search does not match it.
    */
   notes?: ReadonlyMap<ElementId, string>;
+  /** A line under a candidate offered all the same: what it lacks of a prerequisite the kind makes soft (ADR 0124). */
+  warnings?: ReadonlyMap<ElementId, string>;
+  /** The answer a settled choice holds now, when this list changes it: marked, so the user sees what they would replace. */
+  current?: ElementId;
   onSelect: (id: ElementId) => void;
 }): React.JSX.Element {
   const [query, setQuery] = useState('');
@@ -78,7 +84,7 @@ export function CandidatePicker({
     () => candidates.map((id) => ({ id, label: candidateLabel(id) })),
     [candidates, candidateLabel],
   );
-  const { matches } = searchCandidates(options, query);
+  const { matches } = searchCandidates(options, query, Infinity, current);
 
   return (
     <div className="picker">
@@ -92,11 +98,13 @@ export function CandidatePicker({
       {matches.length === 0 ? (
         <p className="hint">No options match &ldquo;{query}&rdquo;.</p>
       ) : (
-        <ul className="picker-list">
+        <ul className="picker-list" onMouseLeave={preview.release}>
           {matches.map((option) => (
             <li
               key={String(option.id)}
-              className={preview.previewing(option.id) ? 'picker-row previewing' : 'picker-row'}
+              className={['picker-row', preview.previewing(option.id) ? 'previewing' : '', option.id === current ? 'current' : '']
+                .filter(Boolean)
+                .join(' ')}
               {...preview.rowProps(option.id)}
             >
               <div className="picker-row-head">
@@ -110,7 +118,9 @@ export function CandidatePicker({
                   }}
                 >
                   {option.label}
+                  {option.id === current && <span className="tag done">{CURRENT_CHOICE}</span>}
                   {notes?.has(option.id) && <span className="picker-note">{notes.get(option.id)}</span>}
+                  {warnings?.has(option.id) && <span className="picker-note warning">{warnings.get(option.id)}</span>}
                 </button>
                 {!preview.canHover && (
                   <button
@@ -146,7 +156,9 @@ export function ChosenCandidate({
   options,
   notesFor,
   onChange,
+  onChangeRequest,
   onRemove,
+  warning,
 }: {
   id: ElementId;
   elements: ElementIndex;
@@ -159,6 +171,13 @@ export function ChosenCandidate({
   onChange?: (id: ElementId) => void;
   /** Given only where an answer may be taken back — a member of a set, never a race. */
   onRemove?: () => void;
+  /**
+   * Where Change opens the list somewhere else, the Build pane's middle column (ADR 0124), rather than in this card.
+   * When given, `onChange` is not called from here.
+   */
+  onChangeRequest?: () => void;
+  /** A line under the answer: what it lacks of a prerequisite the kind makes soft (ADR 0124). */
+  warning?: string;
 }): React.JSX.Element {
   const [changing, setChanging] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -195,13 +214,14 @@ export function ChosenCandidate({
             {expanded ? 'Hide details' : 'Details'}
           </button>
         )}
-        {onChange && (
+        {(onChange || onChangeRequest) && (
           <button
             type="button"
             className="link"
             aria-describedby={preview.describedBy(id)}
             onClick={() => {
               preview.close();
+              if (onChangeRequest) return onChangeRequest();
               setNotes(notesFor?.());
               setChanging(true);
             }}
@@ -222,6 +242,7 @@ export function ChosenCandidate({
           </button>
         )}
       </div>
+      {warning && <p className="picker-note warning">{warning}</p>}
       {!preview.canHover && expanded && <CandidateDetails id={id} elements={elements} />}
       {preview.panel}
     </div>
@@ -294,6 +315,11 @@ function useCandidatePreview(elements: ElementIndex, candidateLabel: (id: Elemen
   return {
     canHover,
     close,
+    /** The pointer left the list: the dock lets its text go unless the pointer reaches the dock first. */
+    release: (): void => {
+      cancel();
+      if (docked) dock?.release();
+    },
     rowProps,
     /** Whether this row is the one whose text is on screen, wherever that is. */
     previewing: (id: ElementId): boolean => (docked ? dock?.currentId === id : shown?.id === id),

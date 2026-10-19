@@ -28,6 +28,8 @@ export interface PickerRequest {
   labels?: ReadonlyMap<ElementId, string>;
   /** A line under some options, worded by the view-model: what one would give that the character already has. */
   notes?: ReadonlyMap<ElementId, string>;
+  /** A line under an option offered all the same: what it lacks of a prerequisite the kind makes soft (ADR 0124). */
+  warnings?: ReadonlyMap<ElementId, string>;
   /** False when the options are not elements (a written feature's stats), so there is no text to show. */
   details?: boolean;
   /**
@@ -145,6 +147,9 @@ function PickerBody({
                 </Text>
                 {request.notes?.has(item.id) ? (
                   <Text style={[styles.note, { color: palette.muted }]}>{request.notes.get(item.id)}</Text>
+                ) : null}
+                {request.warnings?.has(item.id) ? (
+                  <Text style={[styles.note, { color: palette.text }]}>{request.warnings.get(item.id)}</Text>
                 ) : null}
               </Pressable>
               {request.details === false ? null : (

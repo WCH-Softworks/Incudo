@@ -40,6 +40,11 @@ import {
   decisionGroups,
   decisionKey,
   optionalDecisionsLabel,
+  buildTabContent,
+  hasSpellWork,
+  SPELL_DECISIONS_HEADING,
+  SPELLS_CHOSEN_HEADING,
+  type SettledPick,
   startOptionsSummary,
   ARRIVAL_GUARD_MS,
   NOTHING_REQUIRED,
@@ -103,8 +108,47 @@ export const BuildView = memo(function BuildView({
   const classLevels = steps.find((step) => step.classLevels);
   const settled = settledSteps(state);
   const progressName = progressLabel(kind);
+  // Spells apart from the rest (ADR 0124), as the desktop's Spells tab: on one page here, under a heading of their own.
+  const spellsApart = hasSpellWork(state);
+  const content = buildTabContent(state);
+  const buildDecisions = spellsApart ? content.build.decisions : decisions;
+  const buildPicks = spellsApart ? content.build.picks : picks;
   // Required, then optional and folded (ADR 0123); the builder sorted them, this only splits them, as the desktop does.
-  const groups = decisionGroups(decisions);
+  const groups = decisionGroups(buildDecisions);
+  const spellGroups = decisionGroups(spellsApart ? content.spells.decisions : []);
+  // One row per answered slot, each with its Change; a set member also with Remove.
+  // An answer that lacks a prerequisite the kind makes soft (ADR 0124) says so under it.
+  const pickRows = (pick: SettledPick): React.ReactNode => {
+    const warnings = builder.softNotesFor(pick.ruleKey);
+    return pick.chosen.map((id, index) => (
+      <Row key={`${pick.ruleKey}:${index}`} style={[styles.settled, { borderColor: palette.border }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: palette.muted, fontSize: 13 }}>{pick.label}</Text>
+          <Text style={{ color: palette.text, fontSize: 15 }}>{labelOf(id)}</Text>
+          {warnings.has(id) ? <Text style={{ color: palette.text, fontSize: 13 }}>{warnings.get(id)}</Text> : null}
+          {pick.unplaced?.includes(id) ? (
+            <Text style={{ color: palette.muted, fontSize: 13 }}>{unplacedNote(nameOf(id))}</Text>
+          ) : null}
+        </View>
+        <Button
+          label="Change"
+          kind="link"
+          onPress={() =>
+            setRequest({
+              title: pick.label,
+              options: slotOptions(pick, index),
+              current: id,
+              notes: builder.overlapNotesFor(pick.ruleKey, index),
+              warnings,
+              onPick: (next) => builder.choose(pick.ruleKey, withSlot(pick, index, next)),
+            })
+          }
+        />
+        {pick.multiple ? <Button label="Remove" kind="link" onPress={() => builder.choose(pick.ruleKey, withoutSlot(pick, index))} /> : null}
+      </Row>
+    ));
+  };
+
   // The card that has just taken the top, marked for a moment so a quick second tap is not spent on it (ADR 0123).
   const topKey = decisions[0] ? decisionKey(decisions[0]) : undefined;
   const previousTop = useRef<string | undefined>(undefined);
@@ -196,8 +240,8 @@ export const BuildView = memo(function BuildView({
       ) : null}
 
       <Heading>Open decisions ({groups.required.length})</Heading>
-      {decisions.length === 0 ? <Body tone="muted">Nothing outstanding.</Body> : null}
-      {decisions.length > 0 && groups.required.length === 0 ? <Body tone="muted">{NOTHING_REQUIRED}</Body> : null}
+      {buildDecisions.length === 0 ? <Body tone="muted">Nothing outstanding.</Body> : null}
+      {buildDecisions.length > 0 && groups.required.length === 0 ? <Body tone="muted">{NOTHING_REQUIRED}</Body> : null}
       {groups.required.map(decisionCard)}
       {groups.optional.length > 0 ? (
         <>
@@ -214,7 +258,7 @@ export const BuildView = memo(function BuildView({
         </>
       ) : null}
 
-      {picks.length > 0 || state.startOptions.length > 0 ? (
+      {buildPicks.length > 0 || state.startOptions.length > 0 ? (
         <>
           <Heading>Choices made</Heading>
           <Body tone="muted">Changing one rebuilds what followed from it; anything it opened that was answered is kept where the new choice offers it too.</Body>
@@ -227,33 +271,43 @@ export const BuildView = memo(function BuildView({
               <Button label={START_OPTIONS_CHANGE} kind="link" onPress={() => onStartOptions('change')} />
             </Row>
           ))}
-          {picks.map((pick) =>
-            pick.chosen.map((id, index) => (
-              <Row key={`${pick.ruleKey}:${index}`} style={[styles.settled, { borderColor: palette.border }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: palette.muted, fontSize: 13 }}>{pick.label}</Text>
-                  <Text style={{ color: palette.text, fontSize: 15 }}>{labelOf(id)}</Text>
-                  {pick.unplaced?.includes(id) ? (
-                    <Text style={{ color: palette.muted, fontSize: 13 }}>{unplacedNote(nameOf(id))}</Text>
-                  ) : null}
-                </View>
-                <Button
-                  label="Change"
-                  kind="link"
-                  onPress={() =>
-                    setRequest({
-                      title: pick.label,
-                      options: slotOptions(pick, index),
-                      current: id,
-                      notes: builder.overlapNotesFor(pick.ruleKey, index),
-                      onPick: (next) => builder.choose(pick.ruleKey, withSlot(pick, index, next)),
-                    })
-                  }
-                />
-                {pick.multiple ? <Button label="Remove" kind="link" onPress={() => builder.choose(pick.ruleKey, withoutSlot(pick, index))} /> : null}
-              </Row>
-            )),
-          )}
+          {buildPicks.map(pickRows)}
+        </>
+      ) : null}
+
+      {/* The spells (ADR 0124): what is still to choose, what is chosen, how cantrips attack and what is prepared. */}
+      {spellsApart ? (
+        <>
+          <Heading>{`${SPELL_DECISIONS_HEADING} (${spellGroups.required.length})`}</Heading>
+          {content.spells.decisions.length === 0 ? <Body tone="muted">Every spell choice has an answer.</Body> : null}
+          {spellGroups.required.map(decisionCard)}
+          {spellGroups.optional.length > 0 ? (
+            <Row>
+              <Text style={[styles.stepLabel, { color: palette.text, flex: 1 }]}>{optionalDecisionsLabel(spellGroups.optional.length)}</Text>
+              <Button label={optionalOpen ? 'Hide' : 'Show'} kind="link" onPress={() => onOptionalOpen(!optionalOpen)} />
+            </Row>
+          ) : null}
+          {optionalOpen ? spellGroups.optional.map(decisionCard) : null}
+          {content.spells.picks.length > 0 ? (
+            <>
+              <Heading>{SPELLS_CHOSEN_HEADING}</Heading>
+              {content.spells.picks.map(pickRows)}
+            </>
+          ) : null}
+        </>
+      ) : null}
+
+      {state.spellAttacks.rows.length ? (
+        <>
+          <Heading>{state.spellAttacks.label}</Heading>
+          <SpellAttacksView state={state} builder={builder} pick={setRequest} />
+        </>
+      ) : null}
+
+      {preparation.length > 0 && kind.preparation ? (
+        <>
+          <Heading>Prepared {kind.preparation.elementType.toLowerCase()}s</Heading>
+          <PreparedView rows={preparation} builder={builder} noun={kind.preparation.elementType.toLowerCase()} pick={setRequest} />
         </>
       ) : null}
 
@@ -287,13 +341,6 @@ export const BuildView = memo(function BuildView({
         </>
       ) : null}
 
-      {preparation.length > 0 && kind.preparation ? (
-        <>
-          <Heading>Prepared {kind.preparation.elementType.toLowerCase()}s</Heading>
-          <PreparedView rows={preparation} builder={builder} noun={kind.preparation.elementType.toLowerCase()} pick={setRequest} />
-        </>
-      ) : null}
-
       {publications.rows.length > 0 ? (
         <>
           <Heading>Books</Heading>
@@ -312,13 +359,6 @@ export const BuildView = memo(function BuildView({
         <>
           <Heading>{state.freeform.label}</Heading>
           <FreeformView state={state} builder={builder} />
-        </>
-      ) : null}
-
-      {state.spellAttacks.rows.length ? (
-        <>
-          <Heading>{state.spellAttacks.label}</Heading>
-          <SpellAttacksView state={state} builder={builder} pick={setRequest} />
         </>
       ) : null}
 
@@ -516,6 +556,7 @@ function DecisionView({
               title: decision.label,
               options: decision.candidates,
               notes: builder.overlapNotesFor(decision.id),
+              warnings: builder.softNotesFor(decision.id),
               onPick: (id) => builder.choose(decision.id, [...decision.chosen, id]),
             })
           }

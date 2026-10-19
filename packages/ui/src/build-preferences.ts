@@ -10,8 +10,11 @@
 
 import type { Storage } from '@incudo/core';
 
-/** The Build pane's two tabs: what the character is built from, and what stays open for as long as it is played. */
-export type BuildTab = 'build' | 'details';
+/**
+ * The Build pane's tabs: what the character is built from, its spells (ADR 0124, shown only when it has any), and what
+ * stays open for as long as it is played.
+ */
+export type BuildTab = 'build' | 'spells' | 'details';
 
 export interface BuildPreferences {
   /** Offer the build steps the system marks `advanced`. Off by default. */
@@ -32,9 +35,10 @@ export const DEFAULT_BUILD_PREFERENCES: BuildPreferences = {
 
 export const BUILD_PREFERENCES_KEY = 'build/view';
 
-/** What the pane's two tabs are called, in the order they are shown. */
+/** What the pane's tabs are called, in the order they are shown. Which are shown for a character is `buildTabs`'s. */
 export const BUILD_TABS: ReadonlyArray<{ id: BuildTab; label: string }> = [
   { id: 'build', label: 'Build' },
+  { id: 'spells', label: 'Spells' },
   { id: 'details', label: 'Equipment & notes' },
 ];
 

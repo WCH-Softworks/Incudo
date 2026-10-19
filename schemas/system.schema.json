@@ -696,6 +696,15 @@
             "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "Element types worth naming; each must be declared in elementTypes." }
           }
         },
+        "softRequirements": {
+          "type": "object",
+          "required": ["types"],
+          "additionalProperties": false,
+          "description": "Which types a requirement term may name and still let a choice offer the candidate: an invocation that needs a cantrip the character does not know. Such a candidate is offered with a warning saying what it lacks, and a held one is flagged, never refused. A kind that declares none filters on every term. Replaced rather than merged along an extends chain.",
+          "properties": {
+            "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "Element types whose requirement terms flag rather than filter; each must be declared in elementTypes." }
+          }
+        },
         "repeatableSetter": {
           "type": "string",
           "minLength": 1,

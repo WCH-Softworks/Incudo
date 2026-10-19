@@ -70,4 +70,6 @@ export * from './source-notes.ts';
 export * from './edit-session.ts';
 export * from './unsaved.ts';
 export * from './candidate-overlaps.ts';
+export * from './soft-requirements.ts';
+export * from './build-layout.ts';
 export * from './homebrew.ts';

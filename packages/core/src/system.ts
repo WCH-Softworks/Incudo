@@ -302,6 +302,11 @@ export interface CandidateOverlapsDef {
   types: ElementType[];
 }
 
+/** The types whose requirement terms flag an offer rather than filter it — ADR 0124. */
+export interface SoftRequirementsDef {
+  types: ElementType[];
+}
+
 /** One `:`-delimited segment — what a `*` in a `tagsFromStats` pattern captures. */
 const STAT_SEGMENT = '[^:]+';
 
@@ -1447,6 +1452,13 @@ export interface CharacterKindDef {
    */
   candidateOverlaps?: CandidateOverlapsDef;
   /**
+   * Which types a requirement term may name and still let a choice offer the candidate — ADR 0124. A candidate short
+   * only of elements of these types is offered, and what it lacks is a warning beside it; a held one is flagged as any
+   * unmet pick is (ADR 0096). Replaced rather than merged along an `extends` chain. A kind that declares none filters on
+   * every term, which is what the engine did before.
+   */
+  softRequirements?: SoftRequirementsDef;
+  /**
    * The setter an element carries to say it may be taken more than once — ADR 0035. Replaced
    * rather than merged along an `extends` chain, like `trackStats`. A kind that names none
    * treats every element as taken at most once, which is what the engine did before.
@@ -1861,6 +1873,8 @@ export interface ResolvedCharacterKind {
   candidateNotes: CandidateNoteDef[];
   /** Which types a picker names when a candidate would give one already held; undefined when none. */
   candidateOverlaps?: CandidateOverlapsDef;
+  /** Which types' requirement terms leave a candidate offered and flagged; undefined when none. */
+  softRequirements?: SoftRequirementsDef;
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -2166,6 +2180,7 @@ export function resolveCharacterKind(
   let attacks: AttacksDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let candidateOverlaps: CandidateOverlapsDef | undefined;
+  let softRequirements: SoftRequirementsDef | undefined;
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -2198,6 +2213,7 @@ export function resolveCharacterKind(
     if (layer.attacks !== undefined) attacks = layer.attacks;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.candidateOverlaps !== undefined) candidateOverlaps = layer.candidateOverlaps;
+    if (layer.softRequirements !== undefined) softRequirements = layer.softRequirements;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -2231,6 +2247,7 @@ export function resolveCharacterKind(
     attacks,
     candidateNotes,
     candidateOverlaps,
+    softRequirements,
     buildSteps,
     sheet,
   };

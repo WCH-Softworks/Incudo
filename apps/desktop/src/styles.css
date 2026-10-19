@@ -1639,7 +1639,9 @@ button.primary:hover:not(:disabled) {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 260px;
+  /* Tall enough to browse, not the whole column: a list inside a column that scrolls is still a box in a box, so the
+     box is as big as the window allows (ADR 0124; it was 260px, about six rows). */
+  max-height: max(260px, min(55vh, 560px));
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 5px;
@@ -1747,7 +1749,9 @@ button.primary:hover:not(:disabled) {
   position: sticky;
   top: 0;
   z-index: 2;
-  height: min(45vh, 420px);
+  /* A third of the window at most (ADR 0124): it took two thirds of the column, and what was edited beneath it had a
+     strip a hand tall. Editors open in the middle column now; this column lists what is settled. */
+  height: min(32vh, 320px);
   overflow-y: auto;
   margin-bottom: 16px;
   padding: 12px 14px;
@@ -2858,4 +2862,64 @@ ul.browse-categories {
   .offer-groups-track {
     transition: none;
   }
+}
+
+/*
+ * ADR 0124. On a short window the three columns scroll as one page, as they do on a narrow one: three boxes each
+ * scrolling a few hundred pixels left Open decisions showing one card and a half at 1280 by 800. The description dock
+ * stays in view, sticky inside the page that scrolls.
+ */
+@media (max-height: 860px) {
+  .pane.builder {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .columns > * {
+    overflow: visible;
+    min-height: auto;
+  }
+}
+
+/* A settled answer or a set of values being changed in the middle column (ADR 0124). */
+.settled-edit {
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+}
+
+.settled-edit .decision-head h2 {
+  margin: 0;
+  flex: 1;
+}
+
+.settled-edit > button {
+  margin-top: 12px;
+}
+
+/* The answer the list would replace, and the card in the settled column whose slot is open in the middle. */
+.picker-row.current {
+  background: var(--bg-sunken);
+}
+
+.picker-row.current .tag {
+  margin-left: 8px;
+}
+
+.settled-slot.editing .picker-chosen {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+
+/* What a candidate offered all the same lacks (ADR 0124): a warning, never a refusal. */
+.picker-note.warning {
+  color: inherit;
+  border-left: 2px solid var(--warn-line);
+  padding-left: 6px;
+  margin-top: 2px;
+}
+
+.build-tab .count {
+  font-weight: 400;
 }

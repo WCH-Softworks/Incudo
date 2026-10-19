@@ -37,11 +37,15 @@ export function searchCandidates<Id>(
   options: CandidateOption<Id>[],
   query: string,
   limit: number = Infinity,
+  first?: Id,
 ): CandidateSearch<Id> {
   const q = query.trim().toLowerCase();
   const matching = q ? options.filter((option) => option.label.toLowerCase().includes(q)) : options;
+  // With nothing typed, `first` leads: the answer a settled choice holds now, when the list is there to change it
+  // (ADR 0124). A query ranks it like any other row.
+  const lead = (option: CandidateOption<Id>): number => (!q && first !== undefined && option.id === first ? 0 : 1);
   const sorted = [...matching].sort(
-    (a, b) => rank(a.label, q) - rank(b.label, q) || a.label.localeCompare(b.label),
+    (a, b) => lead(a) - lead(b) || rank(a.label, q) - rank(b.label, q) || a.label.localeCompare(b.label),
   );
   return { matches: sorted.slice(0, limit), matchCount: sorted.length };
 }

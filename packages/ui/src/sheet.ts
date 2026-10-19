@@ -163,9 +163,9 @@ export interface SheetAttack {
 }
 
 /** A spell row with no class to read its numbers from (ADR 0111). */
-export const SPELL_NO_CLASS = 'choose the class it is cast as on Build';
+export const SPELL_NO_CLASS = 'choose the class it is cast as on Build, under Spells';
 /** A spell row whose damage nothing states and the user has not chosen (ADR 0111). */
-export const SPELL_NO_DAMAGE = 'its damage is chosen on Build';
+export const SPELL_NO_DAMAGE = 'its damage is chosen on Build, under Spells';
 /** A spell row the user said rolls nothing (ADR 0111). */
 export const SPELL_ROLLS_NOTHING = 'no damage';
 

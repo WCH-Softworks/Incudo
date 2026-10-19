@@ -22,10 +22,13 @@ export function CompactHitPoints({
   stepId,
   state,
   builder,
+  onEdit,
 }: {
   stepId: string;
   state: HitPointState;
   builder: CharacterBuilder;
+  /** Where Edit opens the editor somewhere else, the Build pane's middle column (ADR 0124), rather than in place. */
+  onEdit?: () => void;
 }): React.JSX.Element {
   const [editing, setEditing] = useState(false);
 
@@ -57,7 +60,7 @@ export function CompactHitPoints({
         </p>
       ) : (
         <div className="decision-head">
-          <button type="button" className="link" onClick={() => setEditing(true)}>
+          <button type="button" className="link" onClick={() => (onEdit ? onEdit() : setEditing(true))}>
             Edit
           </button>
         </div>

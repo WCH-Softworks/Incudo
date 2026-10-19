@@ -705,6 +705,11 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         errors.push({ path: `${where}.candidateOverlaps.types`, message: `names "${type}", which the system's elementTypes does not declare` });
       }
     }
+    for (const type of resolved.softRequirements?.types ?? []) {
+      if (!typeNames.has(type)) {
+        errors.push({ path: `${where}.softRequirements.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+      }
+    }
 
     // An attack of a type nothing declares is never one, a condition that will not parse never holds, and a section
     // listing the attacks of a kind with none lists nothing: each a typo nobody would see at runtime (ADR 0093).

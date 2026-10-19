@@ -123,6 +123,9 @@ import {
   FeatureLibrary,
   SourceLoads,
   sourcesLoadKey,
+  buildTabs,
+  nextBuildTab,
+  shownTab,
 } from '@incudo/ui';
 
 import {
@@ -1476,7 +1479,11 @@ function Shell({
 
   const handlers: CommandHandlers = {
     'new-character': startNew,
-    'switch-build-tab': () => changeBuildPreferences({ tab: buildPreferences.tab === 'build' ? 'details' : 'build' }),
+    // Through the tabs this character has (ADR 0124): Spells only when it has spells.
+    'switch-build-tab': () => {
+      const tabs = buildTabs(state);
+      changeBuildPreferences({ tab: nextBuildTab(shownTab(buildPreferences.tab, tabs), tabs) });
+    },
     'save-character': () => void saveToLibrary(),
     'save-copy': () => void copyToFile(),
     'export-sheet': () => void exportToFile(),

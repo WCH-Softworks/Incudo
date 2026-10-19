@@ -50,7 +50,19 @@ import {
   STARTING_EQUIPMENT_HEADING,
   INVENTORY_HEADING,
   ADVANCED_OPTIONS_LABEL,
-  BUILD_TABS,
+  additionsOnTab,
+  buildTabContent,
+  buildTabs,
+  settledEditView,
+  shownTab,
+  spellsWaitingNote,
+  SETTLED_EDIT_BACK,
+  SETTLED_EDIT_HINT,
+  SETTLED_VALUES_HINT,
+  SPELL_DECISIONS_HEADING,
+  SPELLS_CHOSEN_HEADING,
+  type SettledEdit,
+  type SettledEditView,
   advancedOptionsHint,
   arrivedDecision,
   decisionGroups,
@@ -133,8 +145,84 @@ export function BuilderPane({
   /** Budgeted or per-level-roll steps with nothing outstanding — still editable, see below. */
   const settled = settledSteps(state);
 
+  // Which tabs this character has, and what each lists (ADR 0124): spells on their own tab when there are any.
+  const tabs = buildTabs(state);
+  const tab = shownTab(preferences.tab, tabs);
+  const spellsShown = tabs.some((t) => t.id === 'spells');
+  const content = buildTabContent(state);
+  const buildPicks = content.build.picks;
+
   // What must be answered, then what may be, folded (ADR 0123). The builder sorted them; this only splits them.
-  const groups = decisionGroups(decisions);
+  const groups = decisionGroups(content.build.decisions);
+  const spellGroups = decisionGroups(content.spells.decisions);
+
+  // A settled answer or set of values being changed, in the middle column where open decisions are (ADR 0124). Gone
+  // once what it edits is gone; Escape, Back and switching tab close it.
+  const [edit, setEdit] = useState<SettledEdit | undefined>(undefined);
+  const editView = settledEditView(state, edit);
+  const editing = editView !== undefined;
+  useEffect(() => {
+    if (edit && !editing) setEdit(undefined);
+  }, [edit, editing]);
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape' && !event.defaultPrevented) setEdit(undefined);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editing]);
+  // The editor is brought into view, whichever decision the user had scrolled to: in its column when the columns
+  // scroll, on the page when the page does (a short window), since Change may be pressed far down the column beside.
+  const middle = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (edit) middle.current?.querySelector('.settled-edit')?.scrollIntoView({ block: 'nearest' });
+  }, [edit]);
+  const switchTab = (id: typeof tab): void => {
+    setEdit(undefined);
+    onPreferences({ tab: id });
+  };
+  const editor = editView && (
+    <SettledEditor view={editView} state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} onClose={() => setEdit(undefined)} />
+  );
+  const optionalFold = (list: OpenDecision[]): React.JSX.Element | null =>
+    list.length > 0 ? (
+      <details
+        className="optional-decisions"
+        open={preferences.optionalOpen}
+        onToggle={(event) => {
+          const open = (event.currentTarget as HTMLDetailsElement).open;
+          if (open !== preferences.optionalOpen) onPreferences({ optionalOpen: open });
+        }}
+      >
+        <summary>{optionalDecisionsLabel(list.length)}</summary>
+        <p className="hint">{OPTIONAL_DECISIONS_HINT}</p>
+        <ul className="decisions">{list.map(decisionItem)}</ul>
+      </details>
+    ) : null;
+  const dock = (
+    <PreviewDock
+      elements={elements}
+      candidateLabel={candidateLabel}
+      collapsed={preferences.previewCollapsed}
+      onCollapsed={(collapsed) => onPreferences({ previewCollapsed: collapsed })}
+    />
+  );
+  const settledPick = (pick: SettledPick): React.JSX.Element => (
+    <div key={pick.ruleKey} className="settled">
+      <div className="decision-head">
+        <span className="label">{pick.label}</span>
+      </div>
+      <SettledPickEditor
+        pick={pick}
+        builder={builder}
+        elements={elements}
+        candidateLabel={candidateLabel}
+        onEdit={(slot) => setEdit({ kind: 'pick', ruleKey: pick.ruleKey, slot })}
+        editing={edit?.kind === 'pick' && edit.ruleKey === pick.ruleKey ? edit.slot : undefined}
+      />
+    </div>
+  );
 
   // The card that has just taken the top, marked for a moment so a quick second click is not spent on it (ADR 0123).
   const topKey = decisions[0] ? decisionKey(decisions[0]) : undefined;
@@ -220,20 +308,22 @@ export function BuilderPane({
       </section>
 
       {/*
-        Two tabs (ADR 0115): what the character is built from, which is finished one day, and what stays open for as long
-        as it is played. The user's last choice is remembered; Switch Build tab in the View menu moves between them.
+        The tabs (ADR 0115, ADR 0124): what the character is built from, which is finished one day, its spells when it has
+        any, and what stays open for as long as it is played. The user's last choice is remembered; Switch Build tab in the
+        View menu moves between them. A tab with required decisions waiting says how many.
       */}
       <nav className="build-tabs" role="tablist" aria-label="Build">
-        {BUILD_TABS.map((tab) => (
+        {tabs.map((t) => (
           <button
-            key={tab.id}
+            key={t.id}
             type="button"
             role="tab"
-            aria-selected={preferences.tab === tab.id}
-            className={preferences.tab === tab.id ? 'build-tab active' : 'build-tab'}
-            onClick={() => onPreferences({ tab: tab.id })}
+            aria-selected={tab === t.id}
+            className={tab === t.id ? 'build-tab active' : 'build-tab'}
+            onClick={() => switchTab(t.id)}
           >
-            {tab.label}
+            {t.label}
+            {t.required !== undefined && t.required > 0 && <span className="count"> {t.required}</span>}
           </button>
         ))}
       </nav>
@@ -262,7 +352,7 @@ export function BuilderPane({
         want for tabs — outstanding, then settled.
       */}
       <PreviewDockProvider>
-      {preferences.tab === 'build' && (
+      {tab === 'build' && (
       <div className="columns">
         <section>
           {/*
@@ -338,7 +428,9 @@ export function BuilderPane({
 
         </section>
 
-        <section>
+        <section ref={tab === 'build' ? middle : undefined} className={editing ? 'editing' : undefined}>
+          {editor ?? (
+          <>
           {/*
             The level, and the class each level goes to (ADR 0036). Not a decision and never outstanding,
             but it is how the character grows, so it heads the column where what a new level opens arrives.
@@ -365,28 +457,26 @@ export function BuilderPane({
           <h2>
             Open decisions <span className="count">{groups.required.length}</span>
           </h2>
-          {decisions.length === 0 && (
+          {content.build.decisions.length === 0 && (
             <p className="lede">Nothing outstanding. Every blocking decision has an answer.</p>
           )}
-          {decisions.length > 0 && groups.required.length === 0 && <p className="lede">{NOTHING_REQUIRED}</p>}
+          {content.build.decisions.length > 0 && groups.required.length === 0 && <p className="lede">{NOTHING_REQUIRED}</p>}
           <ul className="decisions">{groups.required.map(decisionItem)}</ul>
+          {/* Required spell choices wait on their own tab (ADR 0124); said here so the build does not read as done. */}
+          {spellsWaitingNote(spellGroups.required.length) && (
+            <p className="hint">
+              {spellsWaitingNote(spellGroups.required.length)}{' '}
+              <button type="button" className="link" onClick={() => switchTab('spells')}>
+                Go to Spells
+              </button>
+            </p>
+          )}
           {/*
             Folded until opened, and remembered (ADR 0123): the user scrolled past an alignment, a deity and a variant
             for the whole build to find the one thing owed. Open, it is the same cards in the same order.
           */}
-          {groups.optional.length > 0 && (
-            <details
-              className="optional-decisions"
-              open={preferences.optionalOpen}
-              onToggle={(event) => {
-                const open = (event.currentTarget as HTMLDetailsElement).open;
-                if (open !== preferences.optionalOpen) onPreferences({ optionalOpen: open });
-              }}
-            >
-              <summary>{optionalDecisionsLabel(groups.optional.length)}</summary>
-              <p className="hint">{OPTIONAL_DECISIONS_HINT}</p>
-              <ul className="decisions">{groups.optional.map(decisionItem)}</ul>
-            </details>
+          {optionalFold(groups.optional)}
+          </>
           )}
         </section>
 
@@ -397,12 +487,7 @@ export function BuilderPane({
             pointer leaves, which is what lets a long description be scrolled. It renders nothing
             when the columns are stacked or the device cannot hover; see `PreviewDock`.
           */}
-          <PreviewDock
-            elements={elements}
-            candidateLabel={candidateLabel}
-            collapsed={preferences.previewCollapsed}
-            onCollapsed={(collapsed) => onPreferences({ previewCollapsed: collapsed })}
-          />
+          {dock}
 
           {/*
             A budget that is finished leaves `decisions`, which is correct — it is not
@@ -412,7 +497,7 @@ export function BuilderPane({
 
             An answered `pick` had the same hole, and now has the same answer beside it.
           */}
-          {(picks.length > 0 || state.startOptions.length > 0) && (
+          {(buildPicks.length > 0 || state.startOptions.length > 0) && (
             <section>
               <h2>Choices already made</h2>
               <p className="hint">
@@ -431,27 +516,7 @@ export function BuilderPane({
                   <p>{startOptionsSummary(question.chosen, candidateLabel)}</p>
                 </div>
               ))}
-              {picks.map((pick) => (
-                <div key={pick.ruleKey} className="settled">
-                  <div className="decision-head">
-                    <span className="label">{pick.label}</span>
-                  </div>
-                  <SettledPickEditor
-                    pick={pick}
-                    builder={builder}
-                    elements={elements}
-                    candidateLabel={candidateLabel}
-                  />
-                </div>
-              ))}
-            </section>
-          )}
-
-          {/* A spell's attack row and what content does not say about it (ADR 0111): shown only once one is held. */}
-          {state.spellAttacks.rows.length > 0 && (
-            <section className="spell-attacks-section">
-              <h2>{state.spellAttacks.label}</h2>
-              <SpellAttacksEditor state={state.spellAttacks} builder={builder} />
+              {buildPicks.map(settledPick)}
             </section>
           )}
 
@@ -572,7 +637,14 @@ export function BuilderPane({
           {state.additions.available && (
             <section className="additions-section">
               <h2>{ADDITIONS_HEADING}</h2>
-              <Additions state={state} builder={builder} elements={elements} candidateLabel={candidateLabel} />
+              <Additions
+                state={state}
+                builder={builder}
+                elements={elements}
+                candidateLabel={candidateLabel}
+                // Spells are added on their own tab when it is shown; with no tab, here, or a first one could not be.
+                additions={spellsShown ? additionsOnTab(state.additions, kind, 'build') : state.additions}
+              />
             </section>
           )}
 
@@ -586,10 +658,21 @@ export function BuilderPane({
                     {step.complete && <span className="tag done">complete</span>}
                   </div>
                   {step.budget && (
-                    <CompactBudget stepId={step.id} budget={step.budget} builder={builder} kind={kind} />
+                    <CompactBudget
+                      stepId={step.id}
+                      budget={step.budget}
+                      builder={builder}
+                      kind={kind}
+                      onEdit={() => setEdit({ kind: 'values', stepId: step.id })}
+                    />
                   )}
                   {step.hitPoints && (
-                    <CompactHitPoints stepId={step.id} state={step.hitPoints} builder={builder} />
+                    <CompactHitPoints
+                      stepId={step.id}
+                      state={step.hitPoints}
+                      builder={builder}
+                      onEdit={() => setEdit({ kind: 'values', stepId: step.id })}
+                    />
                   )}
                 </div>
               ))}
@@ -621,7 +704,7 @@ export function BuilderPane({
             </section>
           )}
 
-          {picks.length === 0 && settled.length === 0 && declined.length === 0 && (
+          {buildPicks.length === 0 && settled.length === 0 && declined.length === 0 && (
             <p className="lede">Nothing settled yet. Answers appear here once you make them.</p>
           )}
         </aside>
@@ -629,12 +712,86 @@ export function BuilderPane({
       )}
 
       {/*
-        What stays open for as long as the character is played (ADR 0115): what it carries and its money, what it has
-        prepared today, which books it is offered, what is written about it and what it keeps for reference. None of it is
+        The character's spells (ADR 0124), as Aurora's builder keeps them apart: the spell choices content opens, how its
+        cantrips attack, what each casting class prepares today, and spells added by hand. The middle column holds what is
+        still to choose and what changes often; the column beside it what is already chosen. A spell an invocation needs is
+        not a filter here: the invocation is offered on Build with a warning.
+      */}
+      {tab === 'spells' && (
+        <div className="columns details">
+          <section ref={middle} className={editing ? 'editing' : undefined}>
+            {editor ?? (
+              <>
+                <h2>
+                  {SPELL_DECISIONS_HEADING} <span className="count">{spellGroups.required.length}</span>
+                </h2>
+                {content.spells.decisions.length === 0 && <p className="lede">Every spell choice has an answer.</p>}
+                {content.spells.decisions.length > 0 && spellGroups.required.length === 0 && (
+                  <p className="lede">{NOTHING_REQUIRED}</p>
+                )}
+                <ul className="decisions">{spellGroups.required.map(decisionItem)}</ul>
+                {optionalFold(spellGroups.optional)}
+
+                {/* A spell's attack row and what content does not say about it (ADR 0111): shown only once one is held. */}
+                {state.spellAttacks.rows.length > 0 && (
+                  <section className="spell-attacks-section">
+                    <h2>{state.spellAttacks.label}</h2>
+                    <SpellAttacksEditor state={state.spellAttacks} builder={builder} />
+                  </section>
+                )}
+
+                {/*
+                  The list each casting block prepares. Not a decision: nothing is owed, and a character may prepare none.
+                  It can be reached on a save opened with no content source, where what is already on the list still reads
+                  and only offering more needs content.
+                */}
+                {preparation.length > 0 && kind.preparation && (
+                  <section>
+                    <h2>Prepared {kind.preparation.elementType.toLowerCase()}s</h2>
+                    <PreparedSpells
+                      rows={preparation}
+                      builder={builder}
+                      elements={elements}
+                      candidateLabel={candidateLabel}
+                      noun={kind.preparation.elementType.toLowerCase()}
+                    />
+                  </section>
+                )}
+              </>
+            )}
+          </section>
+
+          <aside className="settled-column">
+            {dock}
+            {content.spells.picks.length > 0 && (
+              <section>
+                <h2>{SPELLS_CHOSEN_HEADING}</h2>
+                {content.spells.picks.map(settledPick)}
+              </section>
+            )}
+            {state.additions.available && additionsOnTab(state.additions, kind, 'spells').types.length > 0 && (
+              <section className="additions-section">
+                <h2>{ADDITIONS_HEADING}</h2>
+                <Additions
+                  state={state}
+                  builder={builder}
+                  elements={elements}
+                  candidateLabel={candidateLabel}
+                  additions={additionsOnTab(state.additions, kind, 'spells')}
+                />
+              </section>
+            )}
+          </aside>
+        </div>
+      )}
+
+      {/*
+        What stays open for as long as the character is played (ADR 0115): what it carries and its money (what it has
+        prepared today is on Spells since ADR 0124), which books it is offered, what is written about it and what it keeps for reference. None of it is
         ever finished, so none of it sits among the choices the build asks for. A starting package still to take is an
         open decision on Build; once taken it is listed here with the bag it went into.
       */}
-      {preferences.tab === 'details' && (
+      {tab === 'details' && (
         <div className="columns details">
           <section>
             {state.startingEquipment && state.startingEquipment.sources.some((source) => source.status !== 'open') && (
@@ -655,32 +812,10 @@ export function BuilderPane({
               </section>
             )}
 
-            {/*
-              The list each casting block prepares. Not a decision either: nothing is owed, and a character may prepare
-              none. It can be reached on a save opened with no content source, where what is already on the list still
-              reads and only offering more needs content.
-            */}
-            {preparation.length > 0 && kind.preparation && (
-              <section>
-                <h2>Prepared {kind.preparation.elementType.toLowerCase()}s</h2>
-                <PreparedSpells
-                  rows={preparation}
-                  builder={builder}
-                  elements={elements}
-                  candidateLabel={candidateLabel}
-                  noun={kind.preparation.elementType.toLowerCase()}
-                />
-              </section>
-            )}
           </section>
 
           <aside className="settled-column">
-            <PreviewDock
-              elements={elements}
-              candidateLabel={candidateLabel}
-              collapsed={preferences.previewCollapsed}
-              onCollapsed={(collapsed) => onPreferences({ previewCollapsed: collapsed })}
-            />
+            {dock}
 
             {/* What the user writes about the character (ADR 0092): no rule reads it, and the sheet shows it. */}
             {state.freeform.available && (
@@ -768,6 +903,11 @@ function Decision({
   // What each candidate would give that the character already has, worked out once per state of the decision.
   const notes = useMemo(
     () => (decision.candidates.length ? builder.overlapNotesFor(decision.id) : undefined),
+    [builder, decision],
+  );
+  // What a candidate offered all the same lacks of a prerequisite the kind makes soft (ADR 0124): an invocation's cantrip.
+  const warnings = useMemo(
+    () => (decision.candidates.length ? builder.softNotesFor(decision.id) : undefined),
     [builder, decision],
   );
   return (
@@ -870,6 +1010,7 @@ function Decision({
               elements={elements}
               candidateLabel={candidateLabel}
               notes={notes}
+              warnings={warnings}
               onSelect={(id) => {
                 // `choose` replaces the whole recorded list, so a slot that fills one at a
                 // time has to send it what is already there plus the new one — never just
@@ -916,26 +1057,35 @@ function SettledPickEditor({
   builder,
   elements,
   candidateLabel,
+  onEdit,
+  editing,
 }: {
   pick: SettledPick;
   builder: CharacterBuilder;
   elements: ElementIndex;
   /** A candidate's name plus the book it came from — see `candidateLabel` in the pane. */
   candidateLabel: (id: ElementId) => string;
+  /** Change opens this slot's list in the middle column (ADR 0124). */
+  onEdit: (slot: number) => void;
+  /** The slot being changed there now, marked here. */
+  editing?: number;
 }): React.JSX.Element {
+  // An answer that lacks a prerequisite the kind makes soft (ADR 0124): still held, and said so.
+  const warnings = useMemo(() => builder.softNotesFor(pick.ruleKey), [builder, pick]);
   return (
     <div className="settled-slots">
       {pick.chosen.map((id, index) => {
         const options = slotOptions(pick, index);
         return (
           <Fragment key={index}>
+            <div className={editing === index ? 'settled-slot editing' : 'settled-slot'}>
             <ChosenCandidate
               id={id}
               elements={elements}
               candidateLabel={candidateLabel}
               options={options}
-              notesFor={() => builder.overlapNotesFor(pick.ruleKey, index)}
-              onChange={(next) => builder.choose(pick.ruleKey, withSlot(pick, index, next))}
+              warning={warnings.get(id)}
+              onChangeRequest={options.length > 1 ? () => onEdit(index) : undefined}
               // Only for a set, which the view-model says: taking back one member of it writes the
               // rest, and the last one leaves the decision open again.
               onRemove={
@@ -944,11 +1094,75 @@ function SettledPickEditor({
                   : undefined
               }
             />
+            </div>
             {/* An answer no slot of this choice would offer any more (ADR 0096): still counted, and said so. */}
             {pick.unplaced?.includes(id) && <p className="hint">{unplacedNote(elements.get(id)?.name ?? id)}</p>}
           </Fragment>
         );
       })}
     </div>
+  );
+}
+
+/**
+ * A settled answer or a set of values, changed in the middle column (ADR 0124). It used to open inside its card in the
+ * column beside, under the description, in a strip a hand tall. Here it has the column: a slot's list with its answer
+ * marked and first, or the step's own editor; Back, Escape or a new answer return to the open decisions. What it edits
+ * is `settledEditView`'s; this renders it.
+ */
+function SettledEditor({
+  view,
+  state,
+  builder,
+  elements,
+  candidateLabel,
+  onClose,
+}: {
+  view: SettledEditView;
+  state: BuilderState;
+  builder: CharacterBuilder;
+  elements: ElementIndex;
+  candidateLabel: (id: ElementId) => string;
+  onClose: () => void;
+}): React.JSX.Element {
+  const pick = view.kind === 'pick' ? view.pick : undefined;
+  const slot = view.kind === 'pick' ? view.slot : -1;
+  // Asked once per opening, as the card's own Change did: a settled slot's notes cost a derivation.
+  const notes = useMemo(() => (pick ? builder.overlapNotesFor(pick.ruleKey, slot) : undefined), [builder, pick?.ruleKey, slot]);
+  const warnings = useMemo(() => (pick ? builder.softNotesFor(pick.ruleKey) : undefined), [builder, pick]);
+  const step = view.kind === 'values' ? state.steps.find((s) => s.id === view.stepId) : undefined;
+  return (
+    <section className="settled-edit" aria-label={view.title}>
+      <div className="decision-head">
+        <h2>{view.title}</h2>
+        <button type="button" className="link" onClick={onClose}>
+          {SETTLED_EDIT_BACK}
+        </button>
+      </div>
+      <p className="hint">{view.kind === 'pick' ? SETTLED_EDIT_HINT : SETTLED_VALUES_HINT}</p>
+      {view.kind === 'pick' ? (
+        <CandidatePicker
+          key={`${view.pick.ruleKey}:${view.slot}`}
+          candidates={view.options}
+          current={view.current}
+          elements={elements}
+          candidateLabel={candidateLabel}
+          notes={notes}
+          warnings={warnings}
+          onSelect={(next) => {
+            if (next !== view.current) builder.choose(view.pick.ruleKey, withSlot(view.pick, view.slot, next));
+            onClose();
+          }}
+        />
+      ) : (
+        <>
+          {step?.budget && <BudgetEditor stepId={step.id} budget={step.budget} builder={builder} kind={state.kind} />}
+          {step?.hitPoints && <HitPointEditor stepId={step.id} state={step.hitPoints} builder={builder} />}
+          <button type="button" onClick={onClose}>
+            Done
+          </button>
+        </>
+      )}
+    </section>
   );
 }

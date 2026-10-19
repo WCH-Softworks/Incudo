@@ -40,11 +40,14 @@ export function CompactBudget({
   budget,
   builder,
   kind,
+  onEdit,
 }: {
   stepId: string;
   budget: BudgetState;
   builder: CharacterBuilder;
   kind: ResolvedCharacterKind;
+  /** Where Edit opens the editor somewhere else, the Build pane's middle column (ADR 0124), rather than in place. */
+  onEdit?: () => void;
 }): React.JSX.Element {
   const [editing, setEditing] = useState(false);
   const labelOf = (stat: StatKey): string =>
@@ -76,7 +79,7 @@ export function CompactBudget({
       <FeatureNotes budget={budget} labelOf={labelOf} />
       <div className="decision-head">
         {method && <span className="hint">{method.label ?? method.id}</span>}
-        <button type="button" className="link" onClick={() => setEditing(true)}>
+        <button type="button" className="link" onClick={() => (onEdit ? onEdit() : setEditing(true))}>
           Edit
         </button>
       </div>

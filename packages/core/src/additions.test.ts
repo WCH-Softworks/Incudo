@@ -126,7 +126,7 @@ test('a chosen element whose requirements have since failed is flagged too, once
   const derived = deriveCharacter(character, system(), index);
   assert.ok(derived.elementIds.has('STRONG_ONLY'));
   assert.deepEqual(codes(derived), ['requirement-unmet']);
-  assert.equal(derived.problems[0]?.message, 'STRONG_ONLY was chosen for this character, and its prerequisites are no longer met.');
+  assert.equal(derived.problems[0]?.message, 'STRONG_ONLY was chosen for this character, and its prerequisites are not met.');
   assert.equal(derived.problems[0]?.ruleKey, 'build/knack');
 
   const both = hero(['STRONG_ONLY']);

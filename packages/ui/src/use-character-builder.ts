@@ -58,6 +58,7 @@ import {
 } from '@incudo/core';
 
 import { candidateOverlaps, overlapNotes, type CandidateOverlaps } from './candidate-overlaps.ts';
+import { softShortfallNotes } from './soft-requirements.ts';
 import {
   budgetRollKey,
   canExpressValue,
@@ -969,6 +970,21 @@ export class CharacterBuilder {
   /** `overlapsFor` worded: the line a picker shows under each marked candidate (`overlapNote`). */
   overlapNotesFor = (ruleKey: string, slot?: number): Map<ElementId, string> =>
     overlapNotes(this.overlapsFor(ruleKey, slot), this.elements);
+
+  /**
+   * What each candidate of a decision, or each answer and candidate of a settled pick, lacks of the prerequisites the kind
+   * makes soft — ADR 0124: "Needs Eldritch Blast, which this character does not have". Offered all the same; this is
+   * the warning beside it. Empty for a kind that makes nothing soft.
+   */
+  softNotesFor = (ruleKey: string): Map<ElementId, string> => {
+    if (!this.kind.softRequirements?.types.length) return new Map();
+    const state = this.getState();
+    const decision = state.decisions.find((open) => open.id === ruleKey);
+    const pick = state.picks.find((settled) => settled.ruleKey === ruleKey);
+    // A settled pick's candidates hold its own answers too (ADR 0032), so a chosen one that lacks something is warned.
+    const ids = [...(decision?.candidates ?? []), ...(pick?.candidates ?? [])];
+    return softShortfallNotes([...new Set(ids)], state.derived, this.kind, this.elements);
+  };
 
   /**
    * Keep an element from loaded content beside the character as a reference — ADR 0068. Refused, writing nothing, for

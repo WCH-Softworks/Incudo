@@ -2285,6 +2285,15 @@ written on a character can be moved into the user's library without being typed 
       takes the top marked for a moment. Both apps. Driven in the browser build (a wizard started, a Fighter 2 / Rogue 1);
       the phone typechecked only. Left as their own tasks: spells in a tab of their own, a settled choice's editor in the
       middle column, duplicate printings, and the Build tab's count of optional decisions.
+- [x] **Spells have a tab of their own, a settled choice is changed in the middle column, and a spell a feature needs is a
+      warning** ([ADR 0124](./docs/adr/0124-spells-get-a-tab-a-settled-choice-is-changed-in-the-middle-column-and-a-spell-a-feature-needs-is-a-warning.md)).
+      From the same hands-on pass, the maintainer's calls, done 2026-10-19: Change and Edit on what is settled open in the
+      middle column with the current answer marked and first, Back or Escape to return; a Spells tab, shown only for a
+      character with spells, holds the spell choices, spell attack settings, prepared lists and spells chosen or added;
+      an invocation that needs Eldritch Blast is offered with a warning instead of hidden (10 such in the corpus, a kind's
+      `softRequirements`); a short window scrolls the pane as one page, picker lists are taller and the description dock
+      smaller. Driven in the browser build (a wizard and a Warlock 2); the phone, one page with a spells heading, is
+      typechecked only. Left: the top bar's Build badge still counts optional decisions, and duplicate printings.
 - [ ] **Drive everything in the Tauri window and on the phone before 1.0.** Raised 2026-10-11, last on purpose. Many
       features were driven only in the browser build (CLAUDE.md says "Driven in the browser build only" fifteen times),
       and the first feature driven in both shells afterwards found two bugs no test and no browser drive could see: the

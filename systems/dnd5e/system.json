@@ -472,6 +472,7 @@
       ],
 
       "candidateOverlaps": { "types": ["Proficiency", "Language"] },
+      "softRequirements": { "types": ["Spell"] },
 
       "elementTypes": [
         "Race", "Sub Race", "Race Variant", "Racial Trait",

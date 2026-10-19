@@ -15,7 +15,7 @@
  * This is UI state only: which candidate is showing. Nothing here decides what can be chosen.
  */
 
-import { createContext, useContext, useId, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ElementId, ElementIndex } from '@incudo/core';
 
 import { useCanHover } from '../use-can-hover.ts';
@@ -27,11 +27,22 @@ import { CandidateDescription } from './CandidateDescription.tsx';
 /** The complement of the `max-width: 1000px` breakpoint that stacks `.columns`. */
 const COLUMNS_SIDE_BY_SIDE = '(min-width: 1001px)';
 
+/**
+ * How long the dock keeps a row's text once the pointer has left its list without reaching the dock (ADR 0124). Long
+ * enough to cross from the middle column into the dock to scroll a long description; short enough that the dock does
+ * not go on describing a row nobody is looking at.
+ */
+const RELEASE_DELAY = 1200;
+
 interface Dock {
   /** Whether the dock is on screen and pickers should write to it instead of floating. */
   docked: boolean;
   currentId: ElementId | null;
   show: (id: ElementId) => void;
+  /** The pointer left the list it was reading: let the text go after a moment, unless it reaches the dock or a row. */
+  release: () => void;
+  /** The pointer is on the dock: keep what it shows. */
+  hold: () => void;
   /** The dock's element id, for `aria-describedby` on whatever it is describing. */
   regionId: string;
 }
@@ -43,10 +54,24 @@ export function PreviewDockProvider({ children }: { children: React.ReactNode })
   const sideBySide = useMediaQuery(COLUMNS_SIDE_BY_SIDE);
   const [currentId, setCurrentId] = useState<ElementId | null>(null);
   const regionId = useId();
+  const timer = useRef<number | undefined>(undefined);
+  const hold = useCallback(() => window.clearTimeout(timer.current), []);
+  const show = useCallback(
+    (id: ElementId) => {
+      hold();
+      setCurrentId(id);
+    },
+    [hold],
+  );
+  const release = useCallback(() => {
+    hold();
+    timer.current = window.setTimeout(() => setCurrentId(null), RELEASE_DELAY);
+  }, [hold]);
+  useEffect(() => hold, [hold]);
 
   const value = useMemo<Dock>(
-    () => ({ docked: canHover && sideBySide, currentId, show: setCurrentId, regionId }),
-    [canHover, sideBySide, currentId, regionId],
+    () => ({ docked: canHover && sideBySide, currentId, show, release, hold, regionId }),
+    [canHover, sideBySide, currentId, show, release, hold, regionId],
   );
   return <DockContext.Provider value={value}>{children}</DockContext.Provider>;
 }
@@ -79,6 +104,7 @@ export function PreviewDock({
       className={collapsed ? 'preview-dock collapsed' : 'preview-dock'}
       id={dock.regionId}
       aria-label={PREVIEW_TITLE}
+      onMouseEnter={dock.hold}
     >
       <div className="preview-dock-head">
         <p className={dock.currentId === null ? 'preview-dock-title hint' : 'preview-dock-title'}>

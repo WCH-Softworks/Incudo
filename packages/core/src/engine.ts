@@ -48,7 +48,7 @@ import {
   TRACK_PROGRESS_STAT,
   TRACK_FIRST_STAT,
 } from './system.ts';
-import { evaluateRequirements, referencedIds, type RequirementContext } from './requirements.ts';
+import { evaluateRequirements, evaluateRequirementsSoftly, referencedIds, type RequirementContext } from './requirements.ts';
 import { EMPTY_EQUIPMENT, resolveEquipment, type EquipmentState } from './equipment.ts';
 import {
   characterProgress,
@@ -1179,7 +1179,7 @@ function reportUnmetPicks(
         code: 'requirement-unmet',
         elementId: id,
         ruleKey: choice.ruleKey,
-        message: `${element.name} was chosen for this character, and its prerequisites are no longer met.`,
+        message: `${element.name} was chosen for this character, and its prerequisites are not met.`,
       });
     }
   }
@@ -2074,6 +2074,7 @@ function collectPendingChoices(
   const repeatableAmong = (ids: ElementId[]): ElementId[] => [
     ...new Set(ids.filter((id) => isRepeatable(index.get(id), kind))),
   ];
+  const soft = softRequirementTerms(kind, index);
 
   for (const element of active.values()) {
     for (const [ruleKey, rules] of selectPools(element, character, kind, ctx, levelFor, equipment)) {
@@ -2105,7 +2106,7 @@ function collectPendingChoices(
         const candidates = new Set<ElementId>();
         const unresolvedSupports = new Set<string>();
         for (const rule of rules) {
-          for (const candidate of candidatesFor(rule, index, unrepeatable(chosen), ctx, filters)) {
+          for (const candidate of candidatesFor(rule, index, unrepeatable(chosen), ctx, filters, soft)) {
             if (active.has(candidate.id) && !isRepeatable(candidate, kind)) continue;
             candidates.add(candidate.id);
           }
@@ -2142,7 +2143,7 @@ function collectPendingChoices(
       // covers the remaining picks. Every candidate here can be placed with every pick already made kept.
       const candidates = new Set<ElementId>();
       for (const rule of open) {
-        for (const candidate of candidatesFor(rule, index, unrepeatable(chosen), ctx, filters)) {
+        for (const candidate of candidatesFor(rule, index, unrepeatable(chosen), ctx, filters, soft)) {
           // Not something the character already has. An elf offered Elvish by a background's
           // "two languages of your choice" is being offered a pick that does nothing, and no
           // content file can say so: the select names a support tag and every language-granting
@@ -2350,14 +2351,38 @@ export function candidatesFor(
   exclude: ElementId[] = [],
   context?: RequirementContext,
   filters?: BlockFilterResolver,
+  soft?: (id: ElementId) => boolean,
 ): Element[] {
   const excluded = new Set(exclude);
   const pool = index.byType(rule.type);
   return pool.filter((candidate) => {
     if (excluded.has(candidate.id)) return false;
-    if (context && !evaluateRequirements(candidate.requirements, context)) return false;
+    if (context) {
+      // A term the kind makes soft (ADR 0124) does not keep a candidate out: what it lacks is a warning in the view.
+      const holds = soft
+        ? evaluateRequirementsSoftly(candidate.requirements, context, soft)
+        : evaluateRequirements(candidate.requirements, context);
+      if (!holds) return false;
+    }
     return candidateAccepted(rule, candidate, filters);
   });
+}
+
+/**
+ * Which element terms of a candidate's requirements a choice reads as met — ADR 0124: those naming an element of a type
+ * the kind's `softRequirements` lists. Undefined for a kind that lists none, so every term filters as before.
+ */
+export function softRequirementTerms(
+  kind: ResolvedCharacterKind,
+  index: ElementIndex,
+): ((id: ElementId) => boolean) | undefined {
+  const types = kind.softRequirements?.types;
+  if (!types?.length) return undefined;
+  const soft = new Set(types);
+  return (id) => {
+    const type = index.get(id)?.type;
+    return type !== undefined && soft.has(type);
+  };
 }
 
 /** Whether one element passes a rule's filter, expanding what the rule's block says. */
