@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import type { ElementId, ElementIndex } from '@incudo/core';
 import type { CharacterBuilder } from '@incudo/ui';
 
-import { ROGUE, WIZARD } from './rogue-wizard-build.ts';
+import { answerAtStart, ROGUE, WIZARD } from './rogue-wizard-build.ts';
 
 const PHB = 'Player’s Handbook';
 const AURORA = 'Aurora Legacy Essentials';
@@ -48,8 +48,9 @@ export function buildInterleavedRogueWizard(builder: CharacterBuilder, elements:
   builder.setGenerationMethod('abilities', 'standard-array');
   const array = { dexterity: 15, intelligence: 14, constitution: 13, wisdom: 12, charisma: 10, strength: 8 };
   for (const [stat, value] of Object.entries(array)) builder.setBudgetStat('abilities', stat, value);
+  builder.confirmBudget('abilities');
 
-  answer('Campaign options', `Feats|${INTERNAL}`, `Multiclassing|${INTERNAL}`);
+  answerAtStart(builder, elements, 'Campaign options', `Feats|${INTERNAL}`, `Multiclassing|${INTERNAL}`);
   builder.choose('build/race', [pickId(elements, 'Human', PHB, 'Race')]);
   answer('Language (Human)', `Elvish|${AURORA}`);
   builder.choose('build/class', [ROGUE]);

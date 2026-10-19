@@ -447,6 +447,20 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           message: `step "${step.id}" is advanced and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be left out of what is offered`,
         });
       }
+      // A step a campaign option switches on (ADR 0123) opens nothing without it, so only a step nothing owes an answer to.
+      if (step.offeredWhen !== undefined && !(step.multiple || step.equip || (step.pick && !step.required))) {
+        errors.push({
+          path: `${where}.buildSteps`,
+          message: `step "${step.id}" is offered only when an element is held and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be switched off`,
+        });
+      }
+      // What is asked when a character is started is a set of options (ADR 0123): a pick or a budget is Build's to ask.
+      if (step.askedAtStart && !step.multiple) {
+        errors.push({
+          path: `${where}.buildSteps`,
+          message: `step "${step.id}" is asked when a character is started and is not a set (multiple); only a set can be`,
+        });
+      }
       // A pick is of one and a set of any number (ADR 0068): the same refusal, for the same reason.
       if (step.pick && step.multiple) {
         errors.push({

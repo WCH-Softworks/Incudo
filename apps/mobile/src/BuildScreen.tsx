@@ -46,6 +46,8 @@ interface Start {
   /** The file's own content, in front of what the sources load (ADR 0012): nothing it carries is silently replaced. */
   embedded?: ElementIndex;
   session: EditSession;
+  /** Made by New character, so the campaign options are asked first (ADR 0123). */
+  fresh?: boolean;
 }
 
 export function BuildScreen({ route, navigation }: NativeStackScreenProps<Screens, 'Build'>) {
@@ -101,11 +103,14 @@ function Building({
   useEffect(() => {
     void readBuildPreferences(storage).then(setPreferences);
   }, [storage]);
-  const showAdvanced = (shown: boolean): void => {
-    const next = { ...preferences, showAdvanced: shown };
+  const changePreferences = (change: Partial<BuildPreferences>): void => {
+    const next = { ...preferences, ...change };
     setPreferences(next);
     void writeBuildPreferences(storage, next);
   };
+  const showAdvanced = (shown: boolean): void => changePreferences({ showAdvanced: shown });
+  // A new character is asked its campaign options first (ADR 0123), once there is content to offer them from.
+  const [startOptions, setStartOptions] = useState<'new' | 'change' | null>(start.fresh ? 'new' : null);
   const systemId = start.system.id;
 
   // Content is asked for here, once the screen is open, and again when this system's sources are switched on or off
@@ -252,6 +257,10 @@ function Building({
         hasContent={loaded !== undefined || loading !== undefined}
         showAdvanced={preferences.showAdvanced}
         onShowAdvanced={showAdvanced}
+        optionalOpen={preferences.optionalOpen}
+        onOptionalOpen={(open) => changePreferences({ optionalOpen: open })}
+        startOptions={startOptions === 'new' && loaded === undefined ? null : startOptions}
+        onStartOptions={setStartOptions}
       />
     </ScrollView>
   );
@@ -268,7 +277,7 @@ async function openForBuild(
       const system = systems.find((candidate) => candidate.id === params.systemId);
       if (!system) return { error: `This app does not have the game ${params.systemId}.` };
       const character = newCharacterOfKind(system, params.kindId);
-      return { character, system, session: beginEdit(character) };
+      return { character, system, session: beginEdit(character), fresh: true };
     }
     const opened = await library.open(params.name);
     if (!opened) return { error: `"${params.name}" did not open as a character.` };

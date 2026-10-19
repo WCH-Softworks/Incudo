@@ -1095,6 +1095,37 @@ test('a step a character may leave unanswered may be advanced, and no other — 
   );
 });
 
+test('a step a character may leave unanswered may wait on an option, and a set may be asked at the start — ADR 0123', async () => {
+  // Perturbation: drop `offeredWhen` or `askedAtStart` from the schema and the first assertion fails on an unknown key;
+  // drop either check in `validateGameSystem` and its refusal below is missing.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        delete step.required;
+        step.multiple = true;
+        step.offeredWhen = 'SOME_OPTION';
+        step.askedAtStart = true;
+      }),
+    ),
+    [],
+    'a set offered only with an option, and asked at the start, is a valid one',
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        step.offeredWhen = 'SOME_OPTION';
+        step.askedAtStart = true;
+      }),
+    ),
+    [
+      'characterKinds[0].buildSteps: step "one" is offered only when an element is held and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be switched off',
+      'characterKinds[0].buildSteps: step "one" is asked when a character is started and is not a set (multiple); only a set can be',
+    ],
+  );
+});
+
 test('a step may equip, and equipping takes none of the keys that make a step something else — ADR 0072', async () => {
   // Perturbation: drop `equip` or `hiddenSetter` from the schema and the first assertion fails on an unknown key; drop
   // the checks in `validateGameSystem` and the clash and no-types assertions fail.

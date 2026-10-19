@@ -649,7 +649,7 @@ test('the abilities step is a real decision, not a placeholder reporting itself 
   assert.deepEqual(scores?.budget?.unassigned, ['vigour', 'grit']);
 });
 
-test('setting a base stat answers the budget, and finishing it closes the decision', () => {
+test('setting a base stat answers the budget, and its Done closes the decision', () => {
   const b = builder(indexWith());
   b.setGenerationMethod('scores', 'manual');
   b.setBaseStat('vigour', 11);
@@ -659,8 +659,15 @@ test('setting a base stat answers the budget, and finishing it closes the decisi
   );
 
   b.setBaseStat('grit', 9);
-  const state = b.getState();
+  let state = b.getState();
   assert.deepEqual(state.steps.find((s) => s.id === 'scores')?.budget?.unassigned, []);
+  // The last score does not close the card under the pointer (ADR 0123): it waits, owing nothing, for its Done.
+  assert.deepEqual(
+    state.decisions.filter((d) => d.kind === 'budget').map((d) => d.remaining),
+    [0],
+  );
+  b.confirmBudget('scores');
+  state = b.getState();
   assert.equal(state.decisions.some((d) => d.kind === 'budget'), false);
   assert.equal(state.character.baseStats?.['vigour'], 11);
 });
@@ -1085,6 +1092,7 @@ test('a rolled set is open on assignment alone, with no points to report', () =>
   assert.equal(decision?.remaining, 2, 'two scores to place, not two points to spend');
   b.setBaseStat('vigour', 11);
   b.setBaseStat('grit', 9);
+  b.confirmBudget('scores');
   assert.equal(b.getState().decisions.some((d) => d.kind === 'budget'), false);
 });
 
@@ -1440,7 +1448,7 @@ test('a step with no levelRoll publishes no hit point state', () => {
   assert.equal(b.hitPointsFor('kit'), undefined);
 });
 
-test('the first level is always the maximum, and nothing is open before a class is chosen', () => {
+test('the first level is always the maximum, recorded without a decision once a class is chosen', () => {
   const sys = systemWithLevelRoll();
   const b = builder(indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } })), sys);
   assert.equal(b.hitPointsFor('levels')?.pending.length, 0, 'no governing element yet');
@@ -1451,14 +1459,17 @@ test('the first level is always the maximum, and nothing is open before a class 
   assert.equal(hp.levels.length, 1);
   assert.equal(hp.levels[0]!.isFirst, true);
   assert.equal(hp.levels[0]!.dieSides, 8);
-  assert.equal(hp.levels[0]!.recorded, undefined);
-  assert.equal(hp.pending.length, 1);
-  assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), true);
-
-  // Asking to "roll" a first level still takes the maximum — it is not a choice.
-  b.recordHitPoints('levels', 1, 'roll');
+  // Not a choice, so never a card (ADR 0123): the maximum is recorded the moment the die is known. Fails if the first
+  // level is asked for again (`firstLevelRecord` answering nothing for an unrecorded level).
+  assert.equal(hp.levels[0]!.recorded, 8);
+  assert.equal(hp.pending.length, 0);
   assert.equal(b.getState().character.rolls['hp:level:1'], 8);
   assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), false);
+
+  // Asking to "roll" or change a first level changes nothing — it is not a choice.
+  b.recordHitPoints('levels', 1, 'roll');
+  b.changeHitPoints('levels', 1, { value: 3 });
+  assert.equal(b.getState().character.rolls['hp:level:1'], 8);
 });
 
 test('a later level offers a roll or the average, and the average is floor(sides/2)+1', () => {
@@ -1614,8 +1625,8 @@ test('each level is a card of its own, opening at that level, and Done closes on
   );
   b.choose('build/kit', ['CLASSY']);
   const cards = () => b.getState().decisions.filter((d) => d.kind === 'hitpoints');
+  // No card for level 1, which is recorded as the maximum (ADR 0123).
   assert.deepEqual(cards().map((d) => [d.label, d.hitPointLevel, d.opensAt, d.remaining]), [
-    ['Hit Points, level 1', 1, 1, 1],
     ['Hit Points, level 2', 2, 2, 1],
     ['Hit Points, level 3', 3, 3, 1],
     ['Hit Points, level 4', 4, 4, 1],
@@ -1771,8 +1782,12 @@ test('fixedWhen fixes every level and opens no hit point decision, and reads no 
 test('with fixedWhen declared and the option off, the builder still asks for a roll', () => {
   const sys = systemWithLevelRoll();
   sys.characterKinds[0]!.buildSteps!.find((s) => s.id === 'levels')!.levelRoll!.fixedWhen = 'AVG';
-  const b = builder(indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } }), element('AVG', 'Gadget')), sys);
+  const b = new CharacterBuilder(
+    createCharacter('test', 'pc', { progress: 2 }),
+    sys,
+    indexWith(element('CLASSY', 'Widget', [], { hd: { value: 'd8' } }), element('AVG', 'Gadget')),
+  );
   b.choose('build/kit', ['CLASSY']);
-  assert.equal(b.hitPointsFor('levels')!.pending.length, 1);
+  assert.deepEqual(b.hitPointsFor('levels')!.pending.map((level) => level.level), [2]);
   assert.equal(b.getState().decisions.some((d) => d.kind === 'hitpoints'), true);
 });

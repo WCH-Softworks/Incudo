@@ -14,7 +14,7 @@
  * pick is not somewhere you go, it is something on screen that still has a control.
  */
 
-import { Fragment, useMemo } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CharacterBuilder,
   BuilderState,
@@ -52,6 +52,15 @@ import {
   ADVANCED_OPTIONS_LABEL,
   BUILD_TABS,
   advancedOptionsHint,
+  arrivedDecision,
+  decisionGroups,
+  decisionKey,
+  optionalDecisionsLabel,
+  startOptionsSummary,
+  ARRIVAL_GUARD_MS,
+  NOTHING_REQUIRED,
+  OPTIONAL_DECISIONS_HINT,
+  START_OPTIONS_CHANGE,
   type BuildPreferences,
 } from '@incudo/ui';
 import type { ElementId, ElementIndex, ResolvedCharacterKind } from '@incudo/core';
@@ -70,6 +79,10 @@ import { FreeformEditor } from './Freeform.tsx';
 import { StartingEquipmentSettled, StartingOptions } from './StartingEquipment.tsx';
 import { InventoryEditor } from './InventoryEditor.tsx';
 import { SpellAttacksEditor } from './SpellAttacks.tsx';
+import { StartOptionsDialog } from './StartOptions.tsx';
+
+/** Why the campaign options' dialog is open (ADR 0123): New character asked, or Change… on Build. */
+export type StartOptionsAsk = 'new' | 'change';
 
 export function BuilderPane({
   builder,
@@ -79,6 +92,8 @@ export function BuilderPane({
   hasContent,
   preferences,
   onPreferences,
+  startOptions,
+  onStartOptions,
 }: {
   builder: CharacterBuilder;
   state: BuilderState;
@@ -88,6 +103,9 @@ export function BuilderPane({
   /** How this user likes the pane (ADR 0115), and how to change it. */
   preferences: BuildPreferences;
   onPreferences: (change: Partial<BuildPreferences>) => void;
+  /** The campaign options' dialog, open or not, and how to open or close it; the shell holds it so shortcuts wait. */
+  startOptions: StartOptionsAsk | null;
+  onStartOptions: (ask: StartOptionsAsk | null) => void;
 }): React.JSX.Element {
   const { kind, derived, decisions, steps, picks, declined, preparation, publications, progress, holderGrants } = state;
   const progression = kind.progression;
@@ -114,6 +132,40 @@ export function BuilderPane({
 
   /** Budgeted or per-level-roll steps with nothing outstanding — still editable, see below. */
   const settled = settledSteps(state);
+
+  // What must be answered, then what may be, folded (ADR 0123). The builder sorted them; this only splits them.
+  const groups = decisionGroups(decisions);
+
+  // The card that has just taken the top, marked for a moment so a quick second click is not spent on it (ADR 0123).
+  const topKey = decisions[0] ? decisionKey(decisions[0]) : undefined;
+  const previousTop = useRef<string | undefined>(undefined);
+  const [arrived, setArrived] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const key = arrivedDecision(previousTop.current, decisions);
+    previousTop.current = topKey;
+    if (key === undefined) return;
+    setArrived(key);
+    const timer = setTimeout(() => setArrived(undefined), ARRIVAL_GUARD_MS);
+    return () => clearTimeout(timer);
+    // Only a change of the top matters; the list itself changes on every answer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topKey]);
+
+  const decisionItem = (decision: OpenDecision): React.JSX.Element => (
+    <li key={decisionKey(decision)} className={arrived === decisionKey(decision) ? 'arrived' : undefined}>
+      <Decision
+        decision={decision}
+        builder={builder}
+        elements={elements}
+        nameOf={nameOf}
+        candidateLabel={candidateLabel}
+        kind={kind}
+        budget={steps.find((step) => step.id === decision.stepId)?.budget}
+        hitPoints={steps.find((step) => step.id === decision.stepId)?.hitPoints}
+        startingSource={state.startingEquipment?.sources.find((source) => source.key === decision.id)}
+      />
+    </li>
+  );
 
   return (
     <main className="pane builder">
@@ -235,6 +287,13 @@ export function BuilderPane({
                   candidates carried their book, the Race list offered four identical Aasimars
                   and nothing afterwards told you which one you had.
                 */}
+                {state.startOptions
+                  .filter((question) => question.stepId === step.id)
+                  .map((question) => (
+                    <span key={question.stepId} className="chosen">
+                      {startOptionsSummary(question.chosen, nameOf)}
+                    </span>
+                  ))}
                 {picks
                   .filter((pick) => pick.stepId === step.id)
                   .map((pick) => (
@@ -304,28 +363,31 @@ export function BuilderPane({
           )}
 
           <h2>
-            Open decisions <span className="count">{decisions.length}</span>
+            Open decisions <span className="count">{groups.required.length}</span>
           </h2>
           {decisions.length === 0 && (
             <p className="lede">Nothing outstanding. Every blocking decision has an answer.</p>
           )}
-          <ul className="decisions">
-            {decisions.map((decision) => (
-              <li key={`${decision.kind}:${decision.id}`}>
-                <Decision
-                  decision={decision}
-                  builder={builder}
-                  elements={elements}
-                  nameOf={nameOf}
-                  candidateLabel={candidateLabel}
-                  kind={kind}
-                  budget={steps.find((step) => step.id === decision.stepId)?.budget}
-                  hitPoints={steps.find((step) => step.id === decision.stepId)?.hitPoints}
-                  startingSource={state.startingEquipment?.sources.find((source) => source.key === decision.id)}
-                />
-              </li>
-            ))}
-          </ul>
+          {decisions.length > 0 && groups.required.length === 0 && <p className="lede">{NOTHING_REQUIRED}</p>}
+          <ul className="decisions">{groups.required.map(decisionItem)}</ul>
+          {/*
+            Folded until opened, and remembered (ADR 0123): the user scrolled past an alignment, a deity and a variant
+            for the whole build to find the one thing owed. Open, it is the same cards in the same order.
+          */}
+          {groups.optional.length > 0 && (
+            <details
+              className="optional-decisions"
+              open={preferences.optionalOpen}
+              onToggle={(event) => {
+                const open = (event.currentTarget as HTMLDetailsElement).open;
+                if (open !== preferences.optionalOpen) onPreferences({ optionalOpen: open });
+              }}
+            >
+              <summary>{optionalDecisionsLabel(groups.optional.length)}</summary>
+              <p className="hint">{OPTIONAL_DECISIONS_HINT}</p>
+              <ul className="decisions">{groups.optional.map(decisionItem)}</ul>
+            </details>
+          )}
         </section>
 
         <aside className="settled-column">
@@ -350,13 +412,25 @@ export function BuilderPane({
 
             An answered `pick` had the same hole, and now has the same answer beside it.
           */}
-          {picks.length > 0 && (
+          {(picks.length > 0 || state.startOptions.length > 0) && (
             <section>
               <h2>Choices already made</h2>
               <p className="hint">
                 Changing one of these rebuilds everything that followed from it. Anything it
                 opened that you had answered is kept only where the new choice offers it too.
               </p>
+              {/* Asked when the character was started (ADR 0123), and changed in the same dialog. */}
+              {state.startOptions.map((question) => (
+                <div key={question.stepId} className="settled">
+                  <div className="decision-head">
+                    <span className="label">{question.label}</span>
+                    <button type="button" className="link" onClick={() => onStartOptions('change')}>
+                      {START_OPTIONS_CHANGE}
+                    </button>
+                  </div>
+                  <p>{startOptionsSummary(question.chosen, candidateLabel)}</p>
+                </div>
+              ))}
               {picks.map((pick) => (
                 <div key={pick.ruleKey} className="settled">
                   <div className="decision-head">
@@ -643,6 +717,15 @@ export function BuilderPane({
       )}
       </PreviewDockProvider>
 
+      <StartOptionsDialog
+        open={startOptions !== null && state.startOptions.length > 0}
+        beginning={startOptions === 'new'}
+        questions={state.startOptions}
+        builder={builder}
+        candidateLabel={candidateLabel}
+        onClose={() => onStartOptions(null)}
+      />
+
       {derived.problems.length > 0 && (
         <section>
           <h2>Problems</h2>
@@ -718,7 +801,18 @@ function Decision({
         )
       ) : decision.kind === 'budget' ? (
         budget ? (
-          <BudgetEditor stepId={decision.stepId} budget={budget} builder={builder} kind={kind} />
+          <>
+            <BudgetEditor stepId={decision.stepId} budget={budget} builder={builder} kind={kind} />
+            {/*
+              Every score set: the card waits for this rather than vanishing under the pointer with the last one (ADR
+              0123), as a hit point roll's does. Until then the editor above is the way forward.
+            */}
+            {decision.remaining === 0 && (
+              <button type="button" onClick={() => builder.confirmBudget(decision.stepId)}>
+                Done
+              </button>
+            )}
+          </>
         ) : (
           // A budget decision whose step has no budget is a contradiction the view-model cannot
           // produce; it is here so a future one says so rather than rendering nothing.

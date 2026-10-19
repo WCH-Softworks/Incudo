@@ -178,6 +178,22 @@ this is usually why.
 beyond the rules a character is built by, which most characters never take. Anything a character already took through
 the step still shows. Only on a step that may be left unanswered: `multiple`, `pick`, or one that equips.
 
+```json $defs/buildStep
+{ "id": "rules", "label": "Table rules", "types": ["Rule"], "multiple": true, "askedAtStart": true }
+```
+
+```json $defs/buildStep
+{ "id": "boons", "label": "Boons", "types": ["Boon"], "multiple": true, "offeredWhen": "RULE_BOONS" }
+```
+
+**`askedAtStart`**: a set asked in a dialog when a character is started, before anything else is built, because it
+shapes what everything after it offers (5e's campaign options). It is never an open decision on Build. Its answer, even
+none, is listed with the choices already made, where it can be changed. Only on a `multiple` step.
+
+**`offeredWhen`**: an element id. The step offers nothing until the character holds that element, typically an option
+from an `askedAtStart` set. Unlike `advanced`, this is the character's own table's choice, not the user's view.
+Anything already taken through the step still shows. Only on a step that may be left unanswered.
+
 ### Scores: budgets and how they are set
 
 The starter's Scores step has a `budget`:

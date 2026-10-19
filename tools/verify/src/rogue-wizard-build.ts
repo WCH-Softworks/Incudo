@@ -21,6 +21,22 @@ const INTERNAL = 'Internal';
 export const WIZARD = 'ID_WOTC_PHB_CLASS_WIZARD';
 export const ROGUE = 'ID_WOTC_PHB_CLASS_ROGUE';
 
+/**
+ * Answer a set asked when the character is started (ADR 0123) the way its dialog does: the whole set, each member found
+ * by name and book.
+ */
+export function answerAtStart(builder: CharacterBuilder, elements: ElementIndex, label: string, ...names: string[]): void {
+  const question = builder.getState().startOptions.find((q) => q.label === label);
+  assert.ok(question, `"${label}" is not asked at the start`);
+  const ids = names.map((name) => {
+    const [wanted, book = PHB] = name.split('|');
+    const matches = question.candidates.filter((id) => elements.get(id)?.name === wanted && elements.get(id)?.source === book);
+    assert.equal(matches.length, 1, `"${label}" offers ${matches.length} of "${name}", not one`);
+    return matches[0]!;
+  });
+  builder.chooseAtStart(question.stepId, ids);
+}
+
 /** Builds the whole character from a fresh level 1 one. Nothing it owes is left open. */
 export function buildRogueWizard(builder: CharacterBuilder, elements: ElementIndex): void {
   /**
@@ -55,8 +71,9 @@ export function buildRogueWizard(builder: CharacterBuilder, elements: ElementInd
   builder.setGenerationMethod('abilities', 'standard-array');
   const array = { intelligence: 15, dexterity: 14, constitution: 13, wisdom: 12, charisma: 10, strength: 8 };
   for (const [stat, value] of Object.entries(array)) builder.setBudgetStat('abilities', stat, value);
+  builder.confirmBudget('abilities');
 
-  answer('Campaign options', `Feats|${INTERNAL}`, `Multiclassing|${INTERNAL}`);
+  answerAtStart(builder, elements, 'Campaign options', `Feats|${INTERNAL}`, `Multiclassing|${INTERNAL}`);
   builder.choose('build/race', [pickId(elements, 'Human', PHB, 'Race')]);
   answer('Human Variant', 'Human Variant');
   answer(

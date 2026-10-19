@@ -1,8 +1,9 @@
 /**
  * How a user likes the Build pane, remembered per user in `Storage` and never in a character — ADR 0115.
  *
- * Three things, each a view and nothing a derivation reads: whether the steps a system marks advanced are offered,
- * whether the option preview beside the pickers is folded to its title, and which of the pane's two tabs is open. Read
+ * Four things, each a view and nothing a derivation reads: whether the steps a system marks advanced are offered,
+ * whether the option preview beside the pickers is folded to its title, which of the pane's two tabs is open, and
+ * whether the optional decisions are unfolded (ADR 0123). Read
  * once when a shell starts and written whenever one changes. A record that cannot be read, or a field that is not what
  * it should be, falls back field by field to the defaults, as the print options do.
  */
@@ -18,9 +19,16 @@ export interface BuildPreferences {
   /** The option preview shows only the option's name, so the settled choices beneath it have the room. */
   previewCollapsed: boolean;
   tab: BuildTab;
+  /** The optional decisions are shown, not folded under their heading (ADR 0123). Off by default. */
+  optionalOpen: boolean;
 }
 
-export const DEFAULT_BUILD_PREFERENCES: BuildPreferences = { showAdvanced: false, previewCollapsed: false, tab: 'build' };
+export const DEFAULT_BUILD_PREFERENCES: BuildPreferences = {
+  showAdvanced: false,
+  previewCollapsed: false,
+  tab: 'build',
+  optionalOpen: false,
+};
 
 export const BUILD_PREFERENCES_KEY = 'build/view';
 
@@ -56,6 +64,7 @@ export function parseBuildPreferences(text: string | null): BuildPreferences {
     showAdvanced: flag(record.showAdvanced, DEFAULT_BUILD_PREFERENCES.showAdvanced),
     previewCollapsed: flag(record.previewCollapsed, DEFAULT_BUILD_PREFERENCES.previewCollapsed),
     tab: BUILD_TABS.some((tab) => tab.id === record.tab) ? (record.tab as BuildTab) : DEFAULT_BUILD_PREFERENCES.tab,
+    optionalOpen: flag(record.optionalOpen, DEFAULT_BUILD_PREFERENCES.optionalOpen),
   };
 }
 
@@ -75,6 +84,7 @@ export async function writeBuildPreferences(storage: Storage, preferences: Build
       showAdvanced: preferences.showAdvanced,
       previewCollapsed: preferences.previewCollapsed,
       tab: preferences.tab,
+      optionalOpen: preferences.optionalOpen,
     };
     await storage.write(BUILD_PREFERENCES_KEY, JSON.stringify(record));
   } catch {

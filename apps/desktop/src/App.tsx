@@ -149,7 +149,7 @@ import { useCommandHost, type CommandBinder, type CommandHandlers } from './use-
 import { LauncherPane, type SystemSummary } from './panes/LauncherPane.tsx';
 import { LibraryPane } from './panes/LibraryPane.tsx';
 import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
-import { BuilderPane } from './panes/BuilderPane.tsx';
+import { BuilderPane, type StartOptionsAsk } from './panes/BuilderPane.tsx';
 import { SheetPane } from './panes/SheetPane.tsx';
 import { PrintOptionsDialog } from './panes/PrintOptions.tsx';
 import { OfficialSheetDialog } from './panes/OfficialSheet.tsx';
@@ -555,6 +555,8 @@ function Shell({
   const [officialBusy, setOfficialBusy] = useState(false);
   // A content refresh (ADR 0082): the review open, and the offer set aside for this character's content as it is now.
   const [refreshOpen, setRefreshOpen] = useState(false);
+  // The campaign options' dialog (ADR 0123): opened by New character, and by Change… beside the options on Build.
+  const [startOptionsAsk, setStartOptionsAsk] = useState<StartOptionsAsk | null>(null);
   const [refreshDismissed, setRefreshDismissed] = useState(false);
 
   /** The Aurora import: what it is doing, and what it did. Cleared by the user, not a timer. */
@@ -1093,6 +1095,8 @@ function Shell({
       setSaveNote(null);
       setSavedTo(null);
       setPane('build');
+      // What shapes every other offer is asked first (ADR 0123); a kind that asks nothing opens no dialog.
+      setStartOptionsAsk('new');
     });
   }, [system, newKind, unlessUnsaved]);
 
@@ -1447,6 +1451,7 @@ function Shell({
     printDraft !== null ||
     officialOpen ||
     refreshOpen ||
+    (startOptionsAsk !== null && pane === 'build' && state.startOptions.length > 0) ||
     (pane === 'library' && libraryState.status === 'no-location' && !askDismissed);
   const resolved = resolveCommands({
     workspace: true,
@@ -1630,6 +1635,8 @@ function Shell({
             hasContent={content !== null || working.embedded !== undefined}
             preferences={buildPreferences}
             onPreferences={changeBuildPreferences}
+            startOptions={startOptionsAsk}
+            onStartOptions={setStartOptionsAsk}
           />
         </>
       )}

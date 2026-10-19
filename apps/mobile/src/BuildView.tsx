@@ -8,8 +8,8 @@
  * is `build-view.ts`'s, every tap a builder method, and choosing an element is the full-screen `Picker`.
  */
 
-import { memo, useCallback, useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, Animated, StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { ElementId, ElementIndex } from '@incudo/core';
 import {
@@ -36,6 +36,15 @@ import {
   type OpenDecision,
   STARTING_EQUIPMENT_HEADING,
   INVENTORY_HEADING,
+  arrivedDecision,
+  decisionGroups,
+  decisionKey,
+  optionalDecisionsLabel,
+  startOptionsSummary,
+  ARRIVAL_GUARD_MS,
+  NOTHING_REQUIRED,
+  OPTIONAL_DECISIONS_HINT,
+  START_OPTIONS_CHANGE,
 } from '@incudo/ui';
 
 import { BooksView, BudgetView, ClassLevelsView, DraftField, HitPointsView, NumberField, PreparedView } from './BuildParts.tsx';
@@ -44,6 +53,7 @@ import { Body, Button, Card, Heading, Row, Tag } from './controls.tsx';
 import { Picker, type PickerRequest } from './Picker.tsx';
 import { StartingOptionsView, StartingSettledView } from './StartingEquipmentView.tsx';
 import { InventoryView } from './InventoryView.tsx';
+import { StartOptionsView } from './StartOptionsView.tsx';
 import { usePalette } from './theme.ts';
 
 /**
@@ -56,6 +66,10 @@ export const BuildView = memo(function BuildView({
   hasContent,
   showAdvanced,
   onShowAdvanced,
+  optionalOpen,
+  onOptionalOpen,
+  startOptions,
+  onStartOptions,
 }: {
   builder: CharacterBuilder;
   state: BuilderState;
@@ -65,6 +79,12 @@ export const BuildView = memo(function BuildView({
   /** The user's advanced options switch (ADR 0115), and how to change it. */
   showAdvanced: boolean;
   onShowAdvanced: (shown: boolean) => void;
+  /** Whether the optional decisions are unfolded (ADR 0123), the same record's, and how to change it. */
+  optionalOpen: boolean;
+  onOptionalOpen: (open: boolean) => void;
+  /** The campaign options' sheet (ADR 0123): asked for a new character, or from Change; null while closed. */
+  startOptions: 'new' | 'change' | null;
+  onStartOptions: (ask: 'new' | 'change' | null) => void;
 }) {
   const palette = usePalette();
   const [request, setRequest] = useState<PickerRequest | null>(null);
@@ -83,6 +103,28 @@ export const BuildView = memo(function BuildView({
   const classLevels = steps.find((step) => step.classLevels);
   const settled = settledSteps(state);
   const progressName = progressLabel(kind);
+  // Required, then optional and folded (ADR 0123); the builder sorted them, this only splits them, as the desktop does.
+  const groups = decisionGroups(decisions);
+  // The card that has just taken the top, marked for a moment so a quick second tap is not spent on it (ADR 0123).
+  const topKey = decisions[0] ? decisionKey(decisions[0]) : undefined;
+  const previousTop = useRef<string | undefined>(undefined);
+  const [arrived, setArrived] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const key = arrivedDecision(previousTop.current, decisions);
+    previousTop.current = topKey;
+    if (key === undefined) return;
+    setArrived(key);
+    const timer = setTimeout(() => setArrived(undefined), ARRIVAL_GUARD_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topKey]);
+  const decisionCard = (decision: OpenDecision) => (
+    <Arriving key={decisionKey(decision)} arrived={arrived === decisionKey(decision)}>
+      <Card>
+        <DecisionView decision={decision} state={state} builder={builder} nameOf={nameOf} pick={setRequest} />
+      </Card>
+    </Arriving>
+  );
 
   return (
     <View style={styles.page}>
@@ -129,7 +171,10 @@ export const BuildView = memo(function BuildView({
 
       <Heading>Your character</Heading>
       {steps.map((step) => {
-        const chosen = picks.filter((pick) => pick.stepId === step.id).flatMap((pick) => pick.chosen.map(nameOf));
+        const chosen = [
+          ...state.startOptions.filter((question) => question.stepId === step.id).map((question) => startOptionsSummary(question.chosen, nameOf)),
+          ...picks.filter((pick) => pick.stepId === step.id).flatMap((pick) => pick.chosen.map(nameOf)),
+        ];
         return (
           <Row key={step.id}>
             <Text style={[styles.stepLabel, { color: palette.text }]}>{step.label}</Text>
@@ -150,18 +195,38 @@ export const BuildView = memo(function BuildView({
         </>
       ) : null}
 
-      <Heading>Open decisions ({decisions.length})</Heading>
+      <Heading>Open decisions ({groups.required.length})</Heading>
       {decisions.length === 0 ? <Body tone="muted">Nothing outstanding.</Body> : null}
-      {decisions.map((decision) => (
-        <Card key={`${decision.kind}:${decision.id}`}>
-          <DecisionView decision={decision} state={state} builder={builder} nameOf={nameOf} pick={setRequest} />
-        </Card>
-      ))}
+      {decisions.length > 0 && groups.required.length === 0 ? <Body tone="muted">{NOTHING_REQUIRED}</Body> : null}
+      {groups.required.map(decisionCard)}
+      {groups.optional.length > 0 ? (
+        <>
+          <Row>
+            <Text style={[styles.stepLabel, { color: palette.text, flex: 1 }]}>{optionalDecisionsLabel(groups.optional.length)}</Text>
+            <Button label={optionalOpen ? 'Hide' : 'Show'} kind="link" onPress={() => onOptionalOpen(!optionalOpen)} />
+          </Row>
+          {optionalOpen ? (
+            <>
+              <Body tone="muted">{OPTIONAL_DECISIONS_HINT}</Body>
+              {groups.optional.map(decisionCard)}
+            </>
+          ) : null}
+        </>
+      ) : null}
 
-      {picks.length > 0 ? (
+      {picks.length > 0 || state.startOptions.length > 0 ? (
         <>
           <Heading>Choices made</Heading>
           <Body tone="muted">Changing one rebuilds what followed from it; anything it opened that was answered is kept where the new choice offers it too.</Body>
+          {state.startOptions.map((question) => (
+            <Row key={question.stepId} style={[styles.settled, { borderColor: palette.border }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: palette.muted, fontSize: 13 }}>{question.label}</Text>
+                <Text style={{ color: palette.text, fontSize: 15 }}>{startOptionsSummary(question.chosen, labelOf)}</Text>
+              </View>
+              <Button label={START_OPTIONS_CHANGE} kind="link" onPress={() => onStartOptions('change')} />
+            </Row>
+          ))}
           {picks.map((pick) =>
             pick.chosen.map((id, index) => (
               <Row key={`${pick.ruleKey}:${index}`} style={[styles.settled, { borderColor: palette.border }]}>
@@ -334,6 +399,14 @@ export const BuildView = memo(function BuildView({
       ) : null}
 
       <Picker request={request} elements={elements} labelOf={labelOf} onClose={() => setRequest(null)} />
+      <StartOptionsView
+        open={startOptions !== null && state.startOptions.length > 0}
+        beginning={startOptions === 'new'}
+        questions={state.startOptions}
+        builder={builder}
+        labelOf={labelOf}
+        onClose={() => onStartOptions(null)}
+      />
     </View>
   );
 });
@@ -357,6 +430,32 @@ function Settled({ label, children }: { label: string; children: React.ReactNode
       </Row>
       {open ? children : null}
     </Card>
+  );
+}
+
+/**
+ * A card that has just taken the top (ADR 0123): it fades in where the answered one was and takes no tap for a moment.
+ * With reduced motion on, it is outlined instead, and nothing moves.
+ */
+function Arriving({ arrived, children }: { arrived: boolean; children: ReactNode }) {
+  const palette = usePalette();
+  const opacity = useRef(new Animated.Value(1)).current;
+  const [still, setStill] = useState(false);
+  useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then(setStill);
+  }, []);
+  useEffect(() => {
+    if (!arrived || still) return;
+    opacity.setValue(0.15);
+    Animated.timing(opacity, { toValue: 1, duration: ARRIVAL_GUARD_MS, useNativeDriver: true }).start();
+  }, [arrived, still, opacity]);
+  return (
+    <Animated.View
+      pointerEvents={arrived ? 'none' : 'auto'}
+      style={[{ opacity }, arrived && still ? { borderWidth: 2, borderColor: palette.accent, borderRadius: 10 } : null]}
+    >
+      {children}
+    </Animated.View>
   );
 }
 
@@ -385,7 +484,11 @@ function DecisionView({
     );
   } else if (decision.kind === 'budget') {
     body = step?.budget ? (
-      <BudgetView stepId={decision.stepId} budget={step.budget} builder={builder} kind={state.kind} />
+      <>
+        <BudgetView stepId={decision.stepId} budget={step.budget} builder={builder} kind={state.kind} />
+        {/* Every score set: the card waits for this rather than vanishing with the last one (ADR 0123). */}
+        {decision.remaining === 0 ? <Button label="Done" kind="primary" onPress={() => builder.confirmBudget(decision.stepId)} /> : null}
+      </>
     ) : (
       <Body tone="danger">Incudo could not show this step. This is a bug in Incudo.</Body>
     );

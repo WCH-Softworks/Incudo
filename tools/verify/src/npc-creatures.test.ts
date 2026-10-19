@@ -189,6 +189,9 @@ test('an NPC built from nothing is asked for all six scores, and the step blocks
   assert.equal(budget.blocking, true);
   assert.equal(budget.remaining, 6);
   for (const [n, score] of SCORES.entries()) b.setBudgetStat('abilities', score, 10 + n);
+  // Owing nothing, the card waits for its Done (ADR 0123).
+  assert.equal(b.getState().decisions.find((d) => d.stepId === 'abilities')?.remaining, 0);
+  b.confirmBudget('abilities');
   assert.equal(b.getState().decisions.some((d) => d.stepId === 'abilities'), false);
   assert.equal(b.getState().derived.stats.get('charisma')?.value, 15);
 });
@@ -246,7 +249,9 @@ test('an NPC from nothing enters armour class, hit points and speed, and a creat
   b.setBudgetStat('combat', 'ac', 25);
   b.setBudgetStat('combat', 'hp', 697);
   b.setBudgetStat('combat', 'speed', 40);
-  assert.equal(b.getState().decisions.some((d) => d.stepId === 'combat'), false, 'entered, the step closes');
+  assert.equal(b.getState().decisions.find((d) => d.stepId === 'combat')?.remaining, 0, 'entered, nothing is owed');
+  b.confirmBudget('combat');
+  assert.equal(b.getState().decisions.some((d) => d.stepId === 'combat'), false, 'and Done closes the step');
   assert.equal(b.getState().derived.stats.get('hp')?.value, 697);
 
   const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));

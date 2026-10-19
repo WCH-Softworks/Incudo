@@ -102,6 +102,7 @@ import {
 
 import {
   computeHitPointState,
+  firstLevelRecord,
   hitPointDecisionLabel,
   planHitPointChange,
   planHitPointRecord,
@@ -306,6 +307,17 @@ export interface BuilderStep {
   classLevels?: ClassLevelState;
 }
 
+/** One set asked when a character is started (ADR 0123), as its dialog and its line among the choices made show it. */
+export interface StartOptionsQuestion {
+  stepId: string;
+  label: string;
+  description?: string;
+  /** Everything the step offers now, what is chosen included. */
+  candidates: ElementId[];
+  /** What the character has; empty when it has none, which is an answer too. */
+  chosen: ElementId[];
+}
+
 export interface BuilderState {
   character: Character;
   derived: DerivedCharacter;
@@ -315,6 +327,12 @@ export interface BuilderState {
    * in `steps` unless the character already took something through it, which stays in `picks`, changeable.
    */
   advanced: { steps: string[]; shown: boolean };
+  /**
+   * The sets the system asks when a character is started (`askedAtStart`, ADR 0123): campaign options. None opens a
+   * decision; a shell asks them in a dialog of its own when New character makes one, and lists each among the choices
+   * already made, with its answer (even none) and a way to change it, which is `chooseAtStart`.
+   */
+  startOptions: StartOptionsQuestion[];
   /** The kind being built. ADR 0009. */
   kind: ResolvedCharacterKind;
   /** Everything still outstanding, always current, in no particular order of obligation. */
@@ -525,7 +543,15 @@ export class CharacterBuilder {
   private readonly listeners = new Set<() => void>();
   /** Per step, the levels recorded in this session and not yet confirmed: each keeps its own card open. */
   private readonly reviewingHitPoints = new Map<string, Set<number>>();
+  /**
+   * The budgets the user changed while they were open and has not said are done (ADR 0123): the card stays among the
+   * open decisions until its Done, as a hit point roll's does, rather than vanishing under the pointer with the last
+   * score set. Not part of the character.
+   */
+  private readonly reviewingBudgets = new Set<string>();
   private cached: BuilderState | undefined;
+  /** The state before the last change, which `getState` reads to see whether the first class moved (`firstLevelRecord`). */
+  private previous: BuilderState | undefined;
   private readonly random: () => number;
   /** The system's starting equipment for this kind (ADR 0087), and the answers given to its options, never saved. */
   private readonly startingFile: StartingEquipmentFile | undefined;
@@ -596,7 +622,24 @@ export class CharacterBuilder {
   };
 
   getState = (): BuilderState => {
-    if (!this.cached) this.cached = this.compute();
+    if (!this.cached) {
+      let state = this.compute();
+      // The first level's hit points are no one's decision (ADR 0123): recorded here, where every change and the first
+      // read pass, so no screen ever shows a first level to record. It writes only the die's maximum, and one pass is
+      // enough: recording it opens nothing.
+      let next = this.character;
+      for (const step of state.steps) {
+        if (!step.hitPoints) continue;
+        const before = this.previous?.steps.find((candidate) => candidate.id === step.id)?.hitPoints;
+        const record = firstLevelRecord(before, step.hitPoints);
+        if (record) next = setRoll(next, record.key, record.value);
+      }
+      if (next !== this.character) {
+        this.character = next;
+        state = this.compute();
+      }
+      this.cached = state;
+    }
     return this.cached;
   };
 
@@ -1288,6 +1331,16 @@ export class CharacterBuilder {
     this.invalidate();
   };
 
+  /**
+   * Answer a set asked when the character was started (`BuilderState.startOptions`, ADR 0123): the whole set, replacing
+   * what it held, from the dialog New character opens or from its line among the choices made. Empty is an answer.
+   */
+  chooseAtStart = (stepId: string, elementIds: ElementId[]): void => {
+    const step = this.steps.find((candidate) => candidate.id === stepId);
+    if (!step?.askedAtStart) return;
+    this.choose(pickRuleKey(stepId), [...new Set(elementIds)]);
+  };
+
   /** Rename the character. An input like any other; nothing derives what a player calls them. */
   setName = (name: string): void => {
     this.character = setName(this.character, name);
@@ -1330,6 +1383,7 @@ export class CharacterBuilder {
    * numbers waiting to be assigned; it is only their placement that goes.
    */
   setGenerationMethod = (stepId: string, methodId: string | undefined): void => {
+    this.reviewBudget(stepId);
     const step = this.steps.find((s) => s.id === stepId);
     const previous = this.character.generation?.[stepId];
     let next = setGenerationMethod(this.character, stepId, methodId);
@@ -1362,6 +1416,7 @@ export class CharacterBuilder {
   setBudgetStat = (stepId: string, stat: StatKey, value: number | undefined): void => {
     const budget = this.budgetFor(stepId);
     if (!budget) return;
+    this.reviewBudget(stepId);
     this.applyBudgetWrites(planBudgetSet(budget, stat, value));
   };
 
@@ -1369,6 +1424,7 @@ export class CharacterBuilder {
   adjustBudgetStat = (stepId: string, stat: StatKey, delta: number): void => {
     const budget = this.budgetFor(stepId);
     if (!budget) return;
+    this.reviewBudget(stepId);
     this.applyBudgetWrites(planBudgetAdjust(budget, stat, delta));
   };
 
@@ -1383,6 +1439,7 @@ export class CharacterBuilder {
   rollBudget = (stepId: string): void => {
     const budget = this.budgetFor(stepId);
     if (!budget) return;
+    this.reviewBudget(stepId);
     let next = this.character;
     for (const result of rollBudgetValues(stepId, budget, this.character, this.random)) {
       next = setRoll(next, result.key, result.roll.total);
@@ -1429,6 +1486,7 @@ export class CharacterBuilder {
   rerollBudget = (stepId: string): void => {
     const budget = this.budgetFor(stepId);
     if (!budget?.dice) return;
+    this.reviewBudget(stepId);
 
     let next = this.character;
     for (let i = 0; i < budget.dice.count; i += 1) {
@@ -1444,6 +1502,26 @@ export class CharacterBuilder {
     this.character = next;
     this.invalidate();
   };
+
+  /**
+   * Say the scores are what the user wants, so the budget's card can close (ADR 0123). Setting the last score does not
+   * close it on its own: whoever set it may still be moving the others.
+   */
+  confirmBudget = (stepId: string): void => {
+    if (!this.reviewingBudgets.delete(stepId)) return;
+    this.invalidate();
+  };
+
+  /**
+   * A change to a budget whose card is open keeps the card open until its Done. A budget changed from the settled
+   * column is the user already editing it there, and is not bounced back among the open decisions, as a hit point
+   * roll changed there is not.
+   */
+  private reviewBudget(stepId: string): void {
+    if (this.getState().decisions.some((decision) => decision.kind === 'budget' && decision.stepId === stepId)) {
+      this.reviewingBudgets.add(stepId);
+    }
+  }
 
   /** The budget of one step, as the editor sees it, or undefined if that step has none. */
   budgetFor = (stepId: string): BudgetState | undefined => {
@@ -1596,6 +1674,7 @@ export class CharacterBuilder {
   }
 
   private invalidate(): void {
+    if (this.cached) this.previous = this.cached;
     this.cached = undefined;
     for (const listener of this.listeners) listener();
   }
@@ -1775,6 +1854,7 @@ export class CharacterBuilder {
     //
     // A step that equips (ADR 0072) is a set of the same shape whose answers live in the bag: what it has taken is the
     // equipped entries it admits, and what it offers is narrowed by its setter. Everything else below is shared.
+    const startOptions: StartOptionsQuestion[] = [];
     for (const step of this.steps) {
       const equips = isEquipStep(step);
       if (!(step.multiple || equips) || step.perLevel || !step.types.length) continue;
@@ -1782,6 +1862,20 @@ export class CharacterBuilder {
       const chosen = equips
         ? equipTaken(this.character, step, this.elements)
         : [...(getChoice(this.character, ruleKey)?.elementIds ?? [])];
+      // Asked when the character was started (ADR 0123): never an open decision, and listed with its answer even when
+      // that is none, since a set nobody can add to from Build would otherwise have no way back.
+      if (step.askedAtStart && !equips) {
+        startOptions.push({
+          stepId: step.id,
+          label: step.label,
+          ...(step.description !== undefined ? { description: step.description } : {}),
+          candidates: [...new Set([...offeredBy(step), ...chosen])],
+          chosen,
+        });
+        const rank = stepOrderIndex.get(step.id) ?? Number.MAX_SAFE_INTEGER;
+        for (const id of chosen) pickElementRank.set(id, rank);
+        continue;
+      }
       // Everything the character holds, not only what this step chose: a creature's own Gore is
       // granted (ADR 0058), and offering it again would be offering what the NPC already has. The
       // rule content `select` pools have always followed.
@@ -1928,8 +2022,10 @@ export class CharacterBuilder {
       // Open while there is anything left to do, and the two are not the same thing: a
       // point-buy character can spend the last of the pool with two scores still untouched,
       // and a rolled character has nothing to spend and six values to place.
-      const open = state.unassigned.length > 0 || (state.pooled && state.remaining > 0);
-      if (open) {
+      const owed = state.unassigned.length > 0 || (state.pooled && state.remaining > 0);
+      // Changed while it was open and not yet confirmed (ADR 0123): the card waits for its Done, with nothing owed.
+      const reviewing = !owed && this.reviewingBudgets.has(step.id);
+      if (owed || reviewing) {
         decisions.push({
           id: state.stat,
           kind: 'budget',
@@ -1939,8 +2035,11 @@ export class CharacterBuilder {
           // Points where there are points to spend, otherwise scores left to assign.
           // Different units, deliberately: `BudgetState` on the step carries both, and a
           // shell that wants to phrase it precisely reads that instead.
-          remaining:
-            state.pooled && state.remaining > 0 ? state.remaining : state.unassigned.length,
+          remaining: reviewing
+            ? 0
+            : state.pooled && state.remaining > 0
+              ? state.remaining
+              : state.unassigned.length,
           // A budget assigns numbers, not elements.
           candidates: [],
           chosen: [],
@@ -2011,7 +2110,13 @@ export class CharacterBuilder {
     // `Array.prototype.sort` is stable, so ties keep the order they were pushed in.
     const start = this.kind.progression.kind === 'none' ? 0 : (this.kind.progression.min ?? 0);
     const levelOf = (decision: OpenDecision): number => Math.max(decision.opensAt ?? 0, start);
-    decisions.sort((a, b) => levelOf(a) - levelOf(b) || rankOf(a) - rankOf(b));
+    //
+    // What must be answered comes before what may be (ADR 0123): a Fighter levelled to 3 met its Martial Archetype and
+    // its new hit points below seven optional first-level decisions (a variant, a specialty, an alignment, a deity…),
+    // which a user had to scroll past to find the one thing owed. Within each, the order above.
+    decisions.sort(
+      (a, b) => Number(!a.blocking) - Number(!b.blocking) || levelOf(a) - levelOf(b) || rankOf(a) - rankOf(b),
+    );
 
     // A non-blocking decision the user declined (ADR 0033) leaves `decisions` the same way an
     // answered one does, and for the same reason: a step whose only outstanding items are
@@ -2024,7 +2129,17 @@ export class CharacterBuilder {
     // A step the system marks advanced offers nothing while the user has not asked for advanced options (ADR 0115). Only
     // the step's own offer goes: what it already took is a settled pick, and stays changeable whatever the switch says.
     // Not declined either: hiding is the user's view, and a declined decision is recorded on the character.
-    const hidden = new Set(this.showAdvanced ? [] : this.steps.filter((step) => step.advanced).map((step) => step.id));
+    //
+    // A step a campaign option switches on is left out the same way while the character does not hold the option (ADR
+    // 0123): the character's own answer this time, not the user's view.
+    const hidden = new Set(
+      this.steps
+        .filter(
+          (step) =>
+            (step.advanced && !this.showAdvanced) || (step.offeredWhen !== undefined && !derived.elementIds.has(step.offeredWhen)),
+        )
+        .map((step) => step.id),
+    );
     const openDecisions = decisions.filter((decision) => {
       if (decision.kind === 'pick' && hidden.has(decision.stepId)) return false;
       if (decision.blocking || !declinedIds.has(decision.id)) return true;
@@ -2053,6 +2168,8 @@ export class CharacterBuilder {
         openCount: open.length,
         complete: !open.some((decision) => decision.blocking),
         taken:
+          // A set asked at the start is answered once the character exists, even by none (ADR 0123).
+          startOptions.some((question) => question.stepId === step.id) ||
           picks.some((pick) => pick.stepId === step.id && pick.chosen.length > 0) ||
           (budgets.get(step.id) !== undefined && budgets.get(step.id)!.unassigned.length === 0) ||
           (hitPoints.get(step.id)?.levels.some((level) => level.recorded !== undefined || level.fixedValue !== undefined) ?? false),
@@ -2092,6 +2209,7 @@ export class CharacterBuilder {
       decisions: openDecisions,
       steps,
       advanced: { steps: this.steps.filter((step) => step.advanced).map((step) => step.label), shown: this.showAdvanced },
+      startOptions,
       picks,
       declined,
       preparation: preparationRows(derived, this.elements),

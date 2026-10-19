@@ -191,7 +191,8 @@ today's and moves; these are the record of a moment (below).
 - **229 generated elements** — what Aurora's app materializes at runtime, not counted in the
   14,320 because they do not come from a file. 83 are the fixed overlay in
   `packages/aurora-import/src/generated-elements.ts` (it was 80 until the importer started
-  reading `<equipment>` and found three more that only a *bag* names, ADR 0024's step 2), and
+  reading `<equipment>` and found three more that only a *bag* names, ADR 0024's step 2; *since ADR 0123 it is
+  84: Incudo's own "Additional Features" campaign option, so the generated total is 230*), and
   **146 are the ability score improvement options**, derived from whatever content is loaded by
   `improvement-options.ts` (73 class-and-level pairs, an ASI option and a feat option each —
   ADR 0035). The second kind depends on what is loaded, so the total is a property of the corpus
@@ -232,7 +233,7 @@ rewrote that install while the app was open (seven files, 14,316 to 14,320 eleme
 identical). What it guarded is that a budget only catches "worse", so renaming the ids `parseRules`
 mints for inline lists would leave every budget green. That is held by unit tests that read no
 corpus, and it was checked by perturbation: changing the minted id's shape, and stopping inline
-lists producing elements, each fail three of them. The overlay's size (83) is asserted on its own
+lists producing elements, each fail three of them. The overlay's size (84 since ADR 0123) is asserted on its own
 in `corpus.test.ts`. The figures in the bullets above are the record of a moment, not a pin.
 
 Aurora saves: **all 9 import; 1 element-missing, 0 spell-missing, 0 stat-mismatch**, and
@@ -2279,9 +2280,9 @@ the phone's. Nothing in `budget.ts` knows a modifier's formula; a kind whose she
 total alone. Driven in the browser build.
 
 **A build step may be `advanced`, offered only when the user switches on "Show advanced options"**
-([ADR 0115](docs/adr/0115-a-build-step-may-be-advanced-and-how-a-user-likes-the-build-is-a-preference.md)). 5e marks
-"Additional features" and "Ability score adjustments" (the maintainer's call; Tasha's optional class features stay
-offered). Off, the step opens no decision and has no line, unless something was taken through it, which stays a settled
+([ADR 0115](docs/adr/0115-a-build-step-may-be-advanced-and-how-a-user-likes-the-build-is-a-preference.md)). 5e marked
+"Additional features" and "Ability score adjustments"; since ADR 0123 they wait on a campaign option instead
+(`offeredWhen`, below), so 5e marks no step advanced and shows no switch. The mechanism stays for other systems. Off, the step opens no decision and has no line, unless something was taken through it, which stays a settled
 pick; nothing is declined or written to the character. `CharacterBuilder` takes `showAdvanced` (default off) and
 `setShowAdvanced`; `BuilderState.advanced` names the steps. The preference is `build/view` in `Storage`
 (`build-preferences.ts`), never `character.json`; the desktop and the phone both have the switch. Validation refuses it on
@@ -2291,6 +2292,35 @@ of Build's two tabs is open: **Build** (progression, cantrip dice included) and 
 packages, inventory and money, prepared spells, About the character, For reference, Books), `BUILD_TABS`. The command
 `switch-build-tab` (View menu, Build only, Ctrl+Shift+H, which reaches the page with real keys in the Windows window) moves between
 them. The phone has the switch and not the tabs or the fold.
+
+**Required decisions come first, and what shapes the build is asked before it**
+([ADR 0123](docs/adr/0123-required-decisions-come-first-and-what-shapes-the-build-is-asked-before-it.md)). The
+maintainer's six calls on the hands-on pass. Things to know before touching it:
+
+- **Order**: `compute()` sorts Open decisions by blocking first, then level, then step rank (ADR 0034). Shells split them
+  with `decisionGroups` (`build-view.ts`) and fold the optional ones under "Optional (N)" (`optionalOpen` in `build/view`,
+  closed by default). "Open decisions N" counts the required ones. The Build tab's badge still counts all.
+- **`askedAtStart`** (system format, only on a `multiple` step) opens no decision. `BuilderState.startOptions` publishes
+  each such set, with what it holds even when that is nothing, and `chooseAtStart` writes it whole. New character opens
+  the dialog (`StartOptions.tsx`; the phone's `StartOptionsView.tsx`, once content has loaded) with `initial` ticked.
+  Cancel keeps the defaults, and "Change…" under the choices made reopens it. 5e's campaign options declare it. A test
+  answering options calls `chooseAtStart`, never `choose('build/options', …)` on a decision (`answerAtStart` in
+  `rogue-wizard-build.ts`).
+- **`offeredWhen`** (system format, an element id, refused on a step that must be answered): without it held, the step
+  opens nothing and has no line; what was taken stays settled. 5e's additional features and score adjustments name
+  `ID_INTERNAL_OPTION_ALLOW_ADDITIONAL_FEATURES`, Incudo's own option in the overlay (84 elements now). A test measuring
+  those steps ticks it.
+- **The first level's hit points are never a card**: `getState` records the die's maximum once the die is known and
+  nothing is recorded (`firstLevelRecord`, `hitpoints.ts`), on the first read too. A first level holding the old die's
+  maximum follows a change of first class; any other value is kept. Nothing is recorded in fixed (average) mode.
+- **A budget changed while its card is open waits for Done** (`confirmBudget`; `reviewingBudgets` is the builder's, never
+  the character's). A test that fills a budget and expects it closed calls `confirmBudget`.
+- **The card that takes the top is marked**: `arrivedDecision`, `ARRIVAL_GUARD_MS` (400). On the desktop it is the
+  `.arrived` class (slide-in, no clicks; an outline under `prefers-reduced-motion`). On the phone it is `Arriving` in
+  `BuildView.tsx`.
+- Tests: `packages/ui/src/build-flow.test.ts`, each case failing under its named perturbation, plus
+  `decision-order.test.ts`'s report of a fresh 2014 and 2024 Fighter 3. Driven in the browser build (a wizard started,
+  a Fighter 2 / Rogue 1); the phone is typechecked, not driven.
 
 **Each level's hit points are a card of their own** (2026-10-14, the maintainer's call): a `hitpoints` decision per level
 still to record or under review (`OpenDecision.hitPointLevel`, "Hit Points, level 4", `hitPointDecisionLabel`), opening at

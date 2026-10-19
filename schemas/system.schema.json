@@ -1120,6 +1120,15 @@
           "type": "boolean",
           "description": "This step is offered only when the user asks for advanced options (ADR 0115): for what a table grants beyond the rules a character is built by, which most characters never take. While advanced options are off it opens no decision; what a character already took through it still shows. Only on a step a character may leave unanswered: a set (multiple), a step that equips, or a pick that is not required. A reader that does not know this key offers the step as before, so it does not change formatVersion."
         },
+        "offeredWhen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An element id (a campaign option, ADR 0123). While the character does not hold it, the step offers nothing and has no line among the character's parts; what a character already took through it still shows. So the character, not the user's preferences, says whether the step is offered. Only on a step a character may leave unanswered: a set (multiple), a step that equips, or a pick that is not required. A reader that does not know this key offers the step as before, so it does not change formatVersion."
+        },
+        "askedAtStart": {
+          "type": "boolean",
+          "description": "This set is asked when a character is started, before anything else is built (ADR 0123): options that shape every other offer. It opens no decision on Build; its answer, even none, is listed with the choices already made and changed there. Only on a multiple step. A reader that does not know this key offers the step as an open decision, as before, so it does not change formatVersion."
+        },
         "pick": {
           "type": "boolean",
           "description": "This step is a pick of one even though it is not required: offered as one, never blocking, so it may be skipped (ADR 0068). An NPC's creature, which an NPC built by hand has none of. Without it a step that is neither required nor multiple is a heading for the selects content opens of its types. Cannot be combined with `multiple`. A reader that does not know this key offers no pick for the step, as before, so it does not change formatVersion."

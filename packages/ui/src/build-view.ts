@@ -366,3 +366,57 @@ export function progressPrintedHint(
   const whose = progress.printedBy !== undefined ? `${nameOf(progress.printedBy)}'s own` : 'what the character holds prints';
   return `A faded number is ${whose}, and it is used until you type another. Clear what you typed to go back to it.`;
 }
+
+/**
+ * Open decisions as a screen lists them (ADR 0123): what must be answered, then what may be, folded under a heading of
+ * its own. The builder already sorts them that way; this only splits them, so the phone and the desktop split alike.
+ */
+export function decisionGroups(decisions: readonly OpenDecision[]): { required: OpenDecision[]; optional: OpenDecision[] } {
+  return {
+    required: decisions.filter((decision) => decision.blocking),
+    optional: decisions.filter((decision) => !decision.blocking),
+  };
+}
+
+/** The heading the optional decisions fold under: "Optional (5)". */
+export function optionalDecisionsLabel(count: number): string {
+  return `Optional (${count})`;
+}
+
+/** What a screen says under that heading. */
+export const OPTIONAL_DECISIONS_HINT = 'None of these has to be answered. Take what your table uses, or skip it.';
+
+/** What Open decisions says when only optional ones are left. */
+export const NOTHING_REQUIRED = 'Nothing more has to be decided.';
+
+/** How a decision is told apart from the others on one screen, its card's key included. */
+export function decisionKey(decision: Pick<OpenDecision, 'kind' | 'id'>): string {
+  return `${decision.kind}:${decision.id}`;
+}
+
+/**
+ * The decision that has just taken the top of the list, when it is not the one there before (ADR 0123): a pick that
+ * closed the top card brings the next one into the same place, and a screen marks the new one so a quick second click is
+ * not taken for the old card. Undefined when the top is the same, when nothing was on screen before, and when the list
+ * is empty. `previous` is the key of the decision that was first.
+ */
+export function arrivedDecision(previous: string | undefined, decisions: readonly OpenDecision[]): string | undefined {
+  const top = decisions[0];
+  if (previous === undefined || top === undefined) return undefined;
+  const key = decisionKey(top);
+  return key === previous ? undefined : key;
+}
+
+/** How long a card that has just taken the top ignores the pointer, in milliseconds: about a quick double click. */
+export const ARRIVAL_GUARD_MS = 400;
+
+/** What a set asked when the character was started holds, by name: "Feats, Multiclassing", or "None". */
+export function startOptionsSummary(chosen: readonly ElementId[], nameOf: (id: ElementId) => string): string {
+  return chosen.length ? chosen.map(nameOf).join(', ') : 'None';
+}
+
+/** The dialog New character opens for them, and its line among the choices made. */
+export const START_OPTIONS_HINT = 'These shape what the rest of the build offers. You can change them later on Build.';
+export const START_OPTIONS_BEGIN = 'Start building';
+export const START_OPTIONS_SAVE = 'Done';
+export const START_OPTIONS_CHANGE = 'Change…';

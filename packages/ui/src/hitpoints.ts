@@ -239,6 +239,31 @@ export function planHitPointChange(
   return { key, value: valueFor(change, level.dieSides, level.average!, random) };
 }
 
+/**
+ * What the first level should hold without anyone being asked — ADR 0123. The first level is always the die's maximum,
+ * so it is never a decision: the builder records it the moment its die is known, the value a "Record the maximum" click
+ * used to write. And when the first class changes to one of another die, a first level holding the old class's maximum
+ * moves to the new one's, as a level moved between classes loses its roll (ADR 0036): any other value there was typed
+ * or imported, and is left alone. Nothing while the levels are fixed, which read their own maximum (ADR 0044).
+ */
+export function firstLevelRecord(previous: HitPointState | undefined, current: HitPointState): HitPointRecord | undefined {
+  if (current.fixed) return undefined;
+  const first = current.levels.find((level) => level.isFirst);
+  if (!first || first.dieSides === undefined) return undefined;
+  const key = hitPointRollKey(current.pattern, first.level);
+  if (first.recorded === undefined) return { key, value: first.dieSides };
+  const before = previous?.levels.find((level) => level.isFirst);
+  if (
+    before?.dieSides !== undefined &&
+    before.classElementId !== first.classElementId &&
+    first.recorded === before.dieSides &&
+    first.recorded !== first.dieSides
+  ) {
+    return { key, value: first.dieSides };
+  }
+  return undefined;
+}
+
 /** What one level's card is called among the open decisions: "Hit Points, level 4". */
 export function hitPointDecisionLabel(level: number): string {
   return `Hit Points, level ${level}`;

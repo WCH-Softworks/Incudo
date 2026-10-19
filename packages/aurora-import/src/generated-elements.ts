@@ -160,6 +160,15 @@ const MARKERS: Array<[id: string, type: string, name: string, description: strin
     'Multiclassing',
     'This campaign uses the optional multiclassing rules.',
   ],
+  // Not one of Aurora's: Incudo's own switch for the two families of hidden items a table hands out beyond the rules
+  // (ADR 0089), which the system definition offers only while a character holds this (ADR 0123). Aurora's app offers
+  // them to every character; Incudo asks the table first, as it does for feats.
+  [
+    'ID_INTERNAL_OPTION_ALLOW_ADDITIONAL_FEATURES',
+    'Option',
+    'Additional Features',
+    'This campaign lets a character take features beyond the usual rules: another speed or sense, a prerequisite waived, weapon mastery, a companion of their choice, lycanthropy, and ability score adjustments.',
+  ],
   [
     'ID_INTERNAL_RITUAL_CASTING',
     'Grants',

@@ -32,6 +32,7 @@ const skip = corpusSkip;
 const FEATS = 'ID_INTERNAL_OPTION_ALLOW_FEATS';
 const MULTICLASSING = 'ID_INTERNAL_OPTION_ALLOW_MULTICLASSING';
 const CUSTOM_ASI = 'ID_WOTC_TCOE_OPTION_CUSTOMIZED_ASI';
+const ADDITIONAL_FEATURES = 'ID_INTERNAL_OPTION_ALLOW_ADDITIONAL_FEATURES';
 
 async function fiveE(): Promise<GameSystem> {
   const path = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'systems', 'dnd5e', 'system.json');
@@ -54,20 +55,21 @@ function build(
   return b;
 }
 
-test('the options step offers every Option in the corpus, and never blocks', { skip }, async () => {
+test('the options step offers every Option in the corpus, asked at the start and never blocking', { skip }, async () => {
   const system = await fiveE();
   const elements = await realElements();
   const b = new CharacterBuilder(createCharacter('dnd5e', 'pc', { progress: 1 }), system, elements);
 
-  const decision = b.getState().decisions.find((d) => d.stepId === 'options')!;
-  assert.ok(decision, 'the set is on screen from the start');
-  assert.equal(decision.blocking, false);
-  assert.equal(decision.multiple, true);
-  // Six real ones and the two the overlay supplies — found by type, with no id named in the step.
-  assert.equal(decision.candidates.length, elements.byType('Option').length);
-  assert.equal(decision.candidates.length, 8);
-  assert.ok(decision.candidates.includes(FEATS));
-  assert.ok(decision.candidates.includes(CUSTOM_ASI));
+  // Asked when the character is started (ADR 0123), so never among the open decisions.
+  assert.equal(b.getState().decisions.some((d) => d.stepId === 'options'), false);
+  const question = b.getState().startOptions.find((q) => q.stepId === 'options')!;
+  assert.ok(question, 'the set is asked at the start');
+  // Six real ones and the three the overlay supplies — found by type, with no id named in the step.
+  assert.equal(question.candidates.length, elements.byType('Option').length);
+  assert.equal(question.candidates.length, 9);
+  assert.ok(question.candidates.includes(FEATS));
+  assert.ok(question.candidates.includes(CUSTOM_ASI));
+  assert.ok(question.candidates.includes(ADDITIONAL_FEATURES));
   assert.equal(b.getState().steps.find((s) => s.id === 'options')!.complete, true);
 });
 
@@ -147,8 +149,8 @@ test('options an import already holds read as chosen, and can be changed', { ski
   };
   const b = new CharacterBuilder(character, system, elements);
 
-  assert.deepEqual(b.getState().picks.find((p) => p.stepId === 'options')?.chosen, [FEATS, CUSTOM_ASI]);
-  b.choose('build/options', [CUSTOM_ASI]);
+  assert.deepEqual(b.getState().startOptions.find((q) => q.stepId === 'options')?.chosen, [FEATS, CUSTOM_ASI]);
+  b.chooseAtStart('options', [CUSTOM_ASI]);
   assert.ok(!b.getState().derived.elementIds.has(FEATS));
   assert.ok(b.getState().derived.elementIds.has(CUSTOM_ASI));
 });
@@ -161,12 +163,12 @@ test('a new player character starts with feats and multiclassing on, and either 
   const character = newCharacterOfKind(system, 'pc');
   character.progress = 4;
   const b = new CharacterBuilder(character, system, elements);
-  assert.deepEqual(b.getState().picks.find((p) => p.stepId === 'options')?.chosen, [FEATS, MULTICLASSING]);
+  assert.deepEqual(b.getState().startOptions.find((q) => q.stepId === 'options')?.chosen, [FEATS, MULTICLASSING]);
   assert.ok(b.getState().derived.elementIds.has(FEATS) && b.getState().derived.elementIds.has(MULTICLASSING));
   b.choose('build/class', ['ID_WOTC_PHB_CLASS_FIGHTER']);
   const offered = () => b.getState().decisions.find((d) => /Improvement Option \(Fighter 4\)/i.test(d.label))!.candidates.length;
   assert.equal(offered(), 2, 'the feat is offered beside the improvement');
-  b.choose('build/options', [MULTICLASSING]);
+  b.chooseAtStart('options', [MULTICLASSING]);
   assert.equal(offered(), 1, 'with feats switched off, only the improvement');
   assert.ok(!b.getState().derived.elementIds.has(FEATS));
 });

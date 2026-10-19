@@ -139,6 +139,7 @@ test("the guide's worked example builds the character its sheet block shows, fro
   builder.setBudgetStat('scores', 'might', 14);
   builder.setBudgetStat('scores', 'agility', 10);
   builder.setBudgetStat('scores', 'wits', 12);
+  builder.confirmBudget('scores');
   for (const step of ['calling', 'traits', 'gear']) {
     const decision = builder.getState().decisions.find((d) => d.stepId === step);
     assert.ok(decision, `nothing to choose for ${step}`);

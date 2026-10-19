@@ -361,8 +361,8 @@ test('an Aurora download folder is read by name, and is not the same layout as a
  * The overlay is a fixed table in the importer, and CLAUDE.md counts it. It is a property of the code
  * and reads no corpus, so it is asserted here where anyone can run it.
  */
-test('the overlay is the 83 elements Aurora materializes at runtime', () => {
-  assert.equal(auroraGeneratedElements().length, 83);
+test('the overlay is 84 elements: the 83 Aurora materializes at runtime and one option of Incudo', () => {
+  assert.equal(auroraGeneratedElements().length, 84);
 });
 
 /**

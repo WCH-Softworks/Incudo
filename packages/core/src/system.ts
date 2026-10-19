@@ -766,6 +766,21 @@ export interface BuildStepDef {
    * before, so `formatVersion` did not move.
    */
   advanced?: boolean;
+  /**
+   * An element that, while the character does not hold it, keeps this step from offering anything — ADR 0123. Read the
+   * way `multiclassWhen` and `levelRoll.fixedWhen` are: an id the system names, held when the derivation holds it. A
+   * campaign option, so the character says whether the step is offered, not the user's preferences. What a character
+   * already took through the step still shows and can be changed or taken back. Only on a step a character may leave
+   * unanswered, as `advanced`.
+   */
+  offeredWhen?: ElementId;
+  /**
+   * This set is asked when a character is started, before anything else is built — ADR 0123: campaign options, which
+   * shape every other offer. It opens no decision on Build; its answer, even "none", is listed with the choices already
+   * made and changed there. Only on a `multiple` step. A reader that does not know the key offers the step as an open
+   * decision, as before, so `formatVersion` did not move.
+   */
+  askedAtStart?: boolean;
   description?: string;
   /**
    * Ids of steps that must be usable before this one is — ADR 0017.

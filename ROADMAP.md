@@ -2276,6 +2276,15 @@ written on a character can be moved into the user's library without being typed 
       opening another character and Change system ask "Save first", "Discard changes" or "Keep editing"; before anything
       is started Build and the Sheet say "No character yet" and nothing acts on the blank one. Driven in the browser build
       only. Left: the Build tab still counts optional decisions, and the phone keeps its own check (`edit-session.ts`).
+- [x] **Build's decisions read in the order they must be answered, and what shapes the build is asked first**
+      ([ADR 0123](./docs/adr/0123-required-decisions-come-first-and-what-shapes-the-build-is-asked-before-it.md)).
+      From the same hands-on pass, the maintainer's six calls, done 2026-10-19: required decisions before optional ones,
+      which fold under "Optional (N)"; campaign options asked in a dialog when a character is started, and changed
+      from the choices made; "Additional features" and "Ability score adjustments" offered only with a campaign option
+      that says so; the first level's hit points recorded, never asked; the scores card kept until Done; the card that
+      takes the top marked for a moment. Both apps. Driven in the browser build (a wizard started, a Fighter 2 / Rogue 1);
+      the phone typechecked only. Left as their own tasks: spells in a tab of their own, a settled choice's editor in the
+      middle column, duplicate printings, and the Build tab's count of optional decisions.
 - [ ] **Drive everything in the Tauri window and on the phone before 1.0.** Raised 2026-10-11, last on purpose. Many
       features were driven only in the browser build (CLAUDE.md says "Driven in the browser build only" fifteen times),
       and the first feature driven in both shells afterwards found two bugs no test and no browser drive could see: the

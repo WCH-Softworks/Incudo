@@ -255,7 +255,8 @@ test(
       assert.equal(built.character.baseStats?.['constitution'], 14, 'the base is what is stored');
       assert.equal(built.character.overrides?.['constitution'], undefined, 'never an override');
       assert.equal(built.derived.stats.get('constitution')?.value, 16, '14 plus the dwarf');
-      assert.equal(built.derived.stats.get('hp')?.value, 3, 'and a score nobody rolled moves hp');
+      // The first level is the Fighter's d10 maximum, recorded without a decision (ADR 0123), and Constitution adds 3.
+      assert.equal(built.derived.stats.get('hp')?.value, 13, 'and the score moves hp');
       const expected = summarize(built.derived);
 
       const writing = new CharacterLibrary(new NodeCharacterStore(dir));

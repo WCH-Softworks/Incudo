@@ -54,6 +54,7 @@ test('the starter builds a character with no content: scores entered, a derived 
   builder.setBudgetStat('scores', 'might', 14);
   builder.setBudgetStat('scores', 'agility', 9);
   builder.setBudgetStat('scores', 'wits', 12);
+  builder.confirmBudget('scores');
   const state = builder.getState();
   assert.deepEqual(state.decisions, []);
   assert.deepEqual(state.derived.problems, []);
