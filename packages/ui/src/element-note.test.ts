@@ -49,7 +49,7 @@ test('a note whose showWhen reads zero is left out, and one with no showWhen is 
 test('the Markdown writes the note as a line of the item, after content’s text or alone', () => {
   // Perturbation: drop the note from the item and neither line carries it.
   const elements = listed([stat('aid', 2), stat('hurt', 2)]);
-  const markdown = sheetMarkdown({ name: 'A', title: 'A', kindName: 'Kind', elementCount: 0, sections: [{ id: 'moves', label: 'Moves', section: 'moves', rows: [], printed: [], elements }] } as never);
+  const markdown = sheetMarkdown({ name: 'A', title: 'A', kindName: 'Kind', sections: [{ id: 'moves', label: 'Moves', section: 'moves', rows: [], printed: [], elements }] } as never);
   assert.match(markdown, /\*\*Bite\*\*: It bites\. {2}\n {2}Its holder adds 2 and 2\./);
   assert.match(markdown, /- Dodge {2}\n {2}Its holder adds 2 and 2\./);
 });

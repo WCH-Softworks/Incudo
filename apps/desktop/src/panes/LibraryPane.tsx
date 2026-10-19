@@ -235,7 +235,7 @@ export function LibraryPane({
       {state.entries.length === 0 && !state.busy && (
         <p className="lede">
           No {systemName} characters in that folder yet. <strong>New character</strong> starts
-          one, and anything you copy in — a save from a friend, a folder out of git — shows up on
+          one, and anything you copy in — a save from a friend, a copy from another computer — shows up on
           the next refresh.
         </p>
       )}
@@ -320,7 +320,6 @@ function ImportReport({
                 <>
                   {' → '}
                   <code>{report.entry?.name}</code>
-                  {` · ${report.embedded} ${report.embedded === 1 ? 'element' : 'elements'} embedded`}
                   {report.assetCount > 0 && ` · ${report.assetCount} asset(s)`}
                 </>
               ) : (
@@ -394,7 +393,7 @@ function FirstRunDialog({
       <h2>Where do you keep your characters?</h2>
       <p className="lede">
         Pick a folder and Incudo remembers it. It lists every <code>.incu</code> inside, and
-        leaves everything else in there alone — it is your folder, so put it in git, sync it, copy
+        leaves everything else in there alone — it is your folder, so sync it, back it up, copy
         files in and out. Incudo rescans and never renames anything.
       </p>
       {/* "Needs no content sources to open" is ADR 0012: a save embeds every element it uses. */}
@@ -446,8 +445,6 @@ function CharacterCard({
           ) : (
             <>
               {kind}
-              {entry.elementCount !== undefined &&
-                ` · ${entry.elementCount} ${entry.elementCount === 1 ? 'element' : 'elements'} embedded`}
             </>
           )}
         </p>

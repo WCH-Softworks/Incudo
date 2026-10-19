@@ -159,7 +159,6 @@ test('the builder publishes the sheet, marking what the user added with its prer
   const state = new CharacterBuilder(character, system(), index).getState();
   const gear = state.sheet.sections.find((s) => s.id === 'gear')!;
   assert.deepEqual(gear.elements.find((e) => e.elementId === 'GEM'), { elementId: 'GEM', name: 'Gem', type: 'Gadget', prerequisitesUnmet: true });
-  assert.equal(state.sheet.elementCount, state.derived.elements.length);
 });
 
 // ADR 0079. Fails if a section's `mark` is not read (no row is marked), if the count is not taken against `per` (grit's 4

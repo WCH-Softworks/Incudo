@@ -61,6 +61,7 @@ import {
   type ElementId,
   type Rule,
 } from '@incudo/core';
+import { NO_BOOK } from './book.ts';
 
 /** The tag that marks an element as one of the choices a class's improvement level offers. */
 const OPTION_TAG = 'Improvement Option';
@@ -151,7 +152,10 @@ export function improvementOptionElements(
     if (declared.has(`${cls.toLowerCase()}|${level}`)) continue;
     pairs++;
 
-    const label = `${cls.toUpperCase()} ${level}`;
+    // The keys are the select names Aurora's saves record ("Feat (FIGHTER 4)"), so a recorded pick lands in its pool;
+    // the names are what a screen shows, the class as content writes it ("Feat (Fighter 4)").
+    const key = `${cls.toUpperCase()} ${level}`;
+    const label = `${cls} ${level}`;
     const supports = [OPTION_TAG, cls, level];
     const asi = optionId('ASI', level, cls);
     const feat = optionId('FEAT', level, cls);
@@ -160,7 +164,7 @@ export function improvementOptionElements(
       const rules: Rule[] = [
         {
           kind: 'select',
-          key: `select:Ability Score Increase (${label})`,
+          key: `select:Ability Score Increase (${key})`,
           type: ASI_TYPE,
           name: `Ability Score Increase (${label})`,
           supports: parseSupports(ASI_SUPPORTS),
@@ -171,7 +175,7 @@ export function improvementOptionElements(
         id: asi,
         type: 'Class Feature',
         name: 'Ability Score Improvement',
-        source: 'Internal',
+        source: NO_BOOK,
         setters: {},
         rules,
         supports,
@@ -186,12 +190,12 @@ export function improvementOptionElements(
         id: feat,
         type: 'Class Feature',
         name: 'Feat',
-        source: 'Internal',
+        source: NO_BOOK,
         setters: {},
         rules: [
           {
             kind: 'select',
-            key: `select:Feat (${label})`,
+            key: `select:Feat (${key})`,
             type: 'Feat',
             name: `Feat (${label})`,
             number: 1,

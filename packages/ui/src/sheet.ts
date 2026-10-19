@@ -204,10 +204,9 @@ export interface SheetSectionView {
   purse?: PurseRow[];
 }
 
-/** The character's own sheet: its kind, how many elements it holds, and its sections, empty ones left out. */
+/** The character's own sheet: its kind and its sections, empty ones left out. */
 export interface SheetView {
   kindName: string;
-  elementCount: number;
   sections: SheetSectionView[];
   /**
    * How many placeholders its own sections' listed elements name that nothing publishes (ADR 0076): 0 when all fill. A
@@ -603,7 +602,6 @@ export function sheetView(
   );
   return {
     kindName: kind.name,
-    elementCount: derived.elements.length,
     sections,
     unfilled: unfilledIn(sections),
   };

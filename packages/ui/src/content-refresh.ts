@@ -49,7 +49,7 @@ export function refreshedElements(embedded: ElementIndex, loaded: ElementIndex):
 export function refreshNotice(changes: ContentChanges): string | undefined {
   const n = changes.changed.length;
   if (n === 0) return undefined;
-  return `Your sources have changed ${n === 1 ? 'one of the elements' : `${n} of the elements`} this character was saved with.`;
+  return `Your sources have changed ${n === 1 ? 'one thing' : `${n} things`} this character was saved with.`;
 }
 
 /** The Sheet as the character opens now, and as it would after a refresh. */
@@ -120,7 +120,7 @@ export function refreshReview(before: SheetDocument, after: SheetDocument, chang
     kept: byName(changes.kept),
     rows,
     listed,
-    ...(rows.length === 0 && listed.length === 0 ? { sameSheet: 'The Sheet would read the same; only the elements\' own text or rules change.' } : {}),
+    ...(rows.length === 0 && listed.length === 0 ? { sameSheet: 'The Sheet would read the same; only the text or rules behind it change.' } : {}),
     refresh: 'Refresh',
     notNow: 'Not now',
   };

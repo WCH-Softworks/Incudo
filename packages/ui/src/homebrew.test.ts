@@ -176,7 +176,7 @@ test('a draft that cannot be written is refused with sentences', () => {
   assert.deepEqual(problems({ lines: [{ kind: 'add', stat: 'luck', value: 1 }] }), ['luck is not a number a line can add to.']);
   assert.deepEqual(problems({ lines: [{ kind: 'add', stat: 'might', value: 1.5 }] }), ['Might takes a whole number.']);
   assert.deepEqual(problems({ lines: [{ kind: 'grant', id: 'ID_NOWHERE' }] }), ['What a line gives is not in any loaded source.']);
-  assert.deepEqual(problems({ id: 'ID_KNACK_KEEN', lines: [{ kind: 'grant', id: 'ID_KNACK_KEEN' }] }), ['An element cannot give itself.']);
+  assert.deepEqual(problems({ id: 'ID_KNACK_KEEN', lines: [{ kind: 'grant', id: 'ID_KNACK_KEEN' }] }), ['An entry cannot give itself.']);
   assert.ok('problems' in saveHomebrewDraft(EMPTY_HOMEBREW, draft({ name: '' }), context));
 });
 

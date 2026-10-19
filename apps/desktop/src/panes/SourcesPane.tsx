@@ -309,7 +309,7 @@ export function SourcesPane({
                 {result.failed
                   ? result.failed
                   : `${result.name}: ${result.added!.replaced ? 'replaced' : 'added'}, ${result.added!.elements.toLocaleString()} ${
-                      result.added!.elements === 1 ? 'element' : 'elements'
+                      result.added!.elements === 1 ? 'entry' : 'entries'
                     }${result.added!.additions ? ` and ${result.added!.additions} additions to other content` : ''}`}
               </li>
             ))}
@@ -346,7 +346,7 @@ export function SourcesPane({
       </div>
       <p className="hint">
         A homebrew source holds feats, traits, features, spells and the like that you write here. It is listed below with
-        your other sources; <strong>Edit elements</strong> on it opens them.
+        your other sources; <strong>Edit entries</strong> on it opens them.
       </p>
 
       {progress && (
@@ -626,9 +626,9 @@ function SourceRow({
         {homebrew ? '' : source.version ? `version ${source.version}` : 'no version declared'}
         {/* What it contributes, which is the question "see what each source contributes" asks. */}
         {loaded && !loaded.failed && homebrew
-          ? `${loaded.elementCount.toLocaleString()} ${loaded.elementCount === 1 ? 'element' : 'elements'}`
+          ? `${loaded.elementCount.toLocaleString()} ${loaded.elementCount === 1 ? 'entry' : 'entries'}`
           : loaded && !loaded.failed
-          ? ` · ${loaded.elementCount.toLocaleString()} ${loaded.elementCount === 1 ? 'element' : 'elements'} from ${
+          ? ` · ${loaded.elementCount.toLocaleString()} ${loaded.elementCount === 1 ? 'entry' : 'entries'} from ${
               loaded.fileCount
             } ${loaded.fileCount === 1 ? 'file' : 'files'}`
           : loaded?.failed
@@ -699,7 +699,7 @@ function SourceRow({
         </button>
         {homebrew && (
           <button type="button" onClick={() => setEditing(!editing)} aria-expanded={editing}>
-            {editing ? 'Close the elements' : 'Edit elements'}
+            {editing ? 'Close the entries' : 'Edit entries'}
           </button>
         )}
         {homebrew ? (

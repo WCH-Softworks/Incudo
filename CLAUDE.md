@@ -741,7 +741,7 @@ the first slice of Phase 8's element editor. Things to know before touching it:
   `mintHomebrewId` (`ID_HOMEBREW_<TYPE>_<NAME>`, `_2`… against the source and loaded content ignoring case; minted once,
   a rename keeps it), the description as escaped `<p>`/`<br />` HTML and back, setter and tag suggestions read off loaded
   elements of the type, grant options through Browse's catalog. No game noun; no character format change.
-- **Desktop**: Sources pane, "Write your own" → **Make a homebrew source**; on its line **Edit elements** opens
+- **Desktop**: Sources pane, "Write your own" → **Make a homebrew source**; on its line **Edit entries** opens
   `panes/HomebrewEditor.tsx` (computes nothing); a save writes and reloads. The source's Remove is an `ArmedButton`.
   The phone loads a homebrew source in its own profile and has no editor.
 - Tests: `packages/content/src/homebrew-source.test.ts`, `packages/ui/src/homebrew.test.ts`,
@@ -1270,8 +1270,8 @@ know before touching it:
     sections, held creatures (with a `from` line) and kept references (`referenceEntry`: the HTML, or a `note`,
     `NO_KEPT_TEXT` when there is no text). **The Sheet pane, `Companions.tsx` and `References.tsx` render it and compose
     no sentence**; `PREREQUISITES_UNMET` is the words beside an unmet addition. A print layout or a PDF is another
-    renderer of the document, never of `BuilderState` directly: that is the drift it removed. The lede's element count
-    is in it and the export leaves it out (it counts internal elements).
+    renderer of the document, never of `BuilderState` directly: that is the drift it removed. No screen shows a count
+    of elements since 2026-10-19 (it counted internal ones, and the word is not a player's).
   - **`sheetMarkdown(document)`** (`sheet-markdown.ts`): `#` title ("Unnamed character" when blank), the kind, `##` per
     section with one list (rows `Label: value (beside)`, elements, printed `Label: text`, in the pane's order), `###` per
     creature and kept element, content's headings from `####`. UTF-8, `\n`, a final newline. **Plain text and Markdown
@@ -1381,7 +1381,7 @@ know before touching it:
     renderer in `packages/ui` could not show it. The block is last in the file on purpose: its light colour tokens win
     over the dark scheme's by source order.
   - **What it undoes**: `.app` one window tall with overflow hidden and `.pane` scrolling (a print would be cut at the
-    fold); the header, the Sheet's bar, the name `<input>` and the lede's element count (`.sheet-element-count`) are
+    fold); the header, the Sheet's bar, and the name `<input>` are
     hidden; the dark scheme's text colours. The name prints from `.sheet-print-title`, which is `SheetDocument.title`
     (the name trimmed, else `UNNAMED_CHARACTER`, now in `sheet-document.ts`; the Markdown's heading reads it too).
   - **Sections flow in `.sheet-flow`** (sections, then held creatures; `columns: 2`); kept texts sit outside it and start
@@ -1817,7 +1817,8 @@ Things to know before touching it:
 
 - **The unit is the book, not the content source.** A publication is an element of a type the system marks
   `publication: true` (5e: `Source`), and every other element names its book in `source`, joined ignoring case. An
-  element whose `source` names no loaded book (`Internal`, `Core`, two misspellings) is always offered.
+  element whose `source` names no loaded book (`Core`, two misspellings, or none: the converter writes Aurora's
+  `Internal` as no book, `packages/aurora-import/src/book.ts`, so no picker row reads "— Internal") is always offered.
 - **`Character.publications` is an allowlist of names, absent for every book**, optional, no `formatVersion` bump. A
   recorded name nothing loaded has is kept and shown as not loaded. It is not `Character.sources`, which is provenance
   (ADR 0028), and not the profile, which decides what is loaded.

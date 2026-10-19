@@ -159,8 +159,8 @@ export async function importAuroraSaveIntoLibrary(
   // content and write a character nothing can render.
   if (isEmpty(options.elements)) {
     return fail(
-      'Importing needs content loaded: a .dnd5e records Aurora’s element ids and nothing ' +
-        'about what they mean. Add and enable a content source, then import again. Opening a ' +
+      'Importing needs content loaded: a .dnd5e names what the character took, and only ' +
+        'content says what each of those is. Add and enable a content source, then import again. Opening a ' +
         'character you have already imported needs none.',
     );
   }

@@ -161,7 +161,7 @@ function Browser({
           <input
             type="search"
             className="browse-search"
-            placeholder={`Search ${catalog.size.toLocaleString()} elements…`}
+            placeholder={`Search ${catalog.size.toLocaleString()} entries…`}
             aria-label="Search loaded content"
             value={text}
             onChange={(event) => change({ text: event.target.value })}
@@ -265,7 +265,7 @@ function Browser({
               onOpenSources={onOpenSources}
             />
           ) : (
-            <p className="hint">Choose an element to read it here.</p>
+            <p className="hint">Choose an entry to read it here.</p>
           )}
         </section>
       </div>
@@ -309,7 +309,7 @@ function Detail({
   onOpenSources: () => void;
 }): React.JSX.Element {
   const detail = useMemo(() => catalog.describe(id), [catalog, id]);
-  if (!detail) return <p className="hint">This element is no longer loaded.</p>;
+  if (!detail) return <p className="hint">This entry is no longer loaded.</p>;
   const { element } = detail;
   const source = sources.find((candidate) => candidate.id === detail.sourceId);
 

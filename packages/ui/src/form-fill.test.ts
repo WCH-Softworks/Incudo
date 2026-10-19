@@ -15,7 +15,6 @@ const doc: SheetDocument = {
   name: 'Nyx',
   title: 'Nyx',
   kindName: 'Tinker',
-  elementCount: 9,
   sections: [
     {
       id: 'who',

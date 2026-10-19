@@ -2658,12 +2658,10 @@ ul.browse-categories {
     padding: 0;
   }
 
-  /* Not the sheet: the app's header and navigation, a pane's bar, the name field, and the lede's count of elements,
-     which counts internal ones and says nothing on paper (ADR 0075). */
+  /* Not the sheet: the app's header and navigation, a pane's bar and the name field. */
   header,
   .pane-bar,
   .sheet-name,
-  .sheet-element-count,
   .play-panel {
     display: none;
   }

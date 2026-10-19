@@ -18,6 +18,7 @@ import {
   type SheetDescription,
   type SheetHints,
 } from '@incudo/core';
+import { bookOf } from './book.ts';
 import { parseXml, childrenNamed, firstChild, findFirst, decodeEntities, type XmlNode } from './xml.ts';
 
 export interface ImportDiagnostic {
@@ -133,7 +134,7 @@ function toElement(
     return undefined;
   }
 
-  const source = node.attrs['source'] ?? 'Unknown';
+  const source = bookOf(node.attrs['source']);
   const rulesNode = firstChild(node, 'rules');
   const { rules, supports } = parseRules(
     rulesNode,

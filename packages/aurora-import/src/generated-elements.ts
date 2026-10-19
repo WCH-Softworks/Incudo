@@ -21,8 +21,8 @@
  *
  * This overlay declares them. It is not a content fix: ADR 0005 says the importer never
  * mutates upstream files, so this sits beside the corpus rather than in it, and it is
- * `format: 'aurora'`, `source: 'Internal'` — the same source string `core/internal.xml`
- * uses for the ids Aurora does happen to ship.
+ * `format: 'aurora'`, and names no book, as the conversion writes the `Internal` source
+ * `core/internal.xml` uses for the ids Aurora does happen to ship.
  *
  * **What gets rules and what does not.** Only where the corpus makes the meaning
  * unambiguous. `ID_INTERNAL_ASI_STRENGTH` is granted by an item Aurora names
@@ -45,12 +45,13 @@
  */
 
 import type { Element, ElementId, Rule, Setter } from '@incudo/core';
+import { NO_BOOK } from './book.ts';
 
 /** Default `origin.sourceId` for overlay elements, so their provenance is never ambiguous. */
 export const GENERATED_SOURCE_ID = 'aurora:generated';
 
-/** What `element.source` reads as. Matches Aurora's own `core/internal.xml`. */
-const GENERATED_SOURCE = 'Internal';
+/** What `element.source` reads as: no book, as the conversion writes Aurora's `Internal` (`book.ts`). */
+const GENERATED_SOURCE = NO_BOOK;
 
 export interface GeneratedElementOptions {
   /** Recorded as `origin.sourceId`. */

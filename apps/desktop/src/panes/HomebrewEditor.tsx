@@ -137,7 +137,7 @@ export function HomebrewEditor({
 
       {draft === null ? (
         <div className="row">
-          <select value={newType} aria-label="Type of the new element" onChange={(event) => setNewType(event.target.value)}>
+          <select value={newType} aria-label="Type of the new entry" onChange={(event) => setNewType(event.target.value)}>
             {types.map((t) => (
               <option key={t.type} value={t.type}>
                 {t.type}
@@ -211,7 +211,7 @@ function DraftForm({
         onSave();
       }}
     >
-      <h4>{draft.id ? `Editing ${draft.name || 'an element'}` : `A new ${draft.type}`}</h4>
+      <h4>{draft.id ? `Editing ${draft.name || 'an entry'}` : `A new ${draft.type}`}</h4>
       <div className="row">
         <label>
           Type{' '}
@@ -327,7 +327,7 @@ function DraftForm({
       )}
 
       <h5>Setters</h5>
-      <p className="hint">Values content reads by name, such as a spell's level and school. Names used by loaded {draft.type} elements are suggested.</p>
+      <p className="hint">Values content reads by name, such as a spell's level and school. Names used by loaded {draft.type} entries are suggested.</p>
       <datalist id={listId}>
         {setterNames.map((name) => (
           <option key={name} value={name} />

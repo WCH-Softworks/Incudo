@@ -178,8 +178,6 @@ export interface SheetDocument {
    */
   title: string;
   kindName: string;
-  /** How many elements the derivation holds, internal ones included: the pane's lede shows it, an export does not. */
-  elementCount: number;
   /** The character's own sections, empty ones left out. */
   sections: SheetSectionView[];
   /** Its held creatures, when the kind declares them and it holds any. */
@@ -217,7 +215,6 @@ export function sheetDocument(state: SheetDocumentSource): SheetDocument {
     name: state.character.name,
     title: state.character.name.trim() || UNNAMED_CHARACTER,
     kindName: sheet.kindName,
-    elementCount: sheet.elementCount,
     sections: sheet.sections,
     ...(companions
       ? {

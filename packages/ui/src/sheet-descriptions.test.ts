@@ -62,7 +62,6 @@ const doc = (descriptions = sheetDescriptions([knacks], undefined, index)): Shee
   name: 'Nyx',
   title: 'Nyx',
   kindName: 'Tinker',
-  elementCount: 0,
   sections: [knacks],
   ...(descriptions ? { descriptions } : {}),
 });

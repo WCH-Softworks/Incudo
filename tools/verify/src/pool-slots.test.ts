@@ -153,7 +153,8 @@ test('the samples: every recorded pick, its pool and its slot', { skip: corpusSk
 // --- what it does, through the builder, against the real corpus ------------------------------------------------------
 
 const PHB = 'Player’s Handbook';
-const INTERNAL = 'Internal';
+// What Aurora's app generates names no book once converted.
+const INTERNAL = '';
 const ROGUE = 'ID_WOTC_PHB_CLASS_ROGUE';
 const WIZARD = 'ID_WOTC_PHB_CLASS_WIZARD';
 const FIGHTER = 'ID_WOTC_PHB_CLASS_FIGHTER';
@@ -210,7 +211,7 @@ test('a Wizard 5 lowered to 3 keeps its level 4 improvement recorded and not cou
   const { builder, elements } = await start(WIZARD);
   builder.setProgress(5);
   answer(builder, elements, 'Improvement Option (Wizard 4)', `Ability Score Improvement|${INTERNAL}`);
-  answer(builder, elements, 'Ability Score Increase (WIZARD 4)', `Intelligence +1|${INTERNAL}`, `Intelligence +1|${INTERNAL}`);
+  answer(builder, elements, 'Ability Score Increase (Wizard 4)', `Intelligence +1|${INTERNAL}`, `Intelligence +1|${INTERNAL}`);
   const at5 = builder.getState().derived.stats.get('intelligence')?.value ?? 0;
   const recorded = JSON.stringify(builder.getState().character.choices);
 

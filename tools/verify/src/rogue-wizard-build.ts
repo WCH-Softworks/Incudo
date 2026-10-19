@@ -16,7 +16,8 @@ import type { CharacterBuilder } from '@incudo/ui';
 
 const PHB = 'Player’s Handbook';
 const AURORA = 'Aurora Legacy Essentials';
-const INTERNAL = 'Internal';
+// What Aurora's app generates names no book once converted.
+const INTERNAL = '';
 
 export const WIZARD = 'ID_WOTC_PHB_CLASS_WIZARD';
 export const ROGUE = 'ID_WOTC_PHB_CLASS_ROGUE';
@@ -111,7 +112,7 @@ export function buildRogueWizard(builder: CharacterBuilder, elements: ElementInd
     if (level === 4) {
       answer('Improvement Option (Wizard 4)', `Ability Score Improvement|${INTERNAL}`);
       // +2 to one score is the same +1 twice, and the pool offers it again (ADR 0035).
-      answer('Ability Score Increase (WIZARD 4)', `Intelligence +1|${INTERNAL}`, `Intelligence +1|${INTERNAL}`);
+      answer('Ability Score Increase (Wizard 4)', `Intelligence +1|${INTERNAL}`, `Intelligence +1|${INTERNAL}`);
       answer('Cantrip (Wizard)', 'Ray of Frost');
       answer('Spellbook (Wizard)', 'Invisibility', 'Mirror Image');
     }
@@ -142,7 +143,7 @@ export function buildRogueWizard(builder: CharacterBuilder, elements: ElementInd
   assert.equal(builder.addLevel('levels', ROGUE), true);
   builder.recordHitPoints('levels', 8, 'average');
   answer('Improvement Option (Rogue 4)', `Feat|${INTERNAL}`);
-  answer('Feat (ROGUE 4)', 'War Caster');
+  answer('Feat (Rogue 4)', 'War Caster');
   assert.equal(pool('Spell (Arcane Trickster)')?.remaining, 1, 'a fourth spell known at Rogue 4');
   answer('Spell (Arcane Trickster)', 'Color Spray');
 }

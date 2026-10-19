@@ -46,10 +46,7 @@ export function SheetPane({
         value={document.name}
         onChange={(event) => builder.setName(event.target.value)}
       />
-      <p className="lede">
-        {document.kindName}
-        <span className="sheet-element-count"> · {document.elementCount} elements</span>
-      </p>
+      <p className="lede">{document.kindName}</p>
 
       {play && <PlayPanel builder={builder} view={play} />}
 

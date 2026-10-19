@@ -588,7 +588,7 @@ test('the print rules: no edge of a page left to the dialog, and the parts the s
 
   // A name that would break an unescaped rule.
   const title = 'A "B" \\ C; } @page {';
-  const document: SheetDocument = { name: title, title, kindName: 'Kind', elementCount: 0, sections: [] };
+  const document: SheetDocument = { name: title, title, kindName: 'Kind', sections: [] };
   for (const pageNumbers of [false, true]) {
     for (const runningName of [false, true]) {
       const combination = `${pageNumbers ? 'numbers' : 'no numbers'}, ${runningName ? 'name' : 'no name'}`;
@@ -673,7 +673,7 @@ test('the print rules: the Sheet pane on paper, laid out by what it holds (ADR 0
   expect(print, '.app', 'overflow', /^visible$/, 'the app hides what overflows');
   expect(print, '.pane', 'overflow', /^visible$/, 'the pane scrolls instead of growing');
   // Not the sheet.
-  for (const selector of ['header', '.pane-bar', '.sheet-name', '.sheet-element-count']) expect(print, selector, 'display', /^none$/, 'printed, and not the sheet');
+  for (const selector of ['header', '.pane-bar', '.sheet-name']) expect(print, selector, 'display', /^none$/, 'printed, and not the sheet');
   // The title is printed as text, and only printed.
   expect(print, '.sheet-print-title', 'display', /^block$/, 'the name is not printed');
   expect(screen, '.sheet-print-title', 'display', /^none$/, 'the name is shown twice on screen');
@@ -699,7 +699,6 @@ test('the print rules: the Sheet pane on paper, laid out by what it holds (ADR 0
   // The Sheet pane draws what those rules name.
   const pane = readFileSync(join(src, 'panes', 'SheetPane.tsx'), 'utf8');
   if (!/<h1 className="sheet-print-title">\{document\.title\}<\/h1>/.test(pane)) problems.push('SheetPane: no printed title from the document');
-  if (!/className="sheet-element-count"/.test(pane)) problems.push('SheetPane: the element count cannot be hidden in print');
   const flow = /<div className="sheet-flow">([\s\S]*?)<\/div>/.exec(pane)?.[1] ?? '';
   if (!/document\.sections\.map/.test(flow) || !/<Companions /.test(flow)) problems.push('SheetPane: the sections and creatures are not in the flow');
   if (/document\.references/.test(flow)) problems.push('SheetPane: the kept texts are in the two-column flow');

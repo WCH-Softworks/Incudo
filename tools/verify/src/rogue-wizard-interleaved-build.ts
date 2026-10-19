@@ -18,7 +18,8 @@ import { answerAtStart, ROGUE, WIZARD } from './rogue-wizard-build.ts';
 
 const PHB = 'Player’s Handbook';
 const AURORA = 'Aurora Legacy Essentials';
-const INTERNAL = 'Internal';
+// What Aurora's app generates names no book once converted.
+const INTERNAL = '';
 
 /** Builds the whole character from a fresh level 1 one. Nothing it owes is left open. */
 export function buildInterleavedRogueWizard(builder: CharacterBuilder, elements: ElementIndex): void {
@@ -97,14 +98,14 @@ export function buildInterleavedRogueWizard(builder: CharacterBuilder, elements:
   assert.equal(builder.addLevel('levels', ROGUE), true);
   builder.recordHitPoints('levels', 7, 'average');
   answer('Improvement Option (Rogue 4)', `Ability Score Improvement|${INTERNAL}`);
-  answer('Ability Score Increase (ROGUE 4)', `Dexterity +1|${INTERNAL}`, `Dexterity +1|${INTERNAL}`);
+  answer('Ability Score Increase (Rogue 4)', `Dexterity +1|${INTERNAL}`, `Dexterity +1|${INTERNAL}`);
   answer('Spell (Arcane Trickster)', 'Color Spray');
 
   // --- Wizard 4 (8): a feat ------------------------------------------------------------------------
   assert.equal(builder.addLevel('levels', WIZARD), true);
   builder.recordHitPoints('levels', 8, 'average');
   answer('Improvement Option (Wizard 4)', `Feat|${INTERNAL}`);
-  answer('Feat (WIZARD 4)', 'Ritual Caster');
+  answer('Feat (Wizard 4)', 'Ritual Caster');
   // The feat is one element per class list, and asks which. Its two ritual spells are chosen through a
   // `Ritual` support filter, which the kind reads as a spell whose `isRitual` setter is true (ADR 0047).
   answer('Ritual Caster', 'Wizard');

@@ -186,7 +186,6 @@ test('the export writes each line of a sheet text as a line of the item, and rea
     character: { name: 'Tester' },
     sheet: {
       kindName: 'Tinker',
-      elementCount: 1,
       unfilled: 0,
       sections: [
         {

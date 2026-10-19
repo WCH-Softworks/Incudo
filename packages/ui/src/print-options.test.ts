@@ -35,7 +35,6 @@ const own: SheetDocument = {
   name: 'Nyx',
   title: 'Nyx',
   kindName: 'Tinker',
-  elementCount: 4,
   sections: [{ id: 'scores', label: 'Scores', rows: [{ stat: 'grit', label: 'Grit', value: '14' }], printed: [], elements: [] }],
 };
 

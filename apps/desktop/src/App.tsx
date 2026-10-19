@@ -849,7 +849,7 @@ function Shell({
         const picked = await platform.files.pick({
           title: 'Add Aurora content files',
           extensions: ['xml'],
-          label: 'Aurora elements file',
+          label: 'Aurora content file',
           multiple: true,
         });
         // Cancelling is an answer, and leaves the last report where it was.
@@ -981,8 +981,8 @@ function Shell({
         return 'Choose a library folder first — an imported character has to land somewhere.';
       case 'no-content':
         return (
-          'Importing needs a content source loaded: an Aurora save records element ids and ' +
-          'nothing about what they mean. Add one under Sources. (Opening a character you have ' +
+          'Importing needs a content source loaded: an Aurora save names what the character took, ' +
+          'and only content says what each of those is. Add one under Sources. (Opening a character you have ' +
           'already imported needs none.)'
         );
       default:
@@ -1550,7 +1550,7 @@ function Shell({
           </button>
           {' · '}
           {content
-            ? `${content.elementCount.toLocaleString()} elements from ${content.fileCount} files`
+            ? `${content.sources.length} ${content.sources.length === 1 ? 'source' : 'sources'} loaded`
             : mySources.length === 0
               ? 'no sources for this system'
               : 'no content loaded'}

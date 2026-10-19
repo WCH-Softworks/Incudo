@@ -76,8 +76,8 @@ test("a refresh takes up the sources' definitions and keeps every copy they lack
 
 // Fails if a kept copy alone is offered (a refresh would change nothing), or the count is not the changed copies'.
 test('the offer counts changed copies, and nothing is offered when only kept ones differ', () => {
-  assert.equal(refreshNotice(contentChanges(embedded, loaded)), 'Your sources have changed one of the elements this character was saved with.');
-  assert.equal(refreshNotice({ changed: [charmThen, same], kept: [] }), 'Your sources have changed 2 of the elements this character was saved with.');
+  assert.equal(refreshNotice(contentChanges(embedded, loaded)), 'Your sources have changed one thing this character was saved with.');
+  assert.equal(refreshNotice({ changed: [charmThen, same], kept: [] }), 'Your sources have changed 2 things this character was saved with.');
   assert.equal(refreshNotice({ changed: [], kept: [marker] }), undefined);
 });
 
@@ -100,7 +100,6 @@ test('removed rows and elements are reported, and a refresh that changes no shee
     name: 'Nyx',
     title: 'Nyx',
     kindName: 'Tinker',
-    elementCount: 1,
     sections: [{ id: 'scores', label: 'Scores', rows, printed: [], elements: names.map((n) => ({ elementId: n, name: n })) }],
   });
   const review = refreshReview(doc([{ stat: 'grit', label: 'Grit', value: '12' }], ['A', 'B']), doc([], ['A']), { changed: [charmThen], kept: [] });

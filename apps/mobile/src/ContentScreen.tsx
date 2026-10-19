@@ -143,7 +143,7 @@ function SourceCard({
         <Switch value={source.enabled} disabled={busy} onValueChange={onEnabled} accessibilityLabel={`Use ${source.name}`} />
       </Row>
       <Body tone="muted">
-        {[count !== undefined ? `${count.toLocaleString()} elements` : 'not loaded yet', converted ? 'kept converted' : 'kept as files', source.version ? `version ${source.version}` : undefined]
+        {[count !== undefined ? `${count.toLocaleString()} entries` : 'not loaded yet', converted ? 'kept converted' : 'kept as files', source.version ? `version ${source.version}` : undefined]
           .filter(Boolean)
           .join(' · ')}
       </Body>

@@ -86,6 +86,6 @@ test('the words follow what is beside the row and its mark, and every export wri
   assert.equal(rowAside({ mark: { label: 'trained', count: 1 }, including: ['A', 'B', 'C'] }), 'trained; including A, B and C');
   assert.equal(rowAside({ beside: '+3' }), '+3');
   const sections = sheetSections(SECTIONS, { stats: new Map([resolved('pluck', 5, [{ value: 2, from: 'Quiet' }]), resolved('one', 1)]), elements: [QUIET] }, { stats: STATS, blockStats: [] });
-  const document = { name: 'Test', title: 'Test', kindName: 'Test', elementCount: 1, sections };
+  const document = { name: 'Test', title: 'Test', kindName: 'Test', sections };
   assert.match(sheetMarkdown(document), /Pluck: 5 \(including Quiet\)/);
 });

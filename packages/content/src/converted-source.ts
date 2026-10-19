@@ -34,9 +34,9 @@ import type { ContentIndex, ContentSource, ElementFile, FileRef, UpdateStatus } 
  * Which parsing wrote a conversion. Bump it when `@incudo/aurora-import`'s `parseAuroraIndex` or `parseAuroraElements`
  * comes to produce something different from the same XML; every value written before is then ignored and made again.
  * `tools/verify`'s `converted-source.test.ts` names the files whose change asks the question. 2 since an element
- * carries the `<extract>` block as `contents` (ADR 0098).
+ * carries the `<extract>` block as `contents` (ADR 0098), 3 since Aurora's `Internal` source is written as no book.
  */
-export const CONVERTER_VERSION = 2;
+export const CONVERTER_VERSION = 3;
 
 /** One stored value: an index or a file as the parser returned it, and the converter that wrote it. */
 interface ConvertedEntry {

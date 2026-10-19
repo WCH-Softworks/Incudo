@@ -197,7 +197,7 @@ export function homebrewDraftProblems(draft: HomebrewDraft, context: HomebrewCon
     } else if (!context.index.get(line.id)) {
       problems.push(line.id ? `What a line gives is not in any loaded source.` : 'A line gives nothing.');
     } else if (line.id === draft.id) {
-      problems.push('An element cannot give itself.');
+      problems.push('An entry cannot give itself.');
     }
   }
   return problems;

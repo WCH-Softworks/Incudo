@@ -87,17 +87,19 @@ test('the shape is what a set of real saves record: ids, select names and the ty
   const feat = elements.find((e) => e.id === 'ID_INTERNAL_CLASS_FEATURE_FEAT_12_FIGHTER')!;
 
   // One sample save: `Ability Score Increase (FIGHTER 12)` ×2 under ASI_12_FIGHTER,
-  // and `Feat (FIGHTER 4)` under FEAT_4_FIGHTER.
+  // and `Feat (FIGHTER 4)` under FEAT_4_FIGHTER. Those are the keys; the names read as content writes the class.
   assert.equal(asi.type, 'Class Feature');
   assert.deepEqual(asi.supports, ['Improvement Option', 'Fighter', '12']);
   const asiSelect = onlySelect(asi);
-  assert.equal(asiSelect.name, 'Ability Score Increase (FIGHTER 12)');
+  assert.equal(asiSelect.name, 'Ability Score Increase (Fighter 12)');
   assert.equal(asiSelect.key, 'select:Ability Score Increase (FIGHTER 12)');
   assert.equal(asiSelect.type, 'Ability Score Improvement');
   assert.equal(asiSelect.number, 2, 'one +2 or two +1s is two picks');
 
   const featSelect = onlySelect(feat);
-  assert.equal(featSelect.name, 'Feat (FIGHTER 12)');
+  assert.equal(featSelect.name, 'Feat (Fighter 12)');
+  assert.equal(featSelect.key, 'select:Feat (FIGHTER 12)');
+  assert.equal(asi.source, '', 'the generated options name no book');
   assert.equal(featSelect.type, 'Feat');
   assert.ok(feat.requirements, 'the feat is gated on the campaign option, as the Artificers are');
   assert.equal(asi.requirements, undefined, 'the ability score improvement is not');

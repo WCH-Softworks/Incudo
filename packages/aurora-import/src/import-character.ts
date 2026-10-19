@@ -39,6 +39,7 @@ import {
   type SourceRef,
 } from '@incudo/core';
 import { decodeBase64, imageExtension } from './base64.ts';
+import { NO_BOOK } from './book.ts';
 import { canonicalizeSaveIds } from './canonical-ids.ts';
 import { REPEATABLE_SETTER } from './generated-elements.ts';
 import type { AuroraItem, AuroraSave, SaveDiagnostic } from './parse-save.ts';
@@ -228,7 +229,7 @@ function synthesizeGenerated(
       id,
       type: description.type,
       name: description.name,
-      source: 'Internal',
+      source: NO_BOOK,
       setters: {},
       rules: [],
       supports: [],

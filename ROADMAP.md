@@ -2398,6 +2398,13 @@ the audit described at the end of that phase.
 - **Editions and a default book list** (the ADR 0049 item): a 2014 / 2024 switch over a character's Books list, where the
   two Player's Handbooks are separate books and a table drops one by unticking, and a per-user default list for new
   characters, which today start offered every book.
+- **Shorter picker lists** (found by a UX pass on 2026-10-19): Race offers 139 rows, Background 118, a level 1
+  Wizard's spellbook 87 spells and a 2014 Fighter's feat list 183, most of them two or three printings of one thing,
+  and every row ends with its book, alignments and languages included. Three changes: the character's Books list
+  where the choice is made (at the head of Build or in the picker), so a table that plays one edition can narrow it
+  there; reprints grouped under one name with an edition chip, so a new player is not left to guess which "Elf" to
+  take; and the book left off where every row in a list shares it. After the first release, by the maintainer's call:
+  players coming from Aurora are used to long lists.
 
 ### 1.x — Left from Phases 3 to 5
 After the first release, by the maintainer's call (2026-10-12), when every note the ticked items of Phases 3 to 5 left
