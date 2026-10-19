@@ -2306,6 +2306,32 @@ written on a character can be moved into the user's library without being typed 
       and unchanged; an addition or a candidate's grant that is another printing is marked; two rows a list would print
       the same name what gives them ("Agile (from Deer)"). Driven in the browser build (a 2014 Wizard's cantrips, a new
       NPC's traits); the phone typechecked only.
+- [ ] **The Sheet is revamped: laid out as a page, play state where its number is, what another entry covers folded**
+      ([ADR 0126](./docs/adr/0126-the-sheet-is-laid-out-as-a-page-play-state-sits-where-its-number-is-and-what-another-entry-covers-is-folded.md),
+      proposed 2026-10-19, not built; [mockups](./docs/adr/0126-sheet-mockups.html)). From the UX pass's F8 and the
+      maintainer's call that the Sheet needs a full revamp. Measured first: at 1280 × 800 the Play panel fills the first
+      screen (479 px for a Wizard 1, 811 px for a Cleric 20) and a level 1 character's Sheet is 7,844 px; proficiencies are
+      22 to 85 rows per sample (median 45), 1,196 of the 1,738 granted by another listed proficiency and 213 already marked
+      on a save or skill row; 53 of 359 features have no text, 34 of them answered by a choice. Proposed: a kind declares a
+      head band, a side column and tabs, and where each section goes; a player character opens on who it is and its
+      turn-to-turn numbers, scores with saves and skills beside; proficiencies folded; a feature written with its answer;
+      spells a table by level; an NPC drawn as a stat block; play spent in place and the Play panel gone; print the same
+      areas flattened. The steps, in order (the ADR has each one's tests and drive):
+  1. A report-only test of what the document holds (folds, marks, text-less features, spell setters, creature prints).
+  2. Fold, omit marked, answers, and the "Also" line in the sheet document (`fold`, `omitMarked`, `answers`); 5e declares
+     them; the Markdown, the phone and the form follow.
+  3. The layout declaration (`sheet.layout`, `sheet.tabs`, `place`, `tab`, `tiles`, `under`) in the schema, the
+     validator and the document; 5e's three kinds declare it.
+  4. The desktop page: head band, side column, tabs, cards, section explanations behind an "i".
+  5. Play in place (`PlayTracker.at`), conditions as chips, `PlayPanel` removed.
+  6. The Spells tab and `facts`.
+  7. The stat block layout for the NPC and legendary kinds (`layout: "statBlock"`, a printed line's `stat`).
+  8. Print and PDF for the new areas, with ADR 0078's drive repeated in the window.
+  9. The phone: order from the document, the folded lists and stat block lines.
+  10. CLAUDE.md and the ADR notes; Beyond 1.0's "A laid-out sheet" removed.
+      Ten open decisions are the maintainer's, listed at the end of the ADR: where play lives, the section explanations,
+      grouping proficiencies, tabs or one page, text-less features, Worn & Wielded, before or after 1.0, the spell table's
+      columns, the stat block's ability table, and how a mark is drawn.
 - [ ] **Drive everything in the Tauri window and on the phone before 1.0.** Raised 2026-10-11, last on purpose. Many
       features were driven only in the browser build (CLAUDE.md says "Driven in the browser build only" fifteen times),
       and the first feature driven in both shells afterwards found two bugs no test and no browser drive could see: the
@@ -2364,6 +2390,9 @@ in this file and the ADRs is an open question of this section, not a gap in its 
 - **The phone app on iOS**: a build, signing, and the App Store, after the Google Play listing has shown what a store needs.
 
 ### 1.x — A laid-out sheet
+*2026-10-19: proposed for Phase 9 as "The Sheet is revamped" ([ADR 0126](./docs/adr/0126-the-sheet-is-laid-out-as-a-page-play-state-sits-where-its-number-is-and-what-another-entry-covers-is-folded.md)),
+which answers every bullet below; whether it lands before 1.0 is that ADR's open decision 7. This entry is removed when
+it is decided.*
 After the first release, by the maintainer's call (2026-09-30), once the printed sheet had been seen on paper. The
 Sheet today is a column of labelled sections; the screen, the print layout (ADR 0077) and the text export all read
 that one document, and it shows everything, but it reads as lists rather than as a sheet. Not a copy of the official

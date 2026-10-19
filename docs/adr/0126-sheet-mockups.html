@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sheet revamp mockups</title>
+<!--
+  Mockups for ADR 0126 (proposed): the Sheet laid out as a page, not a column of sections.
+  Plain HTML and CSS, no artwork, no script. Open in a browser; each mockup is drawn at the width it is for
+  (1280 px for the desktop window, A4 for print). Numbers are the generic samples' (docs/SAMPLE-SAVES.md):
+  Sample 08 (a level 1 High Elf Wizard), Sample 07 (a level 20 Cleric) and a new NPC built on a 2025 Imp.
+  Colours are tokens so the page reads in a light or dark scheme; nothing here is a final palette.
+-->
+<style>
+  :root {
+    --bg: #f4f4f2; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --rule: #d9d9dc;
+    --accent: #2f5fb3; --accent-soft: #e6edf9; --warn: #9a5b00; --tile: #f7f7f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141416; --panel: #1d1d20; --ink: #ececef; --muted: #9a9aa2; --rule: #34343a;
+      --accent: #8fb0ef; --accent-soft: #24304a; --warn: #e0a64a; --tile: #232327;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
+  .doc { max-width: 1320px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1.doc-title { font-size: 20px; margin: 0 0 4px; }
+  p.doc-note { color: var(--muted); margin: 0 0 24px; max-width: 80ch; }
+  h2.mock-title { font-size: 15px; margin: 40px 0 6px; }
+  p.mock-note { color: var(--muted); margin: 0 0 10px; max-width: 90ch; }
+
+  /* One mocked window, 1280 wide. */
+  .window { width: 1280px; min-width: 1280px; overflow: hidden; border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); }
+  .scroll-x { overflow-x: auto; }
+  .topbar { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .topbar b { margin-right: 10px; letter-spacing: .04em; }
+  .tab { padding: 3px 10px; border: 1px solid var(--rule); border-radius: 5px; }
+  .tab.on { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  .toolbar { display: flex; gap: 8px; justify-content: flex-end; padding: 6px 12px; border-bottom: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
+  .btn { border: 1px solid var(--rule); border-radius: 5px; padding: 2px 9px; color: var(--ink); background: var(--panel); font-size: 12px; white-space: nowrap; }
+  .btn.small { padding: 0 6px; font-size: 11px; }
+
+  /* The head band: who, then the numbers looked at every turn. */
+  .head { display: grid; grid-template-columns: 1.3fr 2fr; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--rule); }
+  .who .name { font-size: 22px; font-weight: 650; }
+  .who .line { color: var(--muted); }
+  .who .line strong { color: var(--ink); font-weight: 600; }
+  .numbers { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; align-items: stretch; }
+  .num { background: var(--tile); border: 1px solid var(--rule); border-radius: 7px; padding: 6px 8px; text-align: center; }
+  .num .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .num .v { font-size: 22px; font-weight: 650; line-height: 1.2; }
+  .num .s { font-size: 11px; color: var(--muted); }
+  .num.hp { grid-column: span 2; text-align: left; }
+  .hp-row { display: flex; align-items: baseline; gap: 6px; }
+  .hp-row .v { font-size: 24px; }
+  .hp-ctl { display: flex; gap: 4px; margin-top: 4px; }
+  .hp-ctl .field { width: 56px; border: 1px solid var(--rule); border-radius: 4px; font-size: 11px; color: var(--muted); padding: 1px 4px; }
+  .strip { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 12px; color: var(--muted); }
+  .strip .ink { color: var(--ink); }
+  .pip { display: inline-block; width: 11px; height: 11px; border: 1.5px solid var(--muted); border-radius: 50%; vertical-align: -1px; margin-right: 2px; }
+  .pip.full { background: var(--accent); border-color: var(--accent); }
+  .box { display: inline-block; width: 11px; height: 11px; border: 1.5px solid var(--muted); border-radius: 2px; vertical-align: -1px; margin-right: 2px; }
+  .box.used { background: var(--muted); }
+  .chip { border: 1px solid var(--rule); border-radius: 10px; padding: 0 8px; font-size: 11.5px; color: var(--ink); }
+  .chip.add { color: var(--muted); border-style: dashed; }
+
+  /* Body: a narrow side column that is always there, a wide tabbed main column. */
+  .body { display: grid; grid-template-columns: 330px 1fr; min-height: 520px; }
+  .side { border-right: 1px solid var(--rule); padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; }
+  .main { padding: 0 18px 18px; }
+  .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 6px; display: flex; align-items: center; gap: 6px; }
+  .info { display: inline-flex; width: 14px; height: 14px; border: 1px solid var(--muted); border-radius: 50%; font-size: 9px; align-items: center; justify-content: center; text-transform: none; letter-spacing: 0; }
+
+  .abilities { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .ab { border: 1px solid var(--rule); border-radius: 7px; padding: 5px 6px 6px; background: var(--tile); }
+  .ab .n { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); display: flex; justify-content: space-between; gap: 4px; }
+  .ab .m { font-size: 20px; font-weight: 650; }
+  .ab .sv { font-size: 11.5px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); margin-right: 4px; vertical-align: 0; }
+  .dot.on { background: var(--ink); border-color: var(--ink); }
+  .dot.two { background: var(--ink); border-color: var(--ink); box-shadow: 3px 0 0 -1px var(--panel), 3px 0 0 0 var(--ink); margin-right: 7px; }
+
+  .skills { display: grid; grid-template-columns: 1fr auto; gap: 1px 10px; font-size: 13px; }
+  .skills .r { display: contents; }
+  .skills .a { color: var(--muted); font-size: 11px; margin-left: 3px; }
+  .skills .val { text-align: right; font-variant-numeric: tabular-nums; }
+  .skills .hl { font-weight: 600; }
+  .compact { font-size: 13px; }
+  .compact dt { color: var(--muted); font-size: 11.5px; margin-top: 5px; }
+  .compact dd { margin: 0; }
+  .more { color: var(--accent); font-size: 12px; }
+
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--rule); margin: 0 -18px 12px; padding: 8px 18px 0; position: sticky; top: 0; background: var(--panel); }
+  .t { white-space: nowrap; padding: 5px 12px; border: 1px solid transparent; border-bottom: 0; border-radius: 6px 6px 0 0; color: var(--muted); font-size: 13px; }
+  .t.on { color: var(--ink); border-color: var(--rule); background: var(--panel); margin-bottom: -1px; font-weight: 600; }
+  .t .c { font-size: 11px; color: var(--muted); font-weight: 400; }
+
+  table.att { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 14px; }
+  table.att th { text-align: left; font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--rule); padding: 4px 6px; }
+  table.att td { border-bottom: 1px solid var(--rule); padding: 5px 6px; vertical-align: top; }
+  table.att td.num-c { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .muted { color: var(--muted); }
+  .warn { color: var(--warn); }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .card { border: 1px solid var(--rule); border-radius: 7px; padding: 7px 9px; }
+  .card h4 { margin: 0; font-size: 13.5px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .card h4 .use { font-weight: 400; font-size: 11.5px; color: var(--muted); }
+  .card p { margin: 3px 0 0; font-size: 12.5px; }
+  .card .from { font-size: 11px; color: var(--muted); }
+  .card .track { margin-top: 5px; font-size: 11.5px; color: var(--muted); }
+  .group-h { font-size: 12px; font-weight: 600; margin: 12px 0 6px; display: flex; gap: 10px; align-items: baseline; }
+  .group-h .muted { font-weight: 400; }
+  .also { font-size: 12.5px; margin-top: 10px; }
+
+  /* Spells */
+  table.sp { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.sp th { text-align: left; font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--rule); padding: 3px 6px; }
+  table.sp td { border-bottom: 1px solid var(--rule); padding: 4px 6px; }
+  .lvl { display: flex; align-items: baseline; gap: 12px; margin: 14px 0 4px; font-weight: 600; font-size: 13px; }
+  .lvl .slots { font-weight: 400; font-size: 12px; color: var(--muted); }
+  .castline { display: flex; gap: 18px; font-size: 13px; margin: 4px 0 6px; flex-wrap: wrap; }
+  .castline b { font-size: 18px; }
+  .prep { font-size: 10.5px; border: 1px solid var(--rule); border-radius: 8px; padding: 0 6px; color: var(--muted); }
+  .prep.on { color: var(--ink); border-color: var(--ink); }
+
+  /* NPC stat block */
+  .statblock-wrap { display: grid; grid-template-columns: 1fr 300px; gap: 0; }
+  .statblock { max-width: 640px; margin: 14px 18px; font-size: 13.5px; }
+  .statblock .sb-name { font-size: 24px; font-weight: 650; margin: 0; }
+  .statblock .sb-first { font-style: italic; color: var(--muted); margin: 0 0 6px; }
+  .statblock hr { border: 0; border-top: 2px solid var(--accent); margin: 6px 0; }
+  .statblock .ln b { margin-right: 4px; }
+  .statblock .ln { margin: 1px 0; }
+  .ab6 { display: grid; grid-template-columns: repeat(6, 1fr); text-align: center; gap: 4px; margin: 6px 0; }
+  .ab6 .c { border: 1px solid var(--rule); border-radius: 6px; padding: 3px 0; background: var(--tile); }
+  .ab6 .k { font-size: 10.5px; font-weight: 600; letter-spacing: .05em; }
+  .ab6 .s { font-size: 11px; color: var(--muted); }
+  .sb-h { font-size: 15px; color: var(--accent); border-bottom: 1px solid var(--accent); margin: 12px 0 4px; font-weight: 600; }
+  .sb-p { margin: 3px 0; }
+  .sb-p b i, .sb-p i b { font-style: italic; }
+  .sb-side { border-left: 1px solid var(--rule); padding: 14px; display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
+  .changed { border-bottom: 1px dotted var(--warn); }
+
+  /* Print page, A4 at 1 px = 0.25 mm, scaled down. */
+  .paper { width: 794px; height: 1123px; background: #fff; color: #111; border: 1px solid var(--rule); padding: 38px; font-size: 10.5px; line-height: 1.3; transform-origin: top left; }
+  .paper-wrap { width: 600px; height: 850px; overflow: hidden; }
+  .paper-wrap .paper { transform: scale(.755); }
+  .paper .p-head { display: grid; grid-template-columns: 1.2fr 2fr; gap: 10px; border-bottom: 1.5px solid #111; padding-bottom: 6px; }
+  .paper .p-name { font-size: 20px; font-weight: 700; }
+  .paper .p-nums { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .paper .p-num { border: 1px solid #111; border-radius: 4px; text-align: center; padding: 2px; }
+  .paper .p-num .k { font-size: 8px; text-transform: uppercase; }
+  .paper .p-num .v { font-size: 16px; font-weight: 700; }
+  .paper .p-body { display: grid; grid-template-columns: 220px 1fr; gap: 12px; margin-top: 8px; }
+  .paper h5 { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; margin: 8px 0 3px; border-bottom: 1px solid #999; }
+  .paper .p-ab { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+  .paper .p-ab div { border: 1px solid #111; border-radius: 3px; padding: 1px 3px; }
+  .paper .write { display: inline-block; width: 36px; border-bottom: 1px solid #111; }
+  .legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .legend .card { background: var(--panel); }
+
+  @media (max-width: 900px) {
+    .legend { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+  <h1 class="doc-title">Sheet revamp: mockups</h1>
+  <p class="doc-note">For ADR 0126 (proposed). Not artwork and not a final look: boxes, type and rules only, to show what goes where.
+  Each window is 1280 px wide, the size the UX pass looked at; scroll sideways on a narrow screen. The text in brackets
+  in each note says which decision of the ADR the mockup shows.</p>
+
+  <!-- ===================================================== A. Player character, Actions tab -->
+  <h2 class="mock-title">A. A player character, as the Sheet opens (Sample 08, Wizard 1)</h2>
+  <p class="mock-note">The head band says who the character is and holds the numbers looked at every turn, with hit points
+  editable in place; the condition strip and rests sit under it. The side column is always shown: scores with their saves,
+  skills, senses, proficiencies folded and grouped. The main column is tabbed and opens on Actions. Nothing scrolls before
+  the scores. [Decisions 1, 2, 3, 4]</p>
+  <div class="scroll-x"><div class="window">
+    <div class="topbar"><b>INCUDO</b><span class="tab">Characters</span><span class="tab">Build</span><span class="tab on">Sheet</span><span class="tab">Sources</span><span class="tab">Browse</span><span class="tab">Settings</span></div>
+    <div class="toolbar"><span class="btn">Print sheet…</span><span class="btn">Export sheet as text…</span><span class="btn">Fill the official sheet…</span></div>
+    <div class="head">
+      <div class="who">
+        <div class="name">Sample 08</div>
+        <div class="line"><strong>High Elf</strong> · <strong>Wizard 1</strong> · Sage background</div>
+        <div class="line">Player Character · Level 1</div>
+      </div>
+      <div class="numbers">
+        <div class="num hp">
+          <div class="k">Hit points</div>
+          <div class="hp-row"><span class="v">7</span><span class="muted">of 7</span><span class="muted">· temporary 0</span></div>
+          <div class="hp-ctl"><span class="field">Amount</span><span class="btn small">Damage</span><span class="btn small">Heal</span><span class="btn small">Temporary</span></div>
+        </div>
+        <div class="num"><div class="k">Armor class</div><div class="v">13</div></div>
+        <div class="num"><div class="k">Initiative</div><div class="v">+3</div></div>
+        <div class="num"><div class="k">Speed</div><div class="v">30</div><div class="s">ft.</div></div>
+        <div class="num"><div class="k">Proficiency</div><div class="v">+2</div></div>
+      </div>
+      <div class="strip">
+        <span>Hit dice <span class="ink">d6</span> <span class="pip full"></span> <span class="ink">1 of 1</span></span>
+        <span>Inspiration <span class="box"></span></span>
+        <span>Death saves <span class="ink">✓</span> <span class="box"></span><span class="box"></span><span class="box"></span> <span class="ink">✗</span> <span class="box"></span><span class="box"></span><span class="box"></span></span>
+        <span>Exhaustion <span class="ink">0</span></span>
+        <span>Conditions <span class="chip add">+ Add a condition</span></span>
+        <span style="margin-left:auto"><span class="btn">Short rest</span> <span class="btn">Long rest</span></span>
+      </div>
+    </div>
+    <div class="body">
+      <div class="side">
+        <div>
+          <div class="label">Ability scores and saving throws <span class="info" title="The modifier is large; the score and the saving throw are small. A filled dot marks a proficient saving throw.">i</span></div>
+          <div class="abilities">
+            <div class="ab"><div class="n">Strength <span>8</span></div><div class="m">−1</div><div class="sv"><span class="dot"></span>Save −1</div></div>
+            <div class="ab"><div class="n">Dexterity <span>16</span></div><div class="m">+3</div><div class="sv"><span class="dot"></span>Save +3</div></div>
+            <div class="ab"><div class="n">Constitution <span>13</span></div><div class="m">+1</div><div class="sv"><span class="dot"></span>Save +1</div></div>
+            <div class="ab"><div class="n">Intelligence <span>16</span></div><div class="m">+3</div><div class="sv"><span class="dot on"></span>Save +5</div></div>
+            <div class="ab"><div class="n">Wisdom <span>12</span></div><div class="m">+1</div><div class="sv"><span class="dot on"></span>Save +3</div></div>
+            <div class="ab"><div class="n">Charisma <span>10</span></div><div class="m">+0</div><div class="sv"><span class="dot"></span>Save +0</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="label">Skills <span class="info" title="A filled dot is proficient, a double dot expertise.">i</span></div>
+          <div class="skills">
+            <div class="r"><span><span class="dot"></span>Acrobatics<span class="a">Dex</span></span><span class="val">+3</span></div>
+            <div class="r"><span><span class="dot"></span>Animal Handling<span class="a">Wis</span></span><span class="val">+1</span></div>
+            <div class="r"><span class="hl"><span class="dot on"></span>Arcana<span class="a">Int</span></span><span class="val hl">+5</span></div>
+            <div class="r"><span><span class="dot"></span>Athletics<span class="a">Str</span></span><span class="val">−1</span></div>
+            <div class="r"><span><span class="dot"></span>Deception<span class="a">Cha</span></span><span class="val">+0</span></div>
+            <div class="r"><span class="hl"><span class="dot on"></span>History<span class="a">Int</span></span><span class="val hl">+5</span></div>
+            <div class="r"><span class="hl"><span class="dot on"></span>Insight<span class="a">Wis</span></span><span class="val hl">+3</span></div>
+            <div class="r"><span><span class="dot"></span>Intimidation<span class="a">Cha</span></span><span class="val">+0</span></div>
+            <div class="r"><span class="hl"><span class="dot on"></span>Investigation<span class="a">Int</span></span><span class="val hl">+5</span></div>
+            <div class="r"><span><span class="dot"></span>Medicine<span class="a">Wis</span></span><span class="val">+1</span></div>
+            <div class="r"><span><span class="dot"></span>Nature<span class="a">Int</span></span><span class="val">+3</span></div>
+            <div class="r"><span class="hl"><span class="dot on"></span>Perception<span class="a">Wis</span></span><span class="val hl">+3 <span class="muted">· passive 13</span></span></div>
+            <div class="r"><span><span class="dot"></span>Performance<span class="a">Cha</span></span><span class="val">+0</span></div>
+            <div class="r"><span><span class="dot"></span>Persuasion<span class="a">Cha</span></span><span class="val">+0</span></div>
+            <div class="r"><span><span class="dot"></span>Religion<span class="a">Int</span></span><span class="val">+3</span></div>
+            <div class="r"><span><span class="dot"></span>Sleight of Hand<span class="a">Dex</span></span><span class="val">+3</span></div>
+            <div class="r"><span><span class="dot"></span>Stealth<span class="a">Dex</span></span><span class="val">+3</span></div>
+            <div class="r"><span><span class="dot"></span>Survival<span class="a">Wis</span></span><span class="val">+1</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="label">Senses</div>
+          <div class="compact">Darkvision 60 ft.</div>
+        </div>
+        <div>
+          <div class="label">Proficiencies and languages <span class="info" title="A proficiency that another one listed here already covers is listed inside it. Skills and saving throws are marked above.">i</span></div>
+          <dl class="compact" style="margin:0">
+            <dt>Weapons</dt><dd>Dagger, Dart, Light Crossbow, Quarterstaff, Sling, Longsword, Shortsword, Shortbow, Longbow</dd>
+            <dt>Other</dt><dd>Spellcasting Focus (Arcane Focus)</dd>
+            <dt>Languages</dt><dd>Common, Elvish, Celestial, Orc, Sylvan</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="main">
+        <div class="tabs"><span class="t on">Actions</span><span class="t">Spells <span class="c">10</span></span><span class="t">Features <span class="c">4</span></span><span class="t">Inventory</span><span class="t">Companions <span class="c">1</span></span><span class="t">Background and notes</span><span class="t">Descriptions</span></div>
+        <div class="group-h">Attacks</div>
+        <table class="att">
+          <tr><th>Attack</th><th>Hit</th><th>Damage</th><th>Notes</th></tr>
+          <tr><td>Fire Bolt <span class="muted">cantrip</span></td><td class="num-c">+5</td><td class="num-c">1d10 fire</td><td class="muted">range 120 ft.</td></tr>
+          <tr><td>Ray of Frost <span class="muted">cantrip</span></td><td class="num-c">+5</td><td class="num-c">1d8 cold</td><td class="muted">range 60 ft.</td></tr>
+          <tr><td>Unarmed Strike</td><td class="num-c">+1</td><td class="num-c">1 bludgeoning</td><td class="muted">reach 5 ft.</td></tr>
+        </table>
+        <div class="group-h">Actions, bonus actions and reactions <span class="muted">what the character's features say they take</span></div>
+        <div class="cards">
+          <div class="card"><h4>Shield <span class="use">Reaction · spell, level 1</span></h4><p>+5 to armour class until the start of your next turn, including against the triggering attack.</p></div>
+          <div class="card"><h4>Arcane Recovery <span class="use">1/Long Rest</span></h4><p>When you finish a short rest, recover expended spell slots with a combined level up to 1.</p><div class="track"><span class="box"></span> used</div></div>
+        </div>
+        <div class="group-h">Spell slots <span class="muted">Spell save DC 13 · Spell attack +5</span></div>
+        <div class="castline"><span>Level 1 <span class="pip full"></span><span class="pip full"></span> <span class="muted">2 of 2</span></span></div>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- ===================================================== B. Spells tab, high level caster -->
+  <h2 class="mock-title">B. The Spells tab of a level 20 caster (Sample 07, Cleric 20)</h2>
+  <p class="mock-note">Spells by level, each level headed by its slots, which are spent there with a click. One row per spell with
+  what the table needs: casting time, range, duration, concentration or ritual, components. The rest of the text is a click
+  away, and in full under Descriptions. The side column and head band (not repeated here) stay as in A. [Decisions 3, 6]</p>
+  <div class="scroll-x"><div class="window">
+    <div class="main" style="padding-top:0">
+      <div class="tabs"><span class="t">Actions</span><span class="t on">Spells <span class="c">26</span></span><span class="t">Features <span class="c">16</span></span><span class="t">Inventory</span><span class="t">Background and notes</span><span class="t">Descriptions</span></div>
+      <div class="castline"><span>Spell save DC <b>19</b></span><span>Spell attack <b>+11</b></span><span>Prepares <b>25</b> <span class="muted">of 25 chosen</span></span><span class="muted">Channel Divinity <span class="box used"></span><span class="box"></span><span class="box"></span> 2 of 3</span></div>
+      <div class="lvl">Cantrips</div>
+      <table class="sp">
+        <tr><th style="width:30%">Spell</th><th>Time</th><th>Range</th><th>Duration</th><th></th><th>Components</th></tr>
+        <tr><td>Sacred Flame</td><td>1 action</td><td>60 feet</td><td>Instantaneous</td><td></td><td>V, S</td></tr>
+        <tr><td>Spare the Dying</td><td>1 action</td><td>Touch</td><td>Instantaneous</td><td></td><td>V, S</td></tr>
+      </table>
+      <div class="lvl">Level 1 <span class="slots"><span class="pip full"></span><span class="pip full"></span><span class="pip full"></span><span class="pip"></span> 3 of 4</span></div>
+      <table class="sp">
+        <tr><td style="width:30%">Bless <span class="prep on">always</span></td><td>1 action</td><td>30 feet</td><td>1 minute</td><td>Concentration</td><td>V, S, M</td></tr>
+        <tr><td>Cure Wounds <span class="prep on">prepared</span></td><td>1 action</td><td>Touch</td><td>Instantaneous</td><td></td><td>V, S</td></tr>
+        <tr><td>Detect Magic <span class="prep on">prepared</span></td><td>1 action</td><td>Self</td><td>10 minutes</td><td>Concentration, ritual</td><td>V, S</td></tr>
+        <tr><td class="muted">Command <span class="prep">not prepared</span></td><td class="muted">1 action</td><td class="muted">60 feet</td><td class="muted">1 round</td><td></td><td class="muted">V</td></tr>
+      </table>
+      <div class="lvl">Level 9 <span class="slots"><span class="pip full"></span> 1 of 1</span></div>
+      <table class="sp">
+        <tr><td style="width:30%">Mass Heal <span class="prep on">prepared</span></td><td>1 action</td><td>60 feet</td><td>Instantaneous</td><td></td><td>V, S</td></tr>
+      </table>
+      <p class="muted" style="font-size:12px">A row whose book prints none of these shows the spell's name and level only.</p>
+    </div>
+  </div></div>
+
+  <!-- ===================================================== C. Features tab -->
+  <h2 class="mock-title">C. The Features tab (a Fighter 5, as Sample 09)</h2>
+  <p class="mock-note">Features as cards, grouped by where they came from, each with its sheet line and its uses spent in place.
+  A feature with no line of its own that was answered by a choice is written with its answer: "Fighting Style: Defense",
+  "Ability Score Improvement: Strength +2". One with neither is named on an "Also" line, its whole text under Descriptions.
+  [Decision 5]</p>
+  <div class="scroll-x"><div class="window">
+    <div class="main" style="padding-top:0">
+      <div class="tabs"><span class="t">Actions</span><span class="t on">Features <span class="c">9</span></span><span class="t">Inventory</span><span class="t">Background and notes</span><span class="t">Descriptions</span></div>
+      <div class="group-h">Fighter 5</div>
+      <div class="cards">
+        <div class="card"><h4>Second Wind <span class="use">Bonus Action · 1/Short Rest</span></h4><p>Regain 1d10 + 5 hit points.</p><div class="track"><span class="box"></span> used</div></div>
+        <div class="card"><h4>Action Surge <span class="use">1/Short Rest</span></h4><p>Take one additional action on top of your regular action.</p><div class="track"><span class="box used"></span> used</div></div>
+        <div class="card"><h4>Fighting Style: Defense</h4><p>While you are wearing armor, you gain a +1 bonus to AC.</p></div>
+        <div class="card"><h4>Extra Attack</h4><p>You can attack twice whenever you take the Attack action on your turn.</p></div>
+      </div>
+      <div class="group-h">Human</div>
+      <div class="cards">
+        <div class="card"><h4>Feat: Tough</h4><p>Your hit point maximum increases by 10.</p><div class="from">From the Feat choice at level 4</div></div>
+      </div>
+      <div class="group-h">Soldier background</div>
+      <div class="also"><span class="muted">Also:</span> Military Rank <span class="muted">(its text is under Descriptions)</span></div>
+    </div>
+  </div></div>
+
+  <!-- ===================================================== D. NPC stat block -->
+  <h2 class="mock-title">D. An NPC or legendary creature: a stat block, not a character sheet (an Imp)</h2>
+  <p class="mock-note">One column read the way a printed stat block reads. Armour class, hit points and speed are written once;
+  what is printed is shown beside a number only when the DM changed it (here the hit points). Play state is the narrow column
+  at the right: hit points, legendary action uses, conditions. A legendary creature adds its Legendary Actions block, its uses
+  counted in the side column. [Decision 7]</p>
+  <div class="scroll-x"><div class="window">
+    <div class="statblock-wrap">
+      <div class="statblock">
+        <p class="sb-name">Imp</p>
+        <p class="sb-first">Tiny Fiend (Devil), Lawful Evil</p>
+        <hr>
+        <p class="ln"><b>Armor Class</b>13 &nbsp; <b>Initiative</b>+3 (13)</p>
+        <p class="ln"><b>Hit Points</b><span class="changed">27</span> <span class="muted">(printed 21 (6d4 + 6))</span></p>
+        <p class="ln"><b>Speed</b>20 ft., Fly 40 ft.</p>
+        <hr>
+        <div class="ab6">
+          <div class="c"><div class="k">STR</div>6 <span class="s">−2</span><div class="s">save −2</div></div>
+          <div class="c"><div class="k">DEX</div>17 <span class="s">+3</span><div class="s">save +3</div></div>
+          <div class="c"><div class="k">CON</div>13 <span class="s">+1</span><div class="s">save +1</div></div>
+          <div class="c"><div class="k">INT</div>11 <span class="s">+0</span><div class="s">save +0</div></div>
+          <div class="c"><div class="k">WIS</div>12 <span class="s">+1</span><div class="s">save +1</div></div>
+          <div class="c"><div class="k">CHA</div>14 <span class="s">+2</span><div class="s">save +2</div></div>
+        </div>
+        <hr>
+        <p class="ln"><b>Skills</b>Deception +4, Insight +3, Stealth +5</p>
+        <p class="ln"><b>Resistances</b>Cold</p>
+        <p class="ln"><b>Immunities</b>Fire, Poison; Poisoned</p>
+        <p class="ln"><b>Senses</b>Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 11</p>
+        <p class="ln"><b>Languages</b>Common, Infernal</p>
+        <p class="ln"><b>CR</b>1 <span class="muted">(Proficiency Bonus +2)</span></p>
+        <div class="sb-h">Traits</div>
+        <p class="sb-p"><b><i>Magic Resistance.</i></b> The imp has Advantage on saving throws against spells and other magical effects.</p>
+        <div class="sb-h">Actions</div>
+        <p class="sb-p"><b><i>Sting.</i></b> <i>Melee Attack Roll:</i> +5, reach 5 ft. <i>Hit:</i> 6 (1d6 + 3) Piercing damage plus 7 (2d6) Poison damage.</p>
+        <p class="sb-p"><b><i>Invisibility.</i></b> The imp casts Invisibility on itself, requiring no spell components and using Charisma as the spellcasting ability.</p>
+        <div class="sb-h">Legendary Actions</div>
+        <p class="sb-p muted"><i>Legendary Action Uses: 3.</i> Immediately after another creature's turn, the imp can expend a use to take one of the following actions.</p>
+        <p class="sb-p"><b><i>Flit.</i></b> The imp moves up to its speed without provoking opportunity attacks.</p>
+      </div>
+      <div class="sb-side">
+        <div><div class="label">Hit points</div><div class="hp-row"><span class="v" style="font-size:22px;font-weight:650">27</span><span class="muted">of 27</span></div><div class="hp-ctl"><span class="field">Amount</span><span class="btn small">Damage</span><span class="btn small">Heal</span></div></div>
+        <div><div class="label">Legendary action uses</div><span class="pip full"></span><span class="pip full"></span><span class="pip full"></span> <span class="muted">3 of 3 · back at the start of its turn</span></div>
+        <div><div class="label">Conditions</div><span class="chip">Invisible ×</span> <span class="chip add">+ Add</span></div>
+        <div><span class="btn">Start of its turn</span> <span class="btn">Long rest</span></div>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- ===================================================== E. Print -->
+  <h2 class="mock-title">E. Print and PDF, first page (A4)</h2>
+  <p class="mock-note">The same parts, flattened: the head band, then the side column beside the main column, every tab's
+  content one after another under its tab's name. What is spent is printed as empty boxes to fill in with a pencil, never as
+  the numbers on screen. Descriptions and kept text follow on later pages, as today. [Decision 9]</p>
+  <div class="paper-wrap"><div class="paper">
+    <div class="p-head">
+      <div><div class="p-name">Sample 08</div><div>High Elf · Wizard 1 (1d6) · Sage</div><div>Player Character · Level 1</div></div>
+      <div class="p-nums">
+        <div class="p-num"><div class="k">Armor class</div><div class="v">13</div></div>
+        <div class="p-num"><div class="k">Hit points</div><div class="v">7</div><div>now <span class="write"></span></div></div>
+        <div class="p-num"><div class="k">Temporary</div><div class="v">&nbsp;</div></div>
+        <div class="p-num"><div class="k">Initiative</div><div class="v">+3</div></div>
+        <div class="p-num"><div class="k">Speed</div><div class="v">30</div></div>
+        <div class="p-num"><div class="k">Proficiency</div><div class="v">+2</div></div>
+      </div>
+    </div>
+    <div class="p-body">
+      <div>
+        <h5>Ability scores and saving throws</h5>
+        <div class="p-ab"><div>STR 8 <b>−1</b><br>save −1</div><div>DEX 16 <b>+3</b><br>save +3</div><div>CON 13 <b>+1</b><br>save +1</div><div>INT 16 <b>+3</b><br>● save +5</div><div>WIS 12 <b>+1</b><br>● save +3</div><div>CHA 10 <b>+0</b><br>save +0</div></div>
+        <h5>Skills</h5>
+        <div>○ Acrobatics +3<br>○ Animal Handling +1<br>● Arcana +5<br>○ Athletics −1<br>○ Deception +0<br>● History +5<br>● Insight +3<br>○ Intimidation +0<br>● Investigation +5<br>○ Medicine +1<br>○ Nature +3<br>● Perception +3 (passive 13)<br>○ Performance +0<br>○ Persuasion +0<br>○ Religion +3<br>○ Sleight of Hand +3<br>○ Stealth +3<br>○ Survival +1</div>
+        <h5>Senses</h5><div>Darkvision 60 ft.</div>
+        <h5>Proficiencies and languages</h5>
+        <div><b>Weapons</b> Dagger, Dart, Light Crossbow, Quarterstaff, Sling, Longsword, Shortsword, Shortbow, Longbow<br><b>Other</b> Spellcasting Focus (Arcane Focus)<br><b>Languages</b> Common, Elvish, Celestial, Orc, Sylvan</div>
+        <h5>Play</h5>
+        <div>Hit dice d6 □ · Death saves ✓ □□□ ✗ □□□ · Inspiration □ · Exhaustion <span class="write"></span></div>
+      </div>
+      <div>
+        <h5>Actions</h5>
+        <div>Fire Bolt +5, 1d10 fire, range 120 ft.<br>Ray of Frost +5, 1d8 cold, range 60 ft.<br>Unarmed Strike +1, 1 bludgeoning</div>
+        <h5>Spells</h5>
+        <div>Spell save DC 13 · Spell attack +5<br><b>Cantrips</b> Fire Bolt, Mage Hand, Prestidigitation, Ray of Frost<br><b>Level 1</b> slots □□ · Mage Armor ●, Magic Missile ●, Shield ●, Detect Magic, Find Familiar, Sleep</div>
+        <h5>Features</h5>
+        <div><b>Fey Ancestry.</b> Advantage on saving throws against being charmed, and magic can't put you to sleep.<br><b>Trance.</b> Elves don't need to sleep; they meditate for 4 hours a day.<br><b>Arcane Recovery</b> (1/Long Rest) □. When you finish a short rest, recover spell slots with a combined level up to 1.<br>Also: Researcher.</div>
+        <h5>Companions</h5>
+        <div><b>Owl</b> (from Find Familiar). AC 11, HP 1, Speed 5 ft., Fly 60 ft. …</div>
+        <h5>Background and notes</h5>
+        <div>Personality: I'm willing to listen to every side of an argument… </div>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- ===================================================== F. Narrow window -->
+  <h2 class="mock-title">F. What changes in a narrow window</h2>
+  <div class="legend">
+    <div class="card"><h4>At least 1100 px</h4><p>As A: head band, the side column, tabs in the main column.</p></div>
+    <div class="card"><h4>800 to 1100 px</h4><p>The head band's numbers wrap to two rows; the side column narrows to 280 px and skills drop the ability abbreviation.</p></div>
+    <div class="card"><h4>Under 800 px</h4><p>One column: head band, then the side column's blocks, then the tabs. The phone is this order too.</p></div>
+  </div>
+</div>
+</body>
+</html>
