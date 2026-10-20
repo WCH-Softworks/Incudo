@@ -2357,7 +2357,7 @@ written on a character can be moved into the user's library without being typed 
       references, Books); NPCs on a creature, a race and neither, a legendary creature, an NPC as a sidekick; the Sheet,
       play and rests, a held creature, attacks and cantrips; the text and PDF exports, print through its step and the
       official form; the menus, the shortcuts with real keys, the right-click menu, the browser keys, Settings and About.
-      Five bugs were found and fixed there. Left: the phone half, macOS and Linux (Beyond 1.0), and what the maintainer's
+      Four bugs were found and fixed there. Left: the phone half, macOS and Linux (Beyond 1.0), and what the maintainer's
       own pass covers.
 
 ---
