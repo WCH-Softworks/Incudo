@@ -11,6 +11,7 @@ import {
   MemoryStorage,
   setChoice,
   setName,
+  setPlayState,
   type Character,
   type CharacterStore,
   type Element,
@@ -95,6 +96,18 @@ test('a character is the same whatever its stamp and the order of its keys, and 
   assert.ok(!sameCharacter(character, setChoice(character, 'build/kin', ['ID_OTHER_KIN'])));
   const undone = setChoice(setChoice(character, 'build/kin', ['ID_OTHER_KIN']), 'build/kin', ['ID_KIN']);
   assert.ok(sameCharacter(character, undone), 'an edit undone is no change');
+});
+
+test('play spent and rested back is no change, though it raised the format version', () => {
+  // Perturbation: comparing `formatVersion` leaves a character "unsaved" after a long rest gives back what it spent
+  // (seen in the Tauri window: a legendary creature's actions spent and restored).
+  const character = hero();
+  const spent = setPlayState(character, { spent: { hp: 5 } });
+  const rested = setPlayState(spent, {});
+  assert.equal(rested.play, undefined);
+  assert.ok(rested.formatVersion > character.formatVersion, 'the fixture is the case: the version stays raised');
+  assert.ok(sameCharacter(character, rested));
+  assert.ok(!sameCharacter(character, spent));
 });
 
 test('a character opened from the library reads as saved in the builder, and an edit makes it unsaved', async () => {

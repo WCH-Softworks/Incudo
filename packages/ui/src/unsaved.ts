@@ -32,7 +32,8 @@ export interface EditState {
 
 /**
  * Two characters with the same recorded inputs: every field compared, keys in any order, but `updatedAt`, which every
- * edit moves.
+ * edit moves, and `formatVersion`, which an edit raises and never lowers: hit points spent and then rested back leave
+ * no play state recorded and a raised version, and that is no change.
  */
 export function sameCharacter(a: Character, b: Character): boolean {
   return canonical(withoutStamp(a)) === canonical(withoutStamp(b));
@@ -119,8 +120,8 @@ function isBlank(character: Character, system: GameSystem): boolean {
   return sameCharacter(strip(character) as Character, strip(blank) as Character);
 }
 
-function withoutStamp(character: Character): Omit<Character, 'updatedAt'> {
-  const { updatedAt: _stamp, ...rest } = character;
+function withoutStamp(character: Character): Omit<Character, 'updatedAt' | 'formatVersion'> {
+  const { updatedAt: _stamp, formatVersion: _version, ...rest } = character;
   return rest;
 }
 
