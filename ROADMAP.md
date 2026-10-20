@@ -2172,6 +2172,41 @@ written on a character can be moved into the user's library without being typed 
   - **Open, the maintainer's:** whether rc.1's installer, downloaded once from its release page, was installed and
     run (an Incudo 0.1.0 is installed on the maintainer's machine), which would meet this item's condition for
     Windows; what to do with rc.2's unpublished draft; and the icon's tile colour, above.
+  - **rc.2 tagged and built, 2026-10-20.** main was pushed (143 commits), `ci.yml` passed on it, and `v0.1.0-rc.2` on
+    `24145aa` ran the whole workflow green in about 15 minutes: the tag check, both CI jobs, and the four installer jobs
+    (Windows 7m23s, macOS Apple silicon 7m11s, macOS Intel 7m55s, Linux 5m53s), so the Windows-only Rust above now
+    compiles on macOS and Linux. One draft pre-release, nine assets. The maintainer installed its `-setup.exe`, and the
+    installed `incudo-desktop.exe` was driven on a scratch WebView2 profile and library over the debug port (the next
+    item's first run): AuroraLegacy added (14,320 elements from 740 files, 1 unresolved, 57 warnings, the baselines), a
+    Hill Dwarf Wizard 3 built, saved, exported as text and PDF through the native dialogs, and reopened with the source
+    off to an identical Sheet; Sample 09 imported to Aurora's armour class, hit points and speed. The draft is not
+    published.
+- [ ] **A release candidate is checked the same way every time.** Raised by the maintainer on 2026-10-20, after rc.2
+      was checked twice, once by a scripted drive of the installed build and once by hand, from no written list. Today
+      what a candidate must do before it is published lives in session notes, and two checks of one build cannot be
+      compared. The shape:
+  - **One written smoke test, `docs/RELEASE-CHECK.md`**, that a person follows with the installer from the draft and a
+    drive follows step for step: install, first launch on a fresh profile, choose a system and a library folder, add the
+    suggested source (the corpus line it must show), build a named character through every kind of decision, save,
+    export text and PDF, print through its step, reopen with every source off, import a named sample and compare it to
+    `manifest.json`'s readout, Browse, the menus, switching system, uninstall. Each step says what passing looks like,
+    as a number or a sentence on screen, never "looks right".
+  - **The drive half is a test that skips unless pointed at an installed app**, in the project's own pattern: an
+    environment variable naming the installed executable (in `.env.local`, never committed); unset, it skips and says
+    how to run it; set to a path that is not there, it fails. It starts the app on a scratch profile and library with
+    the debug port, reads every number the written test names, and writes a short report beside the run. No CLI (ADR
+    0039), no machine path in the repository, never run in CI (a runner has no installed build and no screen).
+  - **The person's half is what no drive can see**: SmartScreen's wording, the installer's own screens, real keys and
+    mouse, how the window looks and reads, and the platforms nobody has driven. The written test marks which steps are
+    the person's.
+  - **A candidate's check is recorded with its release**, as a short table in the draft's notes or a file per tag:
+    which build, which steps passed, on which platform, by a person or a drive.
+  - **Found by the first drive (2026-10-20), for the written test to catch next time:** an imported character's
+    library card reads "Not in your sources: Player's Handbook, …" with AuroraLegacy loaded, because the importer
+    records books in `Character.sources` and the card compares them with configured source URLs; the Sheet writes an
+    unarmed strike with Strength 8 as "1-1 bludgeoning"; Fire Bolt's attack row reads "—" for damage ("chosen on
+    Build, under Spells") though no open decision asked for it; Cairn's library shows "Import from Aurora…" while the
+    File menu has it off.
 - [x] **The desktop app behaves like an application, not a web page.** Raised by the maintainer after using it
       (2026-09-30). Each part is small; together they are most of why the window still feels like a browser tab. Some
       are Tauri or WebView2 settings rather than page code, and the one that needs a picture already has one:
