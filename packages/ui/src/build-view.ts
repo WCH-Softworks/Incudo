@@ -150,10 +150,15 @@ export function multiclassOffNote(
   labelOf: (id: ElementId) => string,
 ): string | undefined {
   if (state.allowedBy === undefined) return undefined;
-  const option = labelOf(state.allowedBy);
+  // An option no loaded source declares has no name to give, and its id is not one to show: a save opened with no source
+  // does not carry an option its character does not hold. It is described instead.
+  const label = labelOf(state.allowedBy);
+  const named = label !== '' && label !== state.allowedBy;
+  const option = named ? label : 'The option that allows another class';
+  const it = named ? label : 'it';
   return state.classes.length > 1
-    ? `${option} is switched off for this character, and it has levels in more than one class. Nothing has been removed: switch ${option} back on, or move its levels to one class.`
-    : `${option} is switched off for this character, so new levels go to the class it has. Switch ${option} on to add another class.`;
+    ? `${option} is switched off for this character, and it has levels in more than one class. Nothing has been removed: switch ${it} back on, or move its levels to one class.`
+    : `${option} is switched off for this character, so new levels go to the class it has. Switch ${it} on to add another class.`;
 }
 
 /** A prepared list's line for one spell: "Shield (Level 1)". */

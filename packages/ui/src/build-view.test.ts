@@ -162,6 +162,13 @@ test('with what allows another class off, its classes are said once and not list
   );
   // Perturbation: one sentence for both reads as if a held second class had been taken away.
   assert.match(multiclassOffNote({ allowedBy: 'ALLOW', classes: [{ id: 'a', levels: 3 }, { id: 'b', levels: 2 }] }, label)!, /Nothing has been removed/);
+  // A save opened with no source does not carry an option its character does not hold, so the label is the id, which is
+  // never shown. Perturbation: using the label as given prints "ID_… is switched off" on Build (seen in the Tauri window).
+  for (const classes of [[{ id: 'a', levels: 3 }], [{ id: 'a', levels: 3 }, { id: 'b', levels: 2 }]]) {
+    const note = multiclassOffNote({ allowedBy: 'ID_OPTION', classes }, String)!;
+    assert.doesNotMatch(note, /ID_OPTION/);
+    assert.match(note, /^The option that allows another class is switched off for this character/);
+  }
 });
 
 test('a prepared item reads with its note', () => {
