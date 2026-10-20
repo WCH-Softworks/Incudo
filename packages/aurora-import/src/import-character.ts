@@ -833,21 +833,27 @@ function extractPortrait(
 // --- sources ---------------------------------------------------------------
 
 /**
- * `<restricted>` inverted into an allowlist — and then most of it discarded.
+ * `<restricted>` read, checked against what the character uses, and thrown away.
  *
  * Aurora records what the user turned **off**: 177 sources and 37,235 element ids in one
  * 3.1 MB save. That is the complement of a short answer, and it rots — an exclusion list
- * silently *includes* everything published after it was written.
+ * silently *includes* everything published after it was written. So it is never kept.
  *
- * Inverting it gives what was enabled, which is still hundreds of books. The list actually
- * worth keeping is smaller again: the sources the character's own elements come from, which
- * is a handful. So the blocklist is read, inverted against the loaded content, used to check
- * that nothing the character uses was disabled, and thrown away. `Character.sources` gets the
- * handful, and stays an allowlist by construction rather than by intention.
+ * What it is still good for is one check: that nothing the character uses came from a book the
+ * save had switched off. Aurora's books are `type="Source"` elements whose `name` is the string
+ * every other element carries in its `source` attribute, so the join is by name.
  *
- * Aurora's books are `type="Source"` elements whose `name` is the string every other element
- * carries in its `source` attribute, so the join is by name. With no content index loaded
- * there is nothing to invert against, and this says so instead of inventing one.
+ * **The books are not `Character.sources`.** That list is provenance (ADR 0028): which *content
+ * sources*, by index URL, the character was built against, and the library compares it with the
+ * profile by URL. A book is an element inside a source, and the books a character is offered are
+ * `Character.publications` (ADR 0049). This used to write each used book here as a ref named by its
+ * Source element's id, which no configured source ever matches, so every imported character's card
+ * read "Not in your sources: Player's Handbook, …" with the source that holds them loaded. The
+ * content sources are recorded when the character is packed, from the `origin.sourceId` of what it
+ * embeds (`recordSourceRefs`), as for a character built in the app; {@link withoutBookRefs} drops
+ * what an older import wrote. Only a caller-given `options.source` is recorded here.
+ *
+ * With no content index loaded there is nothing to check against, and this says so.
  */
 function toSourceAllowlist(
   save: AuroraSave,
@@ -862,7 +868,7 @@ function toSourceAllowlist(
     if (save.restrictedSources.length) {
       diagnostics.push({
         level: 'warning',
-        message: `The save disables ${save.restrictedSources.length} source(s), but no content is loaded to invert that against. Imported without a source list.`,
+        message: `The save disables ${save.restrictedSources.length} source(s), but no content is loaded to check that against.`,
         where: 'sources/restricted',
       });
     }
@@ -875,14 +881,7 @@ function toSourceAllowlist(
 
   // Which books the character actually draws on: the source string of every element it
   // chose, plus every element Aurora's own derivation ended up with, plus everything in the
-  // bag.
-  //
-  // The bag is the late addition, and it is there for the *carried* half. An equipped item
-  // is in Aurora's `<sum>` and would be covered by the loop below it; a carried one is not,
-  // so a character whose only use of a book is a Frost Brand sitting in a backpack would
-  // otherwise have written a source list that does not mention it. A save embeds its bag's
-  // content either way (ADR 0012), so this costs nothing today and matters the first time a
-  // save is opened to be *edited* rather than read.
+  // bag (a carried item is not in `<sum>`).
   const used = new Set<string>();
   for (const choice of save.decisions) {
     const element = index.get(choice.registered);
@@ -902,9 +901,7 @@ function toSourceAllowlist(
   const disabledButUsed: string[] = [];
   for (const name of [...used].sort()) {
     const source = byName.get(name);
-    if (!source) continue; // "Internal", "Unknown" — not a book, nothing to record.
-    if (restricted.has(source.id)) disabledButUsed.push(name);
-    refs.push({ id: source.id, name: source.name });
+    if (source && restricted.has(source.id)) disabledButUsed.push(name);
   }
 
   if (disabledButUsed.length) {
@@ -912,13 +909,26 @@ function toSourceAllowlist(
     // content from a book that was later switched off, and the user should know which.
     diagnostics.push({
       level: 'warning',
-      message: `The character uses content from ${disabledButUsed.length} source(s) it had disabled: ${disabledButUsed.join(', ')}. Kept, and enabled in the import.`,
+      message: `The character uses content from ${disabledButUsed.length} source(s) it had disabled: ${disabledButUsed.join(', ')}. Kept.`,
       where: 'sources/restricted',
     });
   }
 
   return refs;
 }
+
+/**
+ * A character's recorded sources less what an older import wrote there in error: one ref per Aurora book, named by
+ * the book's Source element id (`ID_…`). A content source's id is its index URL or a `scheme:` id (`local:`,
+ * `homebrew:`), never a bare element id, so such a ref can never name one, and kept it would read as a source the
+ * user lacks on every imported character's card. The library drops them where it reads a character, so the next
+ * save writes them no more.
+ */
+export function withoutBookRefs(refs: readonly SourceRef[]): SourceRef[] {
+  return refs.filter((ref) => !AURORA_ELEMENT_ID.test(ref.id));
+}
+
+const AURORA_ELEMENT_ID = /^ID_[A-Za-z0-9_]+$/;
 
 function sortKeys(record: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};

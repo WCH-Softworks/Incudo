@@ -43,6 +43,7 @@ import {
   type ConfiguredSource,
   type SourceRefStatus,
 } from '@incudo/content';
+import { withoutBookRefs } from '@incudo/aurora-import';
 
 /** One character, as the library found it on disk. */
 export interface LibraryEntry {
@@ -448,9 +449,13 @@ export class CharacterLibrary {
       });
       return undefined;
     }
+    // An older Aurora import recorded its books as sources; dropped here, so the next save does not write them again.
+    const opened = container.character;
+    const sources = opened.sources && withoutBookRefs(opened.sources);
+    const character = sources && sources.length !== opened.sources!.length ? { ...opened, sources } : opened;
     return {
       entry: this.describe({ name: listed.name, form: listed.form }, files),
-      character: container.character,
+      character,
       elements: new BundleElementIndex(container.content.elements),
       assets: container.assets,
       problems,
@@ -630,7 +635,7 @@ export class CharacterLibrary {
     const { manifest, character } = container;
     const embedded = new BundleElementIndex(container.content.elements);
     const portrait = portraitOf(container.assets, character.assets);
-    const sources = character.sources ?? manifest.sources ?? [];
+    const sources = withoutBookRefs(character.sources ?? manifest.sources ?? []);
     return {
       name: ref.name,
       form: ref.form,

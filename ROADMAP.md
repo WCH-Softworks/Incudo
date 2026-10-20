@@ -2201,9 +2201,12 @@ written on a character can be moved into the user's library without being typed 
     the person's.
   - **A candidate's check is recorded with its release**, as a short table in the draft's notes or a file per tag:
     which build, which steps passed, on which platform, by a person or a drive.
-  - **Found by the first drive (2026-10-20), for the written test to catch next time:** an imported character's
+  - **Found by the first drive (2026-10-20), for the written test to catch next time:** ~~an imported character's
     library card reads "Not in your sources: Player's Handbook, …" with AuroraLegacy loaded, because the importer
-    records books in `Character.sources` and the card compares them with configured source URLs; the Sheet writes an
+    records books in `Character.sources` and the card compares them with configured source URLs~~ (fixed the same
+    day: the importer records no book there, the library drops what an older import recorded, and
+    `imported-sources.test.ts` imports every sample with the corpus configured and holds each card to its one source,
+    present; driven in the browser build); the Sheet writes an
     unarmed strike with Strength 8 as "1-1 bludgeoning"; Fire Bolt's attack row reads "—" for damage ("chosen on
     Build, under Spells") though no open decision asked for it; Cairn's library shows "Import from Aurora…" while the
     File menu has it off.

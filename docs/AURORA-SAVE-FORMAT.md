@@ -157,6 +157,9 @@ random results*, and nothing else. Missing this would have silently rerolled eve
 a character actually uses. The same information, three orders of magnitude smaller, and it
 stays correct when new content appears upstream — an exclusion list silently *includes*
 everything published after it was written.
+*(Since 2026-10-20 the importer writes no book there: `Character.sources` names content sources by index URL,
+recorded from what the character embeds when it is packed, and a book is not one. `<restricted>` is only checked
+against the books the character uses, for the warning.)*
 
 **`checksum` is the right instinct in the wrong place.** Aurora checksums each individual
 choice. Incudo records a version per source instead, which catches the same drift with one
@@ -173,7 +176,7 @@ than a per-element mismatch.
 | `<input>`, `<appearance>` | `freeform` | the rules never read it |
 | top-level `type="Option"` grants | a `build/options` choice | a setting, not a consequence |
 | inline base64 portrait | `assets/portrait.png` | bytes, never base64 (ADR 0007) |
-| `<sources><restricted>` | inverted, then discarded | a blocklist is the wrong thing to keep |
+| `<sources><restricted>` | checked against the books used, then discarded | a blocklist is the wrong thing to keep |
 | nested `id=` nodes, `<sum>`, `<magic>`, `<display-properties>` | **nothing** | derived; re-derived instead |
 | `class=` on a `Level` node | `advancement` | the only record of a multiclass split ([ADR 0015](./adr/0015-class-levels.md)) |
 | `<equipment>` | `inventory`, one row per `<item>` | [ADR 0024](./adr/0024-inventory-is-a-list-of-instances.md). An **equipped** entry and its adornments seed the derivation; a carried one seeds nothing |

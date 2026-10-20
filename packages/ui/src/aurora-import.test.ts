@@ -255,6 +255,20 @@ test('the import records which source it was built against', async () => {
   );
 });
 
+test('the books an import draws on are not recorded as content sources', async () => {
+  // Content that declares its book as a `Source` element, as Aurora's does. The importer joins elements to their book by
+  // name; it used to record each book as a `SourceRef` named by the book's id, which no configured source matches, so
+  // every imported card read "Not in your sources: Test Book" with the source holding it loaded.
+  const elements = corpus() as MapElementIndex;
+  elements.add({ ...element('ID_SOURCE_TEST_BOOK', 'Source'), name: 'Test Book' });
+  const [library] = await emptyLibrary();
+  await importAuroraSaveIntoLibrary(library, picked('Aelin.dnd5e', save('Aelin')), { system: testSystem(), elements });
+
+  const entry = library.getState().entries[0]!;
+  assert.deepEqual(entry.sources.map((ref) => ref.id), [SOURCE_URL]);
+  assert.deepEqual(entry.sourceStatuses.map((status) => status.state), ['present']);
+});
+
 test('two characters with one name become two files, and neither overwrites the other', async () => {
   const [library, store] = await emptyLibrary();
 

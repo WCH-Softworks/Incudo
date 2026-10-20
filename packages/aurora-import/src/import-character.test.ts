@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { MapElementIndex, type Element } from '@incudo/core';
-import { importAuroraCharacter, OPTIONS_RULE_KEY } from './import-character.ts';
+import { importAuroraCharacter, OPTIONS_RULE_KEY, withoutBookRefs } from './import-character.ts';
 import { parseAuroraSave } from './parse-save.ts';
 
 function element(id: string, type: string, name = id, source = 'Test Book'): Element {
@@ -230,16 +230,26 @@ test('campaign options come across as a choice; they are settings, not consequen
   assert.deepEqual(options!.elementIds, ['ID_INTERNAL_OPTION_ALLOW_FEATS', 'ID_OPTION_CUSTOM_ASI']);
 });
 
-test('the blocklist is inverted into a short allowlist, and never stored as a blocklist', () => {
+test('the blocklist is never stored, and the books the character draws on are not its sources', () => {
   const { character } = imported();
-  assert.deepEqual(
-    character.sources.map((s) => s.id),
-    ['ID_SOURCE_TEST'],
-    'only the book the character actually draws on',
-  );
+  // `Character.sources` names content sources by index URL (ADR 0028); a book is not one. The library records the
+  // sources when the character is packed, from what it embeds.
+  assert.deepEqual(character.sources, []);
   const json = JSON.stringify(character);
   assert.ok(!json.includes('ID_DISABLED'), 'no disabled element ids');
   assert.ok(!json.includes('ID_SOURCE_OFF'), 'no disabled source ids');
+});
+
+test('a book an older import recorded as a source is dropped, and a content source kept', () => {
+  assert.deepEqual(
+    withoutBookRefs([
+      { id: 'ID_SOURCE_TEST', name: 'Test' },
+      { id: 'https://example.test/core.index', name: 'Core' },
+      { id: 'local:homebrew.xml' },
+      { id: 'homebrew:mine' },
+    ]).map((ref) => ref.id),
+    ['https://example.test/core.index', 'local:homebrew.xml', 'homebrew:mine'],
+  );
 });
 
 test('an ID_INTERNAL id no content declares is rebuilt from what the save says about it', () => {

@@ -217,6 +217,29 @@ test('every recorded source reads as missing when the profile is empty, and noth
   assert.ok(await library.open('aelin.incu'), 'and it still opens');
 });
 
+test('a book an older Aurora import recorded as a source is not listed, and is not saved again', async () => {
+  const older = hero();
+  older.sources = [...older.sources!, { id: 'ID_SOURCE_PLAYERS_HANDBOOK', name: "Player's Handbook" }];
+  const [library] = await libraryWith(older);
+  library.setProfile([
+    {
+      id: 'https://example.test/core.index',
+      url: 'https://example.test/core.index',
+      name: 'Core',
+      enabled: true,
+      mode: 'stream',
+      version: '1.2.0',
+      addedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ]);
+
+  const entry = library.getState().entries[0]!;
+  assert.deepEqual(entry.sources.map((ref) => ref.id), ['https://example.test/core.index']);
+  assert.deepEqual(entry.sourceStatuses.map((status) => status.state), ['present']);
+  const opened = await library.open(entry.name);
+  assert.deepEqual(opened!.character.sources!.map((ref) => ref.id), ['https://example.test/core.index']);
+});
+
 // --- ADR 0028's three states ------------------------------------------------
 
 test('a source the profile has at another version reads as moved, and one it lacks as missing', async () => {

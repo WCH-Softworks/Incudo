@@ -1906,6 +1906,16 @@ the browser's File System Access API, and a `node:fs` one that exists only in a 
 and opening reach for no source, no index and no fetcher**, which is ADR 0012 being used rather
 than merely proved; two tests hold that line, one with a fake store and one over a set of real saves. If either starts needing content loaded, the feature is wrong.
 
+**An import records content sources, never books** (2026-10-20, found driving rc.2). `Character.sources` is which
+content sources by index URL (ADR 0028), and the library compares it with the profile by URL; the importer used to
+write each Aurora book the character drew on there, named by its `Source` element id, so every imported card read
+"Not in your sources: Player's Handbook, …" with AuroraLegacy loaded. The importer now only checks `<restricted>`
+against the books used (the warning) and records nothing; `packCharacter`'s `recordSourceRefs` records the sources
+from `origin.sourceId`, as for a built character. `withoutBookRefs` (`aurora-import`) drops a ref whose id is a bare
+`ID_…` element id, and `CharacterLibrary` applies it when it describes and opens an entry, so an older import's card
+is right and its next save drops them. Books belong in `Character.publications` (ADR 0049), which the importer still
+does not fill. `tools/verify/src/imported-sources.test.ts` holds every sample's card to its one source, present.
+
 **Importing is the one library operation that does need content, and that is not a contradiction.**
 A `.dnd5e` records Aurora's element ids and nothing about what they mean, so an import resolves
 them against a corpus and copies what they name into the container; with no source enabled the
