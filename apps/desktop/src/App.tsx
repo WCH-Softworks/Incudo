@@ -561,8 +561,9 @@ function Shell({
   const [officialBusy, setOfficialBusy] = useState(false);
   // A content refresh (ADR 0082): the review open, and the offer set aside for this character's content as it is now.
   const [refreshOpen, setRefreshOpen] = useState(false);
-  // The campaign options' dialog (ADR 0123): opened by New character, and by Change… beside the options on Build.
-  const [startOptionsAsk, setStartOptionsAsk] = useState<StartOptionsAsk | null>(null);
+  // The campaign options' dialog (ADR 0123): opened by New character, and by Change… beside the options on Build. It is
+  // asked of one character: a New character whose kind asks nothing must not leave it waiting for the next one opened.
+  const [startOptionsFor, setStartOptionsFor] = useState<{ ask: StartOptionsAsk; characterId: string } | null>(null);
   const [refreshDismissed, setRefreshDismissed] = useState(false);
 
   /** The Aurora import: what it is doing, and what it did. Cleared by the user, not a timer. */
@@ -671,6 +672,11 @@ function Shell({
   const characterId = state.character.id;
   const setExportNote = useCallback((text: string) => setExportNoteFor({ characterId, text }), [characterId]);
   const exportNote = exportNoteFor?.characterId === characterId ? exportNoteFor.text : null;
+  const startOptionsAsk = startOptionsFor?.characterId === characterId ? startOptionsFor.ask : null;
+  const setStartOptionsAsk = useCallback(
+    (ask: StartOptionsAsk | null) => setStartOptionsFor(ask ? { ask, characterId } : null),
+    [characterId],
+  );
 
   // Whether a character has been started, and whether it has changes its library file does not (ADR 0120).
   const edit = useMemo(() => editState(working, state.character, system), [working, state.character, system]);
@@ -1106,7 +1112,7 @@ function Shell({
       setSavedTo(null);
       setPane('build');
       // What shapes every other offer is asked first (ADR 0123); a kind that asks nothing opens no dialog.
-      setStartOptionsAsk('new');
+      setStartOptionsFor({ ask: 'new', characterId: character.id });
     });
   }, [system, newKind, unlessUnsaved]);
 
