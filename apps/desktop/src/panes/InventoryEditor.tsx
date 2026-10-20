@@ -138,7 +138,9 @@ function GroupedPicker({
   };
   // The keyboard follows the slide: into the group's search box, and back to the group's own entry. Without it the
   // focus was left on a control the slide had made inert, so the next Tab started again from the top of the page.
-  // After the render that lifted `inert`, since nothing in an inert panel takes the focus.
+  // After the render that lifted `inert`, since nothing in an inert panel takes the focus. Without scrolling: the panel is
+  // still sliding in, and a focus that scrolls moved the clipped track a second panel's width sideways (the list was left
+  // off to the left, a blank box in its place) and the page down with it. Seen in the Tauri window on 2026-10-20.
   const groupsPanel = useRef<HTMLDivElement>(null);
   const itemsPanel = useRef<HTMLDivElement>(null);
   const moved = useRef(false);
@@ -147,15 +149,17 @@ function GroupedPicker({
       moved.current = true;
       return;
     }
-    if (open) (itemsPanel.current?.querySelector<HTMLElement>('input') ?? itemsPanel.current?.querySelector<HTMLElement>('button'))?.focus();
+    if (open) (itemsPanel.current?.querySelector<HTMLElement>('input') ?? itemsPanel.current?.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
     else if (shown) {
       const entries = [...(groupsPanel.current?.querySelectorAll<HTMLButtonElement>('button.offer-group') ?? [])];
-      entries.find((entry) => entry.dataset.group === shown.label)?.focus();
+      entries.find((entry) => entry.dataset.group === shown.label)?.focus({ preventScroll: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   return (
-    <div className="offer-groups">
+    // The slide is the track's transform alone: anything that scrolls this clipped box sideways (a focus moved by Tab, a
+    // find) would add to it, so it is put back.
+    <div className="offer-groups" onScroll={(event) => { event.currentTarget.scrollLeft = 0; }}>
       <div className={open ? 'offer-groups-track open' : 'offer-groups-track'}>
         <div className="offer-groups-panel" inert={open !== null} ref={groupsPanel}>
           <ul className="offer-group-list">
