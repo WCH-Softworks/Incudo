@@ -1651,6 +1651,43 @@ button.primary:hover:not(:disabled) {
   border-bottom: 1px solid var(--line);
 }
 
+/* A list in groups (a spell list by level): each heading folds its rows, and stays at the top of the list while its rows
+   scroll under it. */
+.picker-group-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.picker-group-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--bg-sunken);
+  color: var(--fg);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-group-head:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.picker-group-head .count {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
 .picker-row:last-child {
   border-bottom: none;
 }

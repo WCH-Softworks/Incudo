@@ -13,6 +13,9 @@ import { AccessibilityInfo, Animated, StyleSheet, Switch, Text, View } from 'rea
 
 import type { ElementId, ElementIndex } from '@incudo/core';
 import {
+  ALL_CANDIDATES_LABEL,
+  byLowestCandidateGroup,
+  candidateGroups,
   ADVANCED_OPTIONS_LABEL,
   advancedOptionsHint,
   ADDITIONS_HEADING,
@@ -104,6 +107,12 @@ export const BuildView = memo(function BuildView({
     },
     [elements, kind.candidateNotes],
   );
+  // A list the kind's notes group (a spell list by level) opens on its groups, every option first for a search across them.
+  const grouped = (asked: PickerRequest | null): PickerRequest | null => {
+    if (!asked || asked.groups || asked.details === false) return asked;
+    const groups = candidateGroups(asked.options, kind.candidateNotes, elements);
+    return groups ? { ...asked, groups: [{ label: ALL_CANDIDATES_LABEL, options: [...asked.options] }, ...groups] } : asked;
+  };
   const stepLabel = (id: string): string => steps.find((step) => step.id === id)?.label ?? id;
   const classLevels = steps.find((step) => step.classLevels);
   const settled = settledSteps(state);
@@ -115,7 +124,8 @@ export const BuildView = memo(function BuildView({
   const buildPicks = spellsApart ? content.build.picks : picks;
   // Required, then optional and folded (ADR 0123); the builder sorted them, this only splits them, as the desktop does.
   const groups = decisionGroups(buildDecisions);
-  const spellGroups = decisionGroups(spellsApart ? content.spells.decisions : []);
+  // Cantrips before levelled spells: by the lowest spell level each decision offers, the kind's grouping note (ADR 0128).
+  const spellGroups = decisionGroups(spellsApart ? byLowestCandidateGroup(content.spells.decisions, kind.candidateNotes, elements) : []);
   // One row per answered slot, each with its Change; a set member also with Remove.
   // An answer that lacks a prerequisite the kind makes soft (ADR 0124) says so under it.
   const pickRows = (pick: SettledPick): React.ReactNode => {
@@ -438,7 +448,7 @@ export const BuildView = memo(function BuildView({
         </>
       ) : null}
 
-      <Picker request={request} elements={elements} labelOf={labelOf} onClose={() => setRequest(null)} />
+      <Picker request={grouped(request)} elements={elements} labelOf={labelOf} onClose={() => setRequest(null)} />
       <StartOptionsView
         open={startOptions !== null && state.startOptions.length > 0}
         beginning={startOptions === 'new'}

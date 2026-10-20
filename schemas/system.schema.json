@@ -965,6 +965,7 @@
         },
         "setter": { "type": "string", "minLength": 1, "description": "The setter whose value is shown." },
         "label": { "type": "string", "minLength": 1, "description": "The text, with {value} standing for the setter's value." },
+        "groups": { "type": "boolean", "description": "A picker lists candidates of these types in groups by this note, one per value, ordered by the values with the digits in them read as numbers: a spell list by level. A candidate without the setter is listed after them. A reader that does not know this key lists them flat, so it does not change formatVersion." },
         "labels": {
           "type": "object",
           "additionalProperties": { "type": "string", "minLength": 1 },

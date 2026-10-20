@@ -33,14 +33,20 @@
  * covered the other two columns while open would be exactly that in a different shape.
  */
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CURRENT_CHOICE, placePreview, searchCandidates, type PreviewPlacement } from '@incudo/ui';
-import type { ElementId, ElementIndex } from '@incudo/core';
+import { candidateGroups, CURRENT_CHOICE, placePreview, searchCandidates, type PreviewPlacement } from '@incudo/ui';
+import type { CandidateNoteDef, ElementId, ElementIndex } from '@incudo/core';
 
 import { useCanHover } from '../use-can-hover.ts';
 import { CandidateDescription } from './CandidateDescription.tsx';
 import { usePreviewDock } from './PreviewDock.tsx';
+
+/**
+ * The kind's candidate notes, for grouping: a list whose candidates a note with `groups` reaches (a spell list by level)
+ * is shown in collapsible groups. The Build pane provides it; a picker outside it lists flat.
+ */
+export const CandidateNotesContext = createContext<readonly CandidateNoteDef[]>([]);
 
 /** Resting on a row before a floating preview opens, so sweeping the mouse down a list stays quiet. */
 const SHOW_DELAY = 250;
@@ -85,6 +91,58 @@ export function CandidatePicker({
     [candidates, candidateLabel],
   );
   const { matches } = searchCandidates(options, query, Infinity, current);
+  // In groups where the kind marks a note for it (a spell list by level), each one folded by a click on its heading. While
+  // something is typed every group with a match is shown open, so a search is never hidden inside a closed group.
+  const noteDefs = useContext(CandidateNotesContext);
+  const groups = useMemo(() => candidateGroups(candidates, noteDefs, elements), [candidates, noteDefs, elements]);
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  const searching = query.trim() !== '';
+
+  const row = (option: { id: ElementId; label: string }): React.JSX.Element => (
+    <li
+      key={String(option.id)}
+      className={['picker-row', preview.previewing(option.id) ? 'previewing' : '', option.id === current ? 'current' : '']
+        .filter(Boolean)
+        .join(' ')}
+      {...preview.rowProps(option.id)}
+    >
+      <div className="picker-row-head">
+        <button
+          type="button"
+          className="picker-choose"
+          aria-describedby={preview.describedBy(option.id)}
+          onClick={() => {
+            preview.close();
+            onSelect(option.id);
+          }}
+        >
+          {option.label}
+          {option.id === current && <span className="tag done">{CURRENT_CHOICE}</span>}
+          {notes?.has(option.id) && <span className="picker-note">{notes.get(option.id)}</span>}
+          {warnings?.has(option.id) && <span className="picker-note warning">{warnings.get(option.id)}</span>}
+        </button>
+        {!preview.canHover && (
+          <button
+            type="button"
+            className="link"
+            onClick={() => setExpandedId(expandedId === option.id ? null : option.id)}
+          >
+            {expandedId === option.id ? 'Hide details' : 'Details'}
+          </button>
+        )}
+      </div>
+      {!preview.canHover && expandedId === option.id && <CandidateDetails id={option.id} elements={elements} />}
+    </li>
+  );
+
+  const grouped = groups
+    ? groups
+        .map((group) => {
+          const inGroup = new Set(group.options);
+          return { label: group.label, matches: matches.filter((option) => inGroup.has(option.id)) };
+        })
+        .filter((group) => group.matches.length > 0)
+    : undefined;
 
   return (
     <div className="picker">
@@ -98,46 +156,39 @@ export function CandidatePicker({
       {matches.length === 0 ? (
         <p className="hint">No options match &ldquo;{query}&rdquo;.</p>
       ) : (
-        <ul className="picker-list" onMouseLeave={preview.release}>
-          {matches.map((option) => (
-            <li
-              key={String(option.id)}
-              className={['picker-row', preview.previewing(option.id) ? 'previewing' : '', option.id === current ? 'current' : '']
-                .filter(Boolean)
-                .join(' ')}
-              {...preview.rowProps(option.id)}
-            >
-              <div className="picker-row-head">
+        grouped ? (
+        <div className="picker-list picker-groups" onMouseLeave={preview.release}>
+          {grouped.map((group) => {
+            const open = searching || !folded.has(group.label);
+            return (
+              <section key={group.label} className="picker-group">
                 <button
                   type="button"
-                  className="picker-choose"
-                  aria-describedby={preview.describedBy(option.id)}
-                  onClick={() => {
-                    preview.close();
-                    onSelect(option.id);
-                  }}
+                  className="picker-group-head"
+                  aria-expanded={open}
+                  disabled={searching}
+                  onClick={() =>
+                    setFolded((previous) => {
+                      const next = new Set(previous);
+                      if (next.has(group.label)) next.delete(group.label);
+                      else next.add(group.label);
+                      return next;
+                    })
+                  }
                 >
-                  {option.label}
-                  {option.id === current && <span className="tag done">{CURRENT_CHOICE}</span>}
-                  {notes?.has(option.id) && <span className="picker-note">{notes.get(option.id)}</span>}
-                  {warnings?.has(option.id) && <span className="picker-note warning">{warnings.get(option.id)}</span>}
+                  <span aria-hidden="true">{open ? '▾' : '▸'}</span> {group.label}{' '}
+                  <span className="count">{group.matches.length}</span>
                 </button>
-                {!preview.canHover && (
-                  <button
-                    type="button"
-                    className="link"
-                    onClick={() => setExpandedId(expandedId === option.id ? null : option.id)}
-                  >
-                    {expandedId === option.id ? 'Hide details' : 'Details'}
-                  </button>
-                )}
-              </div>
-              {!preview.canHover && expandedId === option.id && (
-                <CandidateDetails id={option.id} elements={elements} />
-              )}
-            </li>
-          ))}
+                {open && <ul className="picker-group-rows">{group.matches.map(row)}</ul>}
+              </section>
+            );
+          })}
+        </div>
+        ) : (
+        <ul className="picker-list" onMouseLeave={preview.release}>
+          {matches.map(row)}
         </ul>
+        )
       )}
       {preview.panel}
     </div>

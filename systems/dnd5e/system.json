@@ -468,7 +468,7 @@
       },
 
       "candidateNotes": [
-        { "types": ["Spell"], "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }
+        { "types": ["Spell"], "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" }, "groups": true }
       ],
 
       "candidateOverlaps": { "types": ["Proficiency", "Language"] },

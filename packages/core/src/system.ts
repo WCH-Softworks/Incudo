@@ -296,6 +296,12 @@ export interface CandidateNoteDef {
   label: string;
   /** Exact-value replacements, tried before `label` — `{ "0": "Cantrip" }`. */
   labels?: Record<string, string>;
+  /**
+   * A picker lists candidates of these types in groups by this note, one per value, in the values' order with the digits
+   * in them read as numbers ("2" before "10"): a spell list by level. A candidate the setter does not reach is listed
+   * after them. A reader that does not know the key lists them flat, so `formatVersion` did not move.
+   */
+  groups?: boolean;
 }
 
 /**

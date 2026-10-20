@@ -2721,6 +2721,11 @@ before touching it:
   fighting~~, Dueling (commented out upstream), ~~reach as a distance~~ (ADR 0110), the inventory naming an adorned item by `name-format`.
   Driven in the browser build with no source (two packed samples and a built Beast Master); in the Tauri window on Windows (2026-10-20) (a Wizard's dagger and +1 quarterstaff, on the Sheet, the PDF and the official form); not the phone.
 
+**Pickers group by a candidate note that declares `groups`** ([ADR 0128](docs/adr/0128-a-candidate-note-may-group-a-picker-and-spells-are-listed-by-level.md)):
+5e's spell level, so a spell list reads "Cantrip", "Level 1"… under headings that fold. `candidateGroups` (`candidate-label.ts`)
+builds them; the desktop's `CandidatePicker` reads the kind's notes from `CandidateNotesContext` (the Build pane provides it)
+and opens every group with a match while a search is typed; the phone's picker gets them as its group list, "All options" first.
+
 **A slot publishes a set of tags, and `equipped=` is evaluated** (ADR 0025, step 4). A character
 kind declares its `inventory`: which slots exist, what stat each publishes into, which setters
 become tags, and which setter marks attunement. Core says none of `body`, `armor`, `primary`,

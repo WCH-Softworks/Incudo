@@ -65,6 +65,7 @@ import {
   type SettledEditView,
   advancedOptionsHint,
   arrivedDecision,
+  byLowestCandidateGroup,
   decisionGroups,
   decisionKey,
   optionalDecisionsLabel,
@@ -82,7 +83,7 @@ import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
 import { ClassLevels } from './ClassLevels.tsx';
 import { PreparedSpells } from './PreparedSpells.tsx';
 import { PublicationsEditor } from './PublicationsEditor.tsx';
-import { CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
+import { CandidateNotesContext, CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 import { CustomFeatures } from './CustomFeatures.tsx';
 import { Additions } from './Additions.tsx';
@@ -154,7 +155,8 @@ export function BuilderPane({
 
   // What must be answered, then what may be, folded (ADR 0123). The builder sorted them; this only splits them.
   const groups = decisionGroups(content.build.decisions);
-  const spellGroups = decisionGroups(content.spells.decisions);
+  // Cantrips before levelled spells: by the lowest spell level each decision offers, the kind's grouping note (ADR 0128).
+  const spellGroups = decisionGroups(byLowestCandidateGroup(content.spells.decisions, kind.candidateNotes, elements));
 
   // A settled answer or set of values being changed, in the middle column where open decisions are (ADR 0124). Gone
   // once what it edits is gone; Escape, Back and switching tab close it.
@@ -256,6 +258,8 @@ export function BuilderPane({
   );
 
   return (
+    // Every picker below groups its candidates by the notes the kind marks for it (a spell list by level).
+    <CandidateNotesContext.Provider value={kind.candidateNotes}>
     <main className="pane builder">
       <section className="progress-bar">
         <label>
@@ -874,6 +878,7 @@ export function BuilderPane({
         </section>
       )}
     </main>
+    </CandidateNotesContext.Provider>
   );
 }
 

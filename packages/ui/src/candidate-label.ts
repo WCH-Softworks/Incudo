@@ -15,6 +15,7 @@
  */
 
 import type { CandidateNoteDef, Element, ElementId, ElementIndex } from '@incudo/core';
+import type { OfferGroup } from './inventory.ts';
 
 /** The note for one element, or nothing when no declared note applies to it. */
 export function candidateNote(
@@ -28,6 +29,79 @@ export function candidateNote(
     return note.labels?.[value] ?? note.label.replaceAll('{value}', value);
   }
   return undefined;
+}
+
+/** What a picker calls the candidates no grouping note reaches, listed after the groups. */
+export const OTHER_CANDIDATES_LABEL = 'Other';
+/** Where a picker that shows one group at a time (the phone's) lists every candidate, for a search across the groups. */
+export const ALL_CANDIDATES_LABEL = 'All options';
+
+/**
+ * A list of candidates in groups, by the first note the kind declares with `groups` for each one's type: a spell list by
+ * level, "Cantrip", "Level 1", "Level 2"… One group per value, in the values' order with their digits read as numbers,
+ * each keeping the order it was given; what no such note reaches is "Other", last. Undefined when no note groups any of
+ * them, or when they would all be in one group, which a heading would only repeat. The note's labels are the system's.
+ */
+export function candidateGroups(
+  ids: readonly ElementId[],
+  notes: readonly CandidateNoteDef[],
+  index: ElementIndex,
+): OfferGroup[] | undefined {
+  const grouping = notes.filter((note) => note.groups);
+  if (!grouping.length) return undefined;
+  const groups = new Map<string, { value: string; label: string; options: ElementId[] }>();
+  const other: ElementId[] = [];
+  let grouped = false;
+  for (const id of ids) {
+    const element = index.get(id);
+    const note = element ? grouping.find((each) => each.types.includes(element.type)) : undefined;
+    const value = note ? element!.setters[note.setter]?.value.trim() : undefined;
+    if (!note || !value) {
+      other.push(id);
+      continue;
+    }
+    grouped = true;
+    const group = groups.get(value) ?? { value, label: note.labels?.[value] ?? note.label.replaceAll('{value}', value), options: [] };
+    group.options.push(id);
+    groups.set(value, group);
+  }
+  if (!grouped) return undefined;
+  const ordered: OfferGroup[] = [...groups.values()]
+    .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }))
+    .map(({ label, options }) => ({ label, options }));
+  if (other.length) ordered.push({ label: OTHER_CANDIDATES_LABEL, options: other });
+  return ordered.length > 1 ? ordered : undefined;
+}
+
+/**
+ * Decisions in the order of the lowest group their candidates fall in (ADR 0128): on the Spells tab a Wizard's cantrip
+ * pool before its spellbook, though the cantrip pool opened at a later level. Stable, so decisions whose lowest group is
+ * the same, or that no grouping note reaches (listed after the rest), keep the order the builder gave them; only the
+ * candidates are read, so what must be answered still comes first when the caller splits the list afterwards.
+ */
+export function byLowestCandidateGroup<T extends { candidates: readonly ElementId[] }>(
+  decisions: readonly T[],
+  notes: readonly CandidateNoteDef[],
+  index: ElementIndex,
+): T[] {
+  const grouping = notes.filter((note) => note.groups);
+  if (!grouping.length) return [...decisions];
+  const lowest = (decision: T): string | undefined => {
+    let best: string | undefined;
+    for (const id of decision.candidates) {
+      const element = index.get(id);
+      const note = element ? grouping.find((each) => each.types.includes(element.type)) : undefined;
+      const value = note ? element!.setters[note.setter]?.value.trim() : undefined;
+      if (value && (best === undefined || value.localeCompare(best, undefined, { numeric: true }) < 0)) best = value;
+    }
+    return best;
+  };
+  const keyed = decisions.map((decision, at) => ({ decision, at, value: lowest(decision) }));
+  keyed.sort((a, b) => {
+    if (a.value === undefined || b.value === undefined) return a.value !== undefined ? -1 : b.value !== undefined ? 1 : a.at - b.at;
+    return a.value.localeCompare(b.value, undefined, { numeric: true }) || a.at - b.at;
+  });
+  return keyed.map((entry) => entry.decision);
 }
 
 /**
