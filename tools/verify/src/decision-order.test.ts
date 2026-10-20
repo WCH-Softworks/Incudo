@@ -49,6 +49,9 @@ const report = (t: { diagnostic: (s: string) => void }, decisions: OpenDecision[
   for (const d of decisions) t.diagnostic(`${d.opensAt ?? '-'}  ${d.label}`);
 };
 
+/** Listed under "Optional": not owed, and not of a step listed with what is (ADR 0127). */
+const listedLater = (d: { blocking: boolean; withRequired?: true }): boolean => !d.blocking && !d.withRequired;
+
 test('a Fighter taken to 6 meets its first-level choices before its later ones', { skip: corpusSkip }, async (t) => {
   // Fails with the order by step rank alone (Martial Archetype second among the class's), with the budget and hit points
   // appended unsorted (Ability Scores last), or with no `opensAt` on a select (the improvements tie with level 1).
@@ -63,10 +66,10 @@ test('a Fighter taken to 6 meets its first-level choices before its later ones',
   const sixth = at(decisions, 'Improvement Option (Fighter 6)');
   assert.ok(style < archetype && skills < archetype, 'level 1 before level 3');
   assert.ok(archetype < fourth && fourth < sixth, 'level 3, then 4, then 6');
-  // Required first (ADR 0123): no optional decision above a required one.
-  const firstOptional = decisions.findIndex((d) => !d.blocking);
+  // Required first (ADR 0123): no optional decision above a required one, but for one its step lists with them (ADR 0127).
+  const firstOptional = decisions.findIndex(listedLater);
   assert.ok(firstOptional > 0, 'something optional is open');
-  assert.ok(decisions.slice(firstOptional).every((d) => !d.blocking), 'nothing required after the first optional one');
+  assert.ok(decisions.slice(firstOptional).every(listedLater), 'nothing required after the first optional one');
   for (const group of [decisions.slice(0, firstOptional), decisions.slice(firstOptional)]) {
     const levels = group.map((d) => Math.max(d.opensAt ?? 0, 1));
     assert.deepEqual(levels, [...levels].sort((a, b) => a - b), 'no choice is listed after one that opens later');
@@ -120,8 +123,8 @@ test('a fresh Human Fighter 3 of either book: required first, no options, no fir
     const decisions = b.getState().decisions;
     t.diagnostic(book);
     for (const d of decisions) t.diagnostic(`  ${d.blocking ? 'required' : 'optional'}  ${d.opensAt ?? '-'}  ${d.label}`);
-    const firstOptional = decisions.findIndex((d) => !d.blocking);
-    assert.ok(decisions.slice(firstOptional).every((d) => !d.blocking), `${book}: nothing required after an optional one`);
+    const firstOptional = decisions.findIndex(listedLater);
+    assert.ok(decisions.slice(firstOptional).every(listedLater), `${book}: nothing required after an optional one`);
     assert.equal(decisions.some((d) => d.stepId === 'options'), false, `${book}: the options are asked at the start`);
     assert.equal(decisions.some((d) => d.kind === 'hitpoints' && d.hitPointLevel === 1), false, `${book}: level 1 is recorded`);
     assert.equal(b.getState().character.rolls['hp:level:1'], 10, `${book}: the Fighter's d10 maximum`);
