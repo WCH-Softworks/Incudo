@@ -534,9 +534,12 @@ function Shell({
   const [saving, setSaving] = useState(false);
   /** A copy being written: a dialog is open, or bytes are going to disk. */
   const [copying, setCopying] = useState(false);
-  /** A sheet being exported as text, and what the Sheet's bar says about the last one (ADR 0075). */
+  /**
+   * A sheet being exported as text, and what the Sheet's bar says about the last one (ADR 0075), with the character it is
+   * about: it is said only while that character is on screen, so opening or starting another does not carry it over.
+   */
   const [exporting, setExporting] = useState(false);
-  const [exportNote, setExportNote] = useState<string | null>(null);
+  const [exportNoteFor, setExportNoteFor] = useState<{ characterId: string; text: string } | null>(null);
   /** A save whose character name no longer matches the file it would write to. */
   const [renamePrompt, setRenamePrompt] = useState<{ from: string; to: string } | null>(null);
   // What the next print uses (ADR 0078): the remembered choices, until the print options step records new ones.
@@ -664,6 +667,10 @@ function Shell({
     SHIPPED_STARTING_EQUIPMENT,
     buildPreferences.showAdvanced,
   );
+
+  const characterId = state.character.id;
+  const setExportNote = useCallback((text: string) => setExportNoteFor({ characterId, text }), [characterId]);
+  const exportNote = exportNoteFor?.characterId === characterId ? exportNoteFor.text : null;
 
   // Whether a character has been started, and whether it has changes its library file does not (ADR 0120).
   const edit = useMemo(() => editState(working, state.character, system), [working, state.character, system]);
@@ -1189,7 +1196,7 @@ function Shell({
     } finally {
       setExporting(false);
     }
-  }, [document]);
+  }, [document, setExportNote]);
 
   /**
    * "Print sheet…" opens the print options step (ADR 0078), with the remembered choices read afresh; its Print then opens
@@ -1247,7 +1254,7 @@ function Shell({
         setExporting(false);
         setPrintTarget('print');
       });
-  }, [pdfRequested, document, printOptions.paper]);
+  }, [pdfRequested, document, printOptions.paper, setExportNote]);
 
   // The form this character's kind fills, if its system ships one (ADR 0079 decision 5): the 5e player character's.
   const formMap = useMemo(
@@ -1336,7 +1343,7 @@ function Shell({
       setOfficialBusy(false);
       setExporting(false);
     }
-  }, [formMap, document]);
+  }, [formMap, document, setExportNote]);
 
   const officialView = useMemo(
     () => (officialOpen && formMap ? officialSheetView(formMap, officialKept, officialProblem) : null),
