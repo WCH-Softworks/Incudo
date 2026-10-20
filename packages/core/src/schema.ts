@@ -454,6 +454,13 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           message: `step "${step.id}" is offered only when an element is held and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be switched off`,
         });
       }
+      // Listed with what must be answered (ADR 0127), so only a step nothing owes an answer to: one that is owed already is.
+      if (step.listedWithRequired && !(step.multiple || step.equip || (step.pick && !step.required))) {
+        errors.push({
+          path: `${where}.buildSteps`,
+          message: `step "${step.id}" is listed with the required decisions and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered needs listing there`,
+        });
+      }
       // What is asked when a character is started is a set of options (ADR 0123): a pick or a budget is Build's to ask.
       if (step.askedAtStart && !step.multiple) {
         errors.push({

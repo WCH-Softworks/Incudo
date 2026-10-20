@@ -98,9 +98,9 @@ export function hasSpellWork(state: BuilderState): boolean {
 export function buildTabs(state: BuilderState): BuildTabView[] {
   const content = buildTabContent(state);
   const label = (id: BuildTab): string => BUILD_TABS.find((tab) => tab.id === id)!.label;
-  const tabs: BuildTabView[] = [{ id: 'build', label: label('build'), required: decisionGroups(content.build.decisions).required.length }];
+  const tabs: BuildTabView[] = [{ id: 'build', label: label('build'), required: decisionGroups(content.build.decisions).owed }];
   if (hasSpellWork(state)) {
-    tabs.push({ id: 'spells', label: label('spells'), required: decisionGroups(content.spells.decisions).required.length });
+    tabs.push({ id: 'spells', label: label('spells'), required: decisionGroups(content.spells.decisions).owed });
   }
   tabs.push({ id: 'details', label: label('details') });
   return tabs;

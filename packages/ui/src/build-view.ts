@@ -389,10 +389,17 @@ export function progressPrintedHint(
  * Open decisions as a screen lists them (ADR 0123): what must be answered, then what may be, folded under a heading of
  * its own. The builder already sorts them that way; this only splits them, so the phone and the desktop split alike.
  */
-export function decisionGroups(decisions: readonly OpenDecision[]): { required: OpenDecision[]; optional: OpenDecision[] } {
+export function decisionGroups(decisions: readonly OpenDecision[]): {
+  required: OpenDecision[];
+  optional: OpenDecision[];
+  /** How many of `required` are owed: one listed there by its step (ADR 0127) is shown and not counted. */
+  owed: number;
+} {
+  const first = (decision: OpenDecision): boolean => decision.blocking || decision.withRequired === true;
   return {
-    required: decisions.filter((decision) => decision.blocking),
-    optional: decisions.filter((decision) => !decision.blocking),
+    required: decisions.filter(first),
+    optional: decisions.filter((decision) => !first(decision)),
+    owed: decisions.filter((decision) => decision.blocking).length,
   };
 }
 

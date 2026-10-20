@@ -239,9 +239,9 @@ export const BuildView = memo(function BuildView({
         </>
       ) : null}
 
-      <Heading>Open decisions ({groups.required.length})</Heading>
+      <Heading>Open decisions ({groups.owed})</Heading>
       {buildDecisions.length === 0 ? <Body tone="muted">Nothing outstanding.</Body> : null}
-      {buildDecisions.length > 0 && groups.required.length === 0 ? <Body tone="muted">{NOTHING_REQUIRED}</Body> : null}
+      {buildDecisions.length > 0 && groups.owed === 0 ? <Body tone="muted">{NOTHING_REQUIRED}</Body> : null}
       {groups.required.map(decisionCard)}
       {groups.optional.length > 0 ? (
         <>
@@ -278,7 +278,7 @@ export const BuildView = memo(function BuildView({
       {/* The spells (ADR 0124): what is still to choose, what is chosen, how cantrips attack and what is prepared. */}
       {spellsApart ? (
         <>
-          <Heading>{`${SPELL_DECISIONS_HEADING} (${spellGroups.required.length})`}</Heading>
+          <Heading>{`${SPELL_DECISIONS_HEADING} (${spellGroups.owed})`}</Heading>
           {content.spells.decisions.length === 0 ? <Body tone="muted">Every spell choice has an answer.</Body> : null}
           {spellGroups.required.map(decisionCard)}
           {spellGroups.optional.length > 0 ? (

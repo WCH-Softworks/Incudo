@@ -259,6 +259,11 @@ export interface OpenDecision {
    * takes the whole set. Absent for everything else, so its meaning is never "false" by omission.
    */
   multiple?: boolean;
+  /**
+   * Not owed, but listed with what is (ADR 0127): its step declares `listedWithRequired`. It sorts among the blocking
+   * decisions and a screen shows it there, still skippable; counts of what is owed leave it out. Absent otherwise.
+   */
+  withRequired?: true;
 }
 
 /**
@@ -1895,6 +1900,7 @@ export class CharacterBuilder {
         stepId: step.id,
         // A step that is a pick without being required (ADR 0068) can be skipped, like any non-blocking decision.
         blocking: step.required ?? false,
+        ...(step.listedWithRequired && !step.required ? { withRequired: true as const } : {}),
         remaining: 1,
         // A top-level pick has no supports filter; the step names types and nothing else.
         unresolved: [],
@@ -1968,6 +1974,7 @@ export class CharacterBuilder {
           label: step.label,
           stepId: step.id,
           blocking: false,
+          ...(step.listedWithRequired ? { withRequired: true as const } : {}),
           remaining: 0,
           unresolved: [],
           candidates,
@@ -2181,9 +2188,10 @@ export class CharacterBuilder {
     // What must be answered comes before what may be (ADR 0123): a Fighter levelled to 3 met its Martial Archetype and
     // its new hit points below seven optional first-level decisions (a variant, a specialty, an alignment, a deity…),
     // which a user had to scroll past to find the one thing owed. Within each, the order above.
-    decisions.sort(
-      (a, b) => Number(!a.blocking) - Number(!b.blocking) || levelOf(a) - levelOf(b) || rankOf(a) - rankOf(b),
-    );
+    // A decision whose step is listed with the required ones (ADR 0127) sorts with them: an optional class feature that
+    // replaces Favored Enemy is asked before Favored Enemy, not after it under "Optional".
+    const later = (decision: OpenDecision): number => Number(!decision.blocking && !decision.withRequired);
+    decisions.sort((a, b) => later(a) - later(b) || levelOf(a) - levelOf(b) || rankOf(a) - rankOf(b));
 
     // A non-blocking decision the user declined (ADR 0033) leaves `decisions` the same way an
     // answered one does, and for the same reason: a step whose only outstanding items are

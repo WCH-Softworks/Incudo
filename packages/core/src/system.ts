@@ -792,6 +792,14 @@ export interface BuildStepDef {
    * decision, as before, so `formatVersion` did not move.
    */
   askedAtStart?: boolean;
+  /**
+   * What this step opens is listed with the decisions a character must answer, at its place in their order, though
+   * nothing owes it an answer — ADR 0127: an optional class feature that replaces one of the class's own changes what the
+   * class asks next, so it is asked before that and not under "Optional". It still blocks nothing and can be skipped.
+   * Only on a step a character may leave unanswered, as `advanced`. A reader that does not know the key lists the step
+   * with the optional ones, as before, so `formatVersion` did not move.
+   */
+  listedWithRequired?: boolean;
   description?: string;
   /**
    * Ids of steps that must be usable before this one is — ADR 0017.

@@ -1142,6 +1142,10 @@
           "type": "boolean",
           "description": "This set is asked when a character is started, before anything else is built (ADR 0123): options that shape every other offer. It opens no decision on Build; its answer, even none, is listed with the choices already made and changed there. Only on a multiple step. A reader that does not know this key offers the step as an open decision, as before, so it does not change formatVersion."
         },
+        "listedWithRequired": {
+          "type": "boolean",
+          "description": "What this step opens is listed with the decisions a character must answer, at its place in their order, though nothing owes it an answer (ADR 0127): an optional class feature that replaces one of the class's own changes what the class asks next, so it is asked before that. It blocks nothing and can still be skipped. Only on a step a character may leave unanswered: a set (multiple), a step that equips, or a pick that is not required. A reader that does not know this key lists the step with the optional decisions, as before, so it does not change formatVersion."
+        },
         "pick": {
           "type": "boolean",
           "description": "This step is a pick of one even though it is not required: offered as one, never blocking, so it may be skipped (ADR 0068). An NPC's creature, which an NPC built by hand has none of. Without it a step that is neither required nor multiple is a heading for the selects content opens of its types. Cannot be combined with `multiple`. A reader that does not know this key offers no pick for the step, as before, so it does not change formatVersion."

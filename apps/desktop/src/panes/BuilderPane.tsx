@@ -455,17 +455,17 @@ export function BuilderPane({
           )}
 
           <h2>
-            Open decisions <span className="count">{groups.required.length}</span>
+            Open decisions <span className="count">{groups.owed}</span>
           </h2>
           {content.build.decisions.length === 0 && (
             <p className="lede">Nothing outstanding. Every blocking decision has an answer.</p>
           )}
-          {content.build.decisions.length > 0 && groups.required.length === 0 && <p className="lede">{NOTHING_REQUIRED}</p>}
+          {content.build.decisions.length > 0 && groups.owed === 0 && <p className="lede">{NOTHING_REQUIRED}</p>}
           <ul className="decisions">{groups.required.map(decisionItem)}</ul>
           {/* Required spell choices wait on their own tab (ADR 0124); said here so the build does not read as done. */}
-          {spellsWaitingNote(spellGroups.required.length) && (
+          {spellsWaitingNote(spellGroups.owed) && (
             <p className="hint">
-              {spellsWaitingNote(spellGroups.required.length)}{' '}
+              {spellsWaitingNote(spellGroups.owed)}{' '}
               <button type="button" className="link" onClick={() => switchTab('spells')}>
                 Go to Spells
               </button>
@@ -723,10 +723,10 @@ export function BuilderPane({
             {editor ?? (
               <>
                 <h2>
-                  {SPELL_DECISIONS_HEADING} <span className="count">{spellGroups.required.length}</span>
+                  {SPELL_DECISIONS_HEADING} <span className="count">{spellGroups.owed}</span>
                 </h2>
                 {content.spells.decisions.length === 0 && <p className="lede">Every spell choice has an answer.</p>}
-                {content.spells.decisions.length > 0 && spellGroups.required.length === 0 && (
+                {content.spells.decisions.length > 0 && spellGroups.owed === 0 && (
                   <p className="lede">{NOTHING_REQUIRED}</p>
                 )}
                 <ul className="decisions">{spellGroups.required.map(decisionItem)}</ul>

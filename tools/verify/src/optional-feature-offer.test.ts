@@ -133,3 +133,20 @@ test("the optional class features step offers nothing before a class, and a clas
   }
   assert.ok(offered > 0, 'some class is offered some feature');
 });
+
+test('a 2014 Ranger is asked about optional class features before Favored Enemy, still able to skip it', { skip: corpusSkip }, async () => {
+  // ADR 0127. Favored Foe replaces Favored Enemy, so a Ranger that answered Favored Enemy first and then took Favored Foe
+  // had answered for nothing. Fails with `listedWithRequired` taken off 5e's step, or ignored in the sort: the step drops
+  // under "Optional", after every required decision.
+  const system = await loadShippedSystem('dnd5e');
+  const builder = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, await realElements());
+  builder.choose('build/class', ['ID_WOTC_PHB_CLASS_RANGER']);
+  const labels = builder.getState().decisions.map((d) => d.label);
+  const optional = labels.indexOf('Optional class features');
+  const favored = labels.findIndex((label) => label.startsWith('Favored Enemy'));
+  assert.ok(optional >= 0 && favored >= 0, labels.join(' | '));
+  assert.ok(optional < favored, labels.join(' | '));
+  const step = builder.getState().decisions[optional]!;
+  assert.equal(step.blocking, false);
+  assert.equal(step.withRequired, true);
+});

@@ -1126,6 +1126,32 @@ test('a step a character may leave unanswered may wait on an option, and a set m
   );
 });
 
+test('a step a character may leave unanswered may be listed with the required decisions — ADR 0127', async () => {
+  // Perturbation: drop `listedWithRequired` from the schema and the first assertion fails on an unknown key; drop the
+  // check in `validateGameSystem` and the refusal below is missing.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        delete step.required;
+        step.multiple = true;
+        step.listedWithRequired = true;
+      }),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.buildSteps![0]!.listedWithRequired = true;
+      }),
+    ),
+    [
+      'characterKinds[0].buildSteps: step "one" is listed with the required decisions and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered needs listing there',
+    ],
+  );
+});
+
 test('a step may equip, and equipping takes none of the keys that make a step something else — ADR 0072', async () => {
   // Perturbation: drop `equip` or `hiddenSetter` from the schema and the first assertion fails on an unknown key; drop
   // the checks in `validateGameSystem` and the clash and no-types assertions fail.

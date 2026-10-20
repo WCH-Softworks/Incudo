@@ -1129,6 +1129,9 @@ know before touching it:
     gated (a term outside a `not`) on a stat the character publishes above zero or an element it holds
     (`requirementConcerns`, `equip-step.ts`); not whether it holds, so a Fighter 1 sees its level 4 feature. 5e's step
     declares it, so it offers nothing before a class and a class only its own; `optional-feature-offer.test.ts` holds it.
+  - **Since ADR 0127 the step is listed with the required decisions** (`listedWithRequired`, system format): sorted
+    among the blocking ones by level and rank, still skippable, never counted as owed (`OpenDecision.withRequired`,
+    `decisionGroups(…).owed`). A Ranger meets it before Favored Enemy, which Favored Foe replaces.
   - **Since ADR 0089 5e declares two more equip steps**, by category and not `gatedOnHeld` (no grant of theirs is gated):
     "Additional features" (35: speeds, senses, feat and multiclass unlockers, weapon mastery, the Companion and Familiar
     Selection, Lycanthropy, bonus feats) and "Ability score adjustments" (12: +1 or −1 to one score). The 2024 mounts are

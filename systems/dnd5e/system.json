@@ -495,7 +495,7 @@
         { "id": "levels", "label": "Levels", "types": ["Class", "Archetype"], "perLevel": true, "requires": ["class"], "priority": 2.5,
           "levelRoll": { "pattern": "hp:level:{n}", "dieSetter": "hd", "classType": "Class", "fixedWhen": "ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP" },
           "multiclassWhen": "ID_INTERNAL_OPTION_ALLOW_MULTICLASSING" },
-        { "id": "optional-features", "label": "Optional class features", "types": ["Item"], "requires": ["class"], "priority": 2.7,
+        { "id": "optional-features", "label": "Optional class features", "types": ["Item"], "requires": ["class"], "priority": 2.7, "listedWithRequired": true,
           "equip": { "setter": "category", "values": ["Optional Class Features"], "gatedOnHeld": true },
           "description": "Features your classes may take beside their own, some of them in place of one of their own, offered once you have chosen a class. Each gives its feature from the class level it names, and one that replaces a feature takes that feature away while it is taken. Taking none is the ordinary answer." },
         { "id": "languages", "label": "Languages", "types": ["Language"], "priority": 2.9 },

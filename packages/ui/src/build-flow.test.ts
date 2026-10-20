@@ -121,6 +121,24 @@ test('what must be answered comes before what may be, at whatever level it opens
   assert.equal(optionalDecisionsLabel(groups.optional.length), 'Optional (1)');
 });
 
+test('a step listed with the required decisions sorts among them, is shown there and is not counted as owed', () => {
+  // ADR 0127. Fails if `listedWithRequired` is ignored in the sort (Trait drops below the hit points and Path, under
+  // "Optional", where a choice that changes the class's own comes after them), or if `decisionGroups` counts it as owed.
+  const sys = system();
+  const kind = sys.characterKinds[0]!;
+  kind.buildSteps = kind.buildSteps!.map((step) => (step.id === 'trait' ? { ...step, listedWithRequired: true, priority: 2.5 } : step));
+  const b = new CharacterBuilder({ ...newCharacterOfKind(sys, 'pc'), progress: 3 }, sys, index());
+  b.choose('build/kit', ['KIT_A']);
+  assert.deepEqual(labels(b), ['Scores', 'Trait', 'Hit Points, level 2', 'Path', 'Hit Points, level 3']);
+  const trait = b.getState().decisions.find((d) => d.label === 'Trait')!;
+  assert.equal(trait.blocking, false, 'still skippable');
+  assert.equal(trait.withRequired, true);
+  const groups = decisionGroups(b.getState().decisions);
+  assert.deepEqual(groups.required.map((d) => d.label), ['Scores', 'Trait', 'Hit Points, level 2', 'Path', 'Hit Points, level 3']);
+  assert.deepEqual(groups.optional, []);
+  assert.equal(groups.owed, 4);
+});
+
 // --- 2. campaign options asked at the start ----------------------------------------------------------------------------
 
 test('a set asked at the start opens no decision and is listed with its answer, even none', () => {
