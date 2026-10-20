@@ -82,3 +82,8 @@ an NPC and as a level 1 player character, every score 10 and its first subrace t
   creature type line for a race-built NPC (content gives races no type setter). The legendary creature inherits all of it.
 - A Monster Manual humanoid is still prose: its NPC is the race, with the stat block kept beside it for reference (ADR
   0068) and its armour class, hit points and actions typed or written from it.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events
+  over the debug port, real keys where marked): an NPC on Dwarf then Hill Dwarf, with no creature, its scores entered:
+  Constitution and Wisdom raised by the race, Speed 25 from the race, Darkvision and Medium on the Sheet, its tool
+  proficiency asked; armour class and hit points typed. An NPC on neither and a legendary creature on neither were
+  built beside it. Each saved and reopened with every source off to a Sheet identical to Node's.

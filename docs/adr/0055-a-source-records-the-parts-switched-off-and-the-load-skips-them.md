@@ -93,7 +93,10 @@ guess.
   it as unable to load, and saving gives a load of 12,306 elements from 648 files, 9 warnings where the full corpus has 57,
   and "1 part switched off" on the line, surviving a reload. The Unearthed Arcana index added as a new source with
   "Choose parts first" and its Plane Shift book off loads 64 of its 92 files. Switching everything back on returned the
-  profile to 14,320 elements from 740 files and 57 warnings. **Not driven:** the Tauri window, macOS and Linux.
+  profile to 14,320 elements from 740 files and 57 warnings. **Not driven:** macOS and Linux.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): "Choose parts first" on the suggested AuroraLegacy listed its 60 indexes, Plane Shift switched off read "712 of
+  740 files will load", and the first load gave 14,088 entries from 712 files in 25.8 s with "1 part switched off" on
+  the line.
 
 ## What this does not do
 

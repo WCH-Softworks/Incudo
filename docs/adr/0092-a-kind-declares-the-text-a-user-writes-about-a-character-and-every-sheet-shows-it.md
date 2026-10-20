@@ -102,8 +102,9 @@ are not.
   it is left out of the rule that keeps a section without listed elements whole.
 - Driven in the browser build (typed on Build, read on the Sheet, offered by the print step, kept across a reload, an
   emptied field leaving the sheet) and on the Pixel 9 Pro emulator in Expo Go (a sample's imported text on its sheet and in
-  its editor, a typed field marking the build unsaved; left unsaved). Not in the Tauri window, on a real phone, iOS,
-  macOS or Linux; the text export and the form fill are held by the tests, not driven.
+  its editor, a typed field marking the build unsaved; left unsaved). Not on a real phone, iOS, macOS or Linux.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a backstory typed with real keys on a new Wizard, shown on the Sheet, written into the file, in the text export
+  (identical to Node's with no source) and in the official form's Backstory box filled from the maintainer's own copy.
 
 ## Consequences
 

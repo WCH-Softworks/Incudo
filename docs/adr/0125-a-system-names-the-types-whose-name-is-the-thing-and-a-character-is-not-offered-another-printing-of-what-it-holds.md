@@ -122,3 +122,9 @@ The same pass found the NPC's Traits list showing "Agile — Monster Manual (202
 - `tools/verify/src/printings.test.ts`: the measurement above, and against any corpus a 2014 Wizard's cantrips (Blade
   Ward from the Player's Handbook taken, the 2024 one gone from the decision and offered to its slot), a 2014 Cleric's
   prepared list, and every pool of the thirty samples offering no printing of what the sample holds (535 pools).
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events
+  over the debug port, real keys where marked): a High Elf Wizard's cantrip from the Player's Handbook took Acid
+  Splash away from the Wizard's own cantrip decision, while the settled slot offered the 2024 printing as a change of
+  book; Draconic from the Player's Handbook took the 2024 Draconic out of the second language slot, and the settled
+  slot did not offer it either, because content's own requirement on the 2024 Draconic names the Player's Handbook
+  one.

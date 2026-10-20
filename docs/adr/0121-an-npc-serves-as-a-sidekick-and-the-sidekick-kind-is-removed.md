@@ -62,3 +62,8 @@ The kind had nothing to level in:
 - If sidekick class content ever appears in a source users have, ADR 0118 records how the kind was built and what the
   Tauri window and phone drives found; that would be a new decision, written against that content.
 - The oracle is unaffected: no sample is an NPC or a sidekick.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events
+  over the debug port, real keys where marked): a Wolf NPC used as a sidekick, its challenge rating typed as 1
+  (proficiency +2, "Use Wolf's (1/4)" offered), its hit points typed as 20 over the printed 11, Pack Tactics removed,
+  a feature of the DM's own setting Speed 60, another given from the feature library and Alert added; saved and
+  reopened with every source off to the same Sheet.

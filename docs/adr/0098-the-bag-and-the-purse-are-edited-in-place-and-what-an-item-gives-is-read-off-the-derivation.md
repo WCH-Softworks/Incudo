@@ -62,7 +62,9 @@ samples):
 > app, read a Ring of Protection as moving the ability scores. The sheet's bag leaves out an equip step's items, as the
 > sheet always did through `hiddenSetter`. The purse helpers moved to `packages/ui/src/money.ts`. Driven in the browser
 > build (a Fighter's wealth, three items bought and equipped, armour class 19 with an attuned ring, Mithral Armor
-> attached, a pack opened, coins exchanged); not on a phone or in the Tauri window. The oracle is identical before and
+> attached, a pack opened, coins exchanged); not on a phone. In the Tauri window on Windows (2026-10-20): a Wizard's
+> starting equipment taken with its sub-choices, a potion added from the Potions group, 120 gold typed with real keys and
+> received, +1 attached to a quarterstaff, the file read back with its 13 entries and purse. The oracle is identical before and
 > after.
 
 ## Decision

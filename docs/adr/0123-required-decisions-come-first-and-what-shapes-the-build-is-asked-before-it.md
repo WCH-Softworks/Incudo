@@ -92,4 +92,9 @@ to level 3 (`tools/verify/src/decision-order.test.ts` now reports the after):
   the top marked and unclickable for 400 ms; Alignment and Deity are folded. With "Additional Features" ticked in the
   dialog, the two steps appear among the optional decisions. A Human Soldier Fighter showed no level 1 hit point card;
   levelled to 2, then to 3 in Rogue (Fighter 2 / Rogue 1), its new hit points (levels 2 and 3) and the Rogue's skill and
-  expertise were among the twelve required decisions, above all ten optional ones. Not driven on the phone (typechecked only) or in the Tauri window.
+  expertise were among the twelve required decisions, above all ten optional ones. Not driven on the phone (typechecked only).
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): New character opened the dialog with feats and multiclassing ticked; real mouse clicks unticked multiclassing,
+  ticked Additional Features and pressed Start building; the standard array was placed and swapped and stayed until
+  Done; required decisions came first with the optional folded under "Optional (9)"; no level 1 hit point card, its
+  maximum recorded; the two equip steps offered and taken. Found there and fixed: a kind that asks nothing (an NPC) left
+  the dialog waiting for the next character opened from the library.

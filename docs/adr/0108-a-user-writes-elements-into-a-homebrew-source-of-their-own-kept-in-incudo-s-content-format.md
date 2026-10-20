@@ -197,5 +197,7 @@ other and has no editor yet.
   a new Spell offered the corpus's setter names (duration, level, range, school, …) and its tags (Wizard, Sorcerer, …),
   two tags taken by a click, `level` 1 written and the spell saved. The source's Remove armed ("Remove it and everything
   written in it") and disarmed after four seconds with nothing removed. No console errors.
-- **Not driven**: saving such a character to a library folder and reopening it with the source off in the app (the
-  test above does it in Node); the Tauri window; the phone, which has no editor.
+- **Not driven**: the phone, which has no editor.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a homebrew source made from a typed name; a Feat written with its name typed (real keys), "Adds 10 to Speed" and
+  "Gives Draconic (Language)", saved with a real Enter; found in Browse under the source's name; added to a Wizard,
+  whose Sheet read Speed 40 and listed Draconic; saved, and reopened with every source off to a Sheet identical to Node's.

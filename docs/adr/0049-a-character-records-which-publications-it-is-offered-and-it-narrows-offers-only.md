@@ -119,6 +119,8 @@ for one character, by book. The list is not copied from the profile or into it, 
   one that names no book. Saved with Ctrl+S, the list was in `character.json`; with every source disabled and the
   app restarted, the character reopened with its picks and the list showed the book as not loaded; with the source
   back, "2 of 138 books offered", the required one locked on. macOS and Linux were not driven.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a new Human Fighter / Rogue offered only the Player's Handbook read "2 of 132 books offered", the required one
+  kept with it, and its Background offer went from 115 to that book's 14.
 - **A defect it exposed, and fixed with it.** A settled top-level pick promised its `candidates` would include what
   it holds, and only kept that promise because a chosen element was always among what the step offered. A
   switched-off book breaks that, and so could an element whose own requirements stopped holding; the pick now adds

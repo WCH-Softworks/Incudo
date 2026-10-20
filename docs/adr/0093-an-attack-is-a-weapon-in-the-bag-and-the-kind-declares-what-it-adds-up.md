@@ -207,4 +207,8 @@ code (`attacks.test.ts`, its first four tests).
   through the builder with a +1 rapier, a carried longbow and a carried dagger. With no source: "Longbow: +9, 1d8+4
   piercing (range 150/600; Arrow; Ammunition, Heavy, Slow, Two-Handed)" and "Shortsword: +7, 1d6+4 piercing (Finesse,
   Light, Vex)"; "Rapier +1: +3, 1d8+1 piercing (Finesse)"; the baboon's "Added by Its Holder" rows. No console errors. Not
-  driven: the Tauri window, the phone, the print dialog and the form fill (both held by their tests).
+  driven: the phone.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a new Wizard's starting dagger and quarterstaff, the staff given +1 by "Attach a magic item…", read "Dagger: +4,
+  1d4+2 piercing (range 20/60; Finesse, Light, Thrown)" and "Quarterstaff +1: +5, 1d6+3 bludgeoning (two-handed 1d8+3
+  …)"; the print dialog opened on them, the PDF export held them, and the official form's three weapon rows were filled
+  with them, the cantrips past the third named as left off.

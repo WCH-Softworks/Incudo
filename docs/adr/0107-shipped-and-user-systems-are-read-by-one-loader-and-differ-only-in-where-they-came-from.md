@@ -94,4 +94,9 @@ the card's warning. Each fails under its named perturbation: warnings not publis
 overlay, no origins, the builder choosing by lineage alone, no card note. `npm test`: 1,694 pass, 0 fail. Driven in the
 browser build: the launcher with the silver overlay ("yours", "Built on …", the warning) and a broken user file (its line
 and the user's sentence), the user files written into the app's storage as `UserSystemStore.add` writes them. Not driven:
-the Tauri window, a broken shipped definition in the running app (held by the test only), the phone.
+a broken shipped definition in the running app (held by the test only), the phone. Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): New system… wrote an
+overlay of 5e, a copy of Cairn and the starter through the native save dialog and added each (the files read back: the
+overlay its five fields, the copy `copiedFrom`); Add a system… through the open dialog added a near-miss stat name, listed
+with "Line 73, column 15 … did you mean \"might\"?", and refused a broken file with its line and the JSON reason, then an
+undeclared element type with its line; Remove removed a card; a player character built and saved under the overlay,
+loading 5e's sources ("loaded here too").

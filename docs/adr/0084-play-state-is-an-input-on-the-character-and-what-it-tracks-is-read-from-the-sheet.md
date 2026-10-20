@@ -128,8 +128,10 @@ thirty samples:
 - **Desktop**, the browser build with an origin-private folder as the library: that exported file opened to the same
   play on the Sheet; 10 more lost, saved to the library, opened again from it at 36 of 53; a long rest asked about hit
   points and slots, gave them back, and left Prone.
-- **Not driven:** the Tauri window, a real phone, iOS, the conflict refusal on a device (held by the library test), and
-  an NPC or legendary creature in either app (held by the system validator only).
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a sample opened with no source lost 12 hit points and spent two slots, a short rest gave back neither, and
+  a real Ctrl+S wrote `play` at format 8, read back from disk; a legendary creature's actions were spent and given back
+  by the start of its turn and its hit points by a long rest (each rest asks first, then acts).
+- **Not driven:** a real phone, iOS, and the conflict refusal on a device (held by the library test).
 
 ## Consequences
 

@@ -175,6 +175,8 @@ block's DC, attack and slots already have.
   "Added to this character" was recorded as cast as Paladin (its only class), and the Sheet read "Fireball (Level 3, cast
   as Paladin)" under the Paladin's DC and slots. Changing the class to a 2024 Cleric left the row saying the Paladin was
   gone; choosing Cleric put Fireball under the Cleric's "Always prepared" ("0 of 9 prepared", the 2024 column at level 5)
-  and the Sheet read "Fireball (Level 3, always prepared, cast as Cleric)". No console errors. **Not driven:** the Tauri
-  window, the phone (the phone's row is a picker over the same view-model), saving to a library folder and reopening
-  with no source (the tests do it), and macOS and Linux.
+  and the Sheet read "Fireball (Level 3, always prepared, cast as Cleric)". No console errors. **Not driven:** the phone
+  (the phone's row is a picker over the same view-model), and macOS and Linux.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): Cure Wounds added to a 2014 Wizard 3, the only block chosen for it ("Cast as" reading Wizard), listed under the
+  Wizard's "Always prepared" ("1 of 3 prepared"); the Wizard's minimum of one shown as "0 of 1 prepared" at level 1. Saved,
+  read back from disk (`additionBlocks` at format 13) and reopened with every source off to an identical Sheet.

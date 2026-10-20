@@ -142,7 +142,9 @@ sources, and the Sources pane renders both.
 - `tools/verify/src/appends-across-sources.test.ts` loads the real corpus split into its four groups: the one id
   AuroraLegacy defines in two files, a Xanathar's staff that is in two groups, is an overlap there and not a warning,
   and every overlap is a two-file warning when the corpus loads whole.
-- **Not driven:** the Tauri window (the pane is the same component; only the transport differs); macOS and Linux.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a user's Aurora file redefining one AuroraLegacy feat; each line named the other and whose version is used,
+  two Move ups made AuroraLegacy's the one used and two Move downs put it back, and a saved character carrying the feat
+  was offered the refresh (ADR 0082), its initiative +9 to +7. Not driven: macOS and Linux.
 
 ## What this does not do
 

@@ -1105,7 +1105,7 @@ records rolls and never a total (it agrees with the maintainer's screen readout,
         record of what a package wrote is `Character.startingEquipment` (the option, the entries it added, the coins), not a
         choice, which would seed the derivation; 2024 rows measured as 11 "A or B" and one "A, B or C"; the file covers the
         Player's Handbooks' 24 classes and 29 backgrounds, held to the corpus and to the 2024 book's own pack items (`<extract>`,
-        44 blocks the parser does not read). Driven in the browser build; not on a phone or in the Tauri window.
+        44 blocks the parser does not read). Driven in the browser build and in the Tauri window on Windows (2026-10-20); not on a phone.
   - [x] **Inventory management at any point**, not only while building: add any item from loaded content to the bag,
         remove it, change quantity, equip and unequip it into the kind's slots, attune (the limit shown, never refused,
         as `over-attuned` already is), attach a magic item to a host, rename an instance and write notes; and spend or
@@ -1146,7 +1146,7 @@ its original text with a pointer here.*
       own name; a character already holding two classes keeps them and is flagged, never changed; one that records no
       options reads as off (ADR 0080). Measured first: 9 of the 30 samples record the option, all 8 multiclass ones among
       them, so no import is flagged and the 21 without it are offered no second class, as Aurora's screen does. Driven in
-      the browser build; not on the phone, not in the Tauri window.
+      the browser build and in the Tauri window on Windows (2026-10-20) (a Wizard with the option off offered no second class); not on the phone.
 - [x] **Choices that no longer apply stop counting.** *Buried in Phase 2's multiclassing item and this phase's ADR 0071
       item.* Picks of a class whose levels went away, and picks a lowered level no longer opens (a Wizard 5 lowered to 3
       keeps its level 4 improvement), stay in `choices` and still seed the derivation (ADR 0036), so the character keeps
@@ -1201,8 +1201,8 @@ its original text with a pointer here.*
       flagged. 5e now declares two more equip steps, "Additional features" and "Ability score adjustments", by category,
       and the player character derives `speed:burrow`, `:climb`, `:fly` and `:swim` as walking speed is and shows them under
       Other Speeds. The mounts are goods, offered by no step and left to the inventory editor. No engine change; the oracle is
-      identical; one sample (a 2024 Thief) shows a climbing speed. Driven in the browser build; not in the Tauri window or on
-      the phone.
+      identical; one sample (a 2024 Thief) shows a climbing speed. Driven in the browser build and in the Tauri window on Windows (2026-10-20) (a Wizard
+      taking Fly +5 Feet, its Sheet's Other Speeds reading Fly 5); not on the phone.
 - [x] **Say which switched-off source would supply what is missing.** *Buried in the ADR 0052 item.* A source's line
       says how many things it refers to that no enabled source has, never that a source the user configured and switched
       off declares them. A disabled source is not loaded, so this needs a record of what each source declared, kept from
@@ -1230,8 +1230,8 @@ its original text with a pointer here.*
       and the picker shows "The character already has Perception" under such a candidate, on the desktop and the phone. The
       walk follows a candidate's grants through content, gated by level and by requirements read against the character
       (203 overlaps exist only if requirements are ignored, nearly all Tasha's customised origin); a settled slot is judged
-      without its own answer. A fresh 2014 Elf sees 13 of 118 backgrounds marked. Display only. Driven in the browser build;
-      not on the phone or in the Tauri window. Still open: the 2014 replacement proficiency *(an open item at the end of this phase since 2026-10-12)*.
+      without its own answer. A fresh 2014 Elf sees 13 of 118 backgrounds marked. Display only. Driven in the browser build
+      and in the Tauri window on Windows (2026-10-20) (a Fighter / Rogue's Criminal background marked for Thieves' tools); not on the phone. Still open: the 2014 replacement proficiency *(an open item at the end of this phase since 2026-10-12)*.
 
 *The items below were found on 2026-10-12 by sorting every note the ticked items of Phases 3 to 5 left open. The
 maintainer chose which come before 1.0; the rest are in Beyond 1.0's "1.x — Left from Phases 3 to 5", and each note
@@ -1545,7 +1545,8 @@ items; each keeps its original text with a pointer here.*
       re-derives nothing and changes no format. Everything written is on the Sheet, the print (a part the step can leave
       out), the text export and the phone's sheet, and fifteen of the 2014 form's boxes; a key no field declares (coins,
       experience, attack notes) still shows nowhere, which ADR 0075's check now holds both ways. Driven in the browser build
-      and on the phone emulator, where it found the phone's sheet leaving the part out. Not driven in the Tauri window.
+      and on the phone emulator, where it found the phone's sheet leaving the part out, and in the Tauri window on Windows (2026-10-20) (typed with real keys, on
+      the Sheet, the text export and the official form).
       Two suggested personality traits overflow the form's box at 7 pt on 9 samples and are named as running past it.
 - [x] **Attacks on the sheet.** *Buried in the ADR 0074 item ("attacks") and the ADR 0073 item.* A character's sheet
       has no attacks section (a weapon's attack bonus and damage), and a held creature's `companion:attack` and
@@ -1561,7 +1562,7 @@ items; each keeps its original text with a pointer here.*
       character has an Attacks section ("Longsword: +6, 1d8+3 slashing (two-handed 1d10+3 slashing; Versatile)") on the
       Sheet, the print, the text export and the phone's sheet, the 2014 form's three weapon rows are its first three
       attacks, and a held creature's stat block shows what its holder adds to its attack and damage rolls. A save carries the weapon properties its attacks are named by. Driven in the browser build with
-      no source; not in the Tauri window or on the phone. Not done: unarmed strikes and martial arts, spell attacks as
+      no source, and in the Tauri window on Windows (2026-10-20); not on the phone. Not done: unarmed strikes and martial arts, spell attacks as
       rows, two-weapon fighting and Dueling (commented out upstream), a melee weapon's reach as a distance, rewriting a
       creature's actions with its holder's bonus *(an open item at the end of this phase since 2026-10-12)*.
 - [x] **An added spell can be cast.** *Buried in the ADR 0064 item.* A spell put on a character through "Added to this
@@ -1573,8 +1574,8 @@ items; each keeps its original text with a pointer here.*
       spell is always prepared and counts against nothing; a recorded class the character no longer has is a warning and
       casts through none. The Sheet, print, text export and phone read "Fireball (Level 3, always prepared, cast as
       Cleric)", beside that class's DC, attack and slots. A save carries the class, so it reads the same with no source.
-      The oracle is identical. Driven in the browser build (a 2024 Paladin, then Cleric); not in the Tauri window or on the
-      phone.
+      The oracle is identical. Driven in the browser build (a 2024 Paladin, then Cleric) and in the Tauri window on Windows (2026-10-20) (a 2014 Wizard's
+      Cure Wounds); not on the phone.
 - [x] **Written features for a player character, and an NPC's proficiency switched on.**
       **[ADR 0094](./docs/adr/0094-a-player-character-s-written-features-only-add-and-a-feature-line-may-mark-a-row.md),
       accepted 2026-10-06**, measured first. The maintainer's calls: a player character carries written features, and
@@ -1585,7 +1586,8 @@ items; each keeps its original text with a pointer here.*
       that stat starts as so many proficiency bonuses, so "Athletics: proficient" follows the challenge rating, and "not
       proficient" takes a printed one away (character format 9). Measured: all 300 saves and skills the 141 creatures show
       hold a whole number of the NPC's bonus. No player character derivation moved; the oracle is identical. Driven in the
-      browser build (a Wolf NPC and a Human Fighter); not in the Tauri window or on the phone. Not done: a mark on a held
+      browser build (a Wolf NPC and a Human Fighter), and in the Tauri window on Windows (2026-10-20) the NPC's marks only ("Perception +3 (proficient)"); not on
+      the phone. Not done: a mark on a held
       creature's stat block *(an open item at the end of this phase since 2026-10-12)*.
 
 *The items below were found on 2026-10-12 by the sorting described at the end of Phase 3. The maintainer chose them for
@@ -2344,6 +2346,19 @@ written on a character can be moved into the user's library without being typed 
       driven where. Done when no feature reads "browser build only" and none is missing from the phone that the phone
       offers. A real phone is driven right after 1.0, before the Google Play listing, and macOS, Linux and iOS after that
       (Beyond 1.0, below): neither is part of this one.
+      *The Tauri window half was driven on 2026-10-20* (a fresh WebView2 profile, a scratch library, DOM events over the
+      debug port and real keys and mouse where the screen was free; every file written read back from disk, and seven of
+      them reopened in the window with every source off to Sheets byte-identical to Node's): the launcher's new, added and
+      broken systems; the library's open, save, rename, copy, delete, folder change and unsaved-changes guard; a .dnd5e
+      import; Sources (parts, a URL source, a user's file by the dialog and by a real drop, shared ids and order, what is
+      missing, switched off, a homebrew source and its editor); Browse; Build (start options, decision order, the Spells tab
+      and the middle column, printings, levels and multiclassing on and off, the four score methods, hit points, the equip
+      steps, starting equipment, inventory and purse, additions and cast-as, written features and the feature library,
+      references, Books); NPCs on a creature, a race and neither, a legendary creature, an NPC as a sidekick; the Sheet,
+      play and rests, a held creature, attacks and cantrips; the text and PDF exports, print through its step and the
+      official form; the menus, the shortcuts with real keys, the right-click menu, the browser keys, Settings and About.
+      Five bugs were found and fixed there. Left: the phone half, macOS and Linux (Beyond 1.0), and what the maintainer's
+      own pass covers.
 
 ---
 

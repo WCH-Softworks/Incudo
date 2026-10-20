@@ -439,7 +439,7 @@ the play half of Phase 6's second item. Things to know before touching it:
   (hidden in print) and saves with Save.
 - **The sheet document is unchanged**: play is not in it, so exports and the phone/desktop sheet checksum are untouched.
 - In dev builds the phone logs `[incudo] play <file>: <play json>` after each write. Driven on the emulator and in the
-  browser build; not in the Tauri window, on a real phone or iOS, and no NPC played in either app.
+  browser build, and in the Tauri window on Windows (2026-10-20), a legendary creature played too; not on a real phone or iOS.
 
 **A source is kept converted into Incudo's own form, and a phone builds with the desktop's builder**
 ([ADR 0085](docs/adr/0085-a-source-is-kept-converted-into-incudo-s-own-form-and-loaded-from-that.md),
@@ -584,7 +584,7 @@ Phase 7's first item. Things to know before touching it:
 - Tests: `packages/core/src/system-overlay.test.ts`, `packages/ui/src/system-overlay-view.test.ts`, the lineage case in
   `packages/content/src/profile.test.ts`, `tools/verify/src/system-overlay.test.ts` (5e's overlay through the store, a fixed
   5e reaching it, a breaking change named, a Fighter built in the overlay deriving as in 5e with 5e's starting equipment),
-  each failing under its named perturbation. The oracle is identical. Driven in the browser build only, the picker stood
+  each failing under its named perturbation. The oracle is identical. Driven in the browser build and in the Tauri window on Windows (2026-10-20) (an overlay, a copy and the starter written through the native save dialog and added), the picker stood
   in for by a script; not the Tauri window, not the phone (which has no user systems yet).
 - **Not done:** errors name the applied system's paths by index, not the overlay's lines; no overlay of an overlay; a new
   entry cannot be placed before another; a JSON editor pointed at `system.schema.json` validates an overlay as a complete
@@ -611,7 +611,7 @@ second item. Things to know before touching it:
   arrays with a check of their own are in `CHECKED_ELSEWHERE`), and a generation method's `min` above its `max`. A guard
   test duplicates an entry of every table path in 5e and requires an error naming it.
 - **Not done:** the 141 reference checks point at the container (they read resolved kinds, inherited parts included);
-  reference checks run only once the structure validates, so a second round can appear. Driven in the browser build only.
+  reference checks run only once the structure validates, so a second round can appear. Driven in the browser build and in the Tauri window on Windows (2026-10-20) (a broken file's line and reason, an undeclared type's line, a near-miss stat's warning).
 
 **A new system starts from a file the app writes: a starter, changes to a shipped system, or a copy that keeps its origin**
 ([ADR 0104](docs/adr/0104-a-new-system-starts-from-a-file-the-app-writes-and-a-copy-keeps-what-it-was-copied-from.md)),
@@ -632,7 +632,7 @@ Phase 7's fork and scaffold items. Things to know before touching it:
   `UserSystemStore.add`; a cancel adds nothing. Editing is the user's editor and **Add a system…** again.
 - Tests: `packages/core/src/system-lineage.test.ts`, `packages/ui/src/system-new.test.ts`, `tools/verify/src/system-new.test.ts`
   (every start added and loaded through the store against the real schema; the starter built; a copy of 5e's sources and
-  starting equipment), each failing under its named perturbation. The oracle is identical. Driven in the browser build only.
+  starting equipment), each failing under its named perturbation. The oracle is identical. Driven in the browser build and in the Tauri window on Windows (2026-10-20).
 
 **How to write a system definition is `docs/SYSTEM-GUIDE.md`, every block of it read by a test, and a stat name one slip
 from a declared one is a warning when a system loads**
@@ -747,7 +747,7 @@ the first slice of Phase 8's element editor. Things to know before touching it:
 - Tests: `packages/content/src/homebrew-source.test.ts`, `packages/ui/src/homebrew.test.ts`,
   `tools/verify/src/homebrew-source.test.ts` (a feat and a language given to a 5e PC, reopened with no source, a later
   edit offered by the refresh; with the corpus, a spell copying Magic Missile's setters and tags offered by a Wizard's
-  spellbook), each failing under its named perturbation. The oracle is identical. Driven in the browser build only.
+  spellbook), each failing under its named perturbation. The oracle is identical. Driven in the browser build and in the Tauri window on Windows (2026-10-20): a feat written, added to a Wizard, saved and reopened with every source off.
 - **Not done:** choices, prerequisites, level gates; races, classes, backgrounds, items; a library feature turned into
   content; export (Phase 8's next item); the Tauri window.
 
@@ -802,7 +802,7 @@ know before touching it:
     rating; a race's per-level numbers read 0 (no `level` on an NPC); natural armour is typed.
   - `tools/verify/src/npc-races.test.ts` builds every race as an NPC and as a level 1 player character and holds the six
     scores and five speeds equal, every vision and the race named, and the sheet the same reopened with no source. The
-    oracle is identical. Driven in the browser build only.
+    oracle is identical. Driven in the browser build and in the Tauri window on Windows (2026-10-20) (a Hill Dwarf NPC: Speed 25, Darkvision, Medium).
 - **A stat may start where another stat is** ([ADR 0059](docs/adr/0059-a-stat-may-start-where-another-stat-is-and-a-typed-value-replaces-it.md)).
   `startsFrom` on a stat names another stat; when content contributes to that one, its value is where this one starts.
   The order of starts, most general first: `default`, `startsFrom`, a held element's printed setter, the user's
@@ -936,7 +936,7 @@ know before touching it:
   - ~~**An added spell belongs to no casting block**~~ It is cast through a block the user names since ADR 0097 (below,
     "An added spell is cast through a block"); without a record it is still in none.
   - **The corpus's `Condition` type is 23 damage resistances and immunities**, not Blinded or Charmed. Found by running it.
-  - `packages/ui/src/additions.ts` is the view-model; `Additions.tsx` computes nothing. Driven in the browser build only.
+  - `packages/ui/src/additions.ts` is the view-model; `Additions.tsx` computes nothing. Driven in the browser build and in the Tauri window on Windows (2026-10-20).
 - **The roadmap's legendary and 2025 Monster Manual items were reworded** by the measurement: decide where legendary
   content comes from first, and show the prose stat blocks as reference rather than parse them. Both are done: the second
   is ADR 0068, below. The first:
@@ -1368,7 +1368,7 @@ know before touching it:
   - **`rowAside` words it** ("+6 (proficient; including Thaumaturge)"), so the pane, print, Markdown, phone and refresh
     review show it; the official form reads `value` and `beside` and is unchanged. 19 rows on 9 samples; oracle identical.
   - Not named: what is listed nowhere but is not hidden (base scores, the kind's rules, blocks, ability score
-    improvements), `inventory-hidden` items. Driven in the browser build only (samples 17 and 10, no source, the export).
+    improvements), `inventory-hidden` items. Driven in the browser build (samples 17 and 10, no source, the export) and in the Tauri window on Windows (2026-10-20) (sample 12's "Hit Points: 63 (including Dwarven Toughness)").
 - **A printed sheet is the Sheet pane under print rules, its sections flowing in two columns**
   ([ADR 0077](docs/adr/0077-a-printed-sheet-is-the-sheet-pane-under-a-print-stylesheet-and-its-sections-flow-in-columns.md)).
   Phase 5's print layout. Things to know before touching it:
@@ -1662,7 +1662,7 @@ agreed with Aurora's screen for 10 of 15 blocks. The other five were `:half`. Th
 - ~~**Not modelled:** the 2024 Paladin and Ranger, the Wizard's minimum of one~~ Both since ADR 0097: the 2024 Paladin's
   and Ranger's count is their spell picks (content states it as the select's allowance), and a kind's preparation may
   declare `minimum` (5e: 1). Still not: a list on the Sheet. Rituals are not a gap: the `Ritual` filter is read (ADR 0047).
-- **Driven in the browser build only.** A Fighter 12 / Wizard 5 taking a Cleric level was built and its two lists
+- **Driven in the browser build, and in the Tauri window on Windows (2026-10-20)** (a Wizard 1 at "0 of 1 prepared", a spell prepared past the limit and taken off). A Fighter 12 / Wizard 5 taking a Cleric level was built and its two lists
   prepared, over-limit and reload seen; the library save-and-reopen needs a folder dialog and was covered by the
   tests, which pack and reopen every sample that records a list with zero sources.
 
@@ -1782,7 +1782,7 @@ Things to know before touching `ContentLibrary.addElements` or the Sources pane'
   Aurora repository beside AuroraLegacy gives the same figures as a byte-exact one: 7,262 shared and 1,978 different,
   in either order. **Do not assume a corpus is LF:** AuroraLegacy's own bytes have CRLF in 51 of its files (Tasha's,
   several 2024 subclasses), and every sample save is CRLF. Git Bash's `grep` does not show a `\r`; count them in Node.
-- **Driven in the browser build only.**
+- **Driven in the browser build and in the Tauri window on Windows (2026-10-20)** (a user's file redefining a feat, moved up and down).
 
 **A source records the parts switched off, and the load skips them**
 ([ADR 0055](docs/adr/0055-a-source-records-the-parts-switched-off-and-the-load-skips-them.md)). Things to know before
@@ -1795,7 +1795,7 @@ touching `ConfiguredSource.excluded` or the chooser:
   mention" means the same in both; it lists refs by the load's own `isElementFile` and depth limit. `tools/verify`'s
   `source-parts.test.ts` holds the tree to the exact URLs a real corpus load requests. `partsView` (`packages/ui`) counts
   what will load by walking the same way, and a test holds it to a real load for every single part switched off.
-- **Driven in the browser build only.**
+- **Driven in the browser build and in the Tauri window on Windows (2026-10-20)** (Choose parts first, one part off: 712 of 740 files).
 
 **An Aurora file the user adds is a source of its own, kept as a copy**
 ([ADR 0056](docs/adr/0056-an-aurora-file-the-user-adds-is-a-source-of-its-own-kept-as-a-copy.md)). Things to know
@@ -2272,13 +2272,13 @@ select, back to a seed at 0) and the next slot's level, each a track's level tur
 `advancement` — so an Arcane Tradition select naming no level opens at 2, and a Rogue 5 / Wizard 3's wizard 3 at 8.
 `OpenDecision.opensAt` carries it (hit points: the first level still to roll); the builder sorts by it, everything at
 or before the progression's start being one level, so creation keeps the system's step order (ADR 0034's `priority`).
-The phone reads the same list. Driven in the browser build.
+The phone reads the same list. Driven in the browser build and in the Tauri window on Windows (2026-10-20).
 
 **A score in the build shows its modifier, "16 (+3)", read off the sheet's `beside`** (2026-10-13). `statBeside`
 (`sheet.ts`) finds the kind's first sheet section listing the stat with a `beside` template and writes that published
 stat as the sheet does; `BudgetRow.beside` and `budgetTotalText` carry it to the desktop's editor and settled scores and
 the phone's. Nothing in `budget.ts` knows a modifier's formula; a kind whose sheet shows nothing beside a score shows the
-total alone. Driven in the browser build.
+total alone. Driven in the browser build and in the Tauri window on Windows (2026-10-20).
 
 **A build step may be `advanced`, offered only when the user switches on "Show advanced options"**
 ([ADR 0115](docs/adr/0115-a-build-step-may-be-advanced-and-how-a-user-likes-the-build-is-a-preference.md)). 5e marked
@@ -2347,7 +2347,7 @@ The maintainer's calls on Build's layout. Things to know before touching it:
   `min(32vh, 320px)` and it lets go 1.2 s after the pointer leaves a list (`PreviewDock` `release`/`hold`). The editor is
   brought into view with `scrollIntoView`, whichever box scrolls.
 - Tests: `packages/ui/src/soft-requirements.test.ts`, `build-layout.test.ts`, `tools/verify/src/soft-requirements.test.ts`,
-  each failing under its named perturbation; the oracle is unaffected. Driven in the browser build at 1280×800 and
+  each failing under its named perturbation; the oracle is unaffected. Driven in the Tauri window on Windows (2026-10-20) at 1296×850 (the Spells tab, Change in the middle column, real Escape), and in the browser build at 1280×800 and
   1024×700 (a wizard, a Warlock 2 with invocations); the phone is typechecked, not driven.
 
 **A character is not offered a second printing of what it has**
@@ -2374,7 +2374,7 @@ The UX pass's two printings of Acid Splash. Things to know before touching it:
   (`candidateGiver`, cached per index): "Agile (from Deer) — Monster Manual (2025)". The desktop's and phone's labels pass
   the index. The NPC's Traits list had 55 identical rows, now 0.
 - Tests: `packages/core/src/printings.test.ts`, `packages/ui/src/printings.test.ts`, the corpus test, each failing under
-  its named perturbation; the oracle and the rebuild of every sample are unchanged. Driven in the browser build (a 2014
+  its named perturbation; the oracle and the rebuild of every sample are unchanged. Driven in the Tauri window on Windows (2026-10-20) ("Agile (from Deer)"; Acid Splash's printings) and in the browser build (a 2014
   Wizard's cantrips, an NPC's traits); the phone is typechecked, not driven.
 
 **Each level's hit points are a card of their own** (2026-10-14, the maintainer's call): a `hitpoints` decision per level
@@ -2501,7 +2501,7 @@ Things to know before touching it:
   mark: "Fireball (Level 3, always prepared, cast as Cleric)". The official form's spell lines write names only.
 - Tests: `packages/core/src/addition-blocks.test.ts`, `packages/ui/src/addition-blocks.test.ts`, the minimum in
   `preparation.test.ts`, the validator in `schemas.test.ts`, each failing under its named perturbation. The oracle is
-  identical. Driven in the browser build only.
+  identical. Driven in the browser build and in the Tauri window on Windows (2026-10-20).
 
 **Starting equipment is a file beside the system, and money is counted in the units the system declares**
 ([ADR 0087](docs/adr/0087-starting-equipment-is-a-data-file-beside-the-system-and-money-is-counted-in-the-units-the-system-declares.md),
@@ -2545,7 +2545,7 @@ built 2026-10-07; its dated note says what building it changed). Things to know 
   the importer's, `tools/verify/src/starting-equipment-build.test.ts` (a 2014 Fighter through the builder: armour class 18,
   reopened with no source to the same bag and purse), each failing under its named perturbation. The oracle is identical.
 - **Not done:** ~~the inventory editor, spending or making change, opening a pack, money on the Sheet and the form~~ (ADR
-  0098, below); ~~the other books' classes and backgrounds~~ (2026-10-12). Driven in the browser build only (a 2014 Fighter and Soldier, a
+  0098, below); ~~the other books' classes and backgrounds~~ (2026-10-12). Driven in the Tauri window on Windows (2026-10-20) (a 2014 Wizard and Sage, sub-choices taken) and in the browser build (a 2014 Fighter and Soldier, a
   wealth roll, Take back, a reload); not on a phone or in the Tauri window.
 
 **The bag and the purse are edited in place at any point, and what each item gives is read off the derivation**
@@ -2676,7 +2676,7 @@ before touching it:
   the 2014 Reach weapons write their own). `inventory.tagSupports` makes a slot publish support tags; nothing in content
   asks a slot for one. `DerivedAttack`/`SheetAttack` `instanceId` and `elementId` are optional (an innate row has
   neither) and an alternative may carry its own `damageBonus`. Aurora records no unarmed row: the book is the referee.
-  Driven in the browser build (a new Monk with two Shortswords and a 2024 Pike); not the Tauri window or the phone.
+  Driven in the browser build (a new Monk with two Shortswords and a 2024 Pike); in the Tauri window on Windows (2026-10-20) (a Wizard's unarmed strike); not the phone.
 - **A cantrip is an attack row** ([ADR 0111](docs/adr/0111-a-cantrip-is-an-attack-row-its-roll-read-from-content-or-chosen-by-the-user.md),
   2026-10-13). Things to know before touching it:
   - **Measured first** (`tools/verify/src/cantrip-attacks.test.ts`): 145 cantrips, 20 tagged `Spell Attack` and 31
@@ -2716,8 +2716,7 @@ before touching it:
   `tools/verify/src/wild-shape.test.ts`.
 - **Not done:** ~~unarmed strikes and martial arts~~, ~~cantrips as rows~~ (ADR 0111; levelled spells after 1.0), ~~two-weapon
   fighting~~, Dueling (commented out upstream), ~~reach as a distance~~ (ADR 0110), the inventory naming an adorned item by `name-format`.
-  Driven in the browser build with no source (two packed samples and a built Beast Master); not the Tauri window, the phone,
-  the print dialog or a filled form.
+  Driven in the browser build with no source (two packed samples and a built Beast Master); in the Tauri window on Windows (2026-10-20) (a Wizard's dagger and +1 quarterstaff, on the Sheet, the PDF and the official form); not the phone.
 
 **A slot publishes a set of tags, and `equipped=` is evaluated** (ADR 0025, step 4). A character
 kind declares its `inventory`: which slots exist, what stat each publishes into, which setters

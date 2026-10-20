@@ -87,6 +87,8 @@ while a browser hands the page the file itself.
 - **Note, 2026-09-28: both ran in the Tauri window on Windows** (ADR 0065's evidence has the run). A real OLE drop of a
   file onto the Sources pane reached `TauriFileDrop` and added it; "Choose files…" through the native open dialog
   replaced it. The drag came from a small form of the test's own, not from Explorer. Still not driven: macOS and Linux.
+- **Driven again on 2026-10-20 in the Windows window**: a real OLE drop of an `.xml`, from a scratch drag source, added
+  it as a source of its own, and "Choose files…" through the native dialog added another, which redefined one feat.
 
 ## What this does not do
 

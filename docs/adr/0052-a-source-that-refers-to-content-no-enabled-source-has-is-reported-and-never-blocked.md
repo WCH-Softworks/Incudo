@@ -132,7 +132,9 @@ sentence as the summary of a list of the ids.
   append warnings, for the whole index, its groups as four sources loaded backwards, and one group alone (Unearthed
   Arcana: 289 and 88). It catches three of the five perturbations; the two about which source an appended rule is
   reported against do not change the union, and no appended rule in the corpus grants anything missing today.
-- **Not driven:** the Tauri window (the note is the same component there; only the transport differs); macOS and Linux.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): AuroraLegacy's line said it refers to one thing no enabled source has (the upstream typo), a user's Aurora
+  file granting an id nothing declares said the same on its own line, and the Player's Handbook index loaded alone said
+  110 things and 2 additions were missing. Not driven: macOS and Linux.
 
 ## What this does not do
 

@@ -103,7 +103,9 @@ through pure functions in `packages/ui`; the desktop and phone render it.
 - **Driven in the browser build** (2026-10-13): a new Human Wizard took Fire Bolt and Acid Splash; Build's Spell attacks
   section chose d10 fire, and d6 acid with Dexterity (a second die tried and removed); at level 5 the Sheet read "Fire
   Bolt: +3, 2d10 fire (range 120 feet)" and "Acid Splash: DC 11 Dexterity, 2d6 acid (range 60 feet)", the same after a
-  reload. Not the Tauri window or the phone.
+  reload. Not the phone. In the Tauri window on Windows (2026-10-20): Acid Splash set to d6 acid with Dexterity and cast as
+  Wizard, Fire Bolt to d10 fire, Light to "Rolls nothing"; the Sheet read "Acid Splash: DC 10 Dexterity, 1d6 acid (range
+  60 feet)", "Fire Bolt: +2, 1d10 fire (range 120 feet)" and "Light: DC 10, no damage (range Touch)".
 
 ## What this does not do
 

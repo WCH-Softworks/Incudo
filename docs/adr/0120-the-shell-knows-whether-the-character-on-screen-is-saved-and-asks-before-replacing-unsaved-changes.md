@@ -61,7 +61,12 @@ not change.
 - Driven in the browser build only: first launch with nothing started, a save, an edit, a reload keeping "Unsaved
   changes", Open on the same card keeping the edits, Ctrl+N from Build asking, Escape keeping, Save first then a new
   character, Discard then another character opened from its file, Change system asking with no Save offered for a
-  renamed character. Not in the Tauri window.
+  renamed character.
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a sample renamed with real typing read "Unsaved changes"; Open on another card asked, with no "Save first" for
+  the renamed character, and real Escape kept editing; Open on the same card showed the edits; real Ctrl+N from Build
+  asked and "Keep editing" kept them; real Ctrl+S asked to rename the file and wrote it under the new name. Two fixes
+  came of it: play spent and rested back no longer reads as unsaved (the version it raised is not a change), and the
+  campaign options dialog is asked only of the new character it was for.
 - Not done: autosaving a character that is already in the library (the pass suggested it; the library stays
   explicit-save, ADR 0027), marking the on-screen character's card in the library, and the phone, which keeps its own
   `edit-session.ts`. The Build tab still counts optional decisions once a character is started (a separate finding).

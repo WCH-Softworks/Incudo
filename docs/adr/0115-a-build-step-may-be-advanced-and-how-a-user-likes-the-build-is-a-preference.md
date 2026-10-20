@@ -71,7 +71,8 @@ A reader that does not know the key offers the step as before, so `formatVersion
 - `docs/SYSTEM-GUIDE.md` shows the key in a `json $defs/buildStep` fence, which `system-guide.test.ts` validates.
 - Driven in the browser build: a new 5e character offers neither step; the switch offers both and lists them; a Bonus
   Feats taken and the switch turned off leaves it listed with Change and Remove; the switch survives a reload. Not driven
-  on the phone or in the Tauri window.
+  on the phone. (Since ADR 0123 5e has no advanced step; its two steps are offered by a campaign option, driven in the
+  Tauri window on 2026-10-20.)
 - The preview, driven in the browser build at 1280×860: open 387 pixels tall, folded 39 with nothing pointed at and 60
   naming a long option, and open again on Show description; at 880×600 no dock is drawn. The screenshot tool could not
   draw the window while it was behind others, so the folded dock was measured, not photographed.

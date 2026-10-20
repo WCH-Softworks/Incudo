@@ -103,4 +103,7 @@ content: once as the rule, once as prose ("eldritch blast cantrip").
 - Driven in the browser build at 1280×800 and 1024×700: a Human Sage Wizard (scores entered, cantrips and spellbook taken
   on the Spells tab, a cantrip changed from its card, the scores edited in the middle column, Race and Background changed
   and left with Escape and Back) and a Human Sage Warlock 2 (Agonizing Blast offered and taken with the warning, the
-  warning gone once Eldritch Blast was taken). Not driven in the Tauri window or on the phone (typechecked).
+  warning gone once Eldritch Blast was taken). Not driven on the phone (typechecked).
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a High Elf Sage Wizard's spell choices on the Spells tab (real Ctrl+Shift+H to it), the High Elf cantrip
+  changed from its card in the middle column and left with real Escape and with Back, the spell attack settings and the
+  prepared list on the same tab, Language (Sage) changed in the middle column.

@@ -172,7 +172,10 @@ block that prepares. Without a record it is still in no block, as above.)*
   many there are and how many carry prerequisites move with the corpus and are reported, not asserted (ADR 0042).
 - The oracle's thirty-sample table is identical before and after (`INCUDO_ORACLE_SNAPSHOT` on the base,
   `INCUDO_ORACLE_BASELINE` on the change): no player character derivation moved.
-- Driven in the browser build (not the Tauri window, macOS or Linux): a Black Bear NPC given Elven Accuracy (flagged,
+- Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a feat and a spell added to a new Wizard (the spell cast as Wizard and always prepared), a feat added to a
+  Wolf NPC, and a homebrew feat added from its own source; each saved, read back from disk and reopened with every
+  source off, its Sheet exported identical to the one Node renders with no source.
+- Driven in the browser build (not macOS or Linux): a Black Bear NPC given Elven Accuracy (flagged,
   and reported under Problems) and Resistance to Fire Damage, both listed on its sheet under the two new sections; a
   player character given Heavy Armor Master (flagged), Skilled and Fireball, with Race, Class and Background still
   open and Skilled's own skill choice opened. Answering that choice and then removing Skilled took the answer off the

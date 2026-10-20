@@ -173,4 +173,6 @@ feature is edited where it is used and saved back.
   a file rewritten outside the app read again on entering Build; a broken file named as unreadable and left byte for byte
   through a character's Save. **The first save wrote Speed 0 under a field reading 60**: the phone's `NumberField` wrote
   only on blur or submit, and hiding the keyboard with Back does neither. It now also writes 400 ms after typing stops,
-  as `DraftField` does. Not driven: real keys and mouse in the window, Expo Go, a real phone, iOS, macOS, Linux.
+  as `DraftField` does. Not driven: Expo Go, a real phone, iOS, macOS, Linux.
+- **Driven again in the Tauri window on Windows** (2026-10-20, real keys): a player character's feature named and described
+  with real typing, saved to the library and `incudo-features.json` read back at revision 1, then given to a Wolf NPC.
