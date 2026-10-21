@@ -14,8 +14,6 @@ import {
   ALL_ITEMS_LABEL,
   INVENTORY_HINT,
   offerGroupLine,
-  TAKEN_ON_BUILD,
-  TAKEN_ON_BUILD_HINT,
   type CharacterBuilder,
   type InventoryRow,
   type InventoryState,
@@ -88,23 +86,6 @@ export function InventoryEditor({
         ))}
 
       <Purse state={state} builder={builder} say={say} />
-
-      {state.taken.length > 0 && (
-        <div className="settled">
-          <div className="decision-head">
-            <span className="label">{TAKEN_ON_BUILD}</span>
-          </div>
-          <p className="hint">{TAKEN_ON_BUILD_HINT}</p>
-          <ul className="inventory-taken">
-            {state.taken.map((row) => (
-              <li key={row.instanceId}>
-                {row.name}
-                {row.gives && <span className="hint"> — {row.gives}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {message && <p className="hint error">{message}</p>}
     </div>

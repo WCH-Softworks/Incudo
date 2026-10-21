@@ -24,7 +24,6 @@ import {
   renderSheetSection,
   sheetDescriptionAt,
   sheetGroup,
-  sheetListedElements,
   sheetPlaceholders,
   statReferences,
   trackDie,
@@ -45,7 +44,7 @@ import {
   type StatDef,
 } from '@incudo/core';
 
-import { entryName, entryNeedsAttunement, takenOnBuild } from './inventory.ts';
+import { entryName, entryNeedsAttunement } from './inventory.ts';
 import { purseRows, type PurseRow } from './money.ts';
 
 /** One row: a stat, what it is called, its value as written, and what is shown beside it when the section says. */
@@ -597,7 +596,7 @@ export function sheetView(
     kind.sheet.sections,
     { ...derived, ...(lookup ? { lookup } : {}), ...(cast.size ? { cast } : {}), ...(bag ?? {}) },
     { stats: kind.stats, blockStats: kind.blockStats, progression: kind.progression },
-    sheetListedElements(derived.elements, kind),
+    derived.elements,
     unmet,
   );
   return {
@@ -608,9 +607,8 @@ export function sheetView(
 }
 
 /**
- * The bag and the purse as a sheet lists them (ADR 0098): every entry in bag order, named as the inventory names it, but
- * what an equip step took (a feature enabled by an item, ADR 0072, which content keeps off a sheet's lists), and every
- * element an entry names, so a section listing the bag does not list them twice.
+ * The bag and the purse as a sheet lists them (ADR 0098): every entry in bag order, named as the inventory names it, and
+ * every element an entry names, so a section listing the bag does not list them twice.
  */
 function sheetBag(
   derived: DerivedCharacter,
@@ -621,7 +619,7 @@ function sheetBag(
   const elements = { get: (id: ElementId) => lookup?.(id) ?? held.get(id) };
   const entries = derived.character.inventory ?? [];
   return {
-    bag: entries.filter((entry) => !takenOnBuild(elements.get(entry.elementId), kind.buildSteps)).map((entry) => ({
+    bag: entries.map((entry) => ({
       instanceId: entry.instanceId,
       elementId: entry.elementId,
       name: entryName(entry, elements, kind),

@@ -65,7 +65,7 @@ function system(): GameSystem {
           { stat: '{name}:bonus', value: num(4), label: 'Rune Bonus', signed: true },
           { stat: '{name}:raw', value: num(1) },
         ],
-        inventory: { slotSetter: 'slot', occupiedTag: 'any', emptyTag: 'none', slots: [], hiddenSetter: 'hidden' },
+        inventory: { slotSetter: 'slot', occupiedTag: 'any', emptyTag: 'none', slots: [] },
         additions: { types: ['Gadget'] },
         buildSteps: [],
         sheet: {
@@ -85,15 +85,14 @@ function system(): GameSystem {
 
 const rune = element('RUNE', 'Rune', {}, { spellcasting: [{ name: 'Runesmith', ability: 'Grit' }] });
 const lamp = element('LAMP', 'Lamp');
-const toggle = element('SWITCH', 'Switch', { hidden: 'true' });
 const gem = element('GEM', 'Gem', {}, { requirements: { kind: 'has', id: 'NOPE' } });
 const charm = element('CHARM', 'Charm', {}, { type: 'Charm' });
 const index = new MapElementIndex();
-for (const e of [rune, lamp, toggle, gem, charm]) index.add(e);
+for (const e of [rune, lamp, gem, charm]) index.add(e);
 
 function tinker(): Character {
   const character = createCharacter('test', 'tinker');
-  character.choices = [{ ruleKey: 'build/gear', elementIds: ['RUNE', 'LAMP', 'SWITCH', 'CHARM'] }];
+  character.choices = [{ ruleKey: 'build/gear', elementIds: ['RUNE', 'LAMP', 'CHARM'] }];
   return character;
 }
 
@@ -138,7 +137,7 @@ test('a value is written as text, a signed number or a number, and a missing one
   assert.equal(formatStatValue(stat(5), false), '5');
 });
 
-// Fails if the sheet lists every held element (the hidden switch appears), if an empty section is kept, if the unmet
+// Fails if an empty section is kept, if the unmet
 // marker is not read, or if the elements are listed in the order held rather than the order of the section's types
 // (the charm, held last, is of the section's first type).
 test("a section lists what the sheet may list, by its types' order, marks what is unmet, and one with nothing is left out", () => {

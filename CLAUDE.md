@@ -192,7 +192,8 @@ today's and moves; these are the record of a moment (below).
   14,320 because they do not come from a file. 83 are the fixed overlay in
   `packages/aurora-import/src/generated-elements.ts` (it was 80 until the importer started
   reading `<equipment>` and found three more that only a *bag* names, ADR 0024's step 2; *since ADR 0123 it is
-  84: Incudo's own "Additional Features" campaign option, so the generated total is 230*), and
+  84: Incudo's own "Additional Features" campaign option, so the generated total is 230; since ADR 0129 it is 81, the
+  three bag proxies imported as what they stand for, so the generated total is 227*), and
   **146 are the ability score improvement options**, derived from whatever content is loaded by
   `improvement-options.ts` (73 class-and-level pairs, an ASI option and a feat option each —
   ADR 0035). The second kind depends on what is loaded, so the total is a property of the corpus
@@ -233,7 +234,7 @@ rewrote that install while the app was open (seven files, 14,316 to 14,320 eleme
 identical). What it guarded is that a budget only catches "worse", so renaming the ids `parseRules`
 mints for inline lists would leave every budget green. That is held by unit tests that read no
 corpus, and it was checked by perturbation: changing the minted id's shape, and stopping inline
-lists producing elements, each fail three of them. The overlay's size (84 since ADR 0123) is asserted on its own
+lists producing elements, each fail three of them. The overlay's size (81 since ADR 0129) is asserted on its own
 in `corpus.test.ts`. The figures in the bullets above are the record of a moment, not a pin.
 
 Aurora saves: **all 9 import; 1 element-missing, 0 spell-missing, 0 stat-mismatch**, and
@@ -1104,55 +1105,54 @@ know before touching it:
     requirements have since become false is not flagged. Driven in the browser build and the
     Tauri window on Windows (DOM clicks over the debug port, the saved file derived from disk with no source); not with
     real input, and not on macOS or Linux.
-- **A build step may offer items a character equips, and what it takes is an equipped bag entry**
-  ([ADR 0072](docs/adr/0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md)).
-  Tasha's optional class features, taken in the app. Things to know before touching it:
-  - **Measured by `tools/verify/src/optional-features.test.ts`** (report-only): 36 `Item`s of category "Optional Class
-    Features", all `misc`, all `inventory-hidden`, **no requirements of their own**: the class and level are on their
-    grants (`[level:ranger:1]`), and six carry an unconditional replacement marker. Nothing grants, selects or offers
-    them; no sample carries one; a 2024 class answers their gates as a 2014 one does (content's, not narrowed here).
-    `inventory-hidden` is on 91 items, and 8 of them are 2024 mounts with no rules, so **hidden is not "a switch"**: the
-    category names the family.
-  - **`BuildStepDef.equip: { setter, values }`** (system format, `formatVersion` 1): a set like `multiple` (never
-    blocking, skippable, published as `OpenDecision.multiple` and `SettledPick.multiple` under `build/<stepId>`), whose
-    offer is the step's types admitted by the setter (case ignored), own requirements holding, through the offered view,
-    and **whose answers are equipped bag entries, never choices**. What it has taken is read back from the bag, so an
-    imported item reads as taken. Validation refuses it beside `required`, `pick`, `multiple`, `perLevel`, `budget`,
-    `levelRoll`, and with no types. **Not `multiple` as well**, on purpose: a reader knowing only `multiple` would offer
-    every item as choices. It heads no content select (`stepForType` skips it).
-  - **`packages/ui/src/equip-step.ts` is the view-model**; the builder's `choose` routes the step's key there
-    (`equip`). Taking back comes first and drops the answers it closed (`dropClosedAnswers`, shared with
-    `removeAddition`); taking comes second and drops nothing, so a replaced feature's answer waits for it. Taking equips
-    a carried entry of the element if there is one; taking back removes an entry that records nothing else and only
-    unequips one with a quantity, slot, attunement, adornment, name or notes. The pane renders it as any set.
-  - **Since ADR 0081 an equip step may declare `gatedOnHeld`**: it offers an element only when one of its grants is
-    gated (a term outside a `not`) on a stat the character publishes above zero or an element it holds
-    (`requirementConcerns`, `equip-step.ts`); not whether it holds, so a Fighter 1 sees its level 4 feature. 5e's step
-    declares it, so it offers nothing before a class and a class only its own; `optional-feature-offer.test.ts` holds it.
-  - **Since ADR 0127 the step is listed with the required decisions** (`listedWithRequired`, system format): sorted
-    among the blocking ones by level and rank, still skippable, never counted as owed (`OpenDecision.withRequired`,
-    `decisionGroups(…).owed`). A Ranger meets it before Favored Enemy, which Favored Foe replaces.
-  - **Since ADR 0089 5e declares two more equip steps**, by category and not `gatedOnHeld` (no grant of theirs is gated):
-    "Additional features" (35: speeds, senses, feat and multiclass unlockers, weapon mastery, the Companion and Familiar
-    Selection, Lycanthropy, bonus feats) and "Ability score adjustments" (12: +1 or −1 to one score). The 2024 mounts are
-    hidden, priced and have no rules: no step offers them, they are the inventory editor's goods, so **hidden is never a
-    reason to leave an item out**. The multiclass unlocker works only through the classes' `<multiclass>` blocks (`… ||
-    marker`, which an element's own requirements do not show): with it, no score is flagged. The player character now derives
+- **Tasha's optional class features and Aurora's additional features are options a character chooses, never items**
+  ([ADR 0129](docs/adr/0129-optional-class-features-and-additional-features-are-options-a-character-chooses-not-items.md),
+  superseding [ADR 0072](docs/adr/0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md)'s
+  bag entries and ADR 0089's equip steps; the maintainer: "Those aren't items"). Things to know before touching it:
+  - **Measured by `tools/verify/src/optional-features.test.ts`** (report-only, plus the conversion assertion): Aurora writes
+    them as `Item`s a user equips "to enable" them, `inventory-hidden`, slot `misc`: 36 of category "Optional Class
+    Features" (**no requirements of their own**: the class and level are on their grants, `[level:ranger:1]`, and six carry
+    an unconditional replacement marker), 35 "Additional Feature", 12 "Additional Ability Score Improvement". Nothing in
+    content grants, selects or names any of them; no sample holds one, so **the oracle cannot see this** and is identical
+    before and after by construction. The 8 other hidden items are 2024 mounts: goods, and they stay items.
+  - **The converter types them** (`packages/aurora-import/src/item-features.ts`, `asItemFeature`, called by
+    `parseAuroraElements`): `Optional Class Feature`, `Additional Feature`, `Ability Score Adjustment`, by `category`;
+    ids and names kept, `slot`, `inventory-hidden` and Aurora's "You can equip this item" paragraph dropped
+    (`CONVERTER_VERSION` 4). 5e declares the three types; Features & Traits lists the last two; an optional class feature is
+    not listed, what it grants is (the maintainer's call; content hides Deft Explorer's own feature too).
+  - **5e's three steps are ordinary sets** (`multiple`), recorded as choices under `build/optional-features`,
+    `build/additional-features`, `build/ability-adjustments`. **`gatedOnHeld` is a build step field now** (ADR 0081),
+    only on a `multiple` step: it offers an element only when one of its grants is gated (a term outside a `not`) on a stat
+    the character publishes above zero or an element it holds (`grantsConcern`, `packages/ui/src/held-offers.ts`), so the
+    optional class features step offers nothing before a class and a class only its own (`optional-feature-offer.test.ts`).
+    Since ADR 0127 that step is `listedWithRequired`: sorted among the blocking decisions, still skippable, never owed; a
+    Ranger meets it before Favored Enemy, which Favored Foe replaces. The other two wait on `offeredWhen` (ADR 0123).
+  - **A set answered on Build** (`chooseSet`, every `multiple` step but an `askedAtStart` one): what leaves it is taken back
+    first and the answers it closed are dropped (`dropClosedAnswers`, as `removeAddition`); what joins is recorded second
+    and drops nothing, so a replaced feature's answer waits for it.
+  - **Gone:** `BuildStepDef.equip`, `EquipStepDef`, `takenOnBuild`, `InventoryDef.hiddenSetter`, core's
+    `sheetListedElements`, `equip-step.ts` and the inventory's "Taken on Build" group. The schema refuses `equip` and
+    `hiddenSetter` as unknown fields.
+  - **The `.dnd5e` import** (`takeItemFeatures`, `import-character.ts`): an equipped bag entry of the three types is a
+    choice under its family's key (`ITEM_FEATURE_FAMILIES`), a carried one is dropped with a note, and with no content
+    loaded every entry stays in the bag. **The overlay's three bag proxies are gone** (81 elements): the Intelligence one is
+    imported as `ID_INTERNAL_ITEM_ASI_INTELLIGENCE_INCREASE_1` (content says it is that), a language one as the language
+    in `additions` (format 5), by `ITEM_PROXY_REPLACEMENTS`; `compareWithAurora` counts a proxy present when what replaced
+    it is held. **A beta save holding these as bag entries is not upgraded** (the maintainer's call: pre-1.0 builds are not
+    covered); it still derives, and the entry shows in the bag.
+  - **From ADR 0089**: the multiclass unlocker works only through the classes' `<multiclass>` blocks (`… || marker`, which
+    an element's own requirements do not show): with it, no score is flagged. The player character derives
     `speed:burrow|climb|fly|swim` as walking speed is (`innate speed:<mode> + innate speed:<mode>:misc + speed:<mode>:misc`,
-    `speed:<mode>` itself on top; an innate mode plus an item's of the same mode reads double, unrefereed) and shows them
+    `speed:<mode>` itself on top; an innate mode plus an option's of the same mode reads double, unrefereed) and shows them
     under Other Speeds (`showWhen`); sample 28 (a 2024 Thief) climbs 30. `hidden-items.test.ts` measures and holds it.
-  - **`InventoryDef.hiddenSetter`** (5e: `inventory-hidden`): `sheetListedElements` (core) leaves such an item off the
-    sheet's lists; still held, derived and saved. The Sheet pane reads through it.
   - **`BuilderState.withdrawn`** names what ADR 0071 withdrew and its granters; Build lists it under "Not held" (an
     Artificer's firearms proficiency too).
   - **`setInventoryEntry` raises the format version to 2 and never lowers it.** It used to write 2 over a 5 or 7.
-  - The oracle is identical before and after on all thirty samples. Tests: `packages/ui/src/equip-step.test.ts` (each
-    case failing under its named perturbation), `tools/verify/src/optional-feature-step.test.ts` (a 2014 Ranger through
-    the builder, packed and reopened with no source).
-  - **Not done:** a bag editor; a note saying which items give this character anything; ~~the other hidden families~~
-    (ADR 0089, above). Driven in the browser build and the
-    Tauri window on Windows (DOM clicks over the debug port, the saved file read back from disk with no source); not with
-    real input, and not on macOS or Linux.
+  - Tests: `packages/ui/src/held-offers.test.ts`, `packages/aurora-import/src/item-features.test.ts`, the importer's and
+    `verify-character.test.ts`'s ADR 0129 cases, `tools/verify/src/optional-feature-step.test.ts` (a 2014 Ranger through
+    the builder, packed and reopened with no source), `optional-feature-offer.test.ts`, `hidden-items.test.ts`, each
+    failing under its named perturbation. Driven in the browser build (a 2014 Ranger taking Deft Explorer, saved and
+    reopened with every source off); not the Tauri window or the phone.
 - **A creature a character holds is derived one at a time in its holder's namespace, and shown as its own stat block**
   ([ADR 0073](docs/adr/0073-a-creature-a-character-holds-is-derived-one-at-a-time-in-its-holder-s-namespace-and-shown-as-its-own-stat-block.md)).
   The roadmap's "Companions" half; sidekicks were split off (the corpus has no sidekick content). Things to know before
@@ -2251,12 +2251,12 @@ Three things Phase 1 changed that are easy to trip over:
   give every character elements nobody chose — the 5e base armour class, one `ID_LEVEL_N` per
   level. They are *not* stored on the character, so `collectCharacterContent` needs the kind
   passed in or the save will not embed them and ADR 0012 quietly breaks.
-- **`packages/aurora-import` supplies 83 elements no content file declares** (plus 146 it
+- **`packages/aurora-import` supplies 81 elements no content file declares** (plus 146 it
   derives from what is loaded, ADR 0035). The 5e system definition names seven of them in
   `kind.grants`. That coupling was deliberate, and ADR 0119 removes it: the converter writes these elements into converted content,
   and the system names only what the converter guarantees. Until then it is why a missing kind grant warns rather than errors.
-  The last three arrived with the bag: Aurora's inventory proxies, which only a real
-  `<equipment>` block names.
+  Aurora's three inventory proxies, which only a real `<equipment>` block names, were here until ADR 0129: the importer
+  records what they stand for instead.
 - **Six Aurora constructs were being silently dropped**: element-level `<supports>`
   (3,611 blocks — *every* support tag in the corpus), element-level `<requirements>` (1,845),
   `<append>` (171), `equipped=` (79, none of which is `"true"`, all read as `false` — fixed by
@@ -2322,7 +2322,7 @@ maintainer's six calls on the hands-on pass. Things to know before touching it:
   `rogue-wizard-build.ts`).
 - **`offeredWhen`** (system format, an element id, refused on a step that must be answered): without it held, the step
   opens nothing and has no line; what was taken stays settled. 5e's additional features and score adjustments name
-  `ID_INTERNAL_OPTION_ALLOW_ADDITIONAL_FEATURES`, Incudo's own option in the overlay (84 elements now). A test measuring
+  `ID_INTERNAL_OPTION_ALLOW_ADDITIONAL_FEATURES`, Incudo's own option in the overlay (81 elements since ADR 0129). A test measuring
   those steps ticks it.
 - **The first level's hit points are never a card**: `getState` records the die's maximum once the die is known and
   nothing is recorded (`firstLevelRecord`, `hitpoints.ts`), on the first read too. A first level holding the old die's
@@ -2566,7 +2566,7 @@ built 2026-10-07; its dated note says what building it changed). Things to know 
 Things to know before touching it:
 
 - **Measured first** (`tools/verify/src/inventory-editor.test.ts`, report-only): 2,881 items, 83 of them the equip steps'
-  families, 8 hidden mounts that are goods; 902 prices are 0 (Aurora's "not for sale") and 32 a dash, none a fraction;
+  families (options of their own types since ADR 0129, so 2,798 items now), 8 hidden mounts that are goods; 902 prices are 0 (Aurora's "not for sale") and 32 a dash, none a fraction;
   **214 of 415 adorner filters admit no host unless the host's name is an operand** ("Plate", "Longsword"); every stat a
   sample's item moves is unlabelled (`ac:armored:armor`), so Armor Class is reached only through the kind's formulas.
 - **`packages/ui/src/inventory.ts` is the view-model** (`BuilderState.inventory`, `inventoryState`); every write is a pure
@@ -2576,7 +2576,8 @@ Things to know before touching it:
 - **System format** (all optional, `formatVersion` 1): `inventory.types` (what can be added), `inventory.adornSetter` (5e
   `type`: an item whose setter names one of those types attaches to a host of it, filtered by its setter named after the
   type, the host's own name an operand here only, never in `matchesSupports`), `inventory.price` (`cost` / `currency`), and
-  a sheet section's `bag`. The equip steps' families are never offered or listed in the bag (`takenOnBuild`).
+  a sheet section's `bag`. (The equip steps' families were kept out of the bag by `takenOnBuild` until ADR 0129 made them
+  options of their own types.)
 - **Money**: `packages/ui/src/money.ts` (the purse helpers moved there). Buying and spending take only the item's own coin;
   **change is made only by Exchange**, refused unless it comes out whole ("a multiple of 10 gp").
 - **What an item gives** (`gives`): the sheet rows it moves (contributions followed through `derive` by name, as ADR 0095),
@@ -2868,9 +2869,9 @@ never evaluated.
 **Identity is embedded in a save; mechanics are not** (ADR 0022). `collectCharacterContent`
 seeds from `baselineElementIds(kind, progress)`, so every element a kind grants is copied into
 `content.json` and frozen there, while `system.json` is the one thing a save deliberately does
-*not* embed. That is why all seven of the 5e kind's `grants` carry zero rules, and why only nine
-of the overlay's 83 elements carry any — the six ability score improvements and the three
-inventory proxies, where the rule *is* the identity. The 146 improvement options carry a
+*not* embed. That is why all seven of the 5e kind's `grants` carry zero rules, and why only six
+of the overlay's 81 elements carry any — the six ability score improvements, where the rule *is* the identity (three
+inventory proxies were the others until ADR 0129). The 146 improvement options carry a
 `select` each on the same ground: the select is what the saves record them as. Put a game rule on an element and you have put it in every save written
 before you fixed it. A kind's `contributions` is where a conditional baseline rule goes
 instead, and **a system definition ships no content** — decided and closed, so do not reach

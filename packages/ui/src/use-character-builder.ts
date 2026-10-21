@@ -133,15 +133,7 @@ import { chosenUnderSelect, freeformState, type FreeformState } from './freeform
 import { spellAttackRefusal, spellAttacksState, type SpellAttacksState } from './spell-attacks.ts';
 import { sheetDescriptions, type SheetDescriptions } from './sheet-descriptions.ts';
 import { adjustPlay, playView, restPlay, setPlayCondition, setPlaySpent, setPlayTemporary, type PlayView } from './play.ts';
-import {
-  equipOffer,
-  equipTaken,
-  isEquipStep,
-  planEquipAdd,
-  planEquipRemove,
-  withdrawnRows,
-  type WithdrawnRow,
-} from './equip-step.ts';
+import { grantsConcern, withdrawnRows, type WithdrawnRow } from './held-offers.ts';
 import { countedPicks, forgetUncounted, uncountedRows, withUncounted, type UncountedRow } from './uncounted.ts';
 import {
   planReturnStarting,
@@ -665,10 +657,9 @@ export class CharacterBuilder {
   };
 
   choose = (ruleKey: string, elementIds: ElementId[]): void => {
-    // A step whose answers are equipped bag entries (ADR 0072) is published as a set and answered like one, and what it
-    // records is the bag, never a choice.
-    const equipStep = this.steps.find((step) => isEquipStep(step) && pickRuleKey(step.id) === ruleKey);
-    if (equipStep) return this.equip(equipStep, elementIds);
+    // A set answered on Build (ADR 0032) drops what a taken-back element's selects held, as a removed addition does.
+    const set = this.steps.find((step) => step.multiple && !step.askedAtStart && pickRuleKey(step.id) === ruleKey);
+    if (set) return this.chooseSet(ruleKey, elementIds);
     const multiclass = this.multiclass;
     // A top-level pick's answer may live under an imported save's own key rather than
     // `build/<stepId>`, so which pick a key belongs to is read from the character, and the write
@@ -930,28 +921,21 @@ export class CharacterBuilder {
   }
 
   /**
-   * Answer a step that equips (ADR 0072) with the whole set it should hold, as any set is answered. What leaves the set
-   * is taken back first, and the answers to the selects that closes are dropped; then what joins it is taken, which
-   * drops nothing, so a feature it replaces keeps its answer for when it is taken back. An id the step does not offer
-   * and has not taken is ignored.
+   * Answer a set on Build with the whole set it should hold — ADR 0032, ADR 0129. What leaves the set is taken back first,
+   * and the answers to the selects that closes are dropped, as a removed addition's are (ADR 0064); then what joins it is
+   * recorded, which drops nothing, so a feature it replaces keeps its answer for when it is taken back.
    */
-  private equip(step: BuildStepDef, elementIds: ElementId[]): void {
-    const state = this.getState();
-    const taken = equipTaken(this.character, step, this.elements);
-    const offered = new Set(equipOffer(step, this.elements, requirementContextFor(state.derived)));
-    const next = [...new Set(elementIds)].filter((id) => taken.includes(id) || offered.has(id));
-    const gone = taken.filter((id) => !next.includes(id));
-    const added = next.filter((id) => !taken.includes(id));
-    if (gone.length) {
-      const before = this.poolKeys(state.derived);
-      this.character = planEquipRemove(this.character, gone);
+  private chooseSet(ruleKey: string, elementIds: ElementId[]): void {
+    const prior = getChoice(this.character, ruleKey)?.elementIds ?? [];
+    const next = [...new Set(elementIds)];
+    if (prior.some((id) => !next.includes(id))) {
+      const before = this.poolKeys();
+      this.character = setChoice(this.character, ruleKey, prior.filter((id) => next.includes(id)));
       this.invalidate();
       this.dropClosedAnswers(before);
     }
-    if (added.length) {
-      this.character = planEquipAdd(this.character, added);
-      this.invalidate();
-    }
+    this.character = setChoice(this.character, ruleKey, next);
+    this.invalidate();
   }
 
   /**
@@ -1113,11 +1097,11 @@ export class CharacterBuilder {
   }
 
   private inventoryContext() {
-    return { system: this.system, kind: this.kind, steps: this.steps, character: this.character, elements: this.elements };
+    return { system: this.system, kind: this.kind, character: this.character, elements: this.elements };
   }
 
   /** What could be added to the bag, by name. Computed on request: it is thousands of items. */
-  inventoryOptionsFor = (): ElementId[] => inventoryOffer(this.kind, this.steps, this.elements);
+  inventoryOptionsFor = (): ElementId[] => inventoryOffer(this.kind, this.elements);
 
   /** The same offer in the groups the kind names (ADR 0117), "All items" first; empty when it names none. */
   inventoryGroupsFor = (): OfferGroup[] => inventoryOfferGroups(this.kind, this.inventoryOptionsFor(), this.elements);
@@ -1755,8 +1739,6 @@ export class CharacterBuilder {
     // whichever screen happens to name its type.
     const stepForType = new Map<string, string>();
     for (const step of this.steps) {
-      // A step that equips offers some elements of its types and heads nothing a content select opens (ADR 0072).
-      if (isEquipStep(step)) continue;
       for (const type of step.types) if (!stepForType.has(type)) stepForType.set(type, step.id);
     }
 
@@ -1922,19 +1904,16 @@ export class CharacterBuilder {
     // with any optional decision. What is already chosen settles into `picks` at the same time, the
     // way a wizard's first cantrip does, so a set is always editable and never one-way.
     //
-    // A step that equips (ADR 0072) is a set of the same shape whose answers live in the bag: what it has taken is the
-    // equipped entries it admits, and what it offers is narrowed by its setter. Everything else below is shared.
+    // A set that declares `gatedOnHeld` (ADR 0081, ADR 0129) offers only what one of its grants is gated on something the
+    // character has.
     const startOptions: StartOptionsQuestion[] = [];
     for (const step of this.steps) {
-      const equips = isEquipStep(step);
-      if (!(step.multiple || equips) || step.perLevel || !step.types.length) continue;
+      if (!step.multiple || step.perLevel || !step.types.length) continue;
       const ruleKey = pickRuleKey(step.id);
-      const chosen = equips
-        ? equipTaken(this.character, step, this.elements)
-        : [...(getChoice(this.character, ruleKey)?.elementIds ?? [])];
+      const chosen = [...(getChoice(this.character, ruleKey)?.elementIds ?? [])];
       // Asked when the character was started (ADR 0123): never an open decision, and listed with its answer even when
       // that is none, since a set nobody can add to from Build would otherwise have no way back.
-      if (step.askedAtStart && !equips) {
+      if (step.askedAtStart) {
         startOptions.push({
           stepId: step.id,
           label: step.label,
@@ -1950,7 +1929,9 @@ export class CharacterBuilder {
       // granted (ADR 0058), and offering it again would be offering what the NPC already has. The
       // rule content `select` pools have always followed.
       const held = new Set([...chosen, ...derived.elementIds]);
-      const offered = equips ? equipOffer(step, this.elements, requirementContext) : offeredBy(step);
+      const offered = step.gatedOnHeld
+        ? offeredBy(step).filter((id) => grantsConcern(this.elements.get(id)!, requirementContext))
+        : offeredBy(step);
       const rank = stepOrderIndex.get(step.id) ?? Number.MAX_SAFE_INTEGER;
       for (const id of chosen) pickElementRank.set(id, rank);
 

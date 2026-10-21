@@ -18,7 +18,6 @@ import {
   removeInventoryEntry,
   setInventoryEntry,
   statReferences,
-  type BuildStepDef,
   type Character,
   type DerivedCharacter,
   type Element,
@@ -29,7 +28,6 @@ import {
   type ResolvedCharacterKind,
 } from '@incudo/core';
 
-import { equipAdmits, isEquipStep } from './equip-step.ts';
 import { planSpendCoins, purseRows, type PurseRow } from './money.ts';
 import { packageUntouched } from './starting-equipment.ts';
 import type { SheetView } from './sheet.ts';
@@ -40,7 +38,6 @@ import type { SheetView } from './sheet.ts';
 export interface InventoryContext {
   system: GameSystem;
   kind: ResolvedCharacterKind;
-  steps: readonly BuildStepDef[];
   character: Character;
   derived: DerivedCharacter;
   /** The builder's index: the offered view (ADR 0049) for what is offered, every id answered for what is held. */
@@ -85,8 +82,6 @@ export interface InventoryRow {
 export interface InventoryState {
   /** The entries the editor edits, in bag order. */
   rows: InventoryRow[];
-  /** Entries an equip step took (ADR 0072, ADR 0089), shown with what they give and edited on Build. */
-  taken: InventoryRow[];
   /** "Attuned to 2 of 3 items", and whether that is over; absent for a kind that has no attunement. */
   attunement?: { text: string; over: boolean };
   /** Every unit the system declares, most worth first, with what the character holds. */
@@ -102,8 +97,6 @@ export const INVENTORY_HINT =
   'Everything the character carries. Equip an item to wear or wield it; only what is equipped counts toward its numbers, ' +
   'and an item that requires attunement counts only once attuned. Buying pays the price in its own coin: exchange coins ' +
   'first when the purse holds others.';
-export const TAKEN_ON_BUILD = 'Taken on Build';
-export const TAKEN_ON_BUILD_HINT = 'These are taken and given back in their steps on Build.';
 
 // --- reading ------------------------------------------------------------------------------------------------------------
 
@@ -169,24 +162,14 @@ export function adornmentAdmits(adornment: Element, host: Element, kind: Resolve
   });
 }
 
-/** The equip steps of the kind: their families are taken on Build, not here (ADR 0089 decision 3). */
-function equipSteps(steps: readonly BuildStepDef[]): BuildStepDef[] {
-  return steps.filter(isEquipStep);
-}
-
-/** Whether an item is one an equip step takes on Build (ADR 0072, ADR 0089), and so not the editor's or the bag list's. */
-export function takenOnBuild(element: Element | undefined, steps: readonly BuildStepDef[]): boolean {
-  return element !== undefined && equipSteps(steps).some((step) => equipAdmits(step, element));
-}
-
 /**
- * What can be added: every element of the kind's inventory types, through the offered view, less the families an equip
- * step offers, by name. Hidden is not a reason to leave one out. Asked for on request: it is thousands of items.
+ * What can be added: every element of the kind's inventory types, through the offered view, by name. Hidden is not a
+ * reason to leave one out: the 2024 mounts are goods. Asked for on request: it is thousands of items.
  */
-export function inventoryOffer(kind: ResolvedCharacterKind, steps: readonly BuildStepDef[], elements: ElementIndex): ElementId[] {
+export function inventoryOffer(kind: ResolvedCharacterKind, elements: ElementIndex): ElementId[] {
   const found = new Map<ElementId, Element>();
   for (const type of kind.inventory?.types ?? []) {
-    for (const element of elements.byType(type)) if (!takenOnBuild(element, steps)) found.set(element.id, element);
+    for (const element of elements.byType(type)) found.set(element.id, element);
   }
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).map((e) => e.id);
 }
@@ -426,7 +409,7 @@ function packageName(elements: Pick<ElementIndex, 'get'>, forId: ElementId): str
 
 /** The editor as it stands. Absent for a kind that declares no inventory. */
 export function inventoryState(context: InventoryContext): InventoryState | undefined {
-  const { kind, character, derived, elements, system, steps } = context;
+  const { kind, character, derived, elements, system } = context;
   const def = kind.inventory;
   if (!def) return undefined;
   const reading: GivesReading = {
@@ -435,7 +418,6 @@ export function inventoryState(context: InventoryContext): InventoryState | unde
     listedTypes: new Set(kind.sheet.sections.flatMap((s) => s.types ?? [])),
   };
   const rows: InventoryRow[] = [];
-  const taken: InventoryRow[] = [];
   for (const entry of character.inventory ?? []) {
     const element = elements.get(entry.elementId);
     const adornments = (entry.adorners ?? []).flatMap((a) => elements.get(a.elementId) ?? []);
@@ -476,7 +458,7 @@ export function inventoryState(context: InventoryContext): InventoryState | unde
         : {}),
       ...(price ? { price } : {}),
     };
-    (takenOnBuild(element, steps) ? taken : rows).push(row);
+    rows.push(row);
   }
 
   const attunementDef = def.attunement;
@@ -491,7 +473,6 @@ export function inventoryState(context: InventoryContext): InventoryState | unde
   const coined = (character.startingEquipment ?? []).filter((r) => r.coins && Object.keys(r.coins).length && packageUntouched(character, r));
   return {
     rows,
-    taken,
     ...(attunement ? { attunement } : {}),
     purse: system.currency ? purseRows(character, system) : [],
     ...(coined.length
@@ -521,14 +502,13 @@ const NO_SUCH_ENTRY: InventoryWrite = { refused: 'That item is no longer in the 
  * when it has no price or the purse holds too few of that coin (change is made only by Exchange).
  */
 export function planAddItem(
-  context: Pick<InventoryContext, 'kind' | 'steps' | 'elements' | 'character' | 'system'>,
+  context: Pick<InventoryContext, 'kind' | 'elements' | 'character' | 'system'>,
   elementId: ElementId,
   options: { buy?: boolean; newId?: () => string } = {},
 ): InventoryWrite {
-  const { kind, steps, elements, system } = context;
+  const { kind, elements, system } = context;
   const element = elements.get(elementId);
   if (!element || !(kind.inventory?.types ?? []).includes(element.type)) return { refused: 'That is not an item this character can carry.' };
-  if (takenOnBuild(element, steps)) return { refused: `${element.name} is taken in its step on Build.` };
   let character = context.character;
   if (options.buy) {
     const price = itemPrice(element, kind, system);

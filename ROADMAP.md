@@ -2292,6 +2292,15 @@ written on a character can be moved into the user's library without being typed 
       Decided with it: `packages/aurora-import` is unfrozen and is the converter; no Aurora file is kept; a converted
       source is a file the user can open; unmatched starting equipment becomes a codified pattern only when one covers a
       good share of the misses, a pick when it is generic, and otherwise a pending item the user resolves on Build.
+  - [x] **Optional class features and Aurora's additional features are options, not items** (decision 3's last bullet,
+        decision 7's "optional features taken as bag entries become recorded choices";
+        [ADR 0129](./docs/adr/0129-optional-class-features-and-additional-features-are-options-a-character-chooses-not-items.md),
+        2026-10-21). The maintainer, seeing them under the inventory's "Taken on Build": "Those aren't items." The converter
+        gives the 83 a type of their own (`Optional Class Feature`, `Additional Feature`, `Ability Score Adjustment`), the
+        three equip steps are ordinary sets recorded as choices, the `.dnd5e` import writes a save's equipped ones as those
+        choices, and the overlay's three bag proxies are imported as what they stand for (a score adjustment, a language
+        added). `equip`, `takenOnBuild` and `hiddenSetter` are gone; beta saves holding them in the bag are not upgraded
+        (the maintainer's call). The oracle is identical; driven in the browser build.
 - [ ] Signed desktop installer for Windows; macOS and Linux are after 1.0, and the phone's store is the first item after
       1.0 (Beyond 1.0, below)
 - [ ] Docs site, contribution guide, issue templates. *As of 2026-10-15:* the contribution guide exists

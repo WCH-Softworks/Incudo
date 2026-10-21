@@ -1,23 +1,25 @@
 /**
- * The hidden item families other than Tasha's optional class features, read from content and the samples before
- * deciding how the app offers them.
+ * Aurora's other switches, beside Tasha's optional class features, read from content and the samples before deciding how
+ * the app offers them.
  *
  * Aurora switches some things on by an item the user equips and that the sheet never lists (`inventory-hidden`). ADR
  * 0072 offered one family that way, the optional class features (`optional-features.test.ts` has their census), and left
  * the rest for a look of their own: the "Additional Feature" items (speeds, senses, feat and multiclass unlockers, weapon
  * mastery, bonus feats, Lycanthropy, the Companion and Familiar Selection items), the "Additional Ability Score
- * Improvement" items, and the hidden 2024 mounts.
+ * Improvement" items, and the hidden 2024 mounts. Since ADR 0129 the converter gives the first two families types of their
+ * own (`Additional Feature`, `Ability Score Adjustment`), so they are options a character chooses and not items; the
+ * mounts are goods and stay items.
  *
- * Reported, from content alone: every hidden item outside that family by category, what its rules are, what names what it
+ * Reported, from content alone: every option of the two families by category, what its rules are, what names what it
  * grants (an unlocker is only as good as the requirements that read its marker), and whether anything grants, selects or
- * names the item itself. Then the thirty samples: what their bags carry of these. Then each item equipped on a fresh
+ * names the item itself. Then the thirty samples: what their bags carry of these. Then each one taken on a fresh
  * player character, through the builder: what it adds to the character, what stats move, what decisions it opens, what
  * problems it brings, and what lines of the sheet change — which is what the app would show for taking it.
  *
  * Those are reported as `ℹ` lines and assert nothing (ADR 0042). Since ADR 0089 the tests after them hold what 5e
- * declared, through the builder and against any corpus: every hidden item that switches something on, other than the
- * optional class features, is offered by an equip step and no hidden item without rules is; a speed item's speed shows
- * under Other Speeds; the Companion Selection holds a creature that is shown. Items are found by their setters and rules,
+ * declared, through the builder and against any corpus: every option of the two families that switches
+ * something on is offered by its step as a choice (ADR 0129), no hidden item is, and nothing without rules is; a speed item's speed shows
+ * under Other Speeds; the Companion Selection holds a creature that is shown. Options are found by their types and rules,
  * never by an id; the baseline character is built by name and source.
  */
 
@@ -26,7 +28,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { parseAuroraSave } from '@incudo/aurora-import';
-import { evaluateRequirements, requirementContextFor, setInventoryEntry, type Character, type Element, type RequirementExpr } from '@incudo/core';
+import { evaluateRequirements, requirementContextFor, setChoice, type Character, type Element, type RequirementExpr } from '@incudo/core';
 import { runOracle } from './aurora-oracle.ts';
 import { CharacterBuilder, newCharacterOfKind, sheetDocument, sheetMarkdown, type BuilderState } from '@incudo/ui';
 
@@ -35,11 +37,12 @@ import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-da
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const HIDDEN = 'inventory-hidden';
-const OPTIONAL = 'Optional Class Features';
+/** The converter's types for Aurora's additional features and score adjustments (ADR 0129). */
+const FAMILY_TYPES = ['Additional Feature', 'Ability Score Adjustment'];
 
 const category = (e: Element): string => e.setters['category']?.value ?? '(none)';
 const isHidden = (e: Element): boolean => e.setters[HIDDEN]?.value.trim().toLowerCase() === 'true';
-const isFamily = (e: Element): boolean => isHidden(e) && category(e) !== OPTIONAL;
+const isFamily = (e: Element): boolean => FAMILY_TYPES.includes(e.type);
 
 function tally(values: string[], limit = 12): string {
   const counts = new Map<string, number>();
@@ -80,19 +83,18 @@ function shape(e: Element, elements: { get(id: string): Element | undefined }): 
     .join(' + ');
 }
 
-test('the hidden items outside the optional class features, and what they are', { skip: corpusSkip }, async (t) => {
+test('the additional features and score adjustments, and what they are', { skip: corpusSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const all = [...elements.all()];
   const hidden = all.filter(isHidden);
-  const family = hidden.filter(isFamily);
-  t.diagnostic(`hidden elements: ${hidden.length}; outside "${OPTIONAL}": ${family.length}, by category ${tally(family.map(category))}`);
+  const family = all.filter(isFamily);
+  t.diagnostic(`hidden items: ${hidden.length}, by category ${tally(hidden.map(category))}; of the two families: ${family.length}, by category ${tally(family.map(category))}`);
   t.diagnostic(`  by type ${tally(family.map((e) => e.type))}; by slot ${tally(family.map((e) => e.setters['slot']?.value ?? '(none)'))}`);
   t.diagnostic(`  own requirements: ${family.filter((e) => e.requirements).length}; support tags: ${family.filter((e) => e.supports.length).length}`);
   for (const cat of [...new Set(family.map(category))].sort()) {
     const items = family.filter((e) => category(e) === cat);
-    const everyItem = all.filter((e) => category(e) === cat && e.type === 'Item');
-    t.diagnostic(`${cat}: ${items.length} hidden of ${everyItem.length} items of the category; from ${tally(items.map((e) => e.source), 6)}`);
+    t.diagnostic(`${cat}: ${items.length}, typed ${tally(items.map((e) => e.type))}; from ${tally(items.map((e) => e.source), 6)}`);
     t.diagnostic(`  saying to equip it to enable it: ${items.filter((e) => /equip(ped)? this item|once equipped/i.test(e.description ?? '')).length}`);
     for (const s of tally(items.map((e) => shape(e, elements)), 50).split(', ')) t.diagnostic(`  ${s}`);
   }
@@ -144,7 +146,7 @@ test('what the samples carry of the hidden families', { skip: savesSkip }, async
       if (element && isFamily(element)) rows.push(`${sample.id}: ${element.name} (${category(element)}; ${item.equipped ? 'equipped' : 'carried'})`);
     }
   }
-  t.diagnostic(`bag entries in the samples of a hidden family other than "${OPTIONAL}": ${rows.length}`);
+  t.diagnostic(`bag entries in the samples of the two families: ${rows.length}`);
   for (const row of rows) t.diagnostic(`  ${row}`);
 });
 
@@ -173,7 +175,7 @@ function lines(state: BuilderState): Set<string> {
   return new Set(sheetMarkdown(sheetDocument(state)).split('\n').filter((l) => l.trim()));
 }
 
-test('each hidden item equipped on a fresh character: what it gives, opens and shows', { skip: corpusSkip }, async (t) => {
+test('each option of the two families taken on a fresh character: what it gives, opens and shows', { skip: corpusSkip }, async (t) => {
   const system = await loadShippedSystem('dnd5e');
   const { builder, elements } = await baseline(4);
   const before = builder.getState();
@@ -183,7 +185,7 @@ test('each hidden item equipped on a fresh character: what it gives, opens and s
   const family = [...elements.all()].filter(isFamily).sort((a, b) => category(a).localeCompare(category(b)) || a.name.localeCompare(b.name));
   t.diagnostic(`baseline: a 2014 Human Fighter 4, ${before.derived.elementIds.size} elements, ${beforeLines.size} sheet lines`);
   for (const item of family) {
-    const character = setInventoryEntry(before.character, { instanceId: 'hidden-item', elementId: item.id, equipped: true });
+    const character = take(system, before.character, item);
     const after = new CharacterBuilder(character, system, elements).getState();
     const added = [...after.derived.elementIds].filter((id) => !before.derived.elementIds.has(id) && id !== item.id);
     const lost = [...before.derived.elementIds].filter((id) => !after.derived.elementIds.has(id));
@@ -205,9 +207,9 @@ test('each hidden item equipped on a fresh character: what it gives, opens and s
   }
 });
 
-test('the feat unlockers: how many feats a character qualifies for with each equipped', { skip: corpusSkip }, async (t) => {
+test('the feat unlockers: how many feats a character qualifies for with each taken', { skip: corpusSkip }, async (t) => {
   // A level 1 character with the scores a new one has; the unlocker is asked of every feat whose requirements name its
-  // marker, before and after it is equipped.
+  // marker, before and after it is taken.
   const system = await loadShippedSystem('dnd5e');
   const { builder, elements } = await baseline(1);
   const before = builder.getState();
@@ -221,7 +223,7 @@ test('the feat unlockers: how many feats a character qualifies for with each equ
     const markers = new Set(item.rules.flatMap((r) => (r.kind === 'grant' ? [r.id] : [])));
     const reading = [...elements.all()].filter((e) => [...namedIds(e.requirements)].some((id) => markers.has(id)));
     const readingFeats = feats.filter((f) => reading.includes(f));
-    const character = setInventoryEntry(before.character, { instanceId: 'unlocker', elementId: item.id, equipped: true });
+    const character = take(system, before.character, item);
     const after = new CharacterBuilder(character, system, elements).getState();
     t.diagnostic(
       `${item.name} (${item.source}): read by ${reading.length} (${tally(reading.map((e) => e.type), 4)}); ` +
@@ -230,7 +232,7 @@ test('the feat unlockers: how many feats a character qualifies for with each equ
   }
 });
 
-test('the multiclass unlocker: what a short score flags with it equipped', { skip: corpusSkip }, async (t) => {
+test('the multiclass unlocker: what a short score flags with it taken', { skip: corpusSkip }, async (t) => {
   // Its marker is read where a class's `<multiclass>` block writes `… || <marker>`, which an element's own requirements
   // do not show. A Fighter with every score 3 is asked which classes it may take and which are flagged, before and after.
   const system = await loadShippedSystem('dnd5e');
@@ -240,10 +242,10 @@ test('the multiclass unlocker: what a short score flags with it equipped', { ski
   const markers = new Set(item.rules.flatMap((r) => (r.kind === 'grant' ? [r.id] : [])));
   const blocks = elements.byType('Class').filter((c) => [...namedIds(c.multiclass?.requirements)].some((id) => markers.has(id)));
   t.diagnostic(`${item.name}: named in the multiclass requirements of ${blocks.length} of ${elements.byType('Class').length} classes (${tally(blocks.map((c) => c.source), 4)})`);
-  const options = (equipped: boolean) => {
+  const options = (taken: boolean) => {
     let character: Character = { ...newCharacterOfKind(system, 'pc'), progress: 3 };
     for (const ability of ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']) character = { ...character, baseStats: { ...character.baseStats, [ability]: 3 } };
-    if (equipped) character = setInventoryEntry(character, { instanceId: 'unlocker', elementId: item.id, equipped: true });
+    if (taken) character = take(system, character, item);
     const builder = new CharacterBuilder(character, system, elements);
   // The two steps are offered only to a character whose table allows them (ADR 0123): the campaign option, as its
   // dialog would add it to the defaults.
@@ -253,61 +255,74 @@ test('the multiclass unlocker: what a short score flags with it equipped', { ski
     builder.choose('build/class', [fighter.id]);
     return builder.classLevelsFor('levels')!.options;
   };
-  for (const equipped of [false, true]) {
-    const o = options(equipped);
-    t.diagnostic(`  ${equipped ? 'with' : 'without'} it: ${o.filter((x) => x.eligible).length} of ${o.length} classes may be taken, ${o.filter((x) => x.flag).length} flagged, refused ${tally(o.filter((x) => !x.eligible).map((x) => x.unavailable ?? '?'), 4)}`);
+  for (const taken of [false, true]) {
+    const o = options(taken);
+    t.diagnostic(`  ${taken ? 'with' : 'without'} it: ${o.filter((x) => x.eligible).length} of ${o.length} classes may be taken, ${o.filter((x) => x.flag).length} flagged, refused ${tally(o.filter((x) => !x.eligible).map((x) => x.unavailable ?? '?'), 4)}`);
   }
 });
 
-/** The equip steps the player character declares, by their key. */
-function equipSteps(system: Awaited<ReturnType<typeof loadShippedSystem>>): string[] {
+/** The steps the player character takes the two families through, by their key. */
+function familySteps(system: Awaited<ReturnType<typeof loadShippedSystem>>): string[] {
   const pc = system.characterKinds.find((k) => k.id === 'pc')!;
-  return (pc.buildSteps ?? []).filter((step) => step.equip).map((step) => `build/${step.id}`);
+  return (pc.buildSteps ?? []).filter((step) => step.types.some((type) => FAMILY_TYPES.includes(type))).map((step) => `build/${step.id}`);
 }
 
-test('every hidden switch but the optional class features is offered by an equip step, and nothing without rules is', { skip: corpusSkip }, async () => {
-  // Fails if either of ADR 0089's steps is removed (its family is not offered), or if a step offers by "hidden" alone (a
-  // mount is offered). The optional class features are left out: their step offers only a class's own (ADR 0081).
+/** The character with an option taken as its step records it: a choice under the step that offers its type (ADR 0129). */
+function take(system: Awaited<ReturnType<typeof loadShippedSystem>>, character: Character, element: Element): Character {
+  const pc = system.characterKinds.find((k) => k.id === 'pc')!;
+  const step = (pc.buildSteps ?? []).find((s) => s.multiple && s.types.includes(element.type));
+  assert.ok(step, `a set offers ${element.type}`);
+  const key = `build/${step.id}`;
+  const held = character.choices.find((c) => c.ruleKey === key)?.elementIds ?? [];
+  return setChoice(character, key, [...held, element.id]);
+}
+
+test('every option of the two families that switches something on is offered by its step, and no item is', { skip: corpusSkip }, async () => {
+  // Fails if either of ADR 0089's steps is removed (its family is not offered), if the converter leaves them items (the
+  // steps offer nothing), or if a step offers by "hidden" alone (a mount is offered). The optional class features are
+  // left out: their step offers only a class's own (ADR 0081).
   const system = await loadShippedSystem('dnd5e');
   const { builder, elements } = await baseline(4);
   const state = builder.getState();
   const offered = new Map<string, string>();
-  for (const key of equipSteps(system)) {
+  for (const key of familySteps(system)) {
     for (const id of state.decisions.find((d) => d.id === key)?.candidates ?? []) offered.set(id, key);
   }
   const family = [...elements.all()].filter(isFamily);
   const switches = family.filter((e) => e.rules.length > 0);
-  assert.ok(switches.length > 0, 'the corpus has hidden switches');
+  assert.ok(switches.length > 0, 'the corpus has additional features');
   const missing = switches.filter((e) => !offered.has(e.id)).map((e) => `${e.name} (${category(e)})`);
-  assert.deepEqual(missing, [], 'every hidden switch is offered by a step');
+  assert.deepEqual(missing, [], 'every one is offered by a step');
   const inert = family.filter((e) => e.rules.length === 0 && offered.has(e.id)).map((e) => e.name);
-  assert.deepEqual(inert, [], 'no hidden item without rules is offered');
+  assert.deepEqual(inert, [], 'none without rules is offered');
+  const items = [...offered.keys()].filter((id) => elements.get(id)?.type === 'Item' || isHidden(elements.get(id)!));
+  assert.deepEqual(items, [], 'no item and nothing hidden is offered');
   const byStep = new Map<string, Set<string>>();
   for (const e of switches) byStep.set(offered.get(e.id)!, new Set([...(byStep.get(offered.get(e.id)!) ?? []), category(e)]));
   for (const [key, categories] of byStep) assert.equal(categories.size, 1, `${key} offers one family: ${[...categories].join(', ')}`);
 });
 
 test('a speed item taken from its step shows its speed under Other Speeds, and taken back shows none', { skip: corpusSkip }, async () => {
-  // Fails if the player character declares no speed:<mode>, or no section shows it, or the step records a choice.
+  // Fails if the player character declares no speed:<mode>, or no section shows it, or the step records a bag entry.
   const system = await loadShippedSystem('dnd5e');
   const { builder, elements } = await baseline(4);
   const item = [...elements.all()].find(
     (e) => isFamily(e) && e.rules.some((r) => r.kind === 'stat' && r.name === 'innate speed:climb' && r.value.kind === 'ref'),
   );
   assert.ok(item, 'the corpus has an item giving a climbing speed equal to walking');
-  const key = equipSteps(system).find((k) => builder.getState().decisions.find((d) => d.id === k)?.candidates.includes(item.id));
+  const key = familySteps(system).find((k) => builder.getState().decisions.find((d) => d.id === k)?.candidates.includes(item.id));
   assert.ok(key, 'a step offers it');
   const speeds = () => builder.getState().sheet.sections.find((s) => s.section === 'speeds' || s.id === 'speeds');
   assert.equal(speeds(), undefined, 'a Human shows no other speed');
   builder.choose(key, [item.id]);
   const state = builder.getState();
-  assert.deepEqual(state.character.inventory?.map((e) => [e.elementId, e.equipped]), [[item.id, true]]);
-  assert.equal(state.character.choices.some((c) => c.ruleKey === key), false);
+  assert.equal(state.character.inventory, undefined, 'nothing in the bag');
+  assert.deepEqual(state.character.choices.find((c) => c.ruleKey === key)?.elementIds, [item.id]);
   const walking = state.derived.stats.get('speed')?.value;
   assert.deepEqual(speeds()?.rows.map((r) => [r.stat, r.value]), [['speed:climb', String(walking)]]);
   builder.choose(key, []);
   assert.equal(speeds(), undefined, 'taken back, no other speed');
-  assert.equal(builder.getState().character.inventory, undefined);
+  assert.equal(builder.getState().character.choices.some((c) => c.ruleKey === key), false);
 });
 
 test('the Companion Selection taken from its step holds the creature chosen, shown as its own stat block', { skip: corpusSkip }, async () => {
@@ -316,7 +331,7 @@ test('the Companion Selection taken from its step holds the creature chosen, sho
   const { builder, elements } = await baseline(4);
   const item = [...elements.all()].find((e) => isFamily(e) && e.rules.some((r) => r.kind === 'select' && r.type === 'Companion' && !r.supports));
   assert.ok(item, 'the corpus has a selection item offering every creature');
-  const key = equipSteps(system).find((k) => builder.getState().decisions.find((d) => d.id === k)?.candidates.includes(item.id));
+  const key = familySteps(system).find((k) => builder.getState().decisions.find((d) => d.id === k)?.candidates.includes(item.id));
   assert.ok(key, 'a step offers it');
   builder.choose(key, [item.id]);
   const select = builder.getState().decisions.find((d) => d.from === item.id && d.kind === 'select');

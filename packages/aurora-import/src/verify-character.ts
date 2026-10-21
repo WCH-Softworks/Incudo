@@ -28,6 +28,7 @@
 import type { DerivedCharacter, Element, ElementId, ElementIndex } from '@incudo/core';
 import type { AuroraSave, AuroraSpellcasting } from './parse-save.ts';
 import { canonicalizeSaveIds } from './canonical-ids.ts';
+import { ITEM_PROXY_REPLACEMENTS } from './item-features.ts';
 
 export type DifferenceKind =
   /** Aurora's derivation has an element Incudo's does not. */
@@ -301,6 +302,9 @@ function compareElements(
 ): void {
   for (const id of [...aurora].sort()) {
     if (incudo.has(id)) continue;
+    // A proxy Aurora's app put in the bag is imported as what it stands for (ADR 0129): present when that is held.
+    const replaced = ITEM_PROXY_REPLACEMENTS.get(id);
+    if (replaced && incudo.has(replaced.id)) continue;
 
     // Why an element is absent is nearly always an answer about an ancestor, not about the
     // element. A Half-Elf variant that is not in the loaded content takes its Keen Senses

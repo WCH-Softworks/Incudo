@@ -594,3 +594,16 @@ test('the stat names are configuration, not knowledge of the game', () => {
   );
   assert.deepEqual(result.differences, [], 'and the other two keys keep their defaults');
 });
+
+// ADR 0129. Fails if the comparison does not know what replaced a proxy: Aurora's sum names the proxy, which nothing
+// declares any more, and the character holds the score adjustment the importer recorded instead.
+test('a proxy Aurora put in the bag is present when what replaced it is held', () => {
+  const index = new MapElementIndex();
+  index.addAll([element('ID_PICKED', 'Thing'), element('ID_INTERNAL_ITEM_ASI_INTELLIGENCE_INCREASE_1', 'Thing')]);
+  const save = parseAuroraSave(
+    saveXml({ sum: ['ID_PICKED', 'ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE', 'ID_INTERNAL_ITEM_ASI_INTELLIGENCE_INCREASE_1'] }),
+  );
+  const character = setChoice(picked(), 'build/ability-adjustments', ['ID_INTERNAL_ITEM_ASI_INTELLIGENCE_INCREASE_1']);
+  const result = compareWithAurora(save, derive(character, index), { index });
+  assert.deepEqual(result.differences.filter((d) => d.elementId === 'ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE'), []);
+});

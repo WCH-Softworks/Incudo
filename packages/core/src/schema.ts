@@ -440,25 +440,25 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         });
       }
       // An advanced step is left out of what is offered until a user asks for advanced options (ADR 0115), so only a step
-      // nothing owes an answer to may be one: a set, a step that equips, or a pick that is not required.
-      if (step.advanced && !(step.multiple || step.equip || (step.pick && !step.required))) {
+      // nothing owes an answer to may be one: a set or a pick that is not required.
+      if (step.advanced && !(step.multiple || (step.pick && !step.required))) {
         errors.push({
           path: `${where}.buildSteps`,
-          message: `step "${step.id}" is advanced and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be left out of what is offered`,
+          message: `step "${step.id}" is advanced and is not a set or a pick that is not required; only a step a character may leave unanswered can be left out of what is offered`,
         });
       }
       // A step a campaign option switches on (ADR 0123) opens nothing without it, so only a step nothing owes an answer to.
-      if (step.offeredWhen !== undefined && !(step.multiple || step.equip || (step.pick && !step.required))) {
+      if (step.offeredWhen !== undefined && !(step.multiple || (step.pick && !step.required))) {
         errors.push({
           path: `${where}.buildSteps`,
-          message: `step "${step.id}" is offered only when an element is held and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be switched off`,
+          message: `step "${step.id}" is offered only when an element is held and is not a set or a pick that is not required; only a step a character may leave unanswered can be switched off`,
         });
       }
       // Listed with what must be answered (ADR 0127), so only a step nothing owes an answer to: one that is owed already is.
-      if (step.listedWithRequired && !(step.multiple || step.equip || (step.pick && !step.required))) {
+      if (step.listedWithRequired && !(step.multiple || (step.pick && !step.required))) {
         errors.push({
           path: `${where}.buildSteps`,
-          message: `step "${step.id}" is listed with the required decisions and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered needs listing there`,
+          message: `step "${step.id}" is listed with the required decisions and is not a set or a pick that is not required; only a step a character may leave unanswered needs listing there`,
         });
       }
       // What is asked when a character is started is a set of options (ADR 0123): a pick or a budget is Build's to ask.
@@ -475,24 +475,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           message: `step "${step.id}" is both a pick and multiple; a pick is of one, a set of any number`,
         });
       }
-      // A step whose answers are equipped bag entries (ADR 0072) is a set of its own kind: none of the keys that make
-      // a step a pick, a set of choices, a per-level step or a budget means anything beside it, so each is refused.
-      if (step.equip) {
-        const clashes = (['required', 'pick', 'multiple', 'perLevel', 'budget', 'levelRoll'] as const).filter(
-          (key) => step[key] !== undefined && step[key] !== false,
-        );
-        for (const key of clashes) {
-          errors.push({
-            path: `${where}.buildSteps`,
-            message: `step "${step.id}" equips and is also ${key}; a step that equips is a set of its own and takes neither`,
-          });
-        }
-        if (step.types.length === 0) {
-          errors.push({
-            path: `${where}.buildSteps`,
-            message: `step "${step.id}" equips and names no types, so it could offer nothing`,
-          });
-        }
+      // Offering only what concerns the character (ADR 0081, ADR 0129) narrows what a set offers; a pick or a budget has no such offer.
+      if (step.gatedOnHeld && !step.multiple) {
+        errors.push({
+          path: `${where}.buildSteps`,
+          message: `step "${step.id}" offers only what concerns the character and is not a set (multiple); only a set can be narrowed that way`,
+        });
       }
       for (const type of step.types) {
         if (!typeNames.has(type)) {

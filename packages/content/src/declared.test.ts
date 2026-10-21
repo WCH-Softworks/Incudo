@@ -17,8 +17,6 @@ import { loadSources, type LoadedSource } from './load-sources.ts';
 import { SourceProfile, type ConfiguredSource } from './profile.ts';
 
 const BASE = 'https://example.test/';
-const OVERLAY = ['ID_LANGUAGE_GNOMISH', 'ID_LANGUAGE_ORC'];
-
 const element = (id: string, rules = ''): string =>
   `<element name="${id}" type="Widget" source="Test" id="${id}"><description><p>${id}</p></description><rules>${rules}</rules></element>`;
 const grant = (id: string): string => `<grant type="Widget" id="${id}" />`;
@@ -35,8 +33,7 @@ const index = (name: string, ...files: string[]): string =>
  */
 const FILES: Record<string, string> = {
   'core.index': index('Core', 'core.xml', 'book.index'),
-  // The two languages the elements Incudo generates for Aurora content grant (ADR 0052), which AuroraLegacy's core declares.
-  'core.xml': elements(element('ID_SKILL') + element('ID_LANGUAGE') + element('ID_LANGUAGE_GNOMISH') + element('ID_LANGUAGE_ORC')),
+  'core.xml': elements(element('ID_SKILL') + element('ID_LANGUAGE')),
   'book.index': index('Book', 'book.xml'),
   'book.xml': elements(element('ID_RACE', grant('ID_SKILL') + grant('ID_LANGUAGE'))),
   'extras.index': index('Extras', 'extras.xml'),
@@ -89,7 +86,7 @@ test('a switched-off source that was loaded before is named for what it declares
   sources.core!.enabled = false;
   sources.book!.enabled = true;
   const book = (await load(profile, storage)).get('Book')!;
-  const missing = ['ID_LANGUAGE', ...OVERLAY, 'ID_SKILL'];
+  const missing = ['ID_LANGUAGE', 'ID_SKILL'];
   assert.deepEqual(book.missing?.references, missing);
   assert.deepEqual(book.switchedOff, [{ sourceId: sources.core!.id, references: missing, additions: [] }]);
 });
@@ -101,7 +98,7 @@ test('a source loaded after one that holds the same files still records what the
   const both = await load(profile, storage);
   assert.equal(both.get('Book')!.fileCount, 0, 'Core loaded the book first');
   assert.deepEqual((await readDeclared(storage, sources.book!))?.ids, ['ID_RACE']);
-  assert.deepEqual((await readDeclared(storage, sources.core!))?.ids, ['ID_LANGUAGE', ...OVERLAY, 'ID_RACE', 'ID_SKILL']);
+  assert.deepEqual((await readDeclared(storage, sources.core!))?.ids, ['ID_LANGUAGE', 'ID_RACE', 'ID_SKILL']);
 });
 
 test('an id two switched-off sources declare is named under both, in the profile order, and one declaring none is left out', async () => {
@@ -115,7 +112,7 @@ test('an id two switched-off sources declare is named under both, in the profile
   assert.deepEqual(
     book.switchedOff?.map((supply) => [supply.sourceId, supply.references]),
     [
-      [sources.core!.id, ['ID_LANGUAGE', ...OVERLAY, 'ID_SKILL']],
+      [sources.core!.id, ['ID_LANGUAGE', 'ID_SKILL']],
       [sources.extras!.id, ['ID_LANGUAGE']],
     ],
   );
@@ -128,9 +125,9 @@ test('an addition waiting for its target names the switched-off source that decl
   sources.extras!.enabled = false;
   sources.core!.enabled = false;
   const supplement = (await load(profile, storage)).get('Supplement')!;
-  assert.deepEqual(supplement.missing, { references: [...OVERLAY, 'ID_MISPELT', 'ID_RACE'], additions: ['ID_FEAT'] });
+  assert.deepEqual(supplement.missing, { references: ['ID_MISPELT', 'ID_RACE'], additions: ['ID_FEAT'] });
   assert.deepEqual(supplement.switchedOff, [
-    { sourceId: sources.core!.id, references: [...OVERLAY, 'ID_RACE'], additions: [] },
+    { sourceId: sources.core!.id, references: ['ID_RACE'], additions: [] },
     { sourceId: sources.extras!.id, references: [], additions: ['ID_FEAT'] },
   ]);
   const named: string[] = (supplement.switchedOff ?? []).flatMap((supply) => supply.references);
@@ -176,7 +173,7 @@ test('a record is written when it changes, and not again when it does not', asyn
   sources.core!.excluded = [`${BASE}book.index`];
   await load(profile, storage);
   assert.equal(storage.writes.filter((key) => key === declaredKey(sources.core!.id)).length, 2, 'other parts: written');
-  assert.deepEqual((await readDeclared(storage, sources.core!))?.ids, ['ID_LANGUAGE', ...OVERLAY, 'ID_SKILL']);
+  assert.deepEqual((await readDeclared(storage, sources.core!))?.ids, ['ID_LANGUAGE', 'ID_SKILL']);
 });
 
 test('removing a source removes its record', async () => {

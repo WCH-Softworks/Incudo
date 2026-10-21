@@ -42,6 +42,7 @@ import { decodeBase64, imageExtension } from './base64.ts';
 import { NO_BOOK } from './book.ts';
 import { canonicalizeSaveIds } from './canonical-ids.ts';
 import { REPEATABLE_SETTER } from './generated-elements.ts';
+import { ITEM_PROXY_REPLACEMENTS, itemFeatureFamilyOf } from './item-features.ts';
 import type { AuroraItem, AuroraSave, SaveDiagnostic } from './parse-save.ts';
 
 export interface ImportCharacterOptions {
@@ -140,7 +141,16 @@ export function importAuroraCharacter(
   const advancement = toAdvancement(save, options.index, diagnostics);
   if (advancement) character.advancement = advancement;
   character.rolls = toRolls(save, advancement);
-  const inventory = toInventory(save, options.index, known, diagnostics);
+  // What Aurora put in the bag to switch something on is recorded as what it is (ADR 0129), and only the rest is the bag.
+  const features = takeItemFeatures(save.equipment, options.index, diagnostics);
+  for (const [ruleKey, elementIds] of features.choices) character.choices.push({ ruleKey, elementIds });
+  character.choices.sort((a, b) => (a.ruleKey < b.ruleKey ? -1 : a.ruleKey > b.ruleKey ? 1 : 0));
+  if (features.additions.length) {
+    // Format 5 is what records additions (ADR 0064), set here as money sets 11 below: never lowered.
+    character.additions = features.additions;
+    if (character.formatVersion < 5) character.formatVersion = 5;
+  }
+  const inventory = toInventory({ ...save, equipment: features.rest }, options.index, known, diagnostics);
   if (inventory) character.inventory = inventory;
   const prepared = toPrepared(save);
   if (prepared) character.prepared = prepared;
@@ -213,7 +223,7 @@ function synthesizeGenerated(
   const candidates = new Set([...save.sum, ...described.keys()]);
 
   for (const id of [...candidates].sort()) {
-    if (index.get(id)) continue;
+    if (index.get(id) || ITEM_PROXY_REPLACEMENTS.has(id)) continue;
     if (!id.startsWith(GENERATED_PREFIX)) {
       missing.push(id);
       continue;
@@ -253,6 +263,54 @@ function synthesizeGenerated(
     });
   }
   return generated;
+}
+
+// --- options Aurora writes as items ----------------------------------------
+
+/**
+ * The bag entries that are not items: an option Aurora's content writes as an item to equip (an optional class feature, an
+ * additional feature, an ability score adjustment), which the converter types as what it is, and the three proxies Aurora's
+ * app puts in a bag for a language or a score the character was given — ADR 0129.
+ *
+ * An equipped option is recorded as a choice under its family's step key, as campaign options are under `build/options`; a
+ * carried one did nothing in Aurora and is dropped with a note. A proxy is recorded as what it stands for, equipped or not
+ * (Aurora counts it either way). With no content loaded nothing can say what an id is, so every entry stays in the bag.
+ */
+function takeItemFeatures(
+  equipment: readonly AuroraItem[],
+  index: ElementIndex | undefined,
+  diagnostics: SaveDiagnostic[],
+): { choices: Map<string, ElementId[]>; additions: ElementId[]; rest: AuroraItem[] } {
+  const choices = new Map<string, ElementId[]>();
+  const additions: ElementId[] = [];
+  const rest: AuroraItem[] = [];
+  const record = (ruleKey: string, id: ElementId): void => {
+    const ids = choices.get(ruleKey) ?? [];
+    if (!ids.includes(id)) ids.push(id);
+    choices.set(ruleKey, ids);
+  };
+  for (const item of equipment) {
+    const proxy = ITEM_PROXY_REPLACEMENTS.get(item.id);
+    if (proxy) {
+      if (proxy.kind === 'choice') record(proxy.ruleKey, proxy.id);
+      else if (!additions.includes(proxy.id)) additions.push(proxy.id);
+      continue;
+    }
+    const family = index ? itemFeatureFamilyOf(index.get(item.id)?.type ?? '') : undefined;
+    if (!family) {
+      rest.push(item);
+      continue;
+    }
+    if (item.equipped) record(family.ruleKey, item.id);
+    else {
+      diagnostics.push({
+        level: 'warning',
+        message: `The bag carries "${item.name || item.id}" without equipping it, so it was not taken in Aurora and is not imported.`,
+        where: 'build/equipment',
+      });
+    }
+  }
+  return { choices, additions, rest };
 }
 
 // --- decisions -------------------------------------------------------------

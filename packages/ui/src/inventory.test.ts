@@ -61,7 +61,7 @@ function system(options: { saves?: boolean } = {}): GameSystem {
         default: true,
         progression: { kind: 'level', min: 1, max: 20, stat: 'level' },
         elementTypes: ['Gear', 'Garb', 'Relic', 'Kit', 'Sign'],
-        buildSteps: [{ id: 'boons', label: 'Boons', types: ['Gear'], equip: { setter: 'family', values: ['Boon'] } }],
+        buildSteps: [],
         inventory: {
           slotSetter: 'slot',
           occupiedTag: 'any',
@@ -99,7 +99,6 @@ function corpus(): MapElementIndex {
     element('STAFF', 'Gear', { name: 'Staff', setters: { slot: { value: 'hands' }, worth: price('3', 'bead') } }),
     element('ROPE', 'Gear', { name: 'Rope', setters: { worth: price('—') } }),
     element('LAMP', 'Gear', { name: 'Lamp', setters: { worth: price('2') } }),
-    element('BOON', 'Gear', { name: 'Boon of Sight', setters: { family: { value: 'Boon' } } }),
     element('SIGN', 'Sign', { name: 'Mark of the Road' }),
     element('GILDED', 'Relic', {
       name: 'Gilded Garb',
@@ -121,15 +120,14 @@ function builder(character?: Character, options: { saves?: boolean } = {}): Char
 let ids = 0;
 const newId = () => `e${++ids}`;
 
-test('the offer is every item of the inventory types, less what an equip step offers, and hidden is no reason', () => {
-  // Fails if the equip step's family is offered (Boon of Sight), or if the offer reads the sheet's types instead.
+test('the offer is every item of the inventory types', () => {
+  // Fails if the offer reads the sheet's types instead (the sign is offered).
   const kind = resolveCharacterKind(system(), 'pc');
-  const offer = inventoryOffer(kind, kind.buildSteps, corpus());
-  assert.ok(!offer.includes('BOON'));
+  const offer = inventoryOffer(kind, corpus());
   assert.ok(!offer.includes('SIGN'));
   assert.deepEqual(offer, ['AMULET', 'ANY_GARB', 'CLOAK', 'COAT', 'GILDED', 'LAMP', 'ROPE', 'SATCHEL', 'STAFF']);
   // A kind naming no types offers nothing, and its bag is still edited.
-  assert.deepEqual(inventoryOffer({ ...kind, inventory: { ...kind.inventory!, types: undefined } }, kind.buildSteps, corpus()), []);
+  assert.deepEqual(inventoryOffer({ ...kind, inventory: { ...kind.inventory!, types: undefined } }, corpus()), []);
 });
 
 test('a price is a whole amount above 0 in a unit the system counts; a dash, 0 and no unit are none', () => {
@@ -160,8 +158,8 @@ test('buying pays in the price\'s own coin, and change is never made for it', ()
   // An item with no price is added, never bought.
   assert.ok('refused' in planAddItem(context, 'CLOAK', { buy: true }));
   assert.ok('character' in planAddItem(context, 'CLOAK'));
-  // The equip step's family is refused even by id.
-  assert.ok('refused' in planAddItem(context, 'BOON'));
+  // What is not of a type the bag carries (an option a character takes on Build, ADR 0129) is refused even by id.
+  assert.ok('refused' in planAddItem(context, 'SIGN'));
 });
 
 test('an exchange is made only when it comes out whole, and says how many would', () => {
@@ -275,19 +273,6 @@ test('the limit is shown and never refused, and attuning a carried item counts n
   assert.ok(b.getState().derived.problems.some((p) => p.code === 'over-attuned'));
 });
 
-test('an equip step\'s items are listed apart, with what they give, and are not the editor\'s', () => {
-  // Fails if the Boon is listed with the editor's rows (where its controls would fight its step's).
-  const character: Character = {
-    ...createCharacter('test', 'pc', { name: 'W' }),
-    formatVersion: 2,
-    inventory: [{ instanceId: 'b', elementId: 'BOON', equipped: true }, { instanceId: 's', elementId: 'STAFF' }],
-  };
-  const state = builder(character).getState().inventory!;
-  assert.deepEqual(state.rows.map((r) => r.elementId), ['STAFF']);
-  assert.deepEqual(state.taken.map((r) => r.elementId), ['BOON']);
-  assert.equal(state.taken[0]!.gives, 'Gives this character nothing.');
-});
-
 test('an entry a starting package added says what editing it does, until the package is used', () => {
   // Fails if the note is shown on an entry no package added, or kept once the package can no longer be taken back.
   const character: Character = {
@@ -330,7 +315,7 @@ test('names, notes and quantities are written as given and cleared by blanks', (
 
 test('the sheet lists the bag and the purse, and its types only what no entry names', async () => {
   // Fails if a section declaring `bag` lists only what is held (a carried Staff missing), lists an equipped item twice
-  // (once as a held element, once as an entry), lists an equip step's item, or the Markdown or the form leave either out.
+  // (once as a held element, once as an entry), or the Markdown or the form leave either out.
   const { sheetDocument } = await import('./sheet-document.ts');
   const { sheetMarkdown } = await import('./sheet-markdown.ts');
   const { formValues } = await import('./form-fill.ts');
@@ -340,7 +325,6 @@ test('the sheet lists the bag and the purse, and its types only what no entry na
     inventory: [
       { instanceId: 'c', elementId: 'COAT', equipped: true, adorners: [{ elementId: 'GILDED' }], attuned: true },
       { instanceId: 's', elementId: 'STAFF', quantity: 2 },
-      { instanceId: 'b', elementId: 'BOON', equipped: true },
     ],
   };
   const state = builder(character).getState();

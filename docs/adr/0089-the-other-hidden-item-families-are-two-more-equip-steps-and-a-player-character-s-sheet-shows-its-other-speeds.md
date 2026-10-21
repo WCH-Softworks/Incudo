@@ -1,6 +1,6 @@
 # 0089 — The other hidden item families are two more equip steps, the mounts are goods, and a player character's sheet shows its other speeds
 
-**Status:** Accepted · 2026-10-05 · implemented the same day (see the note at the end) · answers ROADMAP Phase 3's "Take the other hidden item families", which
+**Status:** Accepted · 2026-10-05 · implemented the same day · **the equip steps are superseded by [0129](./0129-optional-class-features-and-additional-features-are-options-a-character-chooses-not-items.md)** (2026-10-21: the families are options of their own types, taken through ordinary sets; the mounts stay goods) (see the note at the end) · answers ROADMAP Phase 3's "Take the other hidden item families", which
 [0072](./0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md) decision 6 left open ·
 builds on [0024](./0024-inventory-is-a-list-of-instances.md), [0036](./0036-a-level-is-spent-on-a-class-by-writing-two-records.md),
 [0042](./0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md),

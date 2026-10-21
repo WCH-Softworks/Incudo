@@ -19,6 +19,7 @@ import {
   type SheetHints,
 } from '@incudo/core';
 import { bookOf } from './book.ts';
+import { asItemFeature } from './item-features.ts';
 import { parseXml, childrenNamed, firstChild, findFirst, decodeEntities, type XmlNode } from './xml.ts';
 
 export interface ImportDiagnostic {
@@ -182,7 +183,8 @@ function toElement(
 
   if (element.spellcasting?.length === 0) delete element.spellcasting;
   if (!element.contents) delete element.contents;
-  return element;
+  // An option Aurora's content writes as an item to equip is converted into what it is (ADR 0129).
+  return asItemFeature(element);
 }
 
 /**

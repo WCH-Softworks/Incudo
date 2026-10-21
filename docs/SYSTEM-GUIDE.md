@@ -176,7 +176,7 @@ this is usually why.
 
 **`advanced`**: offered only when the user switches on "Show advanced options" on Build. For what a table grants
 beyond the rules a character is built by, which most characters never take. Anything a character already took through
-the step still shows. Only on a step that may be left unanswered: `multiple`, `pick`, or one that equips.
+the step still shows. Only on a step that may be left unanswered: `multiple` or `pick`.
 
 ```json $defs/buildStep
 { "id": "rules", "label": "Table rules", "types": ["Rule"], "multiple": true, "askedAtStart": true }
@@ -193,6 +193,14 @@ none, is listed with the choices already made, where it can be changed. Only on 
 **`offeredWhen`**: an element id. The step offers nothing until the character holds that element, typically an option
 from an `askedAtStart` set. Unlike `advanced`, this is the character's own table's choice, not the user's view.
 Anything already taken through the step still shows. Only on a step that may be left unanswered.
+
+```json $defs/buildStep
+{ "id": "class-options", "label": "Class options", "types": ["Class Option"], "multiple": true, "gatedOnHeld": true }
+```
+
+**`gatedOnHeld`**: the set offers an element only when one of its grants is gated on something the character has, a
+stat above zero or an element it holds. Options written for each class, each granting its feature from that class's
+level, are then offered to a character of that class and to nobody before a class is chosen. Only on a `multiple` step.
 
 ### Scores: budgets and how they are set
 
@@ -647,7 +655,7 @@ body of existing content. When you need one of these, find it there, and read it
 - **Rules of the kind itself**, beside content's: `contributions` (5e's armour class of 10 when nothing is worn),
   `trackStats` (once per class: hit points, spell slots), `blockStats`.
 - **Levels in more than one class**: `perLevel` steps, `levelRoll`, `trackStatPattern`, `trackType`.
-- **Equipment**: `inventory` (slots, attunement), `attacks`, `currency`, `equip` steps.
+- **Equipment**: `inventory` (slots, attunement), `attacks`, `currency`.
 - **Spellcasting**: `preparation`, `blockFilters`, `setterTags`.
 - **Play**: `play` (rests, trackers, conditions).
 - **What a user may add or write**: `customFeatures`, `additions`, `references`.

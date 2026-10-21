@@ -55,8 +55,7 @@ async function setting() {
   const system = await loadShippedSystem('dnd5e');
   const pc = resolveCharacterKind(system, 'pc');
   const itemTypes = pc.buildSteps.find((step) => step.id === 'equipment')!.types;
-  const equipSteps = pc.buildSteps.filter((step) => step.equip);
-  return { system, pc, itemTypes, equipSteps };
+  return { system, pc, itemTypes };
 }
 
 function itemsOf(index: ElementIndex, types: readonly string[]): Element[] {
@@ -66,29 +65,22 @@ function itemsOf(index: ElementIndex, types: readonly string[]): Element[] {
 test('what an inventory editor would offer', { skip: corpusSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const index = await realElements();
-  const { pc, itemTypes, equipSteps } = await setting();
+  const { pc, itemTypes } = await setting();
   const items = itemsOf(index, itemTypes);
   t.diagnostic(`item types ${itemTypes.join(', ')}: ${items.length} elements; ${tally(items.map((e) => e.type))}`);
 
-  // The families the equip steps offer, by their own setter and values.
-  const byStep = (e: Element) =>
-    equipSteps.find((step) => {
-      const value = setter(e, step.equip!.setter.toLowerCase())?.value.trim().toLowerCase();
-      return step.types.includes(e.type) && value !== undefined && step.equip!.values.some((v) => v.toLowerCase() === value);
-    });
-  const stepped = items.filter((e) => byStep(e));
-  t.diagnostic(`offered by an equip step: ${stepped.length} (${tally(stepped.map((e) => byStep(e)!.id))})`);
+  // Since ADR 0129 the options Aurora writes as items (optional class features, additional features, score adjustments)
+  // are converted into types of their own, so nothing an item type holds is taken on Build.
 
-  const hiddenSetter = pc.inventory!.hiddenSetter!.toLowerCase();
-  const hidden = items.filter((e) => setter(e, hiddenSetter)?.value.trim().toLowerCase() === 'true');
-  const hiddenLeft = hidden.filter((e) => !byStep(e));
-  t.diagnostic(`hidden: ${hidden.length}; not an equip step's: ${hiddenLeft.length}, categories ${tally(hiddenLeft.map((e) => setter(e, 'category')?.value ?? '(none)'))}`);
+  const hidden = items.filter((e) => setter(e, 'inventory-hidden')?.value.trim().toLowerCase() === 'true');
+  const hiddenLeft = hidden;
+  t.diagnostic(`hidden: ${hidden.length}, categories ${tally(hidden.map((e) => setter(e, 'category')?.value ?? '(none)'))}`);
   const withRules = hiddenLeft.filter((e) => e.rules.length).length;
   const priced = hiddenLeft.filter((e) => Number(setter(e, 'cost')?.value) > 0).length;
   t.diagnostic(`  of those: ${withRules} carry rules, ${priced} have a price above 0`);
 
   // How items are priced.
-  const offered = items.filter((e) => !byStep(e));
+  const offered = items;
   const costs = offered.map((e) => setter(e, 'cost'));
   t.diagnostic(`offered by the editor: ${offered.length}`);
   t.diagnostic(`  price unit: ${tally(costs.map((c) => (c ? (c.attrs?.['currency'] ?? '(no unit)') : '(no cost)')))}`);
@@ -184,7 +176,7 @@ test('what <extract> lists, as an editor would open it', { skip: corpusSkip }, a
 test('what the samples\' bags record, and what each entry gives the character', { skip: savesSkip || corpusSkip }, async (t) => {
   const corpus = await realElements();
   const manifest = readManifest();
-  const { pc, itemTypes, equipSteps } = await setting();
+  const { pc, itemTypes } = await setting();
   const labelled = new Set((pc.stats ?? []).filter((s) => s.label).map((s) => s.name.toLowerCase()));
   const recorded: string[] = [];
   const gives: string[] = [];
@@ -205,7 +197,6 @@ test('what the samples\' bags record, and what each entry gives the character', 
       if (entry.slot) recorded.push('a slot override');
       recorded.push(entry.equipped ? 'equipped' : 'carried');
       const element = elements.get(entry.elementId);
-      if (element && equipSteps.some((step) => step.types.includes(element.type) && step.equip!.values.some((v) => v.toLowerCase() === setter(element, step.equip!.setter.toLowerCase())?.value.trim().toLowerCase()))) recorded.push("an equip step's");
       // What it gives: a stat it contributes to, or an element it grants that the character holds.
       const ids = [entry.elementId, ...(entry.adorners ?? []).map((a) => a.elementId)];
       const moves = [...derived.stats.values()].filter((s) => s.contributions.some((c) => c.value !== 0 && ids.includes(c.from)));

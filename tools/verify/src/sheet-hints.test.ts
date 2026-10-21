@@ -57,7 +57,6 @@ import {
   BundleElementIndex,
   halfReference,
   readCharacterContainer,
-  sheetListedElements,
   type Element,
   type Fetcher,
 } from '@incudo/core';
@@ -380,7 +379,7 @@ test('on the samples, what the sheet shows of the hints: chosen by gate level, f
     const state = builder.getState();
     const { derived } = state;
     const kind = derived.kind;
-    const listable = sheetListedElements(derived.elements, kind);
+    const listable = derived.elements;
 
     for (const { where, element } of listedOf(state)) {
       listed++;

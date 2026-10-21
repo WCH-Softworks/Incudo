@@ -60,7 +60,7 @@ export * from './official-sheet.ts';
 export * from './content-refresh.ts';
 export * from './html-markdown.ts';
 export * from './html-blocks.ts';
-export * from './equip-step.ts';
+export * from './held-offers.ts';
 export * from './uncounted.ts';
 export * from './description.ts';
 export * from './build-view.ts';

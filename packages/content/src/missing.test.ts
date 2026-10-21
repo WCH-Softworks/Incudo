@@ -129,12 +129,13 @@ test('an element replaced by a later source is judged by the definition that won
 
 test('what the Aurora overlay refers to is reported against the first Aurora source, never as a source of its own', async () => {
   // An Aurora source with none of the content the overlay grants. Perturbation: keying by origin alone reports it
-  // under the overlay's own id, which no user added and the Sources pane has no line for.
+  // under the overlay's own id, which no user added and the Sources pane has no line for. Since ADR 0129 the overlay
+  // grants nothing it does not declare itself (its bag proxies named two languages), so what is held is that nothing
+  // is reported under the overlay, and that whatever it may grant later is reported against the first source.
   const overlay = auroraGeneratedElements();
   const expected = [...referencedElementIds(overlay, { requirements: false })]
     .filter((id) => !overlay.some((e) => e.id === id))
     .sort();
-  assert.ok(expected.length > 0, 'the overlay grants something it does not declare itself');
 
   const first = source('first', 'aurora', { elements: [{ id: 'ID_NOTHING' }] });
   const second = source('second', 'aurora', { elements: [{ id: 'ID_ALSO_NOTHING' }] });

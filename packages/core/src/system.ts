@@ -546,13 +546,7 @@ export interface InventoryDef {
   /** Omit for a system with no such concept, and nothing is ever gated. */
   attunement?: AttunementDef;
   /**
-   * A setter which, reading `true` (case ignored), keeps an item off the sheet's lists — ADR 0072. The item is still
-   * held, derived and saved. 5e's content writes `inventory-hidden` on an item a character equips to enable a feature.
-   * Read by {@link sheetListedElements} and nothing else.
-   */
-  hiddenSetter?: string;
-  /**
-   * The element types the inventory editor offers to add — ADR 0098, less what an equip step of the kind offers. Absent
+   * The element types the inventory editor offers to add — ADR 0098. Absent
    * offers nothing to add; the bag is still edited. Read by `packages/ui`'s inventory view-model and nothing else.
    */
   types?: string[];
@@ -762,23 +756,19 @@ export interface BuildStepDef {
    */
   pick?: boolean;
   /**
-   * This step is a set whose answers are **equipped bag entries**, never choices — ADR 0072. It offers the elements of
-   * its types whose setter `setter` reads one of `values` (case ignored), and taking one puts it in the bag equipped:
-   * content that is "equipped to enable it", such as 5e's optional class features. What it has taken is read back from
-   * the bag, so an imported character that equips one has it taken.
-   *
-   * Otherwise a set like `multiple`'s: never blocking, skippable. Validation refuses it beside `required`, `pick`,
-   * `multiple`, `perLevel`, `budget` or `levelRoll`, and with no `types`. Not `multiple` as well, on purpose: a reader
-   * that knew that key and not this one would offer every element of the types as a set of choices. A reader that knows
-   * neither sees a heading for the selects content opens, and offers nothing, so `formatVersion` did not move.
+   * Offer only an element one of whose grants is gated on something the character has — ADR 0081, on a set since ADR
+   * 0129 (it was an `equip` step's): a term, not under a `not`, naming a stat the character publishes above zero or an
+   * element it holds. 5e's optional class features gate each grant on their class's level (`level:ranger >= 1`) or on a
+   * subclass, so a character is offered its own classes' features once it has a class, and none before. An element with
+   * no gated grant is never offered. Only on a `multiple` step.
    */
-  equip?: EquipStepDef;
+  gatedOnHeld?: boolean;
   /**
    * This step is offered only when the user asks for advanced options — ADR 0115. For what a table grants beyond the
    * rules a character is built by, which most characters never take: 5e's additional features and ability score
    * adjustments. While advanced options are off, the step opens no decision and has no line among the character's
    * parts; what a character already took through it still shows, and can be changed or taken back. A user preference,
-   * never part of the character. Only on a step a character may leave unanswered (a set, a step that equips, a pick
+   * never part of the character. Only on a step a character may leave unanswered (a set or a pick
    * that is not required); validation refuses it elsewhere. A reader that does not know the key offers the step as
    * before, so `formatVersion` did not move.
    */
@@ -842,21 +832,6 @@ export interface BuildStepDef {
    * app enforcing one universal reading for every system.
    */
   priority?: number;
-}
-
-/** Which elements a build step offers to equip — ADR 0072. The setter and its values are the system's words. */
-export interface EquipStepDef {
-  /** The setter read on each element of the step's types. */
-  setter: string;
-  /** The values that admit an element, compared ignoring case. */
-  values: string[];
-  /**
-   * Offer only an element one of whose grants is gated on something the character has — ADR 0081: a term, not under a
-   * `not`, naming a stat the character publishes above zero or an element it holds. 5e's optional class features gate
-   * each grant on their class's level (`level:ranger >= 1`) or on a subclass, so a character is offered its own
-   * classes' features once it has a class, and none before. An element with no gated grant is never offered.
-   */
-  gatedOnHeld?: boolean;
 }
 
 /**
@@ -1262,20 +1237,6 @@ export function sheetSectionIsEmpty(rendering: SheetSectionRendering, elements: 
     rendering.stats.length === 0 &&
     rendering.printed.length === 0 &&
     !elements.some((element) => rendering.types.includes(element.type))
-  );
-}
-
-/**
- * The held elements a sheet lists — every one but those the kind's inventory says to keep off it (ADR 0072): an item
- * whose `hiddenSetter` reads `true`, which a character equips to enable a feature and does not carry. Hand the result to
- * {@link sheetSectionIsEmpty} too, so a section holding only such an item is empty. A kind that names no setter lists all.
- */
-export function sheetListedElements(elements: readonly Element[], kind: Pick<ResolvedCharacterKind, 'inventory'>): Element[] {
-  const setter = kind.inventory?.hiddenSetter?.toLowerCase();
-  if (!setter) return [...elements];
-  return elements.filter(
-    (element) =>
-      !Object.entries(element.setters).some(([name, value]) => name.toLowerCase() === setter && value.value.trim().toLowerCase() === 'true'),
   );
 }
 

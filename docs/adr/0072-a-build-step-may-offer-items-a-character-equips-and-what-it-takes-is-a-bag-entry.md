@@ -1,6 +1,6 @@
 # 0072 — A build step may offer items a character equips, and what it takes is a bag entry
 
-**Status:** Accepted · 2026-09-29 · implemented the same day (ROADMAP Phase 3; see the note at the end) · closes the gap [0071](./0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)
+**Status:** Accepted · 2026-09-29 · implemented the same day · **what it takes is a bag entry is superseded by [0129](./0129-optional-class-features-and-additional-features-are-options-a-character-chooses-not-items.md)** (2026-10-21: the features are options of their own type, taken as choices) (ROADMAP Phase 3; see the note at the end) · closes the gap [0071](./0071-an-element-s-own-requirements-hold-it-as-well-as-offer-it-and-a-granted-element-they-rule-out-is-withdrawn.md)
 left ("the app cannot put an item in the bag") for Tasha's optional class features · builds on
 [0006](./0006-derived-character-state.md), [0012](./0012-self-contained-saves.md), [0024](./0024-inventory-is-a-list-of-instances.md),
 [0032](./0032-a-build-step-may-offer-a-set.md),

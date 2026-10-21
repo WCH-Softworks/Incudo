@@ -551,3 +551,57 @@ test('a save that flags nothing gets no prepared field at all', () => {
   const known = MAGIC.replace(/ prepared="true"/g, '');
   assert.equal('prepared' in importAuroraCharacter(parseAuroraSave(known), { index: index() }).character, false);
 });
+
+// --- options Aurora writes as items (ADR 0129) -------------------------------
+
+const SWITCHES = `<character version="1.0.3">
+  <build>
+    <elements level-count="1" />
+    <equipment>
+      <item identifier="u-deft" name="Ranger, LV01: Deft Explorer" id="ID_OCF_DEFT"><equipped>true</equipped></item>
+      <item identifier="u-foe" name="Ranger, LV01: Favored Foe" id="ID_OCF_FOE" />
+      <item identifier="u-climb" name="Speed: Climb" id="ID_EXTRA_CLIMB"><equipped>true</equipped></item>
+      <item identifier="u-int" name="Additional Ability Score Improvement, Intelligence" id="ID_PHB_INTERNAL_ITEM_PROXY_ASI_INTELLIGENCE" />
+      <item identifier="u-orc" name="Additional Language, Orc" id="ID_PHB_INTERNAL_ITEM_LANGUAGE_PROXY_LANGUAGE_ORC"><equipped>true</equipped></item>
+      <item identifier="u-rope" name="Rope" id="ID_ITEM_ROPE" />
+    </equipment>
+  </build>
+</character>`;
+
+const SWITCH_CONTENT = index(
+  element('ID_OCF_DEFT', 'Optional Class Feature'),
+  element('ID_OCF_FOE', 'Optional Class Feature'),
+  element('ID_EXTRA_CLIMB', 'Additional Feature'),
+  element('ID_INTERNAL_ITEM_ASI_INTELLIGENCE_INCREASE_1', 'Ability Score Adjustment'),
+  element('ID_LANGUAGE_ORC', 'Language'),
+  element('ID_ITEM_ROPE', 'Item'),
+);
+
+const importSwitches = (content: MapElementIndex | undefined) =>
+  importAuroraCharacter(parseAuroraSave(SWITCHES), { ...(content ? { index: content } : {}), id: 'fixed', now: '2026-01-01T00:00:00.000Z' });
+
+test('an equipped option is a choice under its step, a carried one is dropped and said, and only items stay in the bag', () => {
+  // Perturbation: leave them in the bag and the inventory holds six rows and no choice; record a carried one and Favored
+  // Foe is taken; skip the note and nothing says why it is gone.
+  const { character, diagnostics } = importSwitches(SWITCH_CONTENT);
+  const choice = (key: string) => character.choices.find((c) => c.ruleKey === key)?.elementIds;
+  assert.deepEqual(choice('build/optional-features'), ['ID_OCF_DEFT']);
+  assert.deepEqual(choice('build/additional-features'), ['ID_EXTRA_CLIMB']);
+  assert.deepEqual(character.inventory?.map((e) => e.elementId), ['ID_ITEM_ROPE']);
+  assert.ok(diagnostics.some((d) => d.message.includes('Favored Foe') && d.message.includes('without equipping it')));
+});
+
+test('a proxy Aurora put in the bag is imported as what it stands for: a score adjustment, or the language added', () => {
+  // Perturbation: drop ITEM_PROXY_REPLACEMENTS and both proxies stay in the bag as items nothing declares.
+  const { character, diagnostics } = importSwitches(SWITCH_CONTENT);
+  assert.deepEqual(character.choices.find((c) => c.ruleKey === 'build/ability-adjustments')?.elementIds, ['ID_INTERNAL_ITEM_ASI_INTELLIGENCE_INCREASE_1']);
+  assert.deepEqual(character.additions, ['ID_LANGUAGE_ORC']);
+  assert.ok(character.formatVersion >= 5, 'additions are format 5');
+  assert.equal(diagnostics.some((d) => d.message.includes('PROXY')), false, 'and nothing reports them missing');
+});
+
+test('with no content loaded nothing says what an id is, so options stay in the bag; proxies are still replaced', () => {
+  const { character } = importSwitches(undefined);
+  assert.deepEqual(character.inventory?.map((e) => e.elementId), ['ID_OCF_DEFT', 'ID_OCF_FOE', 'ID_EXTRA_CLIMB', 'ID_ITEM_ROPE']);
+  assert.deepEqual(character.additions, ['ID_LANGUAGE_ORC']);
+});

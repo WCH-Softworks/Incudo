@@ -256,11 +256,15 @@ test('a system that would throw at load fails validation instead', async () => {
     ['characterKinds[0].sheet.sections[0].omitHidden: must be a boolean, not a string'],
   );
 
-  // ADR 0081: `gatedOnHeld` is a boolean on an equip step. Fails if it is left out of the schema (both: an unknown field).
-  const equipStep = (gatedOnHeld: unknown) =>
-    broken((s) => (s.characterKinds[0]!.buildSteps = [{ id: 'one', label: 'One', types: ['Widget'], equip: { setter: 'kind', values: ['x'], gatedOnHeld: gatedOnHeld as boolean } }]));
-  assert.deepEqual(await errorsFor(equipStep(true)), []);
-  assert.deepEqual(await errorsFor(equipStep('yes')), ['characterKinds[0].buildSteps[0].equip.gatedOnHeld: must be a boolean, not a string']);
+  // ADR 0081, ADR 0129: `gatedOnHeld` is a boolean on a set. Fails if it is left out of the schema (both: an unknown
+  // field), or if the check that it is on a set is removed (the third).
+  const gatedStep = (gatedOnHeld: unknown, multiple = true) =>
+    broken((s) => (s.characterKinds[0]!.buildSteps = [{ id: 'one', label: 'One', types: ['Widget'], multiple, gatedOnHeld: gatedOnHeld as boolean }]));
+  assert.deepEqual(await errorsFor(gatedStep(true)), []);
+  assert.deepEqual(await errorsFor(gatedStep('yes')), ['characterKinds[0].buildSteps[0].gatedOnHeld: must be a boolean, not a string']);
+  assert.deepEqual(await errorsFor(gatedStep(true, false)), [
+    'characterKinds[0].buildSteps: step "one" offers only what concerns the character and is not a set (multiple); only a set can be narrowed that way',
+  ]);
 
   // ADR 0080: what a new character starts with is an answer to a set, no id twice and none blank. Fails if the check is
   // removed (the first two), or `initial` is left out of the schema (the third: an unknown field).
@@ -1090,7 +1094,7 @@ test('a step a character may leave unanswered may be advanced, and no other — 
       }),
     ),
     [
-      'characterKinds[0].buildSteps: step "one" is advanced and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be left out of what is offered',
+      'characterKinds[0].buildSteps: step "one" is advanced and is not a set or a pick that is not required; only a step a character may leave unanswered can be left out of what is offered',
     ],
   );
 });
@@ -1120,7 +1124,7 @@ test('a step a character may leave unanswered may wait on an option, and a set m
       }),
     ),
     [
-      'characterKinds[0].buildSteps: step "one" is offered only when an element is held and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered can be switched off',
+      'characterKinds[0].buildSteps: step "one" is offered only when an element is held and is not a set or a pick that is not required; only a step a character may leave unanswered can be switched off',
       'characterKinds[0].buildSteps: step "one" is asked when a character is started and is not a set (multiple); only a set can be',
     ],
   );
@@ -1147,50 +1151,19 @@ test('a step a character may leave unanswered may be listed with the required de
       }),
     ),
     [
-      'characterKinds[0].buildSteps: step "one" is listed with the required decisions and is not a set, a step that equips or a pick that is not required; only a step a character may leave unanswered needs listing there',
+      'characterKinds[0].buildSteps: step "one" is listed with the required decisions and is not a set or a pick that is not required; only a step a character may leave unanswered needs listing there',
     ],
   );
 });
 
-test('a step may equip, and equipping takes none of the keys that make a step something else — ADR 0072', async () => {
-  // Perturbation: drop `equip` or `hiddenSetter` from the schema and the first assertion fails on an unknown key; drop
-  // the checks in `validateGameSystem` and the clash and no-types assertions fail.
-  const equip = { setter: 'shelf', values: ['Switches'] };
-  assert.deepEqual(
-    await errorsFor(
-      broken((s) => {
-        s.characterKinds[0]!.buildSteps![0]!.equip = equip;
-        s.characterKinds[0]!.inventory = { slotSetter: 'place', occupiedTag: 'any', emptyTag: 'none', slots: [], hiddenSetter: 'tucked' };
-      }),
-    ),
-    [],
-    'a step that equips, and an inventory naming a hidden setter, are valid',
+// ADR 0129. Fails if `equip` or `hiddenSetter` is put back in the schema (both validate).
+test('a step no longer equips, and an inventory names no hidden setter', async () => {
+  const withEquip = broken((s) => ((s.characterKinds[0]!.buildSteps![0]! as unknown as Record<string, unknown>).equip = { setter: 'shelf', values: ['x'] }));
+  assert.equal((await errorsFor(withEquip)).length, 1);
+  const withHidden = broken(
+    (s) => (s.characterKinds[0]!.inventory = { slotSetter: 'place', occupiedTag: 'any', emptyTag: 'none', slots: [], hiddenSetter: 'tucked' } as never),
   );
-  for (const key of ['required', 'pick', 'multiple', 'perLevel'] as const) {
-    assert.deepEqual(
-      await errorsFor(
-        broken((s) => {
-          const step = s.characterKinds[0]!.buildSteps![0]!;
-          step.equip = equip;
-          step[key] = true;
-        }),
-      ),
-      [`characterKinds[0].buildSteps: step "one" equips and is also ${key}; a step that equips is a set of its own and takes neither`],
-    );
-  }
-  assert.deepEqual(
-    await errorsFor(
-      broken((s) => {
-        const step = s.characterKinds[0]!.buildSteps![0]!;
-        step.equip = equip;
-        step.types = [];
-      }),
-    ),
-    ['characterKinds[0].buildSteps: step "one" equips and names no types, so it could offer nothing'],
-  );
-  // No values: the schema says so rather than the builder offering nothing.
-  const empty = broken((s) => (s.characterKinds[0]!.buildSteps![0]!.equip = { setter: 'shelf', values: [] }));
-  assert.equal((await errorsFor(empty)).length, 1);
+  assert.equal((await errorsFor(withHidden)).length, 1);
 });
 
 test('a track expression may read a setter, and a level roll may be fixed by an element (ADR 0044)', async () => {

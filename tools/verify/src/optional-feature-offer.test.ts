@@ -14,7 +14,8 @@
  *
  * Report-only (ADR 0042) on the commit before the step was narrowed. The rule is written here as well as in the product
  * so the measurement does not depend on it. Since ADR 0081 the last test asserts, through the builder and against any
- * corpus, that the step offers nothing before a class and only the class's own features after.
+ * corpus, that the step offers nothing before a class and only the class's own features after; since ADR 0129 they are
+ * options of a type of their own, taken through an ordinary set.
  */
 
 import { test } from 'node:test';
@@ -28,8 +29,8 @@ import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
 
-const CATEGORY = 'Optional Class Features';
-const isFeature = (e: Element): boolean => e.setters['category']?.value === CATEGORY;
+// The converter's type for them since ADR 0129 (an `Item` of category "Optional Class Features" before).
+const TYPE = 'Optional Class Feature';
 const grantsOf = (e: Element): GrantRule[] => e.rules.filter((r): r is GrantRule => r.kind === 'grant');
 
 /** Whether a term of the expression, not under a `not`, names something the character has. */
@@ -65,7 +66,7 @@ test('optional class features a rule of "gated on what the character has" would 
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
-  const features = elements.byType('Item').filter(isFeature);
+  const features = elements.byType(TYPE);
   assert.ok(features.length > 0, 'features were read');
   const offered = (b: CharacterBuilder): Element[] => {
     const ctx = requirementContextFor(b.getState().derived);
@@ -112,7 +113,8 @@ test('optional class features a rule of "gated on what the character has" would 
 });
 
 // ADR 0081. Fails if 5e's step loses `gatedOnHeld` (every class is offered all of them, and so is a character with no
-// class), or if the builder offers from anything but `equipOffer`.
+// class), if the builder stops reading `gatedOnHeld` on a set (ADR 0129), or if the converter leaves them items (the step
+// offers nothing to anyone).
 test("the optional class features step offers nothing before a class, and a class only its own", { skip: corpusSkip }, async () => {
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();

@@ -1032,16 +1032,11 @@
         },
         "slots": { "type": "array", "items": { "$ref": "#/$defs/slot" } },
         "attunement": { "$ref": "#/$defs/attunement" },
-        "hiddenSetter": {
-          "type": "string",
-          "minLength": 1,
-          "description": "A setter which, reading `true` (case ignored), keeps an item off the sheet's lists (ADR 0072). The item is still held, derived and saved. 5e's content writes `inventory-hidden` on an item a character equips to enable a feature and does not carry."
-        },
         "types": {
           "type": "array",
           "uniqueItems": true,
           "items": { "type": "string", "minLength": 1 },
-          "description": "The element types the inventory editor offers to add (ADR 0098), less what an equip step of the kind offers; each must be declared in elementTypes. Absent offers nothing to add, and the bag is still edited."
+          "description": "The element types the inventory editor offers to add (ADR 0098); each must be declared in elementTypes. Absent offers nothing to add, and the bag is still edited."
         },
         "adornSetter": {
           "type": "string",
@@ -1132,12 +1127,12 @@
         },
         "advanced": {
           "type": "boolean",
-          "description": "This step is offered only when the user asks for advanced options (ADR 0115): for what a table grants beyond the rules a character is built by, which most characters never take. While advanced options are off it opens no decision; what a character already took through it still shows. Only on a step a character may leave unanswered: a set (multiple), a step that equips, or a pick that is not required. A reader that does not know this key offers the step as before, so it does not change formatVersion."
+          "description": "This step is offered only when the user asks for advanced options (ADR 0115): for what a table grants beyond the rules a character is built by, which most characters never take. While advanced options are off it opens no decision; what a character already took through it still shows. Only on a step a character may leave unanswered: a set (multiple) or a pick that is not required. A reader that does not know this key offers the step as before, so it does not change formatVersion."
         },
         "offeredWhen": {
           "type": "string",
           "minLength": 1,
-          "description": "An element id (a campaign option, ADR 0123). While the character does not hold it, the step offers nothing and has no line among the character's parts; what a character already took through it still shows. So the character, not the user's preferences, says whether the step is offered. Only on a step a character may leave unanswered: a set (multiple), a step that equips, or a pick that is not required. A reader that does not know this key offers the step as before, so it does not change formatVersion."
+          "description": "An element id (a campaign option, ADR 0123). While the character does not hold it, the step offers nothing and has no line among the character's parts; what a character already took through it still shows. So the character, not the user's preferences, says whether the step is offered. Only on a step a character may leave unanswered: a set (multiple) or a pick that is not required. A reader that does not know this key offers the step as before, so it does not change formatVersion."
         },
         "askedAtStart": {
           "type": "boolean",
@@ -1145,30 +1140,15 @@
         },
         "listedWithRequired": {
           "type": "boolean",
-          "description": "What this step opens is listed with the decisions a character must answer, at its place in their order, though nothing owes it an answer (ADR 0127): an optional class feature that replaces one of the class's own changes what the class asks next, so it is asked before that. It blocks nothing and can still be skipped. Only on a step a character may leave unanswered: a set (multiple), a step that equips, or a pick that is not required. A reader that does not know this key lists the step with the optional decisions, as before, so it does not change formatVersion."
+          "description": "What this step opens is listed with the decisions a character must answer, at its place in their order, though nothing owes it an answer (ADR 0127): an optional class feature that replaces one of the class's own changes what the class asks next, so it is asked before that. It blocks nothing and can still be skipped. Only on a step a character may leave unanswered: a set (multiple) or a pick that is not required. A reader that does not know this key lists the step with the optional decisions, as before, so it does not change formatVersion."
         },
         "pick": {
           "type": "boolean",
           "description": "This step is a pick of one even though it is not required: offered as one, never blocking, so it may be skipped (ADR 0068). An NPC's creature, which an NPC built by hand has none of. Without it a step that is neither required nor multiple is a heading for the selects content opens of its types. Cannot be combined with `multiple`. A reader that does not know this key offers no pick for the step, as before, so it does not change formatVersion."
         },
-        "equip": {
-          "type": "object",
-          "required": ["setter", "values"],
-          "additionalProperties": false,
-          "description": "This step is a set whose answers are equipped bag entries, never choices (ADR 0072): it offers the elements of its types whose setter `setter` reads one of `values` (case ignored), and taking one puts it in the bag equipped. For content a character equips to enable, such as 5e's optional class features. What it has taken is read back from the bag, so an imported character that equips one has it taken. Never blocking and skippable, like a `multiple` step. Cannot be combined with required, pick, multiple, perLevel, budget or levelRoll, and needs types. A reader that does not know this key sees a heading that offers nothing, so it does not change formatVersion.",
-          "properties": {
-            "setter": { "type": "string", "minLength": 1, "description": "The setter read on each element of the step's types." },
-            "values": {
-              "type": "array",
-              "minItems": 1,
-              "items": { "type": "string", "minLength": 1 },
-              "description": "The values that admit an element, compared ignoring case."
-            },
-            "gatedOnHeld": {
-              "type": "boolean",
-              "description": "Offer only an element one of whose grants is gated on something the character has (ADR 0081): a term, not under a `not`, naming a stat the character publishes above zero or an element it holds. 5e's optional class features gate their grants on their class's level, so a character is offered its own classes' features once it has a class, and none before."
-            }
-          }
+        "gatedOnHeld": {
+          "type": "boolean",
+          "description": "Only on a `multiple` step (ADR 0081, ADR 0129): offer only an element one of whose grants is gated on something the character has, a term not under a `not` naming a stat the character publishes above zero or an element it holds. 5e's optional class features gate their grants on their class's level, so a character is offered its own classes' features once it has a class, and none before."
         },
         "description": { "type": "string" },
         "requires": {

@@ -1,6 +1,6 @@
 # 0081 — An equip step may offer only what is gated on what the character has, and 5e's optional class features follow the class
 
-**Status:** Accepted · 2026-10-01 · amends [0072](./0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md)
+**Status:** Accepted · 2026-10-01 · amends [0072](./0072-a-build-step-may-offer-items-a-character-equips-and-what-it-takes-is-a-bag-entry.md) · amended by [0129](./0129-optional-class-features-and-additional-features-are-options-a-character-chooses-not-items.md) (`gatedOnHeld` is a set's, on the build step)
 (what the step offers) · **format:** system, one optional field on an equip step (`formatVersion` stays 1); character, none
 
 ## Context

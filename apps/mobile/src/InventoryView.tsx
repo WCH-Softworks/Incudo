@@ -13,8 +13,6 @@ import { Text, View } from 'react-native';
 import type { ElementId } from '@incudo/core';
 import {
   INVENTORY_HINT,
-  TAKEN_ON_BUILD,
-  TAKEN_ON_BUILD_HINT,
   type CharacterBuilder,
   type InventoryRow,
   type InventoryState,
@@ -66,18 +64,6 @@ export function InventoryView({
         </Row>
       ) : null}
       <PurseView state={state} builder={builder} say={say} />
-      {state.taken.length > 0 ? (
-        <Card>
-          <Body>{TAKEN_ON_BUILD}</Body>
-          <Body tone="muted">{TAKEN_ON_BUILD_HINT}</Body>
-          {state.taken.map((row) => (
-            <Body key={row.instanceId}>
-              {row.name}
-              {row.gives ? ` — ${row.gives}` : ''}
-            </Body>
-          ))}
-        </Card>
-      ) : null}
       {message ? <Body tone="danger">{message}</Body> : null}
     </View>
   );

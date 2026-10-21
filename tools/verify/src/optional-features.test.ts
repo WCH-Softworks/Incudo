@@ -16,11 +16,15 @@
  * Everything is reported as `ℹ` lines and nothing is asserted (ADR 0042). The items are found by their setter, the
  * classes by the stats their grants are gated on and by name, never by an id.
  *
- * **Written before ADR 0072 was built, and kept as its record.** Since it was, 5e's "Optional class features" step takes
- * these items into the bag; what that is held to is `optional-feature-step.test.ts` and `packages/ui/src/equip-step.test.ts`.
+ * **Written before ADR 0072 was built, and kept as its record.** Since ADR 0129 the converter gives them a type of their
+ * own, `Optional Class Feature`, without the `slot`, `inventory-hidden` and "equip this item" paragraph that were only
+ * Aurora's workaround, and 5e's "Optional class features" step takes them as choices. The first test below asserts that
+ * conversion against any corpus; what the step is held to is `optional-feature-step.test.ts` and
+ * `packages/ui/src/held-offers.test.ts`.
  */
 
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { parseAuroraSave } from '@incudo/aurora-import';
@@ -30,7 +34,6 @@ import {
   requirementContextFor,
   resolveCharacterKind,
   setChoice,
-  setInventoryEntry,
   setProgress,
   type Element,
   type GrantRule,
@@ -108,6 +111,17 @@ function classStats(expr: RequirementExpr | undefined, into = new Set<string>())
 
 const grantsOf = (element: Element): GrantRule[] => element.rules.filter((r): r is GrantRule => r.kind === 'grant');
 const isOptionalFeature = (element: Element): boolean => element.setters['category']?.value === CATEGORY;
+
+// ADR 0129. Fails if the converter leaves them items (the type), keeps Aurora's workaround setters, or keeps the paragraph
+// telling the user to equip them.
+test('the converter makes every optional class feature an option of its own type, with nothing of the item left', { skip: corpusSkip }, async () => {
+  const elements = await realElements();
+  const items = [...elements.all()].filter(isOptionalFeature);
+  assert.ok(items.length > 0, 'the corpus has optional class features');
+  assert.deepEqual([...new Set(items.map((e) => e.type))], ['Optional Class Feature']);
+  assert.deepEqual(items.filter((e) => e.setters['slot'] || e.setters[HIDDEN]).map((e) => e.name), []);
+  assert.deepEqual(items.filter((e) => /equip this item to/i.test(e.description ?? '')).map((e) => e.name), []);
+});
 
 test('the optional class feature items, and how their prerequisites are written', { skip: corpusSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
@@ -230,11 +244,10 @@ test('how many of the items give anything to a level 20 character of each class 
       const character = setProgress(setChoice(newCharacterOfKind(system, 'pc'), 'build/class', [cls.id]), 20);
       const context = requirementContextFor(deriveCharacter(character, system, elements, { kind }));
       const giving = items.filter((item) => grantsOf(item).some((g) => g.requirements && evaluateRequirements(g.requirements, context)));
-      // And what equipping all of them at once withdraws: the replacement half, by edition.
-      let equipped = character;
-      items.forEach((item, i) => (equipped = setInventoryEntry(equipped, { instanceId: `ocf-${i}`, elementId: item.id, equipped: true })));
-      const withdrawn = deriveCharacter(equipped, system, elements, { kind }).withdrawn.map((w) => elements.get(w.elementId)?.name ?? w.elementId);
-      parts.push(`${edition}: ${giving.length} give something (${giving.map((i) => i.name.split(': ')[1] ?? i.name).join(', ')}); all equipped withdraw ${withdrawn.length ? withdrawn.join(', ') : 'nothing'}`);
+      // And what taking all of them at once withdraws: the replacement half, by edition.
+      const taken = setChoice(character, 'build/optional-features', items.map((item) => item.id));
+      const withdrawn = deriveCharacter(taken, system, elements, { kind }).withdrawn.map((w) => elements.get(w.elementId)?.name ?? w.elementId);
+      parts.push(`${edition}: ${giving.length} give something (${giving.map((i) => i.name.split(': ')[1] ?? i.name).join(', ')}); all taken withdraw ${withdrawn.length ? withdrawn.join(', ') : 'nothing'}`);
     }
     t.diagnostic(`${stat}: ${parts.join(' | ')}`);
   }
