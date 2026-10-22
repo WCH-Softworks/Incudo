@@ -509,6 +509,9 @@ function Shell({
   /** What the last files added as sources did, one line each (ADR 0056). Cleared by the user. */
   const [fileResults, setFileResults] = useState<ContentFileResult[] | null>(null);
   const [sources, setSources] = useState<readonly ConfiguredSource[]>([]);
+  // Until the first load ends there is nothing to offer from, as there is nothing during one (a new character's options
+  // dialog waits for it, or it would offer only the defaults, named by their ids).
+  const contentLoading = busy || (content === null && sources.length > 0);
   const profile = useRef<SourceProfile | null>(null);
 
   /**
@@ -1467,7 +1470,7 @@ function Shell({
     printDraft !== null ||
     officialOpen ||
     refreshOpen ||
-    (startOptionsAsk !== null && pane === 'build' && state.startOptions.length > 0) ||
+    (startOptionsAsk !== null && pane === 'build' && state.startOptions.length > 0 && !contentLoading) ||
     (pane === 'library' && libraryState.status === 'no-location' && !askDismissed);
   const resolved = resolveCommands({
     workspace: true,
@@ -1653,6 +1656,7 @@ function Shell({
             featureLibrary={featureLibrary}
             elements={elements}
             hasContent={content !== null || working.embedded !== undefined}
+            contentLoading={contentLoading}
             preferences={buildPreferences}
             onPreferences={changeBuildPreferences}
             startOptions={startOptionsAsk}

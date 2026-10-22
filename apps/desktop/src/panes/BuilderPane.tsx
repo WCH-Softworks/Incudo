@@ -70,6 +70,8 @@ import {
   decisionKey,
   optionalDecisionsLabel,
   startOptionsSummary,
+  START_OPTIONS_WAITING,
+  CONTENT_LOADING,
   ARRIVAL_GUARD_MS,
   NOTHING_REQUIRED,
   OPTIONAL_DECISIONS_HINT,
@@ -103,6 +105,7 @@ export function BuilderPane({
   featureLibrary,
   elements,
   hasContent,
+  contentLoading,
   preferences,
   onPreferences,
   startOptions,
@@ -113,6 +116,8 @@ export function BuilderPane({
   featureLibrary: FeatureLibrary;
   elements: ElementIndex;
   hasContent: boolean;
+  /** Whether the system's sources are still loading: nothing is offered from them yet. */
+  contentLoading: boolean;
   /** How this user likes the pane (ADR 0115), and how to change it. */
   preferences: BuildPreferences;
   onPreferences: (change: Partial<BuildPreferences>) => void;
@@ -332,7 +337,11 @@ export function BuilderPane({
         ))}
       </nav>
 
-      {!hasContent && (
+      {contentLoading && (
+        <p className="hint">{startOptions === 'new' ? START_OPTIONS_WAITING : CONTENT_LOADING}</p>
+      )}
+
+      {!hasContent && !contentLoading && (
         <div className="problem warning">
           <strong>No content loaded.</strong>
           {/*
@@ -857,7 +866,7 @@ export function BuilderPane({
       </PreviewDockProvider>
 
       <StartOptionsDialog
-        open={startOptions !== null && state.startOptions.length > 0}
+        open={startOptions !== null && state.startOptions.length > 0 && !contentLoading}
         beginning={startOptions === 'new'}
         questions={state.startOptions}
         builder={builder}
