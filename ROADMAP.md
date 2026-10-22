@@ -2496,6 +2496,11 @@ the audit described at the end of that phase.
   there; reprints grouped under one name with an edition chip, so a new player is not left to guess which "Elf" to
   take; and the book left off where every row in a list shares it. After the first release, by the maintainer's call:
   players coming from Aurora are used to long lists.
+- **Update notices at launch** (the maintainer's call, 2026-10-22: "definitely post v1"): as Aurora did, check the
+  enabled sources for upstream changes when the app starts, and tell the user when content has changed, with Refresh one
+  click away. The check exists and runs only on request: each source's "Check for updates" (ADR 0050), one conditional
+  request per cached file. To decide: how often, what it says with no network, whether a metered phone asks first (ADR
+  0100), and whether it waits until the launch's own load has ended (Build and Browse are blocked during one).
 
 ### 1.x — Left from Phases 3 to 5
 After the first release, by the maintainer's call (2026-10-12), when every note the ticked items of Phases 3 to 5 left

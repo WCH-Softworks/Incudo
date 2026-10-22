@@ -1741,6 +1741,14 @@ before touching `ContentLibrary.loadSource`:
   (`App.tsx`) and the phone's `ContentSources.load` both ask it; a phone load that does not publish returns the current
   set's load (its import uses the result directly). Compared by the sources' key, never "begun last": a source switched
   off and on makes an earlier set current again, and a phone load sharing a pending key would wait on itself.
+- **While a load runs, the desktop's Build and Browse show its progress in place of their content** (2026-10-22, the
+  maintainer's call over switching to Sources or blocking the window). `contentLoading` in `App.tsx` (`busy`, or nothing
+  loaded yet with sources configured and no thrown load) picks `panes/ContentLoading.tsx`; BuilderPane is not mounted
+  meanwhile, so New character's options dialog opens when it ends. A load that throws ends the wait (`loadFailure`,
+  still rethrown to its caller), and one that left nothing because sources failed is said on both panes. The words, and
+  the Sources pane's progress line, are `packages/ui/src/content-loading.ts`. Characters, Sheet, Sources and Settings
+  stay usable. A fetch that never answers still waits: the Tauri fetcher has timeouts, the browser's has none. Driven in
+  the browser build (a first download, a cached reload, a source that 404s); not the Tauri window or the phone.
 
 **The Browse pane looks through everything the enabled sources loaded, and nothing a character holds**
 ([ADR 0053](docs/adr/0053-a-content-browser-searches-everything-loaded-and-groups-by-what-the-system-declares.md)).

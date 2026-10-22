@@ -123,6 +123,7 @@ import {
   FeatureLibrary,
   SourceLoads,
   sourcesLoadKey,
+  contentLoadFailedNote,
   buildTabs,
   nextBuildTab,
   shownTab,
@@ -158,6 +159,7 @@ import { PrintOptionsDialog } from './panes/PrintOptions.tsx';
 import { OfficialSheetDialog } from './panes/OfficialSheet.tsx';
 import { RefreshDialog, RefreshLine } from './panes/ContentRefresh.tsx';
 import { SettingsPane } from './panes/SettingsPane.tsx';
+import { ContentLoading } from './panes/ContentLoading.tsx';
 import { BrowsePane, NEW_BROWSE_VIEW, type BrowseView } from './panes/BrowsePane.tsx';
 import { loadSources, type LoadProgress, type LoadedContent } from '@incudo/content';
 
@@ -509,9 +511,13 @@ function Shell({
   /** What the last files added as sources did, one line each (ADR 0056). Cleared by the user. */
   const [fileResults, setFileResults] = useState<ContentFileResult[] | null>(null);
   const [sources, setSources] = useState<readonly ConfiguredSource[]>([]);
-  // Until the first load ends there is nothing to offer from, as there is nothing during one (a new character's options
-  // dialog waits for it, or it would offer only the defaults, named by their ids).
-  const contentLoading = busy || (content === null && sources.length > 0);
+  /** Why the last load threw rather than returning, if it did: `loadSources` catches per source, so this is rare. */
+  const [loadFailure, setLoadFailure] = useState<string | undefined>(undefined);
+  // Until the first load ends there is nothing to offer from, as there is nothing during one: Build and Browse show the
+  // load's progress in its place, and a new character's options dialog waits for it (or it would offer only the
+  // defaults, named by their ids). A load that threw has ended too, or the panes would wait for ever.
+  const contentLoading = busy || (content === null && sources.length > 0 && loadFailure === undefined);
+  const loadFailedNote = contentLoadFailedNote(content?.sources ?? [], content?.elementCount ?? 0, loadFailure);
   const profile = useRef<SourceProfile | null>(null);
 
   /**
@@ -740,12 +746,18 @@ function Shell({
     setProgress(null);
     let loaded: LoadedContent | undefined;
     let published = false;
+    let thrown: string | undefined;
     try {
       // The ones switched off are not loaded; what each declared at its last load names it on a line that misses it.
       loaded = await loadSources(forSystem, platform, (progress) => isCurrent() && setProgress(progress), {
         switchedOff: ofSystem.filter((s) => !s.enabled),
       });
+    } catch (error) {
+      // Kept for Build and Browse, and still thrown: whoever asked for the load says it too.
+      thrown = error instanceof Error ? error.message : String(error);
+      throw error;
     } finally {
+      if (isCurrent()) setLoadFailure(thrown);
       const { publish, idle } = end(isCurrent());
       if (publish && loaded) {
         published = true;
@@ -1611,7 +1623,15 @@ function Shell({
           onCharacters={() => setPane('library')}
         />
       )}
-      {pane === 'build' && edit.started && (
+      {pane === 'build' && edit.started && contentLoading && (
+        <ContentLoading
+          pane="build"
+          progress={progress}
+          startOptionsWaiting={startOptionsAsk === 'new'}
+          onOpenSources={() => setPane('sources')}
+        />
+      )}
+      {pane === 'build' && edit.started && !contentLoading && (
         <>
           <div className="pane-bar">
             <span className="status">
@@ -1655,8 +1675,8 @@ function Shell({
             state={state}
             featureLibrary={featureLibrary}
             elements={elements}
-            hasContent={content !== null || working.embedded !== undefined}
-            contentLoading={contentLoading}
+            hasContent={contentLoaded || working.embedded !== undefined}
+            loadFailure={loadFailedNote}
             preferences={buildPreferences}
             onPreferences={changeBuildPreferences}
             startOptions={startOptionsAsk}
@@ -1715,14 +1735,17 @@ function Shell({
           <SheetPane builder={builder} document={document} print={printing} {...(state.play ? { play: state.play } : {})} />
         </>
       )}
-      {pane === 'browse' && (
+      {pane === 'browse' && contentLoading && (
+        <ContentLoading pane="browse" progress={progress} onOpenSources={() => setPane('sources')} />
+      )}
+      {pane === 'browse' && !contentLoading && (
         // What the sources loaded and nothing else: not `elements`, which puts an open save's own
         // content in front, and not the character's offered view. ADR 0053, decision 1.
         <BrowsePane
           elements={content?.elements ?? null}
           system={system}
           sources={mySources}
-          loading={busy}
+          failure={loadFailedNote}
           view={browseView}
           onView={setBrowseView}
           onOpenSources={() => setPane('sources')}

@@ -445,10 +445,3 @@ export const START_OPTIONS_HINT = 'These shape what the rest of the build offers
 export const START_OPTIONS_BEGIN = 'Start building';
 export const START_OPTIONS_SAVE = 'Done';
 export const START_OPTIONS_CHANGE = 'Change…';
-/**
- * Said while the content a new character's options are read from is still loading. Before it loads the dialog could offer
- * only the defaults, named by their ids, so it waits for the load (the phone's does too).
- */
-export const START_OPTIONS_WAITING = 'Loading content. The campaign options open when it is ready.';
-/** Said in place of "No content loaded" while a load is still running. */
-export const CONTENT_LOADING = 'Loading content…';

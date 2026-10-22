@@ -40,6 +40,7 @@ import {
   type ContentFileResult,
   type MissingNoteView,
   type PartView,
+  loadProgressLine,
 } from '@incudo/ui';
 
 import { type LoadProgress, type LoadedContent } from '@incudo/content';
@@ -350,9 +351,7 @@ export function SourcesPane({
       </p>
 
       {progress && (
-        <p className="progress">
-          {progress.source}: {progress.loaded} / {progress.total} — {progress.current}
-        </p>
+        <p className="progress">{loadProgressLine(progress)}</p>
       )}
 
       {/*

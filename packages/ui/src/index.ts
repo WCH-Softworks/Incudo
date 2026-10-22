@@ -66,6 +66,7 @@ export * from './description.ts';
 export * from './build-view.ts';
 export * from './content-sources.ts';
 export * from './source-loads.ts';
+export * from './content-loading.ts';
 export * from './source-notes.ts';
 export * from './edit-session.ts';
 export * from './unsaved.ts';

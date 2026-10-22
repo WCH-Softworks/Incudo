@@ -58,7 +58,7 @@ export function BrowsePane({
   elements,
   system,
   sources,
-  loading,
+  failure,
   view,
   onView,
   onOpenSources,
@@ -68,7 +68,8 @@ export function BrowsePane({
   system: GameSystem;
   /** This system's configured sources, to name the one an element came from. */
   sources: readonly ConfiguredSource[];
-  loading: boolean;
+  /** Why the last load left nothing, when it did. While a load runs the shell shows its progress instead. */
+  failure: string | undefined;
   view: BrowseView;
   onView: (view: BrowseView) => void;
   onOpenSources: () => void;
@@ -79,16 +80,13 @@ export function BrowsePane({
     return (
       <main className="pane browse">
         <h2>Browse</h2>
-        <p className="lede">
-          {loading ? 'Content is loading.' : 'No content is loaded. Add or switch on a source to look through it here.'}
-        </p>
-        {!loading && (
-          <div className="row">
-            <button type="button" onClick={onOpenSources}>
-              Go to Sources
-            </button>
-          </div>
-        )}
+        {failure && <p className="problem error">{failure}</p>}
+        <p className="lede">No content is loaded. Add or switch on a source to look through it here.</p>
+        <div className="row">
+          <button type="button" onClick={onOpenSources}>
+            Go to Sources
+          </button>
+        </div>
       </main>
     );
   }

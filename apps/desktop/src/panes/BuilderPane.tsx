@@ -70,8 +70,6 @@ import {
   decisionKey,
   optionalDecisionsLabel,
   startOptionsSummary,
-  START_OPTIONS_WAITING,
-  CONTENT_LOADING,
   ARRIVAL_GUARD_MS,
   NOTHING_REQUIRED,
   OPTIONAL_DECISIONS_HINT,
@@ -105,7 +103,7 @@ export function BuilderPane({
   featureLibrary,
   elements,
   hasContent,
-  contentLoading,
+  loadFailure,
   preferences,
   onPreferences,
   startOptions,
@@ -116,8 +114,8 @@ export function BuilderPane({
   featureLibrary: FeatureLibrary;
   elements: ElementIndex;
   hasContent: boolean;
-  /** Whether the system's sources are still loading: nothing is offered from them yet. */
-  contentLoading: boolean;
+  /** Why the last load left nothing, when it did. While a load runs the shell shows its progress in place of this pane. */
+  loadFailure: string | undefined;
   /** How this user likes the pane (ADR 0115), and how to change it. */
   preferences: BuildPreferences;
   onPreferences: (change: Partial<BuildPreferences>) => void;
@@ -337,13 +335,10 @@ export function BuilderPane({
         ))}
       </nav>
 
-      {contentLoading && (
-        <p className="hint">{startOptions === 'new' ? START_OPTIONS_WAITING : CONTENT_LOADING}</p>
-      )}
-
-      {!hasContent && !contentLoading && (
+      {!hasContent && (
         <div className="problem warning">
           <strong>No content loaded.</strong>
+          {loadFailure && <p>{loadFailure}</p>}
           {/*
             The system definition is loaded, so the kind's baseline grants still apply; only
             choices need content.
@@ -866,7 +861,7 @@ export function BuilderPane({
       </PreviewDockProvider>
 
       <StartOptionsDialog
-        open={startOptions !== null && state.startOptions.length > 0 && !contentLoading}
+        open={startOptions !== null && state.startOptions.length > 0}
         beginning={startOptions === 'new'}
         questions={state.startOptions}
         builder={builder}
