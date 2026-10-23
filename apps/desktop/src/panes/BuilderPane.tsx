@@ -70,6 +70,8 @@ import {
   decisionKey,
   optionalDecisionsLabel,
   startOptionsSummary,
+  loadedName,
+  NOT_LOADED_NAME,
   ARRIVAL_GUARD_MS,
   NOTHING_REQUIRED,
   OPTIONAL_DECISIONS_HINT,
@@ -125,7 +127,7 @@ export function BuilderPane({
 }): React.JSX.Element {
   const { kind, derived, decisions, steps, picks, declined, preparation, publications, progress, holderGrants } = state;
   const progression = kind.progression;
-  const nameOf = (id: ElementId): string => elements.get(id)?.name ?? id;
+  const nameOf = (id: ElementId): string => loadedName(elements, id);
 
   /**
    * A candidate's name plus the book it came from, where a book is recorded.
@@ -138,7 +140,7 @@ export function BuilderPane({
    */
   const candidateLabel = (id: ElementId): string => {
     const element = elements.get(id);
-    if (!element) return id;
+    if (!element) return NOT_LOADED_NAME;
     // What a system asks a picker to say beside a candidate — a spell's level — is data on the
     // kind, and the formatting is `candidateLabel` in `packages/ui`, which the search matches too.
     return describeCandidate(element, kind.candidateNotes, elements);
@@ -389,7 +391,7 @@ export function BuilderPane({
                   .filter((question) => question.stepId === step.id)
                   .map((question) => (
                     <span key={question.stepId} className="chosen">
-                      {startOptionsSummary(question.chosen, nameOf)}
+                      {startOptionsSummary(question.chosen, (id) => elements.get(id)?.name)}
                     </span>
                   ))}
                 {picks
@@ -521,7 +523,7 @@ export function BuilderPane({
                       {START_OPTIONS_CHANGE}
                     </button>
                   </div>
-                  <p>{startOptionsSummary(question.chosen, candidateLabel)}</p>
+                  <p>{startOptionsSummary(question.chosen, (id) => (elements.get(id) ? candidateLabel(id) : undefined))}</p>
                 </div>
               ))}
               {buildPicks.map(settledPick)}
@@ -1105,7 +1107,7 @@ function SettledPickEditor({
             />
             </div>
             {/* An answer no slot of this choice would offer any more (ADR 0096): still counted, and said so. */}
-            {pick.unplaced?.includes(id) && <p className="hint">{unplacedNote(elements.get(id)?.name ?? id)}</p>}
+            {pick.unplaced?.includes(id) && <p className="hint">{unplacedNote(loadedName(elements, id))}</p>}
           </Fragment>
         );
       })}

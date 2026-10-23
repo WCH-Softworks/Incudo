@@ -122,7 +122,19 @@ async fn fetch_content_text(
 
 /// What went wrong, without the address: every caller names the URL it asked for, and reqwest's
 /// own message would name it a second time ("error sending request for url (…)").
+///
+/// The two timeouts are said in words, with the time they waited: reqwest's own "operation timed out" does not say
+/// whether the server was never reached or stopped answering.
 fn describe(error: reqwest::Error) -> String {
+    if error.is_timeout() {
+        if error.is_connect() {
+            return "the server could not be reached within 15 seconds".to_owned();
+        }
+        return "no answer from the server within 2 minutes".to_owned();
+    }
+    if error.is_connect() {
+        return format!("the server could not be reached ({})", error.without_url());
+    }
     error.without_url().to_string()
 }
 

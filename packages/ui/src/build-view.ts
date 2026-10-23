@@ -435,9 +435,30 @@ export function arrivedDecision(previous: string | undefined, decisions: readonl
 /** How long a card that has just taken the top ignores the pointer, in milliseconds: about a quick double click. */
 export const ARRIVAL_GUARD_MS = 400;
 
-/** What a set asked when the character was started holds, by name: "Feats, Multiclassing", or "None". */
-export function startOptionsSummary(chosen: readonly ElementId[], nameOf: (id: ElementId) => string): string {
-  return chosen.length ? chosen.map(nameOf).join(', ') : 'None';
+/**
+ * What a screen calls an element no loaded source (and nothing the character carries) has. An id is never shown in
+ * its place: it is an internal name, and "ID_INTERNAL_OPTION_ALLOW_FEATS" tells a player nothing.
+ */
+export const NOT_LOADED_NAME = 'Not in a loaded source';
+
+/** An element's name, or `NOT_LOADED_NAME` when the index has no such element. */
+export function loadedName(index: { get(id: ElementId): { name: string } | undefined }, id: ElementId): string {
+  return index.get(id)?.name ?? NOT_LOADED_NAME;
+}
+
+/**
+ * What a set asked when the character was started holds, by name: "Feats, Multiclassing", or "None". `nameOf` answers
+ * undefined for an element nothing loaded has; those are counted, never named by id: "Feats and 1 more not in a loaded
+ * source", "2 not in a loaded source".
+ */
+export function startOptionsSummary(chosen: readonly ElementId[], nameOf: (id: ElementId) => string | undefined): string {
+  if (!chosen.length) return 'None';
+  const names = chosen.map(nameOf).filter((name): name is string => name !== undefined);
+  const missing = chosen.length - names.length;
+  if (!missing) return names.join(', ');
+  return names.length
+    ? `${names.join(', ')} and ${missing} more not in a loaded source`
+    : `${missing} not in a loaded source`;
 }
 
 /** The dialog New character opens for them, and its line among the choices made. */

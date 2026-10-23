@@ -1745,10 +1745,15 @@ before touching `ContentLibrary.loadSource`:
   maintainer's call over switching to Sources or blocking the window). `contentLoading` in `App.tsx` (`busy`, or nothing
   loaded yet with sources configured and no thrown load) picks `panes/ContentLoading.tsx`; BuilderPane is not mounted
   meanwhile, so New character's options dialog opens when it ends. A load that throws ends the wait (`loadFailure`,
-  still rethrown to its caller), and one that left nothing because sources failed is said on both panes. The words, and
-  the Sources pane's progress line, are `packages/ui/src/content-loading.ts`. Characters, Sheet, Sources and Settings
-  stay usable. A fetch that never answers still waits: the Tauri fetcher has timeouts, the browser's has none. Driven in
-  the browser build (a first download, a cached reload, a source that 404s); not the Tauri window or the phone.
+  still rethrown to its caller). A load that ended with sources on and nothing loaded (and no content carried by the
+  character) shows "Content did not load" with the reason on both panes (`loadLeftNothing`), never a build offering from
+  nothing. Twenty seconds with no file arriving adds a stall line (`contentLoadStallNote`); the Tauri fetcher gives up a
+  connection after 15 s and a request after 2 min, and says which in words (`describe` in `lib.rs`), so a hung load
+  ends as a failed source. The words, and the Sources pane's progress line, are `packages/ui/src/content-loading.ts`.
+  Characters, Sheet, Sources and Settings stay usable. **No screen prints an element id**: an element nothing loaded has
+  is `NOT_LOADED_NAME` (`loadedName`, `build-view.ts`), and the campaign options summary counts them.
+  **The browser build is a development convenience, not a supported target** (the maintainer, 2026-10-23): its gaps
+  are not issues; drive a change in the Tauri window.
 
 **The Browse pane looks through everything the enabled sources loaded, and nothing a character holds**
 ([ADR 0053](docs/adr/0053-a-content-browser-searches-everything-loaded-and-groups-by-what-the-system-declares.md)).

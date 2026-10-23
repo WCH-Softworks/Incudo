@@ -6,7 +6,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { contentLoadFailedNote, contentLoadingView, loadProgressLine } from './content-loading.ts';
+import {
+  contentLoadFailedNote,
+  contentLoadFailedView,
+  contentLoadingView,
+  contentLoadStallNote,
+  loadProgressLine,
+  LOAD_STALL_SECONDS,
+} from './content-loading.ts';
 
 const progress = { source: 'AuroraLegacy', loaded: 158, total: 799, current: 'cleric-trickery.xml' };
 
@@ -37,4 +44,14 @@ test('a load that left nothing says why, and one that loaded something says noth
   assert.equal(contentLoadFailedNote(failed, 12, undefined), undefined);
   assert.equal(contentLoadFailedNote([{ name: 'A' }], 0), undefined);
   assert.match(contentLoadFailedNote([...failed, { name: 'B', failed: 'Gone' }], 0) ?? '', /^None of the sources loaded/);
+});
+
+test('a load with nothing arriving says it has stalled, and an empty load says it did not load', () => {
+  // Fails if a slow or dead connection reads as working (no stall line), or if one appears at once.
+  assert.equal(contentLoadStallNote(LOAD_STALL_SECONDS - 1), undefined);
+  assert.match(contentLoadStallNote(LOAD_STALL_SECONDS) ?? '', /^Nothing has arrived for 20 seconds/);
+  assert.match(contentLoadStallNote(125) ?? '', /2 min 5 s/);
+  // Fails if a load that left nothing waits silently or shows no reason.
+  assert.equal(contentLoadFailedView('AuroraLegacy: Gone.').progress, 'AuroraLegacy: Gone.');
+  assert.equal(contentLoadFailedView(undefined).heading, 'Content did not load');
 });

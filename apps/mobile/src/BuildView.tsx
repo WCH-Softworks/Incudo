@@ -49,6 +49,8 @@ import {
   SPELLS_CHOSEN_HEADING,
   type SettledPick,
   startOptionsSummary,
+  loadedName,
+  NOT_LOADED_NAME,
   ARRIVAL_GUARD_MS,
   NOTHING_REQUIRED,
   OPTIONAL_DECISIONS_HINT,
@@ -98,12 +100,12 @@ export const BuildView = memo(function BuildView({
   const [request, setRequest] = useState<PickerRequest | null>(null);
   const { kind, decisions, steps, picks, declined, preparation, publications, progress } = state;
   const progression = kind.progression;
-  const nameOf = useCallback((id: ElementId): string => elements.get(id)?.name ?? id, [elements]);
+  const nameOf = useCallback((id: ElementId): string => loadedName(elements, id), [elements]);
   // A name and the book it came from, and the system's note (a spell's level): `candidateLabel`, as the desktop's.
   const labelOf = useCallback(
     (id: ElementId): string => {
       const element = elements.get(id);
-      return element ? candidateLabel(element, kind.candidateNotes, elements) : id;
+      return element ? candidateLabel(element, kind.candidateNotes, elements) : NOT_LOADED_NAME;
     },
     [elements, kind.candidateNotes],
   );
@@ -226,7 +228,7 @@ export const BuildView = memo(function BuildView({
       <Heading>Your character</Heading>
       {steps.map((step) => {
         const chosen = [
-          ...state.startOptions.filter((question) => question.stepId === step.id).map((question) => startOptionsSummary(question.chosen, nameOf)),
+          ...state.startOptions.filter((question) => question.stepId === step.id).map((question) => startOptionsSummary(question.chosen, (id) => elements.get(id)?.name)),
           ...picks.filter((pick) => pick.stepId === step.id).flatMap((pick) => pick.chosen.map(nameOf)),
         ];
         return (
@@ -276,7 +278,7 @@ export const BuildView = memo(function BuildView({
             <Row key={question.stepId} style={[styles.settled, { borderColor: palette.border }]}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: palette.muted, fontSize: 13 }}>{question.label}</Text>
-                <Text style={{ color: palette.text, fontSize: 15 }}>{startOptionsSummary(question.chosen, labelOf)}</Text>
+                <Text style={{ color: palette.text, fontSize: 15 }}>{startOptionsSummary(question.chosen, (id) => (elements.get(id) ? labelOf(id) : undefined))}</Text>
               </View>
               <Button label={START_OPTIONS_CHANGE} kind="link" onPress={() => onStartOptions('change')} />
             </Row>

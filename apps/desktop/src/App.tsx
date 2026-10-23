@@ -1476,13 +1476,18 @@ function Shell({
 
   // The menu, the shortcuts and the nav below are one list (ADR 0037). "Modal" is whatever
   // dialog is open: nothing behind it should react to a shortcut.
+  // A load that ended with sources switched on and nothing loaded: Build and Browse say so rather than offering from
+  // nothing (a new character's options would read as ids). A character carrying its own content still builds from it.
+  const loadLeftNothing =
+    !contentLoading && mySources.some((source) => source.enabled) && !contentLoaded && working.embedded === undefined;
+
   const modal =
     renamePrompt !== null ||
     replacing !== null ||
     printDraft !== null ||
     officialOpen ||
     refreshOpen ||
-    (startOptionsAsk !== null && pane === 'build' && state.startOptions.length > 0 && !contentLoading) ||
+    (startOptionsAsk !== null && pane === 'build' && state.startOptions.length > 0 && !contentLoading && !loadLeftNothing) ||
     (pane === 'library' && libraryState.status === 'no-location' && !askDismissed);
   const resolved = resolveCommands({
     workspace: true,
@@ -1623,15 +1628,16 @@ function Shell({
           onCharacters={() => setPane('library')}
         />
       )}
-      {pane === 'build' && edit.started && contentLoading && (
+      {pane === 'build' && edit.started && (contentLoading || loadLeftNothing) && (
         <ContentLoading
           pane="build"
           progress={progress}
           startOptionsWaiting={startOptionsAsk === 'new'}
+          {...(loadLeftNothing ? { failed: { note: loadFailedNote } } : {})}
           onOpenSources={() => setPane('sources')}
         />
       )}
-      {pane === 'build' && edit.started && !contentLoading && (
+      {pane === 'build' && edit.started && !contentLoading && !loadLeftNothing && (
         <>
           <div className="pane-bar">
             <span className="status">
@@ -1735,10 +1741,15 @@ function Shell({
           <SheetPane builder={builder} document={document} print={printing} {...(state.play ? { play: state.play } : {})} />
         </>
       )}
-      {pane === 'browse' && contentLoading && (
-        <ContentLoading pane="browse" progress={progress} onOpenSources={() => setPane('sources')} />
+      {pane === 'browse' && (contentLoading || loadLeftNothing) && (
+        <ContentLoading
+          pane="browse"
+          progress={progress}
+          {...(loadLeftNothing ? { failed: { note: loadFailedNote } } : {})}
+          onOpenSources={() => setPane('sources')}
+        />
       )}
-      {pane === 'browse' && !contentLoading && (
+      {pane === 'browse' && !contentLoading && !loadLeftNothing && (
         // What the sources loaded and nothing else: not `elements`, which puts an open save's own
         // content in front, and not the character's offered view. ADR 0053, decision 1.
         <BrowsePane

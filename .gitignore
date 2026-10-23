@@ -55,3 +55,6 @@ Thumbs.db
 # Env
 .env
 .env.local
+
+# The maintainer's working brand art, kept beside the committed logo and not committed (brand/README.md lists what is).
+brand/incudo-brand-*.png

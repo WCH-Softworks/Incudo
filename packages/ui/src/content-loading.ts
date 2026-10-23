@@ -49,6 +49,33 @@ export function contentLoadingView(
   };
 }
 
+/** How long a load may go without a file arriving before the panel says it has stalled, in seconds. */
+export const LOAD_STALL_SECONDS = 20;
+
+/**
+ * Said under the progress when nothing has arrived for a while, so a slow or dead connection does not read as working.
+ * Undefined until `LOAD_STALL_SECONDS` have passed. A file that never arrives is given up by the fetcher (the desktop's
+ * gives each request two minutes), and the source's line on Sources then names it.
+ */
+export function contentLoadStallNote(secondsSinceProgress: number): string | undefined {
+  if (secondsSinceProgress < LOAD_STALL_SECONDS) return undefined;
+  const seconds = Math.floor(secondsSinceProgress);
+  const wait = seconds >= 60 ? `${Math.floor(seconds / 60)} min ${seconds % 60} s` : `${seconds} seconds`;
+  return (
+    `Nothing has arrived for ${wait}. The connection may be slow or down. ` +
+    'A file that does not arrive is given up, and the source then says so on Sources.'
+  );
+}
+
+/** What Build and Browse show in place of their content when the last load ended and left nothing loaded. */
+export function contentLoadFailedView(note: string | undefined): ContentLoadingView {
+  return {
+    heading: 'Content did not load',
+    progress: note ?? 'Nothing was loaded from the sources switched on.',
+    note: 'Sources has each source’s line, with Refresh. Build and Browse open once content has loaded.',
+  };
+}
+
 /** A source that did not load, as `LoadedContent.sources` names it. */
 export interface FailedLoad {
   readonly name: string;

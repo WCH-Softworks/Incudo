@@ -160,6 +160,13 @@ test('a set asked at the start opens no decision and is listed with its answer, 
   b.chooseAtStart('options', ['OPT_EXTRA', 'OPT_FEATS', 'OPT_EXTRA']);
   assert.deepEqual(b.getState().startOptions[0]!.chosen, ['OPT_EXTRA', 'OPT_FEATS']);
   assert.equal(startOptionsSummary(['OPT_EXTRA', 'OPT_FEATS'], (id) => id.toLowerCase()), 'opt_extra, opt_feats');
+  // Fails if an element nothing loaded has is named by its id (the summary read "ID_INTERNAL_OPTION_ALLOW_FEATS" while
+  // no source had loaded).
+  assert.equal(startOptionsSummary(['OPT_EXTRA', 'OPT_FEATS'], () => undefined), '2 not in a loaded source');
+  assert.equal(
+    startOptionsSummary(['OPT_EXTRA', 'OPT_FEATS'], (id) => (id === 'OPT_FEATS' ? 'Feats' : undefined)),
+    'Feats and 1 more not in a loaded source',
+  );
 
   // Only a step asked at the start is answered this way.
   b.chooseAtStart('extras', ['EXTRA_A']);
