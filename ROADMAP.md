@@ -2181,6 +2181,10 @@ written on a character can be moved into the user's library without being typed 
     Hill Dwarf Wizard 3 built, saved, exported as text and PDF through the native dialogs, and reopened with the source
     off to an identical Sheet; Sample 09 imported to Aurora's armour class, hit points and speed. The draft is not
     published.
+  - **Candidates carry 1.0.0 since 2026-10-23** (the maintainer's call). The app had been versioned 0.1.0 since rc.1,
+    with no reason recorded, though these candidates are for 1.0. `v0.1.0-rc.3` was built green the same day and its
+    draft deleted; the app's version is now 1.0.0 and candidates number again from `v1.0.0-rc.1`. A 1.0.0 installer
+    upgrades an installed 0.1.0.
 - [ ] **A release candidate is checked the same way every time.** Raised by the maintainer on 2026-10-20, after rc.2
       was checked twice, once by a scripted drive of the installed build and once by hand, from no written list. Today
       what a candidate must do before it is published lives in session notes, and two checks of one build cannot be

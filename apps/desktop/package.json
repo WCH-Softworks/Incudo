@@ -1,6 +1,6 @@
 {
   "name": "@incudo/desktop",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Incudo desktop shell (Tauri + React). Layout and platform I/O only.",
   "type": "module",
