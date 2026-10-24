@@ -2185,6 +2185,20 @@ written on a character can be moved into the user's library without being typed 
     with no reason recorded, though these candidates are for 1.0. `v0.1.0-rc.3` was built green the same day and its
     draft deleted; the app's version is now 1.0.0 and candidates number again from `v1.0.0-rc.1`. A 1.0.0 installer
     upgrades an installed 0.1.0.
+  - **`v1.0.0-rc.1` tagged and built, 2026-10-23** on `c3e326a`: every job green in about 18 minutes (Windows 10m53s,
+    macOS Intel 8m04s, Apple silicon 6m48s, Linux 8m42s), one draft pre-release, nine assets named 1.0.0. The maintainer
+    installed its `-setup.exe` and checked it by hand (passed). **The drive, 2026-10-24**, of the installed
+    `incudo-desktop.exe` on a scratch WebView2 profile and library over the debug port, the native dialogs by window
+    messages: About reads 1.0.0; adding AuroraLegacy kept Build and Browse on their loading panel for the whole 25 s
+    download, then the campaign options opened with named options; its line read 14,320 entries from 740 files, 1 thing
+    missing, 57 warnings (the baselines). A Hill Dwarf Wizard 3 (Evocation, Sage, an Owl, both starting packages, 5 of 5
+    prepared) read AC 12, HP 26 (including Dwarven Toughness), speed 25, spell save DC 12, attack +4, slots 4 and 2,
+    passive Perception 11; saved; exported as text (every one of its 742 distinct words in the PDF) and as a 7-page PDF;
+    printed through its step to WebView2's preview (7 sheets, no headers option) and cancelled; reopened with the source
+    off to an identical Sheet (16,788 characters). Sample 09 imported through the open dialog to AC 21, HP 44, speed 30
+    (its readout), its card naming no missing source. Browse found Fireball; switching to Cairn showed its own library.
+    Still seen, from rc.2's list: an unarmed strike with Strength 8 reads "1-1 bludgeoning", and Fire Bolt's damage
+    reads "—" until it is set under Spells with nothing asking for it. Not driven: real keys and mouse, uninstall.
 - [ ] **A release candidate is checked the same way every time.** Raised by the maintainer on 2026-10-20, after rc.2
       was checked twice, once by a scripted drive of the installed build and once by hand, from no written list. Today
       what a candidate must do before it is published lives in session notes, and two checks of one build cannot be
