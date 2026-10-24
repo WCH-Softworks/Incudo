@@ -157,14 +157,17 @@ export interface SheetAttack {
   range?: string;
   /** "Ammunition", "Heavy": by name, in order of name. */
   properties: string[];
-  /** What a spell's row still lacks, in plain words (ADR 0111): its damage, or the class it is cast as. */
+  /**
+   * What a spell's row still lacks, in plain words (ADR 0111): its damage, or the class it is cast as. Nothing makes the
+   * user set either; every sheet shows each as a warning beside the row (`attackWarnings`), saying where it is set.
+   */
   notes?: string[];
 }
 
 /** A spell row with no class to read its numbers from (ADR 0111). */
-export const SPELL_NO_CLASS = 'choose the class it is cast as on Build, under Spells';
+export const SPELL_NO_CLASS = 'No class set: choose the class it is cast as on Build, under Spells';
 /** A spell row whose damage nothing states and the user has not chosen (ADR 0111). */
-export const SPELL_NO_DAMAGE = 'its damage is chosen on Build, under Spells';
+export const SPELL_NO_DAMAGE = 'Damage not set: choose its dice on Build, under Spells';
 /** A spell row the user said rolls nothing (ADR 0111). */
 export const SPELL_ROLLS_NOTHING = 'no damage';
 
@@ -292,6 +295,12 @@ export function statBeside(kind: ResolvedCharacterKind, stats: ReadonlyMap<strin
  * (none when 0), and the type, "1d8+3 slashing". No die is "—", or the modifier alone when there is one.
  */
 export function attackDamage(dice: string | undefined, modifier: number, type: string | undefined): string {
+  // A flat amount with no die (an unarmed strike's 1) is added up: "1-1" is arithmetic left undone. Damage is never
+  // below 0, so a negative modifier stops there.
+  if (dice !== undefined && /^\d+$/.test(dice.trim())) {
+    const total = String(Math.max(0, Number(dice.trim()) + modifier));
+    return type ? `${total} ${type}` : total;
+  }
   const sign = modifier > 0 ? `+${modifier}` : modifier < 0 ? String(modifier) : '';
   const amount = dice !== undefined ? `${dice}${sign}` : sign;
   if (amount === '') return '—';

@@ -154,7 +154,10 @@ test("a damage is the die, the modifier's sign only when it is not 0, and the ty
   assert.equal(attackDamage('1d8', 3, 'slashing'), '1d8+3 slashing');
   assert.equal(attackDamage('1d8', -1, 'slashing'), '1d8-1 slashing');
   assert.equal(attackDamage('1d8', 0, undefined), '1d8');
-  assert.equal(attackDamage('1', 2, 'piercing'), '1+2 piercing', 'a flat die is written as content writes it');
+  // Perturbation: drop the flat-amount sum and an unarmed strike with Strength 8 reads "1-1 bludgeoning" again.
+  assert.equal(attackDamage('1', 2, 'piercing'), '3 piercing', 'a flat amount is added up');
+  assert.equal(attackDamage('1', -1, 'bludgeoning'), '0 bludgeoning', 'and never goes below 0');
+  assert.equal(attackDamage('1', -3, undefined), '0');
   assert.equal(attackDamage(undefined, 2, 'fire'), '+2 fire');
   assert.equal(attackDamage(undefined, 0, undefined), '—');
 });

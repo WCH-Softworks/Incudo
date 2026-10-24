@@ -18,6 +18,7 @@ import {
   PREREQUISITES_UNMET,
   rowAside,
   attackAside,
+  attackWarnings,
   bagEntryAside,
   bagEntryName,
   MONEY_LABEL,
@@ -144,6 +145,9 @@ function Section({ section, level, palette }: { section: SheetSectionView; level
           <Text style={styles.bold}>{attack.name}</Text>
           {`: ${attack.bonus}, ${attack.damage}`}
           {attackAside(attack) !== undefined ? <Text style={{ color: palette.muted }}>{` (${attackAside(attack)})`}</Text> : null}
+          {attackWarnings(attack).map((warning) => (
+            <Text key={warning} style={{ color: palette.danger }}>{` ${warning}.`}</Text>
+          ))}
         </Text>
       ))}
       {section.elements.map((element) => (

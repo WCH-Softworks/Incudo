@@ -303,7 +303,7 @@ test('an unarmed strike: Strength and 1 for anyone, the Martial Arts die and the
   const unarmed = (rows: ReturnType<typeof fighter.attacks>) => rows.find((a) => a.innate);
   assert.deepEqual(
     [unarmed(fighter.attacks())?.name, unarmed(fighter.attacks())?.bonus, unarmed(fighter.attacks())?.damage],
-    ['Unarmed Strike', '+5', '1+3 bludgeoning'],
+    ['Unarmed Strike', '+5', '4 bludgeoning'],
   );
   const monk = await built('Player’s Handbook', 'Monk', 5, { strength: 10, dexterity: 16 });
   assert.deepEqual([unarmed(monk.attacks())?.bonus, unarmed(monk.attacks())?.damage], ['+6', '1d6+3 bludgeoning'], 'a 2014 Monk 5: d6, Dexterity');

@@ -95,14 +95,21 @@ function joinNames(names: readonly string[]): string {
  * What a sheet writes after an attack's damage (ADR 0093): each other die it may be rolled with, its range and its
  * properties, "two-handed 1d10+3 slashing; Versatile", "range 150/600; Ammunition, Heavy, Two-Handed", or nothing.
  */
-export function attackAside(attack: Pick<SheetAttack, 'alternatives' | 'range' | 'properties' | 'notes'>): string | undefined {
+export function attackAside(attack: Pick<SheetAttack, 'alternatives' | 'range' | 'properties'>): string | undefined {
   const parts = [
-    ...(attack.notes ?? []),
     ...attack.alternatives.map((alternative) => `${alternative.label} ${alternative.damage}`),
     ...(attack.range !== undefined ? [`range ${attack.range}`] : []),
     ...(attack.properties.length ? [attack.properties.join(', ')] : []),
   ];
   return parts.length ? parts.join('; ') : undefined;
+}
+
+/**
+ * What a row still lacks, each a sentence saying where it is set: "Damage not set: choose its dice on Build, under
+ * Spells". A renderer shows them as warnings apart from the aside; the text export writes them after it.
+ */
+export function attackWarnings(attack: Pick<SheetAttack, 'notes'>): readonly string[] {
+  return attack.notes ?? [];
 }
 
 /** A bag entry's name with how many, "Arrows ×20" (ADR 0098): the pane, the phone, the export and the form write it so. */
@@ -137,7 +144,11 @@ export function purseText(purse: readonly PurseRow[]): string {
  */
 export function attackHead(attack: SheetAttack, name: string = attack.name, escape: (text: string) => string = (text) => text): string {
   const aside = attackAside(attack);
-  return `${name}: ${escape(`${attack.bonus}, ${attack.damage}`)}${aside !== undefined ? ` (${escape(aside)})` : ''}`;
+  const warnings = attackWarnings(attack);
+  return (
+    `${name}: ${escape(`${attack.bonus}, ${attack.damage}`)}${aside !== undefined ? ` (${escape(aside)})` : ''}` +
+    (warnings.length ? `. ${escape(warnings.join('. '))}.` : '')
+  );
 }
 
 /** The title of a character whose name is blank. */

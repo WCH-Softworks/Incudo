@@ -633,6 +633,18 @@ ul.problems li.error {
   font-weight: normal;
 }
 
+/* What a row still lacks and where it is set ("Damage not set: …"): a label, not a stop. Printed as plain text. */
+.sheet-warning {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--warn-line);
+  border-radius: 4px;
+  background: var(--warn-bg);
+  font-size: 0.85em;
+  font-weight: normal;
+}
+
 /* A listed element's sheet text keeps the line breaks content wrote (a feature's "• Bite", "• Claw" lines). */
 .sheet-text {
   white-space: pre-line;

@@ -10,6 +10,7 @@ import { useMemo } from 'react';
 
 import {
   attackAside,
+  attackWarnings,
   bagEntryAside,
   bagEntryName,
   listedAside,
@@ -55,6 +56,11 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
               <strong>{attack.name}</strong>
               {`: ${attack.bonus}, ${attack.damage}`}
               {attackAside(attack) !== undefined && <span className="sheet-beside"> ({attackAside(attack)})</span>}
+              {attackWarnings(attack).map((warning) => (
+                <span key={warning} className="sheet-warning">
+                  {warning}
+                </span>
+              ))}
             </li>
           ))}
         </ul>

@@ -18,7 +18,7 @@ import { extname, join } from 'node:path';
 
 import { importAuroraCharacter, parseAuroraSave } from '@incudo/aurora-import';
 import { BundleElementIndex, deriveCharacter, LayeredElementIndex, readCharacterContainer, validateCharacter, type Element } from '@incudo/core';
-import { CharacterBuilder, newCharacterOfKind, packCharacter } from '@incudo/ui';
+import { CharacterBuilder, newCharacterOfKind, packCharacter, SPELL_NO_DAMAGE } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
 import { loadSchemas, loadShippedSystem } from './node-system.ts';
@@ -106,7 +106,7 @@ test('a Wizard 5 casts Fire Bolt at its bonus, two of the die the user chose', {
   // not filled (+0).
   const wizard = await built('Human', 'Wizard', 5, { intelligence: 16 });
   wizard.learn('Fire Bolt', /cantrip/i);
-  assert.deepEqual([wizard.row('Fire Bolt')?.bonus, wizard.row('Fire Bolt')?.damage, wizard.row('Fire Bolt')?.notes], ['+6', '—', ['its damage is chosen on Build, under Spells']], 'Intelligence 16 and the Human’s +1 (+3), proficiency +3; no die yet');
+  assert.deepEqual([wizard.row('Fire Bolt')?.bonus, wizard.row('Fire Bolt')?.damage, wizard.row('Fire Bolt')?.notes], ['+6', '—', [SPELL_NO_DAMAGE]], 'Intelligence 16 and the Human’s +1 (+3), proficiency +3; no die yet');
   assert.equal(wizard.b.setSpellAttack(wizard.spellId('Fire Bolt'), { sides: [10], damageType: 'fire' }), undefined);
   assert.deepEqual([wizard.row('Fire Bolt')?.damage, wizard.row('Fire Bolt')?.range], ['2d10 fire', '120 feet']);
   assert.match(wizard.b.setSpellAttack(wizard.spellId('Fire Bolt'), { sides: [20] })!, /not offered/);

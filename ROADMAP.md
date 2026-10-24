@@ -2199,6 +2199,9 @@ written on a character can be moved into the user's library without being typed 
     (its readout), its card naming no missing source. Browse found Fireball; switching to Cairn showed its own library.
     Still seen, from rc.2's list: an unarmed strike with Strength 8 reads "1-1 bludgeoning", and Fire Bolt's damage
     reads "—" until it is set under Spells with nothing asking for it. Not driven: real keys and mouse, uninstall.
+    *(Both fixed 2026-10-24, after the drive: a flat amount is added up and stops at 0, "0 bludgeoning"; a spell row's
+    unset damage or class is still never required, and every sheet shows it as a warning beside the row, "Damage not set:
+    choose its dice on Build, under Spells" (`attackWarnings`, a label on the desktop's Sheet). Seen in the Tauri window.)*
 - [ ] **A release candidate is checked the same way every time.** Raised by the maintainer on 2026-10-20, after rc.2
       was checked twice, once by a scripted drive of the installed build and once by hand, from no written list. Today
       what a candidate must do before it is published lives in session notes, and two checks of one build cannot be

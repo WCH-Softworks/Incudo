@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createCharacter, setSpellAttack, type DerivedAttack, type Element, type ResolvedCharacterKind } from '@incudo/core';
 
-import { attackHead } from './sheet-document.ts';
+import { attackAside, attackHead, attackWarnings } from './sheet-document.ts';
 import { sheetAttack, SPELL_NO_CLASS, SPELL_NO_DAMAGE, SPELL_ROLLS_NOTHING } from './sheet.ts';
 import { givenBlockLabel, spellAttackRefusal, spellAttacksState } from './spell-attacks.ts';
 
@@ -19,7 +19,7 @@ test('an attack writes its bonus, a save its DC and ability, and a spell no clas
   assert.equal(attackHead(sheetAttack(row({ kind: 'attack', block: 'Circle', dice: 'chosen' }, { dice: '2d10', damageType: 'fire', range: '120 feet' }))), 'Bolt: +5, 2d10 fire (range 120 feet)');
   assert.equal(attackHead(sheetAttack(row({ kind: 'save', block: 'Circle', dc: 13, ability: 'Grit', dice: 'chosen' }, { dice: '1d8', damageType: 'radiant' }))), 'Bolt: DC 13 Grit, 1d8 radiant');
   assert.equal(attackHead(sheetAttack(row({ kind: 'save', block: 'Circle', dc: 13, dice: 'chosen' }, { dice: '1d8' }))), 'Bolt: DC 13, 1d8');
-  assert.equal(attackHead(sheetAttack(row({ kind: 'attack', dice: 'chosen' }, { dice: '1d10' }))), `Bolt: —, 1d10 (${SPELL_NO_CLASS})`);
+  assert.equal(attackHead(sheetAttack(row({ kind: 'attack', dice: 'chosen' }, { dice: '1d10' }))), `Bolt: —, 1d10. ${SPELL_NO_CLASS}.`);
 });
 
 test('two dice read "or", no die chosen a dash and a note, and none chosen "no damage"', () => {
@@ -28,6 +28,10 @@ test('two dice read "or", no die chosen a dash and a note, and none chosen "no d
   const unchosen = sheetAttack(row({ kind: 'attack', block: 'Circle', dice: 'unchosen' }));
   assert.equal(unchosen.damage, '—');
   assert.deepEqual(unchosen.notes, [SPELL_NO_DAMAGE]);
+  // Perturbation: put the notes back into the aside and the warning reads as a property of the spell.
+  assert.deepEqual(attackWarnings(unchosen), [SPELL_NO_DAMAGE]);
+  assert.equal(attackAside(unchosen), undefined);
+  assert.equal(attackHead(unchosen), `Bolt: +5, —. ${SPELL_NO_DAMAGE}.`);
   assert.equal(sheetAttack(row({ kind: 'attack', block: 'Circle', dice: 'chosen' })).damage, SPELL_ROLLS_NOTHING);
 });
 
