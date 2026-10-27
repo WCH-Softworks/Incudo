@@ -1,0 +1,62 @@
+name: Bug report
+description: Something in Incudo does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. The more exactly it can be repeated, the sooner it can be fixed.
+
+        Please do not attach rulebook text or files from paid books. Attach a character file (`.incu`) only if you are happy for it to be public.
+  - type: input
+    id: version
+    attributes:
+      label: Incudo version
+      description: In Incudo, open Settings (or Help > About Incudo). The version is under "About Incudo".
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Other (say which below)
+    validations:
+      required: true
+  - type: input
+    id: os-other
+    attributes:
+      label: Other operating system
+      description: Only if you chose "Other" above.
+  - type: input
+    id: sources
+    attributes:
+      label: Content sources
+      description: Which content sources were switched on, if it matters. For example "AuroraLegacy" or "a file of my own".
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, one step per line, starting from opening the app.
+      placeholder: |
+        1. Started a new D&D 5e character
+        2. Chose Wizard as the class
+        3. Opened the Sheet
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Include the exact wording of any message the app showed. A screenshot helps.
+    validations:
+      required: true

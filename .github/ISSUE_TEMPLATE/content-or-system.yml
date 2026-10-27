@@ -1,0 +1,43 @@
+name: Content or game system question
+description: A question about content sources, a game system definition, or what Incudo can build.
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Incudo ships no rulebook content.** It comes with a definition of how D&D 5e is built, but every race, class, spell and item comes from a content source that you add yourself, such as the AuroraLegacy indexes or a file of your own. Incudo cannot add, host or send you books, and an issue asking for book text will be closed.
+
+        Missing or wrong content usually belongs to the source that publishes it. For AuroraLegacy, that is its own repository. Open an issue here when Incudo reads a source wrongly, or when a game system definition does not do what its guide says.
+
+        Writing a system of your own? See [How to write a system definition](https://github.com/WCH-Softworks/Incudo/blob/main/docs/SYSTEM-GUIDE.md).
+  - type: dropdown
+    id: about
+    attributes:
+      label: What is it about?
+      options:
+        - A content source loads with errors or loads the wrong thing
+        - A content source loads, but something is missing in the builder or the sheet
+        - The D&D 5e system definition
+        - A game system definition I am writing
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Incudo version
+      description: In Incudo, open Settings (or Help > About Incudo). The version is under "About Incudo".
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Content source or system
+      description: Its name and address as the Sources pane shows it, or the system's id.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What you tried, what you expected, and what Incudo did. Name elements by their name or id. Do not paste their rules text.
+    validations:
+      required: true

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How to use Incudo
+    url: https://github.com/WCH-Softworks/Incudo/blob/main/docs/USER-GUIDE.md
+    about: Installing it, adding content, building, importing from Aurora, exporting and printing.

@@ -2366,13 +2366,27 @@ written on a character can be moved into the user's library without being typed 
 - ~~Signed desktop installer for Windows~~ — **not for 1.0** (the maintainer, 2026-10-27: too expensive to make sense
   now). 1.0's Windows installer is unsigned, and its release notes say so, as the candidates' did. Moved to Beyond 1.0's
   "1.x — macOS, Linux and iOS" with the other platforms' signing.
-- [ ] Docs site, contribution guide, issue templates. *As of 2026-10-15:* the contribution guide exists
-      (`CONTRIBUTING.md`); there is no docs site, and `.github/` holds no issue templates.
-- [ ] `docs/LICENSING.md` complete for every shipped system. *Found 2026-10-15, reviewing readiness:* two things are
+- [x] Docs site, contribution guide, issue templates. *As of 2026-10-15:* the contribution guide exists
+      (`CONTRIBUTING.md`); there is no docs site, and `.github/` holds no issue templates. *Done 2026-10-27:* measured
+      first, no user guide existed (README's "Try it" is a developer's setup, `docs/SYSTEM-GUIDE.md` is for system authors,
+      the rest of `docs/` for maintainers). The maintainer chose the smallest thing: **`docs/USER-GUIDE.md`**, one page
+      GitHub renders (install and the unsigned installer's SmartScreen warning, the first run, building, the Aurora import,
+      exports and print, where files are kept, reporting a problem), linked from README's new "Using it" section and from
+      the issue chooser; no Pages site. `.github/ISSUE_TEMPLATE/`: a bug report (version from About, operating system,
+      content sources, steps, expected, actual) and a content or system question that says first that Incudo ships no
+      rulebook content and that a source's own content belongs to its publisher.
+- [x] `docs/LICENSING.md` complete for every shipped system. *Found 2026-10-15, reviewing readiness:* two things are
       open. 5e's `licence.attribution` (the SRD 5.2.1's CC-BY-4.0 notice) is read by no screen, though LICENSING.md says
       the About screen shows it: About Incudo (`packages/ui/src/about.ts`) names only Incudo's own MIT licence, and rc.1
       was published so. And `cairn` ships in `systems/` while the register reads "structural sketch only; replace the
-      content before shipping", with no licence assessed and no `licence` block in its definition.
+      content before shipping", with no licence assessed and no `licence` block in its definition. *Done 2026-10-27:*
+      About Incudo shows each shipped system's notice word for word under "Game systems" (`systemAttributions`,
+      `packages/ui/src/about.ts`); `tools/verify/src/about-attributions.test.ts` fails on a shipped system with no licence
+      block, attribution or date, on About leaving one out, and on the apps shipping other systems than `systems/` holds.
+      Cairn's licence was read (cairnrpg.com: CC-BY-SA 4.0, every edition; third-party material needs no permission) and
+      recorded, and **Cairn is not shipped in 1.0** (the maintainer's call): its sketch is a test fixture in
+      `tools/verify/fixtures/systems/cairn`, the tests still build with it, and no app loads it. What shipping it again
+      needs is in LICENSING.md and Beyond 1.0's Cairn item.
 - [x] Patreon and Ko-fi links in README and in-app About — never on a screen showing licensed material,
       never gating anything. Done 2026-10-07: README's Support section, and an About Incudo section at the foot of
       Settings (the one pane that shows no content), reached from Help > About Incudo too. The words and addresses are
@@ -2592,7 +2606,9 @@ open was sorted. Each item names where it came from.
   get rows before 1.0; a levelled spell's dice change with the slot it is cast with.
 - **Copying the sheet as text to the clipboard** (ADR 0075), low priority; the text must read clearly as plain text.
 - **Cairn**: everything Cairn is after 1.0, first the "Progress" field a level-less Cairn character shows on Build
-  (ADR 0074).
+  (ADR 0074). Since 2026-10-27 Cairn is not shipped (Phase 9's licensing item): shipping it again needs a `licence` block
+  (CC-BY-SA 4.0, credit to Yochai Gal), a decision on whether `systems/cairn/` itself is CC-BY-SA 4.0, and the sketch
+  checked against the edition it claims (docs/LICENSING.md).
 
 ### 1.x — Systems for authors
 After the first release, by the maintainer's call (2026-10-09): everything about creating a system or copying one waits
