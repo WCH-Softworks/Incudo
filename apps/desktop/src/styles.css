@@ -970,6 +970,21 @@ button.link:hover {
   margin-top: 4px;
 }
 
+/* A notice reads as the prose around it, not as a stat tile's label and number. */
+.about-attributions dt {
+  font-size: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  color: inherit;
+  font-weight: 600;
+}
+
+.about-attributions dd {
+  margin: 2px 0 8px;
+  font-size: inherit;
+  font-variant-numeric: normal;
+}
+
 /* --- the Aurora import report -------------------------------------------- */
 
 /*

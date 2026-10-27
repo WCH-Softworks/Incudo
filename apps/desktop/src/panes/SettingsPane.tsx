@@ -16,7 +16,16 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { ABOUT_SUMMARY, SOURCE_LINK, SUPPORT_LINKS, SUPPORT_TEXT, type AboutLink } from '@incudo/ui';
+import {
+  ABOUT_SUMMARY,
+  SOURCE_LINK,
+  SUPPORT_LINKS,
+  SUPPORT_TEXT,
+  SYSTEM_ATTRIBUTIONS_HEADING,
+  SYSTEM_ATTRIBUTIONS_TEXT,
+  type AboutLink,
+  type SystemAttribution,
+} from '@incudo/ui';
 
 export function SettingsPane({
   location,
@@ -25,6 +34,7 @@ export function SettingsPane({
   onChooseFolder,
   shell,
   version,
+  attributions,
   showAbout,
   onAboutShown,
   onOpenLink,
@@ -35,6 +45,8 @@ export function SettingsPane({
   onChooseFolder: () => void;
   shell: 'tauri' | 'browser';
   version: string;
+  /** Each shipped system's licence notice, worded by `systemAttributions`. */
+  attributions: readonly SystemAttribution[];
   /** Help > About Incudo asked for the About section; scrolled into view once, then `onAboutShown`. */
   showAbout: boolean;
   onAboutShown: () => void;
@@ -124,6 +136,20 @@ export function SettingsPane({
         <p className="card-meta">Version {version}</p>
         <p>{ABOUT_SUMMARY}</p>
         <ul className="about-links">{link(SOURCE_LINK)}</ul>
+        {attributions.length > 0 && (
+          <>
+            <h4>{SYSTEM_ATTRIBUTIONS_HEADING}</h4>
+            <p>{SYSTEM_ATTRIBUTIONS_TEXT}</p>
+            <dl className="about-attributions">
+              {attributions.map((entry) => (
+                <div key={entry.system}>
+                  <dt>{entry.system}</dt>
+                  <dd>{entry.text}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
+        )}
         <h4>Support Incudo</h4>
         <p>{SUPPORT_TEXT}</p>
         <ul className="about-links">{SUPPORT_LINKS.map(link)}</ul>

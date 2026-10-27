@@ -57,6 +57,7 @@ import {
   libraryEntryReferences,
   libraryEntryProgress,
   UserSystemStore,
+  systemAttributions,
   systemCatalog,
   overlayView,
   copiedFromNote,
@@ -1772,6 +1773,7 @@ function Shell({
           onChooseFolder={() => void chooseFolder()}
           shell={platform.shell}
           version={__INCUDO_VERSION__}
+          attributions={systemAttributions(loadShippedSystems().systems)}
           showAbout={showAbout}
           onAboutShown={aboutShown}
           onOpenLink={(url) =>

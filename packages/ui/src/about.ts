@@ -10,6 +10,8 @@
  * this on a screen of its own settings (the desktop's Settings), never beside content, a character or a sheet.
  */
 
+import type { GameSystem } from '@incudo/core';
+
 export interface AboutLink {
   /** When, as a person chooses between them: "Every month", "Once". */
   label: string;
@@ -41,3 +43,27 @@ export const ABOUT_SUMMARY =
 export const SUPPORT_TEXT =
   'Incudo is free and will stay free. Support pays for its development and unlocks nothing: ' +
   'no feature, no content and no earlier build is ever kept for supporters.';
+
+/** One shipped system's notice, as About prints it. */
+export interface SystemAttribution {
+  /** The system's name, as its card names it. */
+  system: string;
+  /** The notice its licence asks for, word for word from the definition's `licence.attribution`. */
+  text: string;
+}
+
+export const SYSTEM_ATTRIBUTIONS_HEADING = 'Game systems';
+
+export const SYSTEM_ATTRIBUTIONS_TEXT = 'The game systems that come with Incudo describe rules published under these licences.';
+
+/**
+ * The notice each shipped system's licence asks for (ADR 0010, docs/LICENSING.md). A system Incudo ships records its
+ * licence in its definition, and the notice is shown as written there; `tools/verify/src/about-attributions.test.ts`
+ * holds every shipped system to having one. Only shipped systems: a user's own system is theirs to attribute.
+ */
+export function systemAttributions(shipped: readonly Pick<GameSystem, 'name' | 'licence'>[]): SystemAttribution[] {
+  return shipped.flatMap((system) => {
+    const text = system.licence?.attribution?.trim();
+    return text ? [{ system: system.name, text }] : [];
+  });
+}
