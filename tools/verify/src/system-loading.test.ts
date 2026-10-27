@@ -26,12 +26,12 @@ import {
   type SystemDefinitionSource,
 } from '@incudo/ui';
 
-import { loadSchemas, loadShippedStartingEquipment, systemsDirectory } from './node-system.ts';
+import { fixtureSystemsDirectory, loadSchemas, loadShippedStartingEquipment, systemsDirectory } from './node-system.ts';
 
 const schemas = await loadSchemas();
 const text = async (id: string): Promise<string> => readFile(join(systemsDirectory(), id, 'system.json'), 'utf8');
 const dnd5eText = await text('dnd5e');
-const cairnText = await text('cairn');
+const cairnText = await readFile(join(fixtureSystemsDirectory(), 'cairn', 'system.json'), 'utf8');
 const startingEquipment = await loadShippedStartingEquipment('dnd5e');
 const startingSchema = JSON.parse(await readFile(join(systemsDirectory(), '..', 'schemas', 'starting-equipment.schema.json'), 'utf8'));
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);

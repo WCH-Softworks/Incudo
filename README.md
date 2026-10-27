@@ -53,7 +53,12 @@ version, not a final one.
 Game content is not AI-generated either. It comes from the content sources you add, which are
 written and maintained by people. Incudo reads that content and does not change it.
 
-## Try it
+## Using it
+
+**[How to use Incudo](./docs/USER-GUIDE.md)**: installing the Windows app, adding content, building a character,
+importing from Aurora, and exporting or printing a sheet. To report a problem, [open an issue](https://github.com/WCH-Softworks/Incudo/issues/new/choose).
+
+## Try it from source
 
 ```bash
 npm install
@@ -80,7 +85,6 @@ packages/ui              shared view-models and components
 apps/desktop             desktop app (Tauri and React)
 apps/mobile              mobile app (Expo), not started
 systems/dnd5e            the D&D 5e system definition (data, not code)
-systems/cairn            a small non-D&D system, used to test that the engine stays generic
 tools/verify             tests against real content and saves; not shipped
 ```
 
@@ -88,6 +92,8 @@ tools/verify             tests against real content and saves; not shipped
 
 | | |
 |---|---|
+| [docs/USER-GUIDE.md](./docs/USER-GUIDE.md) | how to use the app |
+| [docs/SYSTEM-GUIDE.md](./docs/SYSTEM-GUIDE.md) | how to write a game system definition |
 | [ROADMAP.md](./ROADMAP.md) | the plan up to 1.0 and after |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | how the parts fit together |
 | [docs/DATA-MODEL.md](./docs/DATA-MODEL.md) | elements, systems and characters |
@@ -120,7 +126,8 @@ Incudo ships **no rulebook content**. You add content sources yourself. The code
 
 A game system is distributed with Incudo only if its licence allows third-party tools that accept
 donations, since Incudo is funded by donations through Patreon and Ko-fi. D&D 5e meets that requirement: the SRD 5.1 and
-5.2.1 are released under CC-BY-4.0, which allows commercial use and requires attribution. A
+5.2.1 are released under CC-BY-4.0, which allows commercial use and requires attribution, which the app shows under
+About Incudo. A
 system whose licence has not been assessed is not distributed. This applies only to what the
 project distributes. You can write a system definition for any game and use it yourself. See
 [docs/LICENSING.md](./docs/LICENSING.md).

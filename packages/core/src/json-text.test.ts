@@ -45,7 +45,7 @@ test('every JSON file in systems/ and schemas/ reads to the value JSON.parse rea
 
 // Perturbation: accepting a trailing comma, a leading zero, a bare word, an unescaped line break, or text after the end.
 test('on broken variants of a real file, it refuses exactly what JSON.parse refuses', () => {
-  const text = readFileSync(join(root, 'systems', 'cairn', 'system.json'), 'utf8');
+  const text = readFileSync(join(root, 'tools', 'verify', 'fixtures', 'systems', 'cairn', 'system.json'), 'utf8');
   let seed = 1;
   const random = (n: number): number => {
     seed = (seed * 1103515245 + 12345) & 0x7fffffff;

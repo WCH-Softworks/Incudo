@@ -83,7 +83,7 @@ exists specifically to prove this by shipping a second one.
 
 > **Reality check:** 5e will be the only serious test for a long time, so the engine *will*
 > drift 5e-shaped. The mitigations are (a) `tools/verify`, whose tests exercise the engine with no UI
-> assumptions, and (b) `systems/cairn`, a deliberately tiny non-D&D system added early enough
+> assumptions, and (b) Cairn (`tools/verify/fixtures/systems/cairn` since 2026-10-27, not shipped in 1.0), a deliberately tiny non-D&D system added early enough
 > that violations hurt immediately.
 
 ## Content sources: live vs downloaded

@@ -17,10 +17,10 @@ import { BundleElementIndex, MemoryStorage, systemLineage, type Element, type Ga
 import { sourcesForSystem, type ConfiguredSource } from '@incudo/content';
 import { CharacterBuilder, newCharacterOfKind, newSystemChoices, newSystemFile, UserSystemStore, type NewSystemStart } from '@incudo/ui';
 
-import { loadSchemas, loadShippedStartingEquipment, loadShippedSystem } from './node-system.ts';
+import { loadSchemas, loadShippedStartingEquipment, loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 
 const schemas = await loadSchemas();
-const shipped = [await loadShippedSystem('dnd5e'), await loadShippedSystem('cairn')];
+const shipped = [await loadShippedSystem('dnd5e'), await loadFixtureSystem('cairn')];
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 async function made(start: NewSystemStart, name: string, storage = new MemoryStorage()): Promise<{ system: GameSystem; store: UserSystemStore }> {

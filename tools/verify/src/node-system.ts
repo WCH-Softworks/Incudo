@@ -28,6 +28,15 @@ export function systemsDirectory(): string {
   return join(repoRoot(), 'systems');
 }
 
+/**
+ * Definitions the tests build with and the apps do not ship. Cairn is here: the one system that is not 5e, kept so the
+ * engine is still run against a game with no levels and three scores, and not shipped in 1.0 (the maintainer's call,
+ * 2026-10-27; docs/LICENSING.md).
+ */
+export function fixtureSystemsDirectory(): string {
+  return join(repoRoot(), 'tools', 'verify', 'fixtures', 'systems');
+}
+
 let cached: SchemaBundle | undefined;
 
 export async function loadSchemas(): Promise<SchemaBundle> {
@@ -51,12 +60,20 @@ export async function loadSchemas(): Promise<SchemaBundle> {
  * the id a save records is looked up here.
  */
 export async function loadShippedSystem(id: string): Promise<GameSystem> {
-  const path = join(systemsDirectory(), id, 'system.json');
+  return loadSystemAt(join(systemsDirectory(), id, 'system.json'), `the system "${id}" is not shipped here`);
+}
+
+/** One of the definitions under `tools/verify/fixtures/systems`, through the same loader. Throws, as above. */
+export async function loadFixtureSystem(id: string): Promise<GameSystem> {
+  return loadSystemAt(join(fixtureSystemsDirectory(), id, 'system.json'), `the test system "${id}" is not here`);
+}
+
+async function loadSystemAt(path: string, missing: string): Promise<GameSystem> {
   let text: string;
   try {
     text = await readFile(path, 'utf8');
   } catch (error) {
-    throw new Error(`the system "${id}" is not shipped here (${path}): ${(error as Error).message}`);
+    throw new Error(`${missing} (${path}): ${(error as Error).message}`);
   }
 
   // The loader the apps call for every definition, shipped or the user's (ADR 0107), from the file's text.

@@ -43,7 +43,7 @@ import {
 } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { loadShippedSystem } from './node-system.ts';
+import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
@@ -167,7 +167,7 @@ function report(t: Diagnostic, what: string, sheets: SheetParts[]): void {
 
 test('what each shipped kind can ever put on a page: the parts an options step could offer', async (t) => {
   for (const id of ['dnd5e', 'cairn']) {
-    const system: GameSystem = await loadShippedSystem(id);
+    const system: GameSystem = await (id === 'cairn' ? loadFixtureSystem(id) : loadShippedSystem(id));
     for (const def of system.characterKinds) {
       const kind = resolveCharacterKind(system, def.id);
       const parts = ['the character', kind.companions && `held creatures ("${kind.companions.label}")`, kind.freeform && `written text ("${kind.freeform.label}")`, kind.references && `kept texts ("${kind.references.label ?? 'For reference'}")`].filter(Boolean);
@@ -226,7 +226,7 @@ test('every creature as an NPC and as a legendary creature: the parts of each sh
 });
 
 test('a Cairn character: the parts of its sheet', async (t) => {
-  const system = await loadShippedSystem('cairn');
+  const system = await loadFixtureSystem('cairn');
   const kind = resolveCharacterKind(system, system.characterKinds[0]!.id);
   const index: ElementIndex = new BundleElementIndex([]);
   const builder = new CharacterBuilder(newCharacterOfKind(system, kind.id), system, index);

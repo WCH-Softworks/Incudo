@@ -45,7 +45,7 @@ import {
 } from '@incudo/ui';
 
 import { runOracle, type OracleRun } from './aurora-oracle.ts';
-import { loadShippedSystem } from './node-system.ts';
+import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
@@ -382,7 +382,7 @@ test('the other kinds: no official form, and what the document gives a clean she
     t.diagnostic(`${kind.name}: ${sections.length} sheets, sections each ${range(sections)}; ${[...ids].map(([id, c]) => `${id} ${c}`).join(', ')}`);
     t.diagnostic(`${kind.name}: characters outside WinAnsi ${[...outside].map((c) => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(' ') || 'none'}`);
   }
-  const cairn = await loadShippedSystem('cairn');
+  const cairn = await loadFixtureSystem('cairn');
   const cairnKind = resolveCharacterKind(cairn, cairn.characterKinds[0]!.id);
   const index: ElementIndex = new BundleElementIndex([]);
   const doc = sheetDocument(new CharacterBuilder(newCharacterOfKind(cairn, cairnKind.id), cairn, index).getState());

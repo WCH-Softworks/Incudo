@@ -28,7 +28,7 @@ import { createMobileZipCodec } from '@incudo/mobile/zip';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadCorpus } from './corpus.ts';
-import { loadShippedSystem } from './node-system.ts';
+import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
@@ -104,7 +104,7 @@ test('what loading the corpus costs, as an app loads it', { skip: corpusSkip }, 
 test('what the builder shows a fresh character of each kind', { skip: corpusSkip }, async (t: Diagnostic) => {
   const elements = await realElements();
   for (const systemId of ['dnd5e', 'cairn']) {
-    const system = await loadShippedSystem(systemId);
+    const system = await (systemId === 'cairn' ? loadFixtureSystem(systemId) : loadShippedSystem(systemId));
     for (const kind of system.characterKinds) {
       const started = performance.now();
       const builder = new CharacterBuilder(newCharacterOfKind(system, kind.id), system, elements);

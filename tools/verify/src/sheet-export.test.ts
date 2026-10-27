@@ -77,7 +77,7 @@ import {
 } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { loadShippedSystem } from './node-system.ts';
+import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
@@ -519,7 +519,7 @@ test('a kept reference\'s text: which markup, what the sanitizer does with it, a
 });
 
 test('a Cairn character\'s sheet', async (t) => {
-  const system = await loadShippedSystem('cairn');
+  const system = await loadFixtureSystem('cairn');
   const kind = resolveCharacterKind(system, system.characterKinds[0]!.id);
   const builder = new CharacterBuilder(newCharacterOfKind(system, kind.id), system, new BundleElementIndex([]));
   for (const step of builder.getState().steps) {

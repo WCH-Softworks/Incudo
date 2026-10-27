@@ -352,7 +352,8 @@ it and Incudo reports `over-attuned`, as ADR 0023 designed.
 ## State of play
 
 Working: core engine, Aurora content **and save** importer, content sources, two system
-definitions, the `.incu` container, the JSON Schemas and the validator behind them, the whole of
+definitions (one shipped since 2026-10-27: Cairn is a test fixture in `tools/verify/fixtures/systems/cairn`,
+not shipped in 1.0, docs/LICENSING.md), the `.incu` container, the JSON Schemas and the validator behind them, the whole of
 the inventory work — a bag, slots, `equipped=`, attunement and a derived armour class —
 **spell selection, filtered by list, school and slot level** (ADR 0030), and
 **the desktop shell, which runs**: `npm run desktop` opens on a **character library** (ADR

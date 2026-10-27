@@ -32,7 +32,7 @@ structure, so it gets checked.
 | system | licence | commercial use | irrevocable | status | checked |
 |---|---|---|---|---|---|
 | `dnd5e` | CC-BY-4.0 (SRD 5.1, SRD 5.2.1) | Yes | Yes | ✅ **Cleared** | 2026-09-09 |
-| `cairn` | — | — | — | ⚠️ Structural sketch only; **replace the content before shipping** | — |
+| `cairn` | CC-BY-SA 4.0 (Cairn, all editions) | Yes | Yes | ⏸️ **Not shipped in 1.0**; kept as a test fixture | 2026-10-27 |
 | `pf2e` | ORC License (Remaster) | Likely | Likely | ⏳ **Not assessed** — read the ORC text and Paizo's Compatibility License in full before any work | — |
 | anything else | — | — | — | ❌ Assume not permitted until checked | — |
 
@@ -40,7 +40,27 @@ structure, so it gets checked.
 4.0 International. CC-BY-4.0 permits commercial use, is irrevocable, and requires only
 attribution. This is why 5e is the system Incudo ships first — the licence position is
 unusually clean. Attribution text goes in the system's `licence.attribution` field and is shown
-in the app's About screen.
+in the app's About screen (Settings > About Incudo, since 2026-10-27).
+
+**Every shipped system's notice is on About, word for word.** `systemAttributions` in
+`packages/ui/src/about.ts` reads each shipped definition's `licence.attribution`, and
+`tools/verify/src/about-attributions.test.ts` fails if a folder in `systems/` has no licence block, no attribution
+or no date it was read, if About leaves one out, or if the apps ship a different set of systems from `systems/`.
+
+**Cairn detail.** Cairn is by Yochai Gal. cairnrpg.com states, on its front page and on each edition's page, that the
+full text is licensed under Creative Commons Attribution-ShareAlike 4.0 (CC-BY-SA 4.0). Its third-party page says that
+adventures, supplements, hacks and other material need no permission, approval or notification. It asks for no
+particular attribution wording. (The `LICENSE` file in the game's GitHub repository is the GPLv3 licence of the
+website's theme, not of the game.) CC-BY-SA 4.0 permits commercial use and is irrevocable, so it meets the policy.
+ShareAlike adds one condition 5e's licence does not have: material adapted from the text must be shared under the same
+licence. Incudo's Cairn definition uses its own words for the structure (three scores, Hit Protection, inventory slots,
+backgrounds, gear) and quotes none of Cairn's text.
+
+**Cairn is not shipped in 1.0** (the maintainer's call, 2026-10-27). The definition was a structural sketch,
+kept to show that the engine is not 5e-shaped, and it was never a complete implementation of the game. It now lives in
+`tools/verify/fixtures/systems/cairn`, where the tests still build characters with it, and no app loads it. Before it
+ships again it needs a `licence` block (CC-BY-SA 4.0, credit to Yochai Gal, a link to cairnrpg.com), a decision on
+whether `systems/cairn/` itself is CC-BY-SA 4.0 rather than MIT, and its content checked against the edition it claims.
 
 **Pathfinder 2e detail.** Paizo's ORC License is an open, irrevocable, system-neutral licence
 and Pathfinder 2e Remaster content is published under it, which is promising. Promising is not

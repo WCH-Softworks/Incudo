@@ -32,7 +32,7 @@ import {
   type GameSystem,
 } from '@incudo/core';
 
-import { loadSchemas, systemsDirectory } from './node-system.ts';
+import { fixtureSystemsDirectory, loadSchemas, systemsDirectory } from './node-system.ts';
 
 async function shippedSystems(): Promise<Array<[string, unknown]>> {
   const dir = systemsDirectory();
@@ -52,7 +52,7 @@ test('every shipped system validates', async () => {
   // The systems this project ships, by name. Not "at least N": a folder count says nothing about
   // which ones are there, and adding a system must not touch this test.
   const shipped = systems.map(([id]) => id);
-  for (const id of ['dnd5e', 'cairn']) assert.ok(shipped.includes(id), `systems/${id} is not shipped`);
+  for (const id of ['dnd5e']) assert.ok(shipped.includes(id), `systems/${id} is not shipped`);
 
   for (const [id, raw] of systems) {
     const result = validateGameSystem(raw, schemas);
@@ -128,7 +128,7 @@ test('the 5e kinds are the ones ADR 0009 describes', async () => {
 
 test('cairn is level-less, and that is a progression rather than a special case', async () => {
   const schemas = await loadSchemas();
-  const raw = JSON.parse(await readFile(join(systemsDirectory(), 'cairn', 'system.json'), 'utf8'));
+  const raw = JSON.parse(await readFile(join(fixtureSystemsDirectory(), 'cairn', 'system.json'), 'utf8'));
   const system = validateGameSystem(raw, schemas).value!;
   const kind = resolveCharacterKind(system, undefined);
   assert.deepEqual(kind.progression, { kind: 'none' });

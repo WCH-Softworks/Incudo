@@ -16,7 +16,6 @@ import systemSchema from '@repo/schemas/system.schema.json';
 import characterSchema from '@repo/schemas/character.schema.json';
 import manifestSchema from '@repo/schemas/manifest.schema.json';
 import dnd5e from '@repo/systems/dnd5e/system.json';
-import cairn from '@repo/systems/cairn/system.json';
 import startingEquipmentSchema from '@repo/schemas/starting-equipment.schema.json';
 import dnd5eStartingEquipment from '@repo/systems/dnd5e/starting-equipment.json';
 import featureLibrarySchemaFile from '@repo/schemas/feature-library.schema.json';
@@ -39,7 +38,7 @@ let shipped: ShippedCatalog | undefined;
 
 export function loadShippedSystems(): ShippedCatalog {
   if (shipped) return shipped;
-  shipped = loadShippedCatalog([{ value: dnd5e }, { value: cairn }], schemas, {
+  shipped = loadShippedCatalog([{ value: dnd5e }], schemas, {
     files: [dnd5eStartingEquipment],
     schema: startingEquipmentSchema as JsonSchema,
   });

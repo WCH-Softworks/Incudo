@@ -76,7 +76,7 @@ import {
 } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { loadShippedSystem } from './node-system.ts';
+import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
@@ -336,7 +336,7 @@ test('a character keeping every text its kind may keep: how long a kept text and
 });
 
 test('a Cairn character: what a printed page of it holds', async (t) => {
-  const system = await loadShippedSystem('cairn');
+  const system = await loadFixtureSystem('cairn');
   const kind = resolveCharacterKind(system, system.characterKinds[0]!.id);
   const index: ElementIndex = new BundleElementIndex([]);
   const builder = new CharacterBuilder(newCharacterOfKind(system, kind.id), system, index);

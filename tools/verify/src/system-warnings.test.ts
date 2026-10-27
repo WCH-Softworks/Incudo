@@ -12,10 +12,10 @@ import assert from 'node:assert/strict';
 import { MemoryStorage, readJsonText, validateGameSystem } from '@incudo/core';
 import { newSystemFile, systemProblemLine, systemWarningsNote, UserSystemStore } from '@incudo/ui';
 
-import { loadSchemas, loadShippedSystem } from './node-system.ts';
+import { loadSchemas, loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 
 const schemas = await loadSchemas();
-const shipped = [await loadShippedSystem('dnd5e'), await loadShippedSystem('cairn')];
+const shipped = [await loadShippedSystem('dnd5e'), await loadFixtureSystem('cairn')];
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 /** The starter's file, with Might misspelled in its Health formula: the slip the guide's measurement found silent. */

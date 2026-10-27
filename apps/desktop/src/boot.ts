@@ -35,7 +35,6 @@ import characterSchema from '@repo/schemas/character.schema.json';
 import manifestSchema from '@repo/schemas/manifest.schema.json';
 // As text, so a shipped definition is read by the same `readJsonText` a user's file is, and a problem in it has a line.
 import dnd5e from '@repo/systems/dnd5e/system.json?raw';
-import cairn from '@repo/systems/cairn/system.json?raw';
 import formMapSchema from '@repo/schemas/form-map.schema.json';
 import dnd5eOfficial2014 from '@repo/systems/dnd5e/forms/official-2014.json';
 import startingEquipmentSchema from '@repo/schemas/starting-equipment.schema.json';
@@ -52,7 +51,7 @@ export const featureLibrarySchema = featureLibrarySchemaFile as JsonSchema;
  * header said "Dungeons & Dragons 5th Edition" from the first frame, on a machine where the
  * user had chosen nothing (ADR 0031). Adding a system here is the whole of adding a system.
  */
-const SHIPPED: SystemDefinitionSource[] = [{ text: dnd5e }, { text: cairn }];
+const SHIPPED: SystemDefinitionSource[] = [{ text: dnd5e }];
 
 export const schemas: SchemaBundle = {
   system: systemSchema as SchemaBundle['system'],

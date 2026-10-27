@@ -15,7 +15,11 @@ schema is a contract rather than documentation: *if it validates, the app can bu
 | folder | what it is | why it is here |
 |---|---|---|
 | `dnd5e/` | D&D 5th edition. | The first definition and the one Incudo is actually tested against — the corpus, a set of real saves and every `aurora verify` number are 5e. |
-| `cairn/` | A small, classless, level-less game by Yochai Gal. | It exists to break 5e-shaped assumptions in the engine while they are still cheap to fix. A structural sketch, not a licensed implementation — replace the content before shipping it. |
+
+**Cairn is not shipped in 1.0** (2026-10-27). Its definition, a sketch kept to break 5e-shaped assumptions in the
+engine, is now a test fixture in [`tools/verify/fixtures/systems/cairn`](../tools/verify/fixtures/systems/cairn); the
+tests still build with it and no app loads it. [docs/LICENSING.md](../docs/LICENSING.md) records its licence and what
+shipping it again needs.
 
 **A definition's own `description` is not the place for any of the column on the right.** The
 launcher shows it on a card to someone choosing a game, so it is prose for a player: what the

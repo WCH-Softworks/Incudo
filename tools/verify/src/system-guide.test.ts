@@ -27,7 +27,7 @@ import { BundleElementIndex, readJsonText, validateGameSystem, validateJson, typ
 import { parseAuroraElements } from '@incudo/aurora-import';
 import { CharacterBuilder, describeSystemErrors, newCharacterOfKind, syntaxProblem, systemProblemLine } from '@incudo/ui';
 
-import { loadSchemas, loadShippedSystem } from './node-system.ts';
+import { loadSchemas, loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 
 const schemas = await loadSchemas();
 const guide = await readFile(new URL('../../../docs/SYSTEM-GUIDE.md', import.meta.url), 'utf8');
@@ -53,7 +53,7 @@ const blocks: Block[] = [];
 }
 
 const known = new Map<string, GameSystem>();
-for (const system of [await loadShippedSystem('dnd5e'), await loadShippedSystem('cairn')]) known.set(system.id, system);
+for (const system of [await loadShippedSystem('dnd5e'), await loadFixtureSystem('cairn')]) known.set(system.id, system);
 
 /** The lines the app prints for a definition's errors, or for its warnings when it loaded. */
 function problemLines(text: string): { valid: boolean; errors: string[]; warnings: string[]; system?: GameSystem } {

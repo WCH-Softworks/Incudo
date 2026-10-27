@@ -14,12 +14,12 @@ import { MemoryStorage, type GameSystem, type PickedFile } from '@incudo/core';
 import { CharacterBuilder, USER_SYSTEM_PREFIX, UserSystemStore, newCharacterOfKind, overlayView } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
-import { loadSchemas, loadShippedStartingEquipment, loadShippedSystem } from './node-system.ts';
+import { loadSchemas, loadShippedStartingEquipment, loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
 
 const schemas = await loadSchemas();
 const dnd5e = await loadShippedSystem('dnd5e');
-const cairn = await loadShippedSystem('cairn');
+const cairn = await loadFixtureSystem('cairn');
 
 /** ADR 0011's example, as ADR 0102 writes it. */
 const HOUSE = {

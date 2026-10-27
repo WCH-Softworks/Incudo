@@ -49,7 +49,7 @@ import {
 import { CharacterBuilder, companionsView, newCharacterOfKind, sheetView, type SheetView } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { loadShippedSystem } from './node-system.ts';
+import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
@@ -76,7 +76,7 @@ const signed = (n: number): string => (n >= 0 ? `+${n}` : String(n));
 test('what every shipped kind\'s sheet declares, and every row of it has a label', async (t) => {
   const unlabelled: string[] = [];
   for (const id of SYSTEMS) {
-    const system = await loadShippedSystem(id);
+    const system = await (id === 'cairn' ? loadFixtureSystem(id) : loadShippedSystem(id));
     for (const def of system.characterKinds) {
       const kind = resolveCharacterKind(system, def.id);
       const labels = new Set(kind.stats.filter((s) => s.label !== undefined).map((s) => s.name.toLowerCase()));
@@ -329,7 +329,7 @@ test('what content says about the sheet itself', { skip: corpusSkip }, async (t)
 });
 
 test('Cairn\'s only kind draws a sheet its steps can fill', async (t) => {
-  const system: GameSystem = await loadShippedSystem('cairn');
+  const system: GameSystem = await loadFixtureSystem('cairn');
   const kind: ResolvedCharacterKind = resolveCharacterKind(system, system.characterKinds[0]!.id);
   const builder = new CharacterBuilder(newCharacterOfKind(system, kind.id), system, new BundleElementIndex([]));
   const budgeted = builder.getState().steps.filter((s) => s.budget);
