@@ -32,6 +32,7 @@ import {
   preparedElementIds,
 } from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
+import { checkContentBundle, type ContentBundle } from './content-format.ts';
 import { referencedElementIds } from './engine.ts';
 import { embeddedElementIds } from './embeds.ts';
 import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
@@ -63,19 +64,6 @@ export interface ContainerManifest {
   generator?: string;
   created: string;
   updated?: string;
-}
-
-/** The body of `content.json`, and of a standalone `.incuset` content bundle. */
-export interface ContentBundle {
-  formatVersion: 1;
-  elements: Element[];
-  /**
-   * Ids the character's content referenced that were not in any loaded source when this was
-   * written. Recorded rather than dropped: on the corpus this is mostly Aurora's runtime-
-   * generated `ID_INTERNAL_*`, and a reader that knows the difference between "missing" and
-   * "never existed" can say something useful instead of showing a broken character.
-   */
-  unresolved?: ElementId[];
 }
 
 export interface CharacterContainer {
@@ -464,6 +452,12 @@ export function readCharacterContainer(files: ContainerFiles): ReadResult {
   const character = parseEntry<Character>(files, CHARACTER_PATH, problems);
   const content = parseEntry<ContentBundle>(files, CONTENT_PATH, problems);
   if (!manifest || !character || !content) return { container: undefined, problems };
+  // Content is read through the content format's one checker (ADR 0119): a save's content is the same format as a source.
+  const checked = checkContentBundle(content);
+  if (!checked.value) {
+    problems.push({ level: 'error', path: CONTENT_PATH, message: `cannot be read. ${checked.problems.join(' ')}` });
+    return { container: undefined, problems };
+  }
 
   if (manifest.kind !== 'character') {
     problems.push({
@@ -534,6 +528,11 @@ export function readContentBundle(files: ContainerFiles): ReadBundleResult {
   const manifest = parseEntry<ContainerManifest>(files, MANIFEST_PATH, problems);
   const bundle = parseEntry<ContentBundle>(files, CONTENT_PATH, problems);
   if (!manifest || !bundle) return { manifest, bundle: undefined, problems };
+  const checked = checkContentBundle(bundle);
+  if (!checked.value) {
+    problems.push({ level: 'error', path: CONTENT_PATH, message: `cannot be read. ${checked.problems.join(' ')}` });
+    return { manifest, bundle: undefined, problems };
+  }
 
   if (manifest.kind !== 'content') {
     problems.push({

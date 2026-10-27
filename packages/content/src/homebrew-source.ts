@@ -7,7 +7,7 @@
  * the only copy the app has (ADR 0056's reason).
  */
 
-import type { ContentBundle, Element, Storage } from '@incudo/core';
+import { checkContentBundle, type ContentBundle, type Element, type Storage } from '@incudo/core';
 import type { ConfiguredSource, SourceProfile } from './profile.ts';
 import type { ContentIndex, ElementFile, FileRef, UpdateStatus, ContentSource } from './source.ts';
 
@@ -61,33 +61,12 @@ export function homebrewSourceId(profile: Pick<SourceProfile, 'find'>, name: str
 }
 
 /**
- * The one checker of a homebrew body (ADR 0108 decision 2): the bundle's shape, and what an element must have for the
- * engine to read it. Returns the sentences that refuse it, none when it reads.
+ * A homebrew body is checked by the content format's one checker (ADR 0108 decision 2, ADR 0119 decision 4): the same
+ * format a save's content and a converted source are. Returns the sentences that refuse it, none when it reads.
  */
 export function checkHomebrewBundle(raw: unknown): { value?: HomebrewBundle; problems: string[] } {
-  const problems: string[] = [];
-  const value = raw as HomebrewBundle;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return { problems: ['It is not a JSON object.'] };
-  if (value.formatVersion !== 1) problems.push(`Its formatVersion is ${JSON.stringify(value.formatVersion)}, and only 1 can be read.`);
-  if (!Array.isArray(value.elements)) return { problems: [...problems, 'It has no list of elements.'] };
-  const seen = new Set<string>();
-  value.elements.forEach((element, i) => {
-    const at = `Element ${i + 1}`;
-    if (!element || typeof element !== 'object') return void problems.push(`${at} is not an object.`);
-    for (const field of ['id', 'type', 'name'] as const) {
-      if (typeof element[field] !== 'string' || !element[field].trim()) problems.push(`${at} has no ${field}.`);
-    }
-    if (typeof element.source !== 'string') problems.push(`${at} has no source.`);
-    if (!element.setters || typeof element.setters !== 'object' || Array.isArray(element.setters)) problems.push(`${at} has no setters.`);
-    if (!Array.isArray(element.rules)) problems.push(`${at} has no rules.`);
-    if (!Array.isArray(element.supports)) problems.push(`${at} has no support tags.`);
-    if (typeof element.id === 'string') {
-      const key = element.id.toLowerCase();
-      if (seen.has(key)) problems.push(`${at}'s id ${element.id} is used by another element.`);
-      seen.add(key);
-    }
-  });
-  return problems.length ? { problems } : { value, problems };
+  const { value, problems } = checkContentBundle(raw);
+  return value ? { value: value as HomebrewBundle, problems } : { problems };
 }
 
 /** Read a homebrew source's body: none is an empty source; one that does not read or check is refused with a sentence. */

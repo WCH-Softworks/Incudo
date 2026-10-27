@@ -1,0 +1,886 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://incudo.dev/schemas/content.schema.json",
+  "title": "Incudo content",
+  "description": "Incudo's content format (ADR 0119): a source's elements, a save's content.json and a homebrew source's body are all this. formatVersion 1.",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "elements"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/element"
+      }
+    },
+    "extensions": {
+      "description": "Rules and support tags added to an element this content does not declare itself. Applied to that element whichever source declares it.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/extension"
+      }
+    },
+    "unresolved": {
+      "description": "A save only: ids its character's content named that no loaded source declared when it was written.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "setter": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "attrs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "setters": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/setter"
+      }
+    },
+    "origin": {
+      "type": "object",
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        },
+        "fileUrl": {
+          "type": "string"
+        },
+        "format": {
+          "description": "Written by builds before 1.0 and read by nothing.",
+          "enum": [
+            "aurora",
+            "incudo"
+          ]
+        }
+      }
+    },
+    "element": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "name",
+        "source",
+        "setters",
+        "rules",
+        "supports"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "description": "The publication the element is printed in, by name; empty for none.",
+          "type": "string"
+        },
+        "setters": {
+          "$ref": "#/$defs/setters"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rule"
+          }
+        },
+        "supports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requirements": {
+          "$ref": "#/$defs/requirement"
+        },
+        "description": {
+          "type": "string"
+        },
+        "sheet": {
+          "$ref": "#/$defs/sheet"
+        },
+        "multiclass": {
+          "$ref": "#/$defs/multiclass"
+        },
+        "spellcasting": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/spellcasting"
+          }
+        },
+        "contents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "quantity": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        }
+      }
+    },
+    "extension": {
+      "type": "object",
+      "required": [
+        "id",
+        "rules",
+        "supports"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rule"
+          }
+        },
+        "supports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fileUrl": {
+          "type": "string"
+        }
+      }
+    },
+    "ruleBase": {
+      "type": "object",
+      "required": [
+        "kind",
+        "key"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "grant",
+            "select",
+            "stat",
+            "supports"
+          ]
+        },
+        "key": {
+          "type": "string"
+        },
+        "requirements": {
+          "$ref": "#/$defs/requirement"
+        },
+        "level": {
+          "type": "number"
+        }
+      }
+    },
+    "rule": {
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ruleBase"
+            }
+          ],
+          "type": "object",
+          "required": [
+            "type",
+            "id"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "grant"
+            },
+            "key": true,
+            "requirements": true,
+            "level": true,
+            "type": {
+              "type": "string"
+            },
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "spellcasting": {
+              "type": "string"
+            },
+            "prepared": {
+              "type": "boolean"
+            },
+            "equipped": {
+              "$ref": "#/$defs/requirement"
+            },
+            "allowReplace": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ruleBase"
+            }
+          ],
+          "type": "object",
+          "required": [
+            "type",
+            "name",
+            "number"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "select"
+            },
+            "key": true,
+            "requirements": true,
+            "level": true,
+            "type": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "supports": {
+              "$ref": "#/$defs/filter"
+            },
+            "number": {
+              "type": "number"
+            },
+            "optional": {
+              "type": "boolean"
+            },
+            "default": {
+              "type": "string"
+            },
+            "spellcasting": {
+              "type": "string"
+            },
+            "prepared": {
+              "type": "boolean"
+            },
+            "allowReplace": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ruleBase"
+            }
+          ],
+          "type": "object",
+          "required": [
+            "name",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "stat"
+            },
+            "key": true,
+            "requirements": true,
+            "level": true,
+            "name": {
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/statExpr"
+            },
+            "bonus": {
+              "type": "string"
+            },
+            "max": {
+              "type": "number"
+            },
+            "equipped": {
+              "$ref": "#/$defs/requirement"
+            },
+            "alt": {
+              "type": "string"
+            },
+            "inline": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ruleBase"
+            }
+          ],
+          "type": "object",
+          "required": [
+            "tag"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "supports"
+            },
+            "key": true,
+            "requirements": true,
+            "level": true,
+            "tag": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "requirement": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "children"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "and",
+                "or"
+              ]
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/requirement"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "child"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "not"
+            },
+            "child": {
+              "$ref": "#/$defs/requirement"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "id"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "has"
+            },
+            "id": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "stat",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "atLeast"
+            },
+            "stat": {
+              "type": "string"
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "stat",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "equals"
+            },
+            "stat": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "name"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "flag"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "always"
+            }
+          }
+        }
+      ]
+    },
+    "filter": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "children"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "and",
+                "or"
+              ]
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/filter"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "tag"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "tag"
+            },
+            "tag": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "key"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "interpolate"
+            },
+            "key": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "statExpr": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "number"
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "stat"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "ref"
+            },
+            "stat": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "op",
+            "left",
+            "right"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "binary"
+            },
+            "op": {
+              "enum": [
+                "+",
+                "-",
+                "*",
+                "/",
+                "%"
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/statExpr"
+            },
+            "right": {
+              "$ref": "#/$defs/statExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "fn",
+            "args"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "call"
+            },
+            "fn": {
+              "enum": [
+                "floor",
+                "ceil",
+                "round",
+                "min",
+                "max",
+                "abs"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/statExpr"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "index",
+            "values"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "table"
+            },
+            "index": {
+              "$ref": "#/$defs/statExpr"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "pattern"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "rolls"
+            },
+            "pattern": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "name",
+            "as"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "setter"
+            },
+            "name": {
+              "type": "string"
+            },
+            "as": {
+              "enum": [
+                "dieSides",
+                "number"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "sheetDescription": {
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number"
+        },
+        "usage": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        }
+      }
+    },
+    "sheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "display": {
+          "type": "boolean"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "usage": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "descriptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sheetDescription"
+          }
+        }
+      }
+    },
+    "multiclass": {
+      "type": "object",
+      "required": [
+        "id",
+        "setters",
+        "rules"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "prerequisite": {
+          "type": "string"
+        },
+        "requirements": {
+          "$ref": "#/$defs/requirement"
+        },
+        "setters": {
+          "$ref": "#/$defs/setters"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rule"
+          }
+        }
+      }
+    },
+    "spellcasting": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "ability": {
+          "type": "string"
+        },
+        "list": {
+          "type": "string"
+        },
+        "prepare": {
+          "type": "string"
+        },
+        "extend": {
+          "type": "string"
+        },
+        "all": {
+          "type": "boolean"
+        },
+        "allowReplace": {
+          "type": "boolean"
+        }
+      }
+    },
+    "source": {
+      "description": "A content source's own description: what it is called, where it came from, and the files it was made from.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

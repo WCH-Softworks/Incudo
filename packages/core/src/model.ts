@@ -234,7 +234,8 @@ export interface ElementOrigin {
   /** Which content source this came from. */
   sourceId: string;
   fileUrl?: string;
-  format: 'aurora' | 'incudo';
+  /** Written by builds before 1.0 and read by nothing: past the converter there is one format (ADR 0119). */
+  format?: 'aurora' | 'incudo';
 }
 
 export interface Element {
