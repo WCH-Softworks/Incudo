@@ -164,3 +164,26 @@ export function requireBaseCorpus(): CorpusLocation {
   assert.ok(existsSync(baseIndex), 'INCUDO_BASE_CORPUS_INDEX names a file that does not exist. Failing rather than skipping.');
   return { index: baseIndex, layout: 'repository', root: baseRoot };
 }
+
+/**
+ * An installed Incudo to drive through docs/RELEASE-CHECK.md: the path of its `incudo-desktop.exe`, named by
+ * `INCUDO_INSTALLED_APP` in `.env.local`. A release candidate's drive starts it on a scratch profile and library; with
+ * nothing named the drive is skipped (and it never runs in CI, which has no installed build and no screen). Named and
+ * missing fails.
+ */
+const installedApp = process.env['INCUDO_INSTALLED_APP'] ?? '';
+
+/** Why the release check's drive is not running, or `false` when it should. */
+export const installedAppSkip: string | false = installedApp
+  ? false
+  : 'no installed app: install the candidate and set INCUDO_INSTALLED_APP in .env.local to its incudo-desktop.exe (docs/RELEASE-CHECK.md)';
+
+/** The installed executable, failing rather than skipping when it was named and is not there. */
+export function requireInstalledApp(): string {
+  assert.ok(installedApp, installedAppSkip || 'no installed app is named');
+  assert.ok(
+    existsSync(installedApp),
+    'INCUDO_INSTALLED_APP names a file that does not exist. Failing rather than skipping: a check that skips on a mistyped path passes on nothing.',
+  );
+  return installedApp;
+}

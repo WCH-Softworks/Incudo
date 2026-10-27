@@ -2224,7 +2224,7 @@ written on a character can be moved into the user's library without being typed 
     speed 30 (its readout), its card naming no missing source (the import said 4 items the save uses are not in the
     loaded content, and 8 notes). Browse found Fireball; switching to Cairn showed its own, empty library and the two 5e
     characters counted as another system's. Not driven: real keys and mouse, uninstall.
-- [ ] **A release candidate is checked the same way every time.** Raised by the maintainer on 2026-10-20, after rc.2
+- [x] **A release candidate is checked the same way every time.** Raised by the maintainer on 2026-10-20, after rc.2
       was checked twice, once by a scripted drive of the installed build and once by hand, from no written list. Today
       what a candidate must do before it is published lives in session notes, and two checks of one build cannot be
       compared. The shape:
@@ -2253,6 +2253,25 @@ written on a character can be moved into the user's library without being typed 
     unarmed strike with Strength 8 as "1-1 bludgeoning"; Fire Bolt's attack row reads "—" for damage ("chosen on
     Build, under Spells") though no open decision asked for it; Cairn's library shows "Import from Aurora…" while the
     File menu has it off.
+  - **Built 2026-10-27.** [`docs/RELEASE-CHECK.md`](docs/RELEASE-CHECK.md) is the list: fifteen numbered steps, each
+    marked "Drive and person" or "Person only" (install, how the window looks, uninstall), and a readings table for the
+    Hill Dwarf Wizard 3 it builds (AC 12, HP 26, speed 25, DC 12, +4, slots 4 and 2, passive Perception 11, the unarmed
+    strike's and Fire Bolt's rows). The imported sample, the 2014 Fighter 5 in plate (Sample 09), is held to
+    `manifest.json`'s readout, and the source's line to `RECORDED_BUDGET`, so a corpus that moves upstream does not need
+    the list edited. The drive is `tools/verify/src/release-check.test.ts`, run when `INCUDO_INSTALLED_APP` in
+    `.env.local` names the installed `incudo-desktop.exe` (`real-data.ts`; unset it skips and says how, named and missing
+    it fails, never in CI). It starts the app on a scratch WebView2 profile and library under the system's temporary
+    folder with the debug port open, drives the page over it (`release-drive/cdp.ts`) and the file dialogs and the native
+    menu by window messages (`release-drive/win32.ps1`: the menu's labels compared with `MENUS`, View → Browse clicked),
+    reads every number by its row's label in the text export and never by position, takes its steps and readings from the
+    list itself (`release-drive/check-doc.ts`, whose shape a test that always runs holds), and writes `report.md` in its
+    run folder. A check is recorded as a file per tag in `docs/release-checks/`; the first is
+    [`v1.0.0-rc.2.md`](docs/release-checks/v1.0.0-rc.2.md), the drive run once more on the installed rc.2 (about 85 s):
+    every step it can check passed, with the numbers above, all 744 words of the export in the 7-page PDF, a 7-sheet
+    preview with no headers option, the Sheet identical offline (16,795 characters), Sample 09 at 21, 44 and 30. Found
+    while building it: WebView2's preview reads "Total: 0 sheets of paper" while it lays out, and Windows PowerShell
+    prints the menu's "…" in the console's code page unless told UTF-8. Not driven: the folder dialog (the folder is
+    written into the profile), real keys and mouse, install and uninstall. Those are the person's steps.
 - [x] **The desktop app behaves like an application, not a web page.** Raised by the maintainer after using it
       (2026-09-30). Each part is small; together they are most of why the window still feels like a browser tab. Some
       are Tauri or WebView2 settings rather than page code, and the one that needs a picture already has one:
