@@ -1302,6 +1302,24 @@
           "type": "boolean",
           "description": "Leave out a listed element whose own sheet hints say not to show it (Aurora's <sheet display=\"false\">, ADR 0076). Content marks a feature that way when its effect is shown elsewhere or a choice beside it names it better, and also every race and class, which a header names: so a section that lists features declares it and one that names what a character is does not. The element is still held, derived and saved. Only meaningful beside types."
         },
+        "place": {
+          "enum": ["head", "side", "main"],
+          "description": "Where the section goes on a laid-out sheet (ADR 0126): head (the band across the top), side (a narrow column always shown) or main (a tab of the main column). Absent is main. Read only when the sheet declares a layout."
+        },
+        "tab": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The tab of the main column the section goes in, by its id in the sheet's tabs (ADR 0126). Only for a section in the main column; absent, the first tab."
+        },
+        "tiles": {
+          "type": "boolean",
+          "description": "Draw the section's rows as tiles, the label small above a large value (ADR 0126). Display only."
+        },
+        "under": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the section whose rows this one's are drawn under, row by row (ADR 0126): a player character's saving throws under its ability scores. Display only."
+        },
         "fold": {
           "type": "boolean",
           "description": "Fold what another listed element grants into it (ADR 0126): an element the section lists is not listed on its own when another element the same section lists reaches it by its own grants, through any number of steps (\"Martial Weapons\" reaches its nineteen weapons). It is carried on the granter as what it includes. Read off the elements' rules, never their names. Only meaningful beside types."
@@ -1385,6 +1403,28 @@
         "sections": {
           "type": "array",
           "items": { "$ref": "#/$defs/sheetSection" }
+        },
+        "layout": {
+          "enum": ["page", "statBlock"],
+          "description": "How the sheet is laid out (ADR 0126). page: a head band across the top, a side column and a main column in tabs, each section going where its place says. statBlock: one column read as a printed stat block. Absent: one column of sections. Every reader of the sheet reads the sections in the order the layout gives them."
+        },
+        "tabs": {
+          "type": "array",
+          "description": "The main column's tabs, in order (ADR 0126). A section names one by tab; one in the main column naming none goes in the first. A tab with nothing in it is not shown.",
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1, "description": "User-facing." },
+              "parts": {
+                "type": "array",
+                "description": "The parts of the sheet that are not sections the tab holds, after its sections: the creatures the character holds, what the user wrote, the whole descriptions, what it keeps.",
+                "items": { "enum": ["companions", "freeform", "descriptions", "references"] }
+              }
+            }
+          }
         }
       }
     }

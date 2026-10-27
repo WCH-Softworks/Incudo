@@ -237,6 +237,40 @@ test('a system that would throw at load fails validation instead', async () => {
     [],
   );
 
+  // ADR 0126: a laid-out sheet names only tabs it declares, a tab only for a section in the main column, and draws a
+  // section only under another of its sections. Fails if sheetLayoutErrors is not called (every refusal), or a field is
+  // left out of the schema (every one: an unknown field).
+  const laid = (sheet: object) => broken((s) => (s.characterKinds[0]!.sheet = sheet as never));
+  assert.deepEqual(
+    await errorsFor(laid({ layout: 'page', tabs: [{ id: 't', label: 'T' }, { id: 't', label: 'U', parts: ['freeform', 'freeform'] }], sections: [{ id: 's', label: 'S', stats: ['vigour'], tab: 'nope' }] })),
+    [
+      'characterKinds[0].sheet.tabs[1].id: "t" is already used in this tabs list; each entry needs its own, or remove one',
+      'characterKinds[0].sheet.tabs: puts "freeform" in more than one tab, or twice in one',
+      'characterKinds[0].sheet.sections: section "s" goes in the tab "nope", which the sheet does not declare',
+    ],
+  );
+  assert.deepEqual(
+    await errorsFor(laid({ layout: 'page', tabs: [{ id: 't', label: 'T' }], sections: [{ id: 's', label: 'S', stats: ['vigour'], place: 'side', tab: 't', under: 's' }] })),
+    [
+      'characterKinds[0].sheet.sections: section "s" names a tab and goes in the side column',
+      'characterKinds[0].sheet.sections: section "s" is drawn under "s", which is not another section of this sheet',
+    ],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      laid({
+        layout: 'page',
+        tabs: [{ id: 't', label: 'T', parts: ['companions'] }],
+        sections: [
+          { id: 's', label: 'S', stats: ['vigour'], place: 'head', tiles: true },
+          { id: 'u', label: 'U', stats: ['vigour'], place: 'side', under: 's' },
+          { id: 'v', label: 'V', stats: ['vigour'], tab: 't' },
+        ],
+      }),
+    ),
+    [],
+  );
+
   // ADR 0126: folding, leaving out what a mark says and writing answers are about listed elements. Fails if the check is
   // removed (the first three), or a field is left out of the schema (every one: an unknown field).
   for (const field of ['fold', 'omitMarked', 'answers']) {

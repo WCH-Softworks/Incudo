@@ -227,6 +227,12 @@ export interface SheetDocument {
    */
   title: string;
   kindName: string;
+  /**
+   * How the sheet is laid out (ADR 0126), and its main column's tabs: what a renderer draws areas and tabs from. Absent,
+   * one column. `sections` are in the layout's order either way.
+   */
+  layout?: SheetView['layout'];
+  tabs?: SheetView['tabs'];
   /** The character's own sections, empty ones left out. */
   sections: SheetSectionView[];
   /** Its held creatures, when the kind declares them and it holds any. */
@@ -264,6 +270,7 @@ export function sheetDocument(state: SheetDocumentSource): SheetDocument {
     name: state.character.name,
     title: state.character.name.trim() || UNNAMED_CHARACTER,
     kindName: sheet.kindName,
+    ...(sheet.layout ? { layout: sheet.layout, tabs: sheet.tabs ?? [] } : {}),
     sections: sheet.sections,
     ...(companions
       ? {

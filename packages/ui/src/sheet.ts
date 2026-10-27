@@ -40,7 +40,10 @@ import {
   type ResolvedStat,
   type SheetGroup,
   type SheetReader,
+  type SheetLayoutDef,
+  type SheetPlace,
   type SheetSectionDef,
+  type SheetTabDef,
   type StatDef,
 } from '@incudo/core';
 
@@ -233,11 +236,25 @@ export interface SheetSectionView {
   also?: true;
   /** What the section left out because a shown mark already says it (`omitMarked`, ADR 0126), in the section's order. */
   omitted?: SheetListedRef[];
+  /**
+   * Where it goes on a laid-out sheet (ADR 0126): `head`, `side` or `main`, and for `main` the tab, the first one when the
+   * section names none. Set only when the kind's sheet declares a layout.
+   */
+  place?: SheetPlace;
+  tab?: string;
+  /** Its rows are drawn as tiles (ADR 0126). */
+  tiles?: true;
+  /** The section whose rows its rows are drawn under, row by row (ADR 0126). */
+  under?: string;
 }
 
 /** The character's own sheet: its kind and its sections, empty ones left out. */
 export interface SheetView {
   kindName: string;
+  /** How the sheet is laid out (ADR 0126); absent, one column. Its sections are in the layout's order. */
+  layout?: SheetLayoutDef['layout'];
+  /** The main column's tabs, in order (ADR 0126), when the sheet declares a layout. */
+  tabs?: SheetTabDef[];
   sections: SheetSectionView[];
   /**
    * How many placeholders its own sections' listed elements name that nothing publishes (ADR 0076): 0 when all fill. A
@@ -573,6 +590,8 @@ export function sheetSections(
         ...(rendering.description !== undefined ? { description: rendering.description } : {}),
         ...(section.describe ? { describe: true as const } : {}),
         ...(section.answers ? { also: true as const } : {}),
+        ...(section.tiles ? { tiles: true as const } : {}),
+        ...(section.under !== undefined ? { under: section.under } : {}),
         rows,
         printed: rendering.printed,
         elements,
@@ -793,11 +812,32 @@ export function sheetView(
     derived.elements,
     unmet,
   );
+  const sheet = kind.sheet;
   return {
     kindName: kind.name,
-    sections,
+    ...(sheet.layout ? { layout: sheet.layout, tabs: sheet.tabs ?? [] } : {}),
+    sections: laidOut(sections, sheet),
     unfilled: unfilledIn(sections),
   };
+}
+
+/**
+ * The sections in the order a laid-out sheet reads them (ADR 0126): the head band, the side column, then the main column
+ * tab by tab, each in the order the kind declares them, each marked with its place and tab. Unchanged when the sheet
+ * declares no layout. Every reader of the document reads this order, so the export and the print agree with the screen.
+ */
+export function laidOut(sections: readonly SheetSectionView[], sheet: SheetLayoutDef): SheetSectionView[] {
+  if (!sheet.layout) return [...sections];
+  const defs = new Map(sheet.sections.map((def) => [def.id, def]));
+  const tabs = (sheet.tabs ?? []).map((tab) => tab.id);
+  const placed = sections.map((section, at) => {
+    const def = defs.get(section.section ?? section.id);
+    const place: SheetPlace = def?.place ?? 'main';
+    const tab = place === 'main' ? (def?.tab ?? tabs[0]) : undefined;
+    const rank = place === 'head' ? 0 : place === 'side' ? 1 : 2 + Math.max(0, tab === undefined ? 0 : tabs.indexOf(tab));
+    return { view: { ...section, place, ...(tab !== undefined ? { tab } : {}) }, rank, at };
+  });
+  return placed.sort((a, b) => a.rank - b.rank || a.at - b.at).map((p) => p.view);
 }
 
 /**

@@ -668,24 +668,33 @@
         }
       },
       "sheet": {
+        "layout": "page",
+        "tabs": [
+          { "id": "actions", "label": "Actions" },
+          { "id": "spells", "label": "Spells" },
+          { "id": "features", "label": "Features" },
+          { "id": "inventory", "label": "Inventory" },
+          { "id": "companions", "label": "Companions", "parts": ["companions"] },
+          { "id": "notes", "label": "Background and notes", "parts": ["freeform"] },
+          { "id": "descriptions", "label": "Descriptions", "parts": ["descriptions", "references"] }
+        ],
         "sections": [
-          { "id": "identity", "label": "Character", "types": ["Race", "Sub Race", "Race Variant", "Class", "Archetype", "Background", "Background Variant", "Alignment", "Deity"], "trackProgress": true, "trackDie": "hd" },
-          { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "beside": "{stat}:modifier" },
-          { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency", "level"] },
-          { "id": "attacks", "label": "Attacks", "attacks": true, "description": "Every weapon the character carries, and an unarmed strike. The attack bonus is the ability modifier (Strength, Dexterity for a ranged weapon, the higher of the two for a finesse one), plus the proficiency bonus for a weapon the character is proficient with, plus a magic weapon's bonus and what features add; the damage adds the same modifier and magic bonus. With a light melee weapon in each hand, the off-hand attack's damage adds no positive ability modifier unless the character has a two-weapon fighting style." },
-          { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}" },
-          { "id": "saves", "label": "Saving Throws", "description": "The ability modifier, plus the proficiency bonus for a saving throw the character is proficient in (listed under Proficiencies).", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"] , "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"] } },
-          { "id": "skills", "label": "Skills", "description": "The ability modifier, plus the proficiency bonus for a skill the character is proficient in (listed under Proficiencies), twice it with expertise.", "stats": ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"] , "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient", "expertise"] } },
-          { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "types": ["Vision"] },
-          { "id": "wild-shape", "label": "Wild Shape", "description": "The beasts the character can turn into at its druid level: the highest challenge rating and what the beast may not have. It must also be a beast the character has seen.", "stats": ["wild shape:max cr", "wild shape:limits"], "showWhen": "wild shape:tier" },
-          { "id": "worn", "label": "Worn & Wielded", "stats": ["armor", "shield", "primary", "secondary", "attunement:current", "attunement:max"] },
-          { "id": "features", "label": "Features & Traits", "describe": true, "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature", "Additional Feature", "Ability Score Adjustment"], "omitHidden": true, "answers": true },
-          { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language", "Condition"], "omitHidden": true, "fold": true, "omitMarked": true },
-          { "id": "spellcasting", "label": "Spellcasting", "perBlock": true, "stats": ["{name}:spellcasting:dc", "{name}:spellcasting:attack"] },
-          { "id": "slots", "label": "Spell Slots", "description": "Shared by the character's spellcasting classes.", "stats": ["spellcasting:slots:1", "spellcasting:slots:2", "spellcasting:slots:3", "spellcasting:slots:4", "spellcasting:slots:5", "spellcasting:slots:6", "spellcasting:slots:7", "spellcasting:slots:8", "spellcasting:slots:9"], "showWhen": "{stat}" },
-          { "id": "block-slots", "label": "Spell Slots", "perBlock": true, "stats": ["{name}:spellcasting:table:1", "{name}:spellcasting:table:2", "{name}:spellcasting:table:3", "{name}:spellcasting:table:4", "{name}:spellcasting:table:5", "{name}:spellcasting:table:6", "{name}:spellcasting:table:7", "{name}:spellcasting:table:8", "{name}:spellcasting:table:9"], "showWhen": "{stat}" },
-          { "id": "spells", "label": "Spells", "describe": true, "types": ["Spell"], "group": { "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }, "preparedMark": { "always": "always prepared", "chosen": "prepared" } },
-          { "id": "inventory", "label": "Inventory", "types": ["Item", "Weapon", "Armor", "Magic Item"], "bag": true }
+          { "id": "identity", "label": "Character", "types": ["Race", "Sub Race", "Race Variant", "Class", "Archetype", "Background", "Background Variant", "Alignment", "Deity"], "trackProgress": true, "trackDie": "hd", "place": "head" },
+          { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "beside": "{stat}:modifier", "place": "side", "tiles": true },
+          { "id": "combat", "label": "Combat", "stats": ["ac", "hp", "speed", "initiative", "proficiency"], "place": "head", "tiles": true },
+          { "id": "attacks", "label": "Attacks", "attacks": true, "description": "Every weapon the character carries, and an unarmed strike. The attack bonus is the ability modifier (Strength, Dexterity for a ranged weapon, the higher of the two for a finesse one), plus the proficiency bonus for a weapon the character is proficient with, plus a magic weapon's bonus and what features add; the damage adds the same modifier and magic bonus. With a light melee weapon in each hand, the off-hand attack's damage adds no positive ability modifier unless the character has a two-weapon fighting style.", "tab": "actions" },
+          { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}", "place": "side" },
+          { "id": "saves", "label": "Saving Throws", "description": "The ability modifier, plus the proficiency bonus for a saving throw the character is proficient in (listed under Proficiencies).", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"] , "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"] }, "place": "side", "under": "abilities" },
+          { "id": "skills", "label": "Skills", "description": "The ability modifier, plus the proficiency bonus for a skill the character is proficient in (listed under Proficiencies), twice it with expertise.", "stats": ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"] , "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient", "expertise"] }, "place": "side" },
+          { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "types": ["Vision"], "place": "side" },
+          { "id": "wild-shape", "label": "Wild Shape", "description": "The beasts the character can turn into at its druid level: the highest challenge rating and what the beast may not have. It must also be a beast the character has seen.", "stats": ["wild shape:max cr", "wild shape:limits"], "showWhen": "wild shape:tier", "tab": "features" },
+          { "id": "features", "label": "Features & Traits", "describe": true, "types": ["Racial Trait", "Class Feature", "Archetype Feature", "Feat", "Background Feature", "Additional Feature", "Ability Score Adjustment"], "omitHidden": true, "answers": true, "tab": "features" },
+          { "id": "proficiencies", "label": "Proficiencies", "types": ["Proficiency", "Language", "Condition"], "omitHidden": true, "fold": true, "omitMarked": true, "place": "side" },
+          { "id": "spellcasting", "label": "Spellcasting", "perBlock": true, "stats": ["{name}:spellcasting:dc", "{name}:spellcasting:attack"], "tab": "spells" },
+          { "id": "slots", "label": "Spell Slots", "description": "Shared by the character's spellcasting classes.", "stats": ["spellcasting:slots:1", "spellcasting:slots:2", "spellcasting:slots:3", "spellcasting:slots:4", "spellcasting:slots:5", "spellcasting:slots:6", "spellcasting:slots:7", "spellcasting:slots:8", "spellcasting:slots:9"], "showWhen": "{stat}", "tab": "spells" },
+          { "id": "block-slots", "label": "Spell Slots", "perBlock": true, "stats": ["{name}:spellcasting:table:1", "{name}:spellcasting:table:2", "{name}:spellcasting:table:3", "{name}:spellcasting:table:4", "{name}:spellcasting:table:5", "{name}:spellcasting:table:6", "{name}:spellcasting:table:7", "{name}:spellcasting:table:8", "{name}:spellcasting:table:9"], "showWhen": "{stat}", "tab": "spells" },
+          { "id": "spells", "label": "Spells", "describe": true, "types": ["Spell"], "group": { "setter": "level", "label": "Level {value}", "labels": { "0": "Cantrip" } }, "preparedMark": { "always": "always prepared", "chosen": "prepared" }, "tab": "spells" },
+          { "id": "inventory", "label": "Inventory", "stats": ["attunement:current", "attunement:max"], "types": ["Item", "Weapon", "Armor", "Magic Item"], "bag": true, "tab": "inventory" }
         ]
       }
     },

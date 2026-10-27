@@ -994,6 +994,21 @@ export interface SheetSectionDef {
    */
   answers?: boolean;
   /**
+   * Where the section goes on a laid-out sheet — ADR 0126: `head` (the band across the top: who the character is and the
+   * numbers looked at every turn), `side` (a narrow column always shown) or `main` (a tab of the main column, `tab`).
+   * Absent is `main`. Read only when the kind's sheet declares a `layout`.
+   */
+  place?: SheetPlace;
+  /** The tab of the main column the section goes in (`sheet.tabs`), when its place is `main` — ADR 0126. Absent: the first. */
+  tab?: string;
+  /** Draw the section's rows as tiles, the label small above a large value — ADR 0126. Display only. */
+  tiles?: boolean;
+  /**
+   * The section whose rows this one's are drawn under, row by row — ADR 0126: a player character's saving throws under its
+   * ability scores. Display only; the section stays a section of its own in the document.
+   */
+  under?: string;
+  /**
    * A line the sheet writes under each element the section lists — ADR 0112: `text` with its `{{stat}}` placeholders
    * filled as a sheet line's are, shown when `showWhen` names a stat that is not zero (always when absent). The sheet's
    * words, not content's: 5e's held creature's actions say what its holder adds.
@@ -1261,7 +1276,35 @@ export function sheetSectionIsEmpty(rendering: SheetSectionRendering, elements: 
 
 export interface SheetLayoutDef {
   sections: SheetSectionDef[];
+  /**
+   * How the sheet is laid out — ADR 0126. `page`: a head band across the top, a side column and a main column in tabs,
+   * each section going where its `place` says. `statBlock`: one column read as a printed stat block. Absent: one column
+   * of sections, as a sheet was drawn before it, so a system that knows nothing of this still gets a sheet. What a
+   * renderer draws; every reader of the document reads the sections in the order the layout gives them.
+   */
+  layout?: 'page' | 'statBlock';
+  /**
+   * The main column's tabs, in order — ADR 0126. A section names one by `tab`; one in the main column naming none goes
+   * in the first. A tab may also hold parts of the sheet that are not sections (`parts`): the creatures the character
+   * holds, what the user wrote, the whole descriptions, what it keeps. A tab with nothing in it is not shown.
+   */
+  tabs?: SheetTabDef[];
 }
+
+/** A part of the sheet that is not a section, which a tab may hold — ADR 0126. */
+export type SheetPart = 'companions' | 'freeform' | 'descriptions' | 'references';
+
+/** One tab of a page's main column — ADR 0126. */
+export interface SheetTabDef {
+  id: string;
+  /** User-facing. */
+  label: string;
+  /** The parts of the sheet that are not sections it holds, after its sections, in this order. */
+  parts?: SheetPart[];
+}
+
+/** Where a section of a laid-out sheet goes — ADR 0126. */
+export type SheetPlace = 'head' | 'side' | 'main';
 
 /**
  * How a kind of character advances.

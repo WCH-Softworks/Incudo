@@ -22,6 +22,7 @@ import {
   resolveCharacterKind,
   type GameSystem,
   type PlayDef,
+  type SheetLayoutDef,
   type SheetSectionDef,
 } from './system.ts';
 import { parseRequirements } from './requirements.ts';
@@ -312,6 +313,38 @@ function checkCharacterReferences(character: Character, system?: GameSystem): Sc
  * so this can assume the shape is right and worry only about what it points at.
  */
 /** Identified arrays whose duplicates a check below already refuses, in its own words. */
+/**
+ * What a sheet's layout names that it does not declare (ADR 0126): a part in two tabs, a section's tab that is not
+ * one of the sheet's, a tab on a section that is not in the main column, and a section drawn under one the sheet does
+ * not have, or under itself.
+ */
+function sheetLayoutErrors(sheet: SheetLayoutDef, where: string): SchemaError[] {
+  const errors: SchemaError[] = [];
+  const tabs = new Set<string>();
+  const parts = new Set<string>();
+  for (const tab of sheet.tabs ?? []) {
+    // A tab id twice is refused with every identified array's (duplicateIdentities, ADR 0103).
+    tabs.add(tab.id);
+    for (const part of tab.parts ?? []) {
+      if (parts.has(part)) errors.push({ path: `${where}.tabs`, message: `puts "${part}" in more than one tab, or twice in one` });
+      parts.add(part);
+    }
+  }
+  const ids = new Set(sheet.sections.map((section) => section.id));
+  for (const section of sheet.sections) {
+    if (section.tab !== undefined) {
+      if (!tabs.has(section.tab)) errors.push({ path: `${where}.sections`, message: `section "${section.id}" goes in the tab "${section.tab}", which the sheet does not declare` });
+      if (section.place !== undefined && section.place !== 'main') {
+        errors.push({ path: `${where}.sections`, message: `section "${section.id}" names a tab and goes in the ${section.place === 'head' ? 'head band' : 'side column'}` });
+      }
+    }
+    if (section.under !== undefined && (section.under === section.id || !ids.has(section.under))) {
+      errors.push({ path: `${where}.sections`, message: `section "${section.id}" is drawn under "${section.under}", which is not another section of this sheet` });
+    }
+  }
+  return errors;
+}
+
 /** The sheet section fields that are about the elements a section lists (ADR 0126). */
 const LISTING_FIELDS = ["fold", "omitMarked", "answers"] as const;
 
@@ -744,6 +777,7 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         }
       }
     }
+    errors.push(...sheetLayoutErrors(resolved.sheet, `${where}.sheet`));
     for (const section of resolved.sheet.sections) {
       if (section.attacks && !attacks) {
         errors.push({ path: `${where}.sheet.sections`, message: `"${section.id}" lists attacks, and the kind declares none` });

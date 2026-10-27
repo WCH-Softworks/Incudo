@@ -665,6 +665,8 @@ body of existing content. When you need one of these, find it there, and read it
 - **The sheet**: `mark`, `group`, `preparedMark`, `trackProgress`, `trackDie`, `omitHidden`, `printed`, `bag`, and what
   shortens a list: `fold` (what another entry grants is listed under it), `omitMarked` (what a marked row already says is
   left out), `answers` (a feature written with what its choice chose, and what says nothing named on one "Also" line).
+  Where each section goes: the sheet's `layout` (`page` or `statBlock`) and `tabs`, and a section's `place` (`head`,
+  `side`, `main`), `tab`, `tiles` and `under`. A sheet without a layout is drawn as one column.
 
 The schema's descriptions mention decision records (`ADR 0062` and so on). Those are in [docs/adr](./adr/README.md),
 and say why each part is shaped as it is.

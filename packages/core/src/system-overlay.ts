@@ -28,6 +28,7 @@ export const OVERLAY_KEYED_ARRAYS: Readonly<Record<string, string>> = {
   'characterKinds[].stats': 'name',
   'characterKinds[].buildSteps': 'id',
   'characterKinds[].sheet.sections': 'id',
+  'characterKinds[].sheet.tabs': 'id',
   'characterKinds[].companions.stats': 'name',
   'characterKinds[].companions.sheet': 'id',
   'characterKinds[].inventory.slots': 'id',
