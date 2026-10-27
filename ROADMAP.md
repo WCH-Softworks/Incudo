@@ -2202,6 +2202,23 @@ written on a character can be moved into the user's library without being typed 
     *(Both fixed 2026-10-24, after the drive: a flat amount is added up and stops at 0, "0 bludgeoning"; a spell row's
     unset damage or class is still never required, and every sheet shows it as a warning beside the row, "Damage not set:
     choose its dice on Build, under Spells" (`attackWarnings`, a label on the desktop's Sheet). Seen in the Tauri window.)*
+  - **`v1.0.0-rc.2` tagged and built, 2026-10-26** on `dc82707`, carrying those two fixes: the release workflow green in
+    about 15 minutes, one draft pre-release, nine assets. The maintainer installed its `-setup.exe` and checked it by hand.
+    **The drive, 2026-10-27**, the same way as rc.1's (the installed `incudo-desktop.exe` on a scratch WebView2 profile
+    and library over the debug port, the native dialogs by window messages): About reads Version 1.0.0; adding
+    AuroraLegacy and pressing New character at once kept Build and Browse on the loading panel with live progress for the
+    whole download (about 30 s, 799 requests), then the campaign options opened with named options and no id; its line
+    read 14,320 entries from 740 files, 1 thing missing, 57 warnings (unchanged). A Hill Dwarf Wizard 3 (Evocation, Sage,
+    an Owl, both starting packages, Average hit points, 5 of 5 prepared) read AC 12, HP 26 (including Dwarven Toughness),
+    speed 25, spell save DC 12, attack +4, slots 4 and 2, passive Perception 11. **Both fixes confirmed:** Attacks reads
+    "Unarmed Strike: +1, 0 bludgeoning (range 5 ft)", and Fire Bolt's row "+4, — (range 120 feet)" carries a separate
+    `.sheet-warning` label, "Damage not set: choose its dice on Build, under Spells", which the text export writes after
+    the row as its own sentence. Saved; exported as text and as a 7-page PDF (every one of the export's 744 distinct words
+    in the PDF); printed through its step to WebView2's preview (7 sheets, no headers option) and cancelled; reopened with
+    the source off to an identical Sheet (16,795 characters). Sample 09 imported through the open dialog to AC 21, HP 44,
+    speed 30 (its readout), its card naming no missing source (the import said 4 items the save uses are not in the
+    loaded content, and 8 notes). Browse found Fireball; switching to Cairn showed its own, empty library and the two 5e
+    characters counted as another system's. Not driven: real keys and mouse, uninstall.
 - [ ] **A release candidate is checked the same way every time.** Raised by the maintainer on 2026-10-20, after rc.2
       was checked twice, once by a scripted drive of the installed build and once by hand, from no written list. Today
       what a candidate must do before it is published lives in session notes, and two checks of one build cannot be
