@@ -237,6 +237,21 @@ test('a system that would throw at load fails validation instead', async () => {
     [],
   );
 
+  // ADR 0126: folding, leaving out what a mark says and writing answers are about listed elements. Fails if the check is
+  // removed (the first three), or a field is left out of the schema (every one: an unknown field).
+  for (const field of ['fold', 'omitMarked', 'answers']) {
+    assert.deepEqual(
+      await errorsFor(broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', stats: ['vigour'], [field]: true }] }))),
+      [`characterKinds[0].sheet: section "s" declares ${field} and lists no elements`],
+    );
+    assert.deepEqual(
+      await errorsFor(
+        broken((s) => (s.characterKinds[0]!.sheet = { sections: [{ id: 's', label: 'S', types: [s.characterKinds[0]!.elementTypes![0]!], [field]: true }] })),
+      ),
+      [],
+    );
+  }
+
   // ADR 0076: a section that leaves hidden elements out must list some, and the flag is a boolean. Fails if the check
   // is removed (the first), or `omitHidden` is left out of the schema (every one: an unknown field).
   assert.deepEqual(

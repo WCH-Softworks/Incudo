@@ -975,6 +975,25 @@ export interface SheetSectionDef {
    */
   omitHidden?: boolean;
   /**
+   * Fold what another listed element grants into it — ADR 0126: an element the section lists is not listed on its own
+   * when another element the same section lists reaches it by its own `<grant>`s, followed through any number of steps
+   * ("Martial Weapons" reaches "Martial Melee Weapons" and its nineteen weapons). It is carried on the granter as
+   * `includes`. Read off the elements' rules, never their names.
+   */
+  fold?: boolean;
+  /**
+   * Leave out a listed element a shown mark already says — ADR 0126: one whose every non-zero contribution is to the mark
+   * stat of a row the sheet shows with a mark ("Arcana +5 (proficient)" already says the Arcana proficiency).
+   */
+  omitMarked?: boolean;
+  /**
+   * Write a listed element with what its own selects chose — ADR 0126: "Fighting Style: Defense", "Ability Score
+   * Improvement: Constitution +1, Constitution +1". An answer the section also lists with nothing of its own to say is
+   * folded into its chooser, and a chooser with nothing of its own to say into the answers the section lists. What is
+   * left with nothing to say is written on one "Also" line at the end of the section.
+   */
+  answers?: boolean;
+  /**
    * A line the sheet writes under each element the section lists — ADR 0112: `text` with its `{{stat}}` placeholders
    * filled as a sheet line's are, shown when `showWhen` names a stat that is not zero (always when absent). The sheet's
    * words, not content's: 5e's held creature's actions say what its holder adds.

@@ -417,7 +417,13 @@ test('on the samples, what the sheet shows of the hints: chosen by gate level, f
       const shown = new Set(
         state.sheet.sections
           .filter((s) => s.id === def.id)
-          .flatMap((s) => [...s.elements.map((e) => e.elementId), ...(s.bag ?? []).map((e) => e.elementId)]),
+          .flatMap((s) => [
+            ...s.elements.map((e) => e.elementId),
+            ...(s.bag ?? []).map((e) => e.elementId),
+            // What a section folds into an entry or leaves out because a mark says it is still named there (ADR 0126).
+            ...s.elements.flatMap((e) => [...(e.includes ?? []), ...(e.answers ?? []).filter((a) => a.listed), ...(e.answering ? [e.answering] : [])].map((ref) => ref.elementId)),
+            ...(s.omitted ?? []).map((ref) => ref.elementId),
+          ]),
       );
       if (def.bag) {
         for (const entry of state.character.inventory ?? []) for (const a of entry.adorners ?? []) if (shown.has(entry.elementId)) shown.add(a.elementId);

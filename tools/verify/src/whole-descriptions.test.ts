@@ -97,7 +97,14 @@ test('every sample’s Descriptions part holds its describing sections’ descri
     const state = new CharacterBuilder(run.imported.character, run.system, run.elements).getState();
     const document = sheetDocument(state);
     const describing = [...document.sections, ...(document.companions?.creatures ?? []).flatMap((c) => c.sections)].filter((s) => s.describe);
-    const expected = new Set(describing.flatMap((s) => s.elements).filter((e) => plain(expandDescription(run.elements.get(e.elementId) ?? { id: e.elementId }, run.elements))).map((e) => e.elementId));
+    // What a section folded into an entry is described beside it (ADR 0126).
+    const named = describing.flatMap((s) => s.elements).flatMap((e) => [
+      ...(e.answering ? [e.answering] : []),
+      e,
+      ...(e.answers ?? []).filter((a) => a.listed),
+      ...(e.includes ?? []),
+    ]);
+    const expected = new Set(named.filter((e) => plain(expandDescription(run.elements.get(e.elementId) ?? { id: e.elementId }, run.elements))).map((e) => e.elementId));
     const got = (document.descriptions?.groups ?? []).flatMap((g) => g.entries.map((e) => e.elementId));
     assert.deepEqual(new Set(got), expected, sample.id);
     assert.equal(got.length, expected.size, `${sample.id}: each described once`);

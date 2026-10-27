@@ -9,12 +9,15 @@
 import { useMemo } from 'react';
 
 import {
+  ALSO_LABEL,
+  alsoText,
   attackAside,
   attackWarnings,
   bagEntryAside,
   bagEntryName,
   listedAside,
   listedName,
+  listedParts,
   listedUsage,
   MONEY_LABEL,
   PREREQUISITES_UNMET,
@@ -33,6 +36,8 @@ import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
  * lines, so an NPC's Creature section names the creature before its size, type and alignment.
  */
 export function SheetRows({ section }: { section: SheetSectionView }): React.JSX.Element {
+  const { entries, also } = listedParts(section);
+  const alsoLine = alsoText(also);
   return (
     <>
       {section.rows.length > 0 && (
@@ -65,9 +70,9 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
           ))}
         </ul>
       )}
-      {section.elements.length > 0 && (
+      {entries.length > 0 && (
         <ul className="sheet-elements">
-          {section.elements.map((element) => (
+          {entries.map((element) => (
             <ListedElement key={element.elementId} element={element} />
           ))}
         </ul>
@@ -99,6 +104,12 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
             </div>
           ))}
         </dl>
+      )}
+      {/* What the section lists with nothing to say, named once (ADR 0126). */}
+      {alsoLine !== undefined && (
+        <p className="sheet-also">
+          {ALSO_LABEL}: {alsoLine}
+        </p>
       )}
     </>
   );

@@ -1302,6 +1302,18 @@
           "type": "boolean",
           "description": "Leave out a listed element whose own sheet hints say not to show it (Aurora's <sheet display=\"false\">, ADR 0076). Content marks a feature that way when its effect is shown elsewhere or a choice beside it names it better, and also every race and class, which a header names: so a section that lists features declares it and one that names what a character is does not. The element is still held, derived and saved. Only meaningful beside types."
         },
+        "fold": {
+          "type": "boolean",
+          "description": "Fold what another listed element grants into it (ADR 0126): an element the section lists is not listed on its own when another element the same section lists reaches it by its own grants, through any number of steps (\"Martial Weapons\" reaches its nineteen weapons). It is carried on the granter as what it includes. Read off the elements' rules, never their names. Only meaningful beside types."
+        },
+        "omitMarked": {
+          "type": "boolean",
+          "description": "Leave out a listed element a shown mark already says (ADR 0126): one whose every non-zero contribution is to the mark stat of a row the sheet shows with a mark (\"Arcana +5 (proficient)\" already says the Arcana proficiency). Only meaningful beside types."
+        },
+        "answers": {
+          "type": "boolean",
+          "description": "Write a listed element with what its own selects chose (ADR 0126): \"Fighting Style: Defense\". An answer the section also lists with nothing of its own to say is folded into its chooser, and a chooser with nothing to say into the answers the section lists. What is left with nothing to say is written on one \"Also\" line at the end of the section. Only meaningful beside types."
+        },
         "trackProgress": {
           "type": "boolean",
           "description": "Write a listed element a track is rooted on with that track's count (ADR 0079): a player character's classes read \"Paladin 3\", \"Sorcerer 3\". The count is the stat the progression's trackStatPattern names, as the derivation publishes it, and only when that element contributed it. Only meaningful beside types, on a kind whose progression names a trackStatPattern; not in a creature's stat block."

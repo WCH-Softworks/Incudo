@@ -42,13 +42,21 @@ export function sheetDescriptions(
   const add = (label: string, section: SheetSectionView): void => {
     if (!section.describe) return;
     const entries: SheetDescriptionEntry[] = [];
-    for (const listed of section.elements) {
+    // What the section folded into an entry (ADR 0126) is described beside it: the chooser it answers, then the entry,
+    // then the answers and what it includes that the section listed on its own before.
+    const named = section.elements.flatMap((listed) => [
+      ...(listed.answering ? [listed.answering] : []),
+      { elementId: listed.elementId, name: listed.name },
+      ...(listed.answers ?? []).filter((answer) => answer.listed),
+      ...(listed.includes ?? []),
+    ]);
+    for (const listed of named) {
       if (seen.has(listed.elementId)) continue;
       const element = elements.get(listed.elementId);
       const html = element ? expandDescription(element, elements).trim() : '';
       if (!html) continue;
       seen.add(listed.elementId);
-      entries.push({ elementId: listed.elementId, name: listed.name, html });
+      entries.push({ elementId: listed.elementId, name: element?.name ?? listed.name, html });
     }
     if (entries.length) groups.push({ label, entries });
   };

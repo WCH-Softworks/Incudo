@@ -577,6 +577,11 @@ ul.problems li.error {
   flex-direction: column;
   margin-top: 6px;
 }
+/* What a section lists with nothing to say, named once at its end (ADR 0126). */
+.sheet-also {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
 
 /* The inventory editor (ADR 0098): one card per entry, its controls on the head line. */
 .inventory-rows {

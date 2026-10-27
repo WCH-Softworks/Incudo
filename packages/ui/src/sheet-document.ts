@@ -28,9 +28,47 @@ export const PREREQUISITES_UNMET = 'prerequisites not met';
  * the count of the track it roots when its section writes one, "Paladin 3" (ADR 0079). The pane and every export name
  * an element this way.
  */
-export function listedName(element: Pick<SheetListedElement, 'name' | 'sheetName' | 'progress'>): string {
-  const name = element.sheetName ?? element.name;
-  return element.progress !== undefined ? `${name} ${element.progress}` : name;
+export function listedName(element: Pick<SheetListedElement, 'name' | 'sheetName' | 'progress' | 'answers' | 'answering'>): string {
+  const own = element.sheetName ?? element.name;
+  // Written with what chose it or what it chose (ADR 0126): "Fighting Style: Defense", "Favored Enemy: Undead".
+  const name = element.answering ? `${element.answering.name}: ${own}` : own;
+  const counted = element.progress !== undefined ? `${name} ${element.progress}` : name;
+  return element.answers?.length ? `${counted}: ${element.answers.map((answer) => answer.name).join(', ')}` : counted;
+}
+
+/**
+ * Whether a listed element is written on its section's "Also" line rather than as an entry of its own (ADR 0126): its
+ * section says so (`also`), and the element has nothing but its name to show, no sheet line, usage, action, answer, mark
+ * or note. Every renderer asks this, so the pane, the export and the print agree.
+ */
+export function listedIsNameOnly(section: Pick<SheetSectionView, 'also'>, element: SheetListedElement): boolean {
+  return (
+    section.also === true &&
+    element.text === undefined &&
+    element.usage === undefined &&
+    element.action === undefined &&
+    !element.answers?.length &&
+    element.answering === undefined &&
+    element.note === undefined &&
+    element.prerequisitesUnmet === undefined &&
+    listedAside(element) === undefined
+  );
+}
+
+/** A section's listed elements split into those written as entries and those named on its "Also" line (ADR 0126). */
+export function listedParts(section: Pick<SheetSectionView, 'also' | 'elements'>): { entries: SheetListedElement[]; also: SheetListedElement[] } {
+  const entries: SheetListedElement[] = [];
+  const also: SheetListedElement[] = [];
+  for (const element of section.elements) (listedIsNameOnly(section, element) ? also : entries).push(element);
+  return { entries, also };
+}
+
+/** What a section's "Also" line is headed with. */
+export const ALSO_LABEL = 'Also';
+
+/** The "Also" line's names, "Researcher, Military Rank", or nothing. */
+export function alsoText(also: readonly SheetListedElement[]): string | undefined {
+  return also.length ? also.map((element) => listedName(element)).join(', ') : undefined;
 }
 
 /** A listed element's dice as a sheet writes them (ADR 0079), "3d10", or nothing. */

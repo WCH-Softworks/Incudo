@@ -64,12 +64,14 @@ import {
   expandDescription,
   htmlToMarkdown,
   htmlToRuns,
+  listedIsNameOnly,
   listedName,
   newCharacterOfKind,
   openSelfClosingTags,
   packCharacter,
   runsText,
   sheetDocument,
+  sheetView,
   sheetMarkdown,
   type BuilderState,
   type SheetDocument,
@@ -95,6 +97,34 @@ function drawn(state: BuilderState): unknown {
   };
 }
 
+/**
+ * Every element a section listed before folding, leaving out what a mark says and writing answers (ADR 0126), that the
+ * section now neither lists nor names: as an entry, on its "Also" line, in what an entry includes, in an entry's answers or
+ * what it answers, or among what the section left out.
+ */
+function lostElements(state: BuilderState): string[] {
+  const plain = {
+    ...state.kind,
+    sheet: { ...state.kind.sheet, sections: state.kind.sheet.sections.map(({ fold, omitMarked, answers, ...section }) => section) },
+  };
+  const before = sheetView(state.derived, plain, new Set(), (id) => state.derived.elements.find((e) => e.id === id));
+  const lost: string[] = [];
+  for (const section of before.sections) {
+    const after = state.sheet.sections.find((s) => s.id === section.id);
+    const named = new Set([
+      ...(after?.omitted ?? []).map((ref) => ref.elementId),
+      ...(after?.elements ?? []).flatMap((e) => [
+        e.elementId,
+        ...(e.includes ?? []).map((ref) => ref.elementId),
+        ...(e.answers ?? []).map((ref) => ref.elementId),
+        ...(e.answering ? [e.answering.elementId] : []),
+      ]),
+    ]);
+    for (const e of section.elements) if (!named.has(e.elementId)) lost.push(`${section.label}: ${e.name}`);
+  }
+  return lost;
+}
+
 /** The text export of a builder's state. */
 const exported = (state: BuilderState): string => sheetMarkdown(sheetDocument(state));
 
@@ -118,9 +148,15 @@ function markdownProblems(document: SheetDocument, markdown: string): string[] {
   const section = (s: SheetSectionView, level: number): void => {
     if (!lines.has(`${'#'.repeat(level)} ${e(s.label)}`)) problems.push(`no heading for ${s.label}`);
     for (const row of s.rows) if (![...lines].some((l) => l.startsWith(`- ${e(row.label)}: ${e(row.value)}`))) problems.push(`no row ${row.label}`);
-    // A listed element is written by the name a sheet gives it, in bold when content writes it a sheet line (ADR 0076).
+    // A listed element is written by the name a sheet gives it, in bold when content writes it a sheet line (ADR 0076);
+    // one with nothing to say is named on its section's "Also" line (ADR 0126).
+    const alsoLines = [...lines].filter((l) => l.startsWith(`- ${e('Also')}: `));
     for (const el of s.elements) {
       const name = e(listedName(el));
+      if (listedIsNameOnly(s, el)) {
+        if (!alsoLines.some((l) => l.includes(name))) problems.push(`no "Also" for ${el.name}`);
+        continue;
+      }
       if (![...lines].some((l) => l.startsWith(`- ${name}`) || l.startsWith(`- **${name}**`))) problems.push(`no element ${el.name}`);
     }
     for (const p of s.printed) if (!lines.has(`- ${e(p.label)}: ${e(p.text)}`)) problems.push(`no printed ${p.label}`);
@@ -310,6 +346,7 @@ test('the samples\' sheets: what they hold, what is markup, what is personal, th
     // The export: what the document holds, written right, the same with no source, and none of the prose it leaves out.
     const markdown = exported(state);
     problems.push(...markdownProblems(sheetDocument(state), markdown).map((p) => `${sample.id} ${p}`));
+    problems.push(...lostElements(state).map((p) => `${sample.id} lost ${p}`));
     if (exported(offline) !== markdown) offlineExports.push(sample.id);
     // What the user wrote under a field the kind declares is on the sheet word for word (ADR 0092); what an import put
     // under any other key, prose that is not content's own words, is not.

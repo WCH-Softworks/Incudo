@@ -132,6 +132,28 @@ export interface SheetListedElement {
    * class"), for an addition of a type the kind casts through one (ADR 0097). Absent for anything else.
    */
   cast?: string;
+  /**
+   * What it covers that the section would otherwise list on its own (`fold`, ADR 0126): each element it reaches by its own
+   * grants, by the name the section would have listed it under, in the section's order. "Martial Weapons" includes its
+   * nineteen weapons. A renderer may show them on demand; the text export does not write them.
+   */
+  includes?: SheetListedRef[];
+  /**
+   * What its own selects chose (`answers`, ADR 0126), each named as the sheet names it: "Fighting Style" answered
+   * "Defense". `listed` when the section listed the answer on its own before folding it here.
+   */
+  answers?: Array<SheetListedRef & { listed?: true }>;
+  /**
+   * The element whose select chose it, when that element had nothing of its own to say and is folded into its answers
+   * (`answers`, ADR 0126): "Defense" answers "Fighting Style", written "Fighting Style: Defense".
+   */
+  answering?: SheetListedRef;
+}
+
+/** An element named where another stands for it (ADR 0126). */
+export interface SheetListedRef {
+  elementId: ElementId;
+  name: string;
 }
 
 /**
@@ -204,6 +226,13 @@ export interface SheetSectionView {
   bag?: SheetBagEntry[];
   /** The coins held, most worth first, when the section lists the bag and the purse holds any. */
   purse?: PurseRow[];
+  /**
+   * The section writes what it lists with nothing to say on one "Also" line at its end (`answers`, ADR 0126):
+   * `listedIsNameOnly` decides which.
+   */
+  also?: true;
+  /** What the section left out because a shown mark already says it (`omitMarked`, ADR 0126), in the section's order. */
+  omitted?: SheetListedRef[];
 }
 
 /** The character's own sheet: its kind and its sections, empty ones left out. */
@@ -246,6 +275,11 @@ export interface SheetSource {
   purse?: readonly PurseRow[];
   /** Every element the bag's entries and their adornments name: what a section listing the bag does not list again. */
   bagIds?: readonly ElementId[];
+  /**
+   * What each held element's own selects chose and counts (`<element>/select:` records, ADR 0096), for a section that
+   * writes answers (ADR 0126). A creature's scope has none.
+   */
+  answers?: ReadonlyMap<ElementId, readonly ElementId[]>;
 }
 
 /**
@@ -457,6 +491,9 @@ export function sheetSections(
   const resolved = (key: string): ResolvedStat | undefined => source.stats.get(key.toLowerCase());
   const reader: SheetReader = { statValue: (key) => resolved(key)?.value, elements: source.elements };
   const blocks = collectDeclaredBlocks(source.elements);
+  const heldById = new Map(source.elements.map((e) => [e.id, e]));
+  // Which section each view came from, for the passes over every view below.
+  const defOf = new Map<SheetSectionView, SheetSectionDef>();
 
   const views: SheetSectionView[] = [];
   // Each row and the stat its mark reads when one is shown, for what moved it (below, once every section is drawn).
@@ -525,6 +562,7 @@ export function sheetSections(
           ...(note !== undefined ? { note } : {}),
         };
       });
+      if (section.fold) foldGrants(elements, (id) => heldById.get(id) ?? source.lookup?.(id));
       const attacks = section.attacks ? (source.attacks ?? []).map(sheetAttack) : [];
       if (!rows.length && !rendering.printed.length && !elements.length && !attacks.length && !bag.length && !purse.length) continue;
       views.push({
@@ -534,6 +572,7 @@ export function sheetSections(
         ...(rendering.blockName !== undefined ? { block: rendering.blockName } : {}),
         ...(rendering.description !== undefined ? { description: rendering.description } : {}),
         ...(section.describe ? { describe: true as const } : {}),
+        ...(section.answers ? { also: true as const } : {}),
         rows,
         printed: rendering.printed,
         elements,
@@ -541,10 +580,155 @@ export function sheetSections(
         ...(bag.length ? { bag } : {}),
         ...(purse.length ? { purse } : {}),
       });
+      defOf.set(views[views.length - 1]!, section);
     }
   }
+  omitMarkedElements(views, defOf, marked, source);
+  foldAnswers(views, defOf, source, (id) => heldById.get(id) ?? source.lookup?.(id));
   nameWhatMovedRows(views, marked, sections, source, stats);
   return views;
+}
+
+/** What a listed element is called where another stands for it: the sheet's shorter name, else its name. */
+function refName(element: Pick<SheetListedElement, 'name' | 'sheetName'>): string {
+  return element.sheetName ?? element.name;
+}
+
+/**
+ * Fold each listed element another listed element reaches by its own grants into that one (`fold`, ADR 0126), in place.
+ * Reached through any number of steps, through elements the section does not list as well. Each folded element goes on
+ * the first kept element, in the section's order, that reaches it. When elements only reach one another (a circle), the
+ * first of them is kept, so nothing listed is lost.
+ */
+function foldGrants(elements: SheetListedElement[], lookup: (id: ElementId) => Element | undefined): void {
+  const listed = new Set(elements.map((e) => e.elementId));
+  const reach = new Map<ElementId, Set<ElementId>>();
+  for (const entry of elements) {
+    const found = new Set<ElementId>();
+    const seen = new Set<ElementId>([entry.elementId]);
+    const walk = (element: Element | undefined): void => {
+      for (const rule of element?.rules ?? []) {
+        if (rule.kind !== 'grant' || seen.has(rule.id)) continue;
+        seen.add(rule.id);
+        if (listed.has(rule.id)) found.add(rule.id);
+        walk(lookup(rule.id));
+      }
+    };
+    walk(lookup(entry.elementId));
+    reach.set(entry.elementId, found);
+  }
+  const reachedByOther = new Set([...reach.values()].flatMap((ids) => [...ids]));
+  const kept = new Set(elements.filter((e) => !reachedByOther.has(e.elementId)).map((e) => e.elementId));
+  for (;;) {
+    const covered = new Set([...kept].flatMap((id) => [...(reach.get(id) ?? [])]));
+    const orphan = elements.find((e) => !kept.has(e.elementId) && !covered.has(e.elementId));
+    if (!orphan) break;
+    kept.add(orphan.elementId);
+  }
+  if (kept.size === elements.length) return;
+  const placed = new Set<ElementId>();
+  for (const entry of elements) {
+    if (!kept.has(entry.elementId)) continue;
+    const reached = reach.get(entry.elementId)!;
+    const includes = elements.filter((e) => !kept.has(e.elementId) && !placed.has(e.elementId) && reached.has(e.elementId));
+    for (const e of includes) placed.add(e.elementId);
+    if (includes.length) entry.includes = includes.map((e) => ({ elementId: e.elementId, name: refName(e) }));
+  }
+  const left = elements.filter((e) => kept.has(e.elementId));
+  elements.splice(0, elements.length, ...left);
+}
+
+/**
+ * Leave out of each section declaring `omitMarked` what a shown mark already says (ADR 0126): a listed element whose every
+ * non-zero contribution is to the mark stat of a row this sheet shows with a mark. One contributing to nothing stays.
+ */
+function omitMarkedElements(
+  views: readonly SheetSectionView[],
+  defOf: ReadonlyMap<SheetSectionView, SheetSectionDef>,
+  marked: ReadonlyMap<SheetRow, string | undefined>,
+  source: SheetSource,
+): void {
+  if (![...defOf.values()].some((def) => def.omitMarked)) return;
+  const markStats = new Set([...marked.values()].flatMap((key) => (key ? [key.toLowerCase()] : [])));
+  const moves = new Map<ElementId, Set<string>>();
+  for (const [key, stat] of source.stats) {
+    for (const c of stat.contributions ?? []) {
+      if (c.value === 0) continue;
+      const into = moves.get(c.from) ?? new Set<string>();
+      into.add(key.toLowerCase());
+      moves.set(c.from, into);
+    }
+  }
+  const said = (e: SheetListedElement): boolean => {
+    const stats = moves.get(e.elementId);
+    return stats !== undefined && stats.size > 0 && [...stats].every((stat) => markStats.has(stat));
+  };
+  for (const view of views) {
+    if (!defOf.get(view)?.omitMarked) continue;
+    const omitted = view.elements.filter(said);
+    if (!omitted.length) continue;
+    view.omitted = omitted.map((e) => ({ elementId: e.elementId, name: refName(e) }));
+    view.elements = view.elements.filter((e) => !said(e));
+  }
+}
+
+/** Whether a listed element has a line of its own: sheet text, a usage or an action (ADR 0076). */
+function saysSomething(e: SheetListedElement): boolean {
+  return e.text !== undefined || e.usage !== undefined || e.action !== undefined;
+}
+
+/**
+ * Write each listed element of a section declaring `answers` with what its own selects chose (ADR 0126), in place. For
+ * each answer of an element:
+ * - listed in the same section with no line of its own: folded into the chooser ("Favored Enemy: Undead");
+ * - listed in the same section with a line of its own, when the chooser has none: the answer is written as the
+ *   chooser's ("Fighting Style: Defense"), and the chooser goes once nothing else is named under it;
+ * - listed in no section of this sheet, when the chooser has no line of its own: named under it ("Ability Score
+ *   Improvement: Constitution +1, Constitution +1");
+ * - otherwise (listed in another section, or a chooser with its own line) left as it is.
+ */
+function foldAnswers(
+  views: readonly SheetSectionView[],
+  defOf: ReadonlyMap<SheetSectionView, SheetSectionDef>,
+  source: SheetSource,
+  lookup: (id: ElementId) => Element | undefined,
+): void {
+  if (!source.answers?.size) return;
+  const listedAnywhere = new Set(views.flatMap((view) => view.elements.map((e) => e.elementId)));
+  for (const view of views) {
+    if (!defOf.get(view)?.answers) continue;
+    const here = new Map(view.elements.map((e) => [e.elementId, e]));
+    const removed = new Set<SheetListedElement>();
+    for (const chooser of view.elements) {
+      if (removed.has(chooser)) continue;
+      const chosen = source.answers.get(chooser.elementId) ?? [];
+      if (!chosen.length) continue;
+      const quiet = !saysSomething(chooser);
+      const answers: NonNullable<SheetListedElement['answers']> = [];
+      const answering: SheetListedElement[] = [];
+      const handled = new Set<ElementId>();
+      for (const id of chosen) {
+        const entry = here.get(id);
+        if (entry) {
+          if (entry === chooser || handled.has(id) || removed.has(entry)) continue;
+          handled.add(id);
+          if (!saysSomething(entry)) {
+            answers.push({ elementId: id, name: refName(entry), listed: true });
+            removed.add(entry);
+          } else if (quiet) {
+            answering.push(entry);
+          }
+        } else if (quiet && !listedAnywhere.has(id)) {
+          const element = lookup(id);
+          if (element) answers.push({ elementId: id, name: element.sheet?.alt || element.sheet?.name || element.name });
+        }
+      }
+      if (answers.length) chooser.answers = [...(chooser.answers ?? []), ...answers];
+      for (const entry of answering) entry.answering = { elementId: chooser.elementId, name: refName(chooser) };
+      if (answering.length && !chooser.answers?.length) removed.add(chooser);
+    }
+    if (removed.size) view.elements = view.elements.filter((e) => !removed.has(e));
+  }
 }
 
 /**
@@ -601,9 +785,10 @@ export function sheetView(
 ): SheetView {
   const cast = additionCasting(derived, kind);
   const bag = kind.sheet.sections.some((s) => s.bag) ? sheetBag(derived, kind, lookup) : undefined;
+  const answers = kind.sheet.sections.some((s) => s.answers) ? countedAnswers(derived) : undefined;
   const sections = sheetSections(
     kind.sheet.sections,
-    { ...derived, ...(lookup ? { lookup } : {}), ...(cast.size ? { cast } : {}), ...(bag ?? {}) },
+    { ...derived, ...(lookup ? { lookup } : {}), ...(cast.size ? { cast } : {}), ...(bag ?? {}), ...(answers?.size ? { answers } : {}) },
     { stats: kind.stats, blockStats: kind.blockStats, progression: kind.progression },
     derived.elements,
     unmet,
@@ -613,6 +798,26 @@ export function sheetView(
     sections,
     unfilled: unfilledIn(sections),
   };
+}
+
+/**
+ * What each held element's own selects chose (ADR 0126): every recorded pick under `<element>/select:` that counts (ADR
+ * 0096) and names a held element, in record order, a repeat kept ("Constitution +1" twice).
+ */
+export function countedAnswers(derived: Pick<DerivedCharacter, 'character' | 'elementIds' | 'uncounted'>): Map<ElementId, ElementId[]> {
+  const uncounted = new Set(derived.uncounted.map((pick) => `${pick.ruleKey}\u0000${pick.position}`));
+  const out = new Map<ElementId, ElementId[]>();
+  for (const choice of derived.character.choices) {
+    const at = choice.ruleKey.indexOf('/select:');
+    if (at < 1) continue;
+    const owner = choice.ruleKey.slice(0, at);
+    if (!derived.elementIds.has(owner)) continue;
+    choice.elementIds.forEach((id, position) => {
+      if (uncounted.has(`${choice.ruleKey}\u0000${position}`) || !derived.elementIds.has(id)) return;
+      out.set(owner, [...(out.get(owner) ?? []), id]);
+    });
+  }
+  return out;
 }
 
 /**

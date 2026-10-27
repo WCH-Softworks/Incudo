@@ -14,8 +14,11 @@
 
 import { escapeLineStart, escapeMarkdown, htmlToMarkdown } from './html-markdown.ts';
 import {
+  ALSO_LABEL,
+  alsoText,
   attackHead,
   bagEntryHead,
+  listedParts,
   listedHead,
   listedName,
   listedUsage,
@@ -116,21 +119,24 @@ export function sheetMarkdown(document: SheetDocument): string {
 
 /**
  * One section's list items, escaped: its rows, then its attacks (ADR 0093), "**Longsword**: +6, 1d8+3 slashing (…)", then the
- * elements it lists, then its bag and purse (ADR 0098), "Arrows ×20", "Money: 15 gp", then its printed lines, as the pane
- * draws them.
+ * elements it lists, then its bag and purse (ADR 0098), "Arrows ×20", "Money: 15 gp", then its printed lines, then what
+ * it lists with nothing to say, "Also: Researcher" (ADR 0126), as the pane draws them.
  */
 function sectionItems(section: SheetSectionView): string[] {
   const e = escapeMarkdown;
+  const { entries, also } = listedParts(section);
+  const alsoLine = alsoText(also);
   return [
     ...section.rows.map((row) => {
       const aside = rowAside(row);
       return `${e(row.label)}: ${e(row.value)}${aside !== undefined ? ` (${e(aside)})` : ''}`;
     }),
     ...(section.attacks ?? []).map((attack) => attackHead(attack, `**${e(attack.name)}**`, e)),
-    ...section.elements.map(elementItem),
+    ...entries.map(elementItem),
     ...(section.bag ?? []).map((entry) => e(bagEntryHead(entry))),
     ...(section.purse ? [`${e(MONEY_LABEL)}: ${e(purseText(section.purse))}`] : []),
     ...section.printed.map((line) => `${e(line.label)}: ${e(line.text)}`),
+    ...(alsoLine !== undefined ? [`${e(ALSO_LABEL)}: ${e(alsoLine)}`] : []),
   ];
 }
 

@@ -12,8 +12,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import {
   htmlToBlocks,
   htmlToRuns,
+  ALSO_LABEL,
+  alsoText,
   listedAside,
   listedName,
+  listedParts,
   listedUsage,
   PREREQUISITES_UNMET,
   rowAside,
@@ -124,6 +127,8 @@ export function SheetView({ document }: { document: SheetDocument }) {
 
 function Section({ section, level, palette }: { section: SheetSectionView; level: number; palette: Palette }) {
   const text = { color: palette.text };
+  const { entries, also } = listedParts(section);
+  const alsoLine = alsoText(also);
   return (
     <View style={[styles.section, { borderColor: palette.border }]}>
       <Heading text={section.label} level={level} palette={palette} />
@@ -150,7 +155,7 @@ function Section({ section, level, palette }: { section: SheetSectionView; level
           ))}
         </Text>
       ))}
-      {section.elements.map((element) => (
+      {entries.map((element) => (
         <Listed key={element.elementId} element={element} palette={palette} />
       ))}
       {(section.bag ?? []).map((entry) => (
@@ -173,6 +178,12 @@ function Section({ section, level, palette }: { section: SheetSectionView; level
           {line.text}
         </Text>
       ))}
+      {alsoLine !== undefined ? (
+        <Text style={[styles.body, text]} selectable>
+          <Text style={styles.bold}>{ALSO_LABEL}: </Text>
+          {alsoLine}
+        </Text>
+      ) : null}
     </View>
   );
 }

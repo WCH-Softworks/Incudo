@@ -312,6 +312,9 @@ function checkCharacterReferences(character: Character, system?: GameSystem): Sc
  * so this can assume the shape is right and worry only about what it points at.
  */
 /** Identified arrays whose duplicates a check below already refuses, in its own words. */
+/** The sheet section fields that are about the elements a section lists (ADR 0126). */
+const LISTING_FIELDS = ["fold", "omitMarked", "answers"] as const;
+
 const CHECKED_ELSEWHERE: ReadonlySet<string> = new Set([
   'characterKinds',
   'characterKinds[].buildSteps',
@@ -802,6 +805,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
         if (section.omitHidden && !section.types?.length) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" leaves out hidden elements and lists none` });
         }
+        // Folding, leaving out what a mark says and writing answers are about listed elements (ADR 0126).
+        for (const field of LISTING_FIELDS) {
+          if (section[field] && !section.types?.length) {
+            errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" declares ${field} and lists no elements` });
+          }
+        }
         // A creature's scope has no tracks of its own to count (ADR 0079).
         if (section.trackProgress) {
           errors.push({ path: `${where}.companions.sheet`, message: `the section "${section.id}" writes a track's count, which a creature's stat block has none of` });
@@ -891,6 +900,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
       // Leaving hidden elements out of a section that lists none says nothing (ADR 0076).
       if (section.omitHidden && !section.types?.length) {
         errors.push({ path: `${where}.sheet`, message: `section "${section.id}" leaves out hidden elements and lists none` });
+      }
+      // Folding, leaving out what a mark says and writing answers are about listed elements (ADR 0126).
+      for (const field of LISTING_FIELDS) {
+        if (section[field] && !section.types?.length) {
+          errors.push({ path: `${where}.sheet`, message: `section "${section.id}" declares ${field} and lists no elements` });
+        }
       }
       // A track's count is read where the progression publishes it (ADR 0079): beside listed elements, and only on a kind
       // whose progression names the stat.
