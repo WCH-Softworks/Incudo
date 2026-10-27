@@ -1,6 +1,6 @@
 # 0126 — The Sheet is laid out as a page, play state sits where its number is, and what another entry covers is folded
 
-**Status:** Proposed · 2026-10-19 · answers the UX pass's finding F8 ("the Sheet opens on play trackers, not on the
+**Status:** Accepted · 2026-10-27 (proposed 2026-10-19; the maintainer's answers to the open decisions are recorded at the end) · answers the UX pass's finding F8 ("the Sheet opens on play trackers, not on the
 character") and the maintainer's call that the Sheet needs a full revamp · would bring ROADMAP Beyond 1.0's "A laid-out
 sheet" forward and replace it · would amend
 [0062](./0062-an-npc-s-other-speeds-saves-and-skills-are-its-creature-s-rules-and-its-senses-are-what-it-prints.md),
@@ -21,8 +21,7 @@ desktop shows play) · builds on [0009](./0009-character-kinds.md), [0011](./001
 **format:** system format additions on a kind's `sheet` and on a sheet section (all optional, `formatVersion` stays 1); no
 character format change · **mockups:** [0126-sheet-mockups.html](./0126-sheet-mockups.html), plain HTML and CSS
 
-Nothing here is built. It is a plan for the maintainer to decide on: the decisions are what this ADR proposes, the open
-questions at the end are the maintainer's, and the build steps are in ROADMAP Phase 9.
+Nothing here is built yet. The open decisions were answered on 2026-10-27 (below); the build steps are in ROADMAP Phase 9.
 
 ## Context
 
@@ -362,3 +361,22 @@ section heights in the browser build at 1280 × 800 (Sample 08, Sample 07, an NP
 proficiency, feature and section counts from `sheetDocument` built in Node over all thirty; the group proficiencies' grants
 read from the corpus (23 elements). Build step 1 commits the Node half as a report-only test so that the figures can be
 re-run.
+
+## The maintainer's answers (2026-10-27)
+
+1. **Play state**: in place, as decision 8 proposes. The Play panel goes.
+2. **Section explanations**: on screen only, as an "i" beside the section's name; left out of print, the PDF and the text
+   export.
+3. **Proficiencies**: fold and leave out what a row already marks now; group by kind later, from a category the conversion
+   (ADR 0119) writes.
+4. **Tabs**: tabs on screen; print and export write everything in order.
+5. **A feature with nothing to say**: an "Also:" line.
+6. **Worn & Wielded**: folded into Inventory as equipped marks and the attunement line; its "none" rows go.
+7. **Before or after 1.0**: in 1.0 (a Phase 9 item; the maintainer's call that 1.0 is the desktop release).
+8. **The spell table's facts**: all six (casting time, range, duration, components, concentration, ritual).
+9. **A stat block's ability table**: both shapes, chosen by a radio button. In the maintainer's words, "make it a choice
+   based on source availability". *Not yet settled:* whether the default follows the creature's source (2024 shape for a
+   2025 creature, 2014 shape otherwise) and whether the choice is remembered per user (as print options are) or per
+   character. To be asked before step 7.
+10. **How a mark is drawn**: a filled dot for proficient, two for expertise, on screen; the words in print, the export and
+    for screen readers.
