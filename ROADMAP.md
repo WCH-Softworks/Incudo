@@ -2116,7 +2116,12 @@ written on a character can be moved into the user's library without being typed 
 
 ## Phase 9 — 1.0 🟡
 
-- [ ] **Release pipeline: main builds the installers and puts them on GitHub.** Written 2026-10-07 as
+> **The maintainer's calls, 2026-10-27:** 1.0 is the **desktop** release, and it ships **unsigned** (a code-signing
+> certificate costs too much to make sense now; signing moved to Beyond 1.0's "1.x — macOS, Linux and iOS"). The phone's
+> release, and its half of the drive below, come after the desktop 1.0 (Beyond 1.0's "1.0.x — The phone app on Google
+> Play"). No more release candidates until every item here is ticked.
+
+- [x] **Release pipeline: main builds the installers and puts them on GitHub.** Written 2026-10-07 as
       `.github/workflows/release.yml`, for the first public release candidate, to the shape below; the release it
       makes is a draft the maintainer publishes. Ticked when a real tag has produced installers that were downloaded
       and installed. Until then `ci.yml` (typecheck, test,
@@ -2339,8 +2344,9 @@ written on a character can be moved into the user's library without being typed 
         choices, and the overlay's three bag proxies are imported as what they stand for (a score adjustment, a language
         added). `equip`, `takenOnBuild` and `hiddenSetter` are gone; beta saves holding them in the bag are not upgraded
         (the maintainer's call). The oracle is identical; driven in the browser build.
-- [ ] Signed desktop installer for Windows; macOS and Linux are after 1.0, and the phone's store is the first item after
-      1.0 (Beyond 1.0, below)
+- ~~Signed desktop installer for Windows~~ — **not for 1.0** (the maintainer, 2026-10-27: too expensive to make sense
+  now). 1.0's Windows installer is unsigned, and its release notes say so, as the candidates' did. Moved to Beyond 1.0's
+  "1.x — macOS, Linux and iOS" with the other platforms' signing.
 - [ ] Docs site, contribution guide, issue templates. *As of 2026-10-15:* the contribution guide exists
       (`CONTRIBUTING.md`); there is no docs site, and `.github/` holds no issue templates.
 - [ ] `docs/LICENSING.md` complete for every shipped system. *Found 2026-10-15, reviewing readiness:* two things are
@@ -2419,7 +2425,9 @@ written on a character can be moved into the user's library without being typed 
       Ten open decisions are the maintainer's, listed at the end of the ADR: where play lives, the section explanations,
       grouping proficiencies, tabs or one page, text-less features, Worn & Wielded, before or after 1.0, the spell table's
       columns, the stat block's ability table, and how a mark is drawn.
-- [ ] **Drive everything in the Tauri window and on the phone before 1.0.** Raised 2026-10-11, last on purpose. Many
+- [ ] **Drive everything in the Tauri window before 1.0** *(the phone half moved after the desktop 1.0, with the phone's
+      release: the maintainer, 2026-10-27; what is left here is the window, for whatever changes before 1.0).* Raised
+      2026-10-11, last on purpose. Many
       features were driven only in the browser build (CLAUDE.md says "Driven in the browser build only" fifteen times),
       and the first feature driven in both shells afterwards found two bugs no test and no browser drive could see: the
       Tauri window's dialog plugin makes `window.confirm` async, so a Remove asked nothing, and the phone's number fields
@@ -2470,7 +2478,10 @@ it needs, before anything is decided:
   run on yet.
 An ADR first. Not iOS: that waits for the maintainer's environment, as macOS does.
 - **Real phones are driven here** (the maintainer's call, 2026-10-12): every feature walked on at least one real Android
-  phone, right before the listing. Before 1.0 the phone is driven on the emulator only (Phase 9's drive item).
+  phone, right before the listing.
+- **The emulator drive moved here too** (the maintainer, 2026-10-27: the phone's release is after the desktop 1.0): every
+  user-visible feature walked in the phone's development build on the emulator, as Phase 9's drive item describes, before
+  the real phone.
 
 ### 1.x — macOS, Linux and iOS
 After 1.0, by the maintainer's call (2026-10-12): none of the three has an environment to run on yet, and testing on them
@@ -2485,8 +2496,9 @@ in this file and the ADRs is an open question of this section, not a gap in its 
   command may do nothing. On Linux wry's `print()` opens GTK's print dialog; whether `window.print()` does the same in
   WebKitGTK is unseen. What settles it: pressing "Print sheet…" and Ctrl+P (⌘P) in the window on each, and, where it does
   nothing, printing through a Tauri command that calls `print()` instead. Neither platform has run any of ADR 0077.
-- **Signed installers for macOS and Linux.** The release workflow builds them (unsigned, never installed); Phase 9 signs
-  the Windows one.
+- **Signed installers, Windows included.** The release workflow builds every platform's unsigned (macOS's never
+  installed). 1.0 ships the Windows installer unsigned too (the maintainer, 2026-10-27: a certificate is too expensive to
+  make sense now); signing any of them waits until it does.
 - **The phone app on iOS**: a build, signing, and the App Store, after the Google Play listing has shown what a store needs.
 
 ### 1.x — A laid-out sheet
