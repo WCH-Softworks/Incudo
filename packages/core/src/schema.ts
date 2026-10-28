@@ -338,9 +338,17 @@ function sheetLayoutErrors(sheet: SheetLayoutDef, where: string): SchemaError[] 
         errors.push({ path: `${where}.sections`, message: `section "${section.id}" names a tab and goes in the ${section.place === 'head' ? 'head band' : 'side column'}` });
       }
     }
+    if (section.coveredByPrint !== undefined && !sheet.sections.some((s) => (s.printed ?? []).some((line) => line.stat?.toLowerCase() === section.coveredByPrint!.toLowerCase()))) {
+      errors.push({ path: `${where}.sections`, message: `section "${section.id}" is left out when the print of "${section.coveredByPrint}" is shown, and no printed line of this sheet prints it` });
+    }
     if (section.under !== undefined && (section.under === section.id || !ids.has(section.under))) {
       errors.push({ path: `${where}.sections`, message: `section "${section.id}" is drawn under "${section.under}", which is not another section of this sheet` });
     }
+  }
+  // A stat block names the sections it draws its ability scores from, and the one whose elements name their book.
+  const block = sheet.statBlock;
+  for (const id of block ? [block.abilities, block.saves, block.wide?.section] : []) {
+    if (id !== undefined && !ids.has(id)) errors.push({ path: `${where}.statBlock`, message: `names the section "${id}", which this sheet does not have` });
   }
   return errors;
 }

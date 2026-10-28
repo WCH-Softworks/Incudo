@@ -871,17 +871,19 @@
         }
       },
       "sheet": {
+        "layout": "statBlock",
+        "statBlock": { "abilities": "abilities", "saves": "saves", "wide": { "section": "creature", "sources": ["Monster Manual (2025)", "Player’s Handbook (2024)", "Dungeon Master’s Guide (2024)"] } },
         "sections": [
-          { "id": "creature", "label": "Creature", "types": ["Creature", "Companion", "Race", "Sub Race", "Race Variant", "Size"],
+          { "id": "creature", "label": "Creature", "place": "head", "types": ["Creature", "Companion", "Race", "Sub Race", "Race Variant", "Size"],
             "printed": [{ "types": ["Companion"], "setter": "size", "label": "Size" }, { "types": ["Companion"], "setter": "type", "label": "Type" }, { "types": ["Companion"], "setter": "alignment", "label": "Alignment" }] },
-          { "id": "header", "label": "Stat Block", "stats": ["challenge", "ac", "hp", "speed", "initiative", "proficiency"],
-            "printed": [{ "types": ["Companion"], "setter": "ac", "label": "Armor Class, as printed" }, { "types": ["Companion"], "setter": "hp", "label": "Hit Points, as printed" }, { "types": ["Companion"], "setter": "speed", "label": "Speed, as printed" }] },
+          { "id": "header", "label": "Stat Block", "place": "head", "stats": ["challenge", "ac", "hp", "speed", "initiative", "proficiency"],
+            "printed": [{ "types": ["Companion"], "setter": "ac", "label": "Armor Class, as printed", "stat": "ac" }, { "types": ["Companion"], "setter": "hp", "label": "Hit Points, as printed", "stat": "hp" }, { "types": ["Companion"], "setter": "speed", "label": "Speed, as printed", "stat": "speed" }] },
           { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "beside": "{stat}:modifier" },
-          { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}" },
+          { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}", "coveredByPrint": "speed" },
           { "id": "saves", "label": "Saving Throws", "description": "The saving throws the creature is proficient in. Any other is the ability modifier.", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"], "none": "not proficient" } },
           { "id": "skills", "label": "Skills", "description": "The skills the creature is proficient in. Any other is the ability modifier.", "stats": ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient", "expertise"], "none": "not proficient" } },
           { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "types": ["Vision"],
-            "printed": [{ "types": ["Companion"], "setter": "senses", "label": "As printed" }] },
+            "printed": [{ "types": ["Companion"], "setter": "senses", "label": "As printed", "stat": "perception:passive", "at": "last" }] },
           { "id": "defences", "label": "Defences and Languages", "description": "As the creature’s stat block prints them.",
             "printed": [
               { "types": ["Companion"], "setter": "vulnerabilities", "label": "Damage Vulnerabilities" },
@@ -957,17 +959,19 @@
         }
       },
       "sheet": {
+        "layout": "statBlock",
+        "statBlock": { "abilities": "abilities", "saves": "saves", "wide": { "section": "creature", "sources": ["Monster Manual (2025)", "Player’s Handbook (2024)", "Dungeon Master’s Guide (2024)"] } },
         "sections": [
-          { "id": "creature", "label": "Creature", "types": ["Creature", "Companion", "Race", "Sub Race", "Race Variant", "Size"],
+          { "id": "creature", "label": "Creature", "place": "head", "types": ["Creature", "Companion", "Race", "Sub Race", "Race Variant", "Size"],
             "printed": [{ "types": ["Companion"], "setter": "size", "label": "Size" }, { "types": ["Companion"], "setter": "type", "label": "Type" }, { "types": ["Companion"], "setter": "alignment", "label": "Alignment" }] },
-          { "id": "header", "label": "Stat Block", "stats": ["challenge", "ac", "hp", "speed", "initiative", "proficiency"],
-            "printed": [{ "types": ["Companion"], "setter": "ac", "label": "Armor Class, as printed" }, { "types": ["Companion"], "setter": "hp", "label": "Hit Points, as printed" }, { "types": ["Companion"], "setter": "speed", "label": "Speed, as printed" }] },
+          { "id": "header", "label": "Stat Block", "place": "head", "stats": ["challenge", "ac", "hp", "speed", "initiative", "proficiency"],
+            "printed": [{ "types": ["Companion"], "setter": "ac", "label": "Armor Class, as printed", "stat": "ac" }, { "types": ["Companion"], "setter": "hp", "label": "Hit Points, as printed", "stat": "hp" }, { "types": ["Companion"], "setter": "speed", "label": "Speed, as printed", "stat": "speed" }] },
           { "id": "abilities", "label": "Ability Scores", "stats": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "beside": "{stat}:modifier" },
-          { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}" },
+          { "id": "speeds", "label": "Other Speeds", "stats": ["speed:burrow", "speed:climb", "speed:fly", "speed:swim"], "showWhen": "{stat}", "coveredByPrint": "speed" },
           { "id": "saves", "label": "Saving Throws", "description": "The saving throws the creature is proficient in. Any other is the ability modifier.", "stats": ["strength:save", "dexterity:save", "constitution:save", "intelligence:save", "wisdom:save", "charisma:save"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient"], "none": "not proficient" } },
           { "id": "skills", "label": "Skills", "description": "The skills the creature is proficient in. Any other is the ability modifier.", "stats": ["acrobatics", "animal handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight of hand", "stealth", "survival"], "showWhen": "{stat}:proficiency", "mark": { "stat": "{stat}:proficiency", "per": "proficiency", "labels": ["proficient", "expertise"], "none": "not proficient" } },
           { "id": "senses", "label": "Senses", "stats": ["perception:passive"], "types": ["Vision"],
-            "printed": [{ "types": ["Companion"], "setter": "senses", "label": "As printed" }] },
+            "printed": [{ "types": ["Companion"], "setter": "senses", "label": "As printed", "stat": "perception:passive", "at": "last" }] },
           { "id": "defences", "label": "Defences and Languages", "description": "As the creature’s stat block prints them.",
             "printed": [
               { "types": ["Companion"], "setter": "vulnerabilities", "label": "Damage Vulnerabilities" },

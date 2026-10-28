@@ -1302,6 +1302,11 @@
           "type": "boolean",
           "description": "Leave out a listed element whose own sheet hints say not to show it (Aurora's <sheet display=\"false\">, ADR 0076). Content marks a feature that way when its effect is shown elsewhere or a choice beside it names it better, and also every race and class, which a header names: so a section that lists features declares it and one that names what a character is does not. The element is still held, derived and saved. Only meaningful beside types."
         },
+        "coveredByPrint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Leave the section out when the row of this stat shows its print (ADR 0126): a stat block's other speeds, which the printed speed line names."
+        },
         "facts": {
           "type": "array",
           "description": "What the sheet writes of each listed element beside its name (ADR 0126): a spell's casting time, range, duration and components. A fact reads a setter as written, or writes text when a setter holds true; facts sharing a label are one, their texts joined. Drawn as columns on screen and as a short parenthesis on paper. Only meaningful beside types.",
@@ -1405,7 +1410,9 @@
             "properties": {
               "types": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
               "setter": { "type": "string", "minLength": 1, "description": "The setter whose value is shown, matched ignoring case." },
-              "label": { "type": "string", "minLength": 1 }
+              "label": { "type": "string", "minLength": 1 },
+              "stat": { "type": "string", "minLength": 1, "description": "The stat of the section's row the line prints again (ADR 0126): the line is shown as that row's value when the number in force is the print's, else beside the row as what is printed." },
+              "at": { "enum": ["first", "last"], "description": "Which number of the print is the row's: first (the default) or last." }
             }
           }
         }
@@ -1423,6 +1430,25 @@
         "layout": {
           "enum": ["page", "statBlock"],
           "description": "How the sheet is laid out (ADR 0126). page: a head band across the top, a side column and a main column in tabs, each section going where its place says. statBlock: one column read as a printed stat block. Absent: one column of sections. Every reader of the sheet reads the sections in the order the layout gives them."
+        },
+        "statBlock": {
+          "type": "object",
+          "required": ["abilities"],
+          "additionalProperties": false,
+          "description": "How a sheet laid out as a stat block draws its ability scores (ADR 0126): the section of scores, the section of saving throws drawn with them, and when the 2024 shape (score, modifier and save in each column) is the one a creature opens in: when a listed element of the named section names one of these books as its source. Otherwise the 2014 shape. The reader may switch; nothing records it.",
+          "properties": {
+            "abilities": { "type": "string", "minLength": 1 },
+            "saves": { "type": "string", "minLength": 1 },
+            "wide": {
+              "type": "object",
+              "required": ["section", "sources"],
+              "additionalProperties": false,
+              "properties": {
+                "section": { "type": "string", "minLength": 1 },
+                "sources": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+              }
+            }
+          }
         },
         "tabs": {
           "type": "array",

@@ -69,6 +69,11 @@ export interface SheetRow {
    * Not what the row's mark already says. "Hit Points: 45 (including Tough)".
    */
   including?: string[];
+  /**
+   * What a held element prints for this row (`PrintedSetterDef.stat`, ADR 0126), when the number in force is not the
+   * print's: "27 (printed 21 (6d4 + 6))". When it is, the print is the row's value and this is absent.
+   */
+  printed?: string;
 }
 
 /**
@@ -287,6 +292,18 @@ export interface SheetSectionView {
   under?: string;
 }
 
+/**
+ * How a stat block draws its ability scores (ADR 0126): each score's row with its saving throw's beside it when the sheet
+ * shows one (a creature's proficient saves), in the order the scores are declared, and the shape it opens in.
+ */
+export interface SheetStatBlock {
+  abilities: string;
+  saves?: string;
+  /** It opens in the 2024 shape (score, modifier and save in each column), read off the listed element's book. */
+  wide: boolean;
+  table: Array<{ ability: SheetRow; save?: SheetRow }>;
+}
+
 /** The character's own sheet: its kind and its sections, empty ones left out. */
 export interface SheetView {
   kindName: string;
@@ -294,6 +311,11 @@ export interface SheetView {
   layout?: SheetLayoutDef['layout'];
   /** The main column's tabs, in order (ADR 0126), when the sheet declares a layout. */
   tabs?: SheetTabDef[];
+  /**
+   * How a stat block draws its ability scores (ADR 0126): the section of scores, the section of saves drawn with them, and
+   * whether the creature opens in the 2024 shape (`wide`), read off the listed element's book.
+   */
+  statBlock?: SheetStatBlock;
   sections: SheetSectionView[];
   /**
    * How many placeholders its own sections' listed elements name that nothing publishes (ADR 0076): 0 when all fill. A
@@ -595,6 +617,9 @@ export function sheetSections(
       if (section.group) {
         shown.sort((a, b) => compareSheetGroups(a.group, b.group) || (a.group && b.group ? a.element.name.localeCompare(b.element.name) : 0));
       }
+      // A printed line that prints a row again is that row's value when the numbers agree, and beside it when they do not
+      // (ADR 0126): an NPC's "Hit Points 21 (6d4 + 6)", once.
+      const printed = mergePrinted(rows, rendering.printed, resolved);
       // The section's own line under each element (ADR 0112), the same for all of them.
       const note = section.elementNote && (section.elementNote.showWhen === undefined || (resolved(section.elementNote.showWhen)?.value ?? 0) !== 0)
         ? fillPlaceholders(section.elementNote.text, source.stats, false).text
@@ -622,7 +647,7 @@ export function sheetSections(
       });
       if (section.fold) foldGrants(elements, (id) => heldById.get(id) ?? source.lookup?.(id));
       const attacks = section.attacks ? (source.attacks ?? []).map(sheetAttack) : [];
-      if (!rows.length && !rendering.printed.length && !elements.length && !attacks.length && !bag.length && !purse.length) continue;
+      if (!rows.length && !printed.length && !elements.length && !attacks.length && !bag.length && !purse.length) continue;
       views.push({
         id: rendering.id,
         label: rendering.label,
@@ -634,7 +659,7 @@ export function sheetSections(
         ...(section.tiles ? { tiles: true as const } : {}),
         ...(section.under !== undefined ? { under: section.under } : {}),
         rows,
-        printed: rendering.printed,
+        printed,
         elements,
         ...(attacks.length ? { attacks } : {}),
         ...(bag.length ? { bag } : {}),
@@ -643,10 +668,54 @@ export function sheetSections(
       defOf.set(views[views.length - 1]!, section);
     }
   }
+  dropCoveredByPrint(views, defOf);
   omitMarkedElements(views, defOf, marked, source);
   foldAnswers(views, defOf, source, (id) => heldById.get(id) ?? source.lookup?.(id));
   nameWhatMovedRows(views, marked, sections, source, stats);
   return views;
+}
+
+/**
+ * The printed lines a section keeps once those that print a row again are merged into it (ADR 0126): a line naming a row's
+ * stat becomes the row's value when the number in force is the print's (its first number, or its last), and is written
+ * beside the row as what is printed when it is not. A line whose row the section does not show is kept as a line.
+ */
+function mergePrinted(
+  rows: SheetRow[],
+  lines: readonly PrintedSheetLine[],
+  resolved: (key: string) => ResolvedStat | undefined,
+): PrintedSheetLine[] {
+  const kept: PrintedSheetLine[] = [];
+  for (const line of lines) {
+    const row = line.stat === undefined ? undefined : rows.find((r) => r.stat.toLowerCase() === line.stat!.toLowerCase());
+    if (!row) {
+      kept.push(line);
+      continue;
+    }
+    const numbers = line.text.match(/-?\d+/g) ?? [];
+    const printedNumber = line.at === 'last' ? numbers[numbers.length - 1] : numbers[0];
+    const value = resolved(row.stat)?.value;
+    if (printedNumber !== undefined && value !== undefined && Number(printedNumber) === value) {
+      row.value = line.text;
+      shownAsPrinted.add(row);
+    } else row.printed = line.text;
+  }
+  return kept;
+}
+
+/** The rows whose value is their print (`mergePrinted`), for `dropCoveredByPrint`. */
+const shownAsPrinted = new WeakSet<SheetRow>();
+
+/**
+ * Leave out each section declaring `coveredByPrint` when that stat's row shows its print (ADR 0126): the printed speed
+ * line already names the other speeds.
+ */
+function dropCoveredByPrint(views: SheetSectionView[], defOf: ReadonlyMap<SheetSectionView, SheetSectionDef>): void {
+  const printedStats = new Set(views.flatMap((view) => view.rows.filter((row) => shownAsPrinted.has(row)).map((row) => row.stat.toLowerCase())));
+  for (let at = views.length - 1; at >= 0; at--) {
+    const covered = defOf.get(views[at]!)?.coveredByPrint;
+    if (covered !== undefined && printedStats.has(covered.toLowerCase())) views.splice(at, 1);
+  }
 }
 
 /** What a listed element is called where another stands for it: the sheet's shorter name, else its name. */
@@ -855,9 +924,18 @@ export function sheetView(
   );
   nameGivers(sections, derived, answers ?? countedAnswers(derived));
   const sheet = kind.sheet;
+  const statBlock = sheet.statBlock;
+  // Whether a creature opens in the 2024 shape: one the section lists names a book the system says prints it so (ADR 0126).
+  const held = new Map(derived.elements.map((e) => [e.id, e]));
+  const wide =
+    statBlock?.wide !== undefined &&
+    sections
+      .filter((s) => (s.section ?? s.id) === statBlock.wide!.section)
+      .some((s) => s.elements.some((e) => statBlock.wide!.sources.includes((held.get(e.elementId) ?? lookup?.(e.elementId))?.source ?? '')));
   return {
     kindName: kind.name,
     ...(sheet.layout ? { layout: sheet.layout, tabs: sheet.tabs ?? [] } : {}),
+    ...(statBlock ? { statBlock: statBlockView(sheet, statBlock, sections, wide) } : {}),
     sections: laidOut(sections, sheet),
     unfilled: unfilledIn(sections),
   };
@@ -894,6 +972,30 @@ function nameGivers(
       if (giver && !seen.has(giver.id)) entry.from = { elementId: giver.id, name: giver.sheet?.alt || giver.sheet?.name || giver.name };
     }
   }
+}
+
+/** A stat block's ability table (ADR 0126): each score's row and, by the declared order, its saving throw's when shown. */
+function statBlockView(
+  sheet: SheetLayoutDef,
+  def: NonNullable<SheetLayoutDef['statBlock']>,
+  sections: readonly SheetSectionView[],
+  wide: boolean,
+): SheetStatBlock {
+  const declared = (id: string | undefined) => (id === undefined ? [] : (sheet.sections.find((s) => s.id === id)?.stats ?? []).map((st) => st.toLowerCase()));
+  const abilityStats = declared(def.abilities);
+  const saveStats = declared(def.saves);
+  const abilityRows = sections.find((s) => s.id === def.abilities)?.rows ?? [];
+  const saveRows = sections.find((s) => s.id === def.saves)?.rows ?? [];
+  return {
+    abilities: def.abilities,
+    ...(def.saves ? { saves: def.saves } : {}),
+    wide,
+    table: abilityRows.map((ability) => {
+      const saveStat = saveStats[abilityStats.indexOf(ability.stat.toLowerCase())];
+      const save = saveStat === undefined ? undefined : saveRows.find((row) => row.stat.toLowerCase() === saveStat);
+      return { ability, ...(save ? { save } : {}) };
+    }),
+  };
 }
 
 /**

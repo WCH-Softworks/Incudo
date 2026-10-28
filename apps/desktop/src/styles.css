@@ -2779,6 +2779,82 @@ ul.browse-categories {
   margin: 12px 0 0;
   font-size: 13px;
 }
+/* A sheet laid out as a stat block (ADR 0126, StatBlock.tsx): one column read as a printed one, play beside it. */
+.stat-block-page {
+  display: grid;
+  grid-template-columns: minmax(0, 680px) minmax(0, 300px);
+  gap: 0 28px;
+}
+.stat-block-head {
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--accent);
+}
+.stat-block-first {
+  margin: 0 0 4px;
+  font-style: italic;
+  color: var(--fg-muted);
+}
+.stat-block-line {
+  margin: 2px 0;
+}
+.stat-block-section.listing h3 {
+  margin: 12px 0 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.stat-block-abilities {
+  margin: 8px 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--accent);
+}
+.stat-block-shape {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+.stat-block-shape legend {
+  float: left;
+  margin-right: 8px;
+}
+.stat-block-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 13px;
+}
+.stat-block-table th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.stat-block-table td,
+.stat-block-table th {
+  padding: 3px 2px;
+}
+.stat-block-play .play-strip {
+  flex-direction: column;
+  align-items: flex-start;
+  border-bottom: 0;
+}
+.stat-block-play .play-strip-line {
+  flex-direction: column;
+}
+@media (max-width: 900px) {
+  .stat-block-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* A section's facts as a table (ADR 0126): a spell list by level, a column per fact. */
 .sheet-facts {
   width: 100%;
@@ -3058,7 +3134,9 @@ ul.browse-categories {
   .play-panel,
   .play-strip,
   .play-boxes,
-  .play-inline {
+  .play-inline,
+  .stat-block-play,
+  .stat-block-shape {
     display: none;
   }
 

@@ -1000,6 +1000,11 @@ export interface SheetSectionDef {
    */
   facts?: SheetFactDef[];
   /**
+   * Leave the section out when the row of this stat shows its print — ADR 0126: a stat block's other speeds, which the
+   * printed speed line names ("20 ft., Fly 40 ft.").
+   */
+  coveredByPrint?: StatKey;
+  /**
    * Where the section goes on a laid-out sheet — ADR 0126: `head` (the band across the top: who the character is and the
    * numbers looked at every turn), `side` (a narrow column always shown) or `main` (a tab of the main column, `tab`).
    * Absent is `main`. Read only when the kind's sheet declares a `layout`.
@@ -1126,6 +1131,13 @@ export interface PrintedSetterDef {
   setter: string;
   /** What the line is called on the sheet. */
   label: string;
+  /**
+   * The stat of the section's row the line prints again — ADR 0126: the line is shown as that row's value when the number
+   * in force is the print's (its first number, or its last when `at` says so), else beside the row as what is printed.
+   */
+  stat?: StatKey;
+  /** Which number of the print is the row's: `first` (the default; "21 (6d4 + 6)") or `last` ("…; Passive Perception 11"). */
+  at?: 'first' | 'last';
 }
 
 /** One printed line of a rendered sheet section: its label, the text as written, and whose it is. */
@@ -1133,6 +1145,9 @@ export interface PrintedSheetLine {
   label: string;
   text: string;
   elementId: ElementId;
+  /** The row it prints again and which of its numbers is that row's (`PrintedSetterDef.stat`, ADR 0126). */
+  stat?: StatKey;
+  at?: 'first' | 'last';
 }
 
 /**
@@ -1265,7 +1280,7 @@ function printedLines(section: SheetSectionDef, elements: readonly Element[]): P
       const found = Object.entries(element.setters).find(([name]) => name.toLowerCase() === setter);
       const text = found?.[1].value.trim();
       if (!text) continue;
-      lines.push({ label: def.label, text, elementId: element.id });
+      lines.push({ label: def.label, text, elementId: element.id, ...(def.stat ? { stat: def.stat, ...(def.at ? { at: def.at } : {}) } : {}) });
     }
   }
   return lines;
@@ -1295,6 +1310,13 @@ export interface SheetLayoutDef {
    * holds, what the user wrote, the whole descriptions, what it keeps. A tab with nothing in it is not shown.
    */
   tabs?: SheetTabDef[];
+  /**
+   * How a sheet laid out as a stat block draws its ability scores — ADR 0126: `abilities` the section of scores, `saves`
+   * the section of saving throws drawn with them, and `wide` when the 2024 shape (score, modifier and save in each
+   * column) is the one a creature opens in: when a listed element of that section names one of these books as its source.
+   * Otherwise the 2014 shape (score and modifier, the saves on a line). The reader may switch; nothing records it.
+   */
+  statBlock?: { abilities: string; saves?: string; wide?: { section: string; sources: string[] } };
 }
 
 /** A part of the sheet that is not a section, which a tab may hold — ADR 0126. */

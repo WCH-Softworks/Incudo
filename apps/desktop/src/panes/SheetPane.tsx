@@ -25,6 +25,7 @@ import { Companions, SheetRows } from './Companions.tsx';
 import { FreeformSheet } from './Freeform.tsx';
 import { SectionHead } from './SheetBits.tsx';
 import { SheetPage } from './SheetPage.tsx';
+import { StatBlock } from './StatBlock.tsx';
 import { SheetDescriptionsPart, SheetReferencesPart } from './SheetParts.tsx';
 
 export function SheetPane({
@@ -56,6 +57,8 @@ export function SheetPane({
       {/* A laid-out sheet spends play where its number is (ADR 0126); one with no layout keeps the Play panel above it. */}
       {document.layout === 'page' ? (
         <SheetPage document={document} {...(play ? { play: { builder, view: play, places: playPlaces(play) } } : {})} />
+      ) : document.layout === 'statBlock' ? (
+        <StatBlock document={document} {...(play ? { play: { builder, view: play, places: playPlaces(play) } } : {})} />
       ) : (
         <>
           {play && <PlayPanel builder={builder} view={play} />}

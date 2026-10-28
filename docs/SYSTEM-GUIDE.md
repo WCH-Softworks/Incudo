@@ -668,6 +668,9 @@ body of existing content. When you need one of these, find it there, and read it
   `facts` (what each listed element says beside its name: a spell's casting time, range, duration and components).
   Where each section goes: the sheet's `layout` (`page` or `statBlock`) and `tabs`, and a section's `place` (`head`,
   `side`, `main`), `tab`, `tiles` and `under`. A sheet without a layout is drawn as one column.
+  A stat block: the sheet's `statBlock` (which sections are its ability table, and which books open it in the 2024
+  shape), a printed line's `stat` and `at` (a print of a row's own number shown as that row), and a section's
+  `coveredByPrint`.
 
 The schema's descriptions mention decision records (`ADR 0062` and so on). Those are in [docs/adr](./adr/README.md),
 and say why each part is shaped as it is.

@@ -240,7 +240,8 @@ for (const kindId of ['npc', 'legendary']) test(`a creature's ${kindId} prints i
     // print (the maintainer's call, 2026-10-12: every speed a stat block declares is printed explicitly).
     for (const setter of ['size', 'type', 'alignment', 'ac', 'hp', 'speed']) {
       const text = creature.setters[setter]?.value.trim();
-      const lines = sheet.sections.flatMap((s) => s.printed).map((p) => p.text);
+      // Since ADR 0126 a print of a row's own number is that row's value, or beside it when the numbers differ.
+      const lines = sheet.sections.flatMap((s) => [...s.printed.map((p) => p.text), ...s.rows.flatMap((r) => [r.value, r.printed ?? ''])]);
       if (text && !lines.includes(text)) wrong.push(`${creature.name}: its ${setter} is not printed`);
     }
     for (const r of sheet.sections.find((s) => s.id === 'abilities')?.rows ?? []) {

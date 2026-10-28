@@ -271,6 +271,22 @@ test('a system that would throw at load fails validation instead', async () => {
     [],
   );
 
+  // ADR 0126: a stat block names sections the sheet has, and a section covered by a print has a line printing it. Fails
+  // if either check is removed.
+  assert.deepEqual(
+    await errorsFor(
+      laid({
+        layout: 'statBlock',
+        statBlock: { abilities: 'nope', wide: { section: 's', sources: [] } },
+        sections: [{ id: 's', label: 'S', stats: ['vigour'], coveredByPrint: 'vigour' }],
+      }),
+    ),
+    [
+      'characterKinds[0].sheet.sections: section "s" is left out when the print of "vigour" is shown, and no printed line of this sheet prints it',
+      'characterKinds[0].sheet.statBlock: names the section "nope", which this sheet does not have',
+    ],
+  );
+
   // ADR 0126: folding, leaving out what a mark says and writing answers are about listed elements. Fails if the check is
   // removed (the first three), or a field is left out of the schema (every one: an unknown field).
   for (const field of ['fold', 'omitMarked', 'answers']) {

@@ -127,8 +127,11 @@ export function listedHead(
  * 0079), then what moved it that the sheet lists nowhere (ADR 0095): "18 (+4)", "+7 (expertise)", "45 (including
  * Tough)", "+2 (including Jack of All Trades)", or nothing. The pane and every export word a row this way.
  */
-export function rowAside(row: Pick<SheetRow, 'beside' | 'mark' | 'including'>): string | undefined {
-  const parts = [row.beside, row.mark?.label].filter((part): part is string => part !== undefined && part !== '');
+export function rowAside(row: Pick<SheetRow, 'beside' | 'mark' | 'including' | 'printed'>): string | undefined {
+  // What a stat block prints for a row whose number is not the print's (ADR 0126): "27 (printed 21 (6d4 + 6))".
+  const parts = [row.beside, row.mark?.label, row.printed !== undefined ? `printed ${row.printed}` : undefined].filter(
+    (part): part is string => part !== undefined && part !== '',
+  );
   const shown = parts.length ? parts.join(', ') : undefined;
   if (!row.including?.length) return shown;
   const including = `including ${joinNames(row.including)}`;
@@ -244,6 +247,8 @@ export interface SheetDocument {
    */
   layout?: SheetView['layout'];
   tabs?: SheetView['tabs'];
+  /** How a stat block draws its ability scores (ADR 0126), when the sheet is one. */
+  statBlock?: SheetView['statBlock'];
   /** The character's own sections, empty ones left out. */
   sections: SheetSectionView[];
   /** Its held creatures, when the kind declares them and it holds any. */
@@ -282,6 +287,7 @@ export function sheetDocument(state: SheetDocumentSource): SheetDocument {
     title: state.character.name.trim() || UNNAMED_CHARACTER,
     kindName: sheet.kindName,
     ...(sheet.layout ? { layout: sheet.layout, tabs: sheet.tabs ?? [] } : {}),
+    ...(sheet.statBlock ? { statBlock: sheet.statBlock } : {}),
     sections: sheet.sections,
     ...(companions
       ? {
