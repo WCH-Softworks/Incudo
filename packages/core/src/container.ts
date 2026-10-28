@@ -27,6 +27,7 @@ import {
   addedElementIds,
   referenceIdsOf,
   advancementElementIds,
+  impliedMulticlassIds,
   chosenElementIds,
   inventoryElementIds,
   preparedElementIds,
@@ -163,6 +164,7 @@ export function collectCharacterContent(
     // A second class is named only by `advancement` (ADR 0015) — no select chose it. Leaving
     // these out embeds half a multiclassed character, which is the ADR 0012 failure exactly.
     ...advancementElementIds(character),
+    ...impliedMulticlassIds(character, index),
     // The bag, entries and adornments alike, and deliberately **not** filtered to what is
     // equipped (ADR 0024). A carried Frost Brand is as much part of the character as a worn
     // one, and a save whose bag cannot be read is a broken save. Step 3's derivation will

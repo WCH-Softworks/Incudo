@@ -15,6 +15,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  impliedMulticlassIds,
   BundleElementIndex,
   createCharacter,
   deriveCharacter,
@@ -61,7 +62,9 @@ const shape = (builder: CharacterBuilder, system: GameSystem, corpus: ElementInd
   return {
     progress: character.progress,
     advancement: character.advancement,
-    records: character.choices.filter((c) => c.ruleKey.includes('select:Multiclass')),
+    // A class taken second holds its multiclass element because `advancement` says so, recorded nowhere (ADR 0119).
+    implied: impliedMulticlassIds(character, corpus),
+    records: character.choices.filter((c) => c.elementIds.some((id) => corpus.get(id)?.type === 'Multiclass')),
     // The character's own id is minted per builder; everything else about the derivation is compared.
     derived: { ...summarize(deriveCharacter(character, system, corpus)), character: undefined },
   };
@@ -84,7 +87,8 @@ test('a Fighter 12 / Wizard 5 said as a split is the character built one level a
   assert.equal(bySplit.getState().character.progress, 17);
   assert.equal(bySplit.getState().character.advancement!.length, 17);
   assert.deepEqual(shape(bySplit, system, corpus), shape(byLevel, system, corpus));
-  assert.equal(shape(bySplit, system, corpus).records.length, 1, 'the Wizard is written as a second class');
+  assert.equal(shape(bySplit, system, corpus).implied.length, 1, 'the Wizard is a second class');
+  assert.deepEqual(shape(bySplit, system, corpus).records, [], 'and nothing records it');
 });
 
 test('the order of a split is observable: the first class is the one the character started as', { skip: corpusSkip }, async () => {
@@ -104,9 +108,9 @@ test('the order of a split is observable: the first class is the one the charact
   assert.equal(a.advancement![0]!.elementId, rogue);
   assert.equal(b.advancement![0]!.elementId, wizard);
   assert.notDeepEqual(a.derived, b.derived, 'the starting class carries its full proficiencies, the other its multiclass set');
-  assert.equal(a.records.length, 1);
-  assert.equal(b.records.length, 1);
-  assert.notDeepEqual(a.records[0]!.elementIds, b.records[0]!.elementIds, 'the second class is the one with a record');
+  assert.equal(a.implied.length, 1);
+  assert.equal(b.implied.length, 1);
+  assert.notDeepEqual(a.implied, b.implied, 'the second class is the one whose multiclass element is held');
 
   // And an interleaved split is one input too.
   const interleaved = fresh(system, corpus, rogue);

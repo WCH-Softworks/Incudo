@@ -162,7 +162,8 @@ test("each sample's play view tracks what its sheet shows, and survives a pack a
     builder.setPlayCondition('Prone', true);
     const played = builder.getState();
     assert.equal(played.derived, state.derived, `${sample.id}: a play edit derives nothing`);
-    assert.equal(played.character.formatVersion, 8);
+    // Play raises a character to 8; a multiclass one is already 14 (ADR 0119), and nothing lowers it.
+    assert.equal(played.character.formatVersion, Math.max(8, state.character.formatVersion));
     assert.equal(played.play!.groups[0]!.trackers[0]!.value, hp!.max - 5, `${sample.id}: four of nine came off the temporary amount`);
 
     const packed = packCharacter(played.character, run.system, run.elements, { generator: 'test' });

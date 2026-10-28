@@ -1676,3 +1676,26 @@ test('a kind with no progression publishes no opening point', () => {
   assert.equal(derived.pendingChoices.length, 1);
   assert.equal(derived.pendingChoices[0]!.opensAt, undefined);
 });
+
+test('a class taken second holds its multiclass element because advancement says so, and the first class does not', () => {
+  // ADR 0119: the element used to be recorded as a choice beside `advancement`. Perturbation: not seeding what
+  // `impliedMulticlassIds` reads leaves the second class without its multiclass rules; seeding every class's makes the
+  // first switch off its own proficiencies.
+  const fighter = { ...element('FIGHTER', 'Widget'), multiclass: { id: 'MC_FIGHTER', setters: {}, rules: [] } };
+  const mage = { ...element('MAGE', 'Widget'), multiclass: { id: 'MC_MAGE', setters: {}, rules: [] } };
+  const index = new MapElementIndex();
+  index.addAll([fighter, mage, element('MC_FIGHTER', 'Gadget'), element('MC_MAGE', 'Gadget', [{ kind: 'grant', key: 'g', type: 'Gadget', id: 'MARK' }]), element('MARK', 'Gadget')]);
+  const character: Character = {
+    ...createCharacter('test', 'levelled', { progress: 3 }),
+    advancement: [
+      { at: 1, elementId: 'FIGHTER' },
+      { at: 2, elementId: 'FIGHTER' },
+      { at: 3, elementId: 'MAGE' },
+    ],
+  };
+  const held = new Set(deriveCharacter(character, system(), index).elements.map((e) => e.id));
+  assert.ok(held.has('MC_MAGE') && held.has('MARK'), 'the second class holds its multiclass element and what it grants');
+  assert.equal(held.has('MC_FIGHTER'), false, 'the first class holds none');
+  const single = new Set(deriveCharacter({ ...character, advancement: undefined }, system(), index).elements.map((e) => e.id));
+  assert.equal(single.has('MC_MAGE'), false);
+});

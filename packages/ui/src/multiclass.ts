@@ -237,33 +237,16 @@ function multiclassElements(
   return owners;
 }
 
-/**
- * The key a class's multiclass element is recorded under: what an Aurora import writes for the
- * same character (`ID_LEVEL_3/select:Multiclass (Level 3)`), so an imported multiclass character
- * and one built here hold the same records — ADR 0036 decision 2. `level` is the first level the
- * class was taken at.
- */
-export function multiclassRuleKey(config: MulticlassConfig, level: number): string {
-  const owner = config.levelElementPattern
-    ? config.levelElementPattern.replace('{n}', String(level))
-    : `progress:${level}`;
-  return `${owner}/select:Multiclass (Level ${level})`;
-}
-
 // --- writing the character -----------------------------------------------------------
 
 /**
- * Turn "the class each level went to" back into the two records that mean it.
+ * Turn "the class each level went to" back into the record that means it: `advancement`, written only while the
+ * character has more than one class, or has a level nothing attributes. A single-class character carries none, as an
+ * imported one never did.
  *
- * - `advancement` is written only while the character has more than one class, or has a level
- *   nothing attributes. A single-class character carries none, as an imported one never did.
- * - Every class but the first gets its multiclass element recorded, keyed by the first level it
- *   was taken at; the first class never does, because its block would switch its own saving
- *   throw proficiencies off.
- *
- * Records are *found* by what they hold, not by their key, so a save that keyed the same fact
- * differently is repaired here rather than duplicated. A record that is already exactly right is
- * left where it is.
+ * A class taken second holds its multiclass element because `advancement` says so (`impliedMulticlassIds`, ADR 0119),
+ * so nothing else is written. A save from before kept that element as a recorded choice too; any such record is dropped
+ * here, found by what it holds, so the two never disagree.
  */
 function writeClassLevels(
   character: Character,
@@ -283,29 +266,11 @@ function writeClassLevels(
 
   const gapped = entries.length < levels.length;
   const multiclassed = firstLevelOf.size > 1;
-  let next = setAdvancement(character, multiclassed || gapped ? entries : undefined);
-
+  const next = setAdvancement(character, multiclassed || gapped ? entries : undefined);
   const owners = multiclassElements(config, elements);
-  const wanted = new Map<string, ElementId>();
-  for (const [classId, level] of firstLevelOf) {
-    if (classId === firstClassId) continue;
-    const block = elements.get(classId)?.multiclass;
-    if (block && owners.has(block.id)) wanted.set(multiclassRuleKey(config, level), block.id);
-  }
-
   const isRecord = (choice: Choice): boolean =>
     choice.elementIds.length > 0 && choice.elementIds.every((id) => owners.has(id));
-  const exact = (choice: Choice): boolean =>
-    choice.elementIds.length === 1 && wanted.get(choice.ruleKey) === choice.elementIds[0];
-
-  next = {
-    ...next,
-    choices: next.choices.filter((choice) => !isRecord(choice) || exact(choice)),
-  };
-  for (const [ruleKey, id] of wanted) {
-    if (!next.choices.some((choice) => choice.ruleKey === ruleKey)) next = setChoice(next, ruleKey, [id]);
-  }
-  return next;
+  return next.choices.some(isRecord) ? { ...next, choices: next.choices.filter((choice) => !isRecord(choice)) } : next;
 }
 
 /**

@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   BundleElementIndex,
+  impliedMulticlassIds,
   LayeredElementIndex,
   createCharacter,
   deriveCharacter,
@@ -92,8 +93,10 @@ test(
       'PPPSSS',
     );
     const isMulticlassRecord = (ruleKey: string): boolean => ruleKey.includes('select:Multiclass');
+    // The Sorcerer's multiclass element is implied by `advancement`, and the import records it nowhere (ADR 0119).
     const importedRecords = reference.choices.filter((c) => isMulticlassRecord(c.ruleKey));
-    assert.equal(importedRecords.length, 1);
+    assert.equal(importedRecords.length, 0);
+    assert.equal(impliedMulticlassIds(reference, elements).length, 1);
 
     // --- built from a fresh character, one builder call at a time -------------------------
     // Inputs that are not about which class a level went to are the save's own: the bag and the
@@ -145,7 +148,7 @@ test(
     assert.deepEqual(
       builder.getState().character.choices.filter((c) => isMulticlassRecord(c.ruleKey)),
       importedRecords,
-      'keyed exactly as the import keys it, so either can be edited by the other\'s code',
+      'recorded nowhere by either, so either can be edited by the other\'s code',
     );
 
     for (const choice of reference.choices) {
@@ -281,11 +284,11 @@ test(
     const elements = new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus]);
     const reference = imported.character;
 
-    assert.equal(
-      reference.choices.some((c) => c.ruleKey.startsWith('build/') && c.ruleKey !== 'build/options'),
-      false,
-      'precondition: the import writes nothing under the builder\'s own pick keys',
-    );
+    // ADR 0119: the import records them under the builder's own keys, as a built character does.
+    for (const step of ['race', 'class', 'background']) {
+      assert.ok(reference.choices.some((c) => c.ruleKey === `build/${step}`), `the import records the ${step} under build/${step}`);
+    }
+    assert.equal(reference.choices.some((c) => c.ruleKey.startsWith('ID_LEVEL_')), false, 'and nothing under a level element');
 
     const builder = new CharacterBuilder(reference, system, elements);
     const before = builder.getState();
@@ -299,7 +302,7 @@ test(
       const pick = settled.get(step);
       assert.ok(pick, `${step} is a settled pick`);
       assert.equal(pick.chosen.length, 1);
-      assert.match(pick.ruleKey, /^ID_LEVEL_1\/select:/, 'published under the key it is recorded under');
+      assert.equal(pick.ruleKey, `build/${step}`, 'published under the key it is recorded under');
     }
     assert.equal(before.steps.find((s) => s.id === 'race')?.complete, true);
 
@@ -317,7 +320,7 @@ test(
     assert.deepEqual(
       raceHolders(replacement, 'Race').map((c) => c.ruleKey),
       [race.ruleKey],
-      'one Race record, still under the import\'s key',
+      'one Race record, still under its key',
     );
     assert.equal(after.derived.elementIds.has(race.chosen[0]!), false);
     assert.equal(after.derived.elementIds.has(replacement), true);

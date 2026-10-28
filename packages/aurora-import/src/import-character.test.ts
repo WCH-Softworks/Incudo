@@ -133,11 +133,14 @@ function imported() {
   });
 }
 
-test('a decision becomes a choice keyed the way the engine keys selects', () => {
+test('a decision becomes a choice keyed the way the engine keys selects, and the top-level ones as Incudo keys them', () => {
   const { character } = imported();
   const keys = character.choices.map((c) => c.ruleKey);
-  assert.ok(keys.includes('ID_LEVEL_4/select:Race'));
   assert.ok(keys.includes('ID_CLASS_TEST/select:Skill (Test)'));
+  // ADR 0119: a race is recorded under the build step that asks for it, never under a level element that declares no
+  // select. Perturbation: leaving Aurora's key keeps ID_LEVEL_4/select:Race.
+  assert.ok(keys.includes('build/race'));
+  assert.ok(!keys.some((key) => key.includes('select:Race')));
 });
 
 test('repeated picks for one select land in one choice, in the order they were made', () => {

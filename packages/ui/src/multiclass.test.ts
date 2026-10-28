@@ -17,6 +17,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  impliedMulticlassIds,
   createCharacter,
   deriveCharacter,
   parseRequirements,
@@ -29,7 +30,7 @@ import {
   type Setter,
 } from '@incudo/core';
 import { CharacterBuilder } from './use-character-builder.ts';
-import { multiclassRuleKey, scoreLabel, type MulticlassConfig } from './multiclass.ts';
+import { scoreLabel, type MulticlassConfig } from './multiclass.ts';
 
 // --- fixture ----------------------------------------------------------------------------
 
@@ -211,11 +212,17 @@ const classes = (b: CharacterBuilder) =>
 const ids = (b: CharacterBuilder) => new Set(b.getState().derived.elements.map((e) => e.id));
 const advancementOf = (b: CharacterBuilder) =>
   b.getState().character.advancement?.map((entry) => `${entry.at}:${entry.elementId}`);
-const multiclassRecords = (b: CharacterBuilder) =>
-  b
-    .getState()
-    .character.choices.filter((c) => c.ruleKey.includes('select:Multiclass'))
-    .map((c) => `${c.ruleKey}=${c.elementIds.join(',')}`);
+/**
+ * The multiclass elements the character holds because `advancement` names their class second (ADR 0119), and none of
+ * them recorded as a choice: a save from before kept one under `LVL_3/select:Multiclass (Level 3)`, and the builder
+ * drops it the first time it writes the split.
+ */
+const multiclassRecords = (b: CharacterBuilder) => {
+  const character = b.getState().character;
+  const owners = new Set(corpus().byType('Widget').map((e) => e.multiclass?.id).filter(Boolean));
+  assert.deepEqual(character.choices.filter((c) => c.elementIds.some((id) => owners.has(id))), [], 'no multiclass element is recorded');
+  return impliedMulticlassIds(character, corpus());
+};
 
 const CONFIG: MulticlassConfig = {
   classType: 'Widget',
@@ -389,7 +396,7 @@ test('spending a level on a second class writes advancement AND its multiclass e
   assert.equal(b.setLevelClass('levels', 3, 'MAGE'), true);
 
   assert.deepEqual(advancementOf(b), ['1:FIGHTER', '2:FIGHTER', '3:MAGE']);
-  assert.deepEqual(multiclassRecords(b), ['LVL_3/select:Multiclass (Level 3)=MC_MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['MC_MAGE']);
   assert.deepEqual(classes(b), ['FIGHTER', 'FIGHTER', 'MAGE']);
   assert.deepEqual(b.classLevelsFor('levels')!.classes, [
     { id: 'FIGHTER', levels: 2 },
@@ -464,19 +471,19 @@ test('a class whose levels are all moved away leaves with its record, and the ot
 
   b.setLevelClass('levels', 3, 'FIGHTER');
   assert.deepEqual(advancementOf(b), ['1:FIGHTER', '2:FIGHTER', '3:FIGHTER', '4:RANGER']);
-  assert.deepEqual(multiclassRecords(b), ['LVL_4/select:Multiclass (Level 4)=MC_RANGER']);
+  assert.deepEqual(multiclassRecords(b), ['MC_RANGER']);
 });
 
 test('the record follows the first level a class was taken at', () => {
   const b = fighter(3);
   b.setLevelClass('levels', 2, 'MAGE');
   b.setLevelClass('levels', 3, 'MAGE');
-  assert.deepEqual(multiclassRecords(b), ['LVL_2/select:Multiclass (Level 2)=MC_MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['MC_MAGE']);
 
   b.setLevelClass('levels', 2, 'FIGHTER');
   assert.deepEqual(
     multiclassRecords(b),
-    ['LVL_3/select:Multiclass (Level 3)=MC_MAGE'],
+    ['MC_MAGE'],
     're-keyed to level 3, not duplicated and not left at level 2',
   );
 });
@@ -486,7 +493,7 @@ test('a record found by what it holds is repaired, not duplicated, when its key 
   // A save whose author keyed the same fact some other way.
   b.choose('some/other/key', ['MC_MAGE']);
   b.setLevelClass('levels', 3, 'MAGE');
-  assert.deepEqual(multiclassRecords(b), ['LVL_3/select:Multiclass (Level 3)=MC_MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['MC_MAGE']);
   assert.equal(
     b.getState().character.choices.some((c) => c.ruleKey === 'some/other/key'),
     false,
@@ -515,7 +522,7 @@ test('addLevel grows the progression and spends the new level in one step', () =
   assert.equal(b.addLevel('levels', 'MAGE'), true);
   assert.equal(b.getState().character.progress, 4);
   assert.deepEqual(classes(b), ['FIGHTER', 'FIGHTER', 'FIGHTER', 'MAGE']);
-  assert.deepEqual(multiclassRecords(b), ['LVL_4/select:Multiclass (Level 4)=MC_MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['MC_MAGE']);
   assert.equal(notifications, 1, 'one write, so nobody sees level 4 in a class nobody picked');
 });
 
@@ -575,7 +582,7 @@ test('lowering keeps a class that still has a level', () => {
   b.setLevelClass('levels', 5, 'MAGE');
   b.setProgress(4);
   assert.deepEqual(advancementOf(b), ['1:FIGHTER', '2:FIGHTER', '3:MAGE', '4:FIGHTER']);
-  assert.deepEqual(multiclassRecords(b), ['LVL_3/select:Multiclass (Level 3)=MC_MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['MC_MAGE']);
 });
 
 test('a single-class character\'s progress is only a number', () => {
@@ -598,7 +605,7 @@ test('choosing a different first class re-homes every level the old one held', (
 
   assert.deepEqual(advancementOf(b), ['1:RANGER', '2:RANGER', '3:MAGE', '4:MAGE']);
   assert.equal(b.classLevelsFor('levels')!.firstClassId, 'RANGER');
-  assert.deepEqual(multiclassRecords(b), ['LVL_3/select:Multiclass (Level 3)=MC_MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['MC_MAGE']);
 });
 
 test('choosing the other class as the first collapses the two into one', () => {
@@ -704,8 +711,8 @@ test('an imported multiclass character is read and edited without a duplicate re
 
   b.setLevelClass('levels', 4, 'RANGER');
   assert.deepEqual(multiclassRecords(b), [
-    'LVL_3/select:Multiclass (Level 3)=MC_MAGE',
-    'LVL_4/select:Multiclass (Level 4)=MC_RANGER',
+    'MC_MAGE',
+    'MC_RANGER',
   ]);
   assert.equal(
     b.getState().character.choices.filter((c) => c.ruleKey === 'LVL_1/select:Class').length,
@@ -730,7 +737,7 @@ test('changing an imported first class re-homes its levels, though it is not und
     'one class record, in place',
   );
   assert.equal(b.classLevelsFor('levels')!.firstClassId, 'RANGER');
-  assert.deepEqual(multiclassRecords(b), ['LVL_3/select:Multiclass (Level 3)=MC_MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['MC_MAGE']);
 });
 
 test('a level an import could not attribute is reported and never filled in', () => {
@@ -756,11 +763,6 @@ test('a level an import could not attribute is reported and never filled in', ()
 
 // --- keys --------------------------------------------------------------------------------
 
-test('the record key is the one an Aurora import writes', () => {
-  assert.equal(multiclassRuleKey(CONFIG, 3), 'LVL_3/select:Multiclass (Level 3)');
-  const { levelElementPattern: _omit, ...bare } = CONFIG;
-  assert.equal(multiclassRuleKey(bare, 3), 'progress:3/select:Multiclass (Level 3)');
-});
 
 // --- the derivation agrees ---------------------------------------------------------------
 
@@ -825,7 +827,7 @@ test('the order of the segments is the order the levels were taken, and a class 
   assert.equal(mageFirst.applySplit('levels', [segment('MAGE', 2), segment('FIGHTER', 2)]), true);
   assert.deepEqual(advancementOf(mageFirst), ['1:MAGE', '2:MAGE', '3:FIGHTER', '4:FIGHTER']);
   assert.equal(mageFirst.classLevelsFor('levels')!.firstClassId, 'MAGE');
-  assert.deepEqual(multiclassRecords(mageFirst), ['LVL_3/select:Multiclass (Level 3)=MC_FIGHTER']);
+  assert.deepEqual(multiclassRecords(mageFirst), ['MC_FIGHTER']);
   assert.equal(ids(mageFirst).has('MULTI_FIGHTER'), true);
   assert.equal(ids(mageFirst).has('MULTI_MAGE'), false, 'the first class is never taken as a second');
 });
@@ -996,7 +998,7 @@ test('switched off on a character with two classes, nothing is changed and the h
   assert.equal(state.allowedBy, 'ALLOW', 'the state says the option is off');
   assert.deepEqual(state.classes, [{ id: 'FIGHTER', levels: 2 }, { id: 'MAGE', levels: 2 }], 'the levels stay');
   assert.deepEqual(advancementOf(b), ['1:FIGHTER', '2:FIGHTER', '3:MAGE', '4:MAGE']);
-  assert.deepEqual(multiclassRecords(b), ['LVL_3/select:Multiclass (Level 3)=MC_MAGE']);
+  assert.deepEqual(multiclassRecords(b), ['MC_MAGE']);
   const derivedAfter = b.getState().derived;
   assert.deepEqual(derivedAfter.elements.map((e) => e.id), elementsBefore, 'nothing derived moves but the option');
   assert.deepEqual(stats(derivedAfter), stats(derivedBefore));

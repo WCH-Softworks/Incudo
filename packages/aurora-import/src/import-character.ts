@@ -140,6 +140,10 @@ export function importAuroraCharacter(
   character.baseStats = { ...save.abilities };
   const advancement = toAdvancement(save, options.index, diagnostics);
   if (advancement) character.advancement = advancement;
+  // Aurora's top-level records, written as Incudo writes them (ADR 0119): what a record means is said by the format.
+  character.choices = incudoRecords(character.choices, options.index, advancement !== undefined);
+  // A second class's multiclass element is implied by `advancement` now, so a reader of 13 must not read it (ADR 0119).
+  if (new Set(advancement?.map((entry) => entry.elementId)).size > 1) character.formatVersion = 14;
   character.rolls = toRolls(save, advancement);
   // What Aurora put in the bag to switch something on is recorded as what it is (ADR 0129), and only the rest is the bag.
   const features = takeItemFeatures(save.equipment, options.index, diagnostics);
@@ -404,6 +408,39 @@ function toChoices(
 
   if (index) reportMissingChoices(choices, index, generated, diagnostics);
   return choices;
+}
+
+/** Aurora's app's own top-level selects, by name, and the build step of 5e's that answers the same question. */
+const TOP_LEVEL_STEPS: Record<string, string> = { Race: 'race', Class: 'class', Background: 'background' };
+
+/**
+ * Records keyed as an Aurora save keys them, written as Incudo writes them — ADR 0119 decision 7.
+ *
+ * Aurora's app asks for a race, a class and a background in its own code, so a save records them under a level element
+ * that declares no select (`ID_LEVEL_1/select:Race`), and a second class's multiclass element the same way
+ * (`ID_LEVEL_3/select:Multiclass (Level 3)`). Incudo records a race under the build step that asks for it
+ * (`build/race`), as it records campaign options under `build/options`, and a multiclass element is implied by
+ * `advancement` and recorded nowhere. Only a record whose owner declares no select of that name is moved: one content
+ * owns is a real answer to a real pool.
+ */
+function incudoRecords(choices: Choice[], index: ElementIndex | undefined, advanced: boolean): Choice[] {
+  const out: Choice[] = [];
+  for (const choice of choices) {
+    const at = choice.ruleKey.indexOf('/select:');
+    const owner = at < 0 ? undefined : choice.ruleKey.slice(0, at);
+    const name = at < 0 ? undefined : choice.ruleKey.slice(at + '/select:'.length);
+    const owned = owner && name && index?.get(owner)?.rules.some((rule) => rule.kind === 'select' && rule.name === name);
+    if (owner && name && !owned) {
+      const step = TOP_LEVEL_STEPS[name];
+      if (step) {
+        out.push({ ruleKey: `build/${step}`, elementIds: choice.elementIds });
+        continue;
+      }
+      if (advanced && /^Multiclass \(Level \d+\)$/.test(name)) continue;
+    }
+    out.push(choice);
+  }
+  return out.sort((a, b) => (a.ruleKey < b.ruleKey ? -1 : a.ruleKey > b.ruleKey ? 1 : 0));
 }
 
 /**

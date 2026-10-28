@@ -473,7 +473,7 @@ test('only format 3 may leave out progress or record a removal — ADR 0060, ADR
   assert.deepEqual(validateCharacter({ ...npc, formatVersion: 2 }, schemas).errors, [
     { path: 'progress', message: 'is required below format 3' },
   ]);
-  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 14 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
+  assert.deepEqual(validateCharacter({ ...npc, formatVersion: 15 } as unknown as Character, schemas).errors.map((e) => e.path), ['formatVersion']);
 
   // ADR 0061: a removal is format 3 too, for the same reason — a reader of 2 would give the trait back.
   const pc = createCharacter('dnd5e', 'pc', { name: 'Vesper', progress: 3 });
@@ -774,8 +774,8 @@ test('an inventory validates as instances, and a duplicate instance id does not'
 
   // A character written before ADR 0024 still opens.
   assert.deepEqual(validateCharacter({ ...character, formatVersion: 1 }, schemas).errors, []);
-  assert.deepEqual(validateCharacter({ ...character, formatVersion: 14 } as unknown as Character, schemas).errors, [
-    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13' },
+  assert.deepEqual(validateCharacter({ ...character, formatVersion: 15 } as unknown as Character, schemas).errors, [
+    { path: 'formatVersion', message: 'must be one of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14' },
   ]);
   // Play state (ADR 0084) is recorded only from format 8, whole positive counts only. Fails if the format check in
   // `checkCharacterReferences` is removed, or if the schema's `minimum` is.

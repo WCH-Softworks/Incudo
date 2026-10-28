@@ -25,7 +25,7 @@ import type {
 } from './model.ts';
 import { declaredBlockName, LayeredElementIndex, MapElementIndex } from './model.ts';
 import type { Character } from './character.ts';
-import { addedElementIds, advancementCounts, advancementElementIds, equippedElementIds } from './character.ts';
+import { addedElementIds, advancementCounts, advancementElementIds, equippedElementIds, impliedMulticlassIds } from './character.ts';
 import type {
   BlockFilterDef,
   GameSystem,
@@ -502,6 +502,10 @@ function derive(
   // so an advancement entry seeds the derivation exactly as a choice does.
   const trackLevels = advancementCounts(character);
   for (const id of advancementElementIds(character)) chosenIds.add(id);
+  // And a class taken second holds its multiclass element, implied by `advancement` and recorded nowhere (ADR 0119). Held
+  // as a recorded pick was: seeded, never counted out, and expanded once nothing else reaches it, on no track.
+  const implied = impliedMulticlassIds(character, index);
+  for (const id of implied) chosenIds.add(id);
   // What the character is wearing and wielding, and whatever is attached to it — step 3 of
   // docs/INVENTORY-AND-AC-PLAN.md. An equipped item is a seed in exactly the sense a choice
   // is: the user put it there, no formula produced it, and its rules are the element's own.
@@ -553,6 +557,7 @@ function derive(
     for (const choice of character.choices) {
       for (const id of choice.elementIds) if (!otherSeeds.has(id)) picks.add(id);
     }
+    for (const id of implied) if (!otherSeeds.has(id)) picks.add(id);
   }
 
   // Every seed a recorded choice did not put there. A recorded pick stops seeding while it does not count (ADR 0096,
@@ -563,6 +568,7 @@ function derive(
     ...equippedElementIds(character),
     ...custom.elements.map((element) => element.id),
     ...added,
+    ...implied,
   ]);
 
   let active = new Map<ElementId, Element>();

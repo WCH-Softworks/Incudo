@@ -293,7 +293,7 @@ export interface Character {
   updatedAt?: string;
 }
 
-export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+export type CharacterFormatVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
 
 /** What the user chose about one cantrip's attack row — ADR 0111. Every field optional; an empty choice is not recorded. */
 export interface SpellAttackChoice {
@@ -390,9 +390,10 @@ export const CHARACTER_FORMAT_VERSION = 2;
  * custom feature that records its `type` 6 (ADR 0065), one with `references` 7 (ADR 0068), one with `play` 8 (ADR
  * 0084), one with a custom feature line that marks a row 9 (ADR 0094), one with `additionBlocks` 10 (ADR 0097), one
  * with `money` or `startingEquipment` 11 (ADR 0087), one with a custom feature copied from the feature library 12 (ADR
- * 0106), one with `spellAttacks` 13 (ADR 0111), and nothing else is raised.
+ * 0106), one with `spellAttacks` 13 (ADR 0111), one whose `advancement` names a second class 14 (ADR 0119: the second
+ * class's multiclass element is implied, not recorded), and nothing else is raised.
  */
-export const LATEST_CHARACTER_FORMAT_VERSION = 13;
+export const LATEST_CHARACTER_FORMAT_VERSION = 14;
 
 /** Raise a character to a format version a write needs. Nothing downgrades one. */
 export function raiseFormatVersion(character: Character, version: CharacterFormatVersion): Character {
@@ -521,11 +522,14 @@ export function setAdvancement(
   character: Character,
   advancement: AdvancementEntry[] | undefined,
 ): Character {
-  return {
+  const next: Character = {
     ...character,
     advancement: advancement?.length ? advancement : undefined,
     updatedAt: new Date().toISOString(),
   };
+  // A second class's multiclass element is implied by `advancement` since ADR 0119, so a reader of 13, which looks for a
+  // recorded choice, must not read it.
+  return new Set(next.advancement?.map((entry) => entry.elementId)).size > 1 ? raiseFormatVersion(next, 14) : next;
 }
 
 /**
@@ -930,6 +934,30 @@ export function chosenElementIds(character: Character): ElementId[] {
  * reason the engine does, or a multiclass save embeds only half of itself and ADR 0012
  * quietly breaks.
  */
+/**
+ * The multiclass element of every class `advancement` spends a level on but the first — ADR 0119, amending ADR 0036.
+ *
+ * A class taken second says so through its own multiclass element (content's `<multiclass>` block: the second class's
+ * proficiencies, its skill choice, the multiclass spellcasting marker). It used to be recorded beside `advancement` as a
+ * choice keyed as an Aurora save keys it (`ID_LEVEL_3/select:Multiclass (Level 3)`), a second record that meant nothing
+ * `advancement` did not say and that a build could forget. It is read from `advancement` instead: the class of the
+ * lowest level is the first and has none; every other class's element, where the index holds it, is held. Each once.
+ */
+export function impliedMulticlassIds(
+  character: Character,
+  index: { get(id: ElementId): { multiclass?: { id: ElementId } } | undefined },
+): ElementId[] {
+  const entries = [...(character.advancement ?? [])].sort((a, b) => a.at - b.at);
+  const first = entries[0]?.elementId;
+  const ids: ElementId[] = [];
+  for (const entry of entries) {
+    if (entry.elementId === first) continue;
+    const id = index.get(entry.elementId)?.multiclass?.id;
+    if (id && index.get(id) && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
 export function advancementElementIds(character: Character): ElementId[] {
   const ids: ElementId[] = [];
   for (const entry of character.advancement ?? []) {
