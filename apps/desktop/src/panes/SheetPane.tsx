@@ -10,6 +10,9 @@
  * the whole page shows, the character's held creatures and what it keeps included, is one document
  * (`sheetDocument`, ADR 0075), which the text export renders too; this draws it and composes nothing.
  *
+ * A sheet whose kind declares a layout is drawn as a page (`SheetPage`, ADR 0126): a head band, a side column and tabs.
+ * One that declares none is the column it always was.
+ *
  * Printing is this pane on paper (ADR 0077): the print rules in styles.css hide what is not the sheet, print the title
  * where the name field is, flow the character's sections and its creatures (`.sheet-flow`) in two columns, and start
  * what it keeps on a page of its own. Nothing here knows a section by name. What the print options step chose (ADR 0078)
@@ -18,9 +21,11 @@
 
 import type { CharacterBuilder, PlayView, PrintRendering, SheetDocument } from '@incudo/ui';
 import { PlayPanel } from './PlayPanel.tsx';
-import { DescriptionText, ReferenceText } from './References.tsx';
 import { Companions, SheetRows } from './Companions.tsx';
 import { FreeformSheet } from './Freeform.tsx';
+import { SectionHead } from './SheetBits.tsx';
+import { SheetPage } from './SheetPage.tsx';
+import { SheetDescriptionsPart, SheetReferencesPart } from './SheetParts.tsx';
 
 export function SheetPane({
   builder,
@@ -50,11 +55,23 @@ export function SheetPane({
 
       {play && <PlayPanel builder={builder} view={play} />}
 
+      {document.layout === 'page' ? (
+        <SheetPage document={document} />
+      ) : (
+        <SheetColumn document={document} />
+      )}
+    </main>
+  );
+}
+
+/** A sheet whose kind declares no layout: its sections in one flow, then what the user wrote, the descriptions and what it keeps. */
+function SheetColumn({ document }: { document: SheetDocument }): React.JSX.Element {
+  return (
+    <>
       <div className="sheet-flow">
         {document.sections.map((section) => (
           <section key={section.id} className="sheet-section">
-            <h3>{section.label}</h3>
-            {section.description && <p className="hint">{section.description}</p>}
+            <SectionHead section={section} />
             <SheetRows section={section} />
           </section>
         ))}
@@ -67,38 +84,10 @@ export function SheetPane({
       {document.freeform && <FreeformSheet part={document.freeform} />}
 
       {/* The whole descriptions of what the describing sections list (ADR 0114): after what the user wrote, before what it keeps. */}
-      {document.descriptions && (
-        <section className="sheet-section sheet-descriptions">
-          <h3>{document.descriptions.label}</h3>
-          {document.descriptions.groups.map((group) => (
-            <div key={group.label} className="sheet-description-group">
-              <h4>{group.label}</h4>
-              {group.entries.map((entry) => (
-                <article key={entry.elementId}>
-                  <h5>{entry.name}</h5>
-                  <DescriptionText html={entry.html} />
-                </article>
-              ))}
-            </div>
-          ))}
-        </section>
-      )}
+      {document.descriptions && <SheetDescriptionsPart part={document.descriptions} />}
 
       {/* What the character keeps beside it for reference (ADR 0068), after the sheet: text, not the character's own. */}
-      {document.references && (
-        <section className="sheet-section sheet-references">
-          <h3>{document.references.label}</h3>
-          {document.references.entries.map((entry) => (
-            <article key={entry.elementId}>
-              <h4>
-                {entry.name}
-                {entry.source && <span className="hint"> · {entry.source}</span>}
-              </h4>
-              <ReferenceText entry={entry} />
-            </article>
-          ))}
-        </section>
-      )}
-    </main>
+      {document.references && <SheetReferencesPart part={document.references} />}
+    </>
   );
 }

@@ -29,6 +29,7 @@ import {
 } from '@incudo/ui';
 
 import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
+import { RowValue, SectionHead } from './SheetBits.tsx';
 
 /**
  * A section's rows, attacks (ADR 0093), listed elements and printed lines, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
@@ -46,8 +47,7 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
             <div key={row.stat}>
               <dt>{row.label}</dt>
               <dd>
-                {row.value}
-                {rowAside(row) !== undefined && <span className="sheet-beside"> ({rowAside(row)})</span>}
+                <RowValue row={row} />
               </dd>
             </div>
           ))}
@@ -120,13 +120,13 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
  * (Bonus Action; 3/Long Rest): …", as `packages/ui` chose and filled it. The text is sanitized as every description is,
  * and keeps the line breaks content wrote.
  */
-function ListedElement({ element }: { element: SheetListedElement }): React.JSX.Element {
+export function ListedElement({ element, className }: { element: SheetListedElement; className?: string }): React.JSX.Element {
   const usage = listedUsage(element);
   const aside = listedAside(element);
   const html = useMemo(() => (element.text ? sanitizeDescriptionHtml(element.text) : ''), [element.text]);
   const name = listedName(element);
   return (
-    <li>
+    <li {...(className ? { className } : {})}>
       {usage !== undefined || html ? <strong>{name}</strong> : name}
       {aside !== undefined && <span className="sheet-beside"> ({aside})</span>}
       {element.prerequisitesUnmet && <span className="hint"> ({PREREQUISITES_UNMET})</span>}
@@ -162,8 +162,7 @@ export function Companions({ view }: { view: NonNullable<SheetDocument['companio
           ))}
           {creature.sections.map((section) => (
             <div key={section.id} className="sheet-companion-section">
-              <h5>{section.label}</h5>
-              {section.description && <p className="hint">{section.description}</p>}
+              <SectionHead section={section} level={5} />
               <SheetRows section={section} />
             </div>
           ))}

@@ -151,6 +151,12 @@ export interface SheetListedElement {
    * (`answers`, ADR 0126): "Defense" answers "Fighting Style", written "Fighting Style: Defense".
    */
   answering?: SheetListedRef;
+  /**
+   * What gave it, when another section of the sheet lists the giver (ADR 0126): the nearest element up the chain of what
+   * granted or chose it that this section does not list itself. A feature's class, race or background; a feat chosen by
+   * a class's improvement goes under the class. What a renderer groups a section's cards by.
+   */
+  from?: SheetListedRef;
 }
 
 /** An element named where another stands for it (ADR 0126). */
@@ -812,6 +818,7 @@ export function sheetView(
     derived.elements,
     unmet,
   );
+  nameGivers(sections, derived, answers ?? countedAnswers(derived));
   const sheet = kind.sheet;
   return {
     kindName: kind.name,
@@ -819,6 +826,39 @@ export function sheetView(
     sections: laidOut(sections, sheet),
     unfilled: unfilledIn(sections),
   };
+}
+
+/**
+ * Write on each listed element what gave it (ADR 0126): the nearest element up the chain of what granted it (a held
+ * element's `<grant>`) or chose it (its counted answers) that another section of the sheet lists. The first giver held
+ * wins; a chain that comes round again stops.
+ */
+function nameGivers(
+  sections: readonly SheetSectionView[],
+  derived: Pick<DerivedCharacter, 'elements' | 'elementIds'>,
+  answers: ReadonlyMap<ElementId, readonly ElementId[]>,
+): void {
+  const parent = new Map<ElementId, Element>();
+  for (const element of derived.elements) {
+    const given = [
+      ...element.rules.flatMap((rule) => (rule.kind === 'grant' && derived.elementIds.has(rule.id) ? [rule.id] : [])),
+      ...(answers.get(element.id) ?? []),
+    ];
+    for (const id of given) if (id !== element.id && !parent.has(id)) parent.set(id, element);
+  }
+  const listedIn = new Map<ElementId, string>();
+  for (const view of sections) for (const e of view.elements) if (!listedIn.has(e.elementId)) listedIn.set(e.elementId, view.id);
+  for (const view of sections) {
+    for (const entry of view.elements) {
+      const seen = new Set<ElementId>([entry.elementId]);
+      let giver = parent.get(entry.answering?.elementId ?? entry.elementId);
+      while (giver && !seen.has(giver.id) && (listedIn.get(giver.id) ?? view.id) === view.id) {
+        seen.add(giver.id);
+        giver = parent.get(giver.id);
+      }
+      if (giver && !seen.has(giver.id)) entry.from = { elementId: giver.id, name: giver.sheet?.alt || giver.sheet?.name || giver.name };
+    }
+  }
 }
 
 /**

@@ -124,6 +124,8 @@ test('the Build pane\'s kept element reads the same entry', () => {
   assert.deepEqual(referenceEntry(rows[1]!), sheetDocument(source).references!.entries[1]);
 });
 
+// A section's explanation is not written (ADR 0126 decision 2): "What the tinker is made of." is the screen's only. Fails if
+// the Markdown writes `section.description` again.
 test('the Markdown: title, kind, a heading per section, one list of rows, elements and printed lines, escaped', () => {
   const markdown = sheetMarkdown(sheetDocument(source));
   assert.equal(
@@ -134,8 +136,6 @@ test('the Markdown: title, kind, a heading per section, one list of rows, elemen
       'Tinker',
       '',
       '## Scores',
-      '',
-      'What the tinker is made of.',
       '',
       '- Grit: 14 (+2, deft)',
       '- Luck: -1 (handy\\_\\*)',

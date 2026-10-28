@@ -2,7 +2,7 @@
  * The sheet document written as Markdown that reads as plain text — ADR 0075.
  *
  * One renderer of `sheetDocument`, beside the Sheet pane: the character's name as the title, its kind under it, each
- * section a heading with one list of what it shows (rows as "Label: value (beside, mark)", listed elements by name, printed
+ * section a heading with one list of what it shows (its explanation left out, ADR 0126) (rows as "Label: value (beside, mark)", listed elements by name, printed
  * lines as "Label: text", in the pane's order), each held creature and each kept element a heading of its own, what the
  * user wrote about the character under its own heading (ADR 0092), and a
  * kept element's text read from its HTML (`htmlToMarkdown`). Nothing but what the document holds, and nothing it holds
@@ -49,7 +49,8 @@ export function sheetMarkdown(document: SheetDocument): string {
   const sections = (list: readonly SheetSectionView[], level: number): void => {
     for (const section of list) {
       heading(level, section.label);
-      if (section.description) paragraph(section.description);
+      // A section's explanation is not the character (ADR 0126 decision 2): the screen shows it behind an "i", and the
+      // export does not write it.
       const items = sectionItems(section);
       if (items.length) blocks.push(items.map((item) => `- ${escapeLineStart(item)}`).join('\n'));
     }

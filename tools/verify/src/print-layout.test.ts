@@ -706,3 +706,35 @@ test('the print rules: the Sheet pane on paper, laid out by what it holds (ADR 0
   t.diagnostic(`print rules read: ${print.size} selectors`);
   assert.deepEqual(problems, []);
 });
+
+test('a laid-out sheet: every tab printed, its marks in words, its explanations on screen only (ADR 0126)', (t) => {
+  const src = join(import.meta.dirname, '..', '..', '..', 'apps', 'desktop', 'src');
+  const css = readFileSync(join(src, 'styles.css'), 'utf8');
+  const print = cssRules(css, 'print');
+  const screen = cssRules(css, 'screen');
+  const problems: string[] = [];
+  const expect = (rules: Map<string, Map<string, string>>, selector: string, property: string, value: RegExp, why: string): void => {
+    const found = rules.get(selector)?.get(property);
+    if (found === undefined || !value.test(found)) problems.push(`${selector} { ${property}: ${found ?? 'unset'} }: ${why}`);
+  };
+  // A tab not chosen is hidden on screen and printed; the tab bar is the screen's.
+  expect(screen, '.sheet-tab-hidden', 'display', /^none$/, 'every tab shows at once on screen');
+  expect(print, '.sheet-tab-hidden', 'display', /^block$/, 'a print leaves out every tab but the open one');
+  expect(print, '.sheet-tab-label', 'display', /^block$/, "a printed tab's sections are not under its label");
+  expect(print, '.sheet-tabs', 'display', /^none$/, 'the tab bar prints');
+  // A section's explanation is behind an "i" on screen and not on paper (decision 2).
+  expect(print, '.info-tip', 'display', /^none$/, 'the "i" prints');
+  // A mark is dots on screen and its word on paper (decision 10); on screen the word is kept for a screen reader.
+  expect(print, '.sheet-mark-dots', 'display', /^none$/, 'the dots print');
+  expect(print, '.sheet-mark-word', 'position', /^static$/, 'the word is left off paper');
+  expect(screen, '.sheet-mark-word', 'clip-path', /^inset\(50%\)$/, 'the word shows beside the dots on screen');
+  if (screen.get('.sheet-mark-word')?.get('display') === 'none') problems.push('.sheet-mark-word: hidden from a screen reader');
+
+  // The pane draws the page for a sheet that declares one, every tab's panel whichever is open.
+  const pane = readFileSync(join(src, 'panes', 'SheetPane.tsx'), 'utf8');
+  if (!/document\.layout === 'page' \?\s*\(\s*<SheetPage document=\{document\} \/>/.test(pane)) problems.push('SheetPane: a laid-out sheet is not drawn as a page');
+  const page = readFileSync(join(src, 'panes', 'SheetPage.tsx'), 'utf8');
+  if (!/\{filled\.map\(\(tab\) => \(\s*<div key=\{tab\.id\} role="tabpanel"/.test(page)) problems.push('SheetPage: only the open tab is drawn, so a print leaves the rest out');
+  t.diagnostic(`print rules read: ${print.size} selectors`);
+  assert.deepEqual(problems, []);
+});

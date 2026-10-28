@@ -580,7 +580,7 @@ ul.problems li.error {
 /* What a section lists with nothing to say, named once at its end (ADR 0126). */
 .sheet-also {
   margin: 6px 0 0;
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 /* The inventory editor (ADR 0098): one card per entry, its controls on the head line. */
@@ -2589,6 +2589,213 @@ ul.browse-categories {
   max-width: 100%;
 }
 
+/*
+ * A sheet laid out as a page (ADR 0126, SheetPage.tsx): a head band, a side column always shown and a main column in
+ * tabs. Narrower than 1100 px the band wraps and the side column narrows; under 800 px it is one column.
+ */
+.sheet-page {
+  --sheet-side: 330px;
+}
+/* A page wants the window's width, up to a point; a column sheet keeps the pane's. */
+.pane.sheet:has(.sheet-page) {
+  max-width: 1360px;
+}
+.sheet-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 20px;
+  padding: 4px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.sheet-head-line {
+  flex: 1 1 320px;
+  margin: 4px 0;
+  color: var(--fg-muted);
+}
+.sheet-head-line strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+.sheet-head-tiles {
+  flex: 2 1 420px;
+}
+.sheet-head-tiles .sheet-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+}
+.sheet-body {
+  display: grid;
+  grid-template-columns: var(--sheet-side) minmax(0, 1fr);
+  gap: 0 20px;
+}
+.sheet-side {
+  border-right: 1px solid var(--line);
+  padding-right: 16px;
+}
+.sheet-side .sheet-section {
+  border-bottom: 0;
+  padding: 8px 0;
+}
+.sheet-side dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1px 10px;
+  font-size: 13px;
+}
+.sheet-side dl > div {
+  display: contents;
+}
+.sheet-side dt {
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+.sheet-side dd {
+  margin: 0;
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-section-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* The explanation opens to the right of its "i", which sits at a heading's start. */
+.sheet-section-head .info-tip-text {
+  left: 0;
+  right: auto;
+}
+.sheet-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.sheet-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg-sunken);
+  text-align: center;
+}
+.sheet-tile-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+.sheet-tile-value {
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-tile-aside {
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+.sheet-tile-under {
+  margin-top: 2px;
+  font-size: 12px;
+}
+.sheet-tile-legend {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+/* A row's mark (ADR 0126 decision 10): dots on screen, the word for print and for a screen reader. */
+.sheet-mark-dots {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 5px;
+  vertical-align: 1px;
+}
+.sheet-mark-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fg);
+}
+.sheet-mark-word {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.sheet-tabs {
+  position: sticky;
+  top: -20px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding-top: 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+.sheet-tab {
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  color: var(--fg-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.sheet-tab.on {
+  margin-bottom: -1px;
+  border-color: var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  font-weight: 600;
+}
+.sheet-tab-hidden,
+.sheet-tab-label {
+  display: none;
+}
+.sheet-cards {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.sheet-card {
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 13.5px;
+}
+.sheet-card-group-head {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+@media (max-width: 1100px) {
+  .sheet-page {
+    --sheet-side: 260px;
+  }
+}
+@media (max-width: 800px) {
+  .sheet-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sheet-side {
+    border-right: 0;
+    padding-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+
 @media print {
   /* No edge of a printed page is left to the print dialog (ADR 0078): it prints its date, title, address and page number
      in any edge that has a margin and no margin box with content, and offers them only while some edge does. So by
@@ -2814,6 +3021,39 @@ ul.browse-categories {
   .reference-text tr {
     break-inside: avoid;
   }
+
+  /*
+   * A laid-out sheet (ADR 0126) prints whole: every tab's sections after its label, one after another, the side column
+   * before them. Until its own print layout (step 8) the page is flattened into the flow the column sheet prints as.
+   */
+  .sheet-body {
+    display: block;
+  }
+  .sheet-side {
+    border: 0;
+    padding: 0;
+  }
+  .sheet-tabs,
+  .info-tip,
+  .sheet-mark-dots {
+    display: none;
+  }
+  .sheet-tab-hidden {
+    display: block;
+  }
+  .sheet-tab-label {
+    display: block;
+    font-size: 12pt;
+    margin: 10pt 0 2pt;
+  }
+  .sheet-mark-word {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
 }
 
 /* The advanced options switch under the character's parts (ADR 0115). */
