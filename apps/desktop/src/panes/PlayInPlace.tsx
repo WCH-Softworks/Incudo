@@ -101,6 +101,18 @@ export function PlayStrip({ here, tileStats, headSections }: { here: PlayHere; t
       {pools.map(({ tracker }) => (
         <Pool key={tracker.key} builder={builder} tracker={tracker} named />
       ))}
+      {/* On paper, a blank line for what is spent in amounts (ADR 0126 decision 9). */}
+      {pools.map(({ tracker }) => (
+        <span key={`print:${tracker.key}`} className="play-print-only">
+          <span className="play-strip-label">Current {tracker.label}</span> <span className="play-blank" />
+          {tracker.temporary && (
+            <>
+              {' '}
+              <span className="play-strip-label">{tracker.temporary.label}</span> <span className="play-blank" />
+            </>
+          )}
+        </span>
+      ))}
       <div className="play-strip-line">
         {[...headElements, ...statsElsewhere, ...places.loose.map((tracker) => ({ tracker, group: tracker.label }))].map(({ tracker, group }) => (
           <span key={tracker.key} className="play-strip-item">

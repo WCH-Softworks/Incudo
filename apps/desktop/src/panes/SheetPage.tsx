@@ -43,10 +43,14 @@ function Tiles({ section, under, play }: { section: SheetSectionView; under?: Sh
             <div key={row.stat} className="sheet-tile">
               <span className="sheet-tile-label">{row.label}</span>
               {spent ? (
-                <span className="sheet-tile-value">
-                  {spent.value}
-                  <span className="sheet-tile-of"> of {spent.max}</span>
-                </span>
+                <>
+                  <span className="sheet-tile-value play-screen-only">
+                    {spent.value}
+                    <span className="sheet-tile-of"> of {spent.max}</span>
+                  </span>
+                  {/* On paper the number, never what is spent (ADR 0126 decision 9). */}
+                  <span className="sheet-tile-value play-print-only">{row.value}</span>
+                </>
               ) : (
                 <span className="sheet-tile-value">{row.value}</span>
               )}

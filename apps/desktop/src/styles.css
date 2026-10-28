@@ -2884,6 +2884,9 @@ ul.browse-categories {
  * Play spent in place (ADR 0126, PlayInPlace.tsx): a box per use beside what it counts, and a strip under the head band
  * for hit points, hit dice, what counts no row, the conditions and the rests. Never printed.
  */
+.play-print-only {
+  display: none;
+}
 .sheet-tile-of {
   font-size: 12px;
   font-weight: 400;
@@ -3132,9 +3135,6 @@ ul.browse-categories {
   .pane-bar,
   .sheet-name,
   .play-panel,
-  .play-strip,
-  .play-boxes,
-  .play-inline,
   .stat-block-play,
   .stat-block-shape {
     display: none;
@@ -3221,15 +3221,123 @@ ul.browse-categories {
   }
 
   /*
-   * A laid-out sheet (ADR 0126) prints whole: every tab's sections after its label, one after another, the side column
-   * before them. Until its own print layout (step 8) the page is flattened into the flow the column sheet prints as.
+   * A laid-out sheet (ADR 0126 decision 9) prints its areas flattened: the head band across the top of the first page,
+   * the side column and the main column side by side, every tab's sections one after another under the tab's label.
+   * What the character keeps and the whole descriptions start a page, as before. What is spent prints as empty boxes and
+   * blank lines to fill in by hand, never the numbers on screen.
    */
+  .sheet-page {
+    --sheet-side: 62mm;
+  }
+  .sheet-head {
+    padding-bottom: 4pt;
+    break-inside: avoid;
+  }
   .sheet-body {
-    display: block;
+    display: grid;
+    grid-template-columns: var(--sheet-side) minmax(0, 1fr);
+    gap: 0 6mm;
   }
   .sheet-side {
-    border: 0;
-    padding: 0;
+    padding-right: 4mm;
+  }
+  .sheet-tile,
+  .sheet-card,
+  .sheet-facts tr,
+  .stat-block-line {
+    break-inside: avoid;
+  }
+  .sheet-tile {
+    min-width: 0;
+    padding: 2pt 2pt;
+  }
+  .sheet-tile-label {
+    font-size: 6.5pt;
+    letter-spacing: 0;
+  }
+  .sheet-tile-value {
+    font-size: 13pt;
+  }
+  .sheet-tile-aside,
+  .sheet-tile-under {
+    font-size: 8pt;
+  }
+  .sheet-side .sheet-tiles {
+    gap: 3pt;
+  }
+  /* A warning prints as a framed label, its background not printed. */
+  .sheet-warning {
+    background: none;
+  }
+  .sheet-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 4pt;
+  }
+  .sheet-card {
+    padding: 3pt 5pt;
+    font-size: 9.5pt;
+  }
+  .sheet-facts {
+    font-size: 7.5pt;
+  }
+  .sheet-facts th,
+  .sheet-facts td {
+    padding: 2pt 3pt;
+    overflow-wrap: break-word;
+  }
+  .sheet-facts thead th {
+    font-size: 6.5pt;
+    letter-spacing: 0;
+  }
+  .sheet-facts thead th {
+    hyphens: auto;
+  }
+  .stat-block-page {
+    display: block;
+  }
+  /* The play strip on paper: its boxes empty and a blank line for what is spent in amounts; no control prints. */
+  .play-strip {
+    display: flex;
+    border-bottom: 0;
+  }
+  .play-strip .play-pool,
+  .play-strip .play-rests,
+  .play-conditions-chips .play-chip,
+  .play-conditions-chips select,
+  .play-conditions-chips .hint,
+  .play-strip-line .play-inline {
+    display: none;
+  }
+  .play-boxes {
+    display: inline-flex;
+  }
+  .play-box.spent {
+    background: none;
+  }
+  .play-print-only {
+    display: inline-block;
+  }
+  .play-screen-only {
+    display: none;
+  }
+  .play-blank {
+    min-width: 28mm;
+    padding-right: 28mm;
+    border-bottom: 1px solid var(--line);
+  }
+  .print-omit-sections .sheet-head,
+  .print-omit-sections .play-strip,
+  .print-omit-sections .sheet-side,
+  .print-omit-sections .sheet-tab-panel > .sheet-section:not(.sheet-companions, .sheet-freeform, .sheet-descriptions, .sheet-references),
+  .print-omit-sections .stat-block > :not(.sheet-companions, .sheet-freeform, .sheet-descriptions, .sheet-references) {
+    display: none;
+  }
+  /* A tab with no part of its own left to print is not headed. */
+  .print-omit-sections .sheet-tab-panel:not(:has(.sheet-companions, .sheet-freeform, .sheet-descriptions, .sheet-references)) {
+    display: none;
+  }
+  .print-omit-sections .sheet-body {
+    display: block;
   }
   .sheet-tabs,
   .info-tip,

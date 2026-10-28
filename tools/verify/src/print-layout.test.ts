@@ -729,6 +729,19 @@ test('a laid-out sheet: every tab printed, its marks in words, its explanations 
   expect(print, '.sheet-mark-word', 'position', /^static$/, 'the word is left off paper');
   expect(screen, '.sheet-mark-word', 'clip-path', /^inset\(50%\)$/, 'the word shows beside the dots on screen');
   if (screen.get('.sheet-mark-word')?.get('display') === 'none') problems.push('.sheet-mark-word: hidden from a screen reader');
+  // The areas on paper (decision 9): the side column beside the main one, the head band whole.
+  expect(print, '.sheet-body', 'display', /^grid$/, 'the side and main columns do not sit side by side');
+  expect(print, '.sheet-head', 'break-inside', /^avoid$/, 'the head band splits across a page');
+  // What is spent prints as empty boxes and blank lines, never the numbers on screen; no control prints.
+  expect(print, '.play-strip', 'display', /^flex$/, 'nothing of play prints to fill in by hand');
+  expect(print, '.play-box.spent', 'background', /^none$/, 'a spent box prints filled');
+  expect(print, '.play-screen-only', 'display', /^none$/, 'what is left of hit points prints');
+  expect(screen, '.play-print-only', 'display', /^none$/, 'a blank line for paper shows on screen');
+  for (const control of ['.play-strip .play-pool', '.play-strip .play-rests', '.play-conditions-chips select']) {
+    expect(print, control, 'display', /^none$/, 'a control prints');
+  }
+  // Leaving out the character's own sections leaves out the page's areas too.
+  for (const area of ['.print-omit-sections .sheet-head', '.print-omit-sections .sheet-side']) expect(print, area, 'display', /^none$/, 'an area prints when its part is left out');
 
   // The pane draws the page for a sheet that declares one, every tab's panel whichever is open.
   const pane = readFileSync(join(src, 'panes', 'SheetPane.tsx'), 'utf8');
