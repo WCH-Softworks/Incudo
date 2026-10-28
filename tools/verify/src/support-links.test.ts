@@ -44,12 +44,15 @@ test('the support links are the Sponsor button\'s', async () => {
 
 test('the window may open exactly the About links, and no other address', async () => {
   const capability = JSON.parse(await read('apps', 'desktop', 'src-tauri', 'capabilities', 'default.json')) as {
-    permissions: Array<string | { identifier: string; allow?: Array<{ url: string }> }>;
+    permissions: Array<string | { identifier: string; allow?: Array<{ url: string; path?: string }> }>;
   };
-  // Showing a source's file in the file manager (ADR 0119) opens no address, so it is the one other opener permission.
+  // Showing where a source's file is kept (ADR 0119) opens a folder and no address: the one other opener permission, and
+  // only on the app's own sources folder.
+  const folder = capability.permissions.filter((permission) => typeof permission === 'object' && permission.identifier === 'opener:allow-open-path');
+  assert.deepEqual(folder, [{ identifier: 'opener:allow-open-path', allow: [{ path: '$APPDATA/sources' }] }]);
   const opener = capability.permissions.filter((permission) => {
     const id = typeof permission === 'string' ? permission : permission.identifier;
-    return id.startsWith('opener:') && id !== 'opener:allow-reveal-item-in-dir';
+    return id.startsWith('opener:') && id !== 'opener:allow-open-path';
   });
   // Fails if the plugin is granted unscoped (`opener:default` or a bare `opener:allow-open-url` opens any address).
   assert.equal(opener.length, 1, JSON.stringify(opener));

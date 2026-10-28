@@ -165,9 +165,9 @@ export function SourcesPane({
     <main className="pane">
       <h2>Content sources for {system.name}</h2>
       <p className="lede">
-        Incudo reads Aurora's content ecosystem as-is. Point it at an index and it loads every
-        file that index references. You need one of these to <em>build</em> a character; you
-        never need one to <em>open</em> a saved one.
+        Incudo converts Aurora's content into its own. Point it at an index and it downloads every
+        file that index references and converts them. You need one of these to <em>build</em> a
+        character; you never need one to <em>open</em> a saved one.
       </p>
       {/*
         Why the tag is the user's word and never inferred is ADR 0031: an Aurora index has no
@@ -288,8 +288,8 @@ export function SourcesPane({
           </button>
         </div>
         <p className="hint">
-          Incudo keeps its own copy of each file, so moving or deleting the original changes nothing here. Adding a
-          file with the same name again replaces the copy.
+          Incudo converts each file when it is added and keeps the conversion, so moving or deleting the original
+          changes nothing here. Adding a file with the same name again replaces it.
         </p>
       </div>
       {fileResults && (

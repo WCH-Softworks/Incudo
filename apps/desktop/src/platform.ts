@@ -390,9 +390,14 @@ export class TauriSourceFiles implements SourceFiles {
     if (await fs.exists(path)) await fs.remove(path);
   }
 
+  /**
+   * The folder the file is in, opened in Explorer. Not the opener's reveal, which selects the file: driven in the window
+   * on Windows (2026-10-28) it answered after 20 s and showed nothing, where opening the folder shows it at once.
+   */
   async reveal(name: string): Promise<void> {
-    const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
-    await revealItemInDir(await this.path(name));
+    const { openPath } = await import('@tauri-apps/plugin-opener');
+    const { dirname } = await import('@tauri-apps/api/path');
+    await openPath(await dirname(await this.path(name)));
   }
 }
 
