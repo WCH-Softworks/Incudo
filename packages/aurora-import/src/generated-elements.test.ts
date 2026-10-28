@@ -46,7 +46,11 @@ test('the ability score elements carry the one mechanic the corpus states outrig
 test('no inventory proxy is declared: an item that only gives a language or a score is not an item (ADR 0129)', () => {
   const ids = new Set(auroraGeneratedElements().map((e) => e.id));
   for (const id of ITEM_PROXY_REPLACEMENTS.keys()) assert.ok(!ids.has(id), id);
-  assert.ok(auroraGeneratedElements().every((e) => e.type !== 'Item'));
+  // The one item is Incudo's own, what a pending starting-equipment line the user names is entered as (ADR 0119), and it
+  // gives nothing.
+  const items = auroraGeneratedElements().filter((e) => e.type === 'Item');
+  assert.deepEqual(items.map((e) => e.id), ['ID_INTERNAL_ITEM_OWN']);
+  assert.deepEqual([items[0]!.rules, items[0]!.setters], [[], {}]);
 });
 
 test('markers carry identity and no invented mechanics', () => {

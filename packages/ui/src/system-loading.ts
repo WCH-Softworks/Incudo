@@ -14,17 +14,14 @@
 
 import {
   readJsonText,
-  systemLineage,
   validateGameSystem,
   type GameSystem,
   type JsonPosition,
-  type JsonSchema,
   type OverlayChange,
   type SchemaBundle,
   type SchemaError,
 } from '@incudo/core';
 
-import { checkStartingEquipment, startingEquipmentFits, type StartingEquipmentFile } from './starting-equipment.ts';
 import { describeSystemErrors, syntaxProblem, type SystemProblem } from './system-problems.ts';
 
 /** Where a definition came from: with the app, or added by the user. The one difference ADR 0011 allows. */
@@ -174,62 +171,27 @@ export interface SystemCatalog {
   overlays: Record<string, UserOverlay>;
   /** What is worth checking in each system that loaded, by id, shipped or the user's. */
   warnings: Record<string, SystemProblem[]>;
-  /** The starting equipment files that checked against the shipped system each names (ADR 0087). */
-  startingEquipment: StartingEquipmentFile[];
-}
-
-/** Starting equipment shipped beside the systems, unchecked, with the schema the files are checked against. */
-export interface ShippedStartingEquipment {
-  files: readonly unknown[];
-  schema: JsonSchema;
-}
-
-/** The shipped set, read: the half of a catalog that needs no storage, so a shell can have it before anything is awaited. */
-export interface ShippedCatalog extends LoadedDefinitions {
-  startingEquipment: StartingEquipmentFile[];
-  /** Starting equipment files that did not check, with why: a fault in the app's own data, which a shell logs. */
-  startingEquipmentFailures: Array<{ system?: string; errors: SchemaError[] }>;
-}
-
-/** Read the shipped definitions and the starting equipment beside them. */
-export function loadShippedCatalog(
-  sources: readonly SystemDefinitionSource[],
-  schemas: SchemaBundle,
-  startingEquipment?: ShippedStartingEquipment,
-): ShippedCatalog {
-  const loaded = loadSystemDefinitions(sources, schemas, [], 'shipped');
-  const files: StartingEquipmentFile[] = [];
-  const startingEquipmentFailures: ShippedCatalog['startingEquipmentFailures'] = [];
-  for (const candidate of startingEquipment?.files ?? []) {
-    const named = (candidate as { system?: unknown })?.system;
-    const system = loaded.systems.find((s) => s.id === named);
-    const result = checkStartingEquipment(candidate, startingEquipment!.schema, system);
-    if (result.value && system) files.push(result.value);
-    else {
-      startingEquipmentFailures.push({
-        ...(typeof named === 'string' ? { system: named } : {}),
-        errors: system ? result.errors : [{ path: 'system', message: `"${String(named)}" is not a system that ships` }, ...result.errors],
-      });
-    }
-  }
-  return { ...loaded, startingEquipment: files, startingEquipmentFailures };
 }
 
 /**
- * The shipped set and the user's together, labelled by origin. Every system that would be offered a shipped starting
- * equipment file through its lineage, and that the file does not fit, is told so among its warnings (and the builder
- * offers it none: `startingEquipmentFor`).
+ * The shipped set, read: the half of a catalog that needs no storage, so a shell can have it before anything is awaited.
+ * Nothing ships beside a system any more: starting equipment is content's (ADR 0119), and a system ships no data of
+ * one book's.
  */
+export type ShippedCatalog = LoadedDefinitions;
+
+/** Read the shipped definitions. */
+export function loadShippedCatalog(sources: readonly SystemDefinitionSource[], schemas: SchemaBundle): ShippedCatalog {
+  return loadSystemDefinitions(sources, schemas, [], 'shipped');
+}
+
+/** The shipped set and the user's together, labelled by origin. */
 export function systemCatalog(shipped: ShippedCatalog, user?: LoadedDefinitions): SystemCatalog {
   const systems = [...shipped.systems, ...(user?.systems ?? [])];
   const origins: Record<string, SystemOrigin> = {};
   for (const system of shipped.systems) origins[system.id] = 'shipped';
   for (const system of user?.systems ?? []) origins[system.id] = 'user';
   const warnings: Record<string, SystemProblem[]> = { ...shipped.warnings, ...(user?.warnings ?? {}) };
-  for (const system of systems) {
-    const notes = startingEquipmentWarnings(system, shipped.startingEquipment, systems);
-    if (notes.length) warnings[system.id] = [...(warnings[system.id] ?? []), ...notes];
-  }
   return {
     systems,
     failures: [
@@ -239,7 +201,6 @@ export function systemCatalog(shipped: ShippedCatalog, user?: LoadedDefinitions)
     origins,
     overlays: { ...shipped.overlays, ...(user?.overlays ?? {}) },
     warnings,
-    startingEquipment: shipped.startingEquipment,
   };
 }
 
@@ -253,30 +214,6 @@ export function systemFailureNote(origin: SystemOrigin | undefined): string {
   return origin === 'shipped'
     ? 'this definition comes with Incudo and does not match the system format, so Incudo does not load it. This copy of the app is faulty; installing it again should mend it.'
     : 'this definition does not match the system format, so Incudo does not load it. Fix what is listed and add the file again.';
-}
-
-/** One warning per distinct reason a shipped starting equipment file a system's lineage reaches does not fit it. */
-function startingEquipmentWarnings(
-  system: GameSystem,
-  files: readonly StartingEquipmentFile[],
-  systems: readonly GameSystem[],
-): SystemProblem[] {
-  const lineage = systemLineage(system);
-  const out: SystemProblem[] = [];
-  for (const file of files) {
-    if (!lineage.includes(file.system) || file.system === system.id) continue;
-    const errors = startingEquipmentFits(file, system);
-    if (!errors.length) continue;
-    const from = systems.find((s) => s.id === file.system)?.name ?? file.system;
-    const reasons = [...new Set(errors.map((e) => e.message))];
-    for (const reason of reasons) {
-      out.push({
-        where: '',
-        message: `The starting equipment that comes with ${from} does not fit this system, so none is offered: ${reason}.`,
-      });
-    }
-  }
-  return out;
 }
 
 function isOverlay(value: unknown): boolean {

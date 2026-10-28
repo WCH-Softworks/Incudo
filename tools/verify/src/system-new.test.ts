@@ -17,7 +17,7 @@ import { BundleElementIndex, MemoryStorage, systemLineage, type Element, type Ga
 import { sourcesForSystem, type ConfiguredSource } from '@incudo/content';
 import { CharacterBuilder, newCharacterOfKind, newSystemChoices, newSystemFile, UserSystemStore, type NewSystemStart } from '@incudo/ui';
 
-import { loadSchemas, loadShippedStartingEquipment, loadFixtureSystem, loadShippedSystem } from './node-system.ts';
+import { loadSchemas, loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 
 const schemas = await loadSchemas();
 const shipped = [await loadShippedSystem('dnd5e'), await loadFixtureSystem('cairn')];
@@ -92,9 +92,16 @@ test('a copy of 5e answers to 5e: its sources, its starting equipment and its fo
   const source = { id: 'core', url: 'https://example.invalid/core.index', enabled: true, systemId: 'dnd5e' } as ConfiguredSource;
   assert.deepEqual(sourcesForSystem([source], systemLineage(copy)).map((s) => s.id), ['core']);
 
-  const equipment = await loadShippedStartingEquipment('dnd5e');
-  const builder = new CharacterBuilder(newCharacterOfKind(copy, 'pc'), copy, new BundleElementIndex([]), { startingEquipment: [equipment] });
-  assert.ok(builder.getState().startingEquipment, 'the copy is offered 5e\'s starting equipment');
+  // Starting equipment is content's (ADR 0119): a class carrying a package, offered because the copy keeps 5e's kind.
+  const fighter = {
+    id: 'ID_TEST_CLASS', type: 'Class', name: 'Fighter', source: 'Test', setters: {}, rules: [], supports: [],
+    origin: { sourceId: 'test', format: 'incudo' as const },
+    startingEquipment: [{ id: 'wealth', label: 'Gold instead', coins: { gp: 10 } }],
+  };
+  const builder = new CharacterBuilder(newCharacterOfKind(copy, 'pc'), copy, new BundleElementIndex([fighter]));
+  const pick = builder.getState().decisions.find((d) => d.stepId === 'class')!;
+  builder.choose(pick.id, [fighter.id]);
+  assert.ok(builder.getState().startingEquipment?.sources.some((s) => s.forId === fighter.id), 'the copy is offered 5e\'s starting equipment');
 
   // An overlay of the copy inherits copiedFrom when it is applied, so it reaches 5e's content too.
   const overlay = newSystemFile({ kind: 'changes', of: copy }, 'Our 5e, Changed', ['dnd5e', 'cairn', copy.id]);

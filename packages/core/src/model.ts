@@ -263,7 +263,47 @@ export interface Element {
    * it as an `<extract>` block; read only by the inventory editor's Open, never by a derivation.
    */
   contents?: ElementContent[];
+  /**
+   * The packages a class or a background gives a character to start with — ADR 0119: read out of the element's prose by
+   * the converter and written here, where ADR 0087 kept them in a file beside the system. Read by the builder's starting
+   * equipment step, never by a derivation.
+   */
+  startingEquipment?: StartingOption[];
   origin: ElementOrigin;
+}
+
+/** One package a character may take: lines of items, or coins, or a wealth roll. */
+export interface StartingOption {
+  id: string;
+  label: string;
+  lines?: StartingLine[];
+  coins?: Record<string, number>;
+  wealth?: { dice: string; multiplier?: number; unit: string };
+  /** What the book lists that no element is: shown, written nowhere (ADR 0087's file; a conversion writes `pending`). */
+  unlisted?: string[];
+}
+
+/** One line of a package: a bundle, or a choice among bundles. */
+export type StartingLine = StartingBundle | { choose: StartingBundle[] };
+
+export interface StartingBundle {
+  items?: Array<{ id: ElementId; quantity?: number }>;
+  picks?: StartingPick[];
+  /** What the prose lists that matched no item, as written: the user resolves each on Build (ADR 0119 decision 9). */
+  pending?: Array<{ text: string; quantity?: number }>;
+  /** Coins a bundle of a choice gives. */
+  coins?: Record<string, number>;
+}
+
+/** An item the character picks: from a list, or among the items of some types matching a filter. */
+export interface StartingPick {
+  /** The book's words: "a martial weapon". */
+  label: string;
+  count?: number;
+  from?: ElementId[];
+  types?: string[];
+  supports?: string;
+  publications?: string[];
 }
 
 /** One line of what an element holds: another element and how many, 1 when absent. */

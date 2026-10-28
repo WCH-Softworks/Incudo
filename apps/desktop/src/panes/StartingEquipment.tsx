@@ -7,9 +7,10 @@
  * what it holds is only the sentence a refused Take returned, until the next one.
  */
 
-import { useState } from 'react';
-import type { ElementId } from '@incudo/core';
+import { useMemo, useState } from 'react';
+import type { ElementId, ElementIndex } from '@incudo/core';
 import {
+  PENDING_ITEMS_HINT,
   purseLine,
   startingMissingNote,
   startingOwedNote,
@@ -21,6 +22,8 @@ import {
   type StartingPickView,
   type StartingSource,
 } from '@incudo/ui';
+
+import { CandidatePicker } from './CandidatePicker.tsx';
 
 /** An open source's options, each with its lines, its answers and a Take button. */
 export function StartingOptions({
@@ -196,5 +199,98 @@ export function StartingEquipmentSettled({
         </p>
       )}
     </>
+  );
+}
+
+/**
+ * The lines a taken package lists that no loaded item matched (ADR 0119 decision 9), each resolved by the user with an
+ * item, or with a name of their own that enters the bag under that name. Holds only which line is being resolved and
+ * the name being typed, and the sentence a refused resolve returned.
+ */
+export function PendingItems({
+  state,
+  builder,
+  elements,
+  candidateLabel,
+}: {
+  state: StartingEquipmentState;
+  builder: CharacterBuilder;
+  elements: ElementIndex;
+  candidateLabel: (id: ElementId) => string;
+}): React.JSX.Element | null {
+  const [open, setOpen] = useState<string | undefined>(undefined);
+  const [name, setName] = useState('');
+  const [refusal, setRefusal] = useState<string | undefined>(undefined);
+  // Asked of the builder only while a line is open: it is every item loaded.
+  const options = useMemo(() => (open ? builder.inventoryOptionsFor() : []), [open, builder]);
+  if (state.pending.length === 0) return null;
+  const resolve = (forId: ElementId, index: number, answer: { elementId: ElementId } | { name: string }): void => {
+    const refused = builder.resolvePendingItem(forId, index, answer);
+    setRefusal(refused);
+    if (!refused) {
+      setOpen(undefined);
+      setName('');
+    }
+  };
+  return (
+    <section className="pending-items">
+      <h3>Pending items</h3>
+      <p className="hint">{PENDING_ITEMS_HINT}</p>
+      <ul className="starting-taken">
+        {state.pending.map((line) => {
+          const key = `${line.forId}/${line.index}`;
+          const text = line.quantity > 1 ? `${line.text} ×${line.quantity}` : line.text;
+          return (
+            <li key={key}>
+              <div className="decision-head">
+                <span>
+                  {text}
+                  {line.resolved && <span className="hint"> — {line.resolved}</span>}
+                </span>
+                {open !== key && (
+                  <button type="button" className="link" onClick={() => { setOpen(key); setName(''); setRefusal(undefined); }}>
+                    {line.resolved ? 'Change' : 'Resolve'}
+                  </button>
+                )}
+              </div>
+              {open === key && (
+                <div className="settled">
+                  {state.canName && (
+                    <form
+                      className="decision-head"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        resolve(line.forId, line.index, { name });
+                      }}
+                    >
+                      <input type="text" aria-label={`A name for ${line.text}`} placeholder={line.text} value={name} onChange={(event) => setName(event.target.value)} />
+                      <button type="submit" disabled={!name.trim()}>
+                        Use this name
+                      </button>
+                      <button type="button" className="link" onClick={() => setOpen(undefined)}>
+                        Cancel
+                      </button>
+                    </form>
+                  )}
+                  <p className="hint">{state.canName ? 'Or choose an item:' : 'Choose an item:'}</p>
+                  <CandidatePicker
+                    candidates={options}
+                    elements={elements}
+                    candidateLabel={candidateLabel}
+                    onSelect={(id) => resolve(line.forId, line.index, { elementId: id })}
+                  />
+                  {!state.canName && (
+                    <button type="button" className="link" onClick={() => setOpen(undefined)}>
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {refusal && <p className="hint error">{refusal}</p>}
+    </section>
   );
 }

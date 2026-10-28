@@ -150,7 +150,6 @@ import { createDesktopPlatform } from './platform.ts';
 /** The form maps shipped beside the systems (ADR 0079), read once. */
 const SHIPPED_FORMS: FormMap[] = loadShippedForms();
 /** The starting equipment shipped beside the systems (ADR 0087), checked against the system each names, read once. */
-const SHIPPED_STARTING_EQUIPMENT = loadShippedSystems().startingEquipment;
 import { useBuilder } from './use-builder.ts';
 import { useLibrary } from './use-library.ts';
 import { useCommandHost, type CommandBinder, type CommandHandlers } from './use-commands.ts';
@@ -690,7 +689,6 @@ function Shell({
     working.character,
     system,
     elements,
-    SHIPPED_STARTING_EQUIPMENT,
     buildPreferences.showAdvanced,
   );
 

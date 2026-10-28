@@ -1,8 +1,8 @@
 /**
- * The starting equipment step — ADR 0087.
+ * The starting equipment step — ADR 0087, read from content since ADR 0119.
  *
- * No game in the fixture. A hero picks a Calling (the first class, by a pick step) and a Past (a background); a file
- * beside the system gives a Calling a kit of Gear (Garb worn on the body, Tools held in two hands) or a roll of beads,
+ * No game in the fixture. A hero picks a Calling (the first class, by a pick step) and a Past (a background); content
+ * gives a Calling a kit of Gear (Garb worn on the body, Tools held in two hands) or a roll of beads,
  * and a Past a bundle and coins. Beads, shells and pearls are the money. Each test names the perturbation that fails it.
  * The real corpus and file are held by `tools/verify/src/starting-equipment.test.ts` and `starting-equipment-build.test.ts`.
  */
@@ -19,12 +19,11 @@ import {
   type Character,
   type Element,
   type GameSystem,
-  type JsonSchema,
+  type StartingOption,
 } from '@incudo/core';
 import { CharacterBuilder } from './use-character-builder.ts';
 import { decisionTags } from './build-view.ts';
-import { checkStartingEquipment, startingKey, wealthRollKey, type StartingEquipmentFile } from './starting-equipment.ts';
-import { readFileSync } from 'node:fs';
+import { startingEquipmentFits, startingKey, wealthRollKey, type StartingEquipmentFile } from './starting-equipment.ts';
 
 function element(id: string, type: string, extra: Partial<Element> = {}): Element {
   return { id, type, name: id, source: 'Core', setters: {}, rules: [], supports: [], origin: { sourceId: 'test', format: 'incudo' }, ...extra };
@@ -67,29 +66,13 @@ function system(): GameSystem {
           ],
         },
         sheet: { sections: [{ id: 's', label: 'S', stats: ['vigour'] }] },
+        startingEquipment: { step: 'kit', from: ['calling', 'past'], equip: ['Garb', 'Gear'], ownItem: 'OWN' },
       },
     ],
   };
 }
 
 const slot = (value: string) => ({ slot: { value } });
-
-function corpus(): MapElementIndex {
-  const index = new MapElementIndex();
-  index.addAll([
-    element('SMITH', 'Calling', { name: 'Smith' }),
-    element('POET', 'Calling', { name: 'Poet' }),
-    element('DRIFTER', 'Past', { name: 'Drifter' }),
-    element('APRON', 'Garb', { name: 'Apron', setters: slot('body') }),
-    element('HAMMER', 'Gear', { name: 'Hammer', setters: slot('hands'), supports: ['Tool'] }),
-    element('TONGS', 'Gear', { name: 'Tongs', setters: slot('hands'), supports: ['Tool'] }),
-    element('BELLOWS', 'Gear', { name: 'Bellows', setters: slot('both'), supports: ['Tool'] }),
-    element('OTHER_TOOL', 'Gear', { name: 'Chisel', setters: slot('hands'), supports: ['Tool'], source: 'Other Book' }),
-    element('NAILS', 'Trinket', { name: 'Nail' }),
-    element('CHARM', 'Trinket', { name: 'Charm' }),
-  ]);
-  return index;
-}
 
 const FILE: StartingEquipmentFile = {
   formatVersion: 1,
@@ -120,9 +103,30 @@ const FILE: StartingEquipmentFile = {
   ],
 };
 
+const optionsFor = (id: string): StartingOption[] | undefined => FILE.packages.find((p) => p.for === id)?.options;
+
+function corpus(packages = true): MapElementIndex {
+  const index = new MapElementIndex();
+  index.addAll([
+    element('SMITH', 'Calling', { name: 'Smith', ...(packages ? { startingEquipment: optionsFor('SMITH') } : {}) }),
+    element('POET', 'Calling', { name: 'Poet' }),
+    element('DRIFTER', 'Past', { name: 'Drifter', ...(packages ? { startingEquipment: optionsFor('DRIFTER') } : {}) }),
+    element('APRON', 'Garb', { name: 'Apron', setters: slot('body') }),
+    element('HAMMER', 'Gear', { name: 'Hammer', setters: slot('hands'), supports: ['Tool'] }),
+    element('TONGS', 'Gear', { name: 'Tongs', setters: slot('hands'), supports: ['Tool'] }),
+    element('BELLOWS', 'Gear', { name: 'Bellows', setters: slot('both'), supports: ['Tool'] }),
+    element('OTHER_TOOL', 'Gear', { name: 'Chisel', setters: slot('hands'), supports: ['Tool'], source: 'Other Book' }),
+    element('NAILS', 'Trinket', { name: 'Nail' }),
+    element('CHARM', 'Trinket', { name: 'Charm' }),
+    element('OWN', 'Trinket', { name: 'An item of your own' }),
+  ]);
+  return index;
+}
+
+
 const fresh = (): Character => createCharacter('test', 'pc', { progress: 1 });
 function builder(character: Character = fresh(), random = () => 0.5): CharacterBuilder {
-  const b = new CharacterBuilder(character, system(), corpus(), { startingEquipment: [FILE], random });
+  const b = new CharacterBuilder(character, system(), corpus(), { random });
   if (!b.getState().picks.some((p) => p.stepId === 'calling')) b.choose('build/calling', ['SMITH']);
   if (!b.getState().picks.some((p) => p.stepId === 'past')) b.choose('build/past', ['DRIFTER']);
   return b;
@@ -133,7 +137,7 @@ const entryOf = (c: Character, id: string) => (c.inventory ?? []).filter((e) => 
 test('the step offers each source its options, as a decision that never blocks', () => {
   // Perturbation: drop the decisions loop and there is none; make it blocking and the step reads incomplete; read the
   // class from the first held element of the type rather than the pick's answer and a multiclass character gets two.
-  const b = new CharacterBuilder(fresh(), system(), corpus(), { startingEquipment: [FILE] });
+  const b = new CharacterBuilder(fresh(), system(), corpus());
   const before = b.getState().startingEquipment!.sources;
   assert.deepEqual(before.map((s) => s.status), ['unanswered', 'unanswered']);
   b.choose('build/calling', ['SMITH']);
@@ -278,45 +282,88 @@ test('a package taken for an earlier class stays listed to take back, and the ne
   assert.equal(b.returnStartingOption('SMITH'), true);
 });
 
-test('no file for the kind means no step state and no decision', () => {
-  // Perturbation: match a file by system only and another kind's packages are offered.
-  const b = new CharacterBuilder(fresh(), system(), corpus(), { startingEquipment: [{ ...FILE, kind: 'npc' }] });
+test('a kind that declares no starting equipment has no step state and no decision', () => {
+  // Perturbation: offer content's packages whatever the kind declares, and this kind gets the Smith's.
+  const bare = system();
+  delete bare.characterKinds[0]!.startingEquipment;
+  const b = new CharacterBuilder(fresh(), bare, corpus());
   b.choose('build/calling', ['SMITH']);
   assert.equal(b.getState().startingEquipment, undefined);
   assert.equal(b.getState().decisions.some((d) => d.kind === 'equipment'), false);
 });
 
-test('the checker refuses what a schema cannot say', () => {
-  // Perturbation: drop any one check and its line goes.
-  const schema = JSON.parse(readFileSync(new URL('../../../schemas/starting-equipment.schema.json', import.meta.url), 'utf8')) as JsonSchema;
-  assert.deepEqual(checkStartingEquipment(FILE, schema, system()).errors, []);
+test('packages that do not fit the system are not offered, and the fit names why', () => {
+  // Perturbation: drop the coins check (an option's or a bundle's) and its line goes, and the doubloon package is offered.
+  assert.deepEqual(startingEquipmentFits(FILE, system()), []);
   const broken: StartingEquipmentFile = {
     ...FILE,
     step: 'nowhere',
     packages: [
-      ...FILE.packages,
-      { for: 'SMITH', options: [{ id: 'a', label: 'A' }] },
       {
         for: 'POET',
         options: [
-          { id: 'a', label: 'A', coins: { doubloon: 2 }, wealth: { dice: 'lots', unit: 'bead' } },
-          { id: 'a', label: 'B', lines: [{ picks: [{ label: 'x', from: ['CHARM'], types: ['Gear'] }, { label: 'y', types: ['Gear'], supports: '((' }] }] },
+          { id: 'a', label: 'A', coins: { doubloon: 2 }, wealth: { dice: '1d4', unit: 'florin' } },
+          { id: 'b', label: 'B', lines: [{ choose: [{ coins: { bead: 1 } }, { coins: { ducat: 3 } }] }] },
         ],
       },
     ],
   };
   assert.deepEqual(
-    checkStartingEquipment(broken, schema, system()).errors.map((e) => e.path),
-    [
-      'step',
-      'packages[2].for',
-      'packages[2].options[0]',
-      'packages[3].options[0]',
-      'packages[3].options[0].wealth.dice',
-      'packages[3].options[0].coins.doubloon',
-      'packages[3].options[1].id',
-      'packages[3].options[1].lines[0].picks[0]',
-      'packages[3].options[1].lines[0].picks[1].supports',
-    ],
+    startingEquipmentFits(broken, system()).map((e) => e.path),
+    ['step', 'packages[0].options[0].wealth.unit', 'packages[0].options[0].coins.doubloon', 'packages[0].options[1].lines[0].choose[1].coins.ducat'],
   );
+  const index = corpus(false);
+  index.addAll([element('POET', 'Calling', { name: 'Poet', startingEquipment: broken.packages[0]!.options })]);
+  const b = new CharacterBuilder(fresh(), system(), index);
+  b.choose('build/calling', ['POET']);
+  assert.equal(b.getState().startingEquipment, undefined, 'no package is offered');
+});
+
+test('a line content matched to no item is pending, resolved with an item or a name the user gives, and taken back with the package', () => {
+  // Perturbation: drop the pending record from the take and nothing waits; enter a name as anything but the kind's own
+  // item and it is refused; leave resolved entries out of the take-back and the tuxedo stays in the bag.
+  const index = corpus(false);
+  index.addAll([
+    element('SMITH', 'Calling', { name: 'Smith', startingEquipment: [{ id: 'kit', label: 'Kit', lines: [{ items: [{ id: 'APRON' }], pending: [{ text: 'fine clothes' }, { text: 'sticks of incense', quantity: 5 }] }] }] }),
+  ]);
+  const b = new CharacterBuilder(fresh(), system(), index);
+  b.choose('build/calling', ['SMITH']);
+  b.choose('build/past', ['DRIFTER']);
+  const line = source(b, 'SMITH').options[0]!.lines[0]!;
+  assert.match('text' in line ? line.text : '', /fine clothes, sticks of incense ×5/);
+  assert.equal(b.takeStartingOption('SMITH', 'kit'), undefined);
+  assert.deepEqual(b.getState().startingEquipment!.pending.map((p) => [p.text, p.quantity, p.resolved]), [
+    ['fine clothes', 1, undefined],
+    ['sticks of incense', 5, undefined],
+  ]);
+  assert.equal(b.getState().character.formatVersion, 14);
+
+  assert.equal(b.resolvePendingItem('SMITH', 0, { name: '  tuxedo ' }), undefined);
+  assert.equal(b.resolvePendingItem('SMITH', 1, { elementId: 'CHARM' }), undefined);
+  assert.equal(b.resolvePendingItem('SMITH', 1, { elementId: 'NOTHING' }), 'That item is not in any loaded content.');
+  assert.equal(b.resolvePendingItem('SMITH', 2, { name: 'x' }), 'There is no such item to resolve.');
+  assert.deepEqual(b.getState().startingEquipment!.pending.map((p) => p.resolved), ['tuxedo', 'Charm ×5']);
+  const bag = b.getState().character.inventory ?? [];
+  assert.deepEqual(bag.map((e) => [e.elementId, e.quantity, e.name]), [['APRON', undefined, undefined], ['OWN', undefined, 'tuxedo'], ['CHARM', 5, undefined]]);
+
+  // Resolved again, the earlier entry leaves the bag.
+  assert.equal(b.resolvePendingItem('SMITH', 1, { elementId: 'NAILS' }), undefined);
+  assert.deepEqual((b.getState().character.inventory ?? []).map((e) => e.elementId), ['APRON', 'OWN', 'NAILS']);
+
+  assert.equal(b.returnStartingOption('SMITH'), true);
+  assert.deepEqual(b.getState().character.inventory ?? [], []);
+  assert.deepEqual(b.getState().startingEquipment!.pending, []);
+});
+
+test('with no item of their own declared, a pending line can only be resolved with an item', () => {
+  // Perturbation: read canName as true and a name is offered the kind cannot enter.
+  const bare = system();
+  delete bare.characterKinds[0]!.startingEquipment!.ownItem;
+  const index = corpus(false);
+  index.addAll([element('SMITH', 'Calling', { name: 'Smith', startingEquipment: [{ id: 'kit', label: 'Kit', lines: [{ pending: [{ text: 'a mask' }] }] }] })]);
+  const b = new CharacterBuilder(fresh(), bare, index);
+  b.choose('build/calling', ['SMITH']);
+  b.takeStartingOption('SMITH', 'kit');
+  assert.equal(b.getState().startingEquipment!.canName, false);
+  assert.equal(b.resolvePendingItem('SMITH', 0, { name: 'Mask' }), 'An item of your own cannot be added with the content loaded.');
 });

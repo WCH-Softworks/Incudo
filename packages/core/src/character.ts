@@ -319,6 +319,12 @@ export interface StartingEquipmentTaken {
   entries?: Array<{ instanceId: string; quantity?: number }>;
   /** The coins it added to `money`, per unit. Absent when none. */
   coins?: Record<string, number>;
+  /**
+   * What the package lists that content matched to no item (ADR 0119 decision 9), in the order it lists them: each the
+   * book's words, how many, and once the user resolved it with an item or a name of their own, the bag entry that made.
+   * Format 14 only.
+   */
+  pending?: Array<{ text: string; quantity?: number; instanceId?: string }>;
 }
 
 /**
@@ -391,7 +397,7 @@ export const CHARACTER_FORMAT_VERSION = 2;
  * 0084), one with a custom feature line that marks a row 9 (ADR 0094), one with `additionBlocks` 10 (ADR 0097), one
  * with `money` or `startingEquipment` 11 (ADR 0087), one with a custom feature copied from the feature library 12 (ADR
  * 0106), one with `spellAttacks` 13 (ADR 0111), one whose `advancement` names a second class 14 (ADR 0119: the second
- * class's multiclass element is implied, not recorded), and nothing else is raised.
+ * class's multiclass element is implied, not recorded) or that records a pending starting item, and nothing else is raised.
  */
 export const LATEST_CHARACTER_FORMAT_VERSION = 14;
 
@@ -723,7 +729,9 @@ export function setStartingEquipmentTaken(
       : current.map((record, i) => (i === at ? taken : record))
     : current.filter((_, i) => i !== at);
   const { startingEquipment: _previous, ...rest } = character;
-  const written: Character = next.length ? { ...raiseFormatVersion(rest, 11), startingEquipment: next } : rest;
+  // A pending line is format 14's, which a reader of 13 would drop without a word (ADR 0119).
+  const version = next.some((record) => record.pending?.length) ? 14 : 11;
+  const written: Character = next.length ? { ...raiseFormatVersion(rest, version), startingEquipment: next } : rest;
   return { ...written, updatedAt: new Date().toISOString() };
 }
 

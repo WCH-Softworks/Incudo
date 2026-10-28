@@ -1,12 +1,13 @@
 /**
- * The starting equipment step — ADR 0087.
+ * The starting equipment step — ADR 0087, and since ADR 0119 read from content.
  *
- * What a character may start with is a file beside the system (`systems/<id>/starting-equipment.json`), written by a
- * person from the books: per class and background, a list of options of which the character takes one, a package of
- * item lines, fixed coins, or a wealth roll. Content states starting equipment only as prose, and prose is never parsed
- * (ADR 0005).
+ * What a character may start with is written on its class and background (`Element.startingEquipment`): a list of
+ * options of which the character takes one, a package of item lines, fixed coins, or a wealth roll. Aurora's content
+ * states it only as prose, and its converter reads that prose into these (ADR 0119 decision 9); a line it matched to no
+ * item is pending, recorded when the package is taken and resolved by the user, with an item or a name of their own.
+ * The kind says which step offers the packages and which picks they come from (`kind.startingEquipment`).
  *
- * Everything is worked out here, under `node --test`: the file's checker, what the step offers for the character's
+ * Everything is worked out here, under `node --test`: what the step offers for the character's
  * first class and its background, the answers a package still owes, and the two writes. Taking an option writes once
  * into the bag and the purse, which are inputs the player owns from then on, and records what it wrote; taking it back
  * removes exactly that, and only while the bag still holds every entry it added and the purse still covers its coins.
@@ -28,7 +29,6 @@ import {
   setRoll,
   setStartingEquipmentTaken,
   systemLineage,
-  validateJson,
   type BuildStepDef,
   type Character,
   type Element,
@@ -36,11 +36,15 @@ import {
   type ElementIndex,
   type GameSystem,
   type InventoryEntry,
-  type JsonSchema,
   type ResolvedCharacterKind,
   type SchemaError,
+  type StartingBundle,
   type StartingEquipmentTaken,
+  type StartingOption,
+  type StartingPick,
 } from '@incudo/core';
+
+export type { StartingBundle, StartingLine, StartingOption, StartingPick } from '@incudo/core';
 
 import { parseDice, rollDice } from './dice.ts';
 import { formatCoins, purseRows, type PurseRow } from './money.ts';
@@ -61,98 +65,14 @@ export interface StartingEquipmentFile {
   /** Element types an item of which is equipped when taken, if a slot it fits is free. */
   equip?: string[];
   packages: StartingPackage[];
+  /** The item a pending line the user names is entered as. */
+  ownItem?: ElementId;
 }
 
 export interface StartingPackage {
   /** The class or background id. */
   for: ElementId;
   options: StartingOption[];
-}
-
-export interface StartingOption {
-  id: string;
-  label: string;
-  lines?: StartingLine[];
-  coins?: Record<string, number>;
-  wealth?: { dice: string; multiplier?: number; unit: string };
-  /** What the book lists that no element is: shown, written nowhere. */
-  unlisted?: string[];
-}
-
-export type StartingLine = StartingBundle | { choose: StartingBundle[] };
-
-export interface StartingBundle {
-  items?: Array<{ id: ElementId; quantity?: number }>;
-  picks?: StartingPick[];
-}
-
-export interface StartingPick {
-  /** The book's words: "a martial weapon". */
-  label: string;
-  count?: number;
-  from?: ElementId[];
-  types?: string[];
-  supports?: string;
-  publications?: string[];
-}
-
-/**
- * A starting equipment file, checked: against its schema, then what a schema cannot say. One entry per element, option
- * ids unique within it, an option that gives something (lines or coins, or a wealth roll alone), a pick that names its
- * candidates one way, a filter that parses, dice that read. With the system: the file is its, the kind and steps exist,
- * and every unit is one its `currency` declares. Errors name where, for whoever has the JSON open.
- */
-export function checkStartingEquipment(
-  raw: unknown,
-  schema: JsonSchema,
-  system?: GameSystem,
-): { value?: StartingEquipmentFile; errors: SchemaError[] } {
-  const errors = validateJson(raw, schema);
-  if (errors.length) return { errors };
-  const file = raw as StartingEquipmentFile;
-  // What the system needs: the file, kind and steps first, then each option's units where that option is reached, so the
-  // errors come in the file's order.
-  const fits = system ? startingEquipmentFits(file, system) : [];
-  errors.push(...fits.filter((e) => !e.path.startsWith('packages[')));
-  const unitsAt = (at: string): SchemaError[] => fits.filter((e) => e.path.startsWith(`${at}.wealth.`) || e.path.startsWith(`${at}.coins.`));
-  const seen = new Map<string, number>();
-  file.packages.forEach((entry, p) => {
-    const where = `packages[${p}]`;
-    if (seen.has(entry.for)) errors.push({ path: `${where}.for`, message: `"${entry.for}" has an entry already, packages[${seen.get(entry.for)}]` });
-    else seen.set(entry.for, p);
-    const ids = new Set<string>();
-    entry.options.forEach((option, o) => {
-      const at = `${where}.options[${o}]`;
-      if (ids.has(option.id)) errors.push({ path: `${at}.id`, message: `"${option.id}" is used by another option of this entry` });
-      ids.add(option.id);
-      const gives = Boolean(option.lines?.length) || Boolean(option.coins && Object.keys(option.coins).length);
-      if (option.wealth && gives) errors.push({ path: at, message: 'a wealth roll is an option of its own, with no lines or coins' });
-      if (!option.wealth && !gives) errors.push({ path: at, message: 'gives nothing: it needs lines, coins or a wealth roll' });
-      if (option.wealth) {
-        const dice = parseDice(option.wealth.dice);
-        if (!dice.ok) errors.push({ path: `${at}.wealth.dice`, message: dice.reason });
-      }
-      errors.push(...unitsAt(at));
-      (option.lines ?? []).forEach((line, l) => {
-        const bundles = 'choose' in line ? line.choose : [line];
-        bundles.forEach((bundle, a) => {
-          const bat = 'choose' in line ? `${at}.lines[${l}].choose[${a}]` : `${at}.lines[${l}]`;
-          if (!bundle.items?.length && !bundle.picks?.length) errors.push({ path: bat, message: 'names no item and no pick' });
-          (bundle.picks ?? []).forEach((pick, k) => {
-            const pat = `${bat}.picks[${k}]`;
-            if (pick.from && (pick.types || pick.supports || pick.publications)) {
-              errors.push({ path: pat, message: 'names its candidates by a list, so it takes no types, filter or books' });
-            }
-            if (!pick.from && !pick.types) errors.push({ path: pat, message: 'needs a list of candidates or the types to choose from' });
-            if (pick.supports !== undefined && !parseSupports(pick.supports)) {
-              errors.push({ path: `${pat}.supports`, message: `"${pick.supports}" is not a filter content's language reads` });
-            }
-          });
-        });
-      });
-    });
-  });
-  return errors.length ? { errors } : { value: file, errors };
 }
 
 /**
@@ -190,6 +110,17 @@ export function startingEquipmentFits(file: StartingEquipmentFile, system: GameS
         for (const unit of Object.keys(option.coins ?? {})) {
           if (!(unit in units)) errors.push({ path: `${at}.coins.${unit}`, message: `"${unit}" is not a unit of money the system declares` });
         }
+        // Coins inside a bundle (the converter writes "15 gp" in a package's line as these).
+        (option.lines ?? []).forEach((line, l) => {
+          const bundles = 'choose' in line ? line.choose.map((b, i) => [`.choose[${i}]`, b] as const) : [['', line] as const];
+          for (const [path, bundle] of bundles) {
+            for (const unit of Object.keys(bundle.coins ?? {})) {
+              if (!(unit in units)) {
+                errors.push({ path: `${at}.lines[${l}]${path}.coins.${unit}`, message: `"${unit}" is not a unit of money the system declares` });
+              }
+            }
+          }
+        });
       });
     });
   }
@@ -197,16 +128,37 @@ export function startingEquipmentFits(file: StartingEquipmentFile, system: GameS
 }
 
 /**
- * The starting equipment a system's kind is offered: the file its lineage reaches for that kind, and only when it fits
- * the system (`startingEquipmentFits`). One that does not fit offers nothing, and the launcher's card says why.
+ * The starting equipment a kind is offered, assembled from content (ADR 0119): where the kind takes it
+ * (`kind.startingEquipment`), and every element of the types its `from` steps choose that carries packages. Nothing when
+ * the kind declares none, or when what content writes does not fit the system (a coin it does not declare): the
+ * builder then offers no package.
  */
 export function startingEquipmentFor(
   system: GameSystem,
-  kindId: string,
-  files: readonly StartingEquipmentFile[] | undefined,
+  kind: ResolvedCharacterKind,
+  steps: readonly BuildStepDef[],
+  elements: ElementIndex,
 ): StartingEquipmentFile | undefined {
-  const lineage = systemLineage(system);
-  return files?.find((file) => lineage.includes(file.system) && file.kind === kindId && startingEquipmentFits(file, system).length === 0);
+  const declared = kind.startingEquipment;
+  if (!declared || !steps.some((step) => step.id === declared.step)) return undefined;
+  const types = new Set(steps.filter((step) => declared.from.includes(step.id)).flatMap((step) => step.types));
+  const packages: StartingPackage[] = [];
+  for (const type of types) {
+    for (const element of elements.byType(type)) {
+      if (element.startingEquipment?.length) packages.push({ for: element.id, options: element.startingEquipment });
+    }
+  }
+  const file: StartingEquipmentFile = {
+    formatVersion: 1,
+    system: system.id,
+    kind: kind.id,
+    step: declared.step,
+    from: declared.from,
+    ...(declared.equip ? { equip: declared.equip } : {}),
+    packages,
+    ...(declared.ownItem ? { ownItem: declared.ownItem } : {}),
+  };
+  return startingEquipmentFits(file, system).length ? undefined : file;
 }
 
 // --- what the step offers ---------------------------------------------------------------------------------------------
@@ -290,9 +242,25 @@ export interface StartingSource {
   taken?: StartingTakenView;
 }
 
+/** A line a taken package lists that content matched to no item (ADR 0119 decision 9), and how it was resolved. */
+export interface StartingPendingView {
+  /** The class or background whose package lists it, and its place in that package's record: what `resolve` takes. */
+  forId: ElementId;
+  index: number;
+  /** The book's words, with how many: "a small knife", "sticks of incense ×5". */
+  text: string;
+  quantity: number;
+  /** What it was resolved with, as the bag says it now; absent while it waits, or once that entry left the bag. */
+  resolved?: string;
+}
+
 export interface StartingEquipmentState {
   stepId: string;
   sources: StartingSource[];
+  /** Every pending line of every package taken, waiting or resolved, in the order the packages were taken. */
+  pending: StartingPendingView[];
+  /** Whether a pending line may be given a name of the user's own: the kind names an item to enter it as. */
+  canName: boolean;
   /** Every unit the system declares, in its order, with what the character holds. Empty for a system with no money. */
   purse: PurseRow[];
 }
@@ -318,6 +286,10 @@ export const STARTING_EQUIPMENT_HINT =
   'It can be taken back until any of it is used.';
 /** Above what a book lists that no loaded content has. */
 export const STARTING_UNLISTED = 'Also listed, and not in any loaded content:';
+
+/** Under the Pending items card: what a pending line is and what resolving it does. */
+export const PENDING_ITEMS_HINT =
+  'The book lists these, and no loaded item matched them. Choose an item for each, or give it a name of your own to carry it under that name.';
 
 /** "2 choices left", under an option that cannot be taken yet. */
 export function startingOwedNote(owed: number): string {
@@ -348,10 +320,17 @@ function itemText(elements: ElementIndex, id: ElementId, quantity: number | unde
   return quantity && quantity > 1 ? `${name} ×${quantity}` : name;
 }
 
-function bundleText(elements: ElementIndex, bundle: StartingBundle): string {
+function pendingText(pending: { text: string; quantity?: number }): string {
+  return pending.quantity && pending.quantity > 1 ? `${pending.text} ×${pending.quantity}` : pending.text;
+}
+
+function bundleText(elements: ElementIndex, bundle: StartingBundle, system?: GameSystem): string {
+  const coins = system ? formatCoins(bundle.coins, system) : undefined;
   return [
     ...(bundle.items ?? []).map((item) => itemText(elements, item.id, item.quantity)),
     ...(bundle.picks ?? []).map((pick) => pick.label),
+    ...(bundle.pending ?? []).map(pendingText),
+    ...(coins ? [coins] : []),
   ].join(', ');
 }
 
@@ -424,7 +403,7 @@ function optionView(
       return {
         key: String(l),
         kind: 'choose',
-        alternatives: line.choose.map((b, index) => ({ index, text: bundleText(elements, b) })),
+        alternatives: line.choose.map((b, index) => ({ index, text: bundleText(elements, b, system) })),
         ...(bundle ? { chosen } : {}),
         picks: (bundle?.picks ?? []).map((pick, k) => pickView(pick, `${l}.${chosen}/${k}`, answers, elements)),
       };
@@ -432,7 +411,7 @@ function optionView(
     return {
       key: String(l),
       kind: 'items',
-      text: (line.items ?? []).map((item) => itemText(elements, item.id, item.quantity)).join(', '),
+      text: bundleText(elements, { ...line, picks: [] }, system),
       picks: (line.picks ?? []).map((pick, k) => pickView(pick, `${l}/${k}`, answers, elements)),
     };
   });
@@ -476,7 +455,7 @@ function optionView(
 /** Whether what a package wrote is still there to take back: every entry it added, as given, and its coins. */
 export function packageUntouched(character: Character, record: StartingEquipmentTaken): boolean {
   const bag = character.inventory ?? [];
-  for (const added of record.entries ?? []) {
+  for (const added of [...(record.entries ?? []), ...resolvedEntries(record)]) {
     const entry = bag.find((e) => e.instanceId === added.instanceId);
     if (!entry || (entry.quantity ?? 1) !== (added.quantity ?? 1) || entry.adorners?.length) return false;
   }
@@ -563,7 +542,27 @@ export function startingEquipmentState(context: StartingContext): StartingEquipm
       taken,
     });
   }
-  return { stepId: file.step, sources, purse: purseRows(character, context.system) };
+  const bag = character.inventory ?? [];
+  const pending: StartingPendingView[] = [];
+  for (const record of records) {
+    (record.pending ?? []).forEach((line, index) => {
+      const entry = line.instanceId ? bag.find((e) => e.instanceId === line.instanceId) : undefined;
+      pending.push({
+        forId: record.for,
+        index,
+        text: line.text,
+        quantity: line.quantity ?? 1,
+        ...(entry ? { resolved: entry.name ?? itemText(elements, entry.elementId, entry.quantity) } : {}),
+      });
+    });
+  }
+  return {
+    stepId: file.step,
+    sources,
+    purse: purseRows(character, context.system),
+    pending,
+    canName: !!(file.ownItem && elements.get(file.ownItem)),
+  };
 }
 
 // --- the writes --------------------------------------------------------------------------------------------------------
@@ -593,13 +592,58 @@ export function planReturnStarting(character: Character, forId: ElementId): Char
   const record = character.startingEquipment?.find((r) => r.for === forId);
   if (!record || !packageUntouched(character, record)) return undefined;
   let next = character;
-  for (const added of record.entries ?? []) next = removeInventoryEntry(next, added.instanceId);
+  for (const added of [...(record.entries ?? []), ...resolvedEntries(record)]) next = removeInventoryEntry(next, added.instanceId);
   if (record.coins) {
     const money: Record<string, number> = { ...(next.money ?? {}) };
     for (const [unit, count] of Object.entries(record.coins)) money[unit] = (money[unit] ?? 0) - count;
     next = setMoney(next, money);
   }
   return setStartingEquipmentTaken(next, forId, undefined);
+}
+
+/** The bag entries resolving a package's pending lines added. */
+function resolvedEntries(record: StartingEquipmentTaken): Array<{ instanceId: string; quantity?: number }> {
+  return (record.pending ?? []).flatMap((line) => (line.instanceId ? [{ instanceId: line.instanceId, ...(line.quantity && line.quantity > 1 ? { quantity: line.quantity } : {}) }] : []));
+}
+
+/**
+ * Resolve a pending line of a taken package (ADR 0119 decision 9): with an item, which enters the bag as many times as
+ * the line says; or with a name of the user's own, entered as the kind's own item under that name ("fine clothes" may be
+ * "tuxedo"). A line already resolved is resolved again, its earlier entry taken out of the bag first while it is as it
+ * was given. Refused, with a sentence, when there is no such line, the item is not loaded, or no name may be given.
+ */
+export function planResolvePending(
+  context: StartingContext,
+  forId: ElementId,
+  index: number,
+  answer: { elementId: ElementId } | { name: string },
+  options: { newId?: () => string } = {},
+): { character: Character } | { refused: string } {
+  const record = context.character.startingEquipment?.find((r) => r.for === forId);
+  const line = record?.pending?.[index];
+  if (!record || !line) return { refused: 'There is no such item to resolve.' };
+  let elementId: ElementId;
+  let name: string | undefined;
+  if ('elementId' in answer) {
+    if (!context.elements.get(answer.elementId)) return { refused: 'That item is not in any loaded content.' };
+    elementId = answer.elementId;
+  } else {
+    name = answer.name.trim();
+    if (!name) return { refused: 'Give the item a name.' };
+    const own = context.file.ownItem;
+    if (!own || !context.elements.get(own)) return { refused: 'An item of your own cannot be added with the content loaded.' };
+    elementId = own;
+  }
+  let next = context.character;
+  if (line.instanceId) {
+    const earlier = (next.inventory ?? []).find((e) => e.instanceId === line.instanceId);
+    if (earlier && (earlier.quantity ?? 1) === (line.quantity ?? 1) && !earlier.adorners?.length) next = removeInventoryEntry(next, line.instanceId);
+  }
+  const instanceId = (options.newId ?? newInstanceId)();
+  const quantity = line.quantity ?? 1;
+  next = setInventoryEntry(next, { instanceId, elementId, ...(quantity > 1 ? { quantity } : {}), ...(name ? { name } : {}) });
+  const pending = record.pending!.map((l, i) => (i === index ? { ...l, instanceId } : l));
+  return { character: setStartingEquipmentTaken(next, forId, { ...record, pending }) };
 }
 
 /**
@@ -646,14 +690,19 @@ export function planTakeStarting(
     }
     added.push({ instanceId, ...(quantity > 1 ? { quantity } : {}) });
   };
+  const pending: Array<{ text: string; quantity?: number }> = [];
+  let bundleCoins: Record<string, number> | undefined;
   for (const { bundle, pickKey } of resolveOption(option, answers).bundles) {
     for (const item of bundle.items ?? []) give(item.id, item.quantity ?? 1);
+    for (const line of bundle.pending ?? []) pending.push({ text: line.text, ...(line.quantity && line.quantity > 1 ? { quantity: line.quantity } : {}) });
+    for (const [unit, count] of Object.entries(bundle.coins ?? {})) bundleCoins = { ...(bundleCoins ?? {}), [unit]: (bundleCoins?.[unit] ?? 0) + count };
     (bundle.picks ?? []).forEach((pick, k) => {
       for (const id of (answers?.picks[pickKey(k)] ?? []).slice(0, pick.count ?? 1)) if (id) give(id, 1);
     });
   }
 
-  let coins: Record<string, number> | undefined = option.coins ? { ...option.coins } : undefined;
+  let coins: Record<string, number> | undefined = option.coins || bundleCoins ? { ...(option.coins ?? {}) } : undefined;
+  for (const [unit, count] of Object.entries(bundleCoins ?? {})) coins![unit] = (coins![unit] ?? 0) + count;
   if (option.wealth) {
     const key = wealthRollKey(forId);
     let rolled = next.rolls[key];
@@ -675,6 +724,7 @@ export function planTakeStarting(
     option: optionId,
     ...(added.length ? { entries: added } : {}),
     ...(coins && Object.values(coins).some((c) => c > 0) ? { coins } : {}),
+    ...(pending.length ? { pending } : {}),
   };
   return { character: setStartingEquipmentTaken(next, forId, record) };
 }

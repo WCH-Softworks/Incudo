@@ -138,6 +138,7 @@ import { countedPicks, forgetUncounted, uncountedRows, withUncounted, type Uncou
 import {
   planReturnStarting,
   planTakeStarting,
+  planResolvePending,
   setStartingChoice,
   setStartingPick,
   startingEquipmentFor,
@@ -585,7 +586,7 @@ export class CharacterBuilder {
     character: Character,
     system: GameSystem,
     elements: ElementIndex,
-    options: { random?: () => number; startingEquipment?: readonly StartingEquipmentFile[]; showAdvanced?: boolean } = {},
+    options: { random?: () => number; showAdvanced?: boolean } = {},
   ) {
     this.character = character;
     this.showAdvanced = options.showAdvanced ?? false;
@@ -602,8 +603,8 @@ export class CharacterBuilder {
     this.steps = orderBuildSteps(this.kind.buildSteps);
     // A file is the system's and names the kind it is for; one for another system or kind, or one this system's version
     // of the game does not fit (ADR 0107), offers nothing here.
-    const startingFile = startingEquipmentFor(system, this.kind.id, options.startingEquipment);
-    this.startingFile = startingFile && this.steps.some((step) => step.id === startingFile.step) ? startingFile : undefined;
+    // Assembled from what content writes on the classes and backgrounds (ADR 0119), where the kind takes it.
+    this.startingFile = startingEquipmentFor(system, this.kind, this.steps, elements);
 
     for (const step of this.steps) {
       const config = multiclassConfig(step, this.kind.progression);
@@ -1069,6 +1070,20 @@ export class CharacterBuilder {
     const context = this.startingContext(this.getState().derived);
     if (!context) return 'This character has no starting equipment.';
     const plan = planTakeStarting(context, forId, optionId, { random: this.random });
+    if ('refused' in plan) return plan.refused;
+    this.character = plan.character;
+    this.invalidate();
+    return undefined;
+  };
+
+  /**
+   * Resolve a line of a taken package that content matched to no item (ADR 0119 decision 9): with an item, or a name of
+   * the user's own. Returns a sentence when refused, writing nothing.
+   */
+  resolvePendingItem = (forId: ElementId, index: number, answer: { elementId: ElementId } | { name: string }): string | undefined => {
+    const context = this.startingContext(this.getState().derived);
+    if (!context) return 'This character has no starting equipment.';
+    const plan = planResolvePending(context, forId, index, answer);
     if ('refused' in plan) return plan.refused;
     this.character = plan.character;
     this.invalidate();

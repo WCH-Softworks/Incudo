@@ -91,7 +91,7 @@ import { CustomFeatures } from './CustomFeatures.tsx';
 import { Additions } from './Additions.tsx';
 import { References } from './References.tsx';
 import { FreeformEditor } from './Freeform.tsx';
-import { StartingEquipmentSettled, StartingOptions } from './StartingEquipment.tsx';
+import { PendingItems, StartingEquipmentSettled, StartingOptions } from './StartingEquipment.tsx';
 import { InventoryEditor } from './InventoryEditor.tsx';
 import { SpellAttacksEditor } from './SpellAttacks.tsx';
 import { StartOptionsDialog } from './StartOptions.tsx';
@@ -808,6 +808,7 @@ export function BuilderPane({
               <section className="starting-equipment">
                 <h2>{STARTING_EQUIPMENT_HEADING}</h2>
                 <StartingEquipmentSettled state={state.startingEquipment} builder={builder} nameOf={nameOf} />
+                <PendingItems state={state.startingEquipment} builder={builder} elements={elements} candidateLabel={candidateLabel} />
               </section>
             )}
 

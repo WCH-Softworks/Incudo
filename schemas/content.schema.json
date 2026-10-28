@@ -171,6 +171,13 @@
         },
         "origin": {
           "$ref": "#/$defs/origin"
+        },
+        "startingEquipment": {
+          "description": "The packages a class or a background gives a character to start with, one of which is taken (ADR 0119).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/startingOption"
+          }
         }
       }
     },
@@ -1016,6 +1023,172 @@
         },
         "tooDeep": {
           "type": "boolean"
+        }
+      }
+    },
+    "startingPick": {
+      "type": "object",
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "count": {
+          "type": "number"
+        },
+        "from": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "supports": {
+          "type": "string"
+        },
+        "publications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "startingBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "picks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/startingPick"
+          }
+        },
+        "pending": {
+          "description": "What the prose lists that matched no item, as written: the user resolves each on Build.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "coins": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "startingLine": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/startingBundle"
+        },
+        {
+          "type": "object",
+          "required": [
+            "choose"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "choose": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/startingBundle"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "startingOption": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/startingLine"
+          }
+        },
+        "coins": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "wealth": {
+          "type": "object",
+          "required": [
+            "dice",
+            "unit"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "dice": {
+              "type": "string"
+            },
+            "multiplier": {
+              "type": "number"
+            },
+            "unit": {
+              "type": "string"
+            }
+          }
+        },
+        "unlisted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

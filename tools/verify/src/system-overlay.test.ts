@@ -14,7 +14,7 @@ import { MemoryStorage, type GameSystem, type PickedFile } from '@incudo/core';
 import { CharacterBuilder, USER_SYSTEM_PREFIX, UserSystemStore, newCharacterOfKind, overlayView } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
-import { loadSchemas, loadShippedStartingEquipment, loadFixtureSystem, loadShippedSystem } from './node-system.ts';
+import { loadSchemas, loadFixtureSystem, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
 
 const schemas = await loadSchemas();
@@ -144,17 +144,16 @@ test("an overlay may not take a shipped system's id", async () => {
   assert.doesNotMatch(result.ok ? '' : result.message, /ADR/);
 });
 
-// Perturbation: the builder matching starting equipment by `file.system === system.id` (the overlay is offered none).
+// Perturbation: the overlay replacing the kind's `startingEquipment` with nothing (the overlay is offered none).
 test('a character built in an overlay derives as in 5e and is offered 5e starting equipment', { skip: corpusSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const storage = new MemoryStorage();
   await store(storage).add(file('house.json', HOUSE));
   const house = (await store(storage).load()).systems.find((s) => s.id === 'dnd5e-house')!;
   const elements = await realElements();
-  const equipment = await loadShippedStartingEquipment('dnd5e');
 
   const build = (system: GameSystem): CharacterBuilder => {
-    const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements, { startingEquipment: [equipment] });
+    const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements);
     for (const [step, name] of [['race', 'Human'], ['class', 'Fighter'], ['background', 'Soldier']] as const) {
       const decision = b.getState().decisions.find((d) => d.stepId === step && d.kind === 'pick')!;
       const id = decision.candidates.find((c) => elements.get(c)?.name === name && elements.get(c)?.source === 'Player’s Handbook')!;

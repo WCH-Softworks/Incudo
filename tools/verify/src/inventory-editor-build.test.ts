@@ -16,7 +16,7 @@ import { createMobileZipCodec } from '@incudo/mobile/zip';
 import { CharacterBuilder, newCharacterOfKind, packCharacter, sheetDocument, sheetMarkdown, type BuilderState } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
-import { loadSchemas, loadShippedStartingEquipment, loadShippedSystem } from './node-system.ts';
+import { loadSchemas, loadShippedSystem } from './node-system.ts';
 import { nodeZipCodec } from './node-zip.ts';
 import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
 
@@ -44,9 +44,7 @@ test('a Fighter built from nothing takes its gold, then buys, equips and attunes
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
-  const file = await loadShippedStartingEquipment('dnd5e');
-  // 5d4 at 0.99 a die: 20, and the Fighter's wealth is ten times it.
-  const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements, { startingEquipment: [file], random: () => 0.99 });
+  const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements, { random: () => 0.99 });
   const pick = (stepId: string, name: string, book: string): string => {
     const decision = b.getState().decisions.find((d) => d.stepId === stepId && d.kind === 'pick');
     assert.ok(decision, `the ${stepId} step is open`);
@@ -56,7 +54,9 @@ test('a Fighter built from nothing takes its gold, then buys, equips and attunes
   };
   pick('race', 'Human', PHB);
   const fighter = pick('class', 'Fighter', PHB);
-  assert.equal(b.takeStartingOption(fighter, 'wealth'), undefined);
+  // A 2014 class's wealth is not rolled (ADR 0119): the purse is set by hand.
+  assert.deepEqual(b.getState().startingEquipment!.sources.find((s) => s.forId === fighter)!.options.map((o) => o.id), ['equipment']);
+  assert.equal(b.setCoins('gp', 200), undefined);
   assert.deepEqual(b.getState().character.money, { gp: 200 });
 
   const offer = b.inventoryOptionsFor();

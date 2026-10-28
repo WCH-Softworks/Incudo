@@ -26,14 +26,14 @@ import {
   type SystemDefinitionSource,
 } from '@incudo/ui';
 
-import { fixtureSystemsDirectory, loadSchemas, loadShippedStartingEquipment, systemsDirectory } from './node-system.ts';
+import { fixtureSystemsDirectory, loadSchemas, systemsDirectory } from './node-system.ts';
 
 const schemas = await loadSchemas();
 const text = async (id: string): Promise<string> => readFile(join(systemsDirectory(), id, 'system.json'), 'utf8');
 const dnd5eText = await text('dnd5e');
 const cairnText = await readFile(join(fixtureSystemsDirectory(), 'cairn', 'system.json'), 'utf8');
-const startingEquipment = await loadShippedStartingEquipment('dnd5e');
-const startingSchema = JSON.parse(await readFile(join(systemsDirectory(), '..', 'schemas', 'starting-equipment.schema.json'), 'utf8'));
+// The Fighter's package as the old file wrote it: content's now (ADR 0119), read off the class.
+const startingKey = JSON.parse(await readFile(new URL('../fixtures/starting-equipment-key.json', import.meta.url), 'utf8'));
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
 
 /** 5e's text, with one stat a formula reads misspelled: a warning (ADR 0105), wherever the file comes from. */
@@ -44,15 +44,13 @@ function withSlip(definition: string, id?: string): string {
 }
 
 const shipped = (sources: SystemDefinitionSource[] = [{ text: dnd5eText }, { text: cairnText }]) =>
-  loadShippedCatalog(sources, schemas, { files: [startingEquipment], schema: startingSchema });
+  loadShippedCatalog(sources, schemas);
 
 test('the shipped definitions load from their text through the loader a user file goes through, with nothing to check', () => {
   const loaded = shipped();
   assert.deepEqual(loaded.systems.map((s) => s.id), ['dnd5e', 'cairn']);
   assert.deepEqual(loaded.failures, []);
   assert.deepEqual(loaded.warnings, {});
-  assert.deepEqual(loaded.startingEquipment.map((f) => f.system), ['dnd5e']);
-  assert.deepEqual(loaded.startingEquipmentFailures, []);
 });
 
 test('a shipped definition and a user one, of the same text, get the same warnings at the same lines', async () => {
@@ -113,6 +111,7 @@ test('the catalogue labels every system by where it came from, and that is all t
 const fighter: Element = {
   id: 'ID_WOTC_PHB_CLASS_FIGHTER', type: 'Class', name: 'Fighter', source: 'Test', setters: {}, rules: [], supports: [],
   origin: { sourceId: 'test', format: 'incudo' },
+  startingEquipment: startingKey.packages.find((p: { for: string }) => p.for === 'ID_WOTC_PHB_CLASS_FIGHTER').options,
 };
 
 /** 5e with silver as its standard: no gold, and platinum worth a hundred silver. */
@@ -128,9 +127,8 @@ async function userSystem(definition: string) {
   return { system: added.system, catalogue: systemCatalog(shipped(), await store.load()) };
 }
 
-function fighterBuilder(system: Parameters<typeof newCharacterOfKind>[0], files = shipped().startingEquipment): CharacterBuilder {
+function fighterBuilder(system: Parameters<typeof newCharacterOfKind>[0]): CharacterBuilder {
   const builder = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, new BundleElementIndex([fighter]), {
-    startingEquipment: files,
     random: () => 0.5,
   });
   const step = builder.getState().decisions.find((d) => d.stepId === 'class');
@@ -153,13 +151,6 @@ test("a user's version of 5e is offered 5e's starting equipment when it fits, an
   assert.equal(builder.getState().character.money, undefined);
   assert.deepEqual(validateCharacter(builder.getState().character, schemas, system).errors, []);
 
-  const warnings = catalogue.warnings['silver'] ?? [];
-  assert.deepEqual(
-    warnings.map((w) => w.message),
-    [
-      'The starting equipment that comes with Dungeons & Dragons 5th Edition does not fit this system, so none is offered: ' +
-        '"gp" is not a unit of money the system declares.',
-    ],
-  );
-  assert.equal(catalogue.warnings['dnd5e'], undefined, '5e itself is not warned about');
+  // Content's packages are not the system's, so the card has nothing to warn about.
+  assert.equal(catalogue.warnings['silver'], undefined);
 });

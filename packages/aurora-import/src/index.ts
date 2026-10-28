@@ -35,6 +35,7 @@ export * from './generated-elements.ts';
 export * from './item-features.ts';
 export * from './improvement-options.ts';
 export * from './incudo-expressions.ts';
+export * from './starting-equipment.ts';
 export * from './convert-source.ts';
 export * from './base64.ts';
 export * from './parse-save.ts';

@@ -113,8 +113,9 @@ test('every Aurora construct read past the conversion, counted over the corpus',
   const ids = [...new Set(system.match(/ID_[A-Z0-9_]+/g) ?? [])].filter((id) => !id.endsWith('_'));
   const internal = ids.filter((id) => id.startsWith('ID_INTERNAL_'));
   say(`systems/dnd5e: names ${ids.length} Aurora ids, ${internal.length} of them Aurora's app-internal ones`);
-  const equipment = await readFile(join(root, 'systems', 'dnd5e', 'starting-equipment.json'), 'utf8');
-  say(`systems/dnd5e/starting-equipment.json: names ${new Set(equipment.match(/ID_[A-Z0-9_]+/g) ?? []).size} content ids`);
+  // The starting equipment file the system shipped until ADR 0119 step 5, kept as the converter's key.
+  const equipment = await readFile(join(root, 'tools', 'verify', 'fixtures', 'starting-equipment-key.json'), 'utf8');
+  say(`the starting equipment written by hand (now a fixture): names ${new Set(equipment.match(/ID_[A-Z0-9_]+/g) ?? []).size} content ids`);
 
   for (const line of lines) t.diagnostic(line);
 });

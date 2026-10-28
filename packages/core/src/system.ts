@@ -1593,6 +1593,12 @@ export interface CharacterKindDef {
    * write, and what an import put in `freeform` is kept and shown nowhere.
    */
   freeform?: FreeformDef;
+  /**
+   * Where a character of this kind takes the starting equipment content gives the elements it picks — ADR 0119, which
+   * moved the packages from a file beside the system (ADR 0087) onto the class and background elements a conversion
+   * writes. Replaced rather than merged along an `extends` chain. A kind without it is offered none.
+   */
+  startingEquipment?: StartingEquipmentDef;
   /** What a character of this kind attacks with — ADR 0093. Replaced rather than merged along an `extends` chain. */
   attacks?: AttacksDef;
   buildSteps?: BuildStepDef[];
@@ -1706,6 +1712,18 @@ export interface AttackStatDef {
  * The text a user writes about a character — ADR 0092: personality, appearance, a backstory, notes. None of it is read by
  * a rule (ADR 0006 has nothing to say about it); every sheet shows what is written. Core names no field.
  */
+/**
+ * Where a kind takes starting equipment: the build step that offers the packages, the pick steps whose answers have them
+ * (in the order offered: the class's, then the background's), the item types worn or held when taken, and the item a
+ * pending line the user names is entered as (ADR 0119 decision 9).
+ */
+export interface StartingEquipmentDef {
+  step: string;
+  from: string[];
+  equip?: string[];
+  ownItem?: string;
+}
+
 export interface FreeformDef {
   /** User-facing heading over the fields, where they are written and shown: "About the character". */
   label: string;
@@ -1941,6 +1959,8 @@ export interface ResolvedCharacterKind {
   play?: PlayDef;
   /** The text a user may write about a character of this kind — ADR 0092. */
   freeform?: FreeformDef;
+  /** Where a character of this kind takes its starting equipment — ADR 0119. */
+  startingEquipment?: StartingEquipmentDef;
   /** What a character of this kind attacks with — ADR 0093. Replaced rather than merged along an `extends` chain. */
   attacks?: AttacksDef;
   /** What a picker prints beside a candidate of certain types. */
@@ -2251,6 +2271,7 @@ export function resolveCharacterKind(
   let companions: CompanionsDef | undefined;
   let play: PlayDef | undefined;
   let freeform: FreeformDef | undefined;
+  let startingEquipment: StartingEquipmentDef | undefined;
   let attacks: AttacksDef | undefined;
   let candidateNotes: CandidateNoteDef[] = [];
   let candidateOverlaps: CandidateOverlapsDef | undefined;
@@ -2284,6 +2305,7 @@ export function resolveCharacterKind(
     if (layer.companions !== undefined) companions = layer.companions;
     if (layer.play !== undefined) play = layer.play;
     if (layer.freeform !== undefined) freeform = layer.freeform;
+    if (layer.startingEquipment !== undefined) startingEquipment = layer.startingEquipment;
     if (layer.attacks !== undefined) attacks = layer.attacks;
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.candidateOverlaps !== undefined) candidateOverlaps = layer.candidateOverlaps;
@@ -2318,6 +2340,7 @@ export function resolveCharacterKind(
     companions,
     play,
     freeform,
+    startingEquipment,
     attacks,
     candidateNotes,
     candidateOverlaps,

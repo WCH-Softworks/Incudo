@@ -31,14 +31,12 @@ import {
 } from '@incudo/ui';
 
 import { BuildView } from './BuildView.tsx';
-import { loadShippedStartingEquipment } from './boot.ts';
 import { Body, Button } from './controls.tsx';
 import { usePlatform, type Screens } from './context.ts';
 import { usePalette } from './theme.ts';
 
 const EMPTY = new MapElementIndex();
 /** What a class or background may start with (ADR 0087), checked once against the shipped systems. */
-const STARTING_EQUIPMENT = loadShippedStartingEquipment();
 
 interface Start {
   character: Character;
@@ -140,7 +138,6 @@ function Building({
   const builder = useMemo(
     () =>
       new CharacterBuilder(current.current, start.system, elements, {
-        startingEquipment: STARTING_EQUIPMENT,
         showAdvanced: advanced.current,
       }),
     [elements, start.system],

@@ -1,11 +1,11 @@
 /**
- * 5e's starting equipment file against the official corpus — ADR 0087.
+ * 5e's starting equipment as the converter writes it from the official corpus — ADR 0087, ADR 0119 decision 9.
  *
- * The file is written by a person from the books, and this is what holds it to content: it checks against its schema
- * and the shipped system, every id it names is one the corpus declares, every filtered pick offers something, and each
- * 2024 package agrees with the pack item the 2024 book itself ships for that class or background (an `<extract>` block
- * listing the package's contents, which the parser does not read, so this test reads the XML). What the file does not
- * cover is reported, not asserted: a book not yet written in is not an error.
+ * The packages are read from content's prose by the converter, onto each class and background, and this is what holds
+ * them to the rest of content: they fit the shipped system, every id they name is one the corpus declares, every
+ * filtered pick offers something, and each 2024 package agrees with the pack item the 2024 book itself ships for that
+ * class or background (an `<extract>` block listing the package's contents, which this test reads from the XML). What
+ * is pending (a line matched to no item) and what has no package is reported, not asserted.
  */
 
 import { test } from 'node:test';
@@ -13,21 +13,19 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import type { JsonSchema } from '@incudo/core';
-import { checkStartingEquipment, pickCandidates, type StartingBundle, type StartingEquipmentFile } from '@incudo/ui';
+import { resolveCharacterKind } from '@incudo/core';
+import { pickCandidates, startingEquipmentFits, startingEquipmentFor, type StartingBundle, type StartingEquipmentFile } from '@incudo/ui';
 
-import { loadShippedSystem, systemsDirectory } from './node-system.ts';
+import { loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, requireCorpus } from './real-data.ts';
 
-async function readJson(path: string): Promise<unknown> {
-  return JSON.parse(await readFile(path, 'utf8')) as unknown;
-}
-
-async function shippedFile(): Promise<{ file: StartingEquipmentFile; errors: string[] }> {
-  const schema = (await readJson(join(systemsDirectory(), '..', 'schemas', 'starting-equipment.schema.json'))) as JsonSchema;
-  const raw = await readJson(join(systemsDirectory(), 'dnd5e', 'starting-equipment.json'));
-  const checked = checkStartingEquipment(raw, schema, await loadShippedSystem('dnd5e'));
-  return { file: raw as StartingEquipmentFile, errors: checked.errors.map((e) => `${e.path}: ${e.message}`) };
+/** What a player character is offered, assembled from the converted corpus as the builder assembles it. */
+async function convertedFile(): Promise<StartingEquipmentFile> {
+  const system = await loadShippedSystem('dnd5e');
+  const kind = resolveCharacterKind(system, 'pc');
+  const file = startingEquipmentFor(system, kind, kind.buildSteps, await realElements());
+  assert.ok(file, 'the converted packages fit the 5e system');
+  return file;
 }
 
 function bundlesOf(file: StartingEquipmentFile): Array<{ forId: string; option: string; bundle: StartingBundle }> {
@@ -38,16 +36,19 @@ function bundlesOf(file: StartingEquipmentFile): Array<{ forId: string; option: 
   );
 }
 
-test('the shipped file checks against its schema and the 5e system', async () => {
-  // Fails if a package names a unit the system does not declare, an option gives nothing, or a filter will not parse.
-  const { errors } = await shippedFile();
-  assert.deepEqual(errors, []);
+test('the converted packages fit the 5e system', { skip: corpusSkip }, async (t) => {
+  // Fails if the converter writes a unit the system does not declare: the builder would then offer no package at all.
+  t.diagnostic(corpusProvenance());
+  const file = await convertedFile();
+  assert.deepEqual(startingEquipmentFits(file, await loadShippedSystem('dnd5e')), []);
+  const pending = bundlesOf(file).flatMap(({ bundle }) => bundle.pending ?? []);
+  t.diagnostic(`packages: ${file.packages.length}; pending lines: ${pending.length}`);
 });
 
 test('every id the file names is one the corpus declares, and every filtered pick offers something', { skip: corpusSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const index = await realElements();
-  const { file } = await shippedFile();
+  const file = await convertedFile();
   const named = new Set<string>();
   for (const entry of file.packages) named.add(entry.for);
   for (const { bundle } of bundlesOf(file)) {
@@ -76,7 +77,7 @@ test('every id the file names is one the corpus declares, and every filtered pic
   t.diagnostic(`filtered picks offer: ${[...new Set(sizes)].join(', ')}`);
   assert.deepEqual(empty, []);
 
-  // Reported: what the corpus has that the file does not cover yet, by book.
+  // Reported: what the corpus has that no package is read for, by book.
   for (const type of ['Class', 'Background']) {
     const covered = new Set(file.packages.map((p) => p.for));
     const left = index.byType(type).filter((e) => !covered.has(e.id));
@@ -99,9 +100,9 @@ async function xmlFiles(root: string): Promise<string[]> {
 
 test('each 2024 package holds what the book\'s own pack item for it extracts to', { skip: corpusSkip }, async (t) => {
   // Fails if a package leaves out, or misnames, an item the 2024 book's "Class Equipment Pack (Fighter, Option A)" and
-  // its siblings list in their <extract> block. A pack excludes the armour and the coins, which the file carries too.
+  // its siblings list in their <extract> block. A pack excludes the armour and the coins, which the package carries too.
   const index = await realElements();
-  const { file } = await shippedFile();
+  const file = await convertedFile();
   const location = requireCorpus();
   const packs: Array<{ owner: string; option: string; items: string[] }> = [];
   for (const path of await xmlFiles(location.root ?? dirname(location.index))) {
@@ -139,5 +140,7 @@ test('each 2024 package holds what the book\'s own pack item for it extracts to'
     }
   }
   t.diagnostic(`items compared: ${compared}; named by a pack and declared by nothing (upstream): ${dangling.join(', ') || 'none'}`);
-  assert.deepEqual(disagree, []);
+  // The one known difference: the 2024 Wizard's prose says "Spellbook", which the 2024 book declares no item for, and
+  // its pack lists a plain Book. The converter takes the 2014 Spellbook, the item the prose names.
+  assert.deepEqual(disagree, ['Wizard A: ID_WOTC_PHB24_ITEM_BOOK']);
 });

@@ -85,13 +85,15 @@ const CONVERTER_FILES = [
   'aurora-import/src/item-features.ts',
   'aurora-import/src/generated-elements.ts',
   'aurora-import/src/improvement-options.ts',
+  'aurora-import/src/incudo-expressions.ts',
+  'aurora-import/src/starting-equipment.ts',
   'aurora-import/src/convert-source.ts',
   // The grammars the converter parses Aurora's attributes with, which are core's.
   'core/src/requirements.ts',
   'core/src/supports.ts',
   'core/src/expression.ts',
 ];
-const RECORDED = { version: 8, sha256: '32a5983734f618d1a5283194423247370972d3073c10dcbdfe2e7acb41a1fdf9' };
+const RECORDED = { version: 9, sha256: '94fb8cffb3318707f143e5102f2d71991106bd939b37ac0f862ee42d7b73fef8' };
 
 test('the converter files are the ones the recorded version was decided for', async (t: Diagnostic) => {
   const dir = join(repoRoot(), 'packages');

@@ -1,5 +1,4 @@
 {
-  "$schema": "../../schemas/starting-equipment.schema.json",
   "formatVersion": 1,
   "system": "dnd5e",
   "kind": "pc",

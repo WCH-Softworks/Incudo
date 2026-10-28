@@ -31,15 +31,17 @@ import { improvementOptionElements } from './improvement-options.ts';
 import { incudoExtension, incudoElement } from './incudo-expressions.ts';
 import { parseAuroraElements, type ImportedFile, type ParseElementsOptions } from './parse-elements.ts';
 import { parseAuroraIndex, type AuroraFileRef, type AuroraIndex } from './parse-index.ts';
+import { withStartingEquipment } from './starting-equipment.ts';
 
 /**
  * Which version of the converter wrote a conversion. Bump it when the same Aurora files come to convert into something
  * different; a source converted by another version is converted again. 5 since a source is converted whole, into one
  * Incudo content file (ADR 0119), 6 since a `!` operand is a `not` filter node, 7 since `:half`, `[character:N]` and
  * `isRitual` are written as Incudo's (`incudo-expressions.ts`), 8 since the average hit points option is one of
- * Aurora's own elements it writes; 4 was ADR 0129's.
+ * Aurora's own elements it writes, 9 since a class's and a background's starting equipment is read from its prose
+ * (`starting-equipment.ts`); 4 was ADR 0129's.
  */
-export const CONVERTER_VERSION = 8;
+export const CONVERTER_VERSION = 9;
 
 /** What a converted source's `converted.from` says. */
 export const AURORA_FORMAT = 'aurora';
@@ -269,7 +271,8 @@ export async function convertAuroraSource(options: ConvertSourceOptions): Promis
 
   const bundle: ContentBundle = {
     formatVersion: 1,
-    elements: [...generated, ...elements, ...options_],
+    // A class's and a background's starting equipment, read from its prose against the source's own items (decision 9).
+    elements: [...generated, ...withStartingEquipment(elements, [...generated, ...elements]), ...options_],
     ...(extensions.length ? { extensions } : {}),
     source: {
       name: top.name,
@@ -319,7 +322,7 @@ export function convertAuroraFile(text: string, options: ConvertFileOptions): Co
   );
   return {
     formatVersion: 1,
-    elements: [...parsed.elements, ...improvements],
+    elements: [...withStartingEquipment(parsed.elements, parsed.elements), ...improvements],
     ...(parsed.appends.length ? { extensions: parsed.appends } : {}),
     source: {
       name,

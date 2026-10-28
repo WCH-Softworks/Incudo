@@ -260,6 +260,9 @@ function checkCharacterReferences(character: Character, system?: GameSystem): Sc
   if (character.formatVersion < 11 && character.startingEquipment !== undefined) {
     errors.push({ path: 'startingEquipment', message: 'is recorded only from format 11' });
   }
+  if (character.formatVersion < 14 && character.startingEquipment?.some((record) => record.pending !== undefined)) {
+    errors.push({ path: 'startingEquipment', message: 'records pending items only from format 14' });
+  }
   if (system?.currency) {
     for (const unit of Object.keys(character.money ?? {})) {
       if (!(unit in system.currency)) errors.push({ path: `money.${unit}`, message: `"${unit}" is not a unit of money this system declares` });
@@ -532,6 +535,24 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
             path: `${where}.buildSteps`,
             message: `step "${step.id}" picks "${type}", which the system's elementTypes does not declare`,
           });
+        }
+      }
+    }
+
+    // Where the kind offers content's starting packages, and which picks they come from (ADR 0119).
+    const starting = resolved.startingEquipment;
+    if (starting) {
+      if (!stepIds.has(starting.step)) {
+        errors.push({ path: `${where}.startingEquipment.step`, message: `"${starting.step}" is not a build step of this kind` });
+      }
+      for (const [i, id] of starting.from.entries()) {
+        if (!resolved.buildSteps.some((s) => s.id === id && s.types.length > 0)) {
+          errors.push({ path: `${where}.startingEquipment.from[${i}]`, message: `"${id}" is not a build step of this kind that chooses an element` });
+        }
+      }
+      for (const [i, type] of (starting.equip ?? []).entries()) {
+        if (!typeNames.has(type)) {
+          errors.push({ path: `${where}.startingEquipment.equip[${i}]`, message: `names "${type}", which the system's elementTypes does not declare` });
         }
       }
     }

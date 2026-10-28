@@ -11,10 +11,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { BundleElementIndex, readCharacterContainer, validateCharacter, type ElementIndex } from '@incudo/core';
-import { CharacterBuilder, newCharacterOfKind, packCharacter, wealthRollKey } from '@incudo/ui';
+import { CharacterBuilder, newCharacterOfKind, packCharacter } from '@incudo/ui';
 
 import { summarize } from './derived-summary.ts';
-import { loadSchemas, loadShippedStartingEquipment, loadShippedSystem } from './node-system.ts';
+import { loadSchemas, loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
 
 const PHB = 'Player’s Handbook';
@@ -23,8 +23,7 @@ const PHB24 = 'Player’s Handbook (2024)';
 async function start(random?: () => number) {
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
-  const file = await loadShippedStartingEquipment('dnd5e');
-  const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements, { startingEquipment: [file], ...(random ? { random } : {}) });
+  const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements, { ...(random ? { random } : {}) });
   const pick = (stepId: string, name: string, book: string): string => {
     const decision = b.getState().decisions.find((d) => d.stepId === stepId && d.kind === 'pick');
     const id = decision?.candidates.find((c) => elements.get(c)?.name === name && elements.get(c)?.source === book);
@@ -52,7 +51,8 @@ test('a 2014 Fighter takes its package and the Soldier’s, wears them, and reop
   const source = b.getState().startingEquipment!.sources.find((s) => s.forId === fighter)!;
   const pkg = source.options.find((o) => o.id === 'equipment')!;
   t.diagnostic(`the Fighter's package: ${pkg.lines.map((l) => (l.kind === 'choose' ? l.alternatives.map((a) => a.text).join(' | ') : l.text)).join(' / ')}`);
-  assert.deepEqual(source.options.map((o) => o.id), ['equipment', 'wealth']);
+  // No wealth roll for a 2014 class (ADR 0119): the books print it in a table the prose does not carry.
+  assert.deepEqual(source.options.map((o) => o.id), ['equipment']);
 
   // (a) chain mail; (a) a martial weapon and a shield, the weapon a longsword; (b) two handaxes; (a) a dungeoneer's pack.
   b.chooseStartingAlternative(fighter, 'equipment', '0', 0);
@@ -67,8 +67,18 @@ test('a 2014 Fighter takes its package and the Soldier’s, wears them, and reop
   b.chooseStartingAlternative(fighter, 'equipment', '3', 0);
   assert.equal(b.takeStartingOption(fighter, 'equipment'), undefined);
 
-  b.chooseStartingAlternative(soldier, 'equipment', '0', 0);
   assert.equal(b.takeStartingOption(soldier, 'equipment'), undefined);
+  // What no loaded item matched is pending: one resolved with an item, one with a name of the user's own.
+  const pending = b.getState().startingEquipment!.pending;
+  assert.deepEqual(pending.map((p) => p.text), [
+    'An insignia of rank',
+    'a trophy taken from a fallen enemy (a dagger, broken blade, or piece of a banner)',
+    'a set of bone dice or deck of cards',
+  ]);
+  const dice = b.inventoryOptionsFor().find((id) => elements.get(id)?.name === 'Dice Set' && elements.get(id)?.source === PHB)!;
+  assert.equal(b.resolvePendingItem(soldier, 2, { elementId: dice }), undefined);
+  assert.equal(b.resolvePendingItem(soldier, 0, { name: 'Sergeant’s insignia' }), undefined);
+  assert.deepEqual(b.getState().startingEquipment!.pending.map((p) => p.resolved), ['Sergeant’s insignia', undefined, 'Dice Set']);
 
   const state = b.getState();
   const bag = state.character.inventory ?? [];
@@ -81,9 +91,10 @@ test('a 2014 Fighter takes its package and the Soldier’s, wears them, and reop
       ['Longsword', true, 1],
       ['Handaxe', true, 2],
       ['Dungeoneer’s Pack', false, 1],
-      ['Dice Set', false, 1],
       ['Clothes, Common', false, 1],
       ['Pouch', false, 1],
+      ['Dice Set', false, 1],
+      ['An item of your own', false, 1],
     ],
   );
   assert.deepEqual(state.character.money, { gp: 10 });
@@ -99,10 +110,13 @@ test('a 2014 Fighter takes its package and the Soldier’s, wears them, and reop
   assert.deepEqual(reopened.getState().character.inventory, state.character.inventory);
   assert.deepEqual(reopened.getState().character.money, { gp: 10 });
   assert.deepEqual(named(elements, reopened.getState().character.startingEquipment!.map((r) => r.for)), ['Fighter', 'Soldier']);
+  assert.equal(reopened.getState().character.inventory!.find((e) => e.name)?.name, 'Sergeant’s insignia');
+  // The save embeds the class and background, packages and all, so the pending lines read the same with no source.
+  assert.deepEqual(reopened.getState().startingEquipment!.pending, state.startingEquipment!.pending);
 });
 
-test('a 2024 Fighter may take gold alone, and a 2014 Monk rolls its wealth with no multiplier', { skip: corpusSkip }, async () => {
-  // Fails if option C is not offered or writes items, or if the Monk's wealth is multiplied by ten.
+test('a 2024 Fighter may take gold alone, and a 2014 Monk is offered no wealth roll', { skip: corpusSkip }, async () => {
+  // Fails if option C is not offered or writes items, or if a 2014 class is offered a roll its prose does not state.
   const fighter24 = await start();
   fighter24.pick('class', 'Fighter', PHB24);
   const f = fighter24.b.getState().startingEquipment!.sources[0]!;
@@ -113,7 +127,6 @@ test('a 2024 Fighter may take gold alone, and a 2014 Monk rolls its wealth with 
 
   const monk = await start(() => 0.99);
   const id = monk.pick('class', 'Monk', PHB);
-  assert.equal(monk.b.takeStartingOption(id, 'wealth'), undefined);
-  assert.equal(monk.b.getState().character.rolls[wealthRollKey(id)], 20);
-  assert.deepEqual(monk.b.getState().character.money, { gp: 20 });
+  assert.deepEqual(monk.b.getState().startingEquipment!.sources[0]!.options.map((o) => o.id), ['equipment']);
+  assert.equal(monk.b.takeStartingOption(id, 'wealth'), 'There is no such starting equipment.');
 });

@@ -508,6 +508,8 @@
         { "id": "deity", "label": "Deity", "types": ["Deity"], "pick": true }
       ],
 
+      "startingEquipment": { "step": "equipment", "from": ["class", "background"], "equip": ["Armor", "Weapon"], "ownItem": "ID_INTERNAL_ITEM_OWN" },
+
       "freeform": {
         "label": "About the character",
         "description": "Text no rule reads: who plays the character, how they look, what drives them, and notes. Whatever is written here is shown on the sheet.",

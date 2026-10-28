@@ -15,15 +15,13 @@
  */
 
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { CharacterBuilder, type BuilderState, type StartingEquipmentFile } from '@incudo/ui';
+import { CharacterBuilder, type BuilderState } from '@incudo/ui';
 import type { Character, ElementIndex, GameSystem } from '@incudo/core';
 
 export function useBuilder(
   character: Character,
   system: GameSystem,
   elements: ElementIndex,
-  /** The starting equipment shipped beside the systems (ADR 0087). A list made once, so it never rebuilds the builder. */
-  startingEquipment: readonly StartingEquipmentFile[] = [],
   /** Whether the steps a system marks advanced are offered (ADR 0115): the user's preference, never a rebuild. */
   showAdvanced = false,
 ): { builder: CharacterBuilder; state: BuilderState } {
@@ -68,11 +66,10 @@ export function useBuilder(
     // is what fixes bug one. A new object: start from it, whatever its id.
     () =>
       new CharacterBuilder(handed.current === character ? current.current : character, system, elements, {
-        startingEquipment,
         showAdvanced: advanced.current,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [system, elements, character, startingEquipment],
+    [system, elements, character],
   );
 
   // A change of the switch is a view of the same builder, so it is handed over rather than rebuilt.

@@ -175,6 +175,14 @@ const MARKERS: Array<[id: string, type: string, name: string, description: strin
     'Additional Features',
     'This campaign lets a character take features beyond the usual rules: another speed or sense, a prerequisite waived, weapon mastery, a companion of their choice, lycanthropy, and ability score adjustments.',
   ],
+  // Not one of Aurora's: Incudo's own item for a starting item the user names, a line of a class's or background's
+  // equipment the conversion matched to no item (ADR 0119 decision 9). It enters the bag under the user's name.
+  [
+    'ID_INTERNAL_ITEM_OWN',
+    'Item',
+    'An item of your own',
+    'An item you named yourself, for one your starting equipment lists that no content describes.',
+  ],
   [
     'ID_INTERNAL_RITUAL_CASTING',
     'Grants',

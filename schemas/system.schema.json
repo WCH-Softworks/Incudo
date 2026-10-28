@@ -659,6 +659,18 @@
           }
         },
         "play": { "$ref": "#/$defs/play" },
+        "startingEquipment": {
+          "type": "object",
+          "required": ["step", "from"],
+          "additionalProperties": false,
+          "description": "Where a character of this kind takes the starting equipment its class and background elements carry (ADR 0119; content writes the packages, the system says where they are offered). Replaced rather than merged along an extends chain.",
+          "properties": {
+            "step": { "type": "string", "minLength": 1, "description": "The build step the packages are offered in." },
+            "from": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "The pick steps whose answer gives a package, in the order offered." },
+            "equip": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Element types an item of which is worn or held when taken, where a free slot takes it." },
+            "ownItem": { "type": "string", "minLength": 1, "description": "The element a starting item the user names is entered as: a line content lists that matched no item." }
+          }
+        },
         "freeform": {
           "type": "object",
           "required": ["label", "fields"],

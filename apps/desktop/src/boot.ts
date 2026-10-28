@@ -37,8 +37,6 @@ import manifestSchema from '@repo/schemas/manifest.schema.json';
 import dnd5e from '@repo/systems/dnd5e/system.json?raw';
 import formMapSchema from '@repo/schemas/form-map.schema.json';
 import dnd5eOfficial2014 from '@repo/systems/dnd5e/forms/official-2014.json';
-import startingEquipmentSchema from '@repo/schemas/starting-equipment.schema.json';
-import dnd5eStartingEquipment from '@repo/systems/dnd5e/starting-equipment.json';
 import featureLibrarySchemaFile from '@repo/schemas/feature-library.schema.json';
 
 /** The user's feature library's schema (ADR 0106), which `FeatureLibrary` checks the folder's file against. */
@@ -60,7 +58,7 @@ export const schemas: SchemaBundle = {
 };
 
 /**
- * The shipped definitions and the starting equipment beside them, read once, by the loader every definition goes through
+ * The shipped definitions, read once, by the loader every definition goes through
  * (ADR 0107): `readJsonText`, `validateGameSystem`, warnings and problems located. A user's definitions are read by the
  * same function through `UserSystemStore`, and `systemCatalog` puts the two together. One broken definition is not
  * fatal: the launcher lists it with its problems, as it does a user's.
@@ -69,13 +67,7 @@ let shipped: ShippedCatalog | undefined;
 
 export function loadShippedSystems(): ShippedCatalog {
   if (shipped) return shipped;
-  shipped = loadShippedCatalog(SHIPPED, schemas, {
-    files: SHIPPED_STARTING_EQUIPMENT,
-    schema: startingEquipmentSchema as JsonSchema,
-  });
-  for (const failure of shipped.startingEquipmentFailures) {
-    console.error('A shipped starting equipment file does not check and is left out.', failure.errors);
-  }
+  shipped = loadShippedCatalog(SHIPPED, schemas);
   return shipped;
 }
 
@@ -95,9 +87,6 @@ export function loadShippedForms(): FormMap[] {
   }
   return maps;
 }
-
-/** The starting equipment shipped beside the systems (ADR 0087), checked by `loadShippedSystems` against the system each names. */
-const SHIPPED_STARTING_EQUIPMENT: unknown[] = [dnd5eStartingEquipment];
 
 /** Where the launcher's answer is kept between launches — ADR 0031. */
 const SYSTEM_KEY = 'system:current';
