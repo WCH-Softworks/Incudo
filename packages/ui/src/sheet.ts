@@ -40,6 +40,7 @@ import {
   type ResolvedStat,
   type SheetGroup,
   type SheetReader,
+  type SheetFactDef,
   type SheetLayoutDef,
   type SheetPlace,
   type SheetSectionDef,
@@ -47,6 +48,7 @@ import {
   type StatDef,
 } from '@incudo/core';
 
+import { htmlToRuns, runsText } from './html-blocks.ts';
 import { entryName, entryNeedsAttunement } from './inventory.ts';
 import { purseRows, type PurseRow } from './money.ts';
 
@@ -157,6 +159,37 @@ export interface SheetListedElement {
    * a class's improvement goes under the class. What a renderer groups a section's cards by.
    */
   from?: SheetListedRef;
+  /**
+   * What its section writes of it beside its name (`facts`, ADR 0126), in the section's order, each only when the element
+   * says it: a spell's "Casting Time: 1 action", "Components: V, S, M".
+   */
+  facts?: SheetFact[];
+}
+
+/** One fact a section writes of a listed element (ADR 0126). */
+export interface SheetFact {
+  label: string;
+  text: string;
+}
+
+/**
+ * What a section's facts say of an element (ADR 0126): each setter's value as plain text (content writes an `<i>` in one), each flag's text when its setter holds
+ * `true`, facts sharing a label joined with ", " in the section's order. Nothing an element does not say is written.
+ */
+export function sheetFacts(element: Pick<Element, 'setters'>, defs: readonly SheetFactDef[]): SheetFact[] {
+  const setter = (name: string): string | undefined => {
+    const key = Object.keys(element.setters).find((k) => k.toLowerCase() === name.toLowerCase());
+    return key === undefined ? undefined : runsText(htmlToRuns(element.setters[key]!.value)).replace(/\s+/g, ' ').trim();
+  };
+  const out: SheetFact[] = [];
+  for (const def of defs) {
+    const text = 'setter' in def ? setter(def.setter) : setter(def.flag)?.toLowerCase() === 'true' ? def.text : undefined;
+    if (!text) continue;
+    const same = out.find((fact) => fact.label === def.label);
+    if (same) same.text = `${same.text}, ${text}`;
+    else out.push({ label: def.label, text });
+  }
+  return out;
 }
 
 /** An element named where another stands for it (ADR 0126). */
@@ -571,6 +604,7 @@ export function sheetSections(
         const sides = section.trackDie !== undefined && progress !== undefined && progress > 0 ? trackDie(e, section.trackDie) : undefined;
         const prepared = section.preparedMark ? preparedState(preparation, e.id) : undefined;
         const cast = source.cast?.get(e.id);
+        const facts = section.facts ? sheetFacts(e, section.facts) : [];
         return {
           elementId: e.id,
           name: e.name,
@@ -583,6 +617,7 @@ export function sheetSections(
           ...(prepared ? { prepared: { label: section.preparedMark![prepared], always: prepared === 'always' } } : {}),
           ...(cast !== undefined ? { cast } : {}),
           ...(note !== undefined ? { note } : {}),
+          ...(facts.length ? { facts } : {}),
         };
       });
       if (section.fold) foldGrants(elements, (id) => heldById.get(id) ?? source.lookup?.(id));

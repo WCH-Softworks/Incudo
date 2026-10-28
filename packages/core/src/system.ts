@@ -994,6 +994,12 @@ export interface SheetSectionDef {
    */
   answers?: boolean;
   /**
+   * What the sheet writes of each listed element beside its name — ADR 0126: a spell's casting time, range, duration and
+   * components. A fact reads a setter as written, or writes `text` when a setter holds `true` (a flag); facts sharing a
+   * label are one, their texts joined ("V, S, M"). Drawn as columns on screen and as a short parenthesis on paper.
+   */
+  facts?: SheetFactDef[];
+  /**
    * Where the section goes on a laid-out sheet — ADR 0126: `head` (the band across the top: who the character is and the
    * numbers looked at every turn), `side` (a narrow column always shown) or `main` (a tab of the main column, `tab`).
    * Absent is `main`. Read only when the kind's sheet declares a `layout`.
@@ -1302,6 +1308,9 @@ export interface SheetTabDef {
   /** The parts of the sheet that are not sections it holds, after its sections, in this order. */
   parts?: SheetPart[];
 }
+
+/** One fact a sheet writes of a listed element — ADR 0126: a setter's value, or a text when a setter holds `true`. */
+export type SheetFactDef = { label: string; setter: string } | { label: string; flag: string; text: string };
 
 /** Where a section of a laid-out sheet goes — ADR 0126. */
 export type SheetPlace = 'head' | 'side' | 'main';

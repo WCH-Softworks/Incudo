@@ -82,9 +82,20 @@ export function listedDice(element: Pick<SheetListedElement, 'dice'>): string | 
  * always prepared, cast as Wizard", any alone, or nothing. The pane and every export word a listed
  * element this way.
  */
-export function listedAside(element: Pick<SheetListedElement, 'dice' | 'group' | 'prepared' | 'cast'>): string | undefined {
+export function listedAside(
+  element: Pick<SheetListedElement, 'dice' | 'group' | 'prepared' | 'cast' | 'facts'>,
+  withFacts = true,
+): string | undefined {
   const parts = [listedDice(element), element.group?.label, element.prepared?.label, element.cast].filter((part): part is string => part !== undefined && part !== '');
-  return parts.length ? parts.join(', ') : undefined;
+  // A section's facts follow, each its own part, since a fact may hold a comma ("V, S, M") (ADR 0126).
+  const facts = withFacts ? listedFacts(element) : undefined;
+  const head = parts.length ? parts.join(', ') : undefined;
+  return head !== undefined && facts !== undefined ? `${head}; ${facts}` : (head ?? facts);
+}
+
+/** A listed element's facts as a sheet writes them on paper (ADR 0126): "1 action; 120 feet; Instantaneous; V, S". */
+export function listedFacts(element: Pick<SheetListedElement, 'facts'>): string | undefined {
+  return element.facts?.length ? element.facts.map((fact) => fact.text).join('; ') : undefined;
 }
 
 /**

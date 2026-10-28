@@ -346,7 +346,7 @@ function sheetLayoutErrors(sheet: SheetLayoutDef, where: string): SchemaError[] 
 }
 
 /** The sheet section fields that are about the elements a section lists (ADR 0126). */
-const LISTING_FIELDS = ["fold", "omitMarked", "answers"] as const;
+const LISTING_FIELDS = ["fold", "omitMarked", "answers", "facts"] as const;
 
 const CHECKED_ELSEWHERE: ReadonlySet<string> = new Set([
   'characterKinds',

@@ -664,7 +664,8 @@ body of existing content. When you need one of these, find it there, and read it
   whichever book prints it (5e's spells and feats): a character is not offered a second printing of what it has.
 - **The sheet**: `mark`, `group`, `preparedMark`, `trackProgress`, `trackDie`, `omitHidden`, `printed`, `bag`, and what
   shortens a list: `fold` (what another entry grants is listed under it), `omitMarked` (what a marked row already says is
-  left out), `answers` (a feature written with what its choice chose, and what says nothing named on one "Also" line).
+  left out), `answers` (a feature written with what its choice chose, and what says nothing named on one "Also" line),
+  `facts` (what each listed element says beside its name: a spell's casting time, range, duration and components).
   Where each section goes: the sheet's `layout` (`page` or `statBlock`) and `tabs`, and a section's `place` (`head`,
   `side`, `main`), `tab`, `tiles` and `under`. A sheet without a layout is drawn as one column.
 

@@ -1302,6 +1302,22 @@
           "type": "boolean",
           "description": "Leave out a listed element whose own sheet hints say not to show it (Aurora's <sheet display=\"false\">, ADR 0076). Content marks a feature that way when its effect is shown elsewhere or a choice beside it names it better, and also every race and class, which a header names: so a section that lists features declares it and one that names what a character is does not. The element is still held, derived and saved. Only meaningful beside types."
         },
+        "facts": {
+          "type": "array",
+          "description": "What the sheet writes of each listed element beside its name (ADR 0126): a spell's casting time, range, duration and components. A fact reads a setter as written, or writes text when a setter holds true; facts sharing a label are one, their texts joined. Drawn as columns on screen and as a short parenthesis on paper. Only meaningful beside types.",
+          "items": {
+            "type": "object",
+            "required": ["label"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string", "minLength": 1, "description": "User-facing." },
+              "setter": { "type": "string", "minLength": 1, "description": "The setter whose value is written, matched ignoring case." },
+              "flag": { "type": "string", "minLength": 1, "description": "A setter that writes text when it holds true, matched ignoring case." },
+              "text": { "type": "string", "minLength": 1, "description": "What a flag writes. User-facing." }
+            },
+            "oneOf": [{ "required": ["setter"], "not": { "anyOf": [{ "required": ["flag"] }, { "required": ["text"] }] } }, { "required": ["flag", "text"], "not": { "required": ["setter"] } }]
+          }
+        },
         "place": {
           "enum": ["head", "side", "main"],
           "description": "Where the section goes on a laid-out sheet (ADR 0126): head (the band across the top), side (a narrow column always shown) or main (a tab of the main column). Absent is main. Read only when the sheet declares a layout."

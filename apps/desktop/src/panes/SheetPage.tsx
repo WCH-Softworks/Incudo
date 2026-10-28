@@ -117,6 +117,56 @@ function Cards({ section }: { section: SheetSectionView }): React.JSX.Element {
   );
 }
 
+/**
+ * A section whose elements carry facts as a table (ADR 0126 decision 6): a heading row per group (a spell's level), then
+ * a row per element, its name with what follows it (prepared, cast as) and a column per fact the section writes.
+ */
+function FactTable({ section }: { section: SheetSectionView }): React.JSX.Element {
+  const labels = [...new Set(section.elements.flatMap((e) => (e.facts ?? []).map((fact) => fact.label)))];
+  const rows: React.JSX.Element[] = [];
+  let group: string | undefined;
+  for (const element of section.elements) {
+    const label = element.group?.label;
+    if (label !== undefined && label !== group) {
+      group = label;
+      rows.push(
+        <tr key={`group:${label}`} className="sheet-fact-group">
+          <th colSpan={labels.length + 1} scope="rowgroup">
+            {label}
+          </th>
+        </tr>,
+      );
+    }
+    const aside = listedAside({ ...element, group: undefined }, false);
+    rows.push(
+      <tr key={element.elementId}>
+        <td>
+          {listedName(element)}
+          {aside !== undefined && <span className="sheet-beside"> ({aside})</span>}
+        </td>
+        {labels.map((fact) => (
+          <td key={fact}>{element.facts?.find((f) => f.label === fact)?.text ?? ''}</td>
+        ))}
+      </tr>,
+    );
+  }
+  return (
+    <table className="sheet-facts">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          {labels.map((fact) => (
+            <th key={fact} scope="col">
+              {fact}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>{rows}</tbody>
+    </table>
+  );
+}
+
 /** One section of the page, drawn by what it holds. */
 function PageSection({ section, under }: { section: SheetSectionView; under?: SheetSectionView }): React.JSX.Element {
   const cards = section.also === true;
@@ -127,6 +177,11 @@ function PageSection({ section, under }: { section: SheetSectionView; under?: Sh
         <>
           <Tiles section={section} {...(under ? { under } : {})} />
           <SheetRows section={{ ...section, rows: [] }} />
+        </>
+      ) : section.elements.some((e) => e.facts?.length) ? (
+        <>
+          <SheetRows section={{ ...section, elements: [] }} />
+          <FactTable section={section} />
         </>
       ) : cards ? (
         <>
