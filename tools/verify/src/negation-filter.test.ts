@@ -11,7 +11,8 @@
  *  2. Does Aurora's own choice pass the filter? The samples that pick through a negated select (the Artificers'
  *     specialist and infusions) hold picks Aurora accepted, so each must be among what the filter admits.
  *
- * And the perturbation: with the negation left literal, as it was, the same selects offer nothing.
+ * And the perturbation: with the negation left literal, as a save written before ADR 0119 holds it, the same selects
+ * offer nothing.
  */
 
 import { test } from 'node:test';
@@ -46,7 +47,7 @@ async function shippedSystem(): Promise<GameSystem> {
 
 const isNegated = (expr: SupportsExpr | undefined): boolean => {
   if (!expr) return false;
-  if (expr.kind === 'tag') return expr.tag.length > 1 && expr.tag.startsWith('!');
+  if (expr.kind === 'not') return true;
   if (expr.kind === 'and' || expr.kind === 'or') return expr.children.some(isNegated);
   return false;
 };
@@ -62,6 +63,20 @@ function answersTo(element: Element): Set<string> {
   return words;
 }
 
+/** The filter with each negation dropped, keeping what it negated. */
+function withoutNot(expr: SupportsExpr): SupportsExpr {
+  if (expr.kind === 'not') return withoutNot(expr.child);
+  if (expr.kind === 'and' || expr.kind === 'or') return { kind: expr.kind, children: expr.children.map(withoutNot) };
+  return expr;
+}
+
+/** The filter as a save written before ADR 0119 holds it: each negation a literal `!word` tag. */
+function literally(expr: SupportsExpr): SupportsExpr {
+  if (expr.kind === 'not' && expr.child.kind === 'tag') return { kind: 'tag', tag: `!${expr.child.tag}` };
+  if (expr.kind === 'and' || expr.kind === 'or') return { kind: expr.kind, children: expr.children.map(literally) };
+  return expr;
+}
+
 /** A second reading of a filter with no interpolation in it. */
 function reference(expr: SupportsExpr | undefined, words: Set<string>): boolean {
   if (!expr) return true;
@@ -71,9 +86,9 @@ function reference(expr: SupportsExpr | undefined, words: Set<string>): boolean 
     case 'or':
       return expr.children.some((c) => reference(c, words));
     case 'tag':
-      return expr.tag.startsWith('!') && expr.tag.length > 1
-        ? !words.has(expr.tag.slice(1).trim().toLowerCase())
-        : words.has(expr.tag.toLowerCase());
+      return words.has(expr.tag.toLowerCase());
+    case 'not':
+      return !reference(expr.child, words);
     case 'interpolate':
       throw new Error('a negated select here carries no interpolation');
   }
@@ -146,7 +161,7 @@ test('the negation is what excludes: every admitted candidate lacks the negated 
   for (const { rule } of negatedSelects(index)) {
     // The same filter with each `!` dropped admits at least as much; where it admits more, the extra is exactly
     // what the negation removed. A negation that removed nothing anywhere would be a filter no better than none.
-    const positive = JSON.parse(JSON.stringify(rule.supports).replace(/"tag":"!/g, '"tag":"')) as SupportsExpr;
+    const positive = withoutNot(rule.supports!);
     const removed = index
       .byType(rule.type)
       .filter((c) => reference(positive, answersTo(c)) && !reference(rule.supports, answersTo(c)));
@@ -176,25 +191,16 @@ test('what Aurora saved through a negated select passes the filter', { skip: sav
   assert.ok(picks > 0, 'some sample picks through a negated select, or this measured nothing');
 });
 
-test('left literal, as it was, every such select offers nothing', { skip: corpusSkip }, async () => {
+test('left literal, as a save written before holds it, every such select offers nothing', { skip: corpusSkip }, async () => {
   requireCorpus();
   const index = await realElements();
   let measured = 0;
   for (const { rule } of negatedSelects(index)) {
-    // With the tag read as a literal word nothing carries it, so an AND that names one admits nothing.
-    const literal = (expr: SupportsExpr | undefined): boolean =>
-      !expr
-        ? true
-        : expr.kind === 'tag'
-          ? !isNegated(expr) && index.byType(rule.type).some((c) => answersTo(c).has(expr.tag.toLowerCase()))
-          : expr.kind === 'and'
-            ? expr.children.every(literal)
-            : expr.kind === 'or'
-              ? expr.children.some(literal)
-              : true;
+    // Read as the literal word `!TCOE Base`, which nothing carries, an AND that names one admits nothing: what a filter
+    // embedded in a save before ADR 0119 reads as, until a content refresh replaces it.
     if (rule.supports?.kind !== 'and') continue;
     measured += 1;
-    assert.equal(literal(rule.supports), false, `${rule.name}: a literal "!word" is a tag nothing carries`);
+    assert.deepEqual(candidatesFor({ ...rule, supports: literally(rule.supports) }, index), [], `${rule.name}: a literal "!word" is a tag nothing carries`);
   }
   assert.ok(measured > 0);
 });

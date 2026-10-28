@@ -9,7 +9,7 @@
  *   "ID_A|ID_B"                  -> bare element ids are legal operands too
  *   "0"                          -> a setter's value is an operand too     (ADR 0030)
  *   "$(spellcasting:list), 0"    -> $(...) expands to a sub-expression before matching
- *   "Artificer Infusion, !TCOE Base" -> a leading `!` on an operand negates it   (ADR 0048)
+ *   "Artificer Infusion, !TCOE Base" -> a leading `!` on an operand negates it   (ADR 0048, a `not` node since ADR 0119)
  *
  * The `$(...)` form is the ugliest corner of the Aurora format and the usual place a
  * naive importer breaks: the filter is not knowable until the character is being built,
@@ -45,6 +45,7 @@ export type SupportsExpr =
   | { kind: 'and'; children: SupportsExpr[] }
   | { kind: 'or'; children: SupportsExpr[] }
   | { kind: 'tag'; tag: string }
+  | { kind: 'not'; child: SupportsExpr }
   | { kind: 'interpolate'; key: string };
 
 /**
@@ -125,7 +126,14 @@ function parseAtom(text: string, at: number): [SupportsExpr | undefined, number]
   const start = position;
   while (position < text.length && !isSeparator(text[position]!)) position++;
   const tag = text.slice(start, position).trim();
-  return [tag === '' ? undefined : { kind: 'tag', tag }, position];
+  if (tag === '') return [undefined, position];
+  // A leading `!` negates the one operand it is written on (ADR 0048), read where the filter is parsed since ADR 0119: a
+  // save written before keeps the literal tag `!TCOE Base`, and a content refresh replaces it. A lone `!` is a tag.
+  if (tag.length > 1 && tag.startsWith('!')) {
+    const operand = tag.slice(1).trim();
+    if (operand) return [{ kind: 'not', child: { kind: 'tag', tag: operand } }, position];
+  }
+  return [{ kind: 'tag', tag }, position];
 }
 
 function isSeparator(ch: string): boolean {
@@ -189,6 +197,9 @@ export function supportsInterpolations(
     case 'interpolate':
       into.add(expr.key);
       break;
+    case 'not':
+      supportsInterpolations(expr.child, into);
+      break;
     case 'and':
     case 'or':
       for (const child of expr.children) supportsInterpolations(child, into);
@@ -216,16 +227,10 @@ export function matchesSupports(
       return expr.children.every((c) => matchesSupports(c, ctx, depth));
     case 'or':
       return expr.children.some((c) => matchesSupports(c, ctx, depth));
-    case 'tag': {
-      // A leading `!` negates one operand — ADR 0048. Read here and not in the parser, on purpose: a `.incu`
-      // embeds *parsed* elements, so a parse-time reading would leave every character saved before it with the
-      // literal tag `!TCOE Base` that nothing carries (the same reason `:half` is read where a reference is
-      // evaluated, ADR 0046). A lone `!` is still a literal tag.
-      if (expr.tag.length > 1 && expr.tag.startsWith('!')) {
-        return !hasOperand(expr.tag.slice(1).trim(), ctx);
-      }
+    case 'tag':
       return hasOperand(expr.tag, ctx);
-    }
+    case 'not':
+      return !matchesSupports(expr.child, ctx, depth);
     case 'interpolate': {
       if (depth >= MAX_INTERPOLATION_DEPTH) return false;
       const resolved = ctx.resolve(expr.key);

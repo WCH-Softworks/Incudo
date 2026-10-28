@@ -308,7 +308,7 @@ export class ContentCatalog {
       for (const rule of element.rules) {
         if (rule.kind !== 'select' || rule.supports?.kind !== 'tag') continue;
         const tag = rule.supports.tag.trim().toLowerCase();
-        if (!tag || tag.startsWith('!') || tag.includes('$(')) continue;
+        if (!tag || tag.includes('$(')) continue;
         const list = found.get(tag);
         const offer = { ownerId: element.id, select: rule.name };
         if (list) list.push(offer);

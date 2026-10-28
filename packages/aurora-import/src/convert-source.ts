@@ -34,9 +34,9 @@ import { parseAuroraIndex, type AuroraFileRef, type AuroraIndex } from './parse-
 /**
  * Which version of the converter wrote a conversion. Bump it when the same Aurora files come to convert into something
  * different; a source converted by another version is converted again. 5 since a source is converted whole, into one
- * Incudo content file (ADR 0119); 4 was ADR 0129's.
+ * Incudo content file (ADR 0119), 6 since a `!` operand is a `not` filter node; 4 was ADR 0129's.
  */
-export const CONVERTER_VERSION = 5;
+export const CONVERTER_VERSION = 6;
 
 /** What a converted source's `converted.from` says. */
 export const AURORA_FORMAT = 'aurora';

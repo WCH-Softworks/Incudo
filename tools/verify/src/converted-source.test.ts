@@ -78,19 +78,23 @@ test('a source loads from the file its conversion was kept as what the conversio
  * last read under.
  */
 const CONVERTER_FILES = [
-  'xml.ts',
-  'parse-index.ts',
-  'parse-elements.ts',
-  'book.ts',
-  'item-features.ts',
-  'generated-elements.ts',
-  'improvement-options.ts',
-  'convert-source.ts',
+  'aurora-import/src/xml.ts',
+  'aurora-import/src/parse-index.ts',
+  'aurora-import/src/parse-elements.ts',
+  'aurora-import/src/book.ts',
+  'aurora-import/src/item-features.ts',
+  'aurora-import/src/generated-elements.ts',
+  'aurora-import/src/improvement-options.ts',
+  'aurora-import/src/convert-source.ts',
+  // The grammars the converter parses Aurora's attributes with, which are core's.
+  'core/src/requirements.ts',
+  'core/src/supports.ts',
+  'core/src/expression.ts',
 ];
-const RECORDED = { version: 5, sha256: 'a0457454baaad237ad60c541284bd672f26a45be8b3589d75ac5b055d2d2522f' };
+const RECORDED = { version: 6, sha256: 'be7f38a49a5ed9ee6809be5d16dcdc4826006b550ed1c9a3a1c40ece4b78c1e7' };
 
 test('the converter files are the ones the recorded version was decided for', async (t: Diagnostic) => {
-  const dir = join(repoRoot(), 'packages', 'aurora-import', 'src');
+  const dir = join(repoRoot(), 'packages');
   // Line endings and the version's own line are left out: a checkout's endings, or the bump itself, change nothing.
   const texts = await Promise.all(
     CONVERTER_FILES.map(async (name) =>

@@ -181,3 +181,17 @@ test('a lone ! is still a literal tag, and a ! inside a word is not a negation',
   assert.equal(matchesSupports(parseSupports('!'), candidate(['!'])), true);
   assert.equal(matchesSupports(parseSupports('Hi!'), candidate(['Hi!'])), true);
 });
+
+test('a negation is parsed into a node of its own, and evaluation reads no ! in a tag', () => {
+  // ADR 0119: the Aurora spelling is read where a filter is parsed, never where it is evaluated. Perturbation: reading
+  // the `!` at evaluation again makes the literal tag below match an element without it.
+  assert.deepEqual(parseSupports('Infusion, !TCOE Base'), {
+    kind: 'and',
+    children: [
+      { kind: 'tag', tag: 'Infusion' },
+      { kind: 'not', child: { kind: 'tag', tag: 'TCOE Base' } },
+    ],
+  });
+  assert.equal(matchesSupports({ kind: 'tag', tag: '!TCOE Base' }, candidate(['Infusion'])), false);
+  assert.equal(matchesSupports({ kind: 'tag', tag: '!TCOE Base' }, candidate(['!TCOE Base'])), true);
+});

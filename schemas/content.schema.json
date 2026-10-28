@@ -559,6 +559,22 @@
           "type": "object",
           "required": [
             "kind",
+            "child"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "not"
+            },
+            "child": {
+              "$ref": "#/$defs/filter"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
             "key"
           ],
           "additionalProperties": false,
