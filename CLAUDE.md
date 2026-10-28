@@ -437,8 +437,8 @@ the play half of Phase 6's second item. Things to know before touching it:
   same object). Wording both apps use is there too (`playValue`, `playRestNote`, `restEffects`).
 - **The phone writes at once**: `CharacterLibrary.record` replaces `character.json` and the manifest's name, `updated` and
   checksum (`replaceContainerCharacter`, core) and nothing else, under ADR 0027's conflict check; `useRecorder` in
-  `apps/mobile/src/App.tsx` debounces half a second and flushes on leaving. The desktop's Sheet has a Play section
-  (hidden in print) and saves with Save.
+  `apps/mobile/src/App.tsx` debounces half a second and flushes on leaving. The desktop's Sheet spends play in place on a
+  laid-out sheet (ADR 0126, below), and keeps the Play section above a sheet with no layout; it saves with Save.
 - **The sheet document is unchanged**: play is not in it, so exports and the phone/desktop sheet checksum are untouched.
 - In dev builds the phone logs `[incudo] play <file>: <play json>` after each write. Driven on the emulator and in the
   browser build, and in the Tauri window on Windows (2026-10-20), a legendary creature played too; not on a real phone or iOS.
@@ -771,6 +771,44 @@ know before touching it:
 - **The form**: a flow's list may declare `describe`; `formValues` writes each head and its whole description in plain
   words (`runsText(htmlToRuns(…))`) when all of them fit (`flowFits`), else the heads. 5e's Features and Traits: whole on 5
   of 30 samples.
+
+**The Sheet is laid out as a page, play is spent where its number is, and what another entry covers is folded**
+([ADR 0126](docs/adr/0126-the-sheet-is-laid-out-as-a-page-play-state-sits-where-its-number-is-and-what-another-entry-covers-is-folded.md),
+built 2026-10-28; Phase 9). The maintainer took every recommendation. Things to know before touching it:
+
+- **Measured first** (`tools/verify/src/sheet-revamp.test.ts`, report-only plus one assertion): 1,196 of 1,738 proficiencies
+  another listed one grants, 213 a shown mark already says; 34 of 52 text-less features answered by a choice of their own;
+  every listed spell carries time, range, duration; 122, 131 and 138 of 141 creatures print the AC, HP and speed they derive.
+- **Section fields** (system format, all optional, `formatVersion` 1): `fold` (an element another listed one reaches by its
+  own grants is carried on it as `includes`), `omitMarked` (one whose every contribution is a shown row's mark stat is left
+  out, `omitted`), `answers` (a feature written with what its own select chose, `answers`/`answering`, and what says
+  nothing on one "Also" line: `listedIsNameOnly`, `listedParts`), `facts` (a setter as plain text or a flag's text beside the
+  name, `SheetListedElement.facts`, written by `listedAside` after a "; "), `place`/`tab`/`tiles`/`under`, `coveredByPrint`.
+  A kind's sheet: `layout` (`page` | `statBlock`), `tabs` (with `parts`: companions, freeform, descriptions, references) and
+  `statBlock` (its ability table's sections, and which books open it in the 2024 shape, read off the creature's own
+  `source` since a save does not embed a book). A printed line: `stat` and `at` (a print of a row's own number is that row's
+  value; otherwise `SheetRow.printed`, "printed 21 (6d4 + 6)"). A sheet with no layout is the old column, so a user's system
+  still gets one. The validator refuses an undeclared tab, a tab outside the main column, a part in two tabs, `under` naming
+  no other section, `coveredByPrint` with no line printing it, `statBlock` naming no section, and the listing fields beside no
+  types. `sheet.tabs` is in `OVERLAY_KEYED_ARRAYS`.
+- **The document** (`sheetView`, `laidOut`): sections in the layout's order (head, side, then tab by tab), each with its
+  `place` and `tab`; `SheetListedElement.from` (the nearest giver another section lists, what feature cards group by);
+  `SheetDocument.layout`, `tabs`, `statBlock` (`table`: each score with its shown save by the declared order, and `wide`).
+  A section's explanation is not written to the text export any more (decision 2).
+- **Desktop**: `panes/SheetPage.tsx` (head band, tiles, side column, tabs whose every panel is drawn and hidden on screen
+  only, cards, the facts table), `StatBlock.tsx` (one column, the ability table's shape a radio button nothing records,
+  play beside), `SheetBits.tsx` (a section's "i", a mark as dots with its word for print and a screen reader),
+  `PlayInPlace.tsx` (`PlayContext`; boxes on a row or element, the strip under the head band, conditions as chips). All read
+  the document and `playPlaces` (`packages/ui/src/play.ts`: each tracker's `at`) and compute nothing.
+- **Print** (styles.css): the head band, then side and main columns side by side, every tab under its label; what is spent
+  as empty boxes and blank lines, no control; "the character's own sections" left out takes the head band, the side column
+  and every tab with no part of its own. `print-layout.test.ts` holds the rules.
+- **The phone** reads the same document and heads each tab in its one column (`tabStarts`); its Play tab stays. Typechecked,
+  not driven.
+- **Driven in the Tauri window on Windows** with a scratch profile and library (never the browser build): the page, play
+  saved and read back from the file, a 2025 Imp as a stat block, seven PDFs through `print_to_pdf` holding their exports'
+  words, the print step and WebView2's preview with no headers option. **Not done**: proficiencies grouped by kind (after
+  ADR 0119), a spell's text a click away, passive Perception beside Perception, a level's slots heading its spells.
 
 **An NPC's scores start where its creature prints them, and a score the DM types replaces the print**
 ([ADR 0057](docs/adr/0057-a-creature-s-printed-scores-are-where-an-npc-starts-and-the-dm-may-replace-them.md)). Phase 4's first item. Things to know before touching it:

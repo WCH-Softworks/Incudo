@@ -1,6 +1,6 @@
 # 0126 — The Sheet is laid out as a page, play state sits where its number is, and what another entry covers is folded
 
-**Status:** Accepted · 2026-10-27 (proposed 2026-10-19; the maintainer's answers to the open decisions are recorded at the end) · answers the UX pass's finding F8 ("the Sheet opens on play trackers, not on the
+**Status:** Accepted · 2026-10-27, built 2026-10-28 (proposed 2026-10-19; the maintainer's answers to the open decisions are recorded at the end) · answers the UX pass's finding F8 ("the Sheet opens on play trackers, not on the
 character") and the maintainer's call that the Sheet needs a full revamp · would bring ROADMAP Beyond 1.0's "A laid-out
 sheet" forward and replace it · would amend
 [0062](./0062-an-npc-s-other-speeds-saves-and-skills-are-its-creature-s-rules-and-its-senses-are-what-it-prints.md),
@@ -21,7 +21,8 @@ desktop shows play) · builds on [0009](./0009-character-kinds.md), [0011](./001
 **format:** system format additions on a kind's `sheet` and on a sheet section (all optional, `formatVersion` stays 1); no
 character format change · **mockups:** [0126-sheet-mockups.html](./0126-sheet-mockups.html), plain HTML and CSS
 
-Nothing here is built yet. The open decisions were answered on 2026-10-27 (below); the build steps are in ROADMAP Phase 9.
+Built 2026-10-27 to 2026-10-28, all ten steps; the open decisions were answered on 2026-10-27 and 2026-10-28 (below), and
+what building it changed is in the notes at the end.
 
 ## Context
 
@@ -375,8 +376,43 @@ re-run.
 7. **Before or after 1.0**: in 1.0 (a Phase 9 item; the maintainer's call that 1.0 is the desktop release).
 8. **The spell table's facts**: all six (casting time, range, duration, components, concentration, ritual).
 9. **A stat block's ability table**: both shapes, chosen by a radio button. In the maintainer's words, "make it a choice
-   based on source availability". *Not yet settled:* whether the default follows the creature's source (2024 shape for a
-   2025 creature, 2014 shape otherwise) and whether the choice is remembered per user (as print options are) or per
-   character. To be asked before step 7.
+   based on source availability". Settled on 2026-10-28: a creature opens in its book's shape (the 2024 shape for one from
+   a 2024 or 2025 book, the 2014 shape otherwise), and the switch is remembered nowhere: it lasts while the sheet is open.
 10. **How a mark is drawn**: a filled dot for proficient, two for expertise, on screen; the words in print, the export and
     for screen readers.
+
+## Notes as built (2026-10-28)
+
+Each step is its own commit, with its tests failing under their named perturbations; the oracle is untouched (nothing here
+moves a derivation). Driven in the Tauri window on Windows with a scratch profile and a scratch library of six packed
+samples and a 2025 Imp NPC, never the browser build.
+
+- **Step 1** (`tools/verify/src/sheet-revamp.test.ts`) reproduced the Context's figures: 1,196 of 1,738 proficiencies folded,
+  213 already marked, 6 to 24 left (median 11), their tags no clean category; 52 features with no line or usage, 34 of them
+  answered; all 311 listed spells carry time, range, duration and the verbal flag; of 141 creatures the printed armour
+  class, hit points and speed lead with the derived number for 122, 131 and 138 (the rest print a formula).
+- **Step 2, answers**: a chooser with nothing to say is folded into the answers its section lists ("Fighting Style: Defense",
+  the answer keeping its own line); an answer with nothing to say is folded into its chooser ("Favored Enemy: Undead"); an
+  answer listed nowhere is named under a chooser with nothing to say ("Ability Score Improvement: Constitution +1,
+  Constitution +1"); anything else is left as it was. Descriptions still describe what was folded. The "Also" line is part
+  of `answers`, not a field of its own. `sheet-export.test.ts` holds every element listed before still listed, included,
+  answered or left out by a mark.
+- **Step 3, what moved**: Combat's Level row went; Worn & Wielded went (its attunement rows are Inventory's now); Senses
+  stayed in the side column, since `beside` writes no label and "passive 13" beside Perception needs one. The Actions tab
+  holds the attacks only: "what a feature says takes an action" has no field to say it, and none was added.
+- **Step 4** added `SheetListedElement.from` (the nearest giver another section lists), which the cards are grouped by.
+  The section explanations left the text export with it (decision 2).
+- **Step 5**: `PlayTracker.at` and `playPlaces`; 164 of the samples' trackers are drawn on a row or element the sheet shows,
+  120 have no row and go on the strip under the head band. A sheet with no layout (a user's system) keeps the Play panel.
+- **Step 6**: a fact is written as plain text, because one setter holds HTML (Shield's casting time names Magic Missile in
+  italics). The slots stay rows with their boxes above the table, rather than heading each level: no field joins a slot row
+  to a spell level, and none was added for it. Print draws the table, not a parenthesis, and writes each level once.
+- **Step 7**: a creature's book edition is not in a save (its book's `release` is on the book's element, which a save does
+  not embed), so `statBlock.wide.sources` names the books in the system, matched against the creature's own `source`. The
+  printed senses line merges with passive Perception by its last number (`at: "last"`).
+- **Step 8**: seven PDFs through the window's `print_to_pdf` held every word of their exports but headings the page draws
+  differently, spell levels written once per group, and words `pdftotext` joins at a line-break hyphen; the print step and
+  WebView2's preview offered no headers and footers option with the running items on or off.
+- **Step 9**: the phone reads the document as it is; `tabStarts` heads each tab in its one column. Typechecked, not driven.
+- **Not done**: proficiencies grouped by kind (after ADR 0119 writes a category); a spell's text a click away on screen (it
+  is under Descriptions); passive Perception beside Perception; a level's slots heading its spells.

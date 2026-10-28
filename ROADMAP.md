@@ -1523,8 +1523,8 @@ the kind machinery is not decorative.*
       Windows, saved files reopened with the source off. **Not done:** ~~a mark on the saves and skills a character is
       proficient in; levels per class on the sheet ("Wizard 4 / Rogue 4"); hit dice~~ (Phase 5, ADR 0079 decisions 6, 7
       and 9), ~~death saves, inspiration~~ (tracked in play since ADR 0084, Phase 6),
-      ~~personality~~ (ADR 0092) and ~~attacks~~ (ADR 0093); ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); a
-      stat block laid out as a stat block (Beyond 1.0's "A laid-out sheet"); the "Progress" number a level-less Cairn character is shown on Build *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*; Cairn in
+      ~~personality~~ (ADR 0092) and ~~attacks~~ (ADR 0093); ~~reading content's `<sheet>` hints~~ (done in Phase 5, ADR 0076); ~~a
+      stat block laid out as a stat block~~ (ADR 0126, 2026-10-28); the "Progress" number a level-less Cairn character is shown on Build *(in Beyond 1.0's "Left from Phases 3 to 5" since 2026-10-12)*; Cairn in
       the Tauri window; macOS and Linux. *(Personality and attacks: open items at the end of this phase since
       2026-10-05.)*
 
@@ -1791,8 +1791,8 @@ pane draws and every export renders: the PDF and the print layout start from it,
       native menu item, the Sheet's button and Ctrl+P (real keys: claimed on every pane, one preview on the Sheet) open
       WebView2's print preview, from which the sheet went to a real printer and to "Save as PDF" with its layout intact;
       the browser build prints the same. What did not work first: keeping every section whole, which left pages half
-      empty. No oracle row moved; no system or character format change. **Not done:** a stat block drawn as the book
-      prints it (Beyond 1.0's "A laid-out sheet"); ~~turning off the dialog's default header and footer~~ (ADR 0078, the
+      empty. No oracle row moved; no system or character format change. **Not done:** ~~a stat block drawn as the book
+      prints it~~ (ADR 0126, 2026-10-28); ~~turning off the dialog's default header and footer~~ (ADR 0078, the
       next item); macOS and Linux.
 - [x] **Print options of the app's own, then the platform's print dialog; and nothing of the web page on paper.**
       Seen on paper (2026-09-30): the print dialog's default headers and footers put the date and time at the top of
@@ -2432,9 +2432,9 @@ written on a character can be moved into the user's library without being typed 
       and unchanged; an addition or a candidate's grant that is another printing is marked; two rows a list would print
       the same name what gives them ("Agile (from Deer)"). Driven in the browser build (a 2014 Wizard's cantrips, a new
       NPC's traits); the phone typechecked only.
-- [ ] **The Sheet is revamped: laid out as a page, play state where its number is, what another entry covers folded**
+- [x] **The Sheet is revamped: laid out as a page, play state where its number is, what another entry covers folded**
       ([ADR 0126](./docs/adr/0126-the-sheet-is-laid-out-as-a-page-play-state-sits-where-its-number-is-and-what-another-entry-covers-is-folded.md),
-      proposed 2026-10-19, not built; [mockups](./docs/adr/0126-sheet-mockups.html)). From the UX pass's F8 and the
+      proposed 2026-10-19, built 2026-10-28; [mockups](./docs/adr/0126-sheet-mockups.html)). From the UX pass's F8 and the
       maintainer's call that the Sheet needs a full revamp. Measured first: at 1280 × 800 the Play panel fills the first
       screen (479 px for a Wizard 1, 811 px for a Cleric 20) and a level 1 character's Sheet is 7,844 px; proficiencies are
       22 to 85 rows per sample (median 45), 1,196 of the 1,738 granted by another listed proficiency and 213 already marked
@@ -2458,6 +2458,17 @@ written on a character can be moved into the user's library without being typed 
       Ten open decisions are the maintainer's, listed at the end of the ADR: where play lives, the section explanations,
       grouping proficiencies, tabs or one page, text-less features, Worn & Wielded, before or after 1.0, the spell table's
       columns, the stat block's ability table, and how a mark is drawn.
+      *2026-10-28: built, every step committed with its tests, and the decisions recorded in the ADR (the maintainer took
+      every recommendation; both ability table shapes, opening in the creature's book's, switched by a radio button that
+      nothing records). Measured: the samples' proficiencies 22 to 85 a sheet before, 6 to 24 after; 164 play trackers drawn
+      where their number is and 120 on the strip; of 141 creatures the printed AC, HP and speed agree with the derived
+      number for 122, 131 and 138, the rest written beside the row. Driven in the Tauri window on Windows with a scratch
+      profile and library: a Wizard 1 and a Cleric 20 at 1280 × 800 open on who they are, their numbers and their scores;
+      play spent in place, saved and read back from the file; a 2025 Imp as a stat block in the 2024 shape; seven PDFs
+      holding their exports' words (but headings drawn differently, spell levels once per group, hyphen joins); the print
+      step and preview with no headers and footers option. Not done: proficiencies grouped by kind (after ADR 0119), a
+      spell's text a click away, passive Perception beside Perception, a level's slots heading its spells. The phone is
+      typechecked, not driven.*
 - [ ] **Drive everything in the Tauri window before 1.0** *(the phone half moved after the desktop 1.0, with the phone's
       release: the maintainer, 2026-10-27; what is left here is the window, for whatever changes before 1.0).* Raised
       2026-10-11, last on purpose. Many
@@ -2533,35 +2544,6 @@ in this file and the ADRs is an open question of this section, not a gap in its 
   installed). 1.0 ships the Windows installer unsigned too (the maintainer, 2026-10-27: a certificate is too expensive to
   make sense now); signing any of them waits until it does.
 - **The phone app on iOS**: a build, signing, and the App Store, after the Google Play listing has shown what a store needs.
-
-### 1.x — A laid-out sheet
-*2026-10-19: proposed for Phase 9 as "The Sheet is revamped" ([ADR 0126](./docs/adr/0126-the-sheet-is-laid-out-as-a-page-play-state-sits-where-its-number-is-and-what-another-entry-covers-is-folded.md)),
-which answers every bullet below; whether it lands before 1.0 is that ADR's open decision 7. This entry is removed when
-it is decided.*
-After the first release, by the maintainer's call (2026-09-30), once the printed sheet had been seen on paper. The
-Sheet today is a column of labelled sections; the screen, the print layout (ADR 0077) and the text export all read
-that one document, and it shows everything, but it reads as lists rather than as a sheet. Not a copy of the official
-character sheet: a sheet organised with more care, as general UX work.
-- **Cards, aligned**, rather than one flow of sections: the scores, combat numbers, saves and skills as blocks placed
-  beside each other, features as cards with their sheet lines, a stat block drawn as one (the "stat block laid out as a
-  stat block" that ADR 0077 left out).
-- **Proficiencies are not a list of words.** Grouped by what they are (armour, weapons, tools, languages), and a group
-  granted whole shown as the group: a Paladin / Sorcerer sample lists some fifty separate weapon proficiencies next to
-  "Simple Weapons" and "Martial Weapons". What content declares that a grouping could read has to be measured first;
-  the "Weapon Proficiency (…)" in a name is text, not data (ADR 0005).
-- **Spells are not a paragraph of names**: by level, with what a player needs at the table.
-- **Explanations are not on the sheet.** A section's description ("The ability modifier, plus the proficiency bonus for
-  a saving throw the character is proficient in…", ADR 0062's `description`) is shown on the Sheet, printed, and
-  written to the text export (ADR 0075). It explains the number and is not part of the character; where it lives
-  instead (the Build pane, a line shown on screen only) is part of the decision. Small and separable, if wanted before
-  the rest.
-- **No headings invented to hold a row.** "Senses" holding passive Perception (ADR 0074 decision 4) is not a heading the
-  game uses; it exists because a column of labelled sections needs somewhere to put the number. A laid-out sheet puts
-  passive Perception by Perception, and any heading that only carries a row goes the same way.
-- **What it has to keep:** the engine still names no game, so which blocks a sheet has and what goes in each is the
-  system definition's to declare. That is a system format change (a public API, ADR 0011), the layout declaration ADR
-  0077 considered and kept for later. An ADR first, amending 0062, 0074, 0075 and 0077; the sheet document stays the
-  one thing the pane, the print, the export and the PDF read.
 
 ### 1.x — Finding and choosing content
 After the first release, by the maintainer's call (2026-10-05). Both were buried in Phase 3's ticked items and found by
