@@ -10,7 +10,7 @@
  *
  * A listed element carries what content writes for the sheet (ADR 0076): a shorter name, the description for the
  * level it gates at with its `{{stat}}` placeholders filled from the derivation, and its usage and action. Core reads
- * the hints (`sheetDescriptionAt`, `sheetPlaceholders`, `halfReference`); this writes the numbers as the sheet
+ * the hints (`sheetDescriptionAt`, `sheetPlaceholders`, `halfPlaceholder`); this writes the numbers as the sheet
  * writes them.
  */
 
@@ -18,7 +18,7 @@ import {
   collectDeclaredBlocks,
   compareSheetGroups,
   evaluateExpr,
-  halfReference,
+  halfPlaceholder,
   preparedListIds,
   preparedState,
   renderSheetSection,
@@ -486,26 +486,24 @@ export interface FilledText {
 
 /**
  * A sheet text with each `{{stat}}` replaced by the stat's value as the sheet writes it, unsigned ("3/Long Rest"): its
- * text when it is text, else its number, a `:half` or `:half:up` suffix read by the expression code that reads it in
- * a rule (ADR 0046). A stat nothing publishes is written "—" and named in `unfilled`, never guessed (ADR 0005).
+ * text when it is text, else its number, a `:half` or `:half:up` suffix halving it (`halfPlaceholder`). A stat nothing publishes is written "—" and named in `unfilled`, never guessed (ADR 0005).
  * `html` escapes what is written in, for a text that is HTML.
  */
 export function fillPlaceholders(text: string, stats: ReadonlyMap<string, ResolvedStat>, html = false): FilledText {
   const found = sheetPlaceholders(text);
   if (!found.length) return { text, unfilled: [] };
-  const ctx = {
-    statNumber: (key: string): number => stats.get(key.toLowerCase())?.value ?? 0,
-    statString: (key: string): string | undefined => stats.get(key.toLowerCase())?.text,
-  };
   const unfilled: string[] = [];
   let out = '';
   let at = 0;
   for (const placeholder of found) {
     const direct = stats.get(placeholder.stat.toLowerCase());
-    const half = direct ? undefined : halfReference(placeholder.stat);
+    const half = direct ? undefined : halfPlaceholder(placeholder.stat);
     let value: string;
     if (direct) value = formatStatValue(direct, false);
-    else if (half && stats.has(half.base)) value = String(evaluateExpr({ kind: 'ref', stat: placeholder.stat }, ctx));
+    else if (half && stats.has(half.base)) {
+      const halved = (stats.get(half.base)!.value ?? 0) / 2;
+      value = String(half.up ? Math.ceil(halved) : Math.floor(halved));
+    }
     else {
       value = '—';
       unfilled.push(placeholder.stat);

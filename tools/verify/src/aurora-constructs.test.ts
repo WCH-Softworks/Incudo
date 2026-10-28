@@ -96,16 +96,17 @@ test('every Aurora construct read past the conversion, counted over the corpus',
       }
     }
   }
-  say(`engine: ${half} stat references ending :half or :half:up, halved at evaluation: expression.ts statNumber`);
-  say(`sheet: ${placeholderHalves} {{…:half}} placeholders in sheet text, halved when filled: sheet-hints.ts, ui sheet.ts`);
-  say(`engine: ${negated} filter operands starting "!", negated at evaluation: supports.ts matchesSupports`);
+  // Counted in the converted source: since ADR 0119 step 4 the first three are written as Incudo's by the converter
+  // (61 :half references, 18 negated operands and 55 [character:N] at c28ce6c), so what is left of them is what it missed.
+  say(`left after conversion: ${half} stat references ending :half, ${negated} filter tags starting "!", ${characterTerms} [character:N] terms`);
+  const tagged = [...files.values()].flat().filter((e) => e.setters['isRitual']?.value.trim().toLowerCase() === 'true' && e.supports.includes('Ritual')).length;
+  say(`converter: ${tagged} of ${rituals} spells setting isRitual true carry the tag Ritual it gives them`);
+  say(`sheet: ${placeholderHalves} {{…:half}} placeholders in sheet text, Incudo's sheet notation for half a stat: sheet-hints.ts halfPlaceholder`);
   say(
-    `engine: ${[...interpolations.values()].reduce((a, b) => a + b, 0)} $(…) interpolations ` +
-      `(${[...interpolations].map(([key, n]) => `${key} ${n}`).join(', ')}), expanded through 5e's blockFilters`,
+    `system: ${[...interpolations.values()].reduce((a, b) => a + b, 0)} $(…) interpolations ` +
+      `(${[...interpolations].map(([key, n]) => `${key} ${n}`).join(', ')}), expanded by 5e's blockFilters (Incudo's own construct)`,
   );
-  say(`engine: ${typeTerms} [type:X] terms, answered by 5e's heldTypesStat; ${characterTerms} [character:N], by 5e's "character" stat`);
-  say(`engine: ${rituals} spells setting isRitual true, read as the tag Ritual by 5e's setterTags`);
-  say(`engine: ${duplicates} elements setting "allow duplicate", read by 5e's repeatableSetter`);
+  say(`system: ${typeTerms} [type:X] terms, answered by 5e's heldTypesStat; ${duplicates} elements setting "allow duplicate", read by 5e's repeatableSetter`);
 
   // 4. What the 5e definition names of Aurora.
   const system = await readFile(join(root, 'systems', 'dnd5e', 'system.json'), 'utf8');

@@ -9,7 +9,7 @@
  *
  * Nothing here names a count of selects or of rituals: the corpus moves (ADR 0042). What must hold against any
  * corpus is that each list is exactly the spells the filter's words describe, that the class lists are not
- * empty, and that breaking the declaration empties them.
+ * empty, and that taking away the tag the converter gives a ritual empties them.
  */
 
 import { test } from 'node:test';
@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  MapElementIndex,
   createCharacter,
   deriveCharacter,
   validateGameSystem,
@@ -134,20 +135,22 @@ test('the class lists of the Ritual Caster feat are each a class, and none is an
   }
 });
 
-test('removing the declaration empties every Ritual select, so the lists are the declaration\'s doing', { skip: corpusSkip }, async () => {
+test('without the tag the converter gives a ritual, every Ritual select offers nothing, so the lists are its doing', { skip: corpusSkip }, async () => {
   requireCorpus();
   const system = await shippedSystem();
-  const broken: GameSystem = {
-    ...system,
-    characterKinds: system.characterKinds.map((kind) => ({ ...kind, setterTags: [] })),
-  };
+  // Since ADR 0119 the converter tags each `isRitual` spell `Ritual`, and no kind reads the setter itself.
+  assert.equal(system.characterKinds.some((kind) => (kind.setterTags ?? []).length > 0), false);
   const index = await realElements();
+  const untagged = new MapElementIndex();
+  for (const element of index.all()) {
+    untagged.add(isTrue(element) ? { ...element, supports: element.supports.filter((tag) => tag !== 'Ritual') } : element);
+  }
   let measured = 0;
   for (const { owner, rule } of ritualSelects(index)) {
-    const got = offered(broken, index, owner, rule);
+    const got = offered(system, untagged, owner, rule);
     if (got === undefined) continue;
     measured += 1;
-    assert.deepEqual(got, [], `${owner.id} / ${rule.name} offers nothing without setterTags`);
+    assert.deepEqual(got, [], `${owner.id} / ${rule.name} offers nothing without the tag`);
   }
   assert.ok(measured > 0);
 });

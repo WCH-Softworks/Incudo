@@ -196,8 +196,15 @@ function rewriteRules(element: Element, change: (rule: Rule) => Rule): Element {
   return { ...element, rules: element.rules.map(change) };
 }
 
+/** A limit content writes as half a stat (`level:paladin:half`), which the converter writes as `floor(level:paladin / 2)` (ADR 0119). */
 const readsHalf = (rule: Rule): boolean =>
-  rule.kind === 'stat' && rule.value.kind === 'ref' && /:half(:up)?$/.test(rule.value.stat);
+  rule.kind === 'stat' &&
+  rule.value.kind === 'call' &&
+  (rule.value.fn === 'floor' || rule.value.fn === 'ceil') &&
+  rule.value.args[0]?.kind === 'binary' &&
+  rule.value.args[0].op === '/' &&
+  rule.value.args[0].right.kind === 'number' &&
+  rule.value.args[0].right.value === 2;
 
 test('every sample agrees with Aurora about its prepared lists', { skip: savesSkip }, async () => {
   const all = await samples();

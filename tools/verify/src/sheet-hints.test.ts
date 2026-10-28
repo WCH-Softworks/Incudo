@@ -55,7 +55,7 @@ import assert from 'node:assert/strict';
 
 import {
   BundleElementIndex,
-  halfReference,
+  halfPlaceholder,
   readCharacterContainer,
   type Element,
   type Fetcher,
@@ -392,7 +392,7 @@ test('on the samples, what the sheet shows of the hints: chosen by gate level, f
       }
       for (const stat of element.unfilled ?? []) {
         tally(unfilled, stat);
-        const half = halfReference(stat);
+        const half = halfPlaceholder(stat);
         if (derived.stats.has(stat.toLowerCase()) || (half && derived.stats.has(half.base))) wronglyUnfilled.push(`${sample.id} ${element.name}: ${stat}`);
       }
       // The choice, against the raw XML read by this file rather than the importer. A creature's scope reads its own

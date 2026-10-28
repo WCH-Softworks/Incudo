@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { halfReference } from './expression.ts';
+import { halfPlaceholder } from './sheet-hints.ts';
 import type { SheetHints } from './model.ts';
 import { sheetDescriptionAt, sheetDescriptions, sheetPlaceholders } from './sheet-hints.ts';
 
@@ -66,9 +66,9 @@ test('a placeholder is two braces around a name, trimmed; an empty pair is not o
 });
 
 test('the `:half` suffix is read once, for an expression and for a sheet alike', () => {
-  // Fails with `halfReference` keeping the case written (a sheet would look up `Level:Wizard`), or reading `:half` as up.
-  assert.deepEqual(halfReference('Level:Wizard:half:up'), { base: 'level:wizard', up: true });
-  assert.deepEqual(halfReference('proficiency:half'), { base: 'proficiency', up: false });
-  assert.equal(halfReference('proficiency'), undefined);
-  assert.equal(halfReference(':half'), undefined);
+  // Fails with `halfPlaceholder` keeping the case written (a sheet would look up `Level:Wizard`), or reading `:half` as up.
+  assert.deepEqual(halfPlaceholder('Level:Wizard:half:up'), { base: 'level:wizard', up: true });
+  assert.deepEqual(halfPlaceholder('proficiency:half'), { base: 'proficiency', up: false });
+  assert.equal(halfPlaceholder('proficiency'), undefined);
+  assert.equal(halfPlaceholder(':half'), undefined);
 });

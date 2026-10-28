@@ -36,38 +36,25 @@ test('a leading minus on something that is not a reference stays a literal', () 
   assert.deepEqual(parseStatValue('-Fire and Ice'), { kind: 'literal', value: '-Fire and Ice' });
 });
 
-test('a reference may be halved, rounding down, or up with :up — ADR 0046', () => {
-  // It stays a plain reference in the parsed form, so a corpus cached or embedded before this reads the same.
-  assert.deepEqual(parseStatValue('level:paladin:half'), { kind: 'ref', stat: 'level:paladin:half' });
-  const stats = { 'level:paladin': 3, proficiency: 5, 'intelligence:modifier': 3 };
-  assert.equal(evaluateExpr(parseStatValue('level:paladin:half'), ctx(stats)), 1);
-  assert.equal(evaluateExpr(parseStatValue('level:paladin:half:up'), ctx(stats)), 2);
-  assert.equal(evaluateExpr(parseStatValue('proficiency:half'), ctx(stats)), 2);
-  assert.equal(evaluateExpr(parseStatValue('proficiency:half:up'), ctx(stats)), 3);
-  assert.equal(evaluateExpr(parseStatValue('intelligence:modifier:half:up'), ctx(stats)), 2);
-  // A class the character does not have reads 0, so the half of it is 0 and adds nothing.
-  assert.equal(evaluateExpr(parseStatValue('level:artificer:half'), ctx(stats)), 0);
-});
-
-test('a suffix is read only when nothing is published under the suffixed name', () => {
+test('the engine reads no :half suffix: a reference names the stat it names — ADR 0119', () => {
+  // ADR 0046 read `level:paladin:half` here, at evaluation. The converter now writes it as `floor(level:paladin / 2)`
+  // (`@incudo/aurora-import`'s `withoutHalves`), so a reference is the stat it names and nothing else. Perturbation: reading
+  // the suffix here again gives 1 for the first.
+  assert.equal(evaluateExpr({ kind: 'ref', stat: 'level:paladin:half' }, ctx({ 'level:paladin': 3 })), 0);
   assert.equal(evaluateExpr({ kind: 'ref', stat: 'level:x:half' }, ctx({ 'level:x': 8, 'level:x:half': 7 })), 7);
-  // `half` alone and `:half` name nothing to halve.
-  assert.equal(evaluateExpr({ kind: 'ref', stat: 'half' }, ctx({ '': 8 })), 0);
-  assert.equal(evaluateExpr({ kind: 'ref', stat: ':half' }, ctx({ '': 8 })), 0);
-  // The string form of a reference takes the same reading.
-  assert.equal(evaluateExprAsString({ kind: 'ref', stat: 'level:paladin:half' }, ctx({ 'level:paladin': 5 })), '2');
+  assert.equal(evaluateExprAsString({ kind: 'ref', stat: 'level:paladin:half' }, ctx({ 'level:paladin': 5 })), '0');
 });
 
-test('an expression names the stats it reads, once each, in order, and what a half halves', () => {
-  // Fails with a branch of a binary, a call's arguments or a table's index not walked, a repeat kept, or a `:half`
-  // reference not naming the stat it halves (ADR 0095: a sheet follows these names, never their numbers).
+test('an expression names the stats it reads, once each, in order', () => {
+  // Fails with a branch of a binary, a call's arguments or a table's index not walked, or a repeat kept (ADR 0095: a
+  // sheet follows these names, never their numbers).
   const expr: StatExpr = {
     kind: 'binary',
     op: '+',
     left: { kind: 'call', fn: 'floor', args: [{ kind: 'ref', stat: 'A' }, { kind: 'ref', stat: 'b:half:up' }] },
     right: { kind: 'binary', op: '*', left: { kind: 'table', index: { kind: 'ref', stat: 'c' }, values: [1, 2] }, right: { kind: 'ref', stat: 'a' } },
   };
-  assert.deepEqual(statReferences(expr), ['a', 'b:half:up', 'b', 'c']);
+  assert.deepEqual(statReferences(expr), ['a', 'b:half:up', 'c']);
   assert.deepEqual(statReferences({ kind: 'number', value: 3 }), []);
   assert.deepEqual(statReferences(undefined), []);
 });

@@ -87,7 +87,6 @@
     { "name": "int", "derive": { "kind": "ref", "stat": "intelligence" } },
     { "name": "wis", "derive": { "kind": "ref", "stat": "wisdom" } },
     { "name": "cha", "derive": { "kind": "ref", "stat": "charisma" } },
-    { "name": "character", "derive": { "kind": "ref", "stat": "level" } },
 
     { "name": "proficiency", "label": "Proficiency Bonus", "signed": true,
       "derive": { "kind": "binary", "op": "+", "left": { "kind": "number", "value": 2 },
@@ -289,10 +288,6 @@
       "blockFilters": [
         { "key": "spellcasting:list", "tags": ["{list}", "{name}"] },
         { "key": "spellcasting:slots", "tagsFromStats": ["{name}:spellcasting:slots:*", "spellcasting:slots:*"], "fillFrom": 1 }
-      ],
-
-      "setterTags": [
-        { "setter": "isRitual", "tag": "Ritual" }
       ],
 
       "preparation": {

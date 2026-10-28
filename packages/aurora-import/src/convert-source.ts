@@ -28,15 +28,17 @@ import type {
 
 import { auroraGeneratedElements } from './generated-elements.ts';
 import { improvementOptionElements } from './improvement-options.ts';
-import { parseAuroraElements } from './parse-elements.ts';
+import { incudoExtension, incudoElement } from './incudo-expressions.ts';
+import { parseAuroraElements, type ImportedFile, type ParseElementsOptions } from './parse-elements.ts';
 import { parseAuroraIndex, type AuroraFileRef, type AuroraIndex } from './parse-index.ts';
 
 /**
  * Which version of the converter wrote a conversion. Bump it when the same Aurora files come to convert into something
  * different; a source converted by another version is converted again. 5 since a source is converted whole, into one
- * Incudo content file (ADR 0119), 6 since a `!` operand is a `not` filter node; 4 was ADR 0129's.
+ * Incudo content file (ADR 0119), 6 since a `!` operand is a `not` filter node, 7 since `:half`, `[character:N]` and
+ * `isRitual` are written as Incudo's (`incudo-expressions.ts`); 4 was ADR 0129's.
  */
-export const CONVERTER_VERSION = 6;
+export const CONVERTER_VERSION = 7;
 
 /** What a converted source's `converted.from` says. */
 export const AURORA_FORMAT = 'aurora';
@@ -250,7 +252,7 @@ export async function convertAuroraSource(options: ConvertSourceOptions): Promis
         return;
       }
       files.push({ url: fileRef.url, ...(fileRef.name ? { name: fileRef.name } : {}) });
-      const parsed = parseAuroraElements(answer.text, { sourceId, fileUrl: fileRef.url });
+      const parsed = convertElements(answer.text, { sourceId, fileUrl: fileRef.url });
       elements.push(...lastOfEachId(parsed.elements, fileRef.url, diagnostics));
       extensions.push(...parsed.appends);
       diagnostics.push(...parsed.diagnostics);
@@ -301,7 +303,7 @@ export interface ConvertFileOptions {
  * holds nothing to add: an index alone names files at addresses, and anything else holds no element.
  */
 export function convertAuroraFile(text: string, options: ConvertFileOptions): ContentBundle {
-  const parsed = parseAuroraElements(text, { sourceId: options.url, fileUrl: options.url });
+  const parsed = convertElements(text, { sourceId: options.url, fileUrl: options.url });
   if (!parsed.elements.length && !parsed.appends.length) {
     if (parseAuroraIndex(text, options.url).files.length) {
       throw new Error(`${options.name} is an index: it lists files at their addresses. Add it by its address instead.`);
@@ -352,6 +354,12 @@ function lastOfEachId(elements: Element[], fileUrl: string, diagnostics: Content
     });
     return false;
   });
+}
+
+/** One Aurora elements file parsed, and what Aurora's app read into its expressions written as Incudo's own. */
+function convertElements(text: string, options: ParseElementsOptions): ImportedFile {
+  const parsed = parseAuroraElements(text, options);
+  return { ...parsed, elements: parsed.elements.map(incudoElement), appends: parsed.appends.map((append) => ({ ...incudoExtension(append), fileUrl: append.fileUrl })) };
 }
 
 function withOrigin(elements: Element[], fileUrl: string): Element[] {

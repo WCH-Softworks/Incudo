@@ -127,57 +127,16 @@ function looksLikeStatRef(text: string): boolean {
 }
 
 /**
- * A stat's number, reading a `:half` or `:half:up` suffix as "half of this" — ADR 0046.
- *
- * `level:paladin:half` and `proficiency:half:up` used to name a stat nothing publishes and resolve to
- * zero; the corpus has 61 of them (Jack of All Trades' bonus, a Paladin's and an Artificer's prepared-spell
- * limit). Five of those limits are checked against Aurora's own screen and all five read `:half` as
- * rounding down.
- *
- * Read **here, when a reference is evaluated**, and not where a value is parsed, for a reason that is about
- * stored copies: a `.incu` embeds the *parsed* elements it uses (ADR 0012), so a reading at parse time
- * would leave every character saved before this reading a Paladin's limit of zero until it was saved again.
- * Evaluating applies the same rule to a fresh parse and to an embedded one.
- *
- * Arithmetic and no game noun: the base is whatever content wrote. A stat that really is published under
- * the suffixed name wins by being non-zero, so nothing that declares one is overridden.
- */
-function statNumber(stat: string, ctx: ExpressionContext): number {
-  const direct = ctx.statNumber(stat);
-  if (direct !== 0) return direct;
-  const half = halfReference(stat);
-  if (!half) return direct;
-  const value = ctx.statNumber(half.base) / 2;
-  return half.up ? Math.ceil(value) : Math.floor(value);
-}
-
-/**
- * The stat a `:half` or `:half:up` reference halves, lowercased, and which way it rounds; `undefined` for a reference
- * with no such suffix. The one reading of the suffix: an expression reads it through here, and so does a sheet asking
- * whether a placeholder names something the derivation publishes (ADR 0076).
- */
-export function halfReference(stat: string): { base: string; up: boolean } | undefined {
-  const lower = stat.toLowerCase();
-  const up = lower.endsWith(':half:up');
-  if (!up && !lower.endsWith(':half')) return undefined;
-  const base = lower.slice(0, lower.length - (up ? ':half:up' : ':half').length).trim();
-  return base === '' ? undefined : { base, up };
-}
-
-/**
- * Every stat an expression reads, lowercased, in the order it reads them, once each; a `:half` reference names the stat
- * it halves as well. Reading names, never numbers: a sheet asking which stats a derived row is worked from (ADR 0095).
+ * Every stat an expression reads, lowercased, in the order it reads them, once each. Reading names, never numbers: a
+ * sheet asking which stats a derived row is worked from (ADR 0095).
  */
 export function statReferences(expr: StatExpr | undefined, into: string[] = []): string[] {
   if (!expr) return into;
   const add = (stat: string): void => void (into.includes(stat) || into.push(stat));
   switch (expr.kind) {
-    case 'ref': {
+    case 'ref':
       add(expr.stat.toLowerCase());
-      const half = halfReference(expr.stat);
-      if (half) add(half.base);
       break;
-    }
     case 'binary': statReferences(expr.left, into); statReferences(expr.right, into); break;
     case 'call': for (const arg of expr.args) statReferences(arg, into); break;
     case 'table': statReferences(expr.index, into); break;
@@ -195,7 +154,7 @@ export function evaluateExpr(expr: StatExpr, ctx: ExpressionContext): number {
       return Number.isFinite(n) ? n : 0;
     }
     case 'ref':
-      return statNumber(expr.stat, ctx);
+      return ctx.statNumber(expr.stat);
     case 'binary': {
       const l = evaluateExpr(expr.left, ctx);
       const r = evaluateExpr(expr.right, ctx);
@@ -244,7 +203,7 @@ export function evaluateExprAsString(expr: StatExpr, ctx: ExpressionContext): st
     case 'literal':
       return expr.value;
     case 'ref':
-      return ctx.statString(expr.stat) ?? String(statNumber(expr.stat, ctx));
+      return ctx.statString(expr.stat) ?? String(ctx.statNumber(expr.stat));
     default:
       return String(evaluateExpr(expr, ctx));
   }

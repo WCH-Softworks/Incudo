@@ -49,6 +49,20 @@ export interface SheetPlaceholder {
   end: number;
 }
 
+/**
+ * The stat a placeholder halves, lowercased, and which way it rounds: `{{level:wizard:half}}` is half the Wizard level
+ * rounded down, `:half:up` rounded up. A sheet text has no expressions, so this suffix is Incudo's sheet notation for the
+ * one sum content writes in one (35 in the corpus). `undefined` for a placeholder with no such suffix. Never read by
+ * the engine: a rule halves a stat with arithmetic (ADR 0119).
+ */
+export function halfPlaceholder(stat: string): { base: string; up: boolean } | undefined {
+  const lower = stat.toLowerCase();
+  const up = lower.endsWith(':half:up');
+  if (!up && !lower.endsWith(':half')) return undefined;
+  const base = lower.slice(0, lower.length - (up ? ':half:up' : ':half').length).trim();
+  return base === '' ? undefined : { base, up };
+}
+
 /** Two braces, a name with no brace in it, two braces. The corpus writes no other shape (`sheet-hints.test.ts`). */
 const PLACEHOLDER = /\{\{\s*([^{}]*?)\s*\}\}/g;
 
