@@ -114,3 +114,5 @@ the phone's Content screen and Build screen (ADR 0086), times from the app's own
 The process took about 330–350 MB (PSS) with the content loaded. Two things the phone found that Node did not: the
 single-value conversion's 20 s read, and the Build screen drawing itself again for each progress report of a load (20 s
 for the same converted load before the build view was memoized).
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** superseded in what conversion means. A source is converted once into one file in Incudo's content format, kept where the user can open it (Show file); `keep: files`, the raw cache and the per-file converted values are gone, and a refresh converts again from the network. `CONVERTER_VERSION` is 9.

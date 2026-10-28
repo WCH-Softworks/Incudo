@@ -46,3 +46,5 @@ been tried by every would-be Aurora successor and has never worked.
 This ADR covers Aurora **content** files, which are fully understood. Aurora **character save**
 files are a separate, unexamined format — see the open question in `docs/AURORA-FORMAT.md`.
 They are Phase 2 and need their own spike and possibly their own ADR.
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** the "native input format" and "superset of Aurora's semantics" decisions are superseded. Aurora's format is an input to a converter, `convertAuroraSource`, and nothing past it reads Aurora: the library loads Incudo's content format only, and the engine reads none of Aurora's spellings (`!` in a filter, `:half`, `[character:N]`, `isRitual`), which the converter writes as Incudo's.

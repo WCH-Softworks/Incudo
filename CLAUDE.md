@@ -136,10 +136,10 @@ element subset the character uses, plus assets as real bytes. This is the produc
 not an optimization — if a change makes a save depend on configured sources to open, it is wrong.
 
 **Aurora is import-only, and Aurora files are converted into Incudo files** (ADR 0008, ADR 0119). No export. No
-speculative support. Since ADR 0119 (accepted 2026-10-15, not built yet) `packages/aurora-import` is **unfrozen**: it
-is the converter, and nothing past it may know Aurora. Reusing Aurora's ids and names is fine; carrying its app's
-behaviour or shape into Incudo's formats, the engine or a system definition is not. No Aurora file is kept once
-converted. The sections below that say "frozen importer" describe the code as it was; ADR 0119 is where it is going.
+speculative support. Since ADR 0119 (built 2026-10-28) `packages/aurora-import` is **unfrozen**: it is the converter,
+and nothing past it knows Aurora. Reusing Aurora's ids and names is fine; carrying its app's behaviour or shape into
+Incudo's formats, the engine or a system definition is not. No Aurora file is kept once converted. The sections below
+that say "frozen importer" describe the code before ADR 0119; what it is now is the "converted, never read" section.
 
 **Nothing is ever published to npm.** Every package stays `"private": true`. The `@incudo/`
 prefix is a local workspace naming convention, not a registry claim — the app is the product,
@@ -181,6 +181,11 @@ reference · 23 unmeetable requirements · 57 warnings.** Measured on AuroraLega
 `c28ce6c` (2026-09-19), the first real clone the `repository` layout was run against. The corpus is
 today's and moves; these are the record of a moment (below).
 
+> **Note, 2026-10-28 (ADR 0119, built):** the same corpus now reads **14,317 distinct elements and 60 warnings**: the
+> converter reports three ids the corpus declares twice inside one file (two different elements each, the later kept),
+> which the library used to fold silently. CI's budget is 60; the floors are unchanged. Generated: 229 (the converter's
+> 83 and the 146 improvement options).
+
 - **1 unresolved reference** — one upstream typo, `…VULNERAILITY…`. This is a *grant* to an
   id nothing declares, which means a character silently loses something. It is the only one
   left in 14,320 elements, and it should be 0 the day AuroraLegacy fixes the spelling.
@@ -193,7 +198,9 @@ today's and moves; these are the record of a moment (below).
   `packages/aurora-import/src/generated-elements.ts` (it was 80 until the importer started
   reading `<equipment>` and found three more that only a *bag* names, ADR 0024's step 2; *since ADR 0123 it is
   84: Incudo's own "Additional Features" campaign option, so the generated total is 230; since ADR 0129 it is 81, the
-  three bag proxies imported as what they stand for, so the generated total is 227*), and
+  three bag proxies imported as what they stand for, so the generated total is 227; since ADR 0119 it is 83, the average
+  hit points option a save named and nothing declared, and the item a pending starting-equipment line the user names
+  becomes, so the generated total is 229. They are written into the converted source now, not invented on each load*), and
   **146 are the ability score improvement options**, derived from whatever content is loaded by
   `improvement-options.ts` (73 class-and-level pairs, an ASI option and a feat option each —
   ADR 0035). The second kind depends on what is loaded, so the total is a property of the corpus
@@ -448,6 +455,9 @@ the play half of Phase 6's second item. Things to know before touching it:
 [ADR 0086](docs/adr/0086-a-phone-builds-and-edits-with-the-desktop-s-builder-its-content-loaded-when-a-build-opens.md)).
 Things to know before touching either:
 
+- **Superseded by ADR 0119 (2026-10-28) for the source half**: a source is one converted file now (the "converted, never
+  read" section below); `keep`, the per-file values and the raw cache described in the next bullet are gone. The phone
+  half (`ContentSources`, `loadSources`, one Build and Edit screen) stands.
 - **`ConfiguredSource.keep`: `converted` (the default, also when absent) or `files`.** Converted, each index and file a
   load read is stored as the parser returned it, **one value per file** under `content/<source>/.converted/<url>`, and its
   raw XML removed; the next load reads that first (`ConvertingContentSource`, `composeForLoad`, `packages/content`) and
@@ -753,6 +763,30 @@ the first slice of Phase 8's element editor. Things to know before touching it:
 - **Not done:** choices, prerequisites, level gates; races, classes, backgrounds, items; a library feature turned into
   content; export (Phase 8's next item); the Tauri window.
 
+**Aurora's content is converted, never read, and Incudo's content format is the one format**
+([ADR 0119](docs/adr/0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md),
+built 2026-10-28; its "Built" section has every step's numbers). Things to know before touching it:
+
+- **The content format** is `schemas/content.schema.json` (`formatVersion` 1), checked by `checkContentBundle`
+  (`packages/core/src/content-format.ts`), the one checker: a save's `content.json`, a homebrew body and a converted
+  source. A bundle is `elements`, `extensions` (rules and tags for an element another source declares: an `<append>`),
+  and `source` (name, url, version, parts tree, files in load order, diagnostics, ETags, `converted`).
+- **The converter** is `convertAuroraSource` (`packages/aurora-import/src/convert-source.ts`); `CONVERTER_VERSION` is 9
+  and `converted-source.test.ts` hashes its files and core's three grammars (bump the version when the same XML
+  converts differently, then record the hash). It writes the overlay first and the improvement options last, each a
+  generated file; a duplicate id inside one file is a warning and the later is kept.
+- **`packages/content` never imports the converter** (`converter-boundary.test.ts`): `ComposeOptions` takes
+  `converter` and `files` (`SourceFiles`, core: `TauriSourceFiles` in `$APPDATA/sources`, scoped in the capability;
+  `MobileSourceFiles`; `StorageSourceFiles` in tests and the browser). `loadBundle` applies extensions across sources
+  and leaves out a part switched off (`excludedAddresses`). Show file opens the folder (`openPath`): revealing the file
+  waited 20 s and showed nothing.
+- **Nothing past it reads Aurora's spellings**: a negated operand is a `not` node written at parse, `:half` is written as
+  `floor`/`ceil` of half (`incudo-expressions.ts`), `[character:N]` as `level`, `isRitual` as the tag `Ritual`.
+  5e's `character` stat and `setterTags` pair are gone. A sheet's `{{…:half}}` is Incudo's notation (`halfPlaceholder`).
+- **A Tauri window started from the sandboxed shell gets a private AppData**: start the debug exe from PowerShell to see
+  the sources folder in Explorer, and delete the `dev.incudo.desktop` folder a drive creates.
+- A beta's files open if they open: a save embedding a negated filter holds the literal tag until a refresh.
+
 **The sheet ends with the whole descriptions of what its sections list**
 ([ADR 0114](docs/adr/0114-the-sheet-ends-with-the-whole-descriptions-of-what-its-sections-list.md), Phase 5). Things to
 know before touching it:
@@ -872,7 +906,9 @@ built 2026-10-28; Phase 9). The maintainer took every recommendation. Things to 
   records `references` is **7**, and since ADR 0084 one that records `play` is **8**, and since ADR 0094 one with a custom
   feature line that marks a row is **9**, and since ADR 0097 one that records `additionBlocks` is **10**, and since ADR
   0087 one that records `money` or `startingEquipment` is **11**, and since ADR 0106 one with a custom feature copied from the
-  feature library is **12**, and since ADR 0111 one that records `spellAttacks` is **13**; `LATEST_CHARACTER_FORMAT_VERSION` is 13.)*
+  feature library is **12**, and since ADR 0111 one that records `spellAttacks` is **13**, and since ADR 0119 one whose
+  `advancement` names a second class or whose starting package records a pending line is **14**;
+  `LATEST_CHARACTER_FORMAT_VERSION` is 14.)*
 - **A DM may take away what the creature gives** ([ADR 0061](docs/adr/0061-what-a-creature-gives-may-be-removed-from-its-npc-as-a-recorded-input.md)).
   `Character.removedGrants` cancels what a *holder* gives: its setter's naming and its own `<grant>` of the same id (12
   creatures grant what they also name, so stopping only the setter would do nothing for them), and since ADR 0067 any
@@ -2303,10 +2339,10 @@ Three things Phase 1 changed that are easy to trip over:
   give every character elements nobody chose — the 5e base armour class, one `ID_LEVEL_N` per
   level. They are *not* stored on the character, so `collectCharacterContent` needs the kind
   passed in or the save will not embed them and ADR 0012 quietly breaks.
-- **`packages/aurora-import` supplies 81 elements no content file declares** (plus 146 it
-  derives from what is loaded, ADR 0035). The 5e system definition names seven of them in
-  `kind.grants`. That coupling was deliberate, and ADR 0119 removes it: the converter writes these elements into converted content,
-  and the system names only what the converter guarantees. Until then it is why a missing kind grant warns rather than errors.
+- **`packages/aurora-import` writes 83 elements no content file declares** (plus 146 it
+  derives from what is loaded, ADR 0035) into every converted Aurora source. The 5e system definition names seven of them
+  in `kind.grants`; since ADR 0119 it names only what the converter guarantees, reviewed id by id. A missing kind grant
+  still warns rather than errors.
   Aurora's three inventory proxies, which only a real `<equipment>` block names, were here until ADR 0129: the importer
   records what they stand for instead.
 - **Six Aurora constructs were being silently dropped**: element-level `<supports>`
@@ -2571,6 +2607,18 @@ Things to know before touching it:
 **Starting equipment is a file beside the system, and money is counted in the units the system declares**
 ([ADR 0087](docs/adr/0087-starting-equipment-is-a-data-file-beside-the-system-and-money-is-counted-in-the-units-the-system-declares.md),
 built 2026-10-07; its dated note says what building it changed). Things to know before touching it:
+
+- **Superseded by ADR 0119 (2026-10-28) for where packages come from**: the file below is gone. The converter reads each
+  class's and background's prose into `Element.startingEquipment` (`packages/aurora-import/src/starting-equipment.ts`),
+  the kind says where it is offered (`kind.startingEquipment`: `step`, `from`, `equip`, `ownItem`), and the builder
+  assembles the same `StartingEquipmentFile` shape from content (`startingEquipmentFor(system, kind, steps, elements)`).
+  The old file is `tools/verify/fixtures/starting-equipment-key.json`, the key `starting-equipment-prose.test.ts`
+  measures the reader against (86% of its items found; the test holds 85). A 2014 class has no wealth roll. A line no
+  item matched is **pending**: recorded on the taken package (`StartingEquipmentTaken.pending`, format 14), listed by
+  `StartingEquipmentState.pending`, resolved with `resolvePendingItem(forId, index, { elementId } | { name })` (a name
+  enters the bag as the kind's `ownItem`, `ID_INTERNAL_ITEM_OWN`, under that name) on Equipment & notes' Pending items
+  card (desktop `PendingItems` in `panes/StartingEquipment.tsx`; the phone shows the line and has no card yet).
+  Everything below about choosing, taking, returning and the purse still holds.
 
 - **Measured first** (`tools/verify/src/starting-equipment-content.test.ts`, report-only): content states starting
   equipment only as prose (0 rules of 29 classes and 118 backgrounds grant or select an item); the 2024 rows are 11 "Choose

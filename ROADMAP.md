@@ -2344,9 +2344,16 @@ written on a character can be moved into the user's library without being typed 
       numbers are kept and 1.0's are the baseline (character format 13, or what ADR 0119 makes it), and a file from the
       betas opens if it opens; converting older formats is after 1.0, capped at breaking changes. Waits for ADR 0119,
       which changes the content, system and character formats first.
-- [ ] **Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora**
+- [x] **Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora**
       ([ADR 0119](./docs/adr/0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md),
-      accepted 2026-10-15, not built). The maintainer's rule: Incudo converts Aurora files into Incudo files and never reads Aurora
+      accepted 2026-10-15, **built 2026-10-28**). *Built in eight steps, the oracle identical on each:* Incudo's content
+      format has a schema, a version and one checker; `convertAuroraSource` turns a source into one file of it, kept where
+      the user can open it (Show file), and the library loads only that (no Aurora parse, no invented elements; warnings
+      57 to 60, three ids twice in one file now reported); the engine reads none of Aurora's spellings; starting equipment
+      is read from the books' prose (86% of the old file's items), a line no item matched waiting as a pending item on
+      Build, and the data file is gone; the 5e definition's 34 Aurora ids were reviewed one by one (the average hit points
+      option, which nothing declared, is the converter's now); and a second class's multiclass element is implied by
+      `advancement` (character format 14). Not done: a phone card for pending items. The maintainer's rule: Incudo converts Aurora files into Incudo files and never reads Aurora
       past that point; reusing Aurora's ids and names is fine, carrying its limitations is not. The readiness review
       found the 5e definition naming 34 Aurora ids, the content library inventing Aurora's app elements on every load,
       Aurora's expression quirks read by the engine at evaluation, and the character format keyed and shaped as

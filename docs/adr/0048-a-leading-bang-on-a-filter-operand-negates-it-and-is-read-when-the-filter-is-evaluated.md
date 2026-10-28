@@ -99,3 +99,5 @@ reach saves already written (decision 2). Held in reserve for the day the corpus
 
 **Only negate tags, not ids or setter values.** The corpus negates an id and an ability name, and a positive
 operand already means all three, so the two would disagree for no reason.
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** the negation is read where it is parsed now, not at evaluation: a leading `!` on a filter operand is a `not` node of the filter grammar, so a filter is the same structure wherever it came from. A save that embedded the literal tag `!TCOE Base` matches nothing there until a refresh replaces the element (a beta's file opens if it opens).

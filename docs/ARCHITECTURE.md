@@ -17,12 +17,13 @@ desktop and Expo on mobile — that share a React component library and shared v
                   │        @incudo/ui           │  shared components + view-model hooks
                   └───────────────┬───────────────┘
                   ┌───────────────▼───────────────┐
-                  │      @incudo/content        │  sources, cache, sync, indexes
+                  │      @incudo/content        │  sources, profiles, loading converted content
                   └───────────────┬───────────────┘
       ┌───────────────────────────┼───────────────────────────┐
 ┌─────▼────────────┐    ┌─────────▼─────────┐    ┌────────────▼────────┐
 │ @incudo/core  │◄───┤ @incudo/       │    │ systems/*           │
 │ model + engine   │    │ aurora-import     │    │ (dnd5e, cairn, ...) │
+│                  │    │ (the converter)   │    │                     │
 └──────────────────┘    └───────────────────┘    └─────────────────────┘
 ```
 
@@ -86,22 +87,26 @@ exists specifically to prove this by shipping a second one.
 > assumptions, and (b) Cairn (`tools/verify/fixtures/systems/cairn` since 2026-10-27, not shipped in 1.0), a deliberately tiny non-D&D system added early enough
 > that violations hurt immediately.
 
-## Content sources: live vs downloaded
+## Content sources: converted once, loaded from Incudo's own format
 
-`@incudo/content` exposes one interface with several implementations:
+Incudo reads one content format, its own: `schemas/content.schema.json`, `formatVersion` 1, checked by
+`checkContentBundle` in core. A save's `content.json`, a homebrew source and a converted source are all that
+format ([ADR 0119](./adr/0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md)).
 
-- **`HttpContentSource`** — fetches an index and its files on demand, straight from the repo.
-  Aurora cannot do this; it is the headline feature. Resolves relative URLs against the index
-  and fetches one file at a time, six in flight (ADR 0029).
-- **`CachedContentSource`** — a local, versioned copy on disk. Full offline. Update checks
-  compare the index's `update.version` against what is cached.
-- **`BundledContentSource`** — content shipped inside the app (SRD-safe material only).
-- **`LayeredContentSource`** — composes the above: cache → network → bundled, so "live"
-  degrades gracefully to whatever was last seen rather than failing. The app composes one of
-  these per enabled source (ADR 0029). It did not until the library work — it built a bare
-  `HttpContentSource` whose `writeThrough` wrote a cache nothing read back — so a reload
-  re-fetched all 238 files every time. `BundledContentSource` is still the one implementation
-  in this list that does not exist; nothing has needed it.
+**Aurora's content is converted, never read.** `@incudo/aurora-import` is the converter: `convertAuroraSource` walks
+an Aurora index over an injected `Fetcher` (nested indexes asked for as soon as they are named, ADR 0051), parses every
+file, and writes one bundle: the elements, each `<append>` as an *extension* (rules and tags for an element another
+source declares), Aurora's app elements and the improvement options it derives, each class's and background's starting
+equipment read from its prose, and a description of the source (its parts, its files, their ETags, the diagnostics,
+which converter version wrote it). Aurora's spellings are written as Incudo's on the way (a negated filter operand as a
+`not` node, `:half` as `floor` of a half, `[character:N]` on `level`, `isRitual` as a tag), so nothing past the
+converter knows Aurora: not the library, not the engine, not a system definition.
+
+`@incudo/content` does not import the converter. It is handed one (`SourceConverter`), as it is handed a fetcher and
+storage, and it keeps each source's conversion as a file through a third port, `SourceFiles` (the desktop's sources
+folder in the app's data folder, which **Show file** opens; the phone's documents folder). Loading reads those files
+only: no network, no Aurora parse. A refresh converts again from the network; no Aurora file is kept. A user's own
+`.xml` is converted once when it is added, and a homebrew source is written in the format directly.
 
 A source is fetched in full when it is added and kept. There used to be a per-source toggle, *stream*
 or *download*; measured, the two did the same thing, and it left the UI (ADR 0100), though profiles and

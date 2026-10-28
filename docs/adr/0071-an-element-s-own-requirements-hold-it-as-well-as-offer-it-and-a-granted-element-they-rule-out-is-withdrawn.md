@@ -200,3 +200,5 @@ the bag. Not driven on macOS or Linux.
 > Decision 3's closed pool is now one case of a general rule: a pick under a pool content declares counts only while
 > something held opens the pool. `openSeeds` is gone; a withdrawn element is not held, so its pool is closed by that rule
 > and its answers are listed as not counting. Behaviour for this case is unchanged.
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** `[character:N]` is written by the converter as a requirement on `level`, and 5e's `character` stat is gone. `heldTypesStat` stays: `[type:X]` is a membership test in the system's own words.

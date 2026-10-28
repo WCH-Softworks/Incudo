@@ -74,3 +74,5 @@ parser that does not complain.
 ## Note
 
 This supersedes the "Export back to Aurora-compatible XML" item in the original Phase 3.
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** the freeze is lifted. `packages/aurora-import` is the converter and is open for whatever conversion needs. What stands: Aurora is import-only, and there is no export. Its overlay of app elements is written into a converted source (83 elements), not invented by the library on every load.

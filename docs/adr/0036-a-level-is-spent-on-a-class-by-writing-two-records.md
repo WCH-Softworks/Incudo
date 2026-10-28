@@ -203,3 +203,5 @@ already carries the meaning and a new field is a public-API change with one user
 **Compute character level on a decision** (`Warlock 4 · character level 6`). Wanted, and it needs
 the engine to publish which track a `<select>`'s owner belongs to. Left for a change that touches
 core on its own.
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** the second record is gone. A class `advancement` spends a level on, other than the first, holds its multiclass element by that alone (`impliedMulticlassIds`, core), seeded and embedded as the record was; the builder writes none and drops one a beta wrote; the importer records race, class and background under the kind's build steps (`build/race`, …). Character format 14 marks a character whose advancement names a second class.

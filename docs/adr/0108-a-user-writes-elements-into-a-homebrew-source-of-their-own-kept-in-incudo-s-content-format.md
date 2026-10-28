@@ -201,3 +201,5 @@ other and has no editor yet.
 - Driven in the Tauri window on Windows (2026-10-20; a fresh WebView2 profile and a scratch library folder, DOM events over the debug port, real keys and mouse where marked): a homebrew source made from a typed name; a Feat written with its name typed (real keys), "Adds 10 to Speed" and
   "Gives Draconic (Language)", saved with a real Enter; found in Browse under the source's name; added to a Wizard,
   whose Sheet read Speed 40 and listed Draconic; saved, and reopened with every source off to a Sheet identical to Node's.
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** Incudo's content format is the one format: a converted source, a homebrew body and a save's `content.json` are all `schemas/content.schema.json`, read through `checkContentBundle`.

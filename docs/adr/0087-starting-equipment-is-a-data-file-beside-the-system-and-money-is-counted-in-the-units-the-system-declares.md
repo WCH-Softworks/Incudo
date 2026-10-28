@@ -207,3 +207,5 @@ and gets its own ADR when it is built.
 - A character built in Incudo can start with a bag and a purse, so its armour class and attunement mean something from
   level 1 without an import.
 - Character format 9 is written only by a character that holds money.
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** the data file is removed. The converter reads each class's and background's prose into `startingEquipment` on the element (86% of this file's items found, measured against it as a fixture), the kind says where it is offered (`kind.startingEquipment`), and what no item matches is a pending line the user resolves on Build. A 2014 class is offered no wealth roll (the maintainer's call).

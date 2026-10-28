@@ -1,6 +1,6 @@
 # 0119 — Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora
 
-**Status:** Accepted, not built · 2026-10-15, with the maintainer's answers (below) · lifts ADR 0008's freeze on
+**Status:** Accepted 2026-10-15, with the maintainer's answers (below) · **built 2026-10-28** (see "Built", at the end) · lifts ADR 0008's freeze on
 `packages/aurora-import` · answers the maintainer's rule "we convert Aurora files to Incudo files", stated
 during the 1.0 readiness review · supersedes the "native input format" and "superset of Aurora's semantics" decisions of
 [0005](./0005-aurora-import.md) · amends [0008](./0008-aurora-compatibility-frozen.md) (what is frozen),
@@ -171,3 +171,77 @@ Each step is held by the oracle being identical before and after, as every engin
 - A refresh, or a new converter version, downloads the source again, since no Aurora file is kept.
 - The one package ADR 0008 let the project call finished is open again.
 - Saves from the betas may not open in 1.0 (accepted by the maintainer's rule).
+
+## Built (2026-10-28)
+
+All eight steps, each committed with its tests and each held to the oracle: the thirty samples' table of differences is
+identical before and after every step (a snapshot on the base, a baseline on the change), every sample still rebuilds
+through the builder to its import, and the corpus budget holds. Measured against AuroraLegacy/elements at `c28ce6c`.
+
+1. **Measured** (`tools/verify/src/aurora-constructs.test.ts`, report-only): the 227 elements the library invented on
+   every load (81 fixed, 146 improvement options), 169 appends (168 into another file's element), 61 `:half` references
+   and 35 `:half` placeholders, 18 negated filter operands, 546 `$(…)` interpolations, 8 `[type:X]` and 55
+   `[character:N]` terms, 69 `isRitual` spells, 48 `allow duplicate` setters, 34 Aurora ids in the 5e definition.
+2. **The content format** is `schemas/content.schema.json`, `formatVersion` 1, and `checkContentBundle` (core,
+   `content-format.ts`) is its one checker. A save's `content.json`, a homebrew body and a converted source are read
+   through it. A bundle holds `elements`, `extensions` (rules and tags for an element another source declares: what an
+   `<append>` was) and a `source` description (name, address, version, the parts tree, the files in load order, the
+   diagnostics, the ETags, which converter version wrote it).
+3. **The converter** is `convertAuroraSource` (`packages/aurora-import/src/convert-source.ts`): it walks an index (the
+   nested indexes asked for ahead, ADR 0051), parses every file and writes one bundle, Aurora's app elements first and
+   the improvement options last. The library loads bundles only (`loadBundle`): no network, no Aurora parse, no invented
+   element. `packages/content` no longer depends on `aurora-import`; it is handed a `SourceConverter`, as it is handed a
+   `Fetcher`, and `converter-boundary.test.ts` holds that. The conversion is kept as a file (`SourceFiles`, core): the
+   desktop's `sources` folder in the app's data folder, the phone's documents folder, and **Show file** on the Sources
+   line opens that folder (revealing the file in Explorer answered after 20 s and showed nothing, so it opens the folder).
+   `keep: files`, the raw cache, ADR 0085's per-file values and the cached, layered, converted and HTTP sources are gone; a
+   refresh converts again from the network, and a file it cannot fetch keeps the previous conversion's copy. Three ids
+   the corpus declares twice inside one file are now reported, the later kept: **warnings 57 to 60, 14,317 distinct
+   elements.** The corpus converts in about 0.6 s to a 20.5 MB file that reloads in about 0.1 s; in the Tauri window,
+   adding AuroraLegacy takes about 25 s.
+4. **The expression quirks** are written as Incudo's by the converter (`incudo-expressions.ts`), so the engine reads
+   none: a leading `!` on a filter operand is a `not` node of the filter grammar, written at parse; `:half` and
+   `:half:up` are `floor` and `ceil` of the stat over 2; `[character:N]` is a requirement on `level`, and 5e's `character`
+   stat is gone; `isRitual` is the tag `Ritual` on the spell, and 5e's `setterTags` pair is gone (`setterTags` stays a
+   system feature). A sheet text has no expressions, so `{{level:wizard:half}}` stays Incudo's sheet notation
+   (`halfPlaceholder`). `heldTypesStat`, `blockFilters` and `repeatableSetter` stay: they are system features 5e uses,
+   named in the system's own words.
+5. **Starting equipment** is read from each class's and background's prose by the converter
+   (`packages/aurora-import/src/starting-equipment.ts`) and written on the element as `startingEquipment`; the kind says
+   where it is offered (`kind.startingEquipment`). Measured against the file ADR 0087 wrote by hand, kept as the fixture
+   `tools/verify/fixtures/starting-equipment-key.json`: **86% of its 1,137 items are found** (the test holds 85), 146
+   classes and backgrounds get a package, and the 2024 pack items' `<extract>` lists agree with 128 of 129 items (the
+   2024 Wizard's prose says Spellbook, which that book declares no item for; the 2014 one is used). A pattern was kept
+   only where it rescued a share of the misses (an item without its first word, 144; an armour named without "armor",
+   34; …); "one of two items" rescued 2 and was dropped. Generic lines are picks (weapons by category, a musical
+   instrument, artisan's tools, a gaming set, a holy symbol, an arcane or druidic focus). **What is left is 177 pending
+   lines**, recorded when a package is taken and resolved on Build's Equipment & notes tab (the Pending items card) with
+   an item or a name of the user's own, which enters the bag as `ID_INTERNAL_ITEM_OWN` ("An item of your own") under
+   that name. A 2014 class is offered no wealth roll: its dice are in a table the prose does not carry (the maintainer's
+   call), and the purse is set by hand. `systems/dnd5e/starting-equipment.json` and its schema are removed.
+6. **The system definition** was reviewed id by id: 11 grants and the Feats, Multiclassing and Additional Features
+   options are elements the converter writes itself (kept, as decision 5 allows); 15 weapon property and category ids are
+   support tags content writes on a weapon (kept as content spells them); Wild Shape, Circle Forms and the two Two-Weapon
+   Fighting features are one source's content, a reviewed dependency that does nothing without it. One was declared by
+   nothing: `ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP`, which only a save named, so a built character could never take it.
+   The converter writes it now (the maintainer's call), and the start dialog offers Average Hit Points.
+7. **The character format** says what a record means: a class `advancement` spends a level on, other than the first,
+   holds its multiclass element by that alone (`impliedMulticlassIds`, core), and the importer records race, class and
+   background under the kind's build steps (`build/race`, …), not under Aurora's level elements. **Character format 14**:
+   a character whose advancement names a second class, or whose starting package records a pending line. The optional
+   features as choices were ADR 0129. The `.dnd5e` import goes through the same converter.
+8. **This note, CLAUDE.md, docs/ARCHITECTURE.md and the ADRs this amends** (dated notes in 0005, 0008, 0036, 0046, 0047,
+   0048, 0071, 0085, 0087 and 0108).
+
+**The converter's elements are 83** (81 that Aurora's app materializes, the average hit points option among them, Incudo's Additional Features option, and the item of
+the user's own), **229 generated in all** with the 146 improvement options. `CONVERTER_VERSION` is 9; its guard hashes the
+converter's files and core's three grammars.
+
+**What it cost a beta's files** (the maintainer's rule: a file from the betas opens if it opens): a save embedding a
+negated filter holds the literal tag until a refresh replaces the element; a character recording a multiclass element
+as a choice keeps the record, which the builder drops on its next split; what a beta kept under `content/<source>/` is
+removed once the converted file is written.
+
+**Not done:** the phone shows pending lines in a taken package's text but has no card to resolve them yet; a pick reads
+items of both editions where the hand-written file named one book; a trailing aside in brackets ("a holy symbol (a gift
+…)") is not read past, one line in the corpus.

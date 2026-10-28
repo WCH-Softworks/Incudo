@@ -154,3 +154,5 @@ into every embedded save (ADR 0012), fixing the tag into files. The mapping is a
 belongs where the filter is read.
 
 **Hard-code `isRitual` in core.** A game-specific noun in `packages/core` (ADR 0003).
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** 5e's `setterTags` pair is gone: the converter writes the tag `Ritual` on every spell whose `isRitual` is true. `setterTags` stays a system feature that no shipped system uses.

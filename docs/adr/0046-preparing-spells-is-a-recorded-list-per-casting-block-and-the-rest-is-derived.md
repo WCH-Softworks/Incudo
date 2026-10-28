@@ -325,3 +325,5 @@ its filter admits from the content loaded or embedded.
   folder and reopening (both need a dialog no script can answer; the tests pack and reopen all 13 samples with a
   list, with zero sources), the Tauri window, and macOS and Linux. The browser pane would not render screenshots, so
   the screen was read from the page rather than looked at.
+
+> **Note, 2026-10-28 ([ADR 0119](./0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md), built):** `:half` and `:half:up` are no longer read where a reference is evaluated: the converter writes them as `floor` and `ceil` of the stat over 2. A save written before holds the old reference until a refresh replaces the element. A sheet text's `{{…:half}}` is Incudo's sheet notation and is read by `halfPlaceholder`.
