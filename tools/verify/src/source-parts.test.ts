@@ -11,17 +11,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { auroraConverter } from '@incudo/aurora-import';
 import {
   ContentLibrary,
   addFileSource,
-  composeSource,
-  readIndexTree,
+  sourceContent,
   SourceProfile,
   type IndexTreeNode,
 } from '@incudo/content';
 import { MemoryStorage, type Fetcher } from '@incudo/core';
 
-import { corpusSource, loadCorpus } from './corpus.ts';
+import { corpusFetcher, loadCorpus } from './corpus.ts';
 import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
 
 function flatten(node: IndexTreeNode, out: IndexTreeNode[] = []): IndexTreeNode[] {
@@ -40,15 +40,12 @@ function recording(asked: string[]): (fetcher: Fetcher) => Fetcher {
   });
 }
 
-test('the tree of parts is exactly what a load of the corpus reads', { skip: corpusSkip }, async (t) => {
+test('the tree of parts is exactly what a conversion of the corpus reads', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
   t.diagnostic(corpusProvenance());
-  const started = Date.now();
-  const tree = await readIndexTree(corpusSource(location), location.index);
-  const elapsed = Date.now() - started;
-
   const asked: string[] = [];
   const full = await loadCorpus(location, { wrap: recording(asked) });
+  const tree = full.bundle.source!.parts!;
 
   const parts = flatten(tree).filter((node) => !node.repeated);
   const listed = [location.index, ...parts.map((node) => node.url)].sort();
@@ -59,13 +56,14 @@ test('the tree of parts is exactly what a load of the corpus reads', { skip: cor
   assert.ok(parts.every((node) => !node.failed && !node.tooDeep));
   t.diagnostic(
     `tree: ${parts.filter((node) => node.isIndex).length} nested indexes, ${files} element files, ` +
-      `${flatten(tree).filter((node) => node.repeated).length} named twice, read in ${elapsed} ms`,
+      `${flatten(tree).filter((node) => node.repeated).length} named twice`,
   );
 });
 
 test('switching a book off drops exactly its files from the load', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
-  const tree = await readIndexTree(corpusSource(location), location.index);
+  const full = await loadCorpus(location);
+  const tree = full.bundle.source!.parts!;
   // The group with the most books, and its first book: found by shape, never by name.
   const group = [...(tree.children ?? [])]
     .filter((node) => node.isIndex)
@@ -73,7 +71,6 @@ test('switching a book off drops exactly its files from the load', { skip: corpu
   const book = group.children!.find((node) => node.isIndex && node.children?.length)!;
   const bookFiles = new Set(flatten(book).filter((node) => !node.isIndex).map((node) => node.url));
 
-  const full = await loadCorpus(location);
   const without = await loadCorpus(location, { excluded: [book.url] });
   assert.equal(without.filesLoaded, full.filesLoaded - bookFiles.size);
 
@@ -89,12 +86,9 @@ test('switching a book off drops exactly its files from the load', { skip: corpu
 
 test('a corpus file added on its own loads to what the corpus load made of it', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
-  let disk: Fetcher | undefined;
-  const tree = await readIndexTree(
-    corpusSource(location, (fetcher) => (disk = fetcher)),
-    location.index,
-  );
+  const disk = corpusFetcher(location);
   const full = await loadCorpus(location);
+  const tree = full.bundle.source!.parts!;
 
   // A file with CRLF endings in upstream's own bytes when there is one (ADR 0056's files come from anywhere), and
   // otherwise the file with the most elements. Chosen by what it holds, never by name.
@@ -105,7 +99,7 @@ test('a corpus file added on its own loads to what the corpus load made of it', 
     byFile.set(file, (byFile.get(file) ?? 0) + 1);
   }
   const texts = new Map<string, string>();
-  for (const url of fileUrls) texts.set(url, (await disk!.fetchText(url)).text);
+  for (const url of fileUrls) texts.set(url, (await disk.fetchText(url)).text);
   const withAppendsOnly = (url: string): boolean => !byFile.get(url);
   const crlf = fileUrls.filter((url) => texts.get(url)!.includes('\r\n') && !withAppendsOnly(url));
   const pick = (crlf.length ? crlf : fileUrls).reduce((best, url) =>
@@ -115,9 +109,10 @@ test('a corpus file added on its own loads to what the corpus load made of it', 
 
   const storage = new MemoryStorage();
   const profile = new SourceProfile(storage);
-  const added = await addFileSource(profile, storage, { name, text: texts.get(pick)! }, { systemId: 'dnd5e' });
+  const platform = { fetcher: disk, storage, converter: auroraConverter };
+  const added = await addFileSource(profile, platform, { name, text: texts.get(pick)! }, { systemId: 'dnd5e' });
   const library = new ContentLibrary();
-  await library.loadSource(composeSource(added.source, { fetcher: disk!, storage }), added.source.url);
+  library.loadBundle(added.source.id, await sourceContent(added.source, platform));
 
   const shape = (element: { id: string; name: string; type: string; description?: string; rules: unknown[]; supports: string[] }) =>
     JSON.stringify([element.id, element.name, element.type, element.description ?? '', element.rules.length, element.supports]);

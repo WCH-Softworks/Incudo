@@ -14,11 +14,9 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ElementAppend } from '@incudo/aurora-import';
-import { ContentLibrary, type ContentSource, type ElementFile, type FileRef } from '@incudo/content';
-import type { Element } from '@incudo/core';
+import type { Element, ElementExtension } from '@incudo/core';
 
-import { corpusSource } from './corpus.ts';
+import { convertCorpus, isGenerated } from './corpus.ts';
 import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -34,30 +32,18 @@ function* nodes(value: unknown): Generator<Record<string, unknown>> {
   }
 }
 
-/** A source that hands the library what it reads and keeps each file's appends as the parser returned them. */
-function recording(source: ContentSource, appends: ElementAppend[], files: Map<string, Element[]>): ContentSource {
-  return {
-    id: source.id,
-    loadIndex: (url) => source.loadIndex(url),
-    checkForUpdates: (index) => source.checkForUpdates(index),
-    async loadFile(ref: FileRef): Promise<ElementFile> {
-      const file = await source.loadFile(ref);
-      appends.push(...structuredClone(file.appends ?? []));
-      files.set(ref.url, file.elements);
-      return file;
-    },
-  };
-}
-
 test('every Aurora construct read past the conversion, counted over the corpus', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
-  const appends: ElementAppend[] = [];
+  const { bundle } = await convertCorpus(location);
+  // The files' own elements as the converter wrote them, and the appends it turned into extensions.
   const files = new Map<string, Element[]>();
-  const library = new ContentLibrary();
-  await library.loadSource(recording(corpusSource(location), appends, files), location.index);
-  const plain = new ContentLibrary();
-  await plain.loadSource(corpusSource(location), location.index, { withoutGeneratedElements: true });
-  assert.ok(files.size > 0, 'the corpus should load');
+  for (const element of bundle.elements) {
+    if (isGenerated(element)) continue;
+    const url = element.origin.fileUrl ?? '';
+    files.set(url, [...(files.get(url) ?? []), element]);
+  }
+  const appends: ElementExtension[] = bundle.extensions ?? [];
+  assert.ok(files.size > 0, 'the corpus should convert');
 
   const lines: string[] = [corpusProvenance()];
   const say = (line: string): void => {
@@ -65,11 +51,11 @@ test('every Aurora construct read past the conversion, counted over the corpus',
   };
 
   // 1. What the library invents on every load of an Aurora source.
-  const generated = [...library.elements.all()].filter((element) => !plain.elements.get(element.id));
+  const generated = bundle.elements.filter(isGenerated);
   const options = generated.filter((element) => element.id.startsWith('ID_INTERNAL_CLASS_FEATURE_'));
   say(
-    `library: ${generated.length} elements no file declares (${generated.length - options.length} fixed, ` +
-      `${options.length} improvement options derived from what is loaded): generated-elements.ts, improvement-options.ts`,
+    `converter: ${generated.length} elements no file declares, written as two files of their own (${generated.length - options.length} fixed, ` +
+      `${options.length} improvement options derived from the source): convert-source.ts (since ADR 0119; the library invented them on every load before)`,
   );
 
   // 2. Appends, and how many reach outside the file that writes them.
@@ -78,8 +64,8 @@ test('every Aurora construct read past the conversion, counted over the corpus',
   const elsewhere = appends.filter((append) => declaredIn.get(append.id) !== append.fileUrl);
   const nowhere = appends.filter((append) => !declaredIn.has(append.id));
   say(
-    `library: ${appends.length} <append> blocks folded at load, ${elsewhere.length} into another file's element, ` +
-      `${nowhere.length} naming nothing a file declares: library.ts applyAppends`,
+    `converter: ${appends.length} <append> blocks written as extensions, ${elsewhere.length} into another file's element, ` +
+      `${nowhere.length} naming nothing a file declares; the library applies extensions, whichever source declares the target`,
   );
 
   // 3. The engine's evaluation-time readings, over every element as the parser wrote it.

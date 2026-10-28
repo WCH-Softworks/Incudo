@@ -12,11 +12,11 @@
  * cancelled: a load that does not publish runs to its end, and what it fetched is cached as any load's is.
  */
 
-import { keepsConverted, type ConfiguredSource } from '@incudo/content';
+import type { ConfiguredSource } from '@incudo/content';
 
 /** A load's identity: which sources, in which order, kept which way, with which parts switched off. */
 export function sourcesLoadKey(sources: readonly ConfiguredSource[]): string {
-  return JSON.stringify(sources.map((source) => [source.id, keepsConverted(source), source.excluded ?? []]));
+  return JSON.stringify(sources.map((source) => [source.id, source.excluded ?? []]));
 }
 
 /** What a load that has ended may do. */

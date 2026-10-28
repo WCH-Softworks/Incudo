@@ -34,8 +34,8 @@ import {
 import {
   SourceProfile,
   checkSourceForUpdates,
-  composeSource,
-  readIndexTree,
+  revealSourceFile,
+  sourceParts,
   refreshSource,
   removeSource,
   createHomebrewSource,
@@ -44,6 +44,7 @@ import {
   sourcesForSystem,
   unassignedSources,
   refreshSourceRefs,
+  type ComposeOptions,
   type ConfiguredSource,
   type RefreshReport,
   type UpdateStatus,
@@ -142,6 +143,8 @@ import {
   writeChosenSystem,
   type LoadedDraft,
 } from './boot.ts';
+import { auroraConverter } from '@incudo/aurora-import';
+
 import { createDesktopPlatform } from './platform.ts';
 
 /** The form maps shipped beside the systems (ADR 0079), read once. */
@@ -170,6 +173,18 @@ const EMPTY_INDEX: ElementIndex = new MapElementIndex();
 
 /** Built once. Nothing else in the app asks whether it is running in Tauri. */
 const platform = createDesktopPlatform();
+
+/**
+ * What the content package is handed: the platform's network and storage, the files sources are kept as, and Aurora's
+ * converter, the one place the app hands content Aurora's (ADR 0119).
+ */
+const contentPlatform: ComposeOptions = {
+  fetcher: platform.fetcher,
+  storage: platform.storage,
+  files: platform.sources,
+  converter: auroraConverter,
+  now: () => new Date().toISOString(),
+};
 
 /**
  * Every system, shipped and the user's, read by the one loader (ADR 0107) and labelled by where it came from: the
@@ -750,7 +765,7 @@ function Shell({
     let thrown: string | undefined;
     try {
       // The ones switched off are not loaded; what each declared at its last load names it on a line that misses it.
-      loaded = await loadSources(forSystem, platform, (progress) => isCurrent() && setProgress(progress), {
+      loaded = await loadSources(forSystem, contentPlatform, (progress) => isCurrent() && setProgress(progress), {
         switchedOff: ofSystem.filter((s) => !s.enabled),
       });
     } catch (error) {
@@ -820,12 +835,12 @@ function Shell({
         // working forever, which is the trade ADR 0012 bought. A file source's copy goes with it (ADR 0056).
         const current = profile.current;
         if (!current) return;
-        await removeSource(current, platform.storage, id);
+        await removeSource(current, contentPlatform, id);
         await persist();
         await reload();
       },
       readParts: async (url) => {
-        // Through the same composed source a load uses, so the indexes read here are cached for it (ADR 0055).
+        // From the source's file, converting it first when it has none: the parts are its conversion's (ADR 0055, 0119).
         const configured = profile.current?.find(url) ?? {
           id: url,
           url,
@@ -834,7 +849,7 @@ function Shell({
           mode: 'download' as const,
           addedAt: '',
         };
-        return readIndexTree(composeSource(configured, platform), url);
+        return sourceParts(configured, contentPlatform);
       },
       setExcluded: async (id, excluded) => {
         profile.current?.update(id, { excluded: excluded.length ? excluded : undefined });
@@ -848,7 +863,7 @@ function Shell({
         let results: ContentFileResult[];
         try {
           // Tagged with the system in view, as a URL is (ADR 0031), and added last, so its definitions are used (ADR 0054).
-          results = await addContentFiles(files, current, platform.storage, { systemId: system.id, nameOfSystem });
+          results = await addContentFiles(files, current, contentPlatform, { systemId: system.id, nameOfSystem });
         } finally {
           setBusy(false);
         }
@@ -893,12 +908,9 @@ function Shell({
         await persist();
         await reload();
       },
-      // Reloaded at once, so the source is converted, or its conversion dropped, while the user watches (ADR 0085). A
-      // source kept as files whose files went with its conversion fetches them again.
-      setKeep: async (id, keep) => {
-        profile.current?.update(id, { keep });
-        await persist();
-        await reload();
+      showFile: async (id) => {
+        const source = profile.current?.find(id);
+        return source ? revealSourceFile(source, contentPlatform) : false;
       },
       move: async (id, direction) => {
         // ADR 0054: the order is which source is used when two define the same id, the later one. Moved among this
@@ -921,7 +933,7 @@ function Shell({
         // Busy while it runs: under Tauri it asks every cached file (ADR 0050), which takes seconds.
         setBusy(true);
         try {
-          const status = await checkSourceForUpdates(source, platform);
+          const status = await checkSourceForUpdates(source, contentPlatform);
           setUpdates((previous) => ({ ...previous, [id]: status }));
         } finally {
           setBusy(false);
@@ -934,7 +946,7 @@ function Shell({
         if (!source) return;
         setBusy(true);
         try {
-          const report = await refreshSource(source, platform);
+          const report = await refreshSource(source, contentPlatform);
           setRefreshes((previous) => ({ ...previous, [id]: report }));
         } catch (error) {
           setRefreshes((previous) => ({

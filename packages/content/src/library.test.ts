@@ -1,122 +1,107 @@
 /**
- * What `ContentLibrary` adds to an Aurora source on top of its files — the elements Aurora's app
- * generates at runtime. The generation itself is tested in `@incudo/aurora-import`; this is only
- * about *when* it runs, which is the part a library can get wrong: once per load, after every
- * file and every `<append>`, and never for a source that is not Aurora's.
+ * What `ContentLibrary.loadBundle` does with a source's file: which of its files it adds, and what it does with what a
+ * conversion generated. Converting is `@incudo/aurora-import`'s and tested there; this is the loading, which reads
+ * Incudo content and nothing else (ADR 0119). Each test names the perturbation that fails it.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { auroraGeneratedElements } from '@incudo/aurora-import';
-import { parseSupports, type Element } from '@incudo/core';
-import { ContentLibrary } from './library.ts';
-import type { ContentIndex, ContentSource, ElementFile, FileRef } from './source.ts';
+import type { ContentPart, Element } from '@incudo/core';
+import { ContentLibrary, excludedAddresses } from './library.ts';
+import { testBundle } from './test-bundle.ts';
 
 function element(id: string, extra: Partial<Element> = {}): Element {
-  return {
-    id,
-    type: 'Class Feature',
-    name: id,
-    source: 'test',
-    setters: {},
-    rules: [],
-    supports: [],
-    origin: { sourceId: 'test', format: 'aurora', fileUrl: 'memory://file' },
-    ...extra,
-  };
+  return { id, type: 'Widget', name: id, source: 'test', setters: {}, rules: [], supports: [], origin: { sourceId: 'x' }, ...extra };
 }
 
-function improvementFeature(level: number): Element {
-  return element(`ID_FEATURE_ASI_${level}`, {
-    rules: [
+const URL = 'memory://book/index';
+const PARTS: ContentPart = {
+  name: 'Book',
+  url: URL,
+  isIndex: true,
+  children: [
+    { name: 'one.xml', url: 'memory://book/one.xml', isIndex: false },
+    {
+      name: 'extra.index',
+      url: 'memory://book/extra.index',
+      isIndex: true,
+      children: [{ name: 'two.xml', url: 'memory://book/two.xml', isIndex: false }],
+    },
+  ],
+};
+
+function book() {
+  return testBundle(
+    URL,
+    [
+      { url: 'incudo:aurora/app-elements', elements: [element('ID_GENERATED')], generated: true },
+      { url: 'memory://book/one.xml', elements: [element('ID_ONE')], diagnostics: [{ level: 'warning', message: 'one', fileUrl: 'memory://book/one.xml' }] },
       {
-        kind: 'select',
-        key: `select:Improvement Option (Fighter ${level})`,
-        type: 'Class Feature',
-        name: `Improvement Option (Fighter ${level})`,
-        supports: parseSupports(`Improvement Option,Fighter,${level}`),
-        number: 1,
+        url: 'memory://book/two.xml',
+        elements: [element('ID_TWO')],
+        extensions: [{ id: 'ID_ONE', rules: [], supports: ['FromTwo'] }],
+        diagnostics: [{ level: 'warning', message: 'two', fileUrl: 'memory://book/two.xml' }],
       },
     ],
-  });
+    { parts: PARTS },
+  );
 }
 
-let sources = 0;
-
-function source(format: 'aurora' | 'incudo', ...files: Element[][]): ContentSource {
-  // A distinct address per source: the library skips a file URL it has already loaded.
-  const n = ++sources;
-  const refs: FileRef[] = files.map((_, i) => ({
-    name: `file-${i}.xml`,
-    url: `memory://${format}/${n}/file-${i}.xml`,
-    isIndex: false,
-  }));
-  const index: ContentIndex = { url: `memory://${format}/${n}/index`, name: 'Memory', files: refs, format };
-  return {
-    id: index.url,
-    loadIndex: async () => index,
-    loadFile: async (ref: FileRef): Promise<ElementFile> => ({
-      url: ref.url,
-      elements: files[refs.findIndex((r) => r.url === ref.url)]!,
-      diagnostics: [],
-    }),
-    checkForUpdates: async () => ({ state: 'unknown', reason: 'test' }),
-  };
-}
-
-const OVERLAY = auroraGeneratedElements().length;
-
-test('an Aurora source gets the improvement options its content asks for, counted as generated', async () => {
+test('every file loads, in order, each element recorded as the source\'s', () => {
   const library = new ContentLibrary();
-  await library.loadSource(source('aurora', [improvementFeature(4)]), 'memory://aurora/index');
-
-  assert.ok(library.elements.get('ID_INTERNAL_CLASS_FEATURE_ASI_4_FIGHTER'));
-  assert.ok(library.elements.get('ID_INTERNAL_CLASS_FEATURE_FEAT_4_FIGHTER'));
-  assert.equal(library.generatedElements, OVERLAY + 2);
+  const report = library.loadBundle(URL, book());
+  assert.deepEqual([...library.elements.all()].map((e) => e.id), ['ID_GENERATED', 'ID_ONE', 'ID_TWO']);
+  assert.deepEqual(library.elements.get('ID_ONE')!.supports, ['FromTwo']);
+  assert.equal(library.elements.get('ID_ONE')!.origin.sourceId, URL);
+  assert.equal(report.filesLoaded, 2, 'a generated file is no file of the source');
+  assert.deepEqual(report.declared, ['ID_ONE', 'ID_TWO'], 'nor are its elements what the source declares');
+  assert.deepEqual(library.diagnostics.map((d) => d.message), ['one', 'two']);
 });
 
-test('options are generated across every file, not per file', async () => {
+test('an index switched off leaves out its files, their extensions and what they said, and nothing else', () => {
+  // Perturbation: matching only the switched-off address, not what is under it, keeps ID_TWO.
   const library = new ContentLibrary();
-  await library.loadSource(
-    source('aurora', [improvementFeature(4)], [improvementFeature(8)]),
-    'memory://aurora/index',
-  );
-  assert.equal(library.generatedElements, OVERLAY + 4);
+  const report = library.loadBundle(URL, book(), { excluded: ['memory://book/extra.index'] });
+  assert.deepEqual([...library.elements.all()].map((e) => e.id), ['ID_GENERATED', 'ID_ONE']);
+  assert.deepEqual(library.elements.get('ID_ONE')!.supports, [], 'its extension goes with it');
+  assert.deepEqual(library.diagnostics.map((d) => d.message), ['one']);
+  assert.deepEqual(report.declared, ['ID_ONE']);
 });
 
-test('loading a second source neither duplicates nor drops what the first asked for', async () => {
+test('what a conversion generated loads whatever is switched off, and only where nothing declares its id', () => {
   const library = new ContentLibrary();
-  await library.loadSource(source('aurora', [improvementFeature(4)]), 'memory://aurora/one');
-  await library.loadSource(
-    source('aurora', [improvementFeature(4), improvementFeature(6)]),
-    'memory://aurora/two',
-  );
-  // Level 4 once, level 6 added by the second: two pairs, four elements, not six.
-  assert.equal(library.generatedElements, OVERLAY + 4);
-  assert.ok(library.elements.get('ID_INTERNAL_CLASS_FEATURE_ASI_6_FIGHTER'));
+  library.loadBundle('memory://first', testBundle('memory://first', [{ url: 'memory://first/a.xml', elements: [element('ID_GENERATED', { name: 'Declared' })] }]));
+  library.loadBundle(URL, book(), { excluded: ['memory://book/one.xml', 'memory://book/extra.index'] });
+  // Perturbation: adding a generated element like any other replaces what the first source declares.
+  assert.equal(library.elements.get('ID_GENERATED')!.name, 'Declared');
+  assert.equal(library.sourceOverlaps().size, 0);
 });
 
-test('a pair a loaded element already declares is not generated', async () => {
+test('withoutGenerated loads the files alone', () => {
   const library = new ContentLibrary();
-  const declared = element('ID_DECLARED', { supports: ['Improvement Option', 'Fighter', '4'] });
-  await library.loadSource(source('aurora', [improvementFeature(4), declared]), 'memory://aurora/index');
-  assert.equal(library.elements.get('ID_INTERNAL_CLASS_FEATURE_ASI_4_FIGHTER'), undefined);
-  assert.equal(library.generatedElements, OVERLAY);
+  library.loadBundle(URL, book(), { withoutGenerated: true });
+  assert.equal(library.elements.get('ID_GENERATED'), undefined);
 });
 
-test('withoutGeneratedElements loads the corpus exactly as it is on disk', async () => {
+test('a file an earlier source loaded is not loaded again, and still counts as what the later one declares', () => {
+  // Core lists the Player's Handbook's own index: the second source reads none of it itself (ADR 0090).
   const library = new ContentLibrary();
-  await library.loadSource(source('aurora', [improvementFeature(4)]), 'memory://aurora/index', {
-    withoutGeneratedElements: true,
-  });
-  assert.equal(library.elements.get('ID_INTERNAL_CLASS_FEATURE_ASI_4_FIGHTER'), undefined);
-  assert.equal(library.generatedElements, 0);
+  library.loadBundle('memory://core', testBundle('memory://core', [{ url: 'memory://book/one.xml', elements: [element('ID_ONE')] }]));
+  const report = library.loadBundle(URL, book());
+  assert.equal(report.filesLoaded, 1);
+  assert.equal(library.elements.get('ID_ONE')!.origin.sourceId, 'memory://core');
+  assert.deepEqual(report.declared, ['ID_ONE', 'ID_TWO']);
+  assert.deepEqual(library.diagnostics.map((d) => d.message), ['two'], 'what the skipped file said is the first source\'s');
 });
 
-test('a source that is not Aurora\'s gets nothing generated', async () => {
+test('a bundle with no list of files, a save\'s content or a homebrew body, loads its elements', () => {
   const library = new ContentLibrary();
-  await library.loadSource(source('incudo', [improvementFeature(4)]), 'memory://incudo/index');
-  assert.equal(library.elements.get('ID_INTERNAL_CLASS_FEATURE_ASI_4_FIGHTER'), undefined);
-  assert.equal(library.generatedElements, 0);
+  library.loadBundle('homebrew:x', { formatVersion: 1, elements: [element('ID_A'), element('ID_B')] });
+  assert.deepEqual([...library.elements.all()].map((e) => e.id), ['ID_A', 'ID_B']);
+});
+
+test('excludedAddresses walks under an index switched off, at its first mention', () => {
+  assert.deepEqual([...excludedAddresses(PARTS, ['memory://book/extra.index'])].sort(), ['memory://book/extra.index', 'memory://book/two.xml']);
+  assert.deepEqual([...excludedAddresses(PARTS, undefined)], []);
 });

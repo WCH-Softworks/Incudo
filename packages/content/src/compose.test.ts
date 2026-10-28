@@ -1,311 +1,159 @@
 /**
- * ADR 0029: the layers get composed, the cache is read back, and a refresh evicts one source.
+ * ADR 0119: a source at an address is converted once and kept as a file, and loaded from the file afterwards.
  *
- * The measurement that motivated it — 238 files, 44.8 s cold and sequential — is in the ADR
- * and cannot be a unit test. What *can* be tested is the property that made it matter: a
- * second load must not touch the network at all.
+ * Each test names the perturbation that fails it. The converter here is the package's test one (`test-bundle.ts`);
+ * Aurora's own is tested in `@incudo/aurora-import`, and the real corpus through it in `tools/verify`.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { MemoryStorage, type FetchResult, type Fetcher } from '@incudo/core';
+import { MemoryStorage, StorageSourceFiles, type FetchResult, type Fetcher } from '@incudo/core';
 
 import {
   cachePrefix,
   checkSourceForUpdates,
-  composeSource,
-  evictSourceCache,
-  readVersionStamp,
-  writeVersionStamp,
+  readSourceFile,
+  refreshSource,
+  sourceContent,
+  sourceFileName,
+  sourceParts,
+  type ComposeOptions,
 } from './compose.ts';
-import { ContentLibrary } from './library.ts';
-import { SourceProfile } from './profile.ts';
+import { loadSources } from './load-sources.ts';
+import { SourceProfile, type ConfiguredSource } from './profile.ts';
+import { testBundle, testConverter, testElement } from './test-bundle.ts';
 
-const INDEX_URL = 'https://example.test/core.index';
+const URL = 'https://example.test/book.index';
 
-/** A fetcher that counts, so "did this touch the network?" is a number rather than a hope. */
-class CountingFetcher implements Fetcher {
-  readonly requested: string[] = [];
-  version = '1.0.0';
-  offline = false;
+const BOOK = JSON.stringify(
+  testBundle(
+    URL,
+    [
+      { url: 'https://example.test/one.xml', elements: [testElement('ID_ONE')] },
+      { url: 'https://example.test/two.xml', elements: [testElement('ID_TWO')] },
+    ],
+    { name: 'Book', version: '1.0.0' },
+  ),
+);
 
-  async fetchText(url: string): Promise<FetchResult> {
-    if (this.offline) throw new Error(`offline: refused ${url}`);
-    this.requested.push(url);
-    if (url.endsWith('.index')) {
-      return {
-        url,
-        text: [
-          '<?xml version="1.0" encoding="utf-8"?>',
-          '<index>',
-          '  <info>',
-          '    <name>Core</name>',
-          `    <update version="${this.version}" />`,
-          '  </info>',
-          '  <files>',
-          '    <file name="Widgets" url="widgets.xml" />',
-          '  </files>',
-          '</index>',
-        ].join('\n'),
-      };
-    }
-    return {
-      url,
-      text: [
-        '<?xml version="1.0" encoding="utf-8"?>',
-        '<elements>',
-        '  <element name="Widget" type="Widget" source="Core" id="ID_WIDGET">',
-        '    <description><p>A widget.</p></description>',
-        '  </element>',
-        '</elements>',
-      ].join('\n'),
-    };
+class Net implements Fetcher {
+  conditional = true;
+  asked: Array<{ url: string; etag?: string }> = [];
+  down = false;
+  body = BOOK;
+  async fetchText(url: string, options?: { etag?: string }): Promise<FetchResult> {
+    this.asked.push({ url, ...(options?.etag ? { etag: options.etag } : {}) });
+    if (this.down) throw new Error('offline');
+    if (options?.etag === '"v1"' && this.body === BOOK) return { url, text: '', notModified: true };
+    return { url, text: this.body, etag: '"v1"' };
   }
 }
 
-function configured(mode: 'stream' | 'download' = 'stream') {
-  return new SourceProfile(new MemoryStorage()).add(INDEX_URL, { mode });
+function setup(version = 1) {
+  const storage = new MemoryStorage();
+  const profile = new SourceProfile(storage);
+  const source = profile.add(URL, { name: 'Book', mode: 'download' });
+  const net = new Net();
+  const options: ComposeOptions = { fetcher: net, storage, converter: testConverter(version) };
+  return { storage, source, net, options };
 }
 
-test('the second load of a source reads the cache and never the network', async () => {
-  const fetcher = new CountingFetcher();
-  const storage = new MemoryStorage();
-  const source = configured();
-
-  const first = await new ContentLibrary().loadSource(
-    composeSource(source, { fetcher, storage }),
-    INDEX_URL,
-  );
-  assert.equal(first.filesLoaded, 1);
-  const firstRequests = fetcher.requested.length;
-  assert.ok(firstRequests >= 2, 'the first load fetches the index and its file');
-
-  // This is the bug the app shipped with: writeThrough wrote a cache nothing read back, so a
-  // reload re-fetched all 238 files. Going hard-offline proves the cache is really the reader.
-  fetcher.offline = true;
-  const second = await new ContentLibrary().loadSource(
-    composeSource(source, { fetcher, storage }),
-    INDEX_URL,
-  );
-  assert.equal(second.filesLoaded, 1);
-  assert.equal(second.elementsLoaded, 1);
-  assert.equal(fetcher.requested.length, firstRequests, 'and nothing else was requested');
+test('the first load converts the source and keeps it as a file, and the next reads only the file', async () => {
+  const { source, net, options } = setup();
+  const first = await sourceContent(source, options);
+  assert.deepEqual(first.elements.map((e) => e.id), ['ID_ONE', 'ID_TWO']);
+  assert.ok(await readSourceFile(source, options), 'the file is written');
+  net.asked = [];
+  net.down = true;
+  // Perturbation: converting on every load asks the network, which is down.
+  const second = await sourceContent(source, options);
+  assert.deepEqual(second, first);
+  assert.deepEqual(net.asked, []);
 });
 
-test('evicting one source leaves every other source alone', async () => {
-  const fetcher = new CountingFetcher();
-  const storage = new MemoryStorage();
-  const source = configured();
+test('a conversion another converter wrote is converted again, and kept when that cannot be done', async () => {
+  const { source, net, options } = setup(1);
+  await sourceContent(source, options);
+  const newer: ComposeOptions = { ...options, converter: testConverter(2) };
+  net.down = true;
+  // Offline: the old conversion is still Incudo content, and loads.
+  assert.equal((await sourceContent(source, newer)).source?.converted?.converter, 1);
+  net.down = false;
+  net.asked = [];
+  // Perturbation: reading any conversion as current never converts again.
+  assert.equal((await sourceContent(source, newer)).source?.converted?.converter, 2);
+  assert.equal(net.asked.length, 1);
+});
 
-  await new ContentLibrary().loadSource(composeSource(source, { fetcher, storage }), INDEX_URL);
-  await storage.write(`${cachePrefix('other')}something`, 'not mine');
+test('a source never converted, with no network, fails with the reason', async () => {
+  const { source, net, options } = setup();
+  net.down = true;
+  await assert.rejects(sourceContent(source, options), /offline/);
+});
 
-  const removed = await evictSourceCache(storage, source.id);
-  assert.ok(removed >= 2, `expected the index and its file to go, got ${removed}`);
+test('what a build before 1.0 kept for the source is removed once its file is written', async () => {
+  const { storage, source, options } = setup();
+  await storage.write(`${cachePrefix(source.id)}${encodeURIComponent('https://example.test/one.xml')}`, '<elements/>');
+  await storage.write(`${cachePrefix(source.id)}.converted/x`, '{}');
+  await storage.write('content/another/kept', 'not this source');
+  await sourceContent(source, options);
+  // Perturbation: not clearing the prefix leaves both keys.
   assert.deepEqual(await storage.list(cachePrefix(source.id)), []);
-  assert.deepEqual(await storage.list(cachePrefix('other')), [`${cachePrefix('other')}something`]);
-
-  // And the source reloads from the network, which is what an eviction is for.
-  const after = await new ContentLibrary().loadSource(
-    composeSource(source, { fetcher, storage }),
-    INDEX_URL,
-  );
-  assert.equal(after.filesLoaded, 1);
+  assert.equal(await storage.read('content/another/kept'), 'not this source');
 });
 
-test('the version is a stamp beside the cache, not part of its keys', async () => {
-  const storage = new MemoryStorage();
-  await writeVersionStamp(storage, INDEX_URL, '1.0.0');
-  assert.equal(await readVersionStamp(storage, INDEX_URL), '1.0.0');
+test('a refresh converts again from the network, and with none changes nothing', async () => {
+  const { source, net, options } = setup();
+  await sourceContent(source, options);
+  net.body = JSON.stringify(testBundle(URL, [{ url: 'https://example.test/one.xml', elements: [testElement('ID_ONE'), testElement('ID_THREE')] }], { name: 'Book', version: '1.1.0' }));
+  const report = await refreshSource(source, options);
+  assert.equal(report.version, '1.1.0');
+  assert.equal(report.removed, 1, 'two.xml is no longer named');
+  assert.deepEqual((await readSourceFile(source, options))!.elements.map((e) => e.id), ['ID_ONE', 'ID_THREE']);
 
-  // Same key whatever the version, which is the half of ADR 0029 that departs from ADR 0004.
-  await writeVersionStamp(storage, INDEX_URL, '2.0.0');
-  const keys = await storage.list(cachePrefix(INDEX_URL));
-  assert.equal(keys.length, 1, `one stamp, not one per version: ${JSON.stringify(keys)}`);
-  assert.equal(await readVersionStamp(storage, INDEX_URL), '2.0.0');
+  net.down = true;
+  const before = await readSourceFile(source, options);
+  const offline = await refreshSource(source, options);
+  assert.equal(offline.kept.length, 1);
+  assert.deepEqual(await readSourceFile(source, options), before);
 });
 
-test('an update check reports and writes nothing', async () => {
-  const fetcher = new CountingFetcher();
-  const storage = new MemoryStorage();
-  const source = configured();
-
-  await writeVersionStamp(storage, source.id, '1.0.0');
-  assert.deepEqual(await checkSourceForUpdates(source, { fetcher, storage }), {
-    state: 'current',
-    basis: 'version',
-    version: '1.0.0',
-  });
-
-  fetcher.version = '1.4.0';
-  assert.deepEqual(await checkSourceForUpdates(source, { fetcher, storage }), {
-    state: 'outdated',
-    basis: 'version',
-    local: '1.0.0',
-    remote: '1.4.0',
-  });
-
-  // The check must not have filled the cache behind the user's back: only the stamp is there.
-  assert.deepEqual(await storage.list(cachePrefix(source.id)), [
-    `${cachePrefix(source.id)}.version`,
-  ]);
-  // And it did not move the stamp either — a check that refreshed would be a silent update.
-  assert.equal(await readVersionStamp(storage, source.id), '1.0.0');
+test('an update check asks with each ETag the conversion recorded, and writes nothing', async () => {
+  const { storage, source, net, options } = setup();
+  await sourceContent(source, options);
+  const keys = await storage.list('');
+  net.asked = [];
+  assert.deepEqual(await checkSourceForUpdates(source, options), { state: 'current', basis: 'files', checked: 1, unanswered: 0 });
+  assert.deepEqual(net.asked, [{ url: URL, etag: '"v1"' }]);
+  net.body = BOOK.replace('1.0.0', '1.1.0');
+  assert.equal((await checkSourceForUpdates(source, options)).state, 'outdated');
+  assert.deepEqual(await storage.list(''), keys, 'nothing is written');
 });
 
-test('an update check that cannot reach the network says so instead of guessing', async () => {
-  const fetcher = new CountingFetcher();
-  fetcher.offline = true;
-  const storage = new MemoryStorage();
-  await writeVersionStamp(storage, INDEX_URL, '1.0.0');
-
-  const status = await checkSourceForUpdates(configured(), { fetcher, storage });
-  assert.equal(status.state, 'unknown');
-  assert.match((status as { reason: string }).reason, /offline/);
+test('without conditional requests an update check compares the version the source declares', async () => {
+  const { source, net, options } = setup();
+  await sourceContent(source, options);
+  net.conditional = false;
+  net.body = BOOK.replace('1.0.0', '1.1.0');
+  assert.deepEqual(await checkSourceForUpdates(source, options), { state: 'outdated', basis: 'version', local: '1.0.0', remote: '1.1.0' });
 });
 
-/**
- * A fetcher that answers the index and refuses everything else, the way the app's fetchers do:
- * its message says what went wrong and not where, because whoever reports it names the address.
- */
-class RefusingFetcher extends CountingFetcher {
-  refuseIndex = false;
-  override async fetchText(url: string): Promise<FetchResult> {
-    if (this.refuseIndex || !url.endsWith('.index')) throw new Error('connection refused');
-    return super.fetchText(url);
-  }
-}
-
-const occurrences = (text: string, part: string): number => text.split(part).length - 1;
-
-test('a source that cannot be loaded names its address once, and says why each layer failed', async () => {
-  const fetcher = new RefusingFetcher();
-  fetcher.refuseIndex = true;
-  const source = composeSource(configured(), { fetcher, storage: new MemoryStorage() });
-
-  // It read "Could not load index X. Tried X: Not in the local cache: X; X: X: … (X)".
-  await assert.rejects(new ContentLibrary().loadSource(source, INDEX_URL), (error: Error) => {
-    assert.equal(occurrences(error.message, INDEX_URL), 1, error.message);
-    assert.match(error.message, /Not in the local cache/);
-    assert.match(error.message, /connection refused/);
-    return true;
-  });
+test("a source's file name is plain, readable, stable and its own", () => {
+  const a = sourceFileName({ id: URL, url: URL });
+  assert.match(a, /^book-[0-9a-f]{8}\.json$/);
+  assert.equal(sourceFileName({ id: URL, url: URL }), a);
+  // Perturbation: naming by the address's last part alone gives two sources ending in book.index one file.
+  assert.notEqual(sourceFileName({ id: 'https://other.test/book.index', url: 'https://other.test/book.index' }), a);
 });
 
-test('a file that cannot be loaded names its address once', async () => {
-  const library = new ContentLibrary();
-  await library.loadSource(
-    composeSource(configured(), { fetcher: new RefusingFetcher(), storage: new MemoryStorage() }),
-    INDEX_URL,
-  );
-  const fileUrl = 'https://example.test/widgets.xml';
-  const [diagnostic] = library.diagnostics.filter((d) => d.level === 'error');
-  assert.ok(diagnostic, 'the refused file is reported');
-  assert.equal(occurrences(diagnostic.message, fileUrl), 1, diagnostic.message);
-  assert.match(diagnostic.message, /connection refused/);
-});
-
-test('nothing cached yet is unknown rather than current', async () => {
-  const status = await checkSourceForUpdates(configured(), {
-    fetcher: new CountingFetcher(),
-    storage: new MemoryStorage(),
-  });
-  assert.equal(status.state, 'unknown');
-  assert.match((status as { reason: string }).reason, /nothing was cached/i);
-});
-
-/**
- * A load from the cache has to be the *same* load, not merely a load of the same size.
- *
- * For the whole life of ADR 0029's cache, `CachedContentSource.loadFile` returned everything
- * `HttpContentSource` did **except `appends`**. Every `<append>` in a corpus — 171 of them in
- * AuroraLegacy, the mechanism by which a supplement extends a core element without editing
- * it — was therefore dropped on every load after the first.
- *
- * Nothing said so. Same file count, same element count, same diagnostics: what changed was
- * what the character's own elements could *reach*, and that only shows when something walks
- * the graph. It was found by importing one Aurora save twice in the running app and watching
- * "250 elements embedded" become 227 — the missing 23 being the firearms option and every
- * proficiency it grants, which upstream declares with exactly this construct. It would have
- * written short saves for every user from their second session onwards, which is the ADR 0012
- * failure exactly.
- *
- * So the assertion is not "the cache works". It is "the two layers answer the same".
- */
-class AppendingFetcher implements Fetcher {
-  offline = false;
-
-  async fetchText(url: string): Promise<FetchResult> {
-    if (this.offline) throw new Error(`offline: refused ${url}`);
-    if (url.endsWith('.index')) {
-      return {
-        url,
-        text: [
-          '<?xml version="1.0" encoding="utf-8"?>',
-          '<index>',
-          '  <info><name>Core</name><update version="1.0.0" /></info>',
-          '  <files>',
-          '    <file name="Core" url="core.xml" />',
-          '    <file name="Supplement" url="supplement.xml" />',
-          '  </files>',
-          '</index>',
-        ].join('\n'),
-      };
-    }
-    if (url.endsWith('supplement.xml')) {
-      return {
-        url,
-        text: [
-          '<?xml version="1.0" encoding="utf-8"?>',
-          '<elements>',
-          '  <append id="ID_MARTIAL_RANGED">',
-          '    <supports>Extra Tag</supports>',
-          '    <rules><grant type="Proficiency" id="ID_REVOLVER" /></rules>',
-          '  </append>',
-          '</elements>',
-        ].join('\n'),
-      };
-    }
-    return {
-      url,
-      text: [
-        '<?xml version="1.0" encoding="utf-8"?>',
-        '<elements>',
-        '  <element name="Martial Ranged" type="Proficiency" source="Core" id="ID_MARTIAL_RANGED">',
-        '    <rules />',
-        '  </element>',
-        '</elements>',
-      ].join('\n'),
-    };
-  }
-}
-
-test('a load from the cache carries the appends a load from the network did', async () => {
-  const fetcher = new AppendingFetcher();
-  const storage = new MemoryStorage();
-  const source = configured();
-
-  const fresh = new ContentLibrary();
-  const first = await fresh.loadSource(composeSource(source, { fetcher, storage }), INDEX_URL);
-  assert.equal(first.filesLoaded, 2);
-  assert.equal(first.elementsLoaded, 1, 'an append is not an element');
-  assert.equal(fresh.elements.get('ID_MARTIAL_RANGED')?.rules.length, 1);
-  assert.deepEqual(fresh.elements.get('ID_MARTIAL_RANGED')?.supports, ['Extra Tag']);
-
-  fetcher.offline = true;
-  const reloaded = new ContentLibrary();
-  const second = await reloaded.loadSource(composeSource(source, { fetcher, storage }), INDEX_URL);
-
-  // Every count agrees, which is the whole problem with counting.
-  assert.equal(second.filesLoaded, first.filesLoaded);
-  assert.equal(second.elementsLoaded, first.elementsLoaded);
-  assert.equal(second.diagnostics.length, first.diagnostics.length);
-
-  assert.equal(
-    reloaded.elements.get('ID_MARTIAL_RANGED')?.rules.length,
-    1,
-    'the append has to survive the cache, or the corpus is quietly a different corpus',
-  );
-  assert.deepEqual(reloaded.elements.get('ID_MARTIAL_RANGED')?.supports, ['Extra Tag']);
+test('the parts tree is read from the file, and switching a part off loads without the network', async () => {
+  const { storage, source, net, options } = setup();
+  const parts = await sourceParts(source, options);
+  assert.deepEqual(parts.children!.map((p) => p.url), ['https://example.test/one.xml', 'https://example.test/two.xml']);
+  net.down = true;
+  const off: ConfiguredSource = { ...source, excluded: ['https://example.test/two.xml'] };
+  const loaded = await loadSources([off], { ...options, files: new StorageSourceFiles(storage) });
+  assert.deepEqual([...loaded.elements.all()].map((e) => e.id), ['ID_ONE']);
+  assert.deepEqual(loaded.errors, []);
 });

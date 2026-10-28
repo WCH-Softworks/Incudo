@@ -26,19 +26,12 @@ function source(patch: Partial<ConfiguredSource> = {}): ConfiguredSource {
 
 const metered = { metered: true };
 
-test('a refresh downloads everything when kept converted and what changed when kept as files', () => {
-  // Fails if the kept form is not read (a converted refresh has no raw copy to answer "not modified" with), or if a
-  // source recording no `keep` is not read as converted, the default.
+test('a refresh downloads every file again, and one with nothing upstream nothing', () => {
+  // Fails if a refresh is read as asking for what changed (no other copy is kept to answer "not modified" with, ADR
+  // 0119), or if a file or homebrew source is read as downloading anything.
   assert.deepEqual(fetchCost({ kind: 'refresh', source: source() }), { downloads: 'all', files: 740 });
-  assert.deepEqual(fetchCost({ kind: 'refresh', source: source({ keep: 'converted' }) }), { downloads: 'all', files: 740 });
-  assert.deepEqual(fetchCost({ kind: 'refresh', source: source({ keep: 'files' }) }), { downloads: 'changed', files: 740 });
-});
-
-test('switching to files downloads everything again; switching to converted, or to what it is, fetches nothing', () => {
-  // Fails if the direction is not read: converted to files is the one that has no raw files to read.
-  assert.deepEqual(fetchCost({ kind: 'keep', source: source(), keep: 'files' }), { downloads: 'all', files: 740 });
-  assert.deepEqual(fetchCost({ kind: 'keep', source: source({ keep: 'files' }), keep: 'converted' }), { downloads: 'none' });
-  assert.deepEqual(fetchCost({ kind: 'keep', source: source({ keep: 'files' }), keep: 'files' }), { downloads: 'none' });
+  assert.deepEqual(fetchCost({ kind: 'refresh', source: source({ keep: 'files' }) }), { downloads: 'all', files: 740 });
+  assert.deepEqual(fetchCost({ kind: 'refresh', source: source({ kind: 'file' }) }), { downloads: 'none' });
 });
 
 test('nothing is asked on an unmetered connection, or one the platform cannot read', () => {
@@ -48,26 +41,17 @@ test('nothing is asked on an unmetered connection, or one the platform cannot re
 });
 
 test('nothing is asked for an action that fetches nothing, metered or not', () => {
-  // Fails if a switch to converted, which reads the cache, is asked about.
-  assert.equal(fetchPrompt({ kind: 'keep', source: source({ keep: 'files' }), keep: 'converted' }, metered), undefined);
+  assert.equal(fetchPrompt({ kind: 'refresh', source: source({ kind: 'homebrew' }) }, metered), undefined);
 });
 
 test('on a metered connection the question says what will be downloaded', () => {
-  // Fails if the two refreshes are worded alike, or the count from the last load is not used.
+  // Fails if the count from the last load is not used.
   assert.deepEqual(fetchPrompt({ kind: 'refresh', source: source() }, metered), {
     title: 'Refresh Core?',
-    message: `Refreshing downloads all 740 of its files again, because it is kept converted.\n\n${METERED_NOTE}`,
+    message: `Refreshing downloads all 740 of its files again.\n\n${METERED_NOTE}`,
     confirm: 'Refresh',
   });
-  assert.equal(
-    fetchPrompt({ kind: 'refresh', source: source({ keep: 'files' }) }, metered)?.message,
-    `Refreshing asks for each of its files (740) and downloads the ones that changed.\n\n${METERED_NOTE}`,
-  );
-  assert.deepEqual(fetchPrompt({ kind: 'keep', source: source({ fileCount: undefined }), keep: 'files' }, metered), {
-    title: 'Keep Core as files?',
-    message: `Keeping it as files downloads all of its files again, because the converted form keeps none of them.\n\n${METERED_NOTE}`,
-    confirm: 'Keep as files',
-  });
+  assert.match(fetchPrompt({ kind: 'refresh', source: source({ fileCount: undefined }) }, metered)!.message, /^Refreshing downloads all of its files again/);
 });
 
 test('adding a source says the connection is metered only when it is', () => {

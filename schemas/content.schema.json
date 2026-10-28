@@ -879,6 +879,127 @@
         },
         "author": {
           "type": "string"
+        },
+        "parts": {
+          "description": "The parts tree a user switches parts off in, its top being the source itself.",
+          "$ref": "#/$defs/part"
+        },
+        "files": {
+          "description": "The files in load order; each element's origin.fileUrl names one. A generated one is written by a conversion and loaded whatever parts are off.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "url"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "generated": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "level",
+              "message"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "level": {
+                "enum": [
+                  "error",
+                  "warning"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "elementId": {
+                "type": "string"
+              },
+              "fileUrl": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "etags": {
+          "description": "For each address a conversion fetched, the ETag it was answered with.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "converted": {
+          "type": "object",
+          "required": [
+            "from",
+            "converter"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "converter": {
+              "type": "number"
+            },
+            "at": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "part": {
+      "type": "object",
+      "required": [
+        "name",
+        "url",
+        "isIndex"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "isIndex": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/part"
+          }
+        },
+        "failed": {
+          "type": "string"
+        },
+        "repeated": {
+          "type": "boolean"
+        },
+        "tooDeep": {
+          "type": "boolean"
         }
       }
     }

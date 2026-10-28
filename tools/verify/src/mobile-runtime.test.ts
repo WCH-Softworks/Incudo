@@ -9,9 +9,8 @@
  *    feature may not parse. This says what to check on a device; the device says whether it is there.
  * 2. **How big a `.incu` is**, packed from every sample with `packCharacter`, and how long opening one with no source and
  *    building its sheet document takes here, as a scale for the phone.
- * 3. **What the content cache holds**: the bytes a full AuroraLegacy download keeps in `Storage`, the largest single
- *    value, and how long its keys are as the app writes them (`cacheKey(source URL, file URL)`), since a key that became
- *    a file name would meet a 255-byte limit.
+ * 3. **What a source is kept as**: the bytes a full AuroraLegacy download fetches, and the size of the one file its
+ *    conversion is kept as (ADR 0119), which a phone reads whole on every load that needs content.
  */
 
 import { test } from 'node:test';
@@ -21,7 +20,7 @@ import { join } from 'node:path';
 import { deflateRawSync } from 'node:zlib';
 
 import { BundleElementIndex, readCharacterContainer, type Fetcher } from '@incudo/core';
-import { cacheKey } from '@incudo/content';
+import { sourceFileName } from '@incudo/content';
 import { CharacterBuilder, packCharacter, sheetDocument } from '@incudo/ui';
 
 import { loadCorpus } from './corpus.ts';
@@ -155,10 +154,10 @@ test('how big a packed .incu is, and how long opening one with no source takes h
   assert.equal(zipped.length, readManifest().samples.length);
 });
 
-/** The URL the app adds AuroraLegacy by, and so the source id its cache keys start with (`apps/desktop/src/content.ts`). */
+/** The URL the app adds AuroraLegacy by, and so the name of the file it is kept as. */
 const AURORA_LEGACY_INDEX = 'https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index';
 
-test('what a full AuroraLegacy download keeps in Storage', { skip: corpusSkip }, async (t) => {
+test('what a full AuroraLegacy download fetches, and the file its conversion is kept as', { skip: corpusSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const fetched = new Map<string, number>();
   const wrap = (inner: Fetcher): Fetcher => ({
@@ -169,17 +168,14 @@ test('what a full AuroraLegacy download keeps in Storage', { skip: corpusSkip },
     },
   });
   const started = performance.now();
-  await loadCorpus(requireCorpus(), { wrap });
+  const { bundle } = await loadCorpus(requireCorpus(), { wrap });
   const elapsed = Math.round(performance.now() - started);
   const sizes = [...fetched.values()];
   const total = sizes.reduce((a, b) => a + b, 0);
-  const keys = [...fetched.keys()].map((url) => cacheKey(AURORA_LEGACY_INDEX, url));
-  const keyBytes = keys.map((k) => new TextEncoder().encode(k).length);
-  const longest = keys[keyBytes.indexOf(Math.max(...keyBytes))]!;
-  t.diagnostic(`files cached: ${sizes.length} (indexes and element files), total ${(total / 1024 / 1024).toFixed(2)} MB of UTF-8`);
+  const kept = new TextEncoder().encode(`${JSON.stringify(bundle)}\n`).length;
+  t.diagnostic(`files fetched: ${sizes.length} (indexes and element files), total ${(total / 1024 / 1024).toFixed(2)} MB of UTF-8`);
   t.diagnostic(`value bytes per key: ${quantiles(sizes)}; over 1 MB: ${sizes.filter((n) => n > 1024 * 1024).length}; over 100 KB: ${sizes.filter((n) => n > 100 * 1024).length}`);
-  t.diagnostic(`key bytes (cacheKey with the AuroraLegacy source URL): ${quantiles(keyBytes)}; over 255: ${keyBytes.filter((n) => n > 255).length}`);
-  t.diagnostic(`the longest key: ${longest.length} characters`);
-  t.diagnostic(`a load from disk here: ${elapsed} ms`);
+  t.diagnostic(`kept as one file, ${sourceFileName({ id: AURORA_LEGACY_INDEX, url: AURORA_LEGACY_INDEX })}: ${(kept / 1024 / 1024).toFixed(2)} MB`);
+  t.diagnostic(`a conversion and load from disk here: ${elapsed} ms`);
   assert.ok(sizes.length > 0);
 });

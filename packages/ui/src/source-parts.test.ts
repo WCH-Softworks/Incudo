@@ -2,47 +2,19 @@
  * ADR 0055's chooser and ADR 0056's file adding, as the Sources pane reads them.
  *
  * The chooser's total must be what a load of the same source reports, so it is compared with a real `ContentLibrary`
- * load through `partsFilter`, including the case where the only place a part is listed is under a part that is off.
+ * load with those parts switched off, including the case where the only place a part is listed is under a part that is off.
  * Each test names the perturbation that fails it.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ContentLibrary, partsFilter, readIndexTree, SourceProfile, type ContentIndex, type ContentSource, type ElementFile, type FileRef } from '@incudo/content';
-import { MemoryStorage } from '@incudo/core';
+import { auroraConverter, convertAuroraSource } from '@incudo/aurora-import';
+import { ContentLibrary, SourceProfile, type IndexTreeNode } from '@incudo/content';
+import { MemoryStorage, type ContentBundle, type FetchResult, type Fetcher } from '@incudo/core';
 
 import { addContentFiles, decodeText, describeContentFiles } from './content-files.ts';
 import { excludedWithin, partsView, togglePart, type PartView } from './source-parts.ts';
-
-function memory(indexes: Record<string, string[]>): ContentSource {
-  const ref = (url: string): FileRef => ({ name: url.split('/').pop()!, url, isIndex: url.endsWith('.index') });
-  return {
-    id: 'test',
-    loadIndex: async (url: string): Promise<ContentIndex> => {
-      const files = indexes[url];
-      if (!files) throw new Error('HTTP 404');
-      return { url, name: `The ${url.split('/').pop()!.replace('.index', '')} book`, files: files.map(ref), format: 'incudo' };
-    },
-    loadFile: async (fileRef: FileRef): Promise<ElementFile> => ({
-      url: fileRef.url,
-      elements: [
-        {
-          id: fileRef.url,
-          type: 'Widget',
-          name: fileRef.url,
-          source: 't',
-          setters: {},
-          rules: [],
-          supports: [],
-          origin: { sourceId: 'test', format: 'incudo', fileUrl: fileRef.url },
-        },
-      ],
-      diagnostics: [],
-    }),
-    checkForUpdates: async () => ({ state: 'unknown', reason: 'test' }),
-  };
-}
 
 const CORPUS: Record<string, string[]> = {
   'm://top.index': ['m://core.index', 'm://sup.index'],
@@ -52,11 +24,32 @@ const CORPUS: Record<string, string[]> = {
   'm://sup/tasha.index': ['m://sup/tasha/d.xml', 'm://core/phb/a.xml'],
 };
 
+/** The corpus as Aurora files, each index calling itself "The <name> book", each file declaring one element. */
+function fetcher(indexes: Record<string, string[]>): Fetcher {
+  return {
+    async fetchText(url: string): Promise<FetchResult> {
+      const files = indexes[url];
+      if (files) {
+        const name = `The ${url.split('/').pop()!.replace('.index', '')} book`;
+        const list = files.map((file) => `<file name="${file.split('/').pop()}" url="${file}" />`).join('');
+        return { url, text: `<index><info><name>${name}</name></info><files>${list}</files></index>` };
+      }
+      if (url.endsWith('.xml')) return { url, text: `<elements><element name="${url}" type="Widget" source="t" id="${url}" /></elements>` };
+      throw new Error('HTTP 404');
+    },
+  };
+}
+
+async function converted(indexes: Record<string, string[]>): Promise<ContentBundle> {
+  return (await convertAuroraSource({ fetcher: fetcher(indexes), url: 'm://top.index', sourceId: 'test', withoutGenerated: true })).bundle;
+}
+
+async function readTree(indexes: Record<string, string[]>): Promise<IndexTreeNode> {
+  return (await converted(indexes)).source!.parts!;
+}
+
 async function loadCount(indexes: Record<string, string[]>, excluded: string[]): Promise<number> {
-  const report = await new ContentLibrary().loadSource(memory(indexes), 'm://top.index', {
-    include: partsFilter({ excluded }),
-  });
-  return report.filesLoaded;
+  return new ContentLibrary().loadBundle('test', await converted(indexes), { excluded }).filesLoaded;
 }
 
 function find(parts: PartView[], url: string): PartView {
@@ -76,7 +69,7 @@ function findOrNull(parts: PartView[], url: string): PartView | null {
 }
 
 test('the total that will load is what a load reports, for every single part switched off', async () => {
-  const tree = await readIndexTree(memory(CORPUS), 'm://top.index');
+  const tree = await readTree(CORPUS);
   const urls = [...new Set(Object.values(CORPUS).flat())];
   assert.equal(partsView(tree, []).filesLoading, await loadCount(CORPUS, []));
   for (const url of urls) {
@@ -87,7 +80,7 @@ test('the total that will load is what a load reports, for every single part swi
 });
 
 test('a part under a switched-off part is unreachable and loads nothing, whatever its own switch says', async () => {
-  const tree = await readIndexTree(memory(CORPUS), 'm://top.index');
+  const tree = await readTree(CORPUS);
   const view = partsView(tree, ['m://core.index']);
   const core = find(view.parts, 'm://core.index');
   const phb = find(view.parts, 'm://core/phb.index');
@@ -102,7 +95,7 @@ test('a part under a switched-off part is unreachable and loads nothing, whateve
 });
 
 test('an index that was read is called what it calls itself, and keeps the name its parent lists it by', async () => {
-  const tree = await readIndexTree(memory(CORPUS), 'm://top.index');
+  const tree = await readTree(CORPUS);
   const phb = find(partsView(tree, []).parts, 'm://core/phb.index');
   assert.equal(phb.label, 'The phb book');
   assert.equal(phb.listedAs, 'phb.index');
@@ -110,7 +103,7 @@ test('an index that was read is called what it calls itself, and keeps the name 
 });
 
 test('toggling adds and removes one part, and saving keeps only what the tree still names', async () => {
-  const tree = await readIndexTree(memory(CORPUS), 'm://top.index');
+  const tree = await readTree(CORPUS);
   let excluded = togglePart([], 'm://sup.index');
   excluded = togglePart(excluded, 'm://core/ale.xml');
   assert.deepEqual(excluded, ['m://sup.index', 'm://core/ale.xml']);
@@ -133,7 +126,7 @@ test('several files are added one source each, and one refused file does not sto
       { name: 'more.xml', bytes: encode(HOMEBREW.replace('ID_HB_BLADE', 'ID_HB_OTHER')) },
     ],
     profile,
-    storage,
+    { fetcher: fetcher({}), storage, converter: auroraConverter },
     { systemId: 'dnd5e' },
   );
   assert.deepEqual(
@@ -150,7 +143,7 @@ test('several files are added one source each, and one refused file does not sto
   );
   assert.equal(describeContentFiles(results), '2 files added, 1 not added.');
 
-  const again = await addContentFiles([{ name: 'blades.xml', bytes: encode(HOMEBREW) }], profile, storage, {
+  const again = await addContentFiles([{ name: 'blades.xml', bytes: encode(HOMEBREW) }], profile, { fetcher: fetcher({}), storage, converter: auroraConverter }, {
     systemId: 'dnd5e',
   });
   assert.equal(describeContentFiles(again), '1 replaced with the newer copy.');

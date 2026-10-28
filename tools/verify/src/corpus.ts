@@ -1,5 +1,5 @@
 /**
- * Loading an Aurora corpus from disk, and the four questions CI asks of it.
+ * Converting an Aurora corpus from disk and loading it (ADR 0119), and the four questions CI asks of it.
  *
  * This is what `incudo validate` used to be, minus the command line (ADR 0039). The numbers in
  * CLAUDE.md's baselines are measured by `corpus.test.ts` through the functions here, and CI's
@@ -13,9 +13,17 @@
  */
 
 import { dirname } from 'node:path';
-import { referencedElementIds, type Fetcher } from '@incudo/core';
-import { ContentLibrary, HttpContentSource, partsFilter, type SourceDiagnostic } from '@incudo/content';
-import { KNOWN_UPSTREAM_TYPOS } from '@incudo/aurora-import';
+import { referencedElementIds, type ContentBundle, type Fetcher } from '@incudo/core';
+import { ContentLibrary, type SourceDiagnostic } from '@incudo/content';
+import {
+  APP_ELEMENTS_URL,
+  IMPROVEMENT_OPTIONS_URL,
+  KNOWN_UPSTREAM_TYPOS,
+  convertAuroraSource,
+  parseAuroraIndex,
+  type AuroraIndex,
+  type ConvertedSource,
+} from '@incudo/aurora-import';
 import { LocalMirrorFetcher, OfflineFetcher } from './node-platform.ts';
 
 /**
@@ -40,6 +48,8 @@ export interface CorpusLocation {
 export interface LoadedCorpus {
   location: CorpusLocation;
   library: ContentLibrary;
+  /** The corpus converted: the Incudo content source the library loaded. */
+  bundle: ContentBundle;
   filesLoaded: number;
   elementsLoaded: number;
   elapsedMs: number;
@@ -55,33 +65,48 @@ export interface CorpusLoadOptions {
   excluded?: string[];
 }
 
-/** The corpus as a content source, offline, as a load reads it. */
-export function corpusSource(location: CorpusLocation, wrap?: (fetcher: Fetcher) => Fetcher): HttpContentSource {
+/** The corpus's files, offline, as a conversion asks for them. */
+export function corpusFetcher(location: CorpusLocation, wrap?: (fetcher: Fetcher) => Fetcher): Fetcher {
   const disk =
     location.layout === 'repository'
       ? new LocalMirrorFetcher(location.root ?? dirname(location.index), new OfflineFetcher())
       : new OfflineFetcher();
-  return new HttpContentSource({
-    id: location.index,
-    fetcher: wrap ? wrap(disk) : disk,
+  return wrap ? wrap(disk) : disk;
+}
+
+/** Convert the corpus into one Incudo content source, as adding it in the app does. */
+export function convertCorpus(
+  location: CorpusLocation,
+  options: { concurrency?: number; wrap?: (fetcher: Fetcher) => Fetcher; sourceId?: string; url?: string; withoutGenerated?: boolean } = {},
+): Promise<ConvertedSource> {
+  return convertAuroraSource({
+    fetcher: corpusFetcher(location, options.wrap),
+    url: options.url ?? location.index,
+    sourceId: options.sourceId ?? options.url ?? location.index,
     resolveByName: location.layout === 'aurora-folder',
+    concurrency: options.concurrency,
+    withoutGenerated: options.withoutGenerated,
   });
 }
 
 export async function loadCorpus(location: CorpusLocation, options: CorpusLoadOptions = {}): Promise<LoadedCorpus> {
   const started = Date.now();
+  const { bundle } = await convertCorpus(location, options);
   const library = new ContentLibrary();
-  const report = await library.loadSource(corpusSource(location, options.wrap), location.index, {
-    concurrency: options.concurrency,
-    include: partsFilter({ excluded: options.excluded }),
-  });
+  const report = library.loadBundle(location.index, bundle, { excluded: options.excluded });
   return {
     location,
     library,
+    bundle,
     filesLoaded: report.filesLoaded,
     elementsLoaded: report.elementsLoaded,
     elapsedMs: Date.now() - started,
   };
+}
+
+/** Whether an element was written by the conversion rather than read from a file: Aurora's app elements and options. */
+export function isGenerated(element: { origin: { fileUrl?: string } }): boolean {
+  return element.origin.fileUrl === APP_ELEMENTS_URL || element.origin.fileUrl === IMPROVEMENT_OPTIONS_URL;
 }
 
 // --- analysis --------------------------------------------------------------
@@ -133,7 +158,7 @@ export function analyseCorpus(corpus: LoadedCorpus): CorpusAnalysis {
   return {
     files: corpus.filesLoaded,
     elements: corpus.elementsLoaded,
-    generated: library.generatedElements,
+    generated: all.filter(isGenerated).length,
     size: library.size,
     synthesizedFromText: all.filter((e) => e.id.includes(SYNTHESIZED_ID_MARKER)).length,
     errors: library.diagnostics.filter((d) => d.level === 'error'),
@@ -218,7 +243,7 @@ function noteFor(id: string): string {
  */
 export const RECORDED_BUDGET: CorpusBudget = {
   maxUnresolved: 1,
-  maxWarnings: 57,
+  maxWarnings: 60,
   expectFiles: 740,
   expectElements: 14316,
 };
@@ -307,4 +332,17 @@ export function budgetFromEnvironment(
     budget[field] = value;
   }
   return budget;
+}
+
+/** One of the corpus's indexes, read as Aurora writes it: what a test splitting the corpus into sources walks. */
+export async function readCorpusIndex(location: CorpusLocation, url: string): Promise<AuroraIndex> {
+  const { text } = await corpusFetcher(location).fetchText(url);
+  return parseAuroraIndex(text, url, { resolveByName: location.layout === 'aurora-folder' });
+}
+
+/** Indexes of the corpus, each converted as a source of its own and loaded into one library in the order given. */
+export async function loadCorpusSources(location: CorpusLocation, urls: readonly string[]): Promise<ContentLibrary> {
+  const library = new ContentLibrary();
+  for (const url of urls) library.loadBundle(url, (await convertCorpus(location, { url })).bundle);
+  return library;
 }

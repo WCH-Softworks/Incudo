@@ -39,7 +39,6 @@ import {
   type LibraryEntryRef,
   type PickedFile,
 } from '@incudo/core';
-import { ContentLibrary, HttpContentSource } from '@incudo/content';
 import { imageExtension } from '@incudo/aurora-import';
 import { CharacterBuilder, CharacterLibrary, importAuroraSavesIntoLibrary } from '@incudo/ui';
 

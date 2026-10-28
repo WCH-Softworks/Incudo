@@ -9,47 +9,52 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { MemoryStorage, type FetchResult, type Fetcher } from '@incudo/core';
+import { MemoryStorage, type ContentBundle, type Element, type FetchResult, type Fetcher, type Rule } from '@incudo/core';
 
 import { declaredKey, declaredSignatureKey, readDeclared, switchedOffSupply } from './declared.ts';
 import { removeSource } from './file-source.ts';
 import { loadSources, type LoadedSource } from './load-sources.ts';
 import { SourceProfile, type ConfiguredSource } from './profile.ts';
+import { testBundle, testConverter, testElement, type TestFile } from './test-bundle.ts';
 
 const BASE = 'https://example.test/';
-const element = (id: string, rules = ''): string =>
-  `<element name="${id}" type="Widget" source="Test" id="${id}"><description><p>${id}</p></description><rules>${rules}</rules></element>`;
-const grant = (id: string): string => `<grant type="Widget" id="${id}" />`;
-const elements = (body: string): string => `<?xml version="1.0"?><elements>${body}</elements>`;
-const index = (name: string, ...files: string[]): string =>
-  `<?xml version="1.0"?><index><info><name>${name}</name><update version="1.0.0" /></info><files>${files
-    .map((file) => `<file name="${file}" url="${BASE}${file}" />`)
-    .join('')}</files></index>`;
+const grant = (id: string): Rule => ({ kind: 'grant', key: `grant-${id}`, type: 'Widget', id }) as Rule;
+const el = (id: string, ...grants: string[]): Element => testElement(id, { rules: grants.map(grant) });
+const file = (name: string, ...elements: Element[]): TestFile => ({ url: `${BASE}${name}`, name, elements });
 
 /**
  * Core holds the skill and the language and lists the book's index, as AuroraLegacy's `core.index` lists the Player's
- * Handbook's. The book grants both and declares a race; the supplement grants the race, appends to a feat only Extras
- * declares, and grants a misspelt id nothing declares.
+ * Handbook's. The book grants both and declares a race; the supplement grants the race, extends a feat only Extras
+ * declares, and grants a misspelt id nothing declares. Each source is served converted, as the test converter reads it.
  */
-const FILES: Record<string, string> = {
-  'core.index': index('Core', 'core.xml', 'book.index'),
-  'core.xml': elements(element('ID_SKILL') + element('ID_LANGUAGE')),
-  'book.index': index('Book', 'book.xml'),
-  'book.xml': elements(element('ID_RACE', grant('ID_SKILL') + grant('ID_LANGUAGE'))),
-  'extras.index': index('Extras', 'extras.xml'),
-  'extras.xml': elements(element('ID_LANGUAGE') + element('ID_FEAT')),
-  'supplement.index': index('Supplement', 'supplement.xml'),
-  'supplement.xml': elements(
-    element('ID_SUBRACE', grant('ID_RACE') + grant('ID_MISPELT')) +
-      `<append id="ID_FEAT"><rules>${grant('ID_SUBRACE')}</rules></append>`,
+const BOOK_FILE = file('book.xml', el('ID_RACE', 'ID_SKILL', 'ID_LANGUAGE'));
+const SOURCES: Record<string, ContentBundle> = {
+  'core.index': testBundle(`${BASE}core.index`, [file('core.xml', el('ID_SKILL'), el('ID_LANGUAGE')), BOOK_FILE], {
+    name: 'Core',
+    parts: {
+      name: 'Core',
+      url: `${BASE}core.index`,
+      isIndex: true,
+      children: [
+        { name: 'core.xml', url: `${BASE}core.xml`, isIndex: false },
+        { name: 'book.index', url: `${BASE}book.index`, isIndex: true, children: [{ name: 'book.xml', url: `${BASE}book.xml`, isIndex: false }] },
+      ],
+    },
+  }),
+  'book.index': testBundle(`${BASE}book.index`, [BOOK_FILE], { name: 'Book' }),
+  'extras.index': testBundle(`${BASE}extras.index`, [file('extras.xml', el('ID_LANGUAGE'), el('ID_FEAT'))], { name: 'Extras' }),
+  'supplement.index': testBundle(
+    `${BASE}supplement.index`,
+    [{ ...file('supplement.xml', el('ID_SUBRACE', 'ID_RACE', 'ID_MISPELT')), extensions: [{ id: 'ID_FEAT', rules: [grant('ID_SUBRACE')], supports: [] }] }],
+    { name: 'Supplement' },
   ),
 };
 
 class Files implements Fetcher {
   async fetchText(url: string): Promise<FetchResult> {
-    const text = FILES[url.slice(BASE.length)];
-    if (text === undefined) throw new Error(`no such file: ${url}`);
-    return { url, text };
+    const bundle = SOURCES[url.slice(BASE.length)];
+    if (bundle === undefined) throw new Error(`no such file: ${url}`);
+    return { url, text: JSON.stringify(bundle) };
   }
 }
 
@@ -72,7 +77,7 @@ function profileOf(...names: string[]): { profile: SourceProfile; storage: Count
 
 /** Load the enabled ones, offering the switched-off ones as `switchedOff`, as the shells do. */
 async function load(profile: SourceProfile, storage: MemoryStorage): Promise<Map<string, LoadedSource>> {
-  const loaded = await loadSources(profile.enabled, { fetcher: new Files(), storage }, undefined, {
+  const loaded = await loadSources(profile.enabled, { fetcher: new Files(), storage, converter: testConverter() }, undefined, {
     switchedOff: profile.sources.filter((source) => !source.enabled),
   });
   return new Map(loaded.sources.map((source) => [source.name, source]));
@@ -158,7 +163,7 @@ test('nothing is read or named when the caller offers no switched-off sources', 
   await load(profile, storage);
   sources.core!.enabled = false;
   sources.book!.enabled = true;
-  const loaded = await loadSources(profile.enabled, { fetcher: new Files(), storage });
+  const loaded = await loadSources(profile.enabled, { fetcher: new Files(), storage, converter: testConverter() });
   assert.ok(loaded.sources[0]!.missing);
   assert.equal(loaded.sources[0]!.switchedOff, undefined);
 });
@@ -180,7 +185,7 @@ test('removing a source removes its record', async () => {
   // Perturbation: leaving `removeDeclared` out of removeSource keeps both keys.
   const { profile, storage, sources } = profileOf('core');
   await load(profile, storage);
-  await removeSource(profile, storage, sources.core!.id);
+  await removeSource(profile, { storage }, sources.core!.id);
   assert.equal(await storage.read(declaredKey(sources.core!.id)), null);
   assert.equal(await storage.read(declaredSignatureKey(sources.core!.id)), null);
 });

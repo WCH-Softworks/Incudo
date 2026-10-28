@@ -46,7 +46,11 @@ test('the window may open exactly the About links, and no other address', async 
   const capability = JSON.parse(await read('apps', 'desktop', 'src-tauri', 'capabilities', 'default.json')) as {
     permissions: Array<string | { identifier: string; allow?: Array<{ url: string }> }>;
   };
-  const opener = capability.permissions.filter((permission) => (typeof permission === 'string' ? permission : permission.identifier).startsWith('opener:'));
+  // Showing a source's file in the file manager (ADR 0119) opens no address, so it is the one other opener permission.
+  const opener = capability.permissions.filter((permission) => {
+    const id = typeof permission === 'string' ? permission : permission.identifier;
+    return id.startsWith('opener:') && id !== 'opener:allow-reveal-item-in-dir';
+  });
   // Fails if the plugin is granted unscoped (`opener:default` or a bare `opener:allow-open-url` opens any address).
   assert.equal(opener.length, 1, JSON.stringify(opener));
   const [only] = opener;

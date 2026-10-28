@@ -49,6 +49,7 @@ import type {
   LibraryEntryRef,
   PickedFile,
   SavedFile,
+  SourceFiles,
   Storage,
   ZipCodec,
 } from '@incudo/core';
@@ -200,6 +201,38 @@ export class MobileCharacterStore implements CharacterStore {
     const file = new File(this.root(), name);
     if (!file.exists) file.create();
     file.write(bytes);
+  }
+}
+
+/**
+ * Converted content sources, as files in a `sources` folder of the app's own documents (ADR 0119), beside its library
+ * folder. A file, not a value in the SQLite table: a source's conversion is about 20 MB, and ADR 0085 measured 20 s for
+ * the table to read one value that size back.
+ */
+export class MobileSourceFiles implements SourceFiles {
+  private folder(): Directory {
+    const folder = new Directory(Paths.document, 'sources');
+    if (!folder.exists) folder.create();
+    return folder;
+  }
+
+  async read(name: string): Promise<string | null> {
+    assertPlainFileName(name);
+    const file = new File(this.folder(), name);
+    return file.exists ? file.text() : null;
+  }
+
+  async write(name: string, text: string): Promise<void> {
+    assertPlainFileName(name);
+    const file = new File(this.folder(), name);
+    if (!file.exists) file.create();
+    file.write(text);
+  }
+
+  async remove(name: string): Promise<void> {
+    assertPlainFileName(name);
+    const file = new File(this.folder(), name);
+    if (file.exists) file.delete();
   }
 }
 

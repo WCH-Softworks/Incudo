@@ -7,21 +7,18 @@
  * (CODE-REUSE-POLICY rule 1). That indirection is what lets the identical code run under Node
  * in `tools/verify`'s tests.
  *
- * What changed here with ADR 0029: this used to build a bare `HttpContentSource` with
- * `writeThrough`, which wrote a cache **nothing ever read back** — so every reload re-fetched
- * all 238 files, about three quarters of a minute, every time. `composeSource` puts the cache
- * in front of the network, which is what ADR 0004 designed in the first place.
+ * What changed with ADR 0119: a source reaches the library as Incudo content, the file it is kept as, converted once
+ * and loaded from that afterwards (`sourceContent`).
  *
  * And what is *not* here: nothing in this file is needed to open a character. A save embeds
  * its own content (ADR 0012), so the library screen loads with none of this having run.
  */
 
-import type { ElementIndex, Fetcher, Storage } from '@incudo/core';
+import type { ElementIndex } from '@incudo/core';
 
-import { composeForLoad, writeVersionStamp, type ComposeOptions } from './compose.ts';
+import { sourceContent, type ComposeOptions } from './compose.ts';
 import { readDeclared, switchedOffSupply, writeDeclared, type DeclaredRecord, type SwitchedOffSupply } from './declared.ts';
 import { ContentLibrary, type MissingContent, type SourceOverlap } from './library.ts';
-import { partsFilter } from './parts.ts';
 import type { ConfiguredSource } from './profile.ts';
 
 export interface LoadedSource {
@@ -76,11 +73,7 @@ export interface LoadProgress {
 }
 
 /**
- * Load every enabled source into one index.
- *
- * `resolveByName` is left off: that is how Aurora's *downloader* lays files out on disk, and a
- * URL index is the repository layout instead. Getting this backwards silently fails to resolve
- * every file, so the two are never guessed between — see docs/AURORA-FORMAT.md.
+ * Load every enabled source into one index, converting any that has not been converted yet.
  */
 export async function loadSources(
   sources: readonly ConfiguredSource[],
@@ -95,28 +88,21 @@ export async function loadSources(
   // in the core book — which is the whole point of the construct.
   for (const source of sources) {
     try {
-      const composed = composeForLoad(source, platform);
-      const report = await library.loadSource(composed.source, source.url, {
-        // The parts the user switched off are skipped wherever they are named (ADR 0055).
-        include: partsFilter(source),
-        onProgress: (count, total, current) =>
-          onProgress?.({ loaded: count, total, current, source: source.name }),
-      });
+      // The source's file, converted first when it has none yet (ADR 0119): the one time a load reads the network.
+      const bundle = await sourceContent(source, platform, (count, total, current) =>
+        onProgress?.({ loaded: count, total, current, source: source.name }),
+      );
+      // The parts the user switched off are left out wherever they are named (ADR 0055).
+      const report = library.loadBundle(source.id, bundle, { excluded: source.excluded });
       loaded.push({
         id: source.id,
-        name: report.index.name || source.name,
+        name: report.info.name || source.name,
         fileCount: report.filesLoaded,
         elementCount: report.elementsLoaded,
-        version: report.index.version,
+        version: report.info.version,
       });
-      // The stamp an update check compares against (ADR 0029). Written after a successful
-      // load, because a version nothing was fetched under would be a claim about a cache that
-      // does not exist.
-      await writeVersionStamp(platform.storage, source.id, report.index.version);
       // What it declared, kept for when it is switched off (ADR 0090). Written only when it changed.
       await writeDeclared(platform.storage, source, report.declared);
-      // Converted once the load is in, from what it read (ADR 0085): the next load parses nothing.
-      await composed.finish();
     } catch (error) {
       loaded.push({
         id: source.id,

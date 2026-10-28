@@ -1,79 +1,56 @@
 /**
- * A ContentLibrary is everything currently loaded: several sources, resolved into one
- * element index the engine can query. It walks nested indexes and loads every file they name.
+ * A ContentLibrary is everything currently loaded: several sources, resolved into one element index the engine can
+ * query.
  *
- * Every file, on purpose: the builder lists candidates by type, and an Aurora index cannot say what
- * a file holds without fetching it. ADR 0051 measured lazy per-file loading and declined it.
+ * It reads Incudo's content format and nothing else (ADR 0119): a source is converted before it reaches here, so the
+ * library walks no network, parses no Aurora file and invents no element. What it does across sources is generic: the
+ * later of two definitions of an id is used (ADR 0054), an extension a source writes for another source's element is
+ * applied to it whichever loads first (ADR 0051), and what a source refers to that nothing loaded declares is reported
+ * (ADR 0052).
  */
 
 import {
-  GENERATED_SOURCE_ID,
-  auroraGeneratedElements,
-  improvementOptionElements,
-  type ElementAppend,
-} from '@incudo/aurora-import';
-import { MapElementIndex, referencedElementIds, type Element, type ElementIndex } from '@incudo/core';
-import type { ContentIndex, ContentSource, FileRef, SourceDiagnostic } from './source.ts';
+  MapElementIndex,
+  referencedElementIds,
+  type ContentBundle,
+  type ContentDiagnostic,
+  type ContentPart,
+  type ContentSourceInfo,
+  type Element,
+  type ElementExtension,
+  type ElementIndex,
+} from '@incudo/core';
+
+export type SourceDiagnostic = ContentDiagnostic;
 
 export interface LoadOptions {
-  /** Stop after this many nested index levels. Content from the internet can be cyclic. */
-  maxDepth?: number;
-  /** Called as each file finishes, for progress UI. */
-  onProgress?: (loaded: number, total: number, current: string) => void;
-  /** Skip files whose name matches; used to avoid pulling images and other non-XML refs. */
-  include?: (ref: FileRef) => boolean;
-  /**
-   * Load the corpus exactly as it is on disk, without the elements Aurora's app generates at
-   * runtime. Only useful for looking at what the files themselves say — every real
-   * derivation wants the overlay, or 51 references dangle. See `generated-elements.ts`.
-   */
-  withoutGeneratedElements?: boolean;
-  /**
-   * How many requests a load has in flight at once, indexes and element files together. ADR
-   * 0029 measured this against the real AuroraLegacy index and settled on
-   * {@link DEFAULT_CONCURRENCY}.
-   *
-   * Raising it does **not** make the load non-deterministic: a batch is applied to the index
-   * in the order the refs appeared, not in the order the fetches finished, so which file wins
-   * a duplicate id and what order the diagnostics come out in are unchanged. A nested index is
-   * *fetched* as soon as the index naming it is read (ADR 0051) and *applied* when the queue
-   * reaches it, which is where it always was.
-   */
-  concurrency?: number;
+  /** The parts switched off (ADR 0055): a file at one of these addresses, or under an index at one, is left out. */
+  excluded?: readonly string[];
+  /** Leave out what a conversion generated rather than read from a file: for looking at what the files alone say. */
+  withoutGenerated?: boolean;
 }
 
-/**
- * Six at a time. Measured, not guessed — see ADR 0029: sequentially, the 244-file
- * AuroraLegacy index takes about a minute over the network, and almost all of that is
- * round-trip latency rather than bandwidth.
- */
-export const DEFAULT_CONCURRENCY = 6;
-
-/** How many nested index levels a load follows before it stops and warns. Content from the internet can be cyclic. */
-export const DEFAULT_MAX_DEPTH = 8;
-
 export interface LoadReport {
-  index: ContentIndex;
+  info: ContentSourceInfo;
   filesLoaded: number;
   elementsLoaded: number;
   diagnostics: SourceDiagnostic[];
   /**
-   * The ids this source's files declare, sorted, each once: what the files it reaches hold, whether this load read them
-   * or an earlier source in the same library already had. Not the elements Incudo generates for Aurora content, which
-   * come from no file. What a record of a switched-off source is made of (ADR 0090).
+   * The ids this source's files declare, sorted, each once, whether this load added them or an earlier source in the
+   * same library already had them. Not what a conversion generated. What a record of a switched-off source is made of
+   * (ADR 0090).
    */
   declared: string[];
 }
 
 /**
- * What one source refers to that nothing loaded declares — ADR 0052. Reported, never enforced: a supplement
- * enabled without the book it builds on is a thing a user may mean to do, and nothing in an Aurora index says
- * which book that is.
+ * What one source refers to that nothing loaded declares — ADR 0052. Reported, never enforced: a supplement enabled
+ * without the book it builds on is a thing a user may mean to do.
  */
 export interface MissingContent {
   /** Ids a grant, or a select's default, names and no loaded source declares. Sorted, each once. */
   references: string[];
-  /** The target of each `<append>` from this source that found nothing to add to, one per append, sorted. */
+  /** The target of each extension from this source that found nothing to add to, one per extension, sorted. */
   additions: string[];
 }
 
@@ -92,11 +69,51 @@ export interface SourceOverlap {
   same: number;
 }
 
+/**
+ * Every address the parts switched off leave out: a part is off where it is named, and so is everything under an index
+ * that is off; one still named somewhere that is on stays in. Tasha's lists a Player's Handbook file too, so switching
+ * the Handbook off leaves that file in, read under Tasha's (ADR 0055, as a load of the indexes always read it).
+ */
+export function excludedAddresses(parts: ContentPart | undefined, excluded: readonly string[] | undefined): Set<string> {
+  const switchedOff = new Set(excluded ?? []);
+  if (!switchedOff.size || !parts) return switchedOff;
+  // An index's parts are listed at its first mention; a repeat names it and lists nothing.
+  const listed = new Map<string, ContentPart>();
+  const all = new Set<string>();
+  const index = (part: ContentPart): void => {
+    all.add(part.url);
+    if (part.children && !listed.has(part.url)) listed.set(part.url, part);
+    for (const child of part.children ?? []) index(child);
+  };
+  index(parts);
+  const reached = new Set<string>();
+  const reach = (part: ContentPart): void => {
+    if (switchedOff.has(part.url) || reached.has(part.url)) return;
+    reached.add(part.url);
+    for (const child of listed.get(part.url)?.children ?? []) reach(child);
+  };
+  reach(parts);
+  const off = new Set([...switchedOff]);
+  for (const url of all) if (!reached.has(url)) off.add(url);
+  return off;
+}
+
+/** A bundle's files in load order: its own list, or for one with none (a save's content, a homebrew body) the files its elements name. */
+function filesOf(bundle: ContentBundle): Array<{ url: string; generated?: boolean }> {
+  if (bundle.source?.files) return bundle.source.files;
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const element of bundle.elements) {
+    const url = element.origin?.fileUrl ?? '';
+    if (!seen.has(url)) urls.push(url), seen.add(url);
+  }
+  return urls.map((url) => ({ url }));
+}
+
 export class ContentLibrary {
   private readonly index = new MapElementIndex();
   private readonly loadedUrls = new Set<string>();
   readonly diagnostics: SourceDiagnostic[] = [];
-  readonly indexes: ContentIndex[] = [];
 
   get elements(): ElementIndex {
     return this.index;
@@ -106,227 +123,85 @@ export class ContentLibrary {
     return this.index.size;
   }
 
-  /** Load an index and everything it references. */
-  async loadSource(
-    source: ContentSource,
-    indexUrl: string,
-    options: LoadOptions = {},
-  ): Promise<LoadReport> {
-    const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
-    // Framed here, as a nested index and a file are below: a source's layers and its fetcher say
-    // what went wrong, and only this names the address.
-    const root = await source.loadIndex(indexUrl).catch((error: unknown) => {
-      throw new Error(`Could not load ${indexUrl}: ${(error as Error).message}`);
-    });
-    this.indexes.push(root);
-    this.indexFiles.set(indexUrl, root.files);
-
-    // Before the files, not after. Aurora's app materializes 51 elements that no XML file
-    // declares, and content grants and requires them constantly; without them a full corpus
-    // has 51 dangling references and every imported character is missing its size. Adding
-    // them first means a source that does declare one of these ids overrides the overlay and
-    // says so through the usual duplicate-id warning, rather than being quietly overwritten.
-    if (root.format === 'aurora' && !options.withoutGeneratedElements) {
-      this.addGeneratedElements(source.id);
+  /**
+   * Add a source's content. Each element is recorded as the source's (`origin.sourceId`), whatever the file said, so a
+   * copy of a file under another source's id is that source's content.
+   */
+  loadBundle(sourceId: string, bundle: ContentBundle, options: LoadOptions = {}): LoadReport {
+    const off = excludedAddresses(bundle.source?.parts, options.excluded);
+    const byFile = new Map<string, Element[]>();
+    for (const element of bundle.elements) {
+      const url = element.origin?.fileUrl ?? '';
+      const owned: Element = { ...element, origin: { sourceId, ...(url ? { fileUrl: url } : {}) } };
+      const list = byFile.get(url);
+      if (list) list.push(owned);
+      else byFile.set(url, [owned]);
     }
 
-    const queue: Array<{ ref: FileRef; depth: number }> = root.files.map((ref) => ({
-      ref,
-      depth: 0,
-    }));
     let filesLoaded = 0;
     let elementsLoaded = 0;
-    let processed = 0;
-    /** `<append>` blocks, held until every file is in — see `applyAppends`. */
-    const pending: ElementAppend[] = [];
-
-    const concurrency = Math.max(1, options.concurrency ?? DEFAULT_CONCURRENCY);
-    const limit = limiter(concurrency);
-
-    // Indexes fetched ahead of the queue — ADR 0051. Sixty of the first sixty-three requests of an
-    // AuroraLegacy load are indexes, and walking them one at a time was about 13 s of a cold first
-    // load. Each is asked for the moment the index naming it is read, so a chain of them costs its
-    // depth in round trips rather than its length. Only what the walk below would load is asked
-    // for: the same depth limit, `include` and "already loaded" checks, so the URLs a load fetches
-    // are the same set as before, and the queue still decides when each one is applied.
-    const indexFetches = new Map<string, Promise<ContentIndex>>();
-    const prefetch = (ref: FileRef, depth: number): void => {
-      if (!ref.isIndex || depth >= maxDepth) return;
-      if (indexFetches.has(ref.url) || this.loadedUrls.has(ref.url)) return;
-      if (options.include && !options.include(ref)) return;
-      const fetching = limit(() => source.loadIndex(ref.url), true);
-      indexFetches.set(ref.url, fetching);
-      // A failure is reported when the queue reaches this index, as it always was; here it is only
-      // kept from counting as unhandled.
-      fetching.then(
-        (nested) => {
-          for (const child of nested.files) prefetch(child, depth + 1);
-        },
-        () => undefined,
-      );
-    };
-    for (const ref of root.files) prefetch(ref, 0);
-
-    while (queue.length) {
-      const item = queue.shift()!;
-      const { ref, depth } = item;
-      processed++;
-      options.onProgress?.(processed, processed + queue.length, ref.name || ref.url);
-
-      if (!this.shouldLoad(ref, options)) continue;
-
-      if (ref.isIndex) {
-        // Applied here, before any more files: the children it names are what the next batch is
-        // made of. Usually already fetched (`prefetch`, above), so this waits for nothing.
-        try {
-          if (depth >= maxDepth) {
-            this.diagnostics.push({
-              level: 'warning',
-              message: `Stopped at nesting depth ${maxDepth}: ${ref.url}`,
-              fileUrl: ref.url,
-            });
-            continue;
-          }
-          const nested = await (indexFetches.get(ref.url) ?? limit(() => source.loadIndex(ref.url), true));
-          this.indexes.push(nested);
-          this.indexFiles.set(ref.url, nested.files);
-          for (const child of nested.files) queue.push({ ref: child, depth: depth + 1 });
-        } catch (error) {
-          this.diagnostics.push({
-            level: 'error',
-            message: `Could not load ${ref.url}: ${(error as Error).message}`,
-            fileUrl: ref.url,
-          });
-        }
+    const declared = new Set<string>();
+    const loadedHere = new Set<string>();
+    for (const file of filesOf(bundle)) {
+      if (off.has(file.url)) continue;
+      const elements = byFile.get(file.url) ?? [];
+      if (file.generated) {
+        if (options.withoutGenerated) continue;
+        // What a conversion generated is what Aurora's app would have made once for everything loaded: added only where
+        // nothing loaded declares the id, so two Aurora sources do not read as defining the same 81 things.
+        for (const element of elements) if (!this.index.get(element.id)) this.index.add(element);
+        loadedHere.add(file.url);
         continue;
       }
-
-      // Take the run of element files at the head of the queue and fetch them together.
-      // The skip checks happen here, synchronously, so two refs to the same URL inside one
-      // batch cannot both get past `loadedUrls`.
-      const batch: FileRef[] = [ref];
-      while (batch.length < concurrency && queue[0] && !queue[0].ref.isIndex) {
-        const candidate = queue.shift()!;
-        processed++;
-        options.onProgress?.(processed, processed + queue.length, candidate.ref.name || candidate.ref.url);
-        if (!this.shouldLoad(candidate.ref, options)) continue;
-        batch.push(candidate.ref);
-      }
-
-      const results = await Promise.all(
-        batch.map(async (fileRef) => {
-          try {
-            return { ref: fileRef, file: await limit(() => source.loadFile(fileRef)) };
-          } catch (error) {
-            return { ref: fileRef, error: error as Error };
-          }
-        }),
-      );
-
-      // Applied in the order the refs appeared, never in the order they finished. That is
-      // what keeps "last definition of an id wins" and the diagnostic order identical to a
-      // sequential load.
-      for (const result of results) {
-        if ('error' in result && result.error) {
-          this.diagnostics.push({
-            level: 'error',
-            message: `Could not load ${result.ref.url}: ${result.error.message}`,
-            fileUrl: result.ref.url,
-          });
-          continue;
-        }
-        const file = result.file!;
-        this.addElements(file.elements);
-        this.fileIds.set(result.ref.url, file.elements.map((element) => element.id));
-        for (const append of file.appends ?? []) {
-          pending.push(append);
-          this.appendSources.set(append, source.id);
-        }
-        this.diagnostics.push(...file.diagnostics);
-        filesLoaded++;
-        elementsLoaded += file.elements.length;
-      }
+      for (const element of elements) declared.add(element.id);
+      // A file an earlier source already loaded is not loaded again: Core lists the Player's Handbook index too.
+      if (file.url && this.loadedUrls.has(file.url)) continue;
+      if (file.url) this.loadedUrls.add(file.url);
+      loadedHere.add(file.url);
+      this.addElements(elements);
+      filesLoaded++;
+      elementsLoaded += elements.length;
     }
 
-    this.applyAppends(pending);
-    // After the appends, because an append may carry the `<supports>` tags that say an option is
-    // already declared; and after every file, because the classes that ask for one are content.
-    if (root.format === 'aurora' && !options.withoutGeneratedElements) {
-      this.addImprovementOptions();
+    for (const diagnostic of bundle.source?.diagnostics ?? []) {
+      if (diagnostic.fileUrl && off.has(diagnostic.fileUrl)) continue;
+      if (diagnostic.fileUrl && !loadedHere.has(diagnostic.fileUrl) && byFile.has(diagnostic.fileUrl)) continue;
+      this.diagnostics.push(diagnostic);
     }
+
+    const extensions = (bundle.extensions ?? []).filter((extension) => !extension.fileUrl || loadedHere.has(extension.fileUrl));
+    for (const extension of extensions) this.extensionSources.set(extension, sourceId);
+    this.applyExtensions(extensions);
+
     return {
-      index: root,
+      info: bundle.source ?? { name: sourceId },
       filesLoaded,
       elementsLoaded,
       diagnostics: this.diagnostics,
-      declared: this.declaredUnder(indexUrl, options),
+      declared: [...declared].sort(),
     };
   }
 
-  /** The ids of every element file each loaded index names, by URL, and the indexes' own lists. */
-  private readonly fileIds = new Map<string, string[]>();
-  private readonly indexFiles = new Map<string, FileRef[]>();
-
+  /** Every extension loaded so far, by the id it targets, in the order its source loaded. */
+  private readonly extensionsByTarget = new Map<string, ElementExtension[]>();
   /**
-   * What the files a source reaches declare, walked again over what the library holds: the same `include` and depth
-   * the load used, but **not** its "already loaded" check. That check is why a source loaded after another that holds
-   * the same files (Core, then the Player's Handbook index Core lists) reads nothing itself, and a record made from
-   * what it read would say it declares nothing (ADR 0090).
-   */
-  private declaredUnder(indexUrl: string, options: LoadOptions): string[] {
-    const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
-    const ids = new Set<string>();
-    const seen = new Set<string>([indexUrl]);
-    const walk = (refs: readonly FileRef[], depth: number): void => {
-      for (const ref of refs) {
-        if (seen.has(ref.url)) continue;
-        if (options.include && !options.include(ref)) continue;
-        seen.add(ref.url);
-        if (ref.isIndex) {
-          const children = this.indexFiles.get(ref.url);
-          if (children && depth < maxDepth) walk(children, depth + 1);
-        } else if (isElementFile(ref)) {
-          for (const id of this.fileIds.get(ref.url) ?? []) ids.add(id);
-        }
-      }
-    };
-    walk(this.indexFiles.get(indexUrl) ?? [], 0);
-    return [...ids].sort();
-  }
-
-  /** Everything that used to sit between `queue.shift()` and the fetch, in one place. */
-  private shouldLoad(ref: FileRef, options: LoadOptions): boolean {
-    if (this.loadedUrls.has(ref.url)) return false;
-    if (options.include && !options.include(ref)) return false;
-    if (!ref.isIndex && !isElementFile(ref)) return false;
-    this.loadedUrls.add(ref.url);
-    return true;
-  }
-
-  /** Every `<append>` loaded so far, by the id it targets, in the order its file was loaded. */
-  private readonly appendsByTarget = new Map<string, ElementAppend[]>();
-  /**
-   * For each target the appends have been folded into: the element as a file declared it, what
-   * folding them over it produced, and how many were folded. A target whose element is no longer
-   * that result was replaced by a later file, and the appends are folded again over the new one.
+   * For each target the extensions have been applied to: the element as its source declared it, what applying them
+   * produced, and how many were applied. A target whose element is no longer that result was replaced by a later
+   * source, and the extensions are applied again over the new one.
    */
   private readonly folded = new Map<string, { base: Element; result: Element; count: number }>();
-  /** The warning standing for each append that found no target, so a later source can withdraw it. */
-  private readonly unapplied = new Map<ElementAppend, SourceDiagnostic>();
-  /** Which source each append came from, so what it refers to is reported against that source (ADR 0052). */
-  private readonly appendSources = new Map<ElementAppend, string>();
+  /** The warning standing for each extension that found no target, so a later source can withdraw it. */
+  private readonly unapplied = new Map<ElementExtension, SourceDiagnostic>();
+  /** Which source each extension came from, so what it refers to is reported against that source (ADR 0052). */
+  private readonly extensionSources = new Map<ElementExtension, string>();
 
   /**
    * For each source, what it refers to that nothing loaded declares — ADR 0052. Asked after the last source has
    * loaded, since a reference one source makes is often declared by the next.
    *
-   * Two things, and deliberately not a third. A grant (or a select's default) to an id nothing declares, which a
-   * character silently goes without; and an `<append>` still waiting for its target. Not a requirement naming an
-   * id nothing declares: the corpus writes `!ID_X` against ids that will never exist on purpose, 23 of them in
-   * the full AuroraLegacy corpus, and counting them would put a meaningless number beside every source.
-   *
-   * A reference counts against the source that makes it. Rules an append folded into another source's element are
-   * the append's; what the Aurora overlay refers to is the first Aurora source's, whose load brought it in.
+   * A grant (or a select's default) to an id nothing declares, which a character silently goes without; and an
+   * extension still waiting for its target. Not a requirement naming an id nothing declares: content writes `!ID_X`
+   * against ids that will never exist on purpose, and counting them would put a meaningless number beside every source.
    */
   missingContent(): Map<string, MissingContent> {
     const references = new Map<string, Set<string>>();
@@ -341,23 +216,22 @@ export class ContentLibrary {
     };
 
     for (const element of this.index.all()) {
-      const owner = element.origin.sourceId === GENERATED_SOURCE_ID ? this.generatedFor : element.origin.sourceId;
       const entry = this.folded.get(element.id);
-      // The element as its own file declared it: what appends added is looked at below, as theirs.
-      note(owner, entry && entry.result === element ? entry.base : element);
+      // The element as its own source declared it: what extensions added is looked at below, as theirs.
+      note(element.origin.sourceId, entry && entry.result === element ? entry.base : element);
       if (!entry || entry.result !== element) continue;
-      for (const append of this.appendsByTarget.get(element.id) ?? []) {
-        note(this.appendSources.get(append), { ...element, rules: append.rules, multiclass: undefined });
+      for (const extension of this.extensionsByTarget.get(element.id) ?? []) {
+        note(this.extensionSources.get(extension), { ...element, rules: extension.rules, multiclass: undefined });
       }
     }
 
     const additions = new Map<string, string[]>();
-    for (const append of this.unapplied.keys()) {
-      const sourceId = this.appendSources.get(append);
+    for (const extension of this.unapplied.keys()) {
+      const sourceId = this.extensionSources.get(extension);
       if (sourceId === undefined) continue;
       const targets = additions.get(sourceId);
-      if (targets) targets.push(append.id);
-      else additions.set(sourceId, [append.id]);
+      if (targets) targets.push(extension.id);
+      else additions.set(sourceId, [extension.id]);
     }
 
     const out = new Map<string, MissingContent>();
@@ -371,114 +245,71 @@ export class ContentLibrary {
   }
 
   /**
-   * Fold `<append>` blocks into the elements they name.
-   *
-   * Last, because an append routinely targets an element in a file loaded later — or in a
-   * different index entirely, which is the point of the construct: a supplement extends a
-   * core element without editing the core file.
-   *
-   * And across sources, not only within one. The app loads each enabled source into this one
-   * library in the order the user added them, so a supplement added before the book it extends
-   * used to lose every such append for good: Tasha's added before AuroraLegacy's core dropped 51
-   * support tags, with a warning and nothing else. Every append is kept, and at the end of each
-   * load all of them are folded, in the order their files loaded, over whatever element holds
-   * each id now: one that waited is applied when its target arrives, and one whose target a later
-   * file redefined lands on the new definition, which is what a single load would have done.
-   *
-   * An append whose target is still not loaded is a warning, not an error. That is the normal
-   * case for a partial source list: the supplement is enabled, the book it extends is not, and
-   * the user is not doing anything wrong. The warning is withdrawn if a later source supplies it.
+   * Apply extensions to the elements they name, across sources: every extension is kept, and after each load all of
+   * them are applied, in the order their sources loaded, over whatever element holds each id now. One that waited is
+   * applied when its target arrives, and one whose target a later source redefined lands on the new definition. One whose
+   * target is still not loaded is a warning, withdrawn if a later source supplies it: a supplement enabled without the
+   * book it extends is not a mistake.
    */
-  private applyAppends(appends: ElementAppend[]): void {
+  private applyExtensions(extensions: ElementExtension[]): void {
     const touched = new Set<string>();
-    for (const append of appends) {
-      const waiting = this.appendsByTarget.get(append.id);
-      if (waiting) waiting.push(append);
-      else this.appendsByTarget.set(append.id, [append]);
-      touched.add(append.id);
+    for (const extension of extensions) {
+      const waiting = this.extensionsByTarget.get(extension.id);
+      if (waiting) waiting.push(extension);
+      else this.extensionsByTarget.set(extension.id, [extension]);
+      touched.add(extension.id);
     }
-    for (const append of this.unapplied.keys()) touched.add(append.id);
+    for (const extension of this.unapplied.keys()) touched.add(extension.id);
     for (const [id, entry] of this.folded) if (this.index.get(id) !== entry.result) touched.add(id);
 
     for (const id of touched) {
       const current = this.index.get(id);
       if (!current) continue;
-      const all = this.appendsByTarget.get(id)!;
+      const all = this.extensionsByTarget.get(id);
+      if (!all) continue;
       const entry = this.folded.get(id);
       const replaced = !entry || entry.result !== current;
       if (!replaced && entry.count === all.length) continue;
       const base = replaced ? current : entry.base;
-      // Re-add rather than mutate in place: the element goes back through `add` so the
-      // support index picks up the new tags. An element is a value here, not an identity.
+      // Re-added rather than changed in place, so the support index picks up the new tags.
       const result: Element = {
         ...base,
-        rules: [...base.rules, ...all.flatMap((append) => append.rules)],
-        supports: [...base.supports, ...all.flatMap((append) => append.supports)],
+        rules: [...base.rules, ...all.flatMap((extension) => extension.rules)],
+        supports: [...base.supports, ...all.flatMap((extension) => extension.supports)],
       };
       this.index.add(result);
       this.folded.set(id, { base, result, count: all.length });
-      for (const append of all) {
-        const warning = this.unapplied.get(append);
+      for (const extension of all) {
+        const warning = this.unapplied.get(extension);
         if (!warning) continue;
         this.diagnostics.splice(this.diagnostics.indexOf(warning), 1);
-        this.unapplied.delete(append);
+        this.unapplied.delete(extension);
       }
     }
 
-    for (const append of appends) {
-      if (this.index.get(append.id)) continue;
+    for (const extension of extensions) {
+      if (this.index.get(extension.id)) continue;
       const warning: SourceDiagnostic = {
         level: 'warning',
-        message: `An <append> targets "${append.id}", which is not in any loaded source. Its ${append.rules.length} rule(s) and ${append.supports.length} support tag(s) were not applied.`,
-        elementId: append.id,
-        fileUrl: append.fileUrl,
+        message: `An addition targets "${extension.id}", which is not in any loaded source. Its ${extension.rules.length} rule(s) and ${extension.supports.length} support tag(s) were not applied.`,
+        elementId: extension.id,
+        ...(extension.fileUrl ? { fileUrl: extension.fileUrl } : {}),
       };
       this.diagnostics.push(warning);
-      this.unapplied.set(append, warning);
+      this.unapplied.set(extension, warning);
     }
   }
 
-  /** How many of the loaded elements came from the Aurora overlay rather than from a file. */
-  generatedElements = 0;
-
   /**
-   * The source whose load brought the Aurora overlay in: the first Aurora source. What those elements refer to and
-   * nothing declares is reported against it (ADR 0052), since the overlay belongs to no source of its own.
-   */
-  private generatedFor: string | undefined;
-
-  private addGeneratedElements(sourceId: string): void {
-    if (this.generatedElements) return;
-    this.generatedFor = sourceId;
-    const generated = auroraGeneratedElements();
-    for (const element of generated) this.index.add(element);
-    this.generatedElements = generated.length;
-  }
-
-  /**
-   * The ability score improvement Aurora's app offers at each class level and no file declares —
-   * see `improvement-options.ts`. Derived from what is loaded rather than listed, so it runs
-   * after every source and is safe to run again: it only adds what no element already has.
-   */
-  private addImprovementOptions(): void {
-    const { elements } = improvementOptionElements(this.index.all());
-    for (const element of elements) this.index.add(element);
-    this.generatedElements += elements.length;
-  }
-
-  /**
-   * For each id more than one source defines, each source's definition as its file declared it, in load order: the
-   * last is the one used (ADR 0054). Only ids with a second source are here.
+   * For each id more than one source defines, each source's definition as it declared it, in load order: the last is
+   * the one used (ADR 0054). Only ids with a second source are here.
    */
   private readonly definitions = new Map<string, Array<{ sourceId: string; element: Element }>>();
 
   /**
    * For each source, what it defines that another enabled source also defines, and whose definition is used — ADR
-   * 0054. Asked after the last source has loaded, like {@link missingContent}.
-   *
-   * Only pairs with the source that is used: with three sources defining an id, the first two each share it with the
-   * third and neither with the other. Definitions are compared as their files declared them, before any `<append>`,
-   * with where they came from left out.
+   * 0054. Asked after the last source has loaded, like {@link missingContent}. Only pairs with the source that is used;
+   * definitions are compared as their sources declared them, before any extension, with where they came from left out.
    */
   sourceOverlaps(): Map<string, SourceOverlap[]> {
     const pairs = new Map<string, { differ: string[]; same: number }>();
@@ -512,32 +343,30 @@ export class ContentLibrary {
   addElements(elements: Iterable<Element>): void {
     for (const element of elements) {
       const existing = this.index.get(element.id);
-      if (existing && existing.origin.sourceId !== element.origin.sourceId && existing.origin.sourceId !== GENERATED_SOURCE_ID) {
-        // Two sources defining the same id: the later is used, and that is the rule, not a stopgap (ADR 0054). It is
-        // reported on each source's line, from `sourceOverlaps`, rather than as one warning per id: the original
-        // Aurora repository and AuroraLegacy share 7,262.
+      if (existing && existing.origin.sourceId !== element.origin.sourceId) {
+        // Two sources defining the same id: the later is used, and that is the rule (ADR 0054). Reported on each source's
+        // line, from `sourceOverlaps`, rather than as one warning per id.
         const all = this.definitions.get(element.id);
         const entry = { sourceId: element.origin.sourceId, element };
         if (all) all.push(entry);
         else this.definitions.set(element.id, [{ sourceId: existing.origin.sourceId, element: this.declared(existing) }, entry]);
       } else if (existing) {
-        // Within one source, or over the Aurora overlay: the later definition wins, and it is the author's to fix.
+        // Within one source: the later definition wins, and it is the author's to fix.
         if (existing.origin.fileUrl !== element.origin.fileUrl) {
           this.diagnostics.push({
             level: 'warning',
             message: `"${element.id}" is defined in more than one file; using ${element.origin.fileUrl}.`,
             elementId: element.id,
-            fileUrl: element.origin.fileUrl,
+            ...(element.origin.fileUrl ? { fileUrl: element.origin.fileUrl } : {}),
           });
         }
-        // The source's own later definition is the one it is represented by.
         this.definitions.get(element.id)?.splice(-1, 1, { sourceId: element.origin.sourceId, element });
       }
       this.index.add(element);
     }
   }
 
-  /** An element as its file declared it: what `applyAppends` folded over it is left out. */
+  /** An element as its source declared it: what `applyExtensions` folded over it is left out. */
   private declared(element: Element): Element {
     const entry = this.folded.get(element.id);
     return entry && entry.result === element ? entry.base : element;
@@ -549,38 +378,7 @@ function comparable(element: Element): string {
   return JSON.stringify({ ...element, origin: undefined });
 }
 
-/**
- * At most `size` pieces of work in flight, urgent ones first when a slot frees up. An index is
- * urgent because each one unlocks more work and an element file never does (ADR 0051).
- */
-function limiter(size: number): <T>(work: () => Promise<T>, urgent?: boolean) => Promise<T> {
-  let active = 0;
-  const urgent: Array<() => void> = [];
-  const waiting: Array<() => void> = [];
-  const next = (): void => {
-    while (active < size) {
-      const start = urgent.shift() ?? waiting.shift();
-      if (!start) return;
-      active++;
-      start();
-    }
-  };
-  return <T>(work: () => Promise<T>, isUrgent = false) =>
-    new Promise<T>((resolve, reject) => {
-      (isUrgent ? urgent : waiting).push(() => {
-        Promise.resolve()
-          .then(work)
-          .then(resolve, reject)
-          .finally(() => {
-            active--;
-            next();
-          });
-      });
-      next();
-    });
-}
-
 /** Whether a load reads this ref as an elements file: images and other non-content refs an index names are skipped. */
-export function isElementFile(ref: FileRef): boolean {
+export function isElementFile(ref: { url: string }): boolean {
   return ref.url.toLowerCase().endsWith('.xml') || ref.url.toLowerCase().endsWith('.json');
 }

@@ -1,11 +1,11 @@
 /**
- * ADR 0051 on the real corpus: fetching indexes ahead of the queue loads exactly what walking them one at a time does.
+ * ADR 0051 on the real corpus: fetching indexes ahead of the queue converts exactly what walking them one at a time does.
  *
- * `packages/content/src/index-walk.test.ts` holds the rule on a tree written for it. This holds it where a mistake would
+ * `packages/aurora-import/src/convert-source.test.ts` holds the rule on a tree written for it. This holds it where a mistake would
  * cost something: sixty indexes, 740 files, 171 appends reaching across files and one id declared twice. Two loads of
- * the same checkout, one with a single request in flight and every answer immediate, one at the default with every
- * answer delayed by an amount that has nothing to do with the order it was asked in. A count would not see a load
- * that applied one file's elements before another's; this compares every element, in order, and every diagnostic.
+ * the same checkout converted, one with a single request in flight and every answer immediate, one at the default with every
+ * answer delayed by an amount that has nothing to do with the order it was asked in. A count would not see a conversion
+ * that applied one file's elements before another's; this compares the whole converted source.
  */
 
 import { test } from 'node:test';
@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 
 import type { Fetcher } from '@incudo/core';
 
-import { loadCorpus, type LoadedCorpus } from './corpus.ts';
+import { convertCorpus } from './corpus.ts';
 import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
 
 /** A few milliseconds, fixed per URL and unrelated to the order it was asked in. */
@@ -33,41 +33,23 @@ function delayed(fetcher: Fetcher): Fetcher {
   };
 }
 
-function seen(corpus: LoadedCorpus) {
-  const { library } = corpus;
-  return {
-    indexes: library.indexes.map((index) => index.url),
-    elements: [...library.elements.all()].map(
-      (e) => `${e.id} ${e.origin.fileUrl ?? ''} ${e.rules.length} ${e.supports.join(',')}`,
-    ),
-    diagnostics: library.diagnostics.map((d) => `${d.level} ${d.message}`),
-    filesLoaded: corpus.filesLoaded,
-    generated: library.generatedElements,
-  };
-}
-
-test('the corpus loads the same with its indexes fetched ahead as walked one at a time', { skip: corpusSkip }, async (t) => {
+test('the corpus converts the same with its indexes fetched ahead as walked one at a time', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
-  const oneAtATime = await loadCorpus(location, { concurrency: 1 });
+  const oneAtATime = await convertCorpus(location, { concurrency: 1 });
   const asked: string[] = [];
-  const ahead = await loadCorpus(location, {
+  const ahead = await convertCorpus(location, {
     wrap: (fetcher) => {
       const slow = delayed(fetcher);
       return { conditional: slow.conditional, fetchText: (url, options) => (asked.push(url), slow.fetchText(url, options)) };
     },
   });
-
-  const reference = seen(oneAtATime);
-  const subject = seen(ahead);
+  const files = oneAtATime.bundle.source!.files!.filter((file) => !file.generated).length;
   t.diagnostic(corpusProvenance());
-  t.diagnostic(`${reference.indexes.length} indexes, ${reference.filesLoaded} files, ${reference.elements.length} elements`);
+  t.diagnostic(`${asked.length} addresses asked for, ${files} files, ${oneAtATime.bundle.elements.length} elements`);
 
-  assert.ok(reference.indexes.length > 1 && reference.filesLoaded > 0, 'the corpus loaded something');
+  assert.ok(files > 0, 'the corpus converted something');
   assert.equal(asked.length, new Set(asked).size, 'nothing is fetched twice');
-  assert.equal(asked.length, reference.indexes.length + reference.filesLoaded, 'every index and file is fetched once');
-  assert.deepEqual(subject.indexes, reference.indexes);
-  assert.deepEqual(subject.diagnostics, reference.diagnostics);
-  assert.equal(subject.generated, reference.generated);
-  assert.equal(subject.filesLoaded, reference.filesLoaded);
-  assert.deepEqual(subject.elements, reference.elements);
+  assert.equal(oneAtATime.report.fetched, asked.length);
+  // Perturbation: applying what arrives in the order it arrives reorders elements, files or the parts tree.
+  assert.deepEqual(ahead.bundle, oneAtATime.bundle);
 });

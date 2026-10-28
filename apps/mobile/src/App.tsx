@@ -19,6 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { strToU8 } from 'fflate';
 import { useColorScheme } from 'react-native';
 
+import { auroraConverter } from '@incudo/aurora-import';
 import { sha256Hex, type Character, type FileSaver, type GameSystem } from '@incudo/core';
 import {
   CharacterBuilder,
@@ -54,6 +55,7 @@ import {
   MobileCharacterStore,
   MobileConnection,
   MobileFetcher,
+  MobileSourceFiles,
   MobileFilePicker,
   MobileFolderSaver,
   MobileShareInbox,
@@ -88,7 +90,7 @@ export function App() {
       shareSaver: new MobileShareSaver(),
       zip,
       systems,
-      sources: new ContentSources({ fetcher: new MobileFetcher(), storage }, systems),
+      sources: new ContentSources({ fetcher: new MobileFetcher(), storage, files: new MobileSourceFiles(), converter: auroraConverter }, systems),
       storage,
     };
   }, []);
@@ -138,7 +140,7 @@ export function App() {
                 void (async () => {
                   setImporting({ saves, phase: 'loading' });
                   try {
-                    await sources.add(step.systemId, step.suggestion, 'converted');
+                    await sources.add(step.systemId, step.suggestion);
                   } catch {
                     // Said in the sources' message; the import then finds no content and says so.
                   }

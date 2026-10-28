@@ -9,62 +9,64 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { auroraGeneratedElements, type ElementAppend } from '@incudo/aurora-import';
-import type { Element } from '@incudo/core';
+import type { ContentBundle, Element } from '@incudo/core';
 import { ContentLibrary } from './library.ts';
-import type { ContentIndex, ContentSource, ElementFile, FileRef } from './source.ts';
+import { testBundle, type TestFile } from './test-bundle.ts';
 
 /** An element by id, and a name that stands for "what the definition says". */
 type Spec = [id: string, name: string];
+
+/** What a conversion writes for Aurora's app, as a file of its own: two marker elements stand for it here. */
+const GENERATED: Element[] = ['ID_INTERNAL_MARKER_A', 'ID_INTERNAL_MARKER_B'].map((id) => ({
+  id,
+  type: 'Grants',
+  name: id,
+  source: '',
+  setters: {},
+  rules: [],
+  supports: [],
+  origin: { sourceId: 'x' },
+}));
 
 interface File {
   elements?: Spec[];
   appends?: Array<{ target: string; tag: string }>;
 }
 
-function source(name: string, ...files: File[]): { source: ContentSource; url: string } {
-  return sourceOf(name, 'incudo', ...files);
+interface TestSource {
+  url: string;
+  bundle: ContentBundle;
 }
 
-function sourceOf(name: string, format: 'aurora' | 'incudo', ...files: File[]): { source: ContentSource; url: string } {
+function source(name: string, ...files: File[]): TestSource {
+  return sourceOf(name, false, ...files);
+}
+
+function sourceOf(name: string, generated: boolean, ...files: File[]): TestSource {
   const url = `memory://${name}/index`;
-  const refs: FileRef[] = files.map((_, i) => ({ name: `${i}.xml`, url: `memory://${name}/${i}.xml`, isIndex: false }));
-  const index: ContentIndex = { url, name, files: refs, format };
-  return {
-    url,
-    source: {
-      id: url,
-      loadIndex: async () => index,
-      loadFile: async (ref: FileRef): Promise<ElementFile> => {
-        const file = files[refs.findIndex((r) => r.url === ref.url)]!;
-        return {
-          url: ref.url,
-          elements: (file.elements ?? []).map(
-            ([id, label]): Element => ({
-              id,
-              type: 'Widget',
-              name: label,
-              source: 'test',
-              setters: {},
-              rules: [],
-              supports: [],
-              origin: { sourceId: url, format: 'incudo', fileUrl: ref.url },
-            }),
-          ),
-          appends: (file.appends ?? []).map(
-            (a) => ({ id: a.target, rules: [], supports: [a.tag], fileUrl: ref.url }) as ElementAppend,
-          ),
-          diagnostics: [],
-        };
-      },
-      checkForUpdates: async () => ({ state: 'unknown', reason: 'test' }),
-    },
-  };
+  const testFiles: TestFile[] = files.map((file, i) => ({
+    url: `memory://${name}/${i}.xml`,
+    elements: (file.elements ?? []).map(
+      ([id, label]): Element => ({
+        id,
+        type: 'Widget',
+        name: label,
+        source: 'test',
+        setters: {},
+        rules: [],
+        supports: [],
+        origin: { sourceId: url },
+      }),
+    ),
+    extensions: (file.appends ?? []).map((a) => ({ id: a.target, rules: [], supports: [a.tag] })),
+  }));
+  if (generated) testFiles.unshift({ url: 'incudo:aurora/app-elements', elements: GENERATED, generated: true });
+  return { url, bundle: testBundle(url, testFiles) };
 }
 
-async function load(...sources: Array<{ source: ContentSource; url: string }>): Promise<ContentLibrary> {
+function load(...sources: TestSource[]): ContentLibrary {
   const library = new ContentLibrary();
-  for (const s of sources) await library.loadSource(s.source, s.url, { withoutGeneratedElements: true });
+  for (const s of sources) library.loadBundle(s.url, s.bundle);
   return library;
 }
 
@@ -74,7 +76,7 @@ const redefinitionWarnings = (library: ContentLibrary): string[] =>
 test('the later source is used, and each side of the pair says so', async () => {
   const core = source('core', { elements: [['ID_A', 'Core A'], ['ID_B', 'Same B'], ['ID_C', 'Core only']] });
   const homebrew = source('homebrew', { elements: [['ID_A', 'House A'], ['ID_B', 'Same B']] });
-  const library = await load(core, homebrew);
+  const library = load(core, homebrew);
 
   assert.equal(library.elements.get('ID_A')!.name, 'House A', 'the later definition is the one loaded');
   // Perturbation: attributing the pair backwards swaps these two.
@@ -91,7 +93,7 @@ test('the later source is used, and each side of the pair says so', async () => 
 test('reversing the order reverses which is used', async () => {
   const core = source('core', { elements: [['ID_A', 'Core A']] });
   const homebrew = source('homebrew', { elements: [['ID_A', 'House A']] });
-  const library = await load(homebrew, core);
+  const library = load(homebrew, core);
 
   assert.equal(library.elements.get('ID_A')!.name, 'Core A');
   assert.deepEqual(library.sourceOverlaps().get(core.url), [
@@ -103,7 +105,7 @@ test('with three sources, only the one used is paired with the others', async ()
   const first = source('first', { elements: [['ID_A', 'one']] });
   const second = source('second', { elements: [['ID_A', 'two']] });
   const third = source('third', { elements: [['ID_A', 'one']] });
-  const overlaps = (await load(first, second, third)).sourceOverlaps();
+  const overlaps = (load(first, second, third)).sourceOverlaps();
 
   // Perturbation: pairing each definition with the one before it pairs first with second.
   assert.deepEqual(overlaps.get(first.url), [{ sourceId: third.url, used: 'other', differ: [], same: 1 }]);
@@ -119,7 +121,7 @@ test('definitions are compared as their files declared them, not with an append 
   const supplement = source('supplement', { appends: [{ target: 'ID_A', tag: 'Extra' }] });
   const core = source('core', { elements: [['ID_A', 'A']] });
   const mirror = source('mirror', { elements: [['ID_A', 'A']] });
-  const library = await load(supplement, core, mirror);
+  const library = load(supplement, core, mirror);
 
   assert.deepEqual(library.elements.get('ID_A')!.supports, ['Extra'], 'the append lands on the definition used');
   // Perturbation: comparing the element in the index, which carries core's folded append, reads as different.
@@ -131,7 +133,7 @@ test('definitions are compared as their files declared them, not with an append 
 test('within one source, the later file still wins with a warning, and the source is represented by it', async () => {
   const core = source('core', { elements: [['ID_A', 'first']] }, { elements: [['ID_A', 'second'], ['ID_A', 'third']] });
   const mirror = source('mirror', { elements: [['ID_A', 'third']] });
-  const library = await load(core, mirror);
+  const library = load(core, mirror);
 
   assert.deepEqual(redefinitionWarnings(library), ['ID_A'], 'the two-file redefinition inside core is the one warning');
   // Perturbation: recording core's first definition, or its second, reads as different.
@@ -143,7 +145,7 @@ test('within one source, the later file still wins with a warning, and the sourc
 test('a later source that redefines an id in two of its own files is represented by the second', async () => {
   const core = source('core', { elements: [['ID_A', 'final']] });
   const homebrew = source('homebrew', { elements: [['ID_A', 'draft']] }, { elements: [['ID_A', 'final']] });
-  const library = await load(core, homebrew);
+  const library = load(core, homebrew);
 
   assert.equal(library.elements.get('ID_A')!.name, 'final');
   assert.deepEqual(redefinitionWarnings(library), ['ID_A'], 'inside homebrew, still a warning');
@@ -153,13 +155,19 @@ test('a later source that redefines an id in two of its own files is represented
   ]);
 });
 
-test('replacing an element of the Aurora overlay stays a warning and is no source overlap', async () => {
-  const generated = auroraGeneratedElements()[0]!;
-  const aurora = sourceOf('aurora', 'aurora', { elements: [[generated.id, 'Redefined']] });
-  const library = new ContentLibrary();
-  await library.loadSource(aurora.source, aurora.url);
+test('replacing an element a conversion generated stays a warning and is no source overlap', async () => {
+  const generated = GENERATED[0]!;
+  const aurora = sourceOf('aurora', true, { elements: [[generated.id, 'Redefined']] });
+  const library = load(aurora);
 
   assert.equal(library.elements.get(generated.id)!.name, 'Redefined');
   assert.deepEqual(redefinitionWarnings(library), [generated.id]);
   assert.equal(library.sourceOverlaps().size, 0);
+});
+
+test('two converted sources do not read as defining what their conversions generated', async () => {
+  // Perturbation: adding a generated file's elements like any other's pairs the two sources over all of them.
+  const library = load(sourceOf('one', true, { elements: [['ID_A', 'A']] }), sourceOf('two', true, { elements: [['ID_B', 'B']] }));
+  assert.equal(library.sourceOverlaps().size, 0);
+  assert.equal(library.elements.get(GENERATED[0]!.id)!.origin.sourceId, 'memory://one/index');
 });

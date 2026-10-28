@@ -10,7 +10,6 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": { "build": "tsc --build" },
   "dependencies": {
-    "@incudo/core": "*",
-    "@incudo/aurora-import": "*"
+    "@incudo/core": "*"
   }
 }

@@ -25,13 +25,59 @@ export interface ElementExtension {
   fileUrl?: string;
 }
 
-/** A content source's own description. */
+/** Something a source's conversion or its files said, for its line on the Sources pane. */
+export interface ContentDiagnostic {
+  level: 'error' | 'warning';
+  message: string;
+  elementId?: string;
+  fileUrl?: string;
+}
+
+/**
+ * One part of a source, as the parts chooser shows it (ADR 0055): a nested index or a file, as its parent names it, in
+ * the order it lists them. A part is named once, at its first mention; switching it off leaves out everything under it.
+ */
+export interface ContentPart {
+  name: string;
+  url: string;
+  isIndex: boolean;
+  /** What an index calls itself, usually more readable than the file name its parent gives it. */
+  title?: string;
+  description?: string;
+  /** An index's own parts. Absent for a file, and for an index that could not be read, was named earlier, or was too deep. */
+  children?: ContentPart[];
+  /** Why this index could not be read. */
+  failed?: string;
+  /** Named earlier in the tree too: its parts are listed there. */
+  repeated?: boolean;
+  /** Below the depth a conversion follows. */
+  tooDeep?: boolean;
+}
+
+/** One file of a source, in the order a load adds them. */
+export interface ContentFile {
+  url: string;
+  name?: string;
+  /** Written by the conversion rather than read from a file: loaded whatever parts are switched off. */
+  generated?: boolean;
+}
+
+/** A content source's own description, and for a converted one what it was made from. */
 export interface ContentSourceInfo {
   name: string;
   url?: string;
   version?: string;
   description?: string;
   author?: string;
+  /** The parts tree, its top being the source itself. */
+  parts?: ContentPart;
+  /** Its files in load order; each element's `origin.fileUrl` names one. */
+  files?: ContentFile[];
+  diagnostics?: ContentDiagnostic[];
+  /** For each address the conversion fetched, the ETag the server answered with: what an update check asks with. */
+  etags?: Record<string, string>;
+  /** What it was converted from, by which version of the converter, and when. */
+  converted?: { from: string; converter: number; at?: string };
 }
 
 /** The body of a content file: `content.json` in a save, a homebrew source, a converted source. */
@@ -77,7 +123,8 @@ export function checkContentBundle(raw: unknown, options: CheckContentOptions = 
     if (!Array.isArray(element.rules)) problems.push(`${at} has no rules.`);
     if (!Array.isArray(element.supports)) problems.push(`${at} has no support tags.`);
     if (typeof element.id === 'string') {
-      const key = element.id.toLowerCase();
+      // Per file: a source may define an id in two of its files, and the later is used (ADR 0054).
+      const key = `${element.origin?.fileUrl ?? ''}\n${element.id.toLowerCase()}`;
       if (seen.has(key)) problems.push(`${at}'s id ${element.id} is used by another element.`);
       seen.add(key);
     }

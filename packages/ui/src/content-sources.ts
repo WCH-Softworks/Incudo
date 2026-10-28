@@ -3,7 +3,7 @@
  *
  * Opening, reading and playing a character need no content (ADR 0012); building one does. This keeps the user's source
  * profile (ADR 0028, the same `SourceProfile` the desktop keeps), adds a system's suggested source in download mode,
- * switches one on or off, chooses how it is kept (ADR 0085), refreshes and removes one, and loads a system's enabled
+ * switches one on or off, refreshes and removes one, and loads a system's enabled
  * sources through `loadSources` when something asks for them, at most once per set of sources: a build asks, the app's
  * start does not. Every source belongs to the system it was added under (ADR 0031); a load reads only that system's.
  *
@@ -12,7 +12,6 @@
 
 import {
   SourceProfile,
-  evictSourceCache,
   loadSources,
   refreshSource,
   removeSource,
@@ -21,7 +20,6 @@ import {
   type ConfiguredSource,
   type LoadProgress,
   type LoadedContent,
-  type SourceKeep,
 } from '@incudo/content';
 import type { GameSystem, SuggestedSource } from '@incudo/core';
 
@@ -97,14 +95,13 @@ export class ContentSources {
   /** Whether a system has any source switched on: with none, a build has nothing to offer. */
   hasEnabled = (systemId: string): boolean => this.sourcesFor(systemId).some((source) => source.enabled);
 
-  /** Add a suggested source under a system, in download mode, kept as chosen, and load that system's sources. */
-  add = async (systemId: string, suggestion: SuggestedSource, keep: SourceKeep): Promise<void> => {
+  /** Add a suggested source under a system, and load that system's sources: the load converts it (ADR 0119). */
+  add = async (systemId: string, suggestion: SuggestedSource): Promise<void> => {
     const profile = await this.current();
     profile.add(suggestion.url, {
       name: suggestion.name,
       mode: 'download',
       systemId,
-      keep,
       ...(suggestion.official !== undefined ? { official: suggestion.official } : {}),
     });
     await this.persist();
@@ -117,15 +114,7 @@ export class ContentSources {
     this.forget(id);
   };
 
-  /** Converted or as files (ADR 0085), made so by loading again. */
-  setKeep = async (id: string, keep: SourceKeep): Promise<void> => {
-    (await this.current()).update(id, { keep });
-    await this.persist();
-    const systemId = this.forget(id);
-    if (systemId) await this.load(systemId);
-  };
-
-  /** Fetch it again (ADR 0050), and load its system's sources again. */
+  /** Convert it again from the network (ADR 0119), and load its system's sources again. */
   refresh = async (id: string): Promise<void> => {
     const source = (await this.current()).find(id);
     if (!source) return;
@@ -142,14 +131,13 @@ export class ContentSources {
   };
 
   /**
-   * Remove it, and what it kept on this device. A character that embeds its content keeps working (ADR 0028); the space
-   * is the point on a phone, so the cache goes with the entry.
+   * Remove it, and the file it was kept as. A character that embeds its content keeps working (ADR 0028); the space is
+   * the point on a phone, so the file goes with the entry.
    */
   remove = async (id: string): Promise<void> => {
     const profile = await this.current();
     const systemId = profile.find(id)?.systemId;
-    await removeSource(profile, this.platform.storage, id);
-    await evictSourceCache(this.platform.storage, id);
+    await removeSource(profile, this.platform, id);
     await this.persist();
     if (systemId) this.drop(systemId);
   };

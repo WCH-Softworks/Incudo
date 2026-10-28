@@ -53,10 +53,11 @@ import type {
   PickedFile,
   SavedFile,
   Storage,
+  SourceFiles,
   ZipCodec,
   ZipCompressor,
 } from '@incudo/core';
-import { assertPlainFileName, createZipCodec } from '@incudo/core';
+import { StorageSourceFiles, assertPlainFileName, createZipCodec } from '@incudo/core';
 import { absentCommands, menuModel } from '@incudo/ui';
 import type { CommandHost, CommandId, InstalledMenu, Os, ResolvedCommand } from '@incudo/ui';
 import type { MenuItem as TauriMenuItem, Submenu as TauriSubmenu } from '@tauri-apps/api/menu';
@@ -349,6 +350,49 @@ class TauriCharacterStore implements CharacterStore {
     const root = await this.location();
     if (!root) throw new Error('No library folder has been chosen yet.');
     return root;
+  }
+}
+
+/**
+ * Converted content sources, as files in a `sources` folder of the app's own data folder (ADR 0119 decision 11, the
+ * maintainer's call): a file the user can open, kept where no library folder needs choosing first. The capability's fs
+ * scope allows that folder and nothing else of the app's data.
+ */
+export class TauriSourceFiles implements SourceFiles {
+  private folder: Promise<string> | undefined;
+
+  private async path(name: string): Promise<string> {
+    assertPlainFileName(name);
+    this.folder ??= (async () => {
+      const { appDataDir, join: joinPath } = await import('@tauri-apps/api/path');
+      const fs = await import('@tauri-apps/plugin-fs');
+      const folder = await joinPath(await appDataDir(), 'sources');
+      await fs.mkdir(folder, { recursive: true });
+      return folder;
+    })();
+    return join(await this.folder, name);
+  }
+
+  async read(name: string): Promise<string | null> {
+    const fs = await import('@tauri-apps/plugin-fs');
+    const path = await this.path(name);
+    return (await fs.exists(path)) ? fs.readTextFile(path) : null;
+  }
+
+  async write(name: string, text: string): Promise<void> {
+    const fs = await import('@tauri-apps/plugin-fs');
+    await fs.writeTextFile(await this.path(name), text);
+  }
+
+  async remove(name: string): Promise<void> {
+    const fs = await import('@tauri-apps/plugin-fs');
+    const path = await this.path(name);
+    if (await fs.exists(path)) await fs.remove(path);
+  }
+
+  async reveal(name: string): Promise<void> {
+    const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
+    await revealItemInDir(await this.path(name));
   }
 }
 
@@ -1097,6 +1141,8 @@ export interface DesktopPlatform {
   saver: FileSaver;
   /** The page as a PDF with no print dialog — "Export sheet as PDF…" (ADR 0079). The Windows window only. */
   pdf: PdfWriter;
+  /** The files converted content sources are kept as (ADR 0119): the app's own `sources` folder in the window. */
+  sources: SourceFiles;
   /** Files dropped on the window: Aurora elements files added as sources (ADR 0056). */
   drops: FileDrop;
   zip: ZipCodec;
@@ -1137,6 +1183,7 @@ export function createDesktopPlatform(): DesktopPlatform {
     files,
     saver,
     pdf,
+    sources: tauri ? new TauriSourceFiles() : new StorageSourceFiles(storage),
     drops: tauri ? new TauriFileDrop() : new BrowserFileDrop(),
     zip,
     commands: tauri ? new TauriCommandHost(absentCommands({ pdfAvailable: pdf.available })) : new BrowserCommandHost(),

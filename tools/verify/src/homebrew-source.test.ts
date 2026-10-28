@@ -18,7 +18,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  composeSource,
+  sourceContent,
   createHomebrewSource,
   EMPTY_HOMEBREW,
   loadSources,
@@ -68,7 +68,7 @@ test('a homebrew feat reaches a player character, and its save opens with no sou
   let loaded = await loadSources(profile.enabled, { fetcher: noNetwork, storage });
   assert.deepEqual(loaded.errors, []);
   const cant = [...loaded.elements.all()].find((e) => e.name === 'Hill Cant')!;
-  assert.equal(cant.origin.format, 'incudo');
+  assert.equal(cant.origin.sourceId, source.id);
 
   const read = await readHomebrew(storage, source.id);
   assert.equal(read.status, 'ready');
@@ -96,7 +96,7 @@ test('a homebrew feat reaches a player character, and its save opens with no sou
 
   const { container } = readCharacterContainer(packCharacter(state.character, system, loaded.elements, { generator: 'test' }).files);
   const embedded = new BundleElementIndex(container!.content.elements);
-  assert.deepEqual([...embedded.all()].filter((e) => e.origin.format === 'incudo').map((e) => e.name).sort(), ['Fleet', 'Hill Cant']);
+  assert.deepEqual([...embedded.all()].filter((e) => e.origin.sourceId.startsWith('homebrew:')).map((e) => e.name).sort(), ['Fleet', 'Hill Cant']);
   const reopened = deriveCharacter(container!.character, system, embedded);
   assert.equal(reopened.stats.get('speed')?.value, before + 10);
   assert.ok(reopened.elementIds.has(cant.id));
@@ -141,7 +141,7 @@ test('a homebrew spell written like a wizard spell is offered by a Wizard spellb
     source.name,
   );
   await writeHomebrew(storage, source.id, bundle);
-  await corpus.library.loadSource(composeSource(source, { fetcher: noNetwork, storage }), source.url);
+  corpus.library.loadBundle(source.id, await sourceContent(source, { fetcher: noNetwork, storage }));
   const spell = [...elements.all()].find((e) => e.name === 'Arc of Sparks')!;
   assert.ok(spell);
 

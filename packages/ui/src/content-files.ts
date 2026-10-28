@@ -6,8 +6,8 @@
  * file's refusal from stopping the rest.
  */
 
-import { addFileSource, type AddFileOptions, type AddedFile, type SourceProfile } from '@incudo/content';
-import type { PickedFile, Storage } from '@incudo/core';
+import { addFileSource, type AddFileOptions, type AddedFile, type ComposeOptions, type SourceProfile } from '@incudo/content';
+import type { PickedFile } from '@incudo/core';
 
 export interface ContentFileResult {
   /** The file's own name. */
@@ -24,13 +24,13 @@ export interface ContentFileResult {
 export async function addContentFiles(
   files: readonly PickedFile[],
   profile: SourceProfile,
-  storage: Storage,
+  platform: ComposeOptions,
   options: AddFileOptions,
 ): Promise<ContentFileResult[]> {
   const results: ContentFileResult[] = [];
   for (const file of files) {
     try {
-      const added = await addFileSource(profile, storage, { name: file.name, text: decodeText(file.bytes) }, options);
+      const added = await addFileSource(profile, platform, { name: file.name, text: decodeText(file.bytes) }, options);
       results.push({ name: file.name, added });
     } catch (error) {
       results.push({ name: file.name, failed: error instanceof Error ? error.message : String(error) });

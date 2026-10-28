@@ -1,7 +1,4 @@
 export * from './source.ts';
-export * from './http-source.ts';
-export * from './cached-source.ts';
-export * from './layered-source.ts';
 export * from './library.ts';
 export * from './profile.ts';
 export * from './compose.ts';
@@ -9,5 +6,4 @@ export * from './parts.ts';
 export * from './file-source.ts';
 export * from './homebrew-source.ts';
 export * from './load-sources.ts';
-export * from './converted-source.ts';
 export * from './declared.ts';

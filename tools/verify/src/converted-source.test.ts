@@ -1,25 +1,26 @@
 /**
- * ADR 0085 against the real corpus: a source kept converted loads the same as one kept as files, and what each costs.
+ * ADR 0119 against the real corpus: a source is converted once into the file it is kept as, and loaded from the file.
  *
- * Asserted, against any corpus: the converted load gives every element in the same order with the same content, and
- * the same warnings and errors, as a load that parses the files; and the second load reads nothing from the disk.
- * Reported (ADR 0042): the time of the first load, of a load from the files kept, and of a load from the conversion, and
- * the space each way of keeping takes.
+ * Asserted, against any corpus: the file read back is Incudo content by the schema, the second load reads nothing from
+ * the disk, and it loads every element in the same order with the same content, and the same warnings and errors, as the
+ * conversion it was written from. Reported (ADR 0042): the time of the conversion and of a load from the file, and the
+ * file's size.
  *
- * And the converter's guard: the files whose change can change what parsing produces, hashed. A change to them asks
- * whether `CONVERTER_VERSION` should move, since every conversion a user has was written by the parser before.
+ * And the converter's guard: the files whose change can change what a conversion produces, hashed. A change to them asks
+ * whether `CONVERTER_VERSION` should move, since every source a user has was converted by the converter before.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 
-import { MemoryStorage, sha256Hex, type FetchResult, type Fetcher } from '@incudo/core';
-import { CONVERTER_VERSION, cachePrefix, convertedPrefix, loadSources, type ConfiguredSource, type SourceKeep } from '@incudo/content';
+import { CONVERTER_VERSION, auroraConverter } from '@incudo/aurora-import';
+import { MemoryStorage, checkContentBundle, sha256Hex, type FetchResult, type Fetcher, type JsonSchema } from '@incudo/core';
+import { loadSources, readSourceFile, type ConfiguredSource } from '@incudo/content';
 
-import { LocalMirrorFetcher, OfflineFetcher } from './node-platform.ts';
-import { repoRoot } from './node-system.ts';
+import { corpusFetcher } from './corpus.ts';
+import { repoRoot, schemasDirectory } from './node-system.ts';
 import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -37,88 +38,71 @@ class CountingFetcher implements Fetcher {
   }
 }
 
-const mb = (chars: number): string => `${(chars / 1024 / 1024).toFixed(1)} MB`;
-
-async function storedSize(storage: MemoryStorage, prefix: string): Promise<number> {
-  let total = 0;
-  for (const key of await storage.list(prefix)) total += (await storage.read(key))!.length;
-  return total;
-}
-
-test('a converted source loads what the files load, and the second time reads nothing', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('a source loads from the file its conversion was kept as what the conversion made, reading nothing', { skip: corpusSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const location = requireCorpus();
-  // As `corpusSource` reads it: a checkout by URL path, an Aurora folder by name (docs/AURORA-FORMAT.md).
-  const fetcher = new CountingFetcher(
-    location.layout === 'repository'
-      ? new LocalMirrorFetcher(location.root ?? dirname(location.index), new OfflineFetcher())
-      : new OfflineFetcher(),
-  );
+  const fetcher = new CountingFetcher(corpusFetcher(location));
   const resolveByName = location.layout === 'aurora-folder';
-  const source = (keep: SourceKeep): ConfiguredSource => ({
-    id: location.index,
-    url: location.index,
-    name: 'corpus',
-    enabled: true,
-    mode: 'download',
-    keep,
-    addedAt: '',
-  });
-  const run = async (keep: SourceKeep, storage: MemoryStorage) => {
-    const started = performance.now();
-    const loaded = await loadSources([source(keep)], { fetcher, storage, resolveByName });
-    return {
-      ms: Math.round(performance.now() - started),
-      elements: JSON.stringify(loaded.elements.all()),
-      count: loaded.elementCount,
-      warnings: loaded.warnings,
-      errors: loaded.errors,
-    };
-  };
+  const source: ConfiguredSource = { id: location.index, url: location.index, name: 'Corpus', enabled: true, mode: 'download', addedAt: '2026-01-01T00:00:00.000Z' };
+  const storage = new MemoryStorage();
+  const platform = { fetcher, storage, resolveByName, converter: auroraConverter };
 
-  const files = new MemoryStorage();
-  const fromDisk = await run('files', files);
-  const fromFiles = await run('files', files);
-  const converted = new MemoryStorage();
-  const converting = await run('converted', converted);
-  fetcher.asked = 0;
-  const fromConversion = await run('converted', converted);
+  let started = performance.now();
+  const first = await loadSources([source], platform);
+  const converting = performance.now() - started;
+  const asked = fetcher.asked;
+  assert.ok(asked > 0 && first.elementCount > 0, 'the first load converts the corpus');
 
-  assert.ok(fromDisk.count > 0, 'the corpus loaded');
-  assert.equal(fetcher.asked, 0, 'a load from the conversion reads nothing from the disk');
-  assert.equal(fromConversion.elements, fromDisk.elements, 'the same elements, in the same order, the same throughout');
-  assert.deepEqual(fromConversion.warnings, fromDisk.warnings);
-  assert.deepEqual(fromConversion.errors, fromDisk.errors);
-  assert.equal(fromFiles.elements, fromDisk.elements);
+  const kept = await readSourceFile(source, platform);
+  assert.ok(kept);
+  const schema = JSON.parse(await readFile(join(schemasDirectory(), 'content.schema.json'), 'utf8')) as JsonSchema;
+  assert.deepEqual(checkContentBundle(kept, { schema }).problems, [], 'the kept file is Incudo content, by the schema');
 
-  const prefix = cachePrefix(location.index);
-  const conversion = await storedSize(converted, convertedPrefix(location.index));
-  t.diagnostic(`${fromDisk.count} elements; first load from disk ${fromDisk.ms} ms, converting ${converting.ms} ms`);
-  t.diagnostic(`a later load: from the files kept ${fromFiles.ms} ms, from the conversion ${fromConversion.ms} ms`);
-  t.diagnostic(
-    `kept as files ${mb(await storedSize(files, prefix))} in ${(await files.list(prefix)).length} values; ` +
-      `converted ${mb(await storedSize(converted, prefix))} in ${(await converted.list(prefix)).length} values (the conversion ${mb(conversion)})`,
-  );
+  started = performance.now();
+  const second = await loadSources([source], platform);
+  const loading = performance.now() - started;
+  // Perturbation: converting on every load reads the corpus again.
+  assert.equal(fetcher.asked, asked, 'the second load reads nothing');
+  // As JSON: the conversion's own objects carry fields set to undefined that its file, written as JSON, does not.
+  const same = JSON.stringify([...second.elements.all()]) === JSON.stringify([...first.elements.all()]);
+  assert.ok(same, 'the same elements, in the same order, with the same content');
+  assert.deepEqual(second.warnings, first.warnings);
+  assert.deepEqual(second.errors, first.errors);
+  const size = JSON.stringify(kept).length;
+  t.diagnostic(`converted in ${Math.round(converting)} ms (${asked} addresses), loaded from the file in ${Math.round(loading)} ms; the file is ${(size / 1024 / 1024).toFixed(1)} MB`);
 });
 
 /**
- * What parsing reads, and what it wrote when `CONVERTER_VERSION` last moved. When this fails: if the change makes the
- * same XML parse to something different, raise `CONVERTER_VERSION` in `packages/content/src/converted-source.ts`; either
- * way, record the new hash here.
+ * What a change to the converter's parsing or writing must answer: does the same Aurora file now convert into something
+ * different? If so, `CONVERTER_VERSION` moves and every source is converted again. Recorded with the version they were
+ * last read under.
  */
-const PARSING_FILES = ['parse-elements.ts', 'parse-index.ts', 'xml.ts', 'book.ts', 'item-features.ts'];
-const PARSED_BY = { converter: 4, sha256: '768ec64a3412d0e98f755cacbff30936c598b6bf9dc86439bf53e1e3afc63844' };
+const CONVERTER_FILES = [
+  'xml.ts',
+  'parse-index.ts',
+  'parse-elements.ts',
+  'book.ts',
+  'item-features.ts',
+  'generated-elements.ts',
+  'improvement-options.ts',
+  'convert-source.ts',
+];
+const RECORDED = { version: 5, sha256: 'a0457454baaad237ad60c541284bd672f26a45be8b3589d75ac5b055d2d2522f' };
 
-test("the converter's version is asked about whenever parsing changes", async () => {
-  const root = join(repoRoot(), 'packages', 'aurora-import', 'src');
-  const texts = await Promise.all(PARSING_FILES.map((name) => readFile(join(root, name), 'utf8')));
-  // Line endings as git stores them, so a checkout with CRLF hashes the same.
-  const hash = sha256Hex(new TextEncoder().encode(texts.map((text) => text.replace(/\r\n/g, '\n')).join('\0')));
-  assert.equal(CONVERTER_VERSION, PARSED_BY.converter, 'CONVERTER_VERSION moved: record the hash below with it');
+test('the converter files are the ones the recorded version was decided for', async (t: Diagnostic) => {
+  const dir = join(repoRoot(), 'packages', 'aurora-import', 'src');
+  // Line endings and the version's own line are left out: a checkout's endings, or the bump itself, change nothing.
+  const texts = await Promise.all(
+    CONVERTER_FILES.map(async (name) =>
+      (await readFile(join(dir, name), 'utf8')).replace(/\r\n/g, '\n').replace(/^export const CONVERTER_VERSION = \d+;$/m, ''),
+    ),
+  );
+  const hash = sha256Hex(new TextEncoder().encode(texts.join('\n\u0000\n')));
+  t.diagnostic(`converter files sha256 ${hash}`);
+  assert.equal(CONVERTER_VERSION, RECORDED.version, 'the version moved: record the hash below with it');
   assert.equal(
     hash,
-    PARSED_BY.sha256,
-    `@incudo/aurora-import's parsing changed (${PARSING_FILES.join(', ')}). If the same XML now parses differently, ` +
-      'raise CONVERTER_VERSION; then record this hash in PARSED_BY.',
+    RECORDED.sha256,
+    'A converter file changed. Does the same Aurora file now convert into something different? If so, bump CONVERTER_VERSION. Either way, record this hash and the version in RECORDED.',
   );
 });

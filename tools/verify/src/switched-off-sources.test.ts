@@ -10,12 +10,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dirname } from 'node:path';
 
 import { MemoryStorage } from '@incudo/core';
+import { auroraConverter } from '@incudo/aurora-import';
 import {
   ContentLibrary,
-  HttpContentSource,
   SourceProfile,
   declaredKey,
   loadSources,
@@ -24,7 +23,7 @@ import {
   type LoadedSource,
 } from '@incudo/content';
 
-import { LocalMirrorFetcher, OfflineFetcher } from './node-platform.ts';
+import { convertCorpus, corpusFetcher, readCorpusIndex } from './corpus.ts';
 import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -32,12 +31,9 @@ type Diagnostic = { diagnostic: (s: string) => void };
 test('a switched-off source is named for exactly what it declares of what a line is missing', { skip: corpusSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const location = requireCorpus();
-  const fetcher =
-    location.layout === 'repository'
-      ? new LocalMirrorFetcher(location.root ?? dirname(location.index), new OfflineFetcher())
-      : new OfflineFetcher();
+  const fetcher = corpusFetcher(location);
   const resolveByName = location.layout === 'aurora-folder';
-  const indexOf = (url: string) => new HttpContentSource({ id: url, fetcher, resolveByName }).loadIndex(url);
+  const indexOf = (url: string) => readCorpusIndex(location, url);
 
   // The indexes a user would add one by one, found by what they are rather than by position.
   const top = await indexOf(location.index);
@@ -54,12 +50,12 @@ test('a switched-off source is named for exactly what it declares of what a line
   const storage = new MemoryStorage();
   const profile = new SourceProfile(storage);
   const added = [core, phb, tashas, xanathars, supplements].map((ref) =>
-    profile.add(ref.url, { name: ref.name, mode: 'download', keep: 'files' }),
+    profile.add(ref.url, { name: ref.name, mode: 'download' }),
   );
   const nameOf = (id: string) => added.find((source) => source.id === id)!.name;
   const load = async (enabled: ConfiguredSource[]): Promise<Map<string, LoadedSource>> => {
     for (const source of added) source.enabled = enabled.includes(source);
-    const loaded = await loadSources(profile.enabled, { fetcher, storage, resolveByName }, undefined, {
+    const loaded = await loadSources(profile.enabled, { fetcher, storage, resolveByName, converter: auroraConverter }, undefined, {
       switchedOff: profile.sources.filter((source) => !source.enabled),
     });
     return new Map(loaded.sources.map((source) => [source.id, source]));
@@ -77,7 +73,7 @@ test('a switched-off source is named for exactly what it declares of what a line
   const alone = new Map<string, Set<string>>();
   for (const source of added) {
     const library = new ContentLibrary();
-    const report = await library.loadSource(new HttpContentSource({ id: source.id, fetcher, resolveByName }), source.url);
+    const report = library.loadBundle(source.id, (await convertCorpus(location, { url: source.url })).bundle);
     alone.set(source.id, new Set(report.declared));
   }
 

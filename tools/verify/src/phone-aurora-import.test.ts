@@ -17,7 +17,7 @@ import { basename } from 'node:path';
 import { MapElementIndex, sha256Hex, type CharacterStore, type GameSystem, type LibraryEntryRef } from '@incudo/core';
 import { CharacterBuilder, CharacterLibrary, importAuroraSaveIntoLibrary, importReceivedSaves, sheetDocument, sheetMarkdown } from '@incudo/ui';
 
-import { corpusSource, loadCorpus } from './corpus.ts';
+import { loadCorpus, readCorpusIndex } from './corpus.ts';
 import { loadShippedSystem } from './node-system.ts';
 import { corpusProvenance, corpusSkip, realElements, requireCorpus } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
@@ -40,7 +40,7 @@ test('importing the samples with the whole corpus, its core part only, and nothi
   const system = await loadShippedSystem('dnd5e');
   const location = requireCorpus();
   const whole = await realElements();
-  const top = await corpusSource(location).loadIndex(location.index);
+  const top = await readCorpusIndex(location, location.index);
   const parts = top.files.filter((ref) => ref.isIndex).map((ref) => ref.url);
   const core = parts.find((url) => /\/core\.index$/i.test(url));
   assert.ok(core, 'the top index names a core part');

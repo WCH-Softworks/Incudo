@@ -9,10 +9,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { GENERATED_SOURCE_ID, auroraGeneratedElements, type ElementAppend } from '@incudo/aurora-import';
-import { referencedElementIds, type Element, type Rule } from '@incudo/core';
+import { referencedElementIds, type ContentBundle, type Element, type Rule } from '@incudo/core';
 import { ContentLibrary } from './library.ts';
-import type { ContentIndex, ContentSource, ElementFile, FileRef } from './source.ts';
+import { testBundle, type TestFile } from './test-bundle.ts';
 
 interface Spec {
   id: string;
@@ -20,6 +19,19 @@ interface Spec {
   requires?: string;
   selectDefault?: string;
 }
+
+/** What a conversion writes for Aurora's app, as a file of its own: two marker elements stand for it here. */
+const GENERATED: Element[] = ['ID_INTERNAL_MARKER_A', 'ID_INTERNAL_MARKER_B'].map((id) => ({
+  id,
+  type: 'Grants',
+  name: id,
+  source: '',
+  setters: {},
+  // One grants what nothing declares, so there is something to report against whichever source brought it in.
+  rules: id.endsWith('_A') ? [{ kind: 'grant', key: 'grant-0', type: 'Grants', id: 'ID_INTERNAL_NOWHERE' } as Rule] : [],
+  supports: [],
+  origin: { sourceId: 'x' },
+}));
 
 interface File {
   elements?: Spec[];
@@ -44,47 +56,40 @@ function element(spec: Spec, sourceId: string, fileUrl: string): Element {
   };
 }
 
-function source(name: string, format: 'aurora' | 'incudo', ...files: File[]): { source: ContentSource; url: string } {
-  const url = `memory://${name}/index`;
-  const refs: FileRef[] = files.map((_, i) => ({ name: `${i}.xml`, url: `memory://${name}/${i}.xml`, isIndex: false }));
-  const index: ContentIndex = { url, name, files: refs, format };
-  return {
-    url,
-    source: {
-      id: url,
-      loadIndex: async () => index,
-      loadFile: async (ref: FileRef): Promise<ElementFile> => {
-        const file = files[refs.findIndex((r) => r.url === ref.url)]!;
-        return {
-          url: ref.url,
-          elements: (file.elements ?? []).map((spec) => element(spec, url, ref.url)),
-          appends: (file.appends ?? []).map(
-            (a) =>
-              ({
-                id: a.target,
-                rules: (a.grants ?? []).map((id) => ({ kind: 'grant', type: 'Widget', id })),
-                supports: [a.tag],
-                fileUrl: ref.url,
-              }) as ElementAppend,
-          ),
-          diagnostics: [],
-        };
-      },
-      checkForUpdates: async () => ({ state: 'unknown', reason: 'test' }),
-    },
-  };
+interface TestSource {
+  id: string;
+  bundle: ContentBundle;
 }
 
-async function load(...sources: Array<{ source: ContentSource; url: string }>): Promise<ContentLibrary> {
+function source(name: string, generated: boolean, ...files: File[]): TestSource {
+  const url = `memory://${name}/index`;
+  const testFiles: TestFile[] = files.map((file, i) => {
+    const fileUrl = `memory://${name}/${i}.xml`;
+    return {
+      url: fileUrl,
+      elements: (file.elements ?? []).map((spec) => element(spec, url, fileUrl)),
+      extensions: (file.appends ?? []).map((a) => ({
+        id: a.target,
+        rules: (a.grants ?? []).map((id) => ({ kind: 'grant', key: `grant-${id}`, type: 'Widget', id }) as Rule),
+        supports: [a.tag],
+      })),
+    };
+  });
+  // What a conversion writes for Aurora's app: its own elements, as a file of their own.
+  if (generated) testFiles.unshift({ url: 'incudo:aurora/app-elements', elements: GENERATED, generated: true });
+  return { id: url, bundle: testBundle(url, testFiles) };
+}
+
+function load(...sources: TestSource[]): ContentLibrary {
   const library = new ContentLibrary();
-  for (const s of sources) await library.loadSource(s.source, s.url);
+  for (const s of sources) library.loadBundle(s.id, s.bundle);
   return library;
 }
 
 const CORE = () =>
-  source('core', 'incudo', { elements: [{ id: 'ID_SKILL_ARCANA' }, { id: 'ID_LANGUAGE_COMMON' }, { id: 'ID_SPELL_MISTY_STEP' }] });
+  source('core', false, { elements: [{ id: 'ID_SKILL_ARCANA' }, { id: 'ID_LANGUAGE_COMMON' }, { id: 'ID_SPELL_MISTY_STEP' }] });
 const BOOK = () =>
-  source('book', 'incudo', {
+  source('book', false, {
     elements: [
       { id: 'ID_RACE_ELF', grants: ['ID_LANGUAGE_COMMON', 'ID_LANGUAGE_ELVISH'] },
       { id: 'ID_LANGUAGE_ELVISH' },
@@ -97,7 +102,7 @@ const BOOK = () =>
 
 test('a book without the source it builds on reports what it refers to, against itself', async () => {
   // Perturbation: counting requirements too adds ID_FEAT_2024_REPLACEMENT; dropping select defaults loses ID_SKILL_ARCANA.
-  const library = await load(BOOK());
+  const library = load(BOOK());
   assert.deepEqual([...library.missingContent().entries()], [
     ['memory://book/index', { references: ['ID_LANGUAGE_COMMON', 'ID_SKILL_ARCANA'], additions: ['ID_SPELL_MISTY_STEP'] }],
   ]);
@@ -107,40 +112,39 @@ test('adding the source it builds on clears the report, whichever order they loa
   // The append's own grant is reported once its target exists, and against the book: the rule came from the book,
   // though it now sits on core's element. Perturbation: reading the folded element whole reports it against core.
   for (const order of [[CORE(), BOOK()], [BOOK(), CORE()]]) {
-    const report = (await load(...order)).missingContent();
+    const report = (load(...order)).missingContent();
     assert.deepEqual([...report.entries()], [['memory://book/index', { references: ['ID_ARTIFICER_NOTE'], additions: [] }]]);
   }
 });
 
-test('what an append adds is not reported against the source it was added to', async () => {
+test('what an extension adds is not reported against the source it was added to', async () => {
   // The same, with the appended grant resolvable: nothing is left, for either source.
-  const note = source('note', 'incudo', { elements: [{ id: 'ID_ARTIFICER_NOTE' }] });
-  const report = (await load(BOOK(), CORE(), note)).missingContent();
+  const note = source('note', false, { elements: [{ id: 'ID_ARTIFICER_NOTE' }] });
+  const report = (load(BOOK(), CORE(), note)).missingContent();
   assert.deepEqual([...report.entries()], []);
 });
 
 test('an element replaced by a later source is judged by the definition that won', async () => {
   // Perturbation: walking every definition ever loaded, rather than the index, reports the first ID_RACE_ELF's grants.
-  const reprint = source('reprint', 'incudo', { elements: [{ id: 'ID_RACE_ELF', grants: ['ID_LANGUAGE_ELVISH'] }] });
-  const report = (await load(BOOK(), reprint)).missingContent();
+  const reprint = source('reprint', false, { elements: [{ id: 'ID_RACE_ELF', grants: ['ID_LANGUAGE_ELVISH'] }] });
+  const report = (load(BOOK(), reprint)).missingContent();
   assert.deepEqual(report.get('memory://book/index')?.references, ['ID_SKILL_ARCANA']);
   assert.equal(report.get('memory://reprint/index'), undefined);
 });
 
-test('what the Aurora overlay refers to is reported against the first Aurora source, never as a source of its own', async () => {
+test('what a conversion generated refers to is reported against the first source that brought it in', async () => {
   // An Aurora source with none of the content the overlay grants. Perturbation: keying by origin alone reports it
   // under the overlay's own id, which no user added and the Sources pane has no line for. Since ADR 0129 the overlay
   // grants nothing it does not declare itself (its bag proxies named two languages), so what is held is that nothing
   // is reported under the overlay, and that whatever it may grant later is reported against the first source.
-  const overlay = auroraGeneratedElements();
+  const overlay = GENERATED;
   const expected = [...referencedElementIds(overlay, { requirements: false })]
     .filter((id) => !overlay.some((e) => e.id === id))
     .sort();
 
-  const first = source('first', 'aurora', { elements: [{ id: 'ID_NOTHING' }] });
-  const second = source('second', 'aurora', { elements: [{ id: 'ID_ALSO_NOTHING' }] });
-  const report = (await load(first, second)).missingContent();
-  assert.equal(report.get(GENERATED_SOURCE_ID), undefined);
+  const first = source('first', true, { elements: [{ id: 'ID_NOTHING' }] });
+  const second = source('second', true, { elements: [{ id: 'ID_ALSO_NOTHING' }] });
+  const report = (load(first, second)).missingContent();
   assert.equal(report.get('memory://second/index'), undefined);
   for (const id of expected) assert.ok(report.get('memory://first/index')?.references.includes(id), `${id} is reported`);
 });

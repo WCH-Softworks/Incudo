@@ -2,8 +2,8 @@
  * Content sources: add, name, remove, enable, and check for updates.
  *
  * ADR 0004 designed all of this and the app shipped a single text box. ADR 0028 says what the
- * list *is* — the user's profile, which no character depends on — and ADR 0029 says what the
- * cache does underneath. This renders that and holds no policy of its own.
+ * list *is* — the user's profile, which no character depends on — and ADR 0119 says what is
+ * kept underneath: each source converted, as a file. This renders that and holds no policy of its own.
  *
  * Adding a source is a thing you come here and do. It is not a toll gate: the library screen
  * works with this list empty, which is the whole point of ADR 0012.
@@ -24,8 +24,6 @@ import {
   type IndexTreeNode,
   type MissingContent,
   type RefreshReport,
-  type SourceKeep,
-  keepsConverted,
   type SourceOverlap,
   type SwitchedOffSupply,
   type UpdateStatus,
@@ -69,8 +67,8 @@ export interface SourcesActions {
   remove: (id: string) => Promise<void>;
   rename: (id: string, name: string) => Promise<void>;
   setEnabled: (id: string, enabled: boolean) => Promise<void>;
-  /** Keep what was fetched converted or as the files it came as, and reload — ADR 0085. */
-  setKeep: (id: string, keep: SourceKeep) => Promise<void>;
+  /** Show the file a source is kept as in the system's file manager — ADR 0119. False where there is none to show it in. */
+  showFile: (id: string) => Promise<boolean>;
   /** Swap with the neighbour above or below among this system's sources — ADR 0054. */
   move: (id: string, direction: 'up' | 'down') => Promise<void>;
   checkForUpdates: (id: string) => Promise<void>;
@@ -145,7 +143,6 @@ export function SourcesPane({
       entry.already?.systemId !== undefined && !systemLineage(system).includes(entry.already.systemId),
   );
   const [url, setUrl] = useState('');
-  const [keep, setKeep] = useState<SourceKeep>('converted');
   const [failure, setFailure] = useState<string | null>(null);
   const [homebrewName, setHomebrewName] = useState('');
   /** A source about to be added with some of its parts chosen first (ADR 0055): what to add it with once they are. */
@@ -154,7 +151,7 @@ export function SourcesPane({
   async function add(target: string, options?: Partial<ConfiguredSource>): Promise<void> {
     setFailure(null);
     try {
-      await actions.add(target.trim(), { ...options, keep });
+      await actions.add(target.trim(), options);
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
     }
@@ -236,7 +233,6 @@ export function SourcesPane({
           onChange={(event) => setUrl(event.target.value)}
           aria-label="Index URL"
         />
-        <KeepSelect value={keep} disabled={busy} label="How to keep it" onChange={setKeep} />
         <button type="button" onClick={() => void add(url)} disabled={busy || !url.trim()}>
           {busy ? 'Loading…' : 'Add'}
         </button>
@@ -247,16 +243,12 @@ export function SourcesPane({
 
       {/* There was a Stream or Download choice here; the two did the same thing (ADR 0100), so it went. */}
       <p className="hint">
-        Adding a source fetches every file it lists, less any part you switch off, because building a character offers
-        choices from all of them, and keeps them, so it works offline from then on. Nothing is fetched again until you ask.
-      </p>
-      <p className="hint">
-        <strong>Converted</strong> keeps what was fetched in Incudo's own form, which loads quickly and takes somewhat
-        more space. <strong>Files</strong> keeps the files as they came, which takes less space and is read again every
-        time content loads.
+        Adding a source downloads every file it lists and converts it into Incudo's own content format, kept as one file on
+        this computer (<strong>Show file</strong> opens its folder), so it works offline from then on. Parts you switch off
+        are left out when content loads. Nothing is downloaded again until you refresh it.
       </p>
 
-      {/* ADR 0055: the parts are read from the source's indexes, before any of its content is loaded. */}
+      {/* ADR 0055: the parts are read from the source's conversion, which choosing them first makes. */}
       {choosing && (
         <PartsChooser
           key={choosing.url}
@@ -594,12 +586,10 @@ function SourceRow({
           />
           Enabled
         </label>
-        {!file && (
-          <KeepSelect
-            value={keepsConverted(source) ? 'converted' : 'files'}
-            label={`How to keep ${source.name}`}
-            onChange={(keep) => void actions.setKeep(source.id, keep)}
-          />
+        {!homebrew && (
+          <button type="button" onClick={() => void actions.showFile(source.id)}>
+            Show file
+          </button>
         )}
       </div>
 
@@ -999,22 +989,3 @@ function PartItem({
   );
 }
 
-/** Converted or as files — ADR 0085. The words are the hint's under "Add a source by URL". */
-function KeepSelect({
-  value,
-  label,
-  disabled,
-  onChange,
-}: {
-  value: SourceKeep;
-  label: string;
-  disabled?: boolean;
-  onChange: (keep: SourceKeep) => void;
-}): React.JSX.Element {
-  return (
-    <select value={value} disabled={disabled} aria-label={label} onChange={(event) => onChange(event.target.value as SourceKeep)}>
-      <option value="converted">Converted</option>
-      <option value="files">Files</option>
-    </select>
-  );
-}

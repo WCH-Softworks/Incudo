@@ -1,7 +1,7 @@
 /**
  * The corpus regression suite (ADR 0039).
  *
- * CLAUDE.md's baselines — 740 files, 14,320 elements at the time of writing, 1 unresolved reference, 57 warnings — used
+ * CLAUDE.md's baselines — 740 files, 14,317 elements at the time of writing, 1 unresolved reference, 60 warnings — used
  * to be read off `incudo validate`, and CI's `aurora-corpus` job ran that command with budgets.
  * This file is both. It has three layers, and only the last needs a corpus:
  *
@@ -55,7 +55,7 @@ function analysis(patch: Partial<CorpusAnalysis> = {}): CorpusAnalysis {
     size: 14541,
     synthesizedFromText: 2258,
     errors: [],
-    warnings: new Array(57).fill({ level: 'warning', message: 'w' }),
+    warnings: new Array(60).fill({ level: 'warning', message: 'w' }),
     unresolved: ['ID_ONE'],
     unmetRequirements: [],
     ...patch,
@@ -72,8 +72,8 @@ test('each of the four budgets fails on its own, and names itself', () => {
   const failing: Array<[Partial<CorpusAnalysis>, RegExp]> = [
     [{ unresolved: ['ID_ONE', 'ID_TWO'] }, /2 unresolved references, budget 1\. 1 more than expected/],
     [
-      { warnings: new Array(58).fill({ level: 'warning', message: 'w' }) },
-      /58 warnings, budget 57/,
+      { warnings: new Array(61).fill({ level: 'warning', message: 'w' }) },
+      /61 warnings, budget 60/,
     ],
     [{ files: 739 }, /only 739 files loaded, expected at least 740/],
     [{ elements: 14315 }, /only 14315 elements loaded, expected at least 14316/],

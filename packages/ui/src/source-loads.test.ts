@@ -47,6 +47,5 @@ test('a load key changes with the sources, their order, how they are kept and th
   assert.equal(sourcesLoadKey([{ ...a }, { ...b }]), key);
   assert.notEqual(sourcesLoadKey([b, a]), key);
   assert.notEqual(sourcesLoadKey([a]), key);
-  assert.notEqual(sourcesLoadKey([{ ...a, keep: 'files' }, b]), key);
   assert.notEqual(sourcesLoadKey([{ ...a, excluded: ['x.xml'] }, b]), key);
 });

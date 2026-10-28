@@ -62,6 +62,45 @@ export async function applyChanges(
 }
 
 /**
+ * The files a content source is kept as, once converted into Incudo's content format — ADR 0119 decision 11: a file the
+ * user can see and open, in a `sources` folder of the app's own data (the maintainer's call). A plain file name only
+ * (`assertPlainFileName`), never a path.
+ */
+export interface SourceFiles {
+  read(name: string): Promise<string | null>;
+  write(name: string, text: string): Promise<void>;
+  remove(name: string): Promise<void>;
+  /** Show the file in the platform's file manager. Absent where there is none to show it in. */
+  reveal?(name: string): Promise<void>;
+}
+
+/** A platform with no files of its own (a browser page, a test) keeps a source's file in its `Storage`. */
+export class StorageSourceFiles implements SourceFiles {
+  private readonly storage: Storage;
+
+  constructor(storage: Storage) {
+    this.storage = storage;
+  }
+
+  private key(name: string): string {
+    assertPlainFileName(name);
+    return `sources/converted/${name}`;
+  }
+
+  read(name: string): Promise<string | null> {
+    return this.storage.read(this.key(name));
+  }
+
+  write(name: string, text: string): Promise<void> {
+    return this.storage.write(this.key(name), text);
+  }
+
+  remove(name: string): Promise<void> {
+    return this.storage.remove(this.key(name));
+  }
+}
+
+/**
  * Zip encoding for the `.incu` container (ADR 0012).
  *
  * A port rather than an implementation in `core` because DEFLATE needs a compressor, and

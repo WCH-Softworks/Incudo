@@ -10,30 +10,16 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dirname } from 'node:path';
 
-import { ContentLibrary, HttpContentSource } from '@incudo/content';
-import type { Fetcher } from '@incudo/core';
+import { parseAuroraIndex } from '@incudo/aurora-import';
+import { ContentLibrary } from '@incudo/content';
 
-import type { CorpusLocation } from './corpus.ts';
-import { LocalMirrorFetcher, OfflineFetcher } from './node-platform.ts';
+import { convertCorpus, corpusFetcher, type CorpusLocation } from './corpus.ts';
 import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
 
-function fetcherFor(location: CorpusLocation): Fetcher {
-  return location.layout === 'repository'
-    ? new LocalMirrorFetcher(location.root ?? dirname(location.index), new OfflineFetcher())
-    : new OfflineFetcher();
-}
-
 async function load(location: CorpusLocation, urls: string[]): Promise<ContentLibrary> {
-  const fetcher = fetcherFor(location);
   const library = new ContentLibrary();
-  for (const url of urls) {
-    await library.loadSource(
-      new HttpContentSource({ id: url, fetcher, resolveByName: location.layout === 'aurora-folder' }),
-      url,
-    );
-  }
+  for (const url of urls) library.loadBundle(url, (await convertCorpus(location, { url })).bundle);
   return library;
 }
 
@@ -49,12 +35,11 @@ function shape(library: ContentLibrary, skip: ReadonlySet<string>): Map<string, 
 }
 
 const missed = (library: ContentLibrary): number =>
-  library.diagnostics.filter((d) => d.message.startsWith('An <append> targets')).length;
+  library.diagnostics.filter((d) => d.message.startsWith('An addition targets')).length;
 
 test('the corpus split into sources loads the same forwards, backwards and whole', { skip: corpusSkip }, async (t) => {
   const location = requireCorpus();
-  const fetcher = fetcherFor(location);
-  const top = await new HttpContentSource({ id: location.index, fetcher, resolveByName: location.layout === 'aurora-folder' }).loadIndex(location.index);
+  const top = parseAuroraIndex((await corpusFetcher(location).fetchText(location.index)).text, location.index, { resolveByName: location.layout === 'aurora-folder' });
   const groups = top.files.filter((ref) => ref.isIndex).map((ref) => ref.url);
   assert.ok(groups.length > 1, 'the top index names more than one index to split it into');
 

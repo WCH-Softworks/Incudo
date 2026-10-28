@@ -64,7 +64,9 @@ jobs:
       #     app materializes, and separating requirement targets out accounts for the rest. This
       #     number should be 0 the day AuroraLegacy fixes the spelling.
       #
-      #   57 warnings — 56 <grant> elements with no id, and 1 id defined in two files.
+      #   60 warnings — 56 <grant> elements with no id, 1 id defined in two files, and 3 ids each
+      #   declared twice inside one file, which the conversion reports and Aurora's app settled silently
+      #   by using the later (ADR 0119).
       #
       # `requirements that can never be met` is reported and deliberately not budgeted: a
       # requirement naming an id nothing declares is a test that reads false, and `!ID_X`
@@ -90,7 +92,7 @@ jobs:
           INCUDO_CORPUS_LAYOUT: repository
           INCUDO_CORPUS_ROOT: .corpus
           INCUDO_MAX_UNRESOLVED: 1
-          INCUDO_MAX_WARNINGS: 57
+          INCUDO_MAX_WARNINGS: 60
           INCUDO_EXPECT_FILES: 740
           INCUDO_EXPECT_ELEMENTS: 14316
           # The committed sample saves are part of what this job checks. Without this an empty folder skips

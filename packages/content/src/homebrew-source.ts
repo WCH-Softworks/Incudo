@@ -9,7 +9,6 @@
 
 import { checkContentBundle, type ContentBundle, type Element, type Storage } from '@incudo/core';
 import type { ConfiguredSource, SourceProfile } from './profile.ts';
-import type { ContentIndex, ElementFile, FileRef, UpdateStatus, ContentSource } from './source.ts';
 
 const SCHEME = 'homebrew:';
 
@@ -97,40 +96,6 @@ export async function writeHomebrew(storage: Storage, sourceId: string, bundle: 
   const current = await readHomebrew(storage, sourceId);
   if (current.status === 'unreadable') throw new Error(current.reason);
   await storage.write(homebrewKey(sourceId), `${JSON.stringify(bundle, null, 2)}\n`);
-}
-
-/** A homebrew source as a `ContentSource`: an index of one file, and no update check. */
-export class HomebrewContentSource implements ContentSource {
-  readonly id: string;
-  private readonly storage: Storage;
-  private readonly name: string;
-
-  constructor(id: string, storage: Storage, name: string) {
-    this.id = id;
-    this.storage = storage;
-    this.name = name;
-  }
-
-  async loadIndex(url: string): Promise<ContentIndex> {
-    // The file's address ends in `.json`, which is how a load tells an elements file from anything else an index names.
-    return { url, name: this.name, files: [{ name: this.name, url: homebrewFileUrl(url), isIndex: false }], format: 'incudo' };
-  }
-
-  async loadFile(ref: FileRef): Promise<ElementFile> {
-    const read = await readHomebrew(this.storage, this.id);
-    if (read.status === 'unreadable') throw new Error(read.reason);
-    // Read and parsed on every load, never kept: the library folds appends into the elements it is handed, and an
-    // edit saved since the last load is what the next one must see.
-    const elements: Element[] = read.bundle.elements.map((element) => ({
-      ...element,
-      origin: { sourceId: this.id, fileUrl: ref.url, format: 'incudo' },
-    }));
-    return { url: ref.url, name: this.name, elements, diagnostics: [] };
-  }
-
-  async checkForUpdates(): Promise<UpdateStatus> {
-    return { state: 'unknown', reason: HOMEBREW_HAS_NO_UPSTREAM };
-  }
 }
 
 /** Make an empty homebrew source under a system, and its body. The caller saves the profile and reloads. */

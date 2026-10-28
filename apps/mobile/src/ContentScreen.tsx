@@ -1,8 +1,8 @@
 /**
  * The content a phone builds with — ADR 0086. Per game: its suggested sources, added with one tap and downloaded in
- * full, kept converted or as files (ADR 0085, the user's choice of speed against space); each added source switched on
- * or off, refreshed, kept the other way, or removed with what it kept on the device. On a metered connection, adding,
- * refreshing or keeping a source as files asks first and says what it downloads (ADR 0100, `fetchPrompt`).
+ * full and converted into Incudo's own content, kept as a file (ADR 0119); each added source switched on or off,
+ * refreshed, or removed with its file. On a metered connection, adding or refreshing a source asks first and says what it
+ * downloads (ADR 0100, `fetchPrompt`).
  *
  * A renderer of `ContentSources` (`packages/ui`). Reading or playing a character never needs any of this (ADR 0012).
  */
@@ -10,17 +10,13 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { keepsConverted, type ConfiguredSource } from '@incudo/content';
+import type { ConfiguredSource } from '@incudo/content';
 import type { SuggestedSource } from '@incudo/core';
 import { addSourceNote, fetchPrompt, type FetchAction } from '@incudo/ui';
 
 import { Body, Button, Card, Heading, Row } from './controls.tsx';
 import { usePlatform } from './context.ts';
 import { usePalette } from './theme.ts';
-
-const KEEP_NOTE =
-  'Converted keeps what was downloaded in Incudo\'s own form, which loads quickly and takes somewhat more space (about 20 MB for AuroraLegacy). ' +
-  'Files keeps the files as they came (about 15 MB), and reads them again every time content loads.';
 
 export function ContentScreen() {
   const { sources, systems, connection } = usePlatform();
@@ -45,10 +41,9 @@ export function ContentScreen() {
 
   const add = async (systemId: string, suggestion: SuggestedSource): Promise<void> => {
     const note = addSourceNote(await connection.current());
-    Alert.alert(`Add ${suggestion.name}?`, `${note}\n\n${KEEP_NOTE}`, [
+    Alert.alert(`Add ${suggestion.name}?`, note, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Files', onPress: () => void run(() => sources.add(systemId, suggestion, 'files')) },
-      { text: 'Converted', onPress: () => void run(() => sources.add(systemId, suggestion, 'converted')) },
+      { text: 'Add', onPress: () => void run(() => sources.add(systemId, suggestion)) },
     ]);
   };
 
@@ -96,13 +91,9 @@ export function ContentScreen() {
                 elements={loaded?.sources.find((row) => row.id === source.id)?.elementCount}
                 busy={busy}
                 onEnabled={(on) => void run(() => sources.setEnabled(source.id, on))}
-                onKeep={() => {
-                  const keep = keepsConverted(source) ? 'files' : 'converted';
-                  void confirmFetch({ kind: 'keep', source, keep }, () => sources.setKeep(source.id, keep));
-                }}
                 onRefresh={() => void confirmFetch({ kind: 'refresh', source }, () => sources.refresh(source.id))}
                 onRemove={() =>
-                  Alert.alert(`Remove ${source.name}?`, 'What it downloaded is deleted from this device. Characters keep the content they use.', [
+                  Alert.alert(`Remove ${source.name}?`, 'Its file is deleted from this device. Characters keep the content they use.', [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Remove', style: 'destructive', onPress: () => void run(() => sources.remove(source.id)) },
                   ])
@@ -121,7 +112,6 @@ function SourceCard({
   elements,
   busy,
   onEnabled,
-  onKeep,
   onRefresh,
   onRemove,
 }: {
@@ -129,12 +119,10 @@ function SourceCard({
   elements: number | undefined;
   busy: boolean;
   onEnabled: (on: boolean) => void;
-  onKeep: () => void;
   onRefresh: () => void;
   onRemove: () => void;
 }) {
   const palette = usePalette();
-  const converted = keepsConverted(source);
   const count = elements ?? source.elementCount;
   return (
     <Card>
@@ -143,13 +131,12 @@ function SourceCard({
         <Switch value={source.enabled} disabled={busy} onValueChange={onEnabled} accessibilityLabel={`Use ${source.name}`} />
       </Row>
       <Body tone="muted">
-        {[count !== undefined ? `${count.toLocaleString()} entries` : 'not loaded yet', converted ? 'kept converted' : 'kept as files', source.version ? `version ${source.version}` : undefined]
+        {[count !== undefined ? `${count.toLocaleString()} entries` : 'not loaded yet', source.version ? `version ${source.version}` : undefined]
           .filter(Boolean)
           .join(' · ')}
       </Body>
       <Row>
         <Button label="Refresh" disabled={busy} onPress={onRefresh} />
-        <Button label={converted ? 'Keep as files' : 'Keep converted'} disabled={busy} onPress={onKeep} />
         <Button label="Remove" kind="link" disabled={busy} onPress={onRemove} />
       </Row>
     </Card>

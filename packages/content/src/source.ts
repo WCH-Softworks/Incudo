@@ -1,60 +1,53 @@
 /**
- * Content sources.
+ * Content sources: what the library is handed, and the converter that makes it.
  *
- * One interface, several implementations, composed rather than chosen once. The
- * user-facing setting is per source — *stream* or *download* — and live mode still
- * writes through to the cache, so going offline degrades to "what you last saw"
- * rather than failing. See docs/adr/0004.
+ * A source reaches the library as Incudo content (ADR 0119): a source at an address in another format is converted once,
+ * when it is added, refreshed or the converter changes, and the conversion is kept as a file. This package converts
+ * nothing itself and imports no converter: the app hands it one ({@link SourceConverter}), the way it hands it a
+ * `Fetcher` and a `Storage`. Aurora's is `@incudo/aurora-import`'s `auroraConverter`.
  */
 
-import type { ElementAppend } from '@incudo/aurora-import';
-import type { Element } from '@incudo/core';
+import type { ContentBundle, Fetcher } from '@incudo/core';
 
+/** Read by nothing since ADR 0100, and kept because profiles carry it. */
 export type SourceMode = 'stream' | 'download';
 
-export interface FileRef {
-  name: string;
-  url: string;
-  isIndex: boolean;
+/** What a conversion did, for a refresh's report. */
+export interface ConversionReport {
+  /** Files and indexes that came over the network. */
+  fetched: number;
+  /** Ones a conditional request said were current. */
+  unchanged: number;
+  /** Ones that could not be fetched and were kept from the previous conversion, with why. */
+  kept: Array<{ url: string; reason: string }>;
 }
 
-export interface ContentIndex {
-  url: string;
-  name: string;
-  description?: string;
-  author?: string;
-  version?: string;
-  files: FileRef[];
-  /** What the index is written in, from its URL (`detectFormat`). */
-  format: 'aurora' | 'incudo';
-}
-
-export interface ElementFile {
-  url: string;
-  name?: string;
-  version?: string;
-  elements: Element[];
-  /**
-   * `<append id="X">` blocks: rules and support tags for an element declared elsewhere,
-   * often in a different file. They cannot be applied at parse time because the target may
-   * not be loaded yet, so they travel with the file and `ContentLibrary` applies them once
-   * everything is in.
-   */
-  appends?: ElementAppend[];
-  diagnostics: SourceDiagnostic[];
-}
-
-export interface SourceDiagnostic {
-  level: 'error' | 'warning';
-  message: string;
-  elementId?: string;
-  fileUrl?: string;
+/** Turns a source in another format into Incudo content. */
+export interface SourceConverter {
+  /** What a conversion it wrote says it was converted from (`ContentSourceInfo.converted.from`). */
+  readonly format: string;
+  /** Its version: a conversion another version wrote is converted again, where the source can be read again. */
+  readonly version: number;
+  /** Convert a source at an address: its top index and everything it reaches. Throws when the top cannot be read. */
+  convertSource(options: {
+    fetcher: Fetcher;
+    url: string;
+    sourceId: string;
+    resolveByName?: boolean;
+    previous?: ContentBundle;
+    onProgress?: (done: number, total: number, current: string) => void;
+    at?: string;
+  }): Promise<{ bundle: ContentBundle; report: ConversionReport }>;
+  /** Convert one file a user added. Throws, with a sentence, when it holds nothing to add. */
+  convertFile(text: string, options: { url: string; name: string; at?: string }): ContentBundle;
+  /** The version the source at an address declares now, for an update check that cannot ask file by file. */
+  latestVersion(fetcher: Fetcher, url: string, options?: { resolveByName?: boolean }): Promise<string | undefined>;
 }
 
 /**
- * What an update check found. `basis` says how it was found — ADR 0050: `files` asked every cached file
- * whether it changed, and then `checked`, `changed` and `unanswered` count them; `version` compared the top
- * index's version, which is all a check can do without ETags and which a source may never bump.
+ * What an update check found. `basis` says how it was found — ADR 0050: `files` asked every file the conversion fetched
+ * whether it changed, and then `checked`, `changed` and `unanswered` count them; `version` compared the top index's
+ * version, which is all a check can do without ETags and which a source may never bump.
  */
 export type UpdateStatus =
   | { state: 'current'; version?: string; basis?: UpdateBasis; checked?: number; unanswered?: number }
@@ -70,20 +63,6 @@ export type UpdateStatus =
   | { state: 'unknown'; reason: string };
 
 export type UpdateBasis = 'files' | 'version';
-
-export interface ContentSource {
-  readonly id: string;
-  loadIndex(url: string): Promise<ContentIndex>;
-  loadFile(ref: FileRef): Promise<ElementFile>;
-  checkForUpdates(index: ContentIndex): Promise<UpdateStatus>;
-}
-
-/** Detect the content format from a URL. Aurora is the only one that exists today. */
-export function detectFormat(url: string): 'aurora' | 'incudo' {
-  return url.toLowerCase().endsWith('.incuset') || url.toLowerCase().endsWith('.json')
-    ? 'incudo'
-    : 'aurora';
-}
 
 /**
  * Compare two dotted version strings ("0.2.8"). Returns -1, 0 or 1.

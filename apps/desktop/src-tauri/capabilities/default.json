@@ -1,8 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the Incudo window is allowed to do. See apps/desktop/README.md for why content is fetched by the app's own command, https only, and why the filesystem scope is as narrow as it is.",
-  "windows": ["main"],
+  "description": "What the Incudo window is allowed to do. See apps/desktop/README.md for why content is fetched by the app's own command, https only, and why the filesystem scope is as narrow as it is: the library folder the user picks, and the app's own sources folder (ADR 0119).",
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "dialog:allow-open",
@@ -14,12 +16,32 @@
     "fs:allow-remove",
     "fs:allow-stat",
     "fs:allow-exists",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        {
+          "path": "$APPDATA/sources"
+        },
+        {
+          "path": "$APPDATA/sources/*"
+        }
+      ]
+    },
+    "opener:allow-reveal-item-in-dir",
     {
       "identifier": "opener:allow-open-url",
       "allow": [
-        { "url": "https://github.com/WCH-Softworks/Incudo" },
-        { "url": "https://patreon.com/incudo" },
-        { "url": "https://ko-fi.com/willcaphir" }
+        {
+          "url": "https://github.com/WCH-Softworks/Incudo"
+        },
+        {
+          "url": "https://patreon.com/incudo"
+        },
+        {
+          "url": "https://ko-fi.com/willcaphir"
+        }
       ]
     }
   ]

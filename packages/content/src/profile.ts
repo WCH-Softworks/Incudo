@@ -49,10 +49,8 @@ export interface ConfiguredSource {
   /** ADR 0029: `download` fetches when added, `stream` fetches when first used. */
   mode: SourceMode;
   /**
-   * How what was fetched is kept — ADR 0085. `converted` (the default, and what an absent value means): parsed once into
-   * Incudo's own form and loaded from that, quicker to load and somewhat larger. `files`: each file's text as it came,
-   * parsed on every load (ADR 0029's cache), smaller and slower. A file the user added (`kind: 'file'`) is its own copy
-   * and is kept as it was given either way.
+   * How a build before 1.0 kept what it fetched (ADR 0085). Read by nothing since ADR 0119: a source is kept converted,
+   * as a file, whatever this says. Kept because profiles carry it.
    */
   keep?: SourceKeep;
   /**
@@ -68,8 +66,8 @@ export interface ConfiguredSource {
    */
   excluded?: string[];
   /**
-   * `file`: one Aurora elements file the user added, kept as a copy in the app's own storage (`fileSourceKey`) and
-   * addressed as `local:<file name>` — ADR 0056. `homebrew`: elements the user wrote in the app, kept in Incudo's own
+   * `file`: one elements file the user added, converted when it was added and kept as its conversion, addressed as
+   * `local:<file name>` — ADR 0056. `homebrew`: elements the user wrote in the app, kept in Incudo's own
    * content format and addressed as `homebrew:<slug>` — ADR 0108. Absent: an index at `url`.
    */
   kind?: 'file' | 'homebrew';
@@ -82,13 +80,8 @@ export interface ConfiguredSource {
   elementCount?: number;
 }
 
-/** How a source's fetched content is kept — ADR 0085. */
+/** How a build before 1.0 kept a source (ADR 0085); read by nothing since ADR 0119. */
 export type SourceKeep = 'converted' | 'files';
-
-/** Whether a source keeps its content converted (the default) rather than as the files it fetched. */
-export function keepsConverted(source: Pick<ConfiguredSource, 'keep' | 'kind'>): boolean {
-  return source.kind === undefined && source.keep !== 'files';
-}
 
 export interface SourceProfileData {
   formatVersion: 1;
@@ -157,7 +150,6 @@ export class SourceProfile {
       official: options.official,
       excluded: options.excluded?.length ? options.excluded : undefined,
       kind: options.kind,
-      ...(options.keep ? { keep: options.keep } : {}),
       addedAt: options.addedAt ?? new Date().toISOString(),
     };
     this.entries.push(source);

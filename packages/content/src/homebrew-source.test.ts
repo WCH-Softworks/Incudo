@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { MemoryStorage } from '@incudo/core';
-import { checkSourceForUpdates, composeSource, evictSourceCache, refreshSource } from './compose.ts';
+import { checkSourceForUpdates, evictSourceCache, refreshSource, sourceContent } from './compose.ts';
 import { removeSource } from './file-source.ts';
 import {
   checkHomebrewBundle,
@@ -20,7 +20,7 @@ import {
   type HomebrewElement,
 } from './homebrew-source.ts';
 import { ContentLibrary } from './library.ts';
-import { SourceProfile, keepsConverted } from './profile.ts';
+import { SourceProfile } from './profile.ts';
 
 const noNetwork = { fetchText: async () => Promise.reject(new Error('no network in this test')) };
 
@@ -43,7 +43,7 @@ async function made(name = 'My table') {
   return { storage, profile, source };
 }
 
-// Perturbation: compose a homebrew source as an index at a URL (the HTTP branch) — the load asks the network and fails.
+// Perturbation: treat a homebrew source as one at an address — the load asks the network and fails.
 test('a homebrew source loads its elements from storage, with no network, as Incudo content', async () => {
   const { storage, source } = await made();
   assert.equal(source.id, 'homebrew:my-table');
@@ -52,11 +52,11 @@ test('a homebrew source loads its elements from storage, with no network, as Inc
   await writeHomebrew(storage, source.id, { formatVersion: 1, elements: [element('ID_HOMEBREW_FEAT_FAST', 'Fast')] });
 
   const library = new ContentLibrary();
-  const report = await library.loadSource(composeSource(source, { fetcher: noNetwork, storage }), source.url);
+  const report = library.loadBundle(source.id, await sourceContent(source, { fetcher: noNetwork, storage }));
   assert.equal(report.diagnostics.filter((d) => d.level === 'error').length, 0);
   const loaded = library.elements.get('ID_HOMEBREW_FEAT_FAST');
   assert.equal(loaded?.name, 'Fast');
-  assert.deepEqual(loaded?.origin, { sourceId: source.id, fileUrl: homebrewFileUrl(source.url), format: 'incudo' });
+  assert.deepEqual(loaded?.origin, { sourceId: source.id, fileUrl: homebrewFileUrl(source.url) });
 });
 
 // Perturbation: keep the parsed body on the source between loads — the second load sees the first load's elements,
@@ -64,13 +64,13 @@ test('a homebrew source loads its elements from storage, with no network, as Inc
 test('every load reads the body afresh', async () => {
   const { storage, source } = await made();
   await writeHomebrew(storage, source.id, { formatVersion: 1, elements: [element('ID_A')] });
-  const composed = composeSource(source, { fetcher: noNetwork, storage });
+  const platform = { fetcher: noNetwork, storage };
   const one = new ContentLibrary();
-  await one.loadSource(composed, source.url);
+  one.loadBundle(source.id, await sourceContent(source, platform));
   one.elements.get('ID_A')!.supports.push('changed');
   await writeHomebrew(storage, source.id, { formatVersion: 1, elements: [element('ID_A', 'Renamed')] });
   const two = new ContentLibrary();
-  await two.loadSource(composed, source.url);
+  two.loadBundle(source.id, await sourceContent(source, platform));
   assert.deepEqual(two.elements.get('ID_A')!.supports, []);
   assert.equal(two.elements.get('ID_A')!.name, 'Renamed');
 });
@@ -90,8 +90,7 @@ test('the body survives evicting the cache, and goes with the source', async () 
   await writeHomebrew(storage, source.id, { formatVersion: 1, elements: [element('ID_A')] });
   await evictSourceCache(storage, source.id);
   assert.notEqual(await storage.read(homebrewKey(source.id)), null);
-  assert.equal(keepsConverted(source), false);
-  await removeSource(profile, storage, source.id);
+  await removeSource(profile, { storage }, source.id);
   assert.equal(await storage.read(homebrewKey(source.id)), null);
   assert.equal(profile.sources.length, 0);
 });
@@ -122,8 +121,5 @@ test('a body that does not read fails the load with a sentence and is never writ
   assert.equal(read.status, 'unreadable');
   await assert.rejects(writeHomebrew(storage, source.id, { formatVersion: 1, elements: [] }), /not valid JSON/);
   assert.equal(await storage.read(homebrewKey(source.id)), '{ not json');
-  const library = new ContentLibrary();
-  const report = await library.loadSource(composeSource(source, { fetcher: noNetwork, storage }), source.url);
-  const errors = report.diagnostics.filter((d) => d.level === 'error').map((d) => d.message);
-  assert.ok(errors.some((e) => /not valid JSON/.test(e)), errors.join('\n'));
+  await assert.rejects(sourceContent(source, { fetcher: noNetwork, storage }), /not valid JSON/);
 });

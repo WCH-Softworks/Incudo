@@ -28,7 +28,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { ContentLibrary, addFileSource, composeSource, SourceProfile } from '@incudo/content';
+import { auroraConverter } from '@incudo/aurora-import';
+import { ContentLibrary, addFileSource, sourceContent, SourceProfile } from '@incudo/content';
 import {
   BundleElementIndex,
   collectDeclaredBlocks,
@@ -133,10 +134,11 @@ async function homebrew(): Promise<ElementIndex> {
   const name = 'homebrew-legendary.xml';
   const text = await readFile(join(repoRoot(), 'tools', 'verify', 'fixtures', 'legendary', name), 'utf8');
   const storage = new MemoryStorage();
-  const added = await addFileSource(new SourceProfile(storage), storage, { name, text }, { systemId: 'dnd5e' });
   const offline: Fetcher = { fetchText: () => Promise.reject(new Error('a file source reads no network')) };
+  const platform = { fetcher: offline, storage, converter: auroraConverter };
+  const added = await addFileSource(new SourceProfile(storage), platform, { name, text }, { systemId: 'dnd5e' });
   const library = new ContentLibrary();
-  await library.loadSource(composeSource(added.source, { fetcher: offline, storage }), added.source.url);
+  library.loadBundle(added.source.id, await sourceContent(added.source, platform));
   return library.elements;
 }
 
