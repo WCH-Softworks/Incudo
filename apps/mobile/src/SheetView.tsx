@@ -20,6 +20,7 @@ import {
   listedUsage,
   PREREQUISITES_UNMET,
   rowAside,
+  tabStarts,
   attackAside,
   attackWarnings,
   bagEntryAside,
@@ -36,6 +37,8 @@ import { usePalette, type Palette } from './theme.ts';
 
 export function SheetView({ document }: { document: SheetDocument }) {
   const palette = usePalette();
+  // A laid-out sheet's tabs, one after another in this one column, each headed by its label (ADR 0126).
+  const starts = tabStarts(document);
   return (
     <View style={styles.page}>
       <Text style={[styles.title, { color: palette.text }]} accessibilityRole="header">
@@ -44,7 +47,10 @@ export function SheetView({ document }: { document: SheetDocument }) {
       <Text style={[styles.lede, { color: palette.muted }]}>{document.kindName}</Text>
 
       {document.sections.map((section) => (
-        <Section key={section.id} section={section} level={2} palette={palette} />
+        <View key={section.id}>
+          {starts.has(section.id) ? <Heading text={starts.get(section.id)!} level={2} palette={palette} /> : null}
+          <Section section={section} level={2} palette={palette} />
+        </View>
       ))}
 
       {document.companions ? (

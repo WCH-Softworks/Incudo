@@ -54,3 +54,14 @@ test('the text export writes the sections in the layout\'s order', () => {
   const markdown = sheetMarkdown({ name: 'X', title: 'X', kindName: 'K', sections });
   assert.ok(markdown.indexOf('## HEAD') < markdown.indexOf('## LATE'));
 });
+
+test('a one-column reader heads each tab once, at its first section', async () => {
+  // Fails if tabStarts heads every section of a tab, or a section in no tab, or a tab the sheet does not label.
+  const { tabStarts } = await import('./sheet-document.ts');
+  const sections = laidOut(['late', 'loose', 'side', 'head', 'early'].map(view), SHEET);
+  assert.deepEqual([...tabStarts({ tabs: SHEET.tabs!, sections })], [
+    ['loose', 'First'],
+    ['late', 'Second'],
+  ]);
+  assert.deepEqual([...tabStarts({ sections })], []);
+});

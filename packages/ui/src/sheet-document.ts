@@ -328,3 +328,20 @@ export function referenceEntry(row: ReferenceRow): SheetDocumentReference {
 function hasText(html: string): boolean {
   return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() !== '';
 }
+
+/**
+ * Where a one-column reader of a laid-out sheet heads a tab (ADR 0126): the id of each tab's first section, with the tab's
+ * label. The phone draws a page's tabs one after another, as print does, and heads each this way. Empty for a sheet with
+ * no tabs.
+ */
+export function tabStarts(document: Pick<SheetDocument, 'tabs' | 'sections'>): Map<string, string> {
+  const out = new Map<string, string>();
+  const seen = new Set<string>();
+  for (const section of document.sections) {
+    if (section.tab === undefined || seen.has(section.tab)) continue;
+    seen.add(section.tab);
+    const label = document.tabs?.find((tab) => tab.id === section.tab)?.label;
+    if (label !== undefined) out.set(section.id, label);
+  }
+  return out;
+}
