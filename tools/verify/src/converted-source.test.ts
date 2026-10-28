@@ -91,7 +91,7 @@ const CONVERTER_FILES = [
   'core/src/supports.ts',
   'core/src/expression.ts',
 ];
-const RECORDED = { version: 7, sha256: 'faa70e509fd4af7a96251907cf83232e523f74e33c52c2c8f92fbd39cd642ce2' };
+const RECORDED = { version: 8, sha256: '32a5983734f618d1a5283194423247370972d3073c10dcbdfe2e7acb41a1fdf9' };
 
 test('the converter files are the ones the recorded version was decided for', async (t: Diagnostic) => {
   const dir = join(repoRoot(), 'packages');

@@ -158,6 +158,14 @@ const MARKERS: Array<[id: string, type: string, name: string, description: strin
     'Multiclassing',
     'This campaign uses the optional multiclassing rules.',
   ],
+  // Aurora's own, and until ADR 0119 declared by nothing: only a save's <sum> named it, so a character built in Incudo
+  // could not take it, though the 5e definition's hit points step reads it (ADR 0044). The maintainer's call, 2026-10-28.
+  [
+    'ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP',
+    'Option',
+    'Average Hit Points',
+    'Every level after the first takes the average of its class hit die, rather than a roll.',
+  ],
   // Not one of Aurora's: Incudo's own switch for the two families of hidden items a table hands out beyond the rules
   // (ADR 0089), which the system definition offers only while a character holds this (ADR 0123). Aurora's app offers
   // them to every character; Incudo asks the table first, as it does for feats.

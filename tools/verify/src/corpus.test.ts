@@ -361,9 +361,10 @@ test('an Aurora download folder is read by name, and is not the same layout as a
  * The overlay is a fixed table in the importer, and CLAUDE.md counts it. It is a property of the code
  * and reads no corpus, so it is asserted here where anyone can run it.
  */
-test('the overlay is 81 elements: the 80 Aurora materializes at runtime that are not items, and one option of Incudo', () => {
+test('the overlay is 82 elements: the 81 Aurora materializes at runtime that are not items, and one option of Incudo', () => {
   // 84 until ADR 0129: Aurora's three inventory proxies are imported as what they stand for, and nothing declares them.
-  assert.equal(auroraGeneratedElements().length, 81);
+  // 82 since ADR 0119's review of the 5e definition: the average hit points option, which only a save named before.
+  assert.equal(auroraGeneratedElements().length, 82);
 });
 
 /**

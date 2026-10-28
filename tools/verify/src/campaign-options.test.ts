@@ -64,9 +64,11 @@ test('the options step offers every Option in the corpus, asked at the start and
   assert.equal(b.getState().decisions.some((d) => d.stepId === 'options'), false);
   const question = b.getState().startOptions.find((q) => q.stepId === 'options')!;
   assert.ok(question, 'the set is asked at the start');
-  // Six real ones and the three the overlay supplies — found by type, with no id named in the step.
+  // Six real ones and the four the converter writes (average hit points since ADR 0119) — found by type, with no id named
+  // in the step.
   assert.equal(question.candidates.length, elements.byType('Option').length);
-  assert.equal(question.candidates.length, 9);
+  assert.equal(question.candidates.length, 10);
+  assert.ok(question.candidates.includes('ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP'), 'a built character can take average hit points');
   assert.ok(question.candidates.includes(FEATS));
   assert.ok(question.candidates.includes(CUSTOM_ASI));
   assert.ok(question.candidates.includes(ADDITIONAL_FEATURES));
@@ -171,4 +173,21 @@ test('a new player character starts with feats and multiclassing on, and either 
   b.chooseAtStart('options', [MULTICLASSING]);
   assert.equal(offered(), 1, 'with feats switched off, only the improvement');
   assert.ok(!b.getState().derived.elementIds.has(FEATS));
+});
+
+test('a character built with average hit points takes each class die\'s average and is asked for no roll', { skip }, async () => {
+  // ADR 0119: the option was declared by nothing before, so only an imported save could hold it. Perturbation: dropping
+  // it from the converter's elements leaves it off the start dialog and this character asked for a roll at level 2.
+  const system = await fiveE();
+  const elements = await realElements();
+  const b = new CharacterBuilder(newCharacterOfKind(system, 'pc'), system, elements);
+  const question = b.getState().startOptions.find((q) => q.stepId === 'options')!;
+  b.chooseAtStart('options', [...question.chosen, 'ID_INTERNAL_OPTION_ALLOW_AVERAGE_HP']);
+  const fighter = elements.byType('Class').find((e) => e.name === 'Fighter' && e.source === "Player’s Handbook")!;
+  b.choose('build/class', [fighter.id]);
+  b.setProgress(3);
+  assert.equal(b.getState().decisions.some((d) => d.stepId === 'levels' && d.hitPointLevel !== undefined), false);
+  const hp = b.getState().derived.stats.get('hp');
+  // 10, then the d10's average of 6 at levels 2 and 3, before the Constitution modifier (10 by default, so 0).
+  assert.equal(hp?.value, 22);
 });

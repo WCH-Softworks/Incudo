@@ -36,9 +36,10 @@ import { parseAuroraIndex, type AuroraFileRef, type AuroraIndex } from './parse-
  * Which version of the converter wrote a conversion. Bump it when the same Aurora files come to convert into something
  * different; a source converted by another version is converted again. 5 since a source is converted whole, into one
  * Incudo content file (ADR 0119), 6 since a `!` operand is a `not` filter node, 7 since `:half`, `[character:N]` and
- * `isRitual` are written as Incudo's (`incudo-expressions.ts`); 4 was ADR 0129's.
+ * `isRitual` are written as Incudo's (`incudo-expressions.ts`), 8 since the average hit points option is one of
+ * Aurora's own elements it writes; 4 was ADR 0129's.
  */
-export const CONVERTER_VERSION = 7;
+export const CONVERTER_VERSION = 8;
 
 /** What a converted source's `converted.from` says. */
 export const AURORA_FORMAT = 'aurora';
