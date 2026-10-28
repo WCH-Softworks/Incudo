@@ -30,6 +30,7 @@ import {
 
 import { sanitizeDescriptionHtml } from '../sanitize-html.ts';
 import { RowValue, SectionHead } from './SheetBits.tsx';
+import { ElementPlay, PlayContext, RowPlay } from './PlayInPlace.tsx';
 
 /**
  * A section's rows, attacks (ADR 0093), listed elements and printed lines, as `packages/ui/src/sheet.ts` decided them (ADR 0074). Shared by
@@ -48,6 +49,7 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
               <dt>{row.label}</dt>
               <dd>
                 <RowValue row={row} />
+                <RowPlay section={section.id} stat={row.stat} />
               </dd>
             </div>
           ))}
@@ -73,7 +75,7 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
       {entries.length > 0 && (
         <ul className="sheet-elements">
           {entries.map((element) => (
-            <ListedElement key={element.elementId} element={element} />
+            <ListedElement key={element.elementId} element={element} section={section.id} />
           ))}
         </ul>
       )}
@@ -120,7 +122,7 @@ export function SheetRows({ section }: { section: SheetSectionView }): React.JSX
  * (Bonus Action; 3/Long Rest): …", as `packages/ui` chose and filled it. The text is sanitized as every description is,
  * and keeps the line breaks content wrote.
  */
-export function ListedElement({ element, className }: { element: SheetListedElement; className?: string }): React.JSX.Element {
+export function ListedElement({ element, className, section }: { element: SheetListedElement; className?: string; section?: string }): React.JSX.Element {
   const usage = listedUsage(element);
   const aside = listedAside(element);
   const html = useMemo(() => (element.text ? sanitizeDescriptionHtml(element.text) : ''), [element.text]);
@@ -131,6 +133,8 @@ export function ListedElement({ element, className }: { element: SheetListedElem
       {aside !== undefined && <span className="sheet-beside"> ({aside})</span>}
       {element.prerequisitesUnmet && <span className="hint"> ({PREREQUISITES_UNMET})</span>}
       {usage !== undefined && <span className="sheet-usage"> ({usage})</span>}
+      {/* What its uses spend, drawn on it on a laid-out sheet (ADR 0126). */}
+      {section !== undefined && <ElementPlay section={section} element={element.elementId} />}
       {html && (
         <>
           {': '}
@@ -144,7 +148,9 @@ export function ListedElement({ element, className }: { element: SheetListedElem
 }
 
 export function Companions({ view }: { view: NonNullable<SheetDocument['companions']> }): React.JSX.Element {
+  // A creature's stat block spends nothing of its holder's: its sections' ids are its own (ADR 0126).
   return (
+    <PlayContext.Provider value={null}>
     <section className="sheet-section sheet-companions">
       <h3>{view.label}</h3>
       {view.description && <p className="hint">{view.description}</p>}
@@ -169,5 +175,6 @@ export function Companions({ view }: { view: NonNullable<SheetDocument['companio
         </article>
       ))}
     </section>
+    </PlayContext.Provider>
   );
 }

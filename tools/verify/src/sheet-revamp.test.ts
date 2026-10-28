@@ -26,7 +26,8 @@
 import { test } from 'node:test';
 
 import { type Element, type ElementId, type GameSystem } from '@incudo/core';
-import { CharacterBuilder, newCharacterOfKind, type BuilderState } from '@incudo/ui';
+import { CharacterBuilder, newCharacterOfKind, playPlaces, sheetDocument, type BuilderState } from '@incudo/ui';
+import assert from 'node:assert/strict';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
@@ -202,4 +203,33 @@ test('every creature as an NPC: whether its printed armour class, hit points and
   }
   t.diagnostic(`creatures: ${creatures.length}; printed number agrees with the derived one: ${show(agree)}; differs: ${show(differ)}`);
   t.diagnostic(`differing: ${samples.join('; ') || 'none'}`);
+});
+
+test('on the samples: every tracker is drawn where its number is, on a row or an element the sheet shows (ADR 0126)', { skip: corpusSkip || savesSkip }, async (t) => {
+  // Fails if a tracker's place names a section or row the document does not draw (it would be spent nowhere on the page),
+  // or if a stat tracker reads a stat no tile or row of the head band shows and the strip is not where it goes.
+  const elements = await realElements();
+  const lost: string[] = [];
+  let placed = 0;
+  let loose = 0;
+  for (const sample of readManifest().samples) {
+    const run = await runOracle(samplePath(sample), elements, 'sample');
+    const state = new CharacterBuilder(run.imported.character, run.system, run.elements).getState();
+    if (!state.play) continue;
+    const document = sheetDocument(state);
+    for (const { tracker } of playPlaces(state.play).all) {
+      const at = tracker.at;
+      if (!at) {
+        loose++;
+        continue;
+      }
+      placed++;
+      if ('stat' in at) continue;
+      const section = document.sections.find((s) => s.id === at.section);
+      const found = 'row' in at ? section?.rows.some((r) => r.stat === at.row) : section?.elements.some((e) => e.elementId === at.element);
+      if (!found) lost.push(`${sample.id} ${tracker.key}`);
+    }
+  }
+  t.diagnostic(`trackers drawn in place: ${placed}; on the strip with no row: ${loose}`);
+  assert.deepEqual(lost, []);
 });

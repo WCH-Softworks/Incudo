@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 
 import { createCharacter, type Character, type PlayDef, type ResolvedCharacterKind, type ResolvedStat } from '@incudo/core';
 
-import { adjustPlay, playView, readUsage, restPlay, setPlayCondition, setPlaySpent, setPlayTemporary, type PlaySource, type PlayView } from './play.ts';
+import { adjustPlay, playPlaces, playView, readUsage, restPlay, setPlayCondition, setPlaySpent, setPlayTemporary, type PlaySource, type PlayView } from './play.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
 
 const PLAY: PlayDef = {
@@ -265,4 +265,29 @@ test('the wording every screen shares', async () => {
   assert.equal(playRestNote(tracker(c, 'woe')!), 'Goes down after a Sleep');
   assert.deepEqual(restEffects(view(c), 'nap'), ['Limited Uses']);
   assert.deepEqual(restEffects(view(c), 'sleep'), ['Limited Uses']);
+});
+
+test('each tracker says where on the sheet it counts, and the places find it there (ADR 0126)', () => {
+  // Fails if a tracker loses its place (a stat's, a per-block row's by the drawn section, a listed element's), or one with a
+  // fixed maximum is given one, or playPlaces files a tracker under the wrong key.
+  const v = view(fresh());
+  const at = Object.fromEntries(v.groups.flatMap((g) => g.trackers).map((t) => [t.key, t.at ?? null]));
+  assert.deepEqual(at, {
+    stamina: { stat: 'stamina' },
+    'tracks/BRAWLER': { section: 'identity', element: 'BRAWLER' },
+    'tracks/SAGE': { section: 'identity', element: 'SAGE' },
+    'charges/slow:charge:1': { section: 'charges:slow', row: 'slow:charge:1' },
+    'charges/quick:charge:1': { section: 'charges:quick', row: 'quick:charge:1' },
+    'uses/FURY': { section: 'features', element: 'FURY' },
+    'uses/SURGE': { section: 'features', element: 'SURGE' },
+    'uses/DAILY': { section: 'features', element: 'DAILY' },
+    woe: null,
+  });
+  const places = playPlaces(v);
+  assert.equal(places.stat('Stamina')?.key, 'stamina');
+  assert.equal(places.row('charges:quick', 'quick:charge:1')?.key, 'charges/quick:charge:1');
+  assert.equal(places.row('charges:slow', 'quick:charge:1'), undefined);
+  assert.equal(places.element('features', 'SURGE')?.key, 'uses/SURGE');
+  assert.deepEqual(places.loose.map((t) => t.key), ['woe']);
+  assert.equal(places.all.length, 9);
 });

@@ -25,21 +25,31 @@ import {
 import type { SheetTabDef } from '@incudo/core';
 
 import { RowValue, SectionHead } from './SheetBits.tsx';
+import { PlayContext, PlayStrip, type PlayHere } from './PlayInPlace.tsx';
 import { Companions, ListedElement, SheetRows } from './Companions.tsx';
 import { FreeformSheet } from './Freeform.tsx';
 import { SheetDescriptionsPart, SheetReferencesPart } from './SheetParts.tsx';
 
 /** A section's rows as tiles, each row's partner from the section drawn under it on a line of its own. */
-function Tiles({ section, under }: { section: SheetSectionView; under?: SheetSectionView }): React.JSX.Element {
+function Tiles({ section, under, play }: { section: SheetSectionView; under?: SheetSectionView; play?: PlayHere }): React.JSX.Element {
   return (
     <>
       <div className="sheet-tiles">
         {section.rows.map((row, at) => {
           const partner = under?.rows[at];
+          // A stat a tracker spends shows what is left of it, "5 of 7" (ADR 0126 decision 8).
+          const spent = play?.places.stat(row.stat);
           return (
             <div key={row.stat} className="sheet-tile">
               <span className="sheet-tile-label">{row.label}</span>
-              <span className="sheet-tile-value">{row.value}</span>
+              {spent ? (
+                <span className="sheet-tile-value">
+                  {spent.value}
+                  <span className="sheet-tile-of"> of {spent.max}</span>
+                </span>
+              ) : (
+                <span className="sheet-tile-value">{row.value}</span>
+              )}
               {rowAside(row) !== undefined && <span className="sheet-tile-aside">{rowAside(row)}</span>}
               {partner && (
                 <span className="sheet-tile-under" aria-label={`${under!.label}: ${partner.label} ${partner.value}${partner.mark ? ` (${partner.mark.label})` : ''}`}>
@@ -93,7 +103,7 @@ function Cards({ section }: { section: SheetSectionView }): React.JSX.Element {
           {group.label !== undefined && groups.length > 1 && <h4 className="sheet-card-group-head">{group.label}</h4>}
           <ul className="sheet-cards">
             {group.entries.map((element) => (
-              <ListedElement key={element.elementId} element={element} className="sheet-card" />
+              <ListedElement key={element.elementId} element={element} className="sheet-card" section={section.id} />
             ))}
           </ul>
         </div>
@@ -135,7 +145,7 @@ function tabParts(document: SheetDocument, tab: SheetTabDef): Array<NonNullable<
   return (tab.parts ?? []).filter((part) => document[part] !== undefined);
 }
 
-export function SheetPage({ document }: { document: SheetDocument }): React.JSX.Element {
+export function SheetPage({ document, play }: { document: SheetDocument; play?: PlayHere }): React.JSX.Element {
   const tabs = document.tabs ?? [];
   const head = document.sections.filter((s) => s.place === 'head');
   // A section drawn under another is drawn there, not on its own.
@@ -151,13 +161,15 @@ export function SheetPage({ document }: { document: SheetDocument }): React.JSX.
   const [chosen, choose] = useState<string | undefined>(undefined);
   const open = filled.find((tab) => tab.id === chosen)?.id ?? filled[0]?.id;
 
+  const tileStats = new Set(head.filter((s) => s.tiles).flatMap((s) => s.rows.map((r) => r.stat.toLowerCase())));
   return (
+    <PlayContext.Provider value={play ?? null}>
     <div className="sheet-page">
       <div className="sheet-head">
         {head.map((section) =>
           section.tiles ? (
             <div key={section.id} className="sheet-head-tiles">
-              <Tiles section={section} />
+              <Tiles section={section} {...(play ? { play } : {})} />
             </div>
           ) : section.elements.length > 0 && section.rows.length === 0 ? (
             <HeadLine key={section.id} section={section} />
@@ -166,6 +178,7 @@ export function SheetPage({ document }: { document: SheetDocument }): React.JSX.
           ),
         )}
       </div>
+      {play && <PlayStrip here={play} tileStats={tileStats} headSections={head.map((s) => s.id)} />}
       <div className="sheet-body">
         <aside className="sheet-side">
           {side.map((section) => (
@@ -209,6 +222,7 @@ export function SheetPage({ document }: { document: SheetDocument }): React.JSX.
           <DocumentPart key={part} document={document} part={part} />
         ))}
     </div>
+    </PlayContext.Provider>
   );
 }
 

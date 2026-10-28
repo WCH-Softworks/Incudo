@@ -732,7 +732,7 @@ test('a laid-out sheet: every tab printed, its marks in words, its explanations 
 
   // The pane draws the page for a sheet that declares one, every tab's panel whichever is open.
   const pane = readFileSync(join(src, 'panes', 'SheetPane.tsx'), 'utf8');
-  if (!/document\.layout === 'page' \?\s*\(\s*<SheetPage document=\{document\} \/>/.test(pane)) problems.push('SheetPane: a laid-out sheet is not drawn as a page');
+  if (!/document\.layout === 'page' \?\s*\(\s*<SheetPage document=\{document\}/.test(pane)) problems.push('SheetPane: a laid-out sheet is not drawn as a page');
   const page = readFileSync(join(src, 'panes', 'SheetPage.tsx'), 'utf8');
   if (!/\{filled\.map\(\(tab\) => \(\s*<div key=\{tab\.id\} role="tabpanel"/.test(page)) problems.push('SheetPage: only the open tab is drawn, so a print leaves the rest out');
   t.diagnostic(`print rules read: ${print.size} selectors`);

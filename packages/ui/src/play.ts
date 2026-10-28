@@ -42,7 +42,16 @@ export interface PlayTracker {
   usage?: string;
   /** What each rest gives back, by rest id, after `includes` is followed: what `restPlay` reads. */
   restores: { rest: string; restore: RestoreDef }[];
+  /**
+   * Where on the sheet it counts something (ADR 0126): the stat it reads its maximum from, a row of a section (the
+   * section view's id, which names a casting block too), or an element a section lists. A renderer draws the tracker
+   * there. Absent for one with a fixed maximum (inspiration, death saves), which belongs to no row.
+   */
+  at?: PlayTrackerAt;
 }
+
+/** Where on the sheet a tracker counts (ADR 0126). */
+export type PlayTrackerAt = { stat: string } | { section: string; row: string } | { section: string; element: string };
 
 /** The trackers one declaration makes, under one heading: Hit Points, Spell Slots — Wizard, Limited Uses. */
 export interface PlayGroup {
@@ -101,6 +110,7 @@ export function playView(source: PlaySource): PlayView | undefined {
     max: number,
     restores: readonly RestoreDef[],
     usage?: string,
+    at?: PlayTrackerAt,
   ): PlayTracker => {
     const counts = def.counts === true;
     const spent = Math.min(max, Math.max(0, Math.floor(recorded.spent?.[key] ?? 0)));
@@ -116,6 +126,7 @@ export function playView(source: PlaySource): PlayView | undefined {
       restoredBy: rests.filter((rest) => expanded.some((entry) => entry.rest === rest.id)).map((rest) => label(rest.id)),
       ...(usage !== undefined ? { usage } : {}),
       restores: expanded,
+      ...(at ? { at } : {}),
     };
   };
 
@@ -127,7 +138,7 @@ export function playView(source: PlaySource): PlayView | undefined {
       if (max <= 0) continue;
       const statLabel = source.kind.stats.find((s) => s.name.toLowerCase() === def.stat!.toLowerCase())?.label;
       const name = def.label ?? statLabel ?? def.stat;
-      groups.push({ id: def.id, label: name, trackers: [tracker(def, def.id, name, max, restores)] });
+      groups.push({ id: def.id, label: name, trackers: [tracker(def, def.id, name, max, restores, undefined, { stat: def.stat.toLowerCase() })] });
     } else if (def.max !== undefined) {
       const name = def.label ?? def.id;
       groups.push({ id: def.id, label: name, trackers: [tracker(def, def.id, name, def.max, restores)] });
@@ -140,15 +151,15 @@ export function playView(source: PlaySource): PlayView | undefined {
         const trackers = section.rows
           .map((row) => ({ row, max: stat(row.stat) }))
           .filter(({ max }) => max > 0)
-          .map(({ row, max }) => tracker(def, `${def.id}/${row.stat}`, row.label, max, blockRestores));
+          .map(({ row, max }) => tracker(def, `${def.id}/${row.stat}`, row.label, max, blockRestores, undefined, { section: section.id, row: row.stat }));
         if (trackers.length) groups.push({ id: section.id, label: def.label ?? section.label, trackers });
       }
     } else if (def.dice !== undefined) {
       const trackers = source.sheet.sections
         .filter((s) => (s.section ?? s.id) === def.dice)
-        .flatMap((s) => s.elements)
-        .filter((e): e is SheetListedElement & { dice: { count: number; sides: number } } => e.dice !== undefined && e.dice.count > 0)
-        .map((e) => tracker(def, `${def.id}/${e.elementId}`, `${e.sheetName ?? e.name} (d${e.dice.sides})`, e.dice.count, restores));
+        .flatMap((s) => s.elements.map((e) => ({ s, e })))
+        .filter((x): x is { s: SheetView['sections'][number]; e: SheetListedElement & { dice: { count: number; sides: number } } } => x.e.dice !== undefined && x.e.dice.count > 0)
+        .map(({ s, e }) => tracker(def, `${def.id}/${e.elementId}`, `${e.sheetName ?? e.name} (d${e.dice.sides})`, e.dice.count, restores, undefined, { section: s.id, element: e.elementId }));
       if (trackers.length) groups.push({ id: def.id, label: def.label ?? def.id, trackers });
     } else if (def.uses !== undefined) {
       const seen = new Set<string>();
@@ -159,7 +170,7 @@ export function playView(source: PlaySource): PlayView | undefined {
           const read = readUsage(e.usage, rests);
           if (!read || read.count <= 0) continue;
           seen.add(e.elementId);
-          trackers.push(tracker(def, `${def.id}/${e.elementId}`, listedName(e), read.count, [{ rest: read.rest }], e.usage));
+          trackers.push(tracker(def, `${def.id}/${e.elementId}`, listedName(e), read.count, [{ rest: read.rest }], e.usage, { section: section.id, element: e.elementId }));
         }
       }
       if (trackers.length) groups.push({ id: def.id, label: def.label ?? def.id, trackers });
@@ -315,4 +326,42 @@ export function restEffects(view: PlayView, restId: string): string[] {
   return view.groups
     .filter((group) => group.trackers.some((tracker) => tracker.restores.some((entry) => entry.rest === restId) && tracker.spent > 0))
     .map((group) => group.label);
+}
+
+/**
+ * A play view's trackers by where they count on the sheet (ADR 0126), for a renderer that draws each beside its number:
+ * a stat's, a section row's and a listed element's, and those that count no row (`loose`), in the view's order.
+ */
+export interface PlayPlaces {
+  stat(stat: string): PlayTracker | undefined;
+  row(section: string, row: string): PlayTracker | undefined;
+  element(section: string, element: string): PlayTracker | undefined;
+  loose: PlayTracker[];
+  /** Every tracker, in the view's order, with the label of the group it is in. */
+  all: Array<{ tracker: PlayTracker; group: string }>;
+}
+
+export function playPlaces(view: PlayView): PlayPlaces {
+  const stats = new Map<string, PlayTracker>();
+  const rows = new Map<string, PlayTracker>();
+  const elements = new Map<string, PlayTracker>();
+  const loose: PlayTracker[] = [];
+  const all: PlayPlaces['all'] = [];
+  for (const group of view.groups) {
+    for (const tracker of group.trackers) {
+      all.push({ tracker, group: group.label });
+      const at = tracker.at;
+      if (!at) loose.push(tracker);
+      else if ('stat' in at) stats.set(at.stat, tracker);
+      else if ('row' in at) rows.set(`${at.section}\u0000${at.row}`, tracker);
+      else elements.set(`${at.section}\u0000${at.element}`, tracker);
+    }
+  }
+  return {
+    stat: (stat) => stats.get(stat.toLowerCase()),
+    row: (section, row) => rows.get(`${section}\u0000${row}`),
+    element: (section, element) => elements.get(`${section}\u0000${element}`),
+    loose,
+    all,
+  };
 }

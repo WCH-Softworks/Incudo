@@ -19,7 +19,7 @@
  * arrives as classes on the root, which mean something only in print, and as one `@page` rule carrying the name.
  */
 
-import type { CharacterBuilder, PlayView, PrintRendering, SheetDocument } from '@incudo/ui';
+import { playPlaces, type CharacterBuilder, type PlayView, type PrintRendering, type SheetDocument } from '@incudo/ui';
 import { PlayPanel } from './PlayPanel.tsx';
 import { Companions, SheetRows } from './Companions.tsx';
 import { FreeformSheet } from './Freeform.tsx';
@@ -53,12 +53,14 @@ export function SheetPane({
       />
       <p className="lede">{document.kindName}</p>
 
-      {play && <PlayPanel builder={builder} view={play} />}
-
+      {/* A laid-out sheet spends play where its number is (ADR 0126); one with no layout keeps the Play panel above it. */}
       {document.layout === 'page' ? (
-        <SheetPage document={document} />
+        <SheetPage document={document} {...(play ? { play: { builder, view: play, places: playPlaces(play) } } : {})} />
       ) : (
-        <SheetColumn document={document} />
+        <>
+          {play && <PlayPanel builder={builder} view={play} />}
+          <SheetColumn document={document} />
+        </>
       )}
     </main>
   );

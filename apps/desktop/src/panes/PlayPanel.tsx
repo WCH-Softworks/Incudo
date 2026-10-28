@@ -96,7 +96,7 @@ function Counter({ builder, tracker, named }: { builder: CharacterBuilder; track
 }
 
 /** A tracker spent in typed amounts, a temporary amount first: hit points. */
-function Pool({ builder, tracker, named }: { builder: CharacterBuilder; tracker: PlayTracker; named: boolean }): React.JSX.Element {
+export function Pool({ builder, tracker, named }: { builder: CharacterBuilder; tracker: PlayTracker; named: boolean }): React.JSX.Element {
   const [typed, setTyped] = useState('');
   const amount = Number.parseInt(typed, 10);
   const ready = Number.isFinite(amount) && amount > 0;

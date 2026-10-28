@@ -2779,6 +2779,98 @@ ul.browse-categories {
   margin: 12px 0 0;
   font-size: 13px;
 }
+/*
+ * Play spent in place (ADR 0126, PlayInPlace.tsx): a box per use beside what it counts, and a strip under the head band
+ * for hit points, hit dice, what counts no row, the conditions and the rests. Never printed.
+ */
+.sheet-tile-of {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+.play-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.play-strip .play-pool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.play-strip-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.play-strip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.play-strip-label {
+  color: var(--fg-muted);
+}
+.play-boxes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-left: 6px;
+  vertical-align: -1px;
+}
+.play-box {
+  width: 13px;
+  height: 13px;
+  min-width: 0;
+  padding: 0;
+  border: 1.5px solid var(--fg-muted);
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+}
+.play-box.spent {
+  background: var(--fg-muted);
+}
+.play-box:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.play-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+.play-on-element {
+  margin-left: 4px;
+}
+.play-conditions-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.play-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.play-chip button {
+  min-width: 0;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
 @media (max-width: 1100px) {
   .sheet-page {
     --sheet-side: 260px;
@@ -2938,7 +3030,10 @@ ul.browse-categories {
   header,
   .pane-bar,
   .sheet-name,
-  .play-panel {
+  .play-panel,
+  .play-strip,
+  .play-boxes,
+  .play-inline {
     display: none;
   }
 
