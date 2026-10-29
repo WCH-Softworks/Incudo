@@ -27,7 +27,7 @@ import {
   FeatureLibrary,
   ContentSources,
   characterKindChoices,
-  characterKindMissing,
+  characterOpenProblem,
   describeKindAndProgress,
   exportEntry,
   importReceivedSaves,
@@ -46,7 +46,7 @@ import {
   type SheetDocument,
 } from '@incudo/ui';
 
-import { featureLibrarySchema, loadShippedSystems } from './boot.ts';
+import { featureLibrarySchema, loadShippedSystems, schemas } from './boot.ts';
 import { BuildScreen } from './BuildScreen.tsx';
 import { ContentScreen } from './ContentScreen.tsx';
 import { PlatformContext, usePlatform, type Platform, type Screens } from './context.ts';
@@ -585,8 +585,8 @@ async function openSheet(library: CharacterLibrary, systems: readonly GameSystem
     if (!opened) return { error: `"${name}" did not open as a character.` };
     const system = systems.find((candidate) => candidate.id === opened.character.systemId);
     if (!system) return { error: `This character is for a game this app does not have (${opened.character.systemId}).` };
-    // A kind the game no longer declares would throw in the builder with an internal message.
-    const missing = characterKindMissing(system, opened.character);
+    // A kind the game no longer declares, or a file that does not derive, would throw in the builder with an internal message.
+    const missing = characterOpenProblem(system, opened.character, opened.elements, schemas);
     if (missing) return { error: missing };
     const builder = new CharacterBuilder(opened.character, system, opened.elements);
     const document = sheetDocument(builder.getState());

@@ -20,7 +20,7 @@ import {
   CharacterBuilder,
   DEFAULT_BUILD_PREFERENCES,
   beginEdit,
-  characterKindMissing,
+  characterOpenProblem,
   hasUnsavedChanges,
   newCharacterOfKind,
   readBuildPreferences,
@@ -30,6 +30,7 @@ import {
   type EditSession,
 } from '@incudo/ui';
 
+import { schemas } from './boot.ts';
 import { BuildView } from './BuildView.tsx';
 import { Body, Button } from './controls.tsx';
 import { usePlatform, type Screens } from './context.ts';
@@ -280,8 +281,8 @@ async function openForBuild(
     if (!opened) return { error: `"${params.name}" did not open as a character.` };
     const system = systems.find((candidate) => candidate.id === opened.character.systemId);
     if (!system) return { error: `This character is for a game this app does not have (${opened.character.systemId}).` };
-    // A kind the game no longer declares would throw in the builder with an internal message.
-    const missing = characterKindMissing(system, opened.character);
+    // A kind the game no longer declares, or a file that does not derive, would throw in the builder with an internal message.
+    const missing = characterOpenProblem(system, opened.character, opened.elements, schemas);
     if (missing) return { error: missing };
     return {
       character: opened.character,

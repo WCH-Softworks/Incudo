@@ -53,7 +53,7 @@ import {
   CharacterLibrary,
   COMMANDS,
   characterKindChoices,
-  characterKindMissing,
+  characterOpenProblem,
   describeKindAndProgress,
   libraryEntryReferences,
   libraryEntryProgress,
@@ -1090,8 +1090,8 @@ function Shell({
     async (entry: LibraryEntry) => {
       const opened = await library.open(entry.name);
       if (!opened) return;
-      // A kind this system does not declare would throw in the builder and blank the window.
-      const missing = characterKindMissing(system, opened.character);
+      // A kind this system does not declare, or a file that does not derive, would throw in the builder and blank the window.
+      const missing = characterOpenProblem(system, opened.character, opened.elements, schemas);
       setLibraryNotice(missing);
       if (missing) return;
       setWorking({

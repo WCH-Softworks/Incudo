@@ -89,7 +89,7 @@ export function RefreshDialog({
           <p>{review.changed.join(', ')}</p>
           {review.kept.length > 0 && (
             <>
-              <h3>Kept as saved, since your sources no longer have them</h3>
+              <h3>Kept as saved, since your sources do not have them</h3>
               <p>{review.kept.join(', ')}</p>
             </>
           )}

@@ -2265,6 +2265,12 @@ deliberately **not** fixed:
   `character:set-aside/<id>` (nothing reads it back; it is only not destroyed by the next autosave) and the library says
   so; opening such a file from the library says the same sentence on the library, and the phone's two open paths return
   it as their error. `unknown-kind.test.ts`; driven in the browser build only.
+- **~~A file whose `character.json` does not derive blanked the window.~~** Fixed (2026-10-29, found driving ADR 0119's
+  changes in the Tauri window, with `choices` written as an object). **A file opened from the library goes through
+  `characterOpenProblem(system, character, elements, schemas)`** (`packages/ui/src/open-check.ts`): the kind check above,
+  then a builder state built in a `try`; only a build that throws refuses, worded with the validator's first error, so a
+  beta's file the schema dislikes still opens if it derives (ADR 0130). The desktop's library open and the phone's two
+  open paths call it. `open-check.test.ts`. The draft is not checked: only a file that opened writes one.
 - **~~Open on the card of the character being edited read the file over unsaved edits, without a word.~~** Fixed
   ([ADR 0120](docs/adr/0120-the-shell-knows-whether-the-character-on-screen-is-saved-and-asks-before-replacing-unsaved-changes.md)),
   found by a hands-on pass, not a test. Things to know before touching it:

@@ -21,6 +21,7 @@ export * from './top-level-pick.ts';
 export * from './dice.ts';
 export * from './character-library.ts';
 export * from './character-kinds.ts';
+export * from './open-check.ts';
 export * from './character-copy.ts';
 export * from './received-files.ts';
 export * from './received-saves.ts';

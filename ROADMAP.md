@@ -2509,6 +2509,16 @@ written on a character can be moved into the user's library without being typed 
       official form; the menus, the shortcuts with real keys, the right-click menu, the browser keys, Settings and About.
       Four bugs were found and fixed there. Left: the phone half, macOS and Linux (Beyond 1.0), and what the maintainer's
       own pass covers.
+      *What ADR 0119 changed was driven again on 2026-10-29* (a fresh WebView2 profile and a scratch library, DOM events
+      over the debug port, the native dialogs by window messages, every file read back from disk in Node): a `.incu` shaped
+      as a beta wrote it (sample 03 with Aurora's level keys, the multiclass record and literal negated filters) opened,
+      was offered a content refresh that cleared its unplaced infusions, and saved to a file deriving as today's import
+      does; a 2024 multiclass `.dnd5e` imported through the real dialog to the file Node's import writes (8 missing in
+      both); a user's `.xml` added by Choose files and converted to a file passing the content schema; Browse over both
+      sources; a 2024 Fighter's option C (155 gp alone) and Soldier's option A (the book's list, its gaming set chosen);
+      a restart loading both sources, Check for updates ("none of 800 files has changed") and a part switched off (738
+      files, 0.5 s) and on. One bug found and fixed: a `character.json` that does not derive blanked the window; it is
+      refused on the Characters screen now (`characterOpenProblem`, `open-check.test.ts`), by the desktop and the phone.
 
 ---
 
