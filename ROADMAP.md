@@ -2336,14 +2336,20 @@ written on a character can be moved into the user's library without being typed 
     driven: a real touch pinch (an injected one did nothing, with no control case showing injection works), Esc while a
     load is in progress (the release build loads too fast to catch), the browser build (it keeps every browser key),
     macOS and Linux.
-- [ ] Stable formats with a real versioning and migration policy — from here on, the system
+- [x] Stable formats with a real versioning and migration policy — from here on, the system
       format is a public API ([ADR 0011](./docs/adr/0011-user-systems.md)). *Found 2026-10-15, reviewing readiness:* no
       ADR states the policy yet. The character format is at 13 (`LATEST_CHARACTER_FORMAT_VERSION`) and the system format
       still reads 1 after many optional additions; what 1.0 freezes, and what a later change to either must carry, is
       undecided. *Decided by the maintainer the same day, for the ADR to record:* only 1.0's formats are supported; the
       numbers are kept and 1.0's are the baseline (character format 13, or what ADR 0119 makes it), and a file from the
       betas opens if it opens; converting older formats is after 1.0, capped at breaking changes. Waits for ADR 0119,
-      which changes the content, system and character formats first.
+      which changes the content, system and character formats first. *Recorded 2026-10-28 as
+      [ADR 0130](./docs/adr/0130-only-1-0-s-formats-are-supported-its-numbers-are-the-baseline-and-a-newer-file-is-refused.md):* 1.0's baseline is character 14 and every other format (container, content, system,
+      feature library) 1, held by `format-versions.test.ts`; a number moves exactly when a reader of the previous one
+      would get the new shape wrong without a word, which is the rule the character format followed since ADR 0024; and
+      (the maintainer's answer the same day) a file a newer Incudo wrote is refused by every reader with one sentence
+      naming why, never opened, since a Save would write back the loss. Measured first: no reader checked a newer number,
+      and a character at 15 would have opened and lost its unknown fields on the next Save.
 - [x] **Aurora content is converted into Incudo content, and nothing past the conversion knows Aurora**
       ([ADR 0119](./docs/adr/0119-aurora-content-is-converted-into-incudo-content-and-nothing-past-the-conversion-knows-aurora.md),
       accepted 2026-10-15, **built 2026-10-28**). *Built in eight steps, the oracle identical on each:* Incudo's content

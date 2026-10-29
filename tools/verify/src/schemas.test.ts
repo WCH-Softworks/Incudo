@@ -402,7 +402,7 @@ test("a section's track dice are checked before the app loads it (ADR 0079)", as
 
 test('structural mistakes get messages a non-programmer can act on', async () => {
   assert.deepEqual(await errorsFor(broken((s) => ((s as unknown as Record<string, unknown>)['formatVersion'] = 2))), [
-    'formatVersion: must be 1',
+    'formatVersion: This system definition was written by a newer version of Incudo (format 2; this version reads up to 1). Update Incudo to open it.',
   ]);
 
   assert.deepEqual(await errorsFor(broken((s) => (s.id = 'Not An Id'))), [

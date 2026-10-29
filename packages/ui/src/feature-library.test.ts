@@ -213,7 +213,7 @@ test('the checker refuses an id twice, and a file that does not read is unreadab
   assert.equal(readFeatureLibrary(new TextEncoder().encode('{ "formatVersion": 1, "features": [ }'), schema).status, 'unreadable');
   assert.deepEqual(readFeatureLibrary(new TextEncoder().encode('{ "formatVersion": 2, "features": [] }'), schema), {
     status: 'unreadable',
-    reason: 'incudo-features.json cannot be read: formatVersion: must be 1',
+    reason: 'This feature library (incudo-features.json) was written by a newer version of Incudo (format 2; this version reads up to 1). Update Incudo to open it.',
   });
 });
 

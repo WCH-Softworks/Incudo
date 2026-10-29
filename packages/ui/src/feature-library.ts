@@ -10,6 +10,9 @@
 
 import {
   customFeatureTypes,
+  FORMAT_VERSIONS,
+  isNewerFormat,
+  newerFormatNote,
   validateJson,
   type CharacterStore,
   type CustomFeature,
@@ -68,6 +71,11 @@ export function readFeatureLibrary(bytes: Uint8Array | null, schema: JsonSchema)
     raw = JSON.parse(new TextDecoder().decode(bytes).replace(/^﻿/, ''));
   } catch (error) {
     return { status: 'unreadable', reason: `${FEATURE_LIBRARY_FILE} is not valid JSON: ${(error as Error).message}` };
+  }
+  // A newer Incudo's library is unreadable here, and so is never written over (ADR 0130).
+  const found = (raw as { formatVersion?: unknown } | null)?.formatVersion;
+  if (isNewerFormat(found, FORMAT_VERSIONS.featureLibrary)) {
+    return { status: 'unreadable', reason: newerFormatNote(`feature library (${FEATURE_LIBRARY_FILE})`, found, FORMAT_VERSIONS.featureLibrary) };
   }
   const { value, errors } = checkFeatureLibrary(raw, schema);
   if (!value) {

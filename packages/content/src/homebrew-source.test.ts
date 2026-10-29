@@ -106,7 +106,7 @@ test('there is nothing upstream to check or refresh', async () => {
 // Perturbation: remove the duplicate-id check, or the per-element field checks — a broken body is read.
 test('the checker refuses what the engine could not read, and an id twice ignoring case', () => {
   assert.equal(checkHomebrewBundle({ formatVersion: 1, elements: [element('ID_A')] }).problems.length, 0);
-  assert.match(checkHomebrewBundle({ formatVersion: 2, elements: [] }).problems.join(' '), /formatVersion/);
+  assert.match(checkHomebrewBundle({ formatVersion: 2, elements: [] }).problems.join(' '), /written by a newer version of Incudo \(format 2/);
   assert.match(checkHomebrewBundle({ formatVersion: 1 }).problems.join(' '), /no list of elements/);
   assert.match(checkHomebrewBundle({ formatVersion: 1, elements: [element('ID_A'), element('id_a')] }).problems.join(' '), /used by another/);
   const noName = { ...element('ID_A'), name: '' };

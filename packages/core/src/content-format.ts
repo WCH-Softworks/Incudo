@@ -9,6 +9,7 @@
 
 import { validateJson, type JsonSchema } from './json-schema.ts';
 import type { Element, ElementId, Rule } from './model.ts';
+import { isNewerFormat, newerFormatNote } from './format-versions.ts';
 
 /** The content format's version. A file written in another is refused with a sentence. */
 export const CONTENT_FORMAT_VERSION = 1;
@@ -107,6 +108,8 @@ export function checkContentBundle(raw: unknown, options: CheckContentOptions = 
   const problems: string[] = [];
   const value = raw as ContentBundle;
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { problems: ['It is not a JSON object.'] };
+  // A newer Incudo's content is refused whole (ADR 0130): what this version cannot read would be dropped without a word.
+  if (isNewerFormat(value.formatVersion, CONTENT_FORMAT_VERSION)) return { problems: [newerFormatNote('content', value.formatVersion, CONTENT_FORMAT_VERSION)] };
   if (value.formatVersion !== CONTENT_FORMAT_VERSION) {
     problems.push(`Its formatVersion is ${JSON.stringify(value.formatVersion)}, and only ${CONTENT_FORMAT_VERSION} can be read.`);
   }

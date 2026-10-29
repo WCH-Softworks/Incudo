@@ -86,3 +86,5 @@ systems lack, that is a bug.
   ([ADR 0004](./0004-live-vs-downloaded-content.md)).
 - Sharing user systems is out of scope for 1.0. People will do it by sending files, which is
   fine. A registry is a post-1.0 idea and carries the licensing questions of ADR 0010.
+
+> **Note, 2026-10-28 ([ADR 0130](./0130-only-1-0-s-formats-are-supported-its-numbers-are-the-baseline-and-a-newer-file-is-refused.md)):** the policy this promised is ADR 0130: the system format is 1 at 1.0, its number moves only when a reader of the previous number would get a definition wrong without a word (an optional key says in the schema what a reader that does not know it does, and does not move it), and a definition for a newer Incudo is refused on the launcher with a sentence saying so.

@@ -160,6 +160,16 @@ discipline: the **system definition format** (users author these — ADR 0011) a
 save format** (users' own files — ADR 0012). Both carry `formatVersion`. Package versions do not
 matter; those two do.
 
+**The format policy is [ADR 0130](docs/adr/0130-only-1-0-s-formats-are-supported-its-numbers-are-the-baseline-and-a-newer-file-is-refused.md).**
+Only 1.0's formats are supported: character 14, and container, content, system definition and feature library 1
+(`FORMAT_VERSIONS`, `packages/core/src/format-versions.ts`, held to every schema by `format-versions.test.ts`). Beta
+files open if they open; nothing converts them. A number moves exactly when a reader of the previous number would get a
+file of the new shape wrong without a word, and not for an optional key whose absence means what the file meant before
+(say so in the schema's description). Moving one: the schema, `FORMAT_VERSIONS`, a writer that writes it only for files
+that need it, the validator refusing the new shape below it, and a row in ADR 0130's table. A breaking change after 1.0
+ships the conversion of the number it replaces. **A file a newer Incudo wrote is refused** by every reader with
+`newerFormatNote`, never opened: a Save would write back without what this version cannot read.
+
 **Never generate artwork.** No AI-generated images, logos, icons, textures or sample art, not
 even as a temporary placeholder. This is a stated project commitment in the README, not a
 preference. If a visual asset is needed, leave a clearly-marked gap and say so — do not fill it.

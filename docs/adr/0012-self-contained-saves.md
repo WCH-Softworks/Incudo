@@ -85,3 +85,5 @@ and `docs/LICENSING.md`.
 
 `.incupack` from ADR 0007 is **dropped**. It existed to make a shareable, self-contained character
 an export option; that is now simply what a save is, so a second format has nothing left to do.
+
+> **Note, 2026-10-28 ([ADR 0130](./0130-only-1-0-s-formats-are-supported-its-numbers-are-the-baseline-and-a-newer-file-is-refused.md)):** the format policy is ADR 0130: `manifest.json` is 1 and `character.json` 14 at 1.0, and a `.incu` a newer Incudo wrote is refused by `readCharacterContainer` with one sentence, never opened, so an older version cannot write a smaller file over it.

@@ -28,6 +28,7 @@ import {
 import { parseRequirements } from './requirements.ts';
 import { applySystemOverlay, duplicateIdentities, type OverlayChange } from './system-overlay.ts';
 import { systemWarnings } from './system-warnings.ts';
+import { FORMAT_VERSIONS, isNewerFormat, newerFormatNote } from './format-versions.ts';
 import { parseSupports, supportsInterpolations } from './supports.ts';
 import type { Character } from './character.ts';
 import type { ContainerManifest } from './container.ts';
@@ -86,6 +87,11 @@ export function validateGameSystem(
   schemas: SchemaBundle,
   options: ValidateSystemOptions = {},
 ): SystemValidationResult {
+  // A definition for a newer Incudo is refused with the one sentence that says so (ADR 0130), not a schema error.
+  const found = (value as { formatVersion?: unknown } | null)?.formatVersion;
+  if (isNewerFormat(found, FORMAT_VERSIONS.system)) {
+    return { ...result(value as GameSystem, [{ path: 'formatVersion', message: newerFormatNote('system definition', found, FORMAT_VERSIONS.system) }]), warnings: [] };
+  }
   if (isOverlay(value)) return validateOverlay(value, schemas, options);
   const errors = validateJson(value, schemas.system);
   if (errors.length === 0) errors.push(...checkSystemReferences(value as GameSystem));

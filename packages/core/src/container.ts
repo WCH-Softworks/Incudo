@@ -34,6 +34,7 @@ import {
 } from './character.ts';
 import type { Element, ElementId, ElementIndex } from './model.ts';
 import { checkContentBundle, type ContentBundle } from './content-format.ts';
+import { FORMAT_VERSIONS, isNewerFormat, newerFormatNote } from './format-versions.ts';
 import { referencedElementIds } from './engine.ts';
 import { embeddedElementIds } from './embeds.ts';
 import { setterGrantIds, withdrawnGrantIds } from './setter-grants.ts';
@@ -454,6 +455,16 @@ export function readCharacterContainer(files: ContainerFiles): ReadResult {
   const character = parseEntry<Character>(files, CHARACTER_PATH, problems);
   const content = parseEntry<ContentBundle>(files, CONTENT_PATH, problems);
   if (!manifest || !character || !content) return { container: undefined, problems };
+  // A file a newer Incudo wrote is refused, never opened (ADR 0130): a Save would write back without what this version
+  // cannot read.
+  if (isNewerFormat(manifest.formatVersion, FORMAT_VERSIONS.container)) {
+    problems.push({ level: 'error', path: MANIFEST_PATH, message: newerFormatNote('character file', manifest.formatVersion, FORMAT_VERSIONS.container) });
+    return { container: undefined, problems };
+  }
+  if (isNewerFormat(character.formatVersion, FORMAT_VERSIONS.character)) {
+    problems.push({ level: 'error', path: CHARACTER_PATH, message: newerFormatNote('character', character.formatVersion, FORMAT_VERSIONS.character) });
+    return { container: undefined, problems };
+  }
   // Content is read through the content format's one checker (ADR 0119): a save's content is the same format as a source.
   const checked = checkContentBundle(content);
   if (!checked.value) {

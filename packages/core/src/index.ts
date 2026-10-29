@@ -23,6 +23,7 @@ export * from './custom-features.ts';
 export * from './embeds.ts';
 export * from './sheet-hints.ts';
 export * from './content-format.ts';
+export * from './format-versions.ts';
 export * from './container.ts';
 export * from './json-schema.ts';
 export * from './schema.ts';
