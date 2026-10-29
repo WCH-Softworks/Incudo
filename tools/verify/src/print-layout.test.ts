@@ -748,6 +748,11 @@ test('a laid-out sheet: every tab printed, its marks in words, its explanations 
   if (!/document\.layout === 'page' \?\s*\(\s*<SheetPage document=\{document\}/.test(pane)) problems.push('SheetPane: a laid-out sheet is not drawn as a page');
   const page = readFileSync(join(src, 'panes', 'SheetPage.tsx'), 'utf8');
   if (!/\{filled\.map\(\(tab\) => \(\s*<div key=\{tab\.id\} role="tabpanel"/.test(page)) problems.push('SheetPage: only the open tab is drawn, so a print leaves the rest out');
+  // A stat block names each row on its section's line as `statBlockRowLabel` says, one shown row included: found in the
+  // Tauri window (2026-10-29), where a creature's one sense read "Senses 13" and a lone skill would read "Skills +3".
+  const block = readFileSync(join(src, 'panes', 'StatBlock.tsx'), 'utf8');
+  if (!/const label = statBlockRowLabel\(section, row\)/.test(block)) problems.push('StatBlock: a row is named by something other than statBlockRowLabel');
+  if (/rows\.length === 1/.test(block)) problems.push('StatBlock: a section showing one row writes its number without its name');
   t.diagnostic(`print rules read: ${print.size} selectors`);
   assert.deepEqual(problems, []);
 });

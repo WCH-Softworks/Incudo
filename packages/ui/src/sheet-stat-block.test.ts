@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import { createCharacter, deriveCharacter, MapElementIndex, resolveCharacterKind, type Element, type GameSystem, type Rule } from '@incudo/core';
 
-import { rowAside } from './sheet-document.ts';
+import { rowAside, statBlockRowLabel } from './sheet-document.ts';
 import { sheetView } from './sheet.ts';
 
 const num = (value: number) => ({ kind: 'number' as const, value });
@@ -118,4 +118,13 @@ test('the ability table pairs each score with its shown save by the declared ord
     ],
   );
   assert.equal(view(OLD).statBlock!.wide, false);
+});
+
+test('a stat block line names a row unless its name is the section\'s, one shown row included', () => {
+  // Fails if a section showing one row writes only its number ("Saves +3", "Senses 13"): which save, skill, speed or sense
+  // it is cannot be told from the number. A book prints "Senses Passive Perception 13" and "Legendary Action Uses 3".
+  const saves = view(NEW).sections.find((s) => s.id === 'saves')!;
+  assert.deepEqual(saves.rows.map((r) => r.label), ['Wits'], 'one save shown');
+  assert.equal(statBlockRowLabel(saves, saves.rows[0]!), 'Wits');
+  assert.equal(statBlockRowLabel({ label: 'Guard' }, { label: 'Guard' }), undefined, 'a row named as its section is not named twice');
 });

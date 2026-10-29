@@ -4,14 +4,15 @@
  *
  * The head sections are its first lines (what the creature is, in italics; then armour class, hit points, speed as lines);
  * the ability scores are a table in the shape the creature opens in (`SheetStatBlock.wide`, from its book), which the
- * reader may switch and nothing records (the maintainer's call); every other section of rows is one labelled line; and
+ * reader may switch and nothing records (the maintainer's call); every other section of rows is one labelled line, a row
+ * named unless its name is the section's (`statBlockRowLabel`); and
  * what a section lists is drawn under its heading, "Name: text". Nothing here knows a section by name: the head is the
  * sections placed there, and the table is the document's.
  */
 
 import { useId, useState } from 'react';
 
-import { listedAside, listedName, rowAside, type SheetDocument, type SheetSectionView } from '@incudo/ui';
+import { listedAside, listedName, rowAside, statBlockRowLabel, type SheetDocument, type SheetSectionView } from '@incudo/ui';
 
 import { ListedElement } from './Companions.tsx';
 import { PlayContext, PlayStrip, type PlayHere } from './PlayInPlace.tsx';
@@ -139,18 +140,19 @@ function BlockSection({ section }: { section: SheetSectionView }): React.JSX.Ele
       {section.rows.length > 0 && (
         <p className="stat-block-line">
           <strong>{section.label}</strong>{' '}
-          {section.rows.length === 1 ? (
-            <RowValue row={section.rows[0]!} />
-          ) : (
-            section.rows.map((row, at) => (
+          {section.rows.map((row, at) => {
+            const label = statBlockRowLabel(section, row);
+            return label === undefined ? (
+              <RowValue key={row.stat} row={row} />
+            ) : (
               <span key={row.stat}>
                 {at > 0 && ', '}
-                {row.label} {row.value}
+                {label} {row.value}
                 {row.mark && <MarkDots mark={row.mark} />}
                 {rowAside({ ...row, mark: undefined }) !== undefined && <span className="sheet-beside"> ({rowAside({ ...row, mark: undefined })})</span>}
               </span>
-            ))
-          )}
+            );
+          })}
         </p>
       )}
       {section.printed.map((line, at) => (
