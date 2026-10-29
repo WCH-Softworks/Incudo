@@ -125,6 +125,7 @@ import {
   FeatureLibrary,
   SourceLoads,
   sourcesLoadKey,
+  contentIsLoading,
   contentLoadFailedNote,
   buildTabs,
   nextBuildTab,
@@ -530,8 +531,15 @@ function Shell({
   const [loadFailure, setLoadFailure] = useState<string | undefined>(undefined);
   // Until the first load ends there is nothing to offer from, as there is nothing during one: Build and Browse show the
   // load's progress in its place, and a new character's options dialog waits for it (or it would offer only the
-  // defaults, named by their ids). A load that threw has ended too, or the panes would wait for ever.
-  const contentLoading = busy || (content === null && sources.length > 0 && loadFailure === undefined);
+  // defaults, named by their ids). A load that threw has ended too, or the panes would wait for ever, and so would a
+  // system with no source of its own switched on, for which no load starts.
+  const contentLoading = contentIsLoading({
+    busy,
+    loaded: content !== null,
+    profile: sources,
+    lineage: systemLineage(system),
+    failed: loadFailure !== undefined,
+  });
   const loadFailedNote = contentLoadFailedNote(content?.sources ?? [], content?.elementCount ?? 0, loadFailure);
   const profile = useRef<SourceProfile | null>(null);
 

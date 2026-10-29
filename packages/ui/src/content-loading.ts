@@ -6,6 +6,27 @@
  * shows the same progress line, so it is worded once here.
  */
 
+import { sourcesForSystem, type ConfiguredSource } from '@incudo/content';
+
+/**
+ * Whether Build and Browse wait for a load: while one runs, and before the first has ended when the system has a source
+ * switched on, since that load is on its way. Not otherwise: a system with no source of its own switched on is loaded
+ * by nothing (the shell starts no load for it), so waiting would wait for ever. `profile` is every configured source,
+ * every system's; `lineage` is the system's (`systemLineage`). Found in the Tauri window (2026-10-29): a new character
+ * in the starter system, whose profile held only another system's sources, sat on "Starting…".
+ */
+export function contentIsLoading(state: {
+  busy: boolean;
+  loaded: boolean;
+  profile: readonly ConfiguredSource[];
+  lineage: readonly string[];
+  failed: boolean;
+}): boolean {
+  if (state.busy) return true;
+  if (state.loaded || state.failed) return false;
+  return sourcesForSystem(state.profile, state.lineage).some((source) => source.enabled);
+}
+
 /** How far a load has got, as `loadSources` reports it. The same shape as `@incudo/content`'s `LoadProgress`. */
 export interface ContentLoadProgress {
   readonly loaded: number;

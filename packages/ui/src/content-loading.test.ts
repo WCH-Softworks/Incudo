@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  contentIsLoading,
   contentLoadFailedNote,
   contentLoadFailedView,
   contentLoadingView,
@@ -54,4 +55,20 @@ test('a load with nothing arriving says it has stalled, and an empty load says i
   // Fails if a load that left nothing waits silently or shows no reason.
   assert.equal(contentLoadFailedView('AuroraLegacy: Gone.').progress, 'AuroraLegacy: Gone.');
   assert.equal(contentLoadFailedView(undefined).heading, 'Content did not load');
+});
+
+test('a pane waits for the first load only when the system has a source switched on', () => {
+  // Fails if the whole profile is counted, every system's: the starter system's new character, with only another
+  // game's source configured, sat on "Starting…" for ever, since no load starts for a system with none of its own.
+  const source = (id: string, systemId: string, enabled = true) => ({ id, url: id, name: id, systemId, enabled, mode: 'download' as const, addedAt: '2026-10-29T00:00:00.000Z' });
+  const profile = [source('aurora', 'dnd5e'), source('off', 'mine', false)];
+  const waits = (lineage: string[], over: Partial<Parameters<typeof contentIsLoading>[0]> = {}) =>
+    contentIsLoading({ busy: false, loaded: false, profile, lineage, failed: false, ...over });
+  assert.equal(waits(['dnd5e']), true, 'its own source is on its way');
+  assert.equal(waits(['starter']), false, "another system's source is loaded for that system only");
+  assert.equal(waits(['mine']), false, 'a source switched off loads nothing');
+  assert.equal(waits(['overlay', 'dnd5e']), true, "an overlay loads its parent's sources");
+  assert.equal(waits(['dnd5e'], { loaded: true }), false);
+  assert.equal(waits(['dnd5e'], { failed: true }), false, 'a load that threw has ended');
+  assert.equal(waits(['starter'], { busy: true }), true, 'a load running is waited for');
 });
