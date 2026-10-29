@@ -74,6 +74,11 @@ export interface SheetRow {
    * print's: "27 (printed 21 (6d4 + 6))". When it is, the print is the row's value and this is absent.
    */
   printed?: string;
+  /**
+   * The value is what a held element prints for this row, in the print's words (ADR 0126): "passive Perception 10",
+   * "50 ft., climb 20 ft.". A stat block writes it without the row's name, which the print already says.
+   */
+  asPrinted?: true;
 }
 
 /**
@@ -695,21 +700,18 @@ function mergePrinted(
     const value = resolved(row.stat)?.value;
     if (printedNumber !== undefined && value !== undefined && Number(printedNumber) === value) {
       row.value = line.text;
-      shownAsPrinted.add(row);
+      row.asPrinted = true;
     } else row.printed = line.text;
   }
   return kept;
 }
-
-/** The rows whose value is their print (`mergePrinted`), for `dropCoveredByPrint`. */
-const shownAsPrinted = new WeakSet<SheetRow>();
 
 /**
  * Leave out each section declaring `coveredByPrint` when that stat's row shows its print (ADR 0126): the printed speed
  * line already names the other speeds.
  */
 function dropCoveredByPrint(views: SheetSectionView[], defOf: ReadonlyMap<SheetSectionView, SheetSectionDef>): void {
-  const printedStats = new Set(views.flatMap((view) => view.rows.filter((row) => shownAsPrinted.has(row)).map((row) => row.stat.toLowerCase())));
+  const printedStats = new Set(views.flatMap((view) => view.rows.filter((row) => row.asPrinted).map((row) => row.stat.toLowerCase())));
   for (let at = views.length - 1; at >= 0; at--) {
     const covered = defOf.get(views[at]!)?.coveredByPrint;
     if (covered !== undefined && printedStats.has(covered.toLowerCase())) views.splice(at, 1);

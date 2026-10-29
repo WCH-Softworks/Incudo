@@ -140,11 +140,12 @@ export function rowAside(row: Pick<SheetRow, 'beside' | 'mark' | 'including' | '
 
 /**
  * The name a stat block writes before a row on its section's line (ADR 0126 decision 7): the row's own label, as a book
- * prints "Senses Passive Perception 13" and "Skills Perception +3", or nothing when it only repeats the section's. A
- * section showing one row still names it: which save, skill or speed it is cannot be told from the number.
+ * prints "Senses Passive Perception 13" and "Skills Perception +3", or nothing when it only repeats the section's or the
+ * value is the creature's own print, which says what it is ("Senses passive Perception 10"). A section showing one row
+ * still names it: which save, skill or speed it is cannot be told from the number.
  */
-export function statBlockRowLabel(section: Pick<SheetSectionView, 'label'>, row: Pick<SheetRow, 'label'>): string | undefined {
-  return row.label === section.label ? undefined : row.label;
+export function statBlockRowLabel(section: Pick<SheetSectionView, 'label'>, row: Pick<SheetRow, 'label' | 'asPrinted'>): string | undefined {
+  return row.label === section.label || row.asPrinted ? undefined : row.label;
 }
 
 /** "A", "A and B", "A, B and C". */

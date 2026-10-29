@@ -127,4 +127,10 @@ test('a stat block line names a row unless its name is the section\'s, one shown
   assert.deepEqual(saves.rows.map((r) => r.label), ['Wits'], 'one save shown');
   assert.equal(statBlockRowLabel(saves, saves.rows[0]!), 'Wits');
   assert.equal(statBlockRowLabel({ label: 'Guard' }, { label: 'Guard' }), undefined, 'a row named as its section is not named twice');
+  // Fails if a row whose value is the creature's print is named too: "Senses Awareness keen nose; awareness 11".
+  const head = view(NEW).sections.find((s) => s.id === 'head')!;
+  const awareness = head.rows.find((r) => r.stat === 'awareness')!;
+  assert.equal(statBlockRowLabel({ label: 'Senses' }, awareness), undefined, 'a print says what it is');
+  const guard = view(OLD).sections.find((s) => s.id === 'head')!.rows.find((r) => r.stat === 'guard')!;
+  assert.equal(statBlockRowLabel({ label: 'Head' }, guard), 'Guard', 'a print beside a number in force is not the value');
 });
