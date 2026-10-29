@@ -44,7 +44,7 @@ in CI: a runner has no installed build and no screen.
 
 It prints where its run folder is. The folder holds `report.md` (every step below with what the drive saw), the text and
 PDF exports, the scratch library and the profile. If `pdftotext` is on the path the report also says whether every word
-of the text export is in the PDF.
+of the text export's lines is in the PDF, its section headings aside.
 
 ## Recording a check
 
@@ -68,7 +68,8 @@ drive's `report.md` into it, then add the person's results beside it. The draft'
 **Drive and person.** Start the installed app with no profile of its own (the drive uses a scratch one; a person may use
 a fresh Windows account, or remove the app's WebView2 folder first).
 
-- The window opens on "Choose a system", listing "Dungeons & Dragons 5th Edition" and "Cairn".
+- The window opens on "Choose a system", listing "Dungeons & Dragons 5th Edition", the one system Incudo ships, then
+  "New system…" and "Add a system…".
 - Settings reads "Version X.Y.Z", the version of the tag (the drive compares it with `tauri.conf.json`).
 - *Person:* the window opens at its full size, with the icon in the title bar and the taskbar, and no white flash.
 
@@ -86,13 +87,16 @@ a fresh Windows account, or remove the app's WebView2 folder first).
 **Drive and person.** On Sources, press Add on the suggested AuroraLegacy, then at once go to Characters and press New
 character.
 
-- While it loads, Build and Browse show "Loading content" with a count of files that rises, never an empty build.
+- While it loads, Build and Browse show "Loading content" with a count of files that rises, never an empty build. A
+  machine that converted AuroraLegacy before keeps the conversion in the app's own sources folder, whatever the profile,
+  and loads it in a second or two: the drive then says so instead of watching for the panel, and the person sees it on a
+  machine that never ran Incudo, or after removing that folder (`%APPDATA%dev.incudo.desktopsources`).
 - When it ends, the campaign options open by themselves, every option named (no `ID_…` on screen), with "Start
   building" and "Cancel". Press Start building.
 - The source's line on Sources reads "· N entries from F files", "Refers to U thing(s) none of your enabled sources
   contain" and "W warning(s)", within the corpus budget (`RECORDED_BUDGET` in `tools/verify/src/corpus.ts`, held to
-  `ci.yml`): F at least 740, N at least 14,316, U at most 1, W at most 57. On 2026-10-27 it read 14,320 entries from 740
-  files, 1 thing, 57 warnings.
+  `ci.yml`): F at least 740, N at least 14,316, U at most 1, W at most 60. On 2026-10-27 it read 14,320 entries from 740
+  files, 1 thing, 57 warnings; since ADR 0119's converter (2026-10-28) it reads 14,317 entries and 60 warnings.
 
 ### 5. Build a named character through every kind of decision
 
@@ -130,7 +134,8 @@ The readings table below is what its Sheet must read.
 and save.
 
 - The text file holds every reading in the table below, as `- Label: value`.
-- The PDF has one page or more (7 on 2026-10-27), and every word of the text export is in it.
+- The PDF has one page or more (7 on 2026-10-27), and every word of the text export's lines is in it. Its section
+  headings are not compared: the laid-out Sheet draws some sections, such as Combat's tiles, under no heading.
 - *Person:* the PDF opens in a reader, two columns of sections, nothing cut off at an edge.
 
 ### 8. Print through its step
@@ -176,10 +181,14 @@ choose the sample save that is a 2014 Fighter 5 in plate and shield (`sample-09-
 
 ### 13. Switching system
 
-**Drive and person.** Press the system's name in the header, then Cairn.
+**Drive and person.** Press the system's name in the header, then New system…. Name it "Release Check Starter", keep
+"A small starter system", press "Save and add…" and save the file in the run folder (or anywhere outside the library).
+Press its card, then New character.
 
-- The header reads "Cairn · no sources for this system", and Characters says the folder's 2 Dungeons & Dragons 5th
-  Edition characters belong to another system.
+- The new system's card reads "yours", and the header reads "Release Check Starter · no sources for this system".
+- Characters says the folder's 2 Dungeons & Dragons 5th Edition characters belong to another system.
+- New character opens Build on the starter's Scores decision, not on "Loading content": the system has no source, so
+  nothing is waited for.
 
 ### 14. How the window looks
 

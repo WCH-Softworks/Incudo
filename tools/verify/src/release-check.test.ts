@@ -15,7 +15,7 @@
 
 import assert from 'node:assert/strict';
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { release, tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -183,7 +183,12 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
   mkdirSync(out);
   t.diagnostic(`run folder: ${run}`);
 
-  const expectedVersion = (JSON.parse(readFileSync(join(repoRoot(), 'apps', 'desktop', 'src-tauri', 'tauri.conf.json'), 'utf8')) as { version: string }).version;
+  const tauriConf = JSON.parse(readFileSync(join(repoRoot(), 'apps', 'desktop', 'src-tauri', 'tauri.conf.json'), 'utf8')) as { version: string; identifier: string };
+  const expectedVersion = tauriConf.version;
+  // A converted source is kept in the app's data folder, outside any WebView2 profile (ADR 0119), so a scratch profile
+  // still reads one this machine converted before: the load is then over before step 4 can watch it. Read, never touched.
+  const sourcesFolder = join(process.env.APPDATA ?? '', tauriConf.identifier, 'sources');
+  const converted = existsSync(sourcesFolder) ? readdirSync(sourcesFolder).filter((name) => name.startsWith('auroralegacy-')) : [];
   const port = await freePort();
   const app: ChildProcess = spawn(exe, [], {
     env: { ...process.env, WEBVIEW2_USER_DATA_FOLDER: join(run, 'profile'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port}` },
@@ -213,8 +218,8 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
     const first = stepNamed('first launch');
     await connect();
     const launcher = await inPage<string>(`return await H.until(() => /Choose a system/.test(document.body.innerText) && document.body.innerText, 30000, 'the launcher');`);
-    check(first, launcher.includes('Dungeons & Dragons 5th Edition') && launcher.includes('Cairn'),
-      'the window opens on "Choose a system", listing Dungeons & Dragons 5th Edition and Cairn');
+    check(first, launcher.includes('Dungeons & Dragons 5th Edition') && launcher.includes('New system…') && launcher.includes('Add a system…'),
+      'the window opens on "Choose a system", listing Dungeons & Dragons 5th Edition, New system… and Add a system…');
 
     // 3. Choose a system and a library folder. The folder is written into the profile, where the folder dialog would
     // put it, before the system is chosen.
@@ -255,8 +260,13 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
       }
       throw new Error('the campaign options never opened: ' + H.main().slice(0, 300));`, 330_000);
     const counts = loading.samples.map((s) => /: (\d+) \/ (\d+)/.exec(s)).filter((m) => m).map((m) => Number(m![1]));
-    check(source, loading.samples.every((s) => s.includes('Loading content')) && loading.samples.some((s) => s.startsWith('Browse: ')) && counts.length > 0 && counts[counts.length - 1]! >= counts[0]!,
-      `Build and Browse showed "Loading content" for the whole load (${loading.seconds} s), ${loading.samples.length} looks, the file count going from ${counts[0]} to ${counts[counts.length - 1]}`);
+    if (converted.length && loading.samples.length === 0) {
+      // Read from the conversion already on this machine: done before the first look, so there was no wait to see.
+      saw(source, `the source loaded from ${converted.join(', ')} already in the app's sources folder before the first look (${loading.seconds} s): the loading panel is the person's to see`);
+    } else {
+      check(source, loading.samples.every((s) => s.includes('Loading content')) && loading.samples.some((s) => s.startsWith('Browse: ')) && counts.length > 0 && counts[counts.length - 1]! >= counts[0]!,
+        `Build and Browse showed "Loading content" for the whole load (${loading.seconds} s), ${loading.samples.length} looks, the file count going from ${counts[0]} to ${counts[counts.length - 1]}`);
+    }
     check(source, !/ID_[A-Z]/.test(loading.dialog) && loading.buttons.includes('Start building') && loading.buttons.includes('Cancel'),
       'the campaign options opened by themselves, every option named, with Start building and Cancel');
     const sources = await inPage<string>(`await H.press('Start building'); await H.press('Sources'); return H.main();`);
@@ -356,9 +366,11 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
     const text = pdfText(pdfPath);
     if (text === undefined) saw(exporting, 'words not compared: pdftotext is not on the path');
     else {
+      // A section heading is the export's; the laid-out Sheet draws some sections (Combat's tiles) under none.
+      const exported = words(markdown.split('\n').filter((line) => !line.startsWith('#')).join('\n'));
       const inPdf = words(text.replace(/-\n/g, ''));
-      const lost = [...words(markdown)].filter((word) => !inPdf.has(word));
-      check(exporting, lost.length === 0, `${words(markdown).size} distinct words in the text export, ${lost.length} missing from the PDF${lost.length ? `: ${lost.slice(0, 10).join(', ')}` : ''}`);
+      const lost = [...exported].filter((word) => !inPdf.has(word));
+      check(exporting, lost.length === 0, `${exported.size} distinct words in the text export's lines, ${lost.length} missing from the PDF${lost.length ? `: ${lost.slice(0, 10).join(', ')}` : ''}`);
     }
 
     // 8. Print through its step. The page waits on the preview until it closes, so Print… is pressed after this returns.
@@ -450,16 +462,30 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
     const active = await inPage<string>(`return document.querySelector('button.on')?.textContent ?? 'none';`);
     check(menus, active.startsWith('Browse'), `View → ${browseLabel?.kind === 'command' ? browseLabel.label : 'Browse'} by a window message: the screen on is "${active}"`);
 
-    // 13. Switching system.
+    // 13. Switching system. Incudo ships one, so the other is a starter made through New system…, saved in the run folder.
     const switching = stepNamed('switching system');
-    const cairn = await inPage<{ header: string; text: string }>(`
+    const starter = 'Release Check Starter';
+    await inPage(`
       document.querySelector('button.system-switch').click(); await H.sleep(800);
       const d = H.dialog(); if (d) [...d.querySelectorAll('button')].find((b) => /Discard/.test(b.textContent))?.click();
-      await H.until(() => H.leaf('Cairn'), 10000, 'the launcher'); H.leaf('Cairn').click(); await H.sleep(1500);
-      return { header: H.header(), text: H.main() };`);
-    check(switching, cairn.header.includes('Cairn · no sources for this system'), 'the header reads "Cairn · no sources for this system"');
-    check(switching, /2 Dungeons & Dragons 5th Edition character\(s\) in this folder belong to another system/.test(cairn.text),
+      await H.until(() => H.leaf('New system…'), 10000, 'the launcher'); H.leaf('New system…').click(); await H.sleep(700);
+      H.setInput([...document.querySelectorAll('input[type=text]')].find((i) => i.closest('label')?.textContent.trim().startsWith('Name')), ${JSON.stringify(starter)});
+      [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('A small starter system')).querySelector('input').click();
+      await H.sleep(300); return true;`);
+    await throughDialog('Save and add', join(out, 'release-check-starter.json'));
+    const switched = await inPage<{ card: string; header: string; text: string; build: string }>(`
+      const name = await H.until(() => [...document.querySelectorAll('span')].find((e) => e.textContent.trim().startsWith(${JSON.stringify(starter)})), 15000, 'the new system');
+      const card = name.parentElement.innerText.replace(/\\n+/g, ' / ');
+      name.click(); await H.until(() => H.btn('New character'), 15000, 'the Characters screen');
+      const header = H.header(); const text = H.main();
+      await H.press('New character'); await H.sleep(1500);
+      return { card, header, text, build: H.main().slice(0, 400) };`);
+    check(switching, /yours/.test(switched.card), `the new system's card reads "${switched.card}"`);
+    check(switching, switched.header.includes(`${starter} · no sources for this system`), `the header reads "${starter} · no sources for this system"`);
+    check(switching, /2 Dungeons & Dragons 5th Edition character\(s\) in this folder belong to another system/.test(switched.text),
       'Characters says the folder\'s 2 Dungeons & Dragons 5th Edition characters belong to another system');
+    check(switching, !/Loading content/.test(switched.build) && /Scores/.test(switched.build),
+      `New character opens Build on the starter's Scores, not on "Loading content": "${switched.build.split('\n').slice(0, 4).join(' / ')}"`);
   } catch (error) {
     failure = error;
   } finally {
