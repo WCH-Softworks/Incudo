@@ -30,8 +30,8 @@ mouse and can run with the window behind others. It needs the network (it downlo
 about three minutes.
 
 1. Install the candidate from its draft release.
-2. Run it with the installed executable's path on the command line. The per-user installer puts it under your local
-   application data folder, in `Incudo`:
+2. Run it from the root of the repository (where `package.json` is), with the installed executable's path on the command
+   line. The per-user installer puts it under your local application data folder, in `Incudo`:
 
    ```bash
    npm run release:drive -- "<the folder Incudo installed into>\incudo-desktop.exe"
