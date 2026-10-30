@@ -254,8 +254,15 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
       for (let i = 0; i < 600; i++) {
         const d = H.dialog();
         if (d && /Start building/.test(d.innerText)) return { seconds: Math.round((performance.now() - t0) / 1000), samples, dialog: d.innerText, buttons: [...d.querySelectorAll('button')].map((b) => b.textContent) };
-        if (i % 2 === 0) samples.push(H.main().split('\\n').slice(0, 3).join(' / '));
-        if (!browsed && i === 3) { browsed = true; await H.press('Browse'); samples.push('Browse: ' + H.main().split('\\n').slice(0, 3).join(' / ')); await H.press('Build'); }
+        // Browse first: a warm host finishes the load in a few seconds. A look landing after the load ended and before the
+        // options dialog opened (the next render) is not a look at the load, so it is taken again once that render is in.
+        const look = async (prefix) => {
+          let seen = H.main().split('\\n').slice(0, 3).join(' / ');
+          if (!/Loading content/.test(seen)) { await H.sleep(400); if (H.dialog()) return; seen = H.main().split('\\n').slice(0, 3).join(' / '); }
+          samples.push(prefix + seen);
+        };
+        if (!browsed) { browsed = true; await H.press('Browse'); await look('Browse: '); await H.press('Build'); }
+        else if (i % 2 === 0) await look('');
         await H.sleep(500);
       }
       throw new Error('the campaign options never opened: ' + H.main().slice(0, 300));`, 330_000);
@@ -265,7 +272,7 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
       saw(source, `the source loaded from ${converted.join(', ')} already in the app's sources folder before the first look (${loading.seconds} s): the loading panel is the person's to see`);
     } else {
       check(source, loading.samples.every((s) => s.includes('Loading content')) && loading.samples.some((s) => s.startsWith('Browse: ')) && counts.length > 0 && counts[counts.length - 1]! >= counts[0]!,
-        `Build and Browse showed "Loading content" for the whole load (${loading.seconds} s), ${loading.samples.length} looks, the file count going from ${counts[0]} to ${counts[counts.length - 1]}`);
+        `Build and Browse showed "Loading content" for the whole load (${loading.seconds} s), ${loading.samples.length} looks, the file count going from ${counts[0]} to ${counts[counts.length - 1]}${loading.samples.filter((s) => !s.includes('Loading content')).map((s) => `; a look saw "${s}"`).join('')}`);
     }
     check(source, !/ID_[A-Z]/.test(loading.dialog) && loading.buttons.includes('Start building') && loading.buttons.includes('Cancel'),
       'the campaign options opened by themselves, every option named, with Start building and Cancel');
@@ -367,8 +374,14 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
     if (text === undefined) saw(exporting, 'words not compared: pdftotext is not on the path');
     else {
       // A section heading is the export's; the laid-out Sheet draws some sections (Combat's tiles) under none.
-      const exported = words(markdown.split('\n').filter((line) => !line.startsWith('#')).join('\n'));
-      const inPdf = words(text.replace(/-\n/g, ''));
+      const lines = markdown.split('\n').filter((line) => !line.startsWith('#')).join('\n');
+      const exported = words(lines);
+      // pdftotext joins a word hyphenated where the PDF breaks a line, its own hyphen too: the export's
+      // "non-instantaneous" may read "noninstantaneous". Each such compound joined counts for its parts.
+      const inPdf = new Set([...words(text), ...words(text.replace(/-\n/g, ''))]);
+      for (const [, left, right] of lines.matchAll(/([\p{L}\p{N}]+)-([\p{L}\p{N}]+)/gu)) {
+        if (inPdf.has(`${left}${right}`.toLowerCase())) inPdf.add(left!.toLowerCase()).add(right!.toLowerCase());
+      }
       const lost = [...exported].filter((word) => !inPdf.has(word));
       check(exporting, lost.length === 0, `${exported.size} distinct words in the text export's lines, ${lost.length} missing from the PDF${lost.length ? `: ${lost.slice(0, 10).join(', ')}` : ''}`);
     }

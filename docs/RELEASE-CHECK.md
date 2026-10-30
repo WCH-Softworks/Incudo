@@ -134,7 +134,7 @@ The readings table below is what its Sheet must read.
 and save.
 
 - The text file holds every reading in the table below, as `- Label: value`.
-- The PDF has one page or more (7 on 2026-10-27), and every word of the text export's lines is in it. Its section
+- The PDF has one page or more (7 on 2026-10-27, 9 on 2026-10-30 with the laid-out Sheet), and every word of the text export's lines is in it. Its section
   headings are not compared: the laid-out Sheet draws some sections, such as Combat's tiles, under no heading.
 - *Person:* the PDF opens in a reader, two columns of sections, nothing cut off at an edge.
 
@@ -142,7 +142,7 @@ and save.
 
 **Drive and person.** On the Sheet, "Print sheet…", then Print… on the step.
 
-- WebView2's print preview opens, counting its sheets (7 on 2026-10-27), and offers no headers-and-footers option.
+- WebView2's print preview opens, counting its sheets (7 on 2026-10-27, 9 on 2026-10-30), and offers no headers-and-footers option.
   Cancel closes it and the app answers again.
 - *Person:* press Ctrl+P on the Sheet with real keys: the step opens. On Build, Ctrl+P opens nothing.
 
@@ -150,7 +150,7 @@ and save.
 
 **Drive and person.** On Sources, switch AuroraLegacy off; on Characters, Open "Release Check".
 
-- The Sheet is identical, character for character, to the Sheet before (16,795 characters on 2026-10-27).
+- The Sheet is identical, character for character, to the Sheet before (16,795 characters on 2026-10-27; 2,015 on 2026-10-30, the laid-out Sheet showing its open tab only).
 
 ### 10. Import a named sample
 
