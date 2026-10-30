@@ -325,7 +325,7 @@ function Detail({
         {detail.typeLabel}
         {detail.book && ` · ${detail.book}`}
       </p>
-      <CandidateDescription id={id} elements={elements} />
+      <CandidateDescription id={id} elements={elements} onSelect={onSelect} />
 
       {detail.offeredBy.length > 0 && (
         <>

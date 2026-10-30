@@ -35,6 +35,7 @@ export * from './system-problems.ts';
 export * from './system-new.ts';
 export * from './candidate-search.ts';
 export * from './content-browser.ts';
+export * from './element-choices.ts';
 export * from './candidate-label.ts';
 export * from './preview-placement.ts';
 export * from './about.ts';

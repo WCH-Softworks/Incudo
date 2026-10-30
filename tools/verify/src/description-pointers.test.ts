@@ -2,7 +2,9 @@
  * Descriptions that point at text somewhere else: "detailed under “Maneuvers” below", "see the table below", "the
  * options above". Found on the Battle Master's Combat Superiority, whose maneuvers are "detailed below" and are below
  * nothing on screen: in the book they follow the subclass, and in Aurora they are the options of the feature's own
- * `select` (`supports="Maneuver,Battle Master"`), which its app shows as the choice.
+ * `select` (`supports="Maneuver,Battle Master"`), which its app shows as the choice. Incudo now writes every element's
+ * choices after its description where one is shown on its own (`packages/ui/src/element-choices.ts`), whatever the prose
+ * says; this measures what that answers and what it does not.
  *
  * Report-only (ADR 0042: a moving corpus fails only what must hold against any corpus, and nothing here must). For every
  * description, every sentence carrying a pointer is sorted by what it can be pointing at, from content alone:

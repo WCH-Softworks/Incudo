@@ -1928,6 +1928,29 @@ button.primary:hover:not(:disabled) {
   padding-left: 1.4em;
 }
 
+/* What an element asks the character to choose, after its description (`CandidateDescription`): its text's size and
+   width, set apart by a rule so it does not read as more of content's prose. */
+.element-choices {
+  font-size: 13px;
+  max-width: 70ch;
+  margin-top: 0.75em;
+  padding-top: 0.5em;
+  border-top: 1px solid var(--line);
+}
+
+.element-choices h4 {
+  font-size: 1em;
+  margin: 0 0 0.25em;
+}
+
+.element-choices p {
+  margin: 0.25em 0;
+}
+
+.element-choice-options {
+  color: var(--fg-muted);
+}
+
 .picker-description table {
   border-collapse: collapse;
 }

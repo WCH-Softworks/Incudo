@@ -1869,6 +1869,16 @@ renders it and computes nothing. Things to know before touching it:
   background, from the rules and never from the shape of its id. `and`, `or`, `$(…)` and `!` filters are not followed.
 - **Ctrl+5 was pressed with real keys in the Windows window** and arrives, from a text field too. Not verified:
   macOS and Linux.
+- **A description shown on its own is followed by what the element asks the character to choose** (2026-10-30, the
+  maintainer's choice). The 2014 Combat Superiority says its maneuvers are "detailed under “Maneuvers” below", and
+  Aurora's content has them only as the feature's own `select`. `elementChoices` / `elementChoiceLine`
+  (`packages/ui/src/element-choices.ts`): every select, those offering the same options as one ("Choose 3, then 2 more at
+  level 7 …, from 23 options:"), options matched by the filter alone (no character, no requirements), a `$(…)` filter
+  "depends on the character". `CandidateDescription.tsx` renders it under Browse, the picker and its preview (Browse
+  links each option; 40 shown, then "and N more"). Never read from the prose. The Sheet and the export are unchanged:
+  they list what was chosen. `tools/verify/src/description-pointers.test.ts` sorts every "below / above / see …" pointer
+  in the corpus by what it can point at (report-only): 448, of which 41 are a select's options; most of the rest are its
+  own text, an embed, or a printed book. The phone's picker does not show it yet. Driven in the Tauri window on Windows.
 
 **When two sources define the same id, the later one in the list is used, and each source's line says so**
 ([ADR 0054](docs/adr/0054-when-two-sources-define-the-same-id-the-later-one-in-the-list-is-used-and-the-list-says-so.md)).
