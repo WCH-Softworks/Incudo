@@ -2591,6 +2591,13 @@ in this file and the ADRs is an open question of this section, not a gap in its 
   installed). 1.0 ships the Windows installer unsigned too (the maintainer, 2026-10-27: a certificate is too expensive to
   make sense now); signing any of them waits until it does.
 - **The phone app on iOS**: a build, signing, and the App Store, after the Google Play listing has shown what a store needs.
+- **The release drive in the release workflow** (parked by the maintainer, 2026-10-30, to think about). A job after the
+  Windows installers, on GitHub's hosted Windows runner (a full Windows virtual machine with a desktop, not a container,
+  which has none): download the draft's `.msi`, install it silently, run `npm run release:drive` on it, and attach the run
+  folder. It would catch an installer that builds and then does not work, which nothing in CI reaches today. Not known:
+  whether the native save dialogs behave on that runner, whether its WebView2 runtime needs installing, and how the
+  timings hold. A first run would be started by hand and report only, and gating the draft would wait until it had proved
+  reliable.
 
 ### 1.x — Finding and choosing content
 After the first release, by the maintainer's call (2026-10-05). Both were buried in Phase 3's ticked items and found by
