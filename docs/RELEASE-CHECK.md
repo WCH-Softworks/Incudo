@@ -150,7 +150,8 @@ and save.
 
 **Drive and person.** On Sources, switch AuroraLegacy off; on Characters, Open "Release Check".
 
-- The Sheet is identical, character for character, to the Sheet before (16,795 characters on 2026-10-27; 2,015 on 2026-10-30, the laid-out Sheet showing its open tab only).
+- The Sheet is identical, character for character, to the Sheet before (16,795 characters on 2026-10-27, 16,597 on 2026-10-30). Every tab is
+  compared, the ones not open included.
 
 ### 10. Import a named sample
 

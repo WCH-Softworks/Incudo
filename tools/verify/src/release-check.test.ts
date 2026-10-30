@@ -75,6 +75,8 @@ window.H = {
   btn: (t) => H.buttons().find((b) => b.textContent.startsWith(t)),
   async press(t) { const b = H.btn(t); if (!b) throw new Error('no button "' + t + '" among: ' + H.buttons().map((b) => b.textContent).slice(0, 30).join(' | ')); b.click(); await H.sleep(700); },
   main: () => document.querySelector('main')?.innerText ?? '',
+  // Every tab of a laid-out Sheet, the ones not open included (innerText leaves hidden ones out).
+  sheet: () => document.querySelector('main')?.textContent ?? '',
   header: () => document.querySelector('header')?.innerText.replace(/\n/g, ' ') ?? '',
   dialog: () => document.querySelector('dialog[open]'),
   open: () => [...document.querySelectorAll('ul.decisions > li')].map((l) => ({ label: l.querySelector('.label')?.textContent ?? '?', tag: l.querySelector('.tag')?.textContent ?? '' })),
@@ -353,7 +355,7 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
 
     // 7. Export as text and as PDF.
     const exporting = stepNamed('export');
-    const sheetBefore = await inPage<string>(`await H.press('Sheet'); await H.sleep(800); return H.main();`);
+    const sheetBefore = await inPage<string>(`await H.press('Sheet'); await H.sleep(800); return H.sheet();`);
     const markdownPath = join(out, 'release-check.md');
     await throughDialog('Export sheet as text', markdownPath);
     await waitForFile(markdownPath);
@@ -418,7 +420,7 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
       await H.press('Characters'); await H.sleep(500);
       [...H.libraryCard('Release Check').querySelectorAll('button')].find((b) => /^Open/.test(b.textContent)).click(); await H.sleep(1500);
       const d = H.dialog(); if (d) [...d.querySelectorAll('button')].find((b) => /Discard/.test(b.textContent))?.click(); await H.sleep(800);
-      await H.press('Sheet'); await H.sleep(1200); return H.main();`);
+      await H.press('Sheet'); await H.sleep(1200); return H.sheet();`);
     check(reopen, sheetAfter === sheetBefore, `the Sheet with the source off is ${sheetAfter === sheetBefore ? 'identical to' : 'different from'} the Sheet before (${sheetBefore.length.toLocaleString('en')} and ${sheetAfter.length.toLocaleString('en')} characters)`);
 
     // 10. Import a named sample: the 2014 Fighter 5 in plate and shield, found by what it is.
