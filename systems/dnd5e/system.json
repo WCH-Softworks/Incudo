@@ -470,6 +470,7 @@
 
       "candidateOverlaps": { "types": ["Proficiency", "Language"] },
       "softRequirements": { "types": ["Spell"] },
+      "listedWithRequired": { "types": ["Sub Race", "Race Variant", "Background Variant"] },
 
       "elementTypes": [
         "Race", "Sub Race", "Race Variant", "Racial Trait",
@@ -502,7 +503,7 @@
           "description": "Things a table may allow beyond the rules a character is built by: another speed or sense, a feat or multiclass prerequisite waived, weapon mastery, a companion or familiar of your choice, lycanthropy. Take only what your table allows; taking none is the ordinary answer." },
         { "id": "ability-adjustments", "label": "Ability score adjustments", "types": ["Ability Score Adjustment"], "multiple": true, "priority": 3.7, "offeredWhen": "ID_INTERNAL_OPTION_ALLOW_ADDITIONAL_FEATURES",
           "description": "A score raised or lowered by one beyond what the scores and the build give, for a table that grants or imposes one. Taking none is the ordinary answer." },
-        { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"] },
+        { "id": "equipment", "label": "Equipment", "types": ["Item", "Weapon", "Armor", "Magic Item"], "listedWithRequired": true },
         { "id": "spells", "label": "Spells", "types": ["Spell"], "requires": ["class"] },
         { "id": "alignment", "label": "Alignment", "types": ["Alignment"], "pick": true },
         { "id": "deity", "label": "Deity", "types": ["Deity"], "pick": true }

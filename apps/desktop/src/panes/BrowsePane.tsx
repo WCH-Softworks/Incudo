@@ -21,11 +21,11 @@ import {
   type TypeCount,
   type TypeGroup,
 } from '@incudo/ui';
-import type { ElementId, ElementIndex, GameSystem } from '@incudo/core';
+import { resolveCharacterKind, type ElementId, type ElementIndex, type GameSystem } from '@incudo/core';
 import type { ConfiguredSource } from '@incudo/content';
 
 import { useMediaQuery } from '../use-media-query.ts';
-import { CandidateDescription } from './CandidateDescription.tsx';
+import { AttacksContext, CandidateDescription } from './CandidateDescription.tsx';
 
 /** The complement of the `max-width: 1000px` breakpoint that stacks `.browse-columns`. */
 const SIDE_BY_SIDE = '(min-width: 1001px)';
@@ -75,6 +75,11 @@ export function BrowsePane({
   onOpenSources: () => void;
 }): React.JSX.Element {
   const catalog = useMemo(() => (elements ? contentCatalog(elements, system) : null), [elements, system]);
+  // Browse belongs to no kind, so a weapon's attack lines are read as the first kind that makes attacks reads them.
+  const attacks = useMemo(
+    () => system.characterKinds.map((kind) => resolveCharacterKind(system, kind.id).attacks).find((def) => def !== undefined),
+    [system],
+  );
 
   if (!elements || !catalog || catalog.size === 0) {
     return (
@@ -92,6 +97,7 @@ export function BrowsePane({
   }
 
   return (
+    <AttacksContext.Provider value={attacks}>
     <Browser
       catalog={catalog}
       elements={elements}
@@ -100,6 +106,7 @@ export function BrowsePane({
       onView={onView}
       onOpenSources={onOpenSources}
     />
+    </AttacksContext.Provider>
   );
 }
 

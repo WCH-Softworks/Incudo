@@ -1212,6 +1212,10 @@ built 2026-10-28; Phase 9). The maintainer took every recommendation. Things to 
     optional class features step offers nothing before a class and a class only its own (`optional-feature-offer.test.ts`).
     Since ADR 0127 that step is `listedWithRequired`: sorted among the blocking decisions, still skippable, never owed; a
     Ranger meets it before Favored Enemy, which Favored Foe replaces. The other two wait on `offeredWhen` (ADR 0123).
+    Since ADR 0131 a kind may list optional choices of some types there too (`listedWithRequired: { types }`; 5e's `pc`:
+    Sub Race, Race Variant, Background Variant), a heading step may declare it (5e's Equipment: starting equipment), and an
+    optional choice that offers nothing (no candidate, nothing chosen, nothing unread) is not asked at all
+    (`listed-with-required.test.ts`).
   - **A set answered on Build** (`chooseSet`, every `multiple` step but an `askedAtStart` one): what leaves it is taken back
     first and the answers it closed are dropped (`dropClosedAnswers`, as `removeAddition`); what joins is recorded second
     and drops nothing, so a replaced feature's answer waits for it.

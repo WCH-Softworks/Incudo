@@ -319,6 +319,11 @@ export interface SoftRequirementsDef {
   types: ElementType[];
 }
 
+/** The types whose optional choices are listed with the required decisions — ADR 0131. */
+export interface ListedWithRequiredDef {
+  types: ElementType[];
+}
+
 /** One `:`-delimited segment — what a `*` in a `tagsFromStats` pattern captures. */
 const STAT_SEGMENT = '[^:]+';
 
@@ -792,8 +797,9 @@ export interface BuildStepDef {
    * What this step opens is listed with the decisions a character must answer, at its place in their order, though
    * nothing owes it an answer — ADR 0127: an optional class feature that replaces one of the class's own changes what the
    * class asks next, so it is asked before that and not under "Optional". It still blocks nothing and can be skipped.
-   * Only on a step a character may leave unanswered, as `advanced`. A reader that does not know the key lists the step
-   * with the optional ones, as before, so `formatVersion` did not move.
+   * Only on a step a character may leave unanswered: a set, a pick that is not required, or (ADR 0131) a step that only
+   * heads what content opens of its types, whose optional choices and starting equipment it then lists there. A reader
+   * that does not know the key lists the step with the optional ones, as before, so `formatVersion` did not move.
    */
   listedWithRequired?: boolean;
   description?: string;
@@ -1533,6 +1539,13 @@ export interface CharacterKindDef {
    */
   softRequirements?: SoftRequirementsDef;
   /**
+   * Which types' optional choices are listed with the decisions a character must answer — ADR 0131: a Half-Elf's
+   * variant, a background's variant, what a character loses most by never seeing. Nothing owes them an answer and each
+   * can be skipped; they are only not folded under "Optional". Replaced rather than merged along an `extends` chain. A
+   * kind that declares none folds every optional choice, as before.
+   */
+  listedWithRequired?: ListedWithRequiredDef;
+  /**
    * The setter an element carries to say it may be taken more than once — ADR 0035. Replaced
    * rather than merged along an `extends` chain, like `trackStats`. A kind that names none
    * treats every element as taken at most once, which is what the engine did before.
@@ -1969,6 +1982,8 @@ export interface ResolvedCharacterKind {
   candidateOverlaps?: CandidateOverlapsDef;
   /** Which types' requirement terms leave a candidate offered and flagged; undefined when none. */
   softRequirements?: SoftRequirementsDef;
+  /** Which types' optional choices are listed with the required decisions; undefined when none. */
+  listedWithRequired?: ListedWithRequiredDef;
   buildSteps: BuildStepDef[];
   sheet: SheetLayoutDef;
 }
@@ -2276,6 +2291,7 @@ export function resolveCharacterKind(
   let candidateNotes: CandidateNoteDef[] = [];
   let candidateOverlaps: CandidateOverlapsDef | undefined;
   let softRequirements: SoftRequirementsDef | undefined;
+  let listedWithRequired: ListedWithRequiredDef | undefined;
   let buildSteps: BuildStepDef[] = [];
   let sheet: SheetLayoutDef = { sections: [] };
 
@@ -2310,6 +2326,7 @@ export function resolveCharacterKind(
     if (layer.candidateNotes !== undefined) candidateNotes = layer.candidateNotes;
     if (layer.candidateOverlaps !== undefined) candidateOverlaps = layer.candidateOverlaps;
     if (layer.softRequirements !== undefined) softRequirements = layer.softRequirements;
+    if (layer.listedWithRequired !== undefined) listedWithRequired = layer.listedWithRequired;
     if (layer.buildSteps !== undefined) buildSteps = layer.buildSteps;
     if (layer.sheet !== undefined) sheet = layer.sheet;
   }
@@ -2345,6 +2362,7 @@ export function resolveCharacterKind(
     candidateNotes,
     candidateOverlaps,
     softRequirements,
+    listedWithRequired,
     buildSteps,
     sheet,
   };

@@ -85,6 +85,7 @@ import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
 import { ClassLevels } from './ClassLevels.tsx';
 import { PreparedSpells } from './PreparedSpells.tsx';
 import { PublicationsEditor } from './PublicationsEditor.tsx';
+import { AttacksContext } from './CandidateDescription.tsx';
 import { CandidateNotesContext, CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 import { CustomFeatures } from './CustomFeatures.tsx';
@@ -265,6 +266,7 @@ export function BuilderPane({
   return (
     // Every picker below groups its candidates by the notes the kind marks for it (a spell list by level).
     <CandidateNotesContext.Provider value={kind.candidateNotes}>
+    <AttacksContext.Provider value={kind.attacks}>
     <main className="pane builder">
       <section className="progress-bar">
         <label>
@@ -885,6 +887,7 @@ export function BuilderPane({
         </section>
       )}
     </main>
+    </AttacksContext.Provider>
     </CandidateNotesContext.Provider>
   );
 }

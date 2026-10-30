@@ -205,6 +205,42 @@ function propertiesOf(read: readonly Element[], def: AttacksDef, index: ElementI
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
+/** What an element of an attack type states of itself, before anyone holds it. */
+export interface StatedAttack {
+  dice?: string;
+  damageType?: string;
+  /** Other dice it is written with, by the label the kind gives each: "two-handed 1d10". */
+  alternatives: Array<{ label: string; dice: string }>;
+  /** A range it writes itself; a reach depends on who holds it and is not here. */
+  range?: string;
+  properties: string[];
+}
+
+/**
+ * What an element of one of the kind's attack types writes about the attack it makes, read as `deriveAttacks` reads it:
+ * a picker's preview, where content writes no description for most of them. Undefined for an element of no attack type.
+ */
+export function statedAttack(element: Element, def: AttacksDef | undefined, index: ElementIndex): StatedAttack | undefined {
+  if (!def || !def.types.includes(element.type)) return undefined;
+  const setter = (name: string | undefined): string | undefined => {
+    const value = name ? element.setters[name]?.value.trim() : undefined;
+    return value ? value : undefined;
+  };
+  const dice = setter(def.dice);
+  const damageType = def.damageType ? element.setters[def.dice]?.attrs?.[def.damageType]?.trim() : undefined;
+  const range = setter(def.range);
+  return {
+    ...(dice !== undefined ? { dice } : {}),
+    ...(damageType ? { damageType } : {}),
+    alternatives: (def.alternatives ?? []).flatMap((alternative) => {
+      const other = setter(alternative.setter);
+      return other !== undefined ? [{ label: alternative.label, dice: other }] : [];
+    }),
+    ...(range !== undefined ? { range } : {}),
+    properties: propertiesOf([element], def, index),
+  };
+}
+
 /**
  * The character's attacks, in bag order, against a finished derivation (`reader`). Empty for a kind that declares none.
  * An entry naming an element no index holds is not an attack: the derivation already reports it unresolved.

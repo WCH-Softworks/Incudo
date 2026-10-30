@@ -507,11 +507,12 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
           message: `step "${step.id}" is offered only when an element is held and is not a set or a pick that is not required; only a step a character may leave unanswered can be switched off`,
         });
       }
-      // Listed with what must be answered (ADR 0127), so only a step nothing owes an answer to: one that is owed already is.
-      if (step.listedWithRequired && !(step.multiple || (step.pick && !step.required))) {
+      // Listed with what must be answered (ADR 0127), so only a step nothing owes an answer to: one that is owed already
+      // is. A step that only heads what content opens of its types may (ADR 0131): its optional choices are then listed.
+      if (step.listedWithRequired && (step.required || step.budget)) {
         errors.push({
           path: `${where}.buildSteps`,
-          message: `step "${step.id}" is listed with the required decisions and is not a set or a pick that is not required; only a step a character may leave unanswered needs listing there`,
+          message: `step "${step.id}" is listed with the required decisions and must itself be answered; only a step a character may leave unanswered needs listing there`,
         });
       }
       // What is asked when a character is started is a set of options (ADR 0123): a pick or a budget is Build's to ask.
@@ -769,6 +770,11 @@ function checkSystemReferences(system: GameSystem): SchemaError[] {
     for (const type of resolved.candidateOverlaps?.types ?? []) {
       if (!typeNames.has(type)) {
         errors.push({ path: `${where}.candidateOverlaps.types`, message: `names "${type}", which the system's elementTypes does not declare` });
+      }
+    }
+    for (const type of resolved.listedWithRequired?.types ?? []) {
+      if (!typeNames.has(type)) {
+        errors.push({ path: `${where}.listedWithRequired.types`, message: `names "${type}", which the system's elementTypes does not declare` });
       }
     }
     for (const type of resolved.softRequirements?.types ?? []) {

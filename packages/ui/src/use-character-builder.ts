@@ -253,7 +253,8 @@ export interface OpenDecision {
    */
   multiple?: boolean;
   /**
-   * Not owed, but listed with what is (ADR 0127): its step declares `listedWithRequired`. It sorts among the blocking
+   * Not owed, but listed with what is (ADR 0127): its step declares `listedWithRequired`, or (ADR 0131) it is an optional
+   * choice of a type the kind lists there, or starting equipment whose step declares it. It sorts among the blocking
    * decisions and a screen shows it there, still skippable; counts of what is owed leave it out. Absent otherwise.
    */
   withRequired?: true;
@@ -1794,6 +1795,11 @@ export class CharacterBuilder {
       else choiceEdges.set(from, [...chosen]);
     };
 
+    // What is listed with the required decisions though nothing owes it an answer (ADR 0127, ADR 0131): an optional choice
+    // of a type the kind names (a race's variant), and anything optional a step that declares it heads.
+    const listedTypes = new Set(this.kind.listedWithRequired?.types ?? []);
+    const listedSteps = new Set(this.steps.filter((step) => step.listedWithRequired && !step.required).map((step) => step.id));
+
     // A select opened by something already chosen — a class's Skill Proficiency, say.
     const selectDecisions: OpenDecision[] = [];
     for (const choice of derived.pendingChoices) {
@@ -1802,12 +1808,17 @@ export class CharacterBuilder {
       const chosen = countedPicks(this.character, derived, choice.ruleKey);
       addChoiceEdge(choice.from, chosen);
       const stepId = stepForType.get(choice.type) ?? '';
+      // An optional choice nothing loaded can answer is not offered (ADR 0131): a Half-Elf's variants come from one book,
+      // and without it "Half-Elf Variant" offered nothing, as a decision to skip. One Incudo cannot read (`unresolved`) is
+      // still shown, since that is ours to say; one answered already is still listed so its answer can be changed.
+      if (choice.optional && choice.candidates.length === 0 && chosen.length === 0 && choice.unresolvedSupports.length === 0) continue;
       selectDecisions.push({
         id: choice.ruleKey,
         kind: 'select',
         label: choice.label,
         stepId,
         blocking: !choice.optional,
+        ...(choice.optional && (listedTypes.has(choice.type) || listedSteps.has(stepId)) ? { withRequired: true as const } : {}),
         from: choice.from,
         openedAt: choice.level,
         ...(choice.opensAt !== undefined ? { opensAt: choice.opensAt } : {}),
@@ -2152,7 +2163,8 @@ export class CharacterBuilder {
     }
 
     // An option still to take for the first class or the background (ADR 0087). Never blocking: a table may hand out
-    // equipment itself, and Skip says so.
+    // equipment itself, and Skip says so. Listed with the required decisions when its step says so (ADR 0131): a character
+    // that never sees it starts with nothing.
     const startingContext = this.startingContext(derived);
     const startingEquipment = startingContext ? startingEquipmentState(startingContext) : undefined;
     for (const source of startingEquipment?.sources ?? []) {
@@ -2163,6 +2175,7 @@ export class CharacterBuilder {
         label: `Starting equipment: ${source.stepLabel}`,
         stepId: startingEquipment!.stepId,
         blocking: false,
+        ...(listedSteps.has(startingEquipment!.stepId) ? { withRequired: true as const } : {}),
         from: source.forId,
         remaining: 1,
         // An option is taken whole; what it owes is on its own view.

@@ -712,6 +712,15 @@
             "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "Element types worth naming; each must be declared in elementTypes." }
           }
         },
+        "listedWithRequired": {
+          "type": "object",
+          "required": ["types"],
+          "additionalProperties": false,
+          "description": "Which types' optional choices are listed with the decisions a character must answer, though nothing owes them an answer (ADR 0131): a race's or a background's variant, which a character loses most by never seeing. Each can still be skipped. A kind that declares none folds every optional choice under Optional. Replaced rather than merged along an extends chain.",
+          "properties": {
+            "types": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "Element types whose optional choices are listed with the required ones; each must be declared in elementTypes." }
+          }
+        },
         "softRequirements": {
           "type": "object",
           "required": ["types"],
@@ -1152,7 +1161,7 @@
         },
         "listedWithRequired": {
           "type": "boolean",
-          "description": "What this step opens is listed with the decisions a character must answer, at its place in their order, though nothing owes it an answer (ADR 0127): an optional class feature that replaces one of the class's own changes what the class asks next, so it is asked before that. It blocks nothing and can still be skipped. Only on a step a character may leave unanswered: a set (multiple) or a pick that is not required. A reader that does not know this key lists the step with the optional decisions, as before, so it does not change formatVersion."
+          "description": "What this step opens is listed with the decisions a character must answer, at its place in their order, though nothing owes it an answer (ADR 0127): an optional class feature that replaces one of the class's own changes what the class asks next, so it is asked before that. It blocks nothing and can still be skipped. Only on a step a character may leave unanswered: a set (multiple), a pick that is not required, or a step that only heads what content opens of its types (ADR 0131), whose optional choices and starting equipment are then listed there. A reader that does not know this key lists the step with the optional decisions, as before, so it does not change formatVersion."
         },
         "pick": {
           "type": "boolean",

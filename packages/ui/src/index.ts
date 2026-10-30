@@ -49,6 +49,7 @@ export * from './sheet-descriptions.ts';
 export * from './references.ts';
 export * from './companions.ts';
 export * from './sheet.ts';
+export * from './attack-preview.ts';
 export * from './sheet-document.ts';
 export * from './play.ts';
 export * from './freeform.ts';

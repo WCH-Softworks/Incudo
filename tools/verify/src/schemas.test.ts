@@ -1212,12 +1212,46 @@ test('a step a character may leave unanswered may be listed with the required de
   assert.deepEqual(
     await errorsFor(
       broken((s) => {
-        s.characterKinds[0]!.buildSteps![0]!.listedWithRequired = true;
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        step.required = true;
+        step.listedWithRequired = true;
       }),
     ),
     [
-      'characterKinds[0].buildSteps: step "one" is listed with the required decisions and is not a set or a pick that is not required; only a step a character may leave unanswered needs listing there',
+      'characterKinds[0].buildSteps: step "one" is listed with the required decisions and must itself be answered; only a step a character may leave unanswered needs listing there',
     ],
+  );
+});
+
+test('a heading step may be listed with the required decisions, and a kind may list optional choices of its types — ADR 0131', async () => {
+  // Perturbation: refuse every step that is not a set or an unrequired pick (ADR 0127's rule) and the first fails; drop
+  // the kind's key from the schema and the second fails on an unknown key; drop the types check and the third is missing.
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        const step = s.characterKinds[0]!.buildSteps![0]!;
+        delete step.required;
+        step.listedWithRequired = true;
+      }),
+    ),
+    [],
+  );
+  const declared = (s: { elementTypes: Array<{ name: string }> }) => s.elementTypes[0]!.name;
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.listedWithRequired = { types: [declared(s)] };
+      }),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    await errorsFor(
+      broken((s) => {
+        s.characterKinds[0]!.listedWithRequired = { types: ['Nothing Declared'] };
+      }),
+    ),
+    [`characterKinds[0].listedWithRequired.types: names "Nothing Declared", which the system's elementTypes does not declare`],
   );
 });
 
