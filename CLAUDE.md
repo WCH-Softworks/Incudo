@@ -683,7 +683,7 @@ item. Things to know before touching either:
   is refused with "In <parent>'s part…" (ADR 0103 locates only what the overlay writes). The guide shows the `null`s that
   fix it. Locating such an error at the overlay's own `derive` is an open improvement.
 - Not done: the app links to the guide (waits for the published schema's address); the `$schema` lines the guide suggests
-  were not tried in an editor. Driven in the browser build only.
+  were not tried in an editor. Driven in the browser build and in the Tauri window on Windows (2026-10-29) (a misspelled stat's warning at its line).
 
 **Shipped and user systems are read by one loader, and differ only in where they came from**
 ([ADR 0107](docs/adr/0107-shipped-and-user-systems-are-read-by-one-loader-and-differ-only-in-where-they-came-from.md)),
@@ -993,7 +993,7 @@ built 2026-10-28; Phase 9). The maintainer took every recommendation. Things to 
     `BuildExtras.tsx` ("Marked" and a picker).
   - Tests: `packages/core/src/custom-feature-marks.test.ts`, `packages/ui/src/custom-feature-marks.test.ts`,
     `tools/verify/src/pc-custom-features.test.ts`, the last test of `npc-creatures.test.ts`, each failing under its named
-    perturbation. The oracle is identical. Driven in the browser build only (selects set through the DOM).
+    perturbation. The oracle is identical. Driven in the browser build (selects set through the DOM) and in the Tauri window on Windows (2026-10-29) (an NPC's skill marked expertise).
 - **A user may add an existing element to a character, and an unmet prerequisite is a flag**
   ([ADR 0064](docs/adr/0064-a-character-may-carry-elements-its-user-adds-from-loaded-content-and-an-unmet-prerequisite-is-a-flag.md)).
   ADR 0063's sibling, for the player character and the NPC alike. Things to know before touching it:
@@ -1129,7 +1129,7 @@ built 2026-10-28; Phase 9). The maintainer took every recommendation. Things to 
     rendered inside its own opening heading since ADR 0068 (found by running this). `openSelfClosingTags`
     (`packages/ui`) opens and closes every non-void empty element, and `sanitize-html.ts` runs it before parsing.
   - Not done: searching embedded text (Browse reads what an element writes itself), linking an embed to its element.
-    Driven in the browser build only.
+    Driven in the browser build and in the Tauri window on Windows (2026-10-29) (a spell's embedded stat block in Browse).
 - **A player character keeps text for reference, what its own elements print is suggested first, and a creature it
   holds is not a reference** ([ADR 0070](docs/adr/0070-a-player-character-keeps-text-for-reference-and-a-creature-it-holds-is-not-a-reference.md)).
   Things to know before touching it:
@@ -1237,7 +1237,7 @@ built 2026-10-28; Phase 9). The maintainer took every recommendation. Things to 
     `verify-character.test.ts`'s ADR 0129 cases, `tools/verify/src/optional-feature-step.test.ts` (a 2014 Ranger through
     the builder, packed and reopened with no source), `optional-feature-offer.test.ts`, `hidden-items.test.ts`, each
     failing under its named perturbation. Driven in the browser build (a 2014 Ranger taking Deft Explorer, saved and
-    reopened with every source off); not the Tauri window or the phone.
+    reopened with every source off) and in the Tauri window on Windows (2026-10-29) (a 2014 Ranger taking Deft Explorer and Favored Foe); not the phone.
 - **A creature a character holds is derived one at a time in its holder's namespace, and shown as its own stat block**
   ([ADR 0073](docs/adr/0073-a-creature-a-character-holds-is-derived-one-at-a-time-in-its-holder-s-namespace-and-shown-as-its-own-stat-block.md)).
   The roadmap's "Companions" half; sidekicks were split off (the corpus has no sidekick content). Things to know before
@@ -2257,14 +2257,14 @@ deliberately **not** fixed:
   embedded content and assets, its entry, read time and saved name, tied to the draft by the character's id, all or
   none, and written on an open, a new character or a save, never a keystroke. It keeps what the session held, not what
   the character reaches: an element taken from a source after opening is not kept, because a reload must change
-  nothing. `packages/ui/src/draft.ts`; `boot.ts`'s `loadDraft` reads it. Driven in the browser build only.
+  nothing. `packages/ui/src/draft.ts`; `boot.ts`'s `loadDraft` reads it. Driven in the browser build and in the Tauri window on Windows (2026-10-29) (a draft reloaded keeps its file and unsaved state).
 - **~~A draft whose kind the system no longer declares blanked the window.~~** Fixed (2026-10-17, found with a sidekick
   draft after ADR 0121): `CharacterBuilder` resolves the kind and throws, and `Shell` built one from the draft before
   anything was on screen. **Ask `characterKindMissing(system, character)` (`character-kinds.ts`) before handing a builder
   a character from storage or a file.** `readDraftCharacter` (`draft.ts`) copies such a draft and its origin record under
   `character:set-aside/<id>` (nothing reads it back; it is only not destroyed by the next autosave) and the library says
   so; opening such a file from the library says the same sentence on the library, and the phone's two open paths return
-  it as their error. `unknown-kind.test.ts`; driven in the browser build only.
+  it as their error. `unknown-kind.test.ts`; driven in the browser build and in the Tauri window on Windows (2026-10-29) (a draft rewritten as a sidekick).
 - **~~A file whose `character.json` does not derive blanked the window.~~** Fixed (2026-10-29, found driving ADR 0119's
   changes in the Tauri window, with `choices` written as an object). **A file opened from the library goes through
   `characterOpenProblem(system, character, elements, schemas)`** (`packages/ui/src/open-check.ts`): the kind check above,
@@ -2287,7 +2287,7 @@ deliberately **not** fixed:
     the one on screen replaces it there too: the library file is all that is left.
   - **Before a character is started** (first launch, no draft) Build and the Sheet show "No character yet", the Build tab
     counts nothing, and `CommandContext.started` turns off what acts on the character.
-  - Driven in the browser build only (an origin-private folder standing in for the folder picker).
+  - Driven in the browser build (an origin-private folder standing in for the folder picker) and in the Tauri window on Windows (2026-10-29): Keep editing, Save first, Discard.
 - **~~Importing N saves rescans the library N times.~~** Fixed (ADR 0086's third pass, measured on a phone, where a
   rescan was most of a Save): `CharacterLibrary.save` puts the entry it wrote into the listing from the files it wrote,
   which is also what the collision suffix reads next, and rescans nothing. A scan still reads every container in full.
@@ -2506,7 +2506,7 @@ any level is not an open card (`settledSteps`).
 5e's "Details" step offered nothing (not required, a pick or a set); it is two `pick: true` steps now (9 alignments, 296
 deities). A freeform field may declare `suggestedBy` (select names): while blank it shows the held elements chosen under
 those selects, one per line, on Build and the sheet, stored nowhere (`chosenUnderSelect`, `freeform.ts`). Aurora copies
-the same text into the save, so an import shows its own copy. Driven in the browser build.
+the same text into the save, so an import shows its own copy. Driven in the browser build and in the Tauri window on Windows (2026-10-29).
 
 **The add-item list is grouped by a setter the system names**
 ([ADR 0117](docs/adr/0117-the-add-item-list-is-grouped-by-a-setter-the-system-names.md)): `inventory.groupSetter` (5e
@@ -2587,7 +2587,7 @@ Things to know before touching it:
 - **The builder**: `BuilderState.uncounted` (`uncountedRows`, `packages/ui/src/uncounted.ts`) under "Not counting",
   `forgetUncounted` the only remover; a pool's decision shows `countedPicks`, and `choose` appends the waiting picks
   (`withUncounted`). `SettledPick.unplaced` and `unplacedNote` mark a slot. Desktop `BuilderPane.tsx`, phone
-  `BuildView.tsx`; both compute nothing. Driven in the browser build only.
+  `BuildView.tsx`; both compute nothing. Driven in the browser build and in the Tauri window on Windows (2026-10-29) (a Warlock level removed and given back).
 
 **A 2024 half-caster's prepared count is its spell picks, and an added spell is cast through a block the user names**
 ([ADR 0097](docs/adr/0097-a-2024-half-caster-s-prepared-count-is-its-spell-picks-and-an-added-spell-is-cast-through-a-block-the-user-names.md)). Two decisions. Things to know before touching either:
@@ -2830,14 +2830,14 @@ before touching it:
     `packages/ui/src/spell-attacks.ts` (`BuilderState.spellAttacks`, the builder's `setSpellAttack` returns a refusal);
     desktop `panes/SpellAttacks.tsx` (Build, after Inventory), phone `SpellAttacksView` in `BuildExtras.tsx`.
   - **Only regular scaling**, the maintainer's call: Eldritch Blast reads as more dice, Magic Stone scales. Driven in the
-    browser build (a Wizard 5's Fire Bolt and Acid Splash); not the Tauri window or the phone.
+    browser build (a Wizard 5's Fire Bolt and Acid Splash) and in the Tauri window on Windows (2026-10-29) (Eldritch Blast, Chill Touch, Sacred Flame cast as Warlock); not the phone.
 - **A line under each of a held creature's actions** ([ADR 0112](docs/adr/0112-a-sheet-section-may-write-a-note-under-each-element-it-lists.md),
   2026-10-13): a sheet section may declare `elementNote: { text, showWhen? }`, its `{{stat}}` placeholders filled as a
   sheet line's (ADR 0076); `SheetListedElement.note`, kept apart from content's `text`, written as its own line by the
   desktop's `ListedElement`, the phone's `Listed` and the Markdown. 5e's held creature's Actions section: "If it is an
   attack, its holder adds {{companion:attack}} to the attack roll and {{companion:damage}} to the damage." when
   `companion:attack` is not zero. Measured: 196 Companion Actions, none tagged an attack, and only the 2014 Ranger's
-  Companion writes `companion:attack`/`damage`. Driven in the browser build.
+  Companion writes `companion:attack`/`damage`. Driven in the browser build and in the Tauri window on Windows (2026-10-29) (a Beast Master's wolf).
 - **A 2014 Druid's Wild Shape tier** ([ADR 0113](docs/adr/0113-a-2014-druid-s-wild-shape-tier-is-a-table-in-the-system-definition.md),
   2026-10-13): no engine change. 5e's `pc` declares `wild shape:tier` (unshown, 1 while the 2014 Wild Shape is held),
   `wild shape:max cr` and `wild shape:limits` as gated literal contributions by `[level:druid:N]` (a literal contribution

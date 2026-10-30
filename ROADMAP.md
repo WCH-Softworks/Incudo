@@ -2482,7 +2482,7 @@ written on a character can be moved into the user's library without being typed 
       step and preview with no headers and footers option. Not done: proficiencies grouped by kind (after ADR 0119), a
       spell's text a click away, passive Perception beside Perception, a level's slots heading its spells. The phone is
       typechecked, not driven.*
-- [ ] **Drive everything in the Tauri window before 1.0** *(the phone half moved after the desktop 1.0, with the phone's
+- [x] **Drive everything in the Tauri window before 1.0** *(the phone half moved after the desktop 1.0, with the phone's
       release: the maintainer, 2026-10-27; what is left here is the window, for whatever changes before 1.0).* Raised
       2026-10-11, last on purpose. Many
       features were driven only in the browser build (CLAUDE.md says "Driven in the browser build only" fifteen times),
@@ -2519,6 +2519,26 @@ written on a character can be moved into the user's library without being typed 
       a restart loading both sources, Check for updates ("none of 800 files has changed") and a part switched off (738
       files, 0.5 s) and on. One bug found and fixed: a `character.json` that does not derive blanked the window; it is
       refused on the Characters screen now (`characterOpenProblem`, `open-check.test.ts`), by the desktop and the phone.
+      *The last pass, 2026-10-29 and 30, done* (a dev window and a release build from the branch, scratch WebView2 profiles
+      and library, DOM events over the debug port, the native dialogs by window messages, every file read back in Node): a
+      failed source and AuroraLegacy loading behind the panel; a 2014 Paladin 2 / Warlock 1 and a 2024 Cleric 3 through
+      every step (point buy and the standard array, starting packages with pending items named and chosen, a pack opened,
+      a +1 weapon attached, attunement, buying, spending and exchange refused and made, prepared spells, cantrip rows,
+      additions cast as a class, a written feature saved to the feature library, notes, a reference); a 2014 Ranger with
+      Deft Explorer and Favored Foe and a Beast Master's wolf; NPCs on a creature and on a race, a legendary creature with a
+      user's file and written actions; play spent, saved and rested; text, PDF, print and the official form (a stand-in
+      copy); rename, save a copy, delete, the unsaved prompt, a draft after a reload and one of a removed kind; four
+      `.dnd5e` imports at their readout; six sheets reopened with every source off equal to Node's; parts, a chosen `.xml`,
+      a homebrew source; a starter, an overlay (a broken one named at its line, a slip warned) and a copy; uncounted picks,
+      grouped spell lists, embeds and Browse. Then `tools/verify/src/release-check.test.ts` end to end on the release build,
+      every step it checks passing. Three things fixed: a stat block's one-row line dropped the row's name ("Senses 13"); a
+      system with no source of its own switched on waited for ever on "Loading content" (the starter, or 5e opened with its
+      source off); and the release check still expected Cairn, compared the PDF with section headings the laid-out Sheet
+      does not draw, raced a fast load, and compared one tab of the Sheet. Found and not fixed, for after 1.0: a 2014
+      class's "a martial weapon" offers 2024 and futuristic weapons (the prose reader has no edition filter); a select with
+      one candidate and a `default=` (2024 Channel Divinity) is a click; a written feature's description is on no sheet
+      (ADR 0063), which a DM's legendary action feels. Not driven: real keys and mouse (the screen was not free), macOS,
+      Linux and the phone.
 
 ---
 
