@@ -499,7 +499,7 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
     `- Run: ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC, Windows ${release()}`,
     `- Build: ${basename(exe)}, Settings read "${version}"`,
     `- Source: ${corpusLine}`,
-    `- Checked by: the drive (\`tools/verify/src/release-check.test.ts\`); the person's steps are left for the person`,
+    `- Checked by: the drive (\`npm run release:drive\`, \`tools/verify/src/release-drive/drive.ts\`); the person's steps are left for the person`,
     '',
     '| Step | Who | Drive | What the drive saw |',
     '| --- | --- | --- | --- |',
