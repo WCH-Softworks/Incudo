@@ -31,6 +31,25 @@ export function checkoutLocation(): CorpusLocation | undefined {
   return existsSync(index) ? { index, layout: 'repository', root } : undefined;
 }
 
+/**
+ * An older commit of the same repository, for the one measurement that needs content as it was: a character saved then and
+ * opened against today's (ADR 0082, `content-refresh.test.ts`). Pinned, unlike `.corpus/`: "older" has to name the same
+ * content on every machine, and a commit of a public repository does. April 2026, the older of the two ADR 0082 measured.
+ */
+export const BASE_CORPUS_COMMIT = '87e8dfa11c3808169db9d60177a09977585ebe03';
+
+/** `<repo>/.corpus-base`, where `npm run corpus:sync` and CI put that older checkout. */
+export function baseCheckoutRoot(): string {
+  return join(repoRoot(), '.corpus-base');
+}
+
+/** The older checkout as a corpus location, or `undefined` when nobody has synced. */
+export function baseCheckoutLocation(): CorpusLocation | undefined {
+  const root = baseCheckoutRoot();
+  const index = join(root, 'AuroraLegacy.index');
+  return existsSync(index) ? { index, layout: 'repository', root } : undefined;
+}
+
 export interface CheckoutCommit {
   sha: string;
   /** Committer date, ISO 8601. */

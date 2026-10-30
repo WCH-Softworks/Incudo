@@ -20,7 +20,7 @@ source update said so for ever, or rather would have.
 
 `tools/verify/src/content-refresh.test.ts` (report-only, committed before this record) imports the thirty samples against
 an **older** checkout of AuroraLegacy/elements, as if saved then, packs them as the app saves them, and compares them with
-today's corpus (`c28ce6c`). The older checkout is named by `INCUDO_BASE_CORPUS_INDEX`; CI has none and skips it.
+today's corpus (`c28ce6c`). The older checkout was named by `INCUDO_BASE_CORPUS_INDEX`; CI had none and skipped it. *(Since 2026-10-30 it is `.corpus-base/`, the April 2026 commit pinned as `BASE_CORPUS_COMMIT`, fetched by `npm run corpus:sync` and by CI, so the measurement runs everywhere.)*
 
 | | April 2026 (`87e8dfa`) | August 2024 (`0002b59`) |
 |---|---|---|

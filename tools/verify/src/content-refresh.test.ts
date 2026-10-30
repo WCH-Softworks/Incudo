@@ -6,9 +6,9 @@
  * say a source "moved". This asks whether the version says anything, and what a refresh, putting today's definitions in
  * place of the copies, would change.
  *
- * The samples are imported against an **older** corpus, as if saved then (`INCUDO_BASE_CORPUS_INDEX`, a checkout of
- * AuroraLegacy/elements at an older commit; skipped when unset), packed the way the app saves them, and compared with
- * today's corpus:
+ * The samples are imported against an **older** corpus, as if saved then (`.corpus-base/`, AuroraLegacy/elements at the
+ * pinned `BASE_CORPUS_COMMIT`, fetched by `npm run corpus:sync` and by CI), packed the way the app saves them, and
+ * compared with today's corpus:
  *
  * - **The index's version** then and now: what ADR 0028's `moved` state compares.
  * - **Per character, its embedded elements**: the same today, different (and in which part: rules, description, …), or
@@ -22,6 +22,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   BundleElementIndex,
@@ -36,7 +37,9 @@ import {
 import { contentChanges, packCharacter, refreshNotice } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
+import { BASE_CORPUS_COMMIT } from './corpus-checkout.ts';
 import { loadCorpus } from './corpus.ts';
+import { repoRoot } from './node-system.ts';
 import { summarize } from './derived-summary.ts';
 import { baseCorpusSkip, corpusProvenance, corpusSkip, realElements, requireBaseCorpus, savesSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
@@ -124,4 +127,13 @@ test("a character saved against today's content is offered no refresh", { skip: 
   }
   assert.ok(read > 0, 'samples were read');
   t.diagnostic(`${read} samples saved and reopened against the same content: no refresh offered`);
+});
+
+// The older corpus is one commit everywhere: CI checks out the id `corpus:sync` fetches. Fails if either is edited alone.
+test('CI checks out the same pinned older corpus that corpus:sync fetches', () => {
+  const workflow = readFileSync(join(repoRoot(), '.github', 'workflows', 'ci.yml'), 'utf8');
+  const step = /path: \.corpus-base[\s\S]*?ref: ([0-9a-f]{40})/.exec(workflow);
+  assert.ok(step, 'ci.yml checks out .corpus-base at a full commit id');
+  assert.equal(step[1], BASE_CORPUS_COMMIT);
+  assert.match(workflow, /INCUDO_REQUIRE_BASE_CORPUS: 1/, 'ci.yml requires the older corpus rather than skipping without it');
 });

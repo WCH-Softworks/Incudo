@@ -1582,7 +1582,7 @@ built 2026-10-28; Phase 9). The maintainer took every recommendation. Things to 
     `@incudo/desktop/official-form` so the tests fill with the same code. Flowed boxes are written at a fixed 7 pt (the
     form's auto size writes 22 pt or shrinks to 8), and the 2014 form's fields mostly inherit the form's default
     appearance, which `setFontSize` refuses. `official-sheet.test.ts` fills a stand-in form built from the map's field list
-    in CI, and your own copy when `INCUDO_OFFICIAL_SHEET` in `.env.local` names it.
+    in CI, its flowed boxes sized from the map's `capacity`; no test reads a person's copy.
 
 **The CLI is gone and what it measured is tests** ([ADR 0039](docs/adr/0039-the-cli-is-removed-and-what-it-measured-becomes-tests.md)).
 Things to know before touching `tools/verify`:
@@ -2248,7 +2248,7 @@ deliberately **not** fixed:
   reviewed as the Sheet it would make (the sheet document built twice), and applied all or nothing: every copy the sources
   define replaced, every other kept, choices untouched, `refreshSourceRefs` moving the recorded versions, the file changed
   on Save. Asked only of the character on screen: a library card still reaches for no content. `content-refresh.test.ts`
-  measures it against an older checkout named by `INCUDO_BASE_CORPUS_INDEX` and holds that no sample saved against
+  measures it against `.corpus-base/`, AuroraLegacy at a pinned older commit that `corpus:sync` and CI fetch, and holds that no sample saved against
   today's content is offered one.
 - **~~A draft reloaded with no source enabled has lost its file's embedded content.~~** Fixed
   ([ADR 0066](docs/adr/0066-the-draft-keeps-what-the-shell-held-beside-the-character.md)), and it was worse than

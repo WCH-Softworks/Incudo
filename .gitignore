@@ -27,8 +27,10 @@ fixtures/local/
 !tools/verify/fixtures/saves/*.dnd5e
 
 # The official content repository, fetched by `npm run corpus:sync` and read by the real-content
-# tests (ADR 0042). A cache of somebody else's repository, never ours to commit.
+# tests (ADR 0042). A cache of somebody else's repository, never ours to commit. `.corpus-base/` is the same
+# repository at a pinned older commit, for the content refresh measurement (ADR 0082).
 .corpus/
+.corpus-base/
 
 # Where the real Aurora data is on one machine. Local configuration, read by `npm test`, and never
 # committed: a path or a username in version control stays there for good. See .env.example.

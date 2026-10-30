@@ -1,6 +1,6 @@
 /**
  * The release check's debug-port half: a page of the installed window, reached through WebView2's remote debugging port
- * with Node's own WebSocket. Nothing here knows Incudo; `release-check.test.ts` says what to run in the page.
+ * with Node's own WebSocket. Nothing here knows Incudo; `drive.ts` says what to run in the page.
  */
 
 export interface Target {

@@ -10,7 +10,7 @@ app follows 1.0 and is not in this list.
 
 **Who checks what.** Each step says who can check it:
 
-- **Drive and person**: the drive (`tools/verify/src/release-check.test.ts`) does it and reads every number below off the
+- **Drive and person**: the drive (`tools/verify/src/release-drive/drive.ts`) does it and reads every number below off the
   installed app, and the person does it too.
 - **Person only**: what no drive can see: SmartScreen's wording, the installer's own screens, real keys and a real mouse,
   how the window looks and reads, and uninstalling.
@@ -30,17 +30,15 @@ mouse and can run with the window behind others. It needs the network (it downlo
 about three minutes.
 
 1. Install the candidate from its draft release.
-2. Put the installed executable's path in `.env.local` at the repository root (never in a committed file):
-   `INCUDO_INSTALLED_APP="<the folder Incudo installed into>\incudo-desktop.exe"`. The per-user installer puts it under
-   your local application data folder, in `Incudo`.
-3. Run it alone (it also runs in `npm test` while the variable is set):
+2. Run it with the installed executable's path on the command line. The per-user installer puts it under your local
+   application data folder, in `Incudo`:
 
    ```bash
-   node --env-file-if-exists=.env.local --test --experimental-strip-types tools/verify/src/release-check.test.ts
+   npm run release:drive -- "<the folder Incudo installed into>\incudo-desktop.exe"
    ```
 
-With the variable unset the test skips and says how to run it. Set to a path that is not there, it fails. It never runs
-in CI: a runner has no installed build and no screen.
+It is a step of this check, not a test: `npm test` never runs it, and nothing written down names the path. With no path,
+or a path that is not there, it fails. It never runs in CI: a runner has no installed build and no screen.
 
 It prints where its run folder is. The folder holds `report.md` (every step below with what the drive saw), the text and
 PDF exports, the scratch library and the profile. If `pdftotext` is on the path the report also says whether every word

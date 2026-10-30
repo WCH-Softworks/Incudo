@@ -7,6 +7,9 @@
  * means "works with today's official content". It is a shallow clone: the tests read files, never
  * history, and the whole history is far larger than the content.
  *
+ * It also fetches one older, pinned commit of the same repository into `.corpus-base/`, which the content refresh
+ * measurement imports the samples against, as if saved then (ADR 0082). Pinned, so it is the same content everywhere.
+ *
  * This is a script, not a command line: no flags, no subcommands (ADR 0039). It prints the commit the
  * checkout ends at, which is the number to quote when a run behaves differently from yesterday's.
  */
@@ -15,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { CORPUS_REPOSITORY_URL, checkoutRoot, commitOf } from './corpus-checkout.ts';
+import { BASE_CORPUS_COMMIT, CORPUS_REPOSITORY_URL, baseCheckoutRoot, checkoutRoot, commitOf } from './corpus-checkout.ts';
 
 const root = checkoutRoot();
 
@@ -56,3 +59,22 @@ if (!existsSync(join(root, 'AuroraLegacy.index'))) {
 }
 const commit = commitOf(root);
 process.stdout.write(`.corpus is at ${commit ? `${commit.sha} (${commit.date})` : 'an unknown commit'}\n`);
+
+// The older, pinned checkout. A shallow fetch of one commit by its id, which GitHub serves; nothing to fast-forward.
+const base = baseCheckoutRoot();
+if (commitOf(base)?.sha !== BASE_CORPUS_COMMIT) {
+  if (existsSync(base) && !existsSync(join(base, '.git'))) {
+    throw new Error('.corpus-base exists and is not a git checkout. Delete it and run this again.');
+  }
+  if (!existsSync(base)) git(['init', '--quiet', base]);
+  git(['config', 'core.autocrlf', 'false'], { in: base });
+  process.stdout.write(`fetching ${BASE_CORPUS_COMMIT.slice(0, 12)} into .corpus-base (shallow)
+`);
+  git(['fetch', '--quiet', '--depth', '1', CORPUS_REPOSITORY_URL, BASE_CORPUS_COMMIT], { in: base });
+  git(['reset', '--quiet', '--hard', 'FETCH_HEAD'], { in: base });
+}
+if (!existsSync(join(base, 'AuroraLegacy.index'))) {
+  throw new Error('the older checkout has no AuroraLegacy.index; the repository is not laid out as expected.');
+}
+process.stdout.write(`.corpus-base is at ${BASE_CORPUS_COMMIT}
+`);

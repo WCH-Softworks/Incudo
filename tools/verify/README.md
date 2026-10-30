@@ -56,9 +56,11 @@ names a person's machine, and version-control history is permanent.
 | `INCUDO_ORACLE_DETAIL=1` | Print every difference message the oracle finds, for chasing an `element-extra`. |
 | `INCUDO_ORACLE_SNAPSHOT=<file>` | Write every save's differences to a file. |
 | `INCUDO_ORACLE_BASELINE=<file>` | **Fail on any difference** from a snapshot written earlier. Snapshot on the base, baseline on your change, same `.corpus/` commit: only an engine change can move it. |
-| `INCUDO_OFFICIAL_SHEET=<file>` | Your own copy of the official 2014 fillable character sheet, for `official-sheet.test.ts` to fill (ADR 0079). Never committed; skipped when unset. **Once set, a missing file fails.** |
-| `INCUDO_BASE_CORPUS_INDEX=<file>`, `INCUDO_BASE_CORPUS_ROOT=<dir>` | An older checkout of AuroraLegacy/elements for `content-refresh.test.ts` to import the samples against, as if saved then (ADR 0082). Skipped when unset. **Once set, a missing file fails.** |
-| `INCUDO_INSTALLED_APP=<file>` | An installed `incudo-desktop.exe` for `release-check.test.ts` to drive through docs/RELEASE-CHECK.md, on a scratch profile and library. Skipped when unset, never run in CI. **Once set, a missing file fails.** |
+| `INCUDO_REQUIRE_BASE_CORPUS=1` | A missing `.corpus-base/` (the pinned older commit `content-refresh.test.ts` imports the samples against, ADR 0082; `npm run corpus:sync` fetches it) fails instead of skipping. CI sets it. |
+
+No variable points a test at a file only one machine has. The official 2014 sheet is filled into a stand-in built from
+the form map, never a person's copy, and an installed release candidate is driven by `npm run release:drive -- <its
+incudo-desktop.exe>`, a step of docs/RELEASE-CHECK.md that `npm test` does not run.
 
 ## Rules for this folder
 

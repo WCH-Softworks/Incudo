@@ -2260,7 +2260,11 @@ written on a character can be moved into the user's library without being typed 
     `manifest.json`'s readout, and the source's line to `RECORDED_BUDGET`, so a corpus that moves upstream does not need
     the list edited. The drive is `tools/verify/src/release-check.test.ts`, run when `INCUDO_INSTALLED_APP` in
     `.env.local` names the installed `incudo-desktop.exe` (`real-data.ts`; unset it skips and says how, named and missing
-    it fails, never in CI). It starts the app on a scratch WebView2 profile and library under the system's temporary
+    it fails, never in CI). *(Since 2026-10-30 it is `tools/verify/src/release-drive/drive.ts`, run by hand as
+    `npm run release:drive -- <its incudo-desktop.exe>` and not by `npm test`: no variable names a file one machine has.
+    The two other machine-only cases went the same day: the official sheet is filled only into the stand-in, its flowed
+    boxes sized from the map, and the refresh measurement reads `.corpus-base/`, a pinned older AuroraLegacy commit that
+    `corpus:sync` and CI fetch.)* It starts the app on a scratch WebView2 profile and library under the system's temporary
     folder with the debug port open, drives the page over it (`release-drive/cdp.ts`) and the file dialogs and the native
     menu by window messages (`release-drive/win32.ps1`: the menu's labels compared with `MENUS`, View → Browse clicked),
     reads every number by its row's label in the text export and never by position, takes its steps and readings from the

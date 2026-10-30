@@ -4,8 +4,8 @@
  * **No copy of the form is here, and nothing here downloads one.** The map (`systems/dnd5e/forms/official-2014.json`)
  * names the 2014 fillable sheet's fields, which describes the form and does not copy it; a stand-in form is built in this
  * file from that list alone (blank Letter pages, every field by name and type, no artwork) so the filler is exercised in
- * CI. A person with their own copy may point `INCUDO_OFFICIAL_SHEET` at it in `.env.local`, and the last test fills it
- * for every sample; with nothing named it is skipped, and named and missing it fails.
+ * CI. Its flowed boxes are sized from the map's own `capacity`, so what a flow writes is held to fit the box the map
+ * says it has. No test reads a person's own copy: a test that did would run on one machine.
  *
  * What is asserted holds against any corpus (ADR 0042): every value is read back from the sample's own document, never
  * pinned. Counts are printed as `ℹ` lines.
@@ -36,7 +36,7 @@ import {
 import { fillForm, readFormFields } from '@incudo/desktop/official-form';
 import { runOracle } from './aurora-oracle.ts';
 import { repoRoot } from './node-system.ts';
-import { corpusProvenance, corpusSkip, officialSheetSkip, realElements, requireOfficialSheet, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -169,19 +169,31 @@ test("every sample fills the form as its own sheet reads, and names what it leav
 
 /**
  * A stand-in for the form, built from the map's field list: three blank Letter pages, every field by name and type, the
- * large boxes multi-line, and junk typed into it, as a copy a user once filled in by hand would have.
+ * large boxes multi-line, and junk typed into it, as a copy a user once filled in by hand would have. A flowed box is as
+ * tall as its capacity's lines at its size and as wide as its characters a line at a generous Helvetica width.
  */
+/** Every flowed field with its capacity, from the map. */
+function flowCapacities(map: FormMap): Array<{ field: string; lines: number; perLine: number; fontSize: number }> {
+  return map.fill.flatMap((r) => ('flow' in r ? r.flow.fields.map((field, i) => ({ field, ...r.flow.capacity[i]! })) : []));
+}
+
+/** A box tall enough for its lines at its size, as the check below counts them. */
+const flowBoxHeight = (c: { lines: number; fontSize: number }): number => Math.ceil(c.lines * c.fontSize * 1.15) + 3;
+
 async function standIn(map: FormMap): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const pages = [pdf.addPage([612, 792]), pdf.addPage([612, 792]), pdf.addPage([612, 792])];
   const form = pdf.getForm();
-  const multiline = new Set(map.fill.flatMap((r) => ('flow' in r ? r.flow.fields : [])));
+  const flowed = new Map(flowCapacities(map).map((c) => [c.field, c]));
   Object.entries(map.fields).forEach(([name, type], i) => {
     const page = pages[i % 3]!;
-    const at = { x: 20 + (i % 10) * 58, y: 20 + Math.floor(i / 30) * 60, width: 50, height: multiline.has(name) ? 50 : 12 };
+    const capacity = flowed.get(name);
+    const at = capacity
+      ? { x: 20, y: 20, width: capacity.perLine * capacity.fontSize * 0.6 + 4, height: flowBoxHeight(capacity) }
+      : { x: 20 + (i % 10) * 58, y: 20 + Math.floor(i / 30) * 60, width: 50, height: 12 };
     if (type === 'text') {
       const field = form.createTextField(name);
-      if (multiline.has(name)) field.enableMultiline();
+      if (capacity) field.enableMultiline();
       field.setText('typed by hand');
       field.addToPage(page, at);
     } else if (type === 'check') {
@@ -256,36 +268,24 @@ function drawnLines(pdf: PDFDocument, field: PDFTextField): number {
   return (content.match(/\bTj\b/g) ?? []).length;
 }
 
-test('your own copy of the official sheet is recognised and filled for every sample, within its boxes', { skip: officialSheetSkip || corpusSkip || savesSkip }, async (t: Diagnostic) => {
+test('what a flow writes is drawn within its box on the stand-in, for every sample', { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
   const map = shippedMap();
-  const copy = new Uint8Array(readFileSync(requireOfficialSheet()));
-  const before = createHash('sha256').update(copy).digest('hex');
-  assert.deepEqual(recogniseForm(await readFormFields(copy), map), { ok: true });
-  const flows = map.fill.flatMap((r) => ('flow' in r ? r.flow.fields.map((f, i) => ({ field: f, ...r.flow.capacity[i]! })) : []));
-  const heights = new Map<string, number>();
-  {
-    const pdf = await PDFDocument.load(copy);
-    for (const { field } of flows) heights.set(field, pdf.getForm().getTextField(field).acroField.getWidgets()[0]!.getRectangle().height);
-  }
+  const form = await standIn(map);
+  const flows = flowCapacities(map);
   let most = 0;
   for (const { id, values } of await sampleFills()) {
-    const filled = await fillForm(copy, values);
-    const back = await readBack(filled);
-    assert.deepEqual(back.text, values.text, `${id}: text`);
-    assert.deepEqual(back.checked, [...values.checked].sort(), `${id}: boxes`);
-    assert.deepEqual(back.withoutAppearance, [], `${id}: appearances`);
-    // What a flow put in a box is drawn within it: no more lines than fit its height at its size.
+    const filled = await fillForm(form, values);
+    // Fails if a flow is written larger than its size, or takes more lines than its box holds.
     const pdf = await PDFDocument.load(filled);
-    for (const { field, fontSize } of flows) {
+    for (const { field, fontSize, lines } of flows) {
       if (!values.text[field]) continue;
-      const lines = drawnLines(pdf, pdf.getForm().getTextField(field));
-      const fit = Math.floor((heights.get(field)! - 2) / (fontSize * 1.15));
-      most = Math.max(most, lines / fit);
-      assert.ok(lines <= fit, `${id}: ${field} draws ${lines} lines, ${fit} fit`);
+      const drawn = drawnLines(pdf, pdf.getForm().getTextField(field));
+      const fit = Math.floor((flowBoxHeight({ lines, fontSize }) - 2) / (fontSize * 1.15));
+      most = Math.max(most, drawn / fit);
+      assert.ok(drawn <= fit, `${id}: ${field} draws ${drawn} lines, ${fit} fit`);
     }
     // Nothing a PDF library reads as a button is written to.
-    for (const field of (await PDFDocument.load(filled)).getForm().getFields()) if (field instanceof PDFButton) assert.equal(values.text[field.getName()], undefined);
+    for (const field of pdf.getForm().getFields()) if (field instanceof PDFButton) assert.equal(values.text[field.getName()], undefined);
   }
-  assert.equal(createHash('sha256').update(copy).digest('hex'), before, 'your copy is left as it was');
   t.diagnostic(`the fullest box drew ${Math.round(most * 100)}% of the lines it holds`);
 });

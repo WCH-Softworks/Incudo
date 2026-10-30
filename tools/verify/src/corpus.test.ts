@@ -181,12 +181,12 @@ test('the corpus job reads the current official repository, always, and runs the
 
   // The same repository the local sync script fetches: two copies of a name drift.
   assert.match(job, new RegExp(`^\\s*repository:\\s*${CORPUS_REPOSITORY}\\s*$`, 'm'));
-  // No pin. A `ref:` here would make the job reproducible and stop it noticing upstream (ADR 0042).
-  assert.doesNotMatch(
-    job.split('\n').filter((line) => !line.trim().startsWith('#')).join('\n'),
-    /^\s*ref:/m,
-    'the corpus checkout must not name a ref',
-  );
+  // No pin. A `ref:` on the `.corpus` checkout would make the job reproducible and stop it noticing upstream (ADR 0042).
+  // The step that checks out `.corpus-base` is pinned on purpose (ADR 0082), so the steps are read one at a time.
+  const steps = job.split(/\n\s*- (?=name:|uses:|run:)/).map((step) => step.split('\n').filter((line) => !line.trim().startsWith('#')).join('\n'));
+  const current = steps.filter((step) => /^\s*path:\s*\.corpus\s*$/m.test(step));
+  assert.equal(current.length, 1, 'one step checks out .corpus');
+  assert.doesNotMatch(current[0]!, /^\s*ref:/m, 'the corpus checkout must not name a ref');
   assert.match(job, /^\s*path:\s*\.corpus\s*$/m, 'the checkout goes where the local sync puts it');
   // Every real-content test, not only the budget file.
   assert.match(job, /^\s*run:\s*npm test\s*$/m, 'the job runs the whole suite');

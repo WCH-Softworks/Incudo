@@ -27,7 +27,7 @@ import { dirname, extname, join } from 'node:path';
 
 import type { ElementIndex } from '@incudo/core';
 
-import { checkoutLocation, commitOf, type CheckoutCommit } from './corpus-checkout.ts';
+import { BASE_CORPUS_COMMIT, baseCheckoutLocation, checkoutLocation, commitOf, type CheckoutCommit } from './corpus-checkout.ts';
 import { loadCorpus, resolveCorpus, type CorpusLocation } from './corpus.ts';
 import { repoRoot } from './node-system.ts';
 
@@ -124,66 +124,25 @@ export function realElements(): Promise<SizedIndex> {
 }
 
 /**
- * The user's own copy of the official 2014 fillable character sheet, when `INCUDO_OFFICIAL_SHEET` names it (ADR 0079
- * decision 3). The form is never committed, downloaded or shipped; a person who has a copy may point the local test at
- * it, and with nothing named that test is skipped. Named and missing fails.
- */
-const officialSheet = process.env['INCUDO_OFFICIAL_SHEET'] ?? '';
-
-/** Why the test that fills a real copy of the official sheet is not running, or `false` when it should. */
-export const officialSheetSkip: string | false = officialSheet
-  ? false
-  : 'no copy of the official sheet: set INCUDO_OFFICIAL_SHEET in .env.local to your own downloaded copy (never committed)';
-
-/** The copy, failing rather than skipping when it was named and is not there. */
-export function requireOfficialSheet(): string {
-  assert.ok(officialSheet, officialSheetSkip || 'no copy of the official sheet is named');
-  assert.ok(
-    existsSync(officialSheet),
-    'INCUDO_OFFICIAL_SHEET names a file that does not exist. Failing rather than skipping: a check that skips on a mistyped path passes on nothing.',
-  );
-  return officialSheet;
-}
-
-/**
  * An older checkout of the official corpus to measure a content refresh against (ADR 0082): the samples are imported
- * against it, as if saved then, and compared with today's. A checkout of AuroraLegacy/elements at an older commit, read
- * in the `repository` layout. With nothing named the measurement is skipped; named and missing fails.
+ * against it, as if saved then, and compared with today's. It is `.corpus-base/`, the same repository at a pinned commit
+ * (`BASE_CORPUS_COMMIT`), fetched by `npm run corpus:sync` and checked out by CI, so it names the same content on every
+ * machine. Absent, the measurement skips and says to sync; with `INCUDO_REQUIRE_BASE_CORPUS=1` (CI sets it) absent fails.
  */
-const baseIndex = process.env['INCUDO_BASE_CORPUS_INDEX'] ?? '';
-const baseRoot = process.env['INCUDO_BASE_CORPUS_ROOT'] ?? (baseIndex ? dirname(baseIndex) : '');
+const base = baseCheckoutLocation();
+const baseRequired = process.env['INCUDO_REQUIRE_BASE_CORPUS'] === '1';
 
 /** Why the refresh measurement is not running, or `false` when it should. */
-export const baseCorpusSkip: string | false = baseIndex
-  ? false
-  : 'no older corpus: set INCUDO_BASE_CORPUS_INDEX to an older checkout of AuroraLegacy/elements (tools/verify/README.md)';
+export const baseCorpusSkip: string | false =
+  base || baseRequired ? false : 'no older corpus: run `npm run corpus:sync` to fetch the pinned older commit into .corpus-base/';
 
-/** The older corpus, failing rather than skipping when it was named and is not there. */
+/** The older corpus, failing rather than skipping when it is required and is not there, or is not the pinned commit. */
 export function requireBaseCorpus(): CorpusLocation {
-  assert.ok(baseIndex, baseCorpusSkip || 'no older corpus is named');
-  assert.ok(existsSync(baseIndex), 'INCUDO_BASE_CORPUS_INDEX names a file that does not exist. Failing rather than skipping.');
-  return { index: baseIndex, layout: 'repository', root: baseRoot };
-}
-
-/**
- * An installed Incudo to drive through docs/RELEASE-CHECK.md: the path of its `incudo-desktop.exe`, named by
- * `INCUDO_INSTALLED_APP` in `.env.local`. A release candidate's drive starts it on a scratch profile and library; with
- * nothing named the drive is skipped (and it never runs in CI, which has no installed build and no screen). Named and
- * missing fails.
- */
-const installedApp = process.env['INCUDO_INSTALLED_APP'] ?? '';
-
-/** Why the release check's drive is not running, or `false` when it should. */
-export const installedAppSkip: string | false = installedApp
-  ? false
-  : 'no installed app: install the candidate and set INCUDO_INSTALLED_APP in .env.local to its incudo-desktop.exe (docs/RELEASE-CHECK.md)';
-
-/** The installed executable, failing rather than skipping when it was named and is not there. */
-export function requireInstalledApp(): string {
-  assert.ok(installedApp, installedAppSkip || 'no installed app is named');
-  assert.ok(
-    existsSync(installedApp),
-    'INCUDO_INSTALLED_APP names a file that does not exist. Failing rather than skipping: a check that skips on a mistyped path passes on nothing.',
+  assert.ok(base, 'INCUDO_REQUIRE_BASE_CORPUS=1 and .corpus-base/ holds no AuroraLegacy.index. Failing rather than skipping.');
+  assert.equal(
+    commitOf(base.root ?? dirname(base.index))?.sha,
+    BASE_CORPUS_COMMIT,
+    '.corpus-base/ is not at the pinned commit: run `npm run corpus:sync` again.',
   );
-  return installedApp;
+  return base;
 }

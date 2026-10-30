@@ -48,6 +48,15 @@ jobs:
           path: .corpus
           # No `ref:` on purpose. This is the default branch's current head, every run. Pinning it
           # would make the job reproducible and would stop it doing the one thing it is for.
+      - name: Checkout the older, pinned corpus
+        uses: actions/checkout@v5
+        with:
+          repository: AuroraLegacy/elements
+          path: .corpus-base
+          # Pinned on purpose, unlike the one above: the content refresh measurement (ADR 0082) imports the samples
+          # against content as it was, and "as it was" must be the same commit everywhere. `BASE_CORPUS_COMMIT` in
+          # tools/verify/src/corpus-checkout.ts is the same id, and `content-refresh.test.ts` fails if they differ.
+          ref: 87e8dfa11c3808169db9d60177a09977585ebe03
       - name: Which corpus commit is this run reading
         run: |
           sha=$(git -C .corpus rev-parse HEAD)
@@ -98,4 +107,6 @@ jobs:
           # The committed sample saves are part of what this job checks. Without this an empty folder skips
           # every test that needs a save, and a job that lost the folder would go green on nothing.
           INCUDO_REQUIRE_SAVES: 1
+          # The same for the older corpus checked out above: a job that lost it would skip the refresh measurement.
+          INCUDO_REQUIRE_BASE_CORPUS: 1
         run: npm test
