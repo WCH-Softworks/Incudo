@@ -682,7 +682,7 @@ test('the print rules: the Sheet pane on paper, laid out by what it holds (ADR 0
   expect(print, ':root', 'color-scheme', /^light$/, 'the page keeps the dark scheme');
   // Two columns, and what fits is not split.
   expect(print, '.sheet-flow', 'columns', /^2$/, 'the sections are not in columns');
-  for (const selector of ['dl', '.sheet-elements > li', '.sheet-companion-section', '.sheet-section:not(.sheet-companions, .sheet-references, .sheet-freeform, .sheet-descriptions, :has(.sheet-elements))']) {
+  for (const selector of ['dl', '.sheet-elements > li', '.sheet-companion-section', '.sheet-section:not(.sheet-companions, .sheet-references, .sheet-freeform, .sheet-descriptions, :has(.sheet-elements, .sheet-cards, .sheet-facts))']) {
     expect(print, selector, 'break-inside', /^avoid$/, 'what fits can split across a column');
   }
   // Not a whole section: kept whole, a long list jumped to the next page and left this one half empty.
@@ -720,7 +720,7 @@ test('a laid-out sheet: every tab printed, its marks in words, its explanations 
   // A tab not chosen is hidden on screen and printed; the tab bar is the screen's.
   expect(screen, '.sheet-tab-hidden', 'display', /^none$/, 'every tab shows at once on screen');
   expect(print, '.sheet-tab-hidden', 'display', /^block$/, 'a print leaves out every tab but the open one');
-  expect(print, '.sheet-tab-label', 'display', /^block$/, "a printed tab's sections are not under its label");
+  expect(print, '.sheet-tab-label', 'display', /^(block|flow-root)$/, "a printed tab's sections are not under its label");
   expect(print, '.sheet-tabs', 'display', /^none$/, 'the tab bar prints');
   // A section's explanation is behind an "i" on screen and not on paper (decision 2).
   expect(print, '.info-tip', 'display', /^none$/, 'the "i" prints');
@@ -729,8 +729,12 @@ test('a laid-out sheet: every tab printed, its marks in words, its explanations 
   expect(print, '.sheet-mark-word', 'position', /^static$/, 'the word is left off paper');
   expect(screen, '.sheet-mark-word', 'clip-path', /^inset\(50%\)$/, 'the word shows beside the dots on screen');
   if (screen.get('.sheet-mark-word')?.get('display') === 'none') problems.push('.sheet-mark-word: hidden from a screen reader');
-  // The areas on paper (decision 9): the side column beside the main one, the head band whole.
-  expect(print, '.sheet-body', 'display', /^grid$/, 'the side and main columns do not sit side by side');
+  // The areas on paper (decision 9): the side column beside the main one, the head band whole. The side column floats so
+  // the main one takes the page's width once it ends: as two grid columns the main one stayed narrow to the last page.
+  expect(print, '.sheet-side', 'float', /^left$/, 'the side and main columns do not sit side by side');
+  expect(print, '.sheet-body', 'display', /^flow-root$/, 'the floating side column runs out of its page box');
+  expect(print, '.sheet-card', 'display', /^inline-block$/, 'a grid of cards beside the side column stays narrow on every page');
+  expect(print, '.sheet-tab-label', 'break-after', /^avoid$/, "a tab's label ends a page alone");
   expect(print, '.sheet-head', 'break-inside', /^avoid$/, 'the head band splits across a page');
   // What is spent prints as empty boxes and blank lines, never the numbers on screen; no control prints.
   expect(print, '.play-strip', 'display', /^flex$/, 'nothing of play prints to fill in by hand');

@@ -3031,7 +3031,12 @@ ul.browse-categories {
   @page {
     margin: 0;
     padding: 10mm;
+    /* Paper is white whatever the screen uses. Nothing in the page paints its margins, and the window's own background
+       is the dark scheme's when the screen is dark (lib.rs sets it so a window does not flash white), which printed a
+       dark band where the name and the page number go. */
+    background: #ffffff;
   }
+
 
   /* The page the Sheet prints on, chosen by the running items the print options step chose. */
   .sheet.print-page-numbers {
@@ -3219,10 +3224,11 @@ ul.browse-categories {
     break-inside: avoid;
   }
 
-  /* A section that lists no elements is a heading, a sentence and a grid of rows or printed lines, never a column long:
+  /* A section that lists no elements is a heading, a sentence and a grid of rows or printed lines, never a column long
+     (a laid-out sheet's cards and tables list them too, ADR 0126: kept whole, Features left half a page empty):
      kept whole, so the skills' heading does not end one column with their numbers starting the next. Chosen by what it
      holds, not by what it is called. The creatures' part and the kept texts are parts, not sections, and may be long. */
-  .sheet-section:not(.sheet-companions, .sheet-references, .sheet-freeform, .sheet-descriptions, :has(.sheet-elements)) {
+  .sheet-section:not(.sheet-companions, .sheet-references, .sheet-freeform, .sheet-descriptions, :has(.sheet-elements, .sheet-cards, .sheet-facts)) {
     break-inside: avoid;
   }
 
@@ -3260,16 +3266,44 @@ ul.browse-categories {
   .sheet-page {
     --sheet-side: 62mm;
   }
+  /* A tab's label stays with what it heads: it ended a page alone, its sections starting the next. It carries the line
+     between tabs, and is laid out beside the side column (flow-root) so the line stops there: a section's own bottom
+     border ran under the side column, through the skills. */
+  .sheet-tab-label {
+    break-after: avoid;
+    border-top: 1px solid var(--line);
+    padding-top: 4pt;
+  }
+  .sheet-main .sheet-section {
+    border-bottom: 0;
+  }
+  /* A table does not wrap around the side column: one too wide for the room beside it moves below it, and its heading
+     goes with it rather than staying behind at the top. */
+  .sheet-main .sheet-section:has(table) {
+    display: flow-root;
+  }
+  /* A tab that holds what starts a page starts the page itself, its label with it: the label used to end one page and
+     the part start the next. */
+  .sheet-tab-panel:has(> .sheet-descriptions, > .sheet-references) {
+    break-before: page;
+  }
+  .sheet-tab-panel > .sheet-tab-label + :is(.sheet-descriptions, .sheet-references) {
+    break-before: auto;
+  }
   .sheet-head {
     padding-bottom: 4pt;
     break-inside: avoid;
   }
+  /* The side column floats at the left and the main column flows around it, so once the side column ends the main one
+     takes the page's whole width. As two grid columns the side column emptied on page 2 and the main column stayed a
+     page and a half narrower to the last page. */
   .sheet-body {
-    display: grid;
-    grid-template-columns: var(--sheet-side) minmax(0, 1fr);
-    gap: 0 6mm;
+    display: flow-root;
   }
   .sheet-side {
+    float: left;
+    width: var(--sheet-side);
+    margin-right: 6mm;
     padding-right: 4mm;
   }
   .sheet-tile,
@@ -3300,11 +3334,16 @@ ul.browse-categories {
   .sheet-warning {
     background: none;
   }
+  /* Cards set in lines rather than a grid: a grid beside the side column is as narrow on every page it reaches, where a
+     line beside it holds one card and a line past it two. */
   .sheet-cards {
-    grid-template-columns: 1fr 1fr;
-    gap: 4pt;
+    display: block;
   }
   .sheet-card {
+    display: inline-block;
+    vertical-align: top;
+    width: calc(50% - 4pt);
+    margin: 0 4pt 4pt 0;
     padding: 3pt 5pt;
     font-size: 9.5pt;
   }
@@ -3379,7 +3418,7 @@ ul.browse-categories {
     display: block;
   }
   .sheet-tab-label {
-    display: block;
+    display: flow-root;
     font-size: 12pt;
     margin: 10pt 0 2pt;
   }
