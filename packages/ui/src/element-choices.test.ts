@@ -110,6 +110,19 @@ test("a choice is written after the text of the element that opens it, embedded 
   );
 });
 
+test('a choice of which an option embeds two or more elements is names: a class lists its subclasses, not their chapters', () => {
+  // Fails if an option's embeds are not counted (the subclass is written out under the class), or if one embed is
+  // enough to list names (the boon, which embeds one spell, is not written out).
+  const sub = element('S', 'Path', 'Trickster', { supports: ['Path'], description: '<p>A path.</p><div element="X"/><div element="Y"/>' });
+  const other = element('S2', 'Path', 'Warden', { supports: ['Path'], description: '<p>Another.</p>' });
+  const cls = element('C', 'Class', 'Rogue', { rules: [select('Path', 'Path', 1, 'Path')] });
+  const html = expandDescriptionWithChoices(cls, indexOf(cls, sub, other, element('X', 'Feature', 'Sneak'), element('Y', 'Feature', 'Hide')));
+  assert.ok(html.endsWith('<p>Trickster, Warden.</p></div>'), html);
+  const boon = element('B', 'Path', 'Boon', { supports: ['Boon'], description: '<p>A boon.</p><div element="X"/>' });
+  const pact = element('P', 'Path', 'Pact', { rules: [select('Boon', 'Path', 1, 'Boon')] });
+  assert.ok(expandDescriptionWithChoices(pact, indexOf(pact, boon, element('X', 'Feature', 'Sneak'))).includes('<h6>Boon</h6>'));
+});
+
 test('a choice of a type named by name, or of too many options to write out, is their names', () => {
   // Fails if the tools (a named type, with text) are written out, or the long list is not cut.
   const many = Array.from({ length: OPTIONS_WRITTEN_OUT + 5 }, (_, at) =>

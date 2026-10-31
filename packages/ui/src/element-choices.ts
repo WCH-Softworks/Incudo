@@ -18,10 +18,14 @@
  * 0125; the caller passes `printingTypes`) or there are more than `OPTIONS_WRITTEN_OUT`: a feature's maneuvers,
  * fighting styles or invocations are written out as the book prints them, and one offering tools, languages, spells or
  * feats is a list of names, as the book prints that. Student of War's 17 tools written out were pages of each tool's
- * three books. Names no game.
+ * three books. So is a choice of which an option embeds two or more other elements: a class's subclasses, each a chapter
+ * of its own (38,000 to 110,000 characters a choice, `tools/verify/src/class-options.test.ts`). Measured on the corpus:
+ * all 29 subclass choices, and 6 others (race variants, lycanthropy, familiars' stat blocks); a pact boon embeds one
+ * spell, and stays written out. Names no game.
  */
 
 import {
+  descriptionEmbeds,
   matchesSupports,
   supportsInterpolations,
   type Element,
@@ -111,7 +115,10 @@ function choicesHtml(element: Element, elements: ElementIndex, namedTypes: Reado
       // A choice named as its element is (Combat Superiority's maneuvers, under "Combat Superiority") says only how many.
       const named = choice.label.trim().toLowerCase() === element.name.trim().toLowerCase();
       const line = `<p><em>${named ? '' : `${escapeHtml(choice.label)}. `}${escapeHtml(elementChoiceLine(choice))}</em></p>`;
-      const fits = !namedTypes.has(choice.type) && choice.options.length <= OPTIONS_WRITTEN_OUT;
+      const fits =
+        !namedTypes.has(choice.type) &&
+        choice.options.length <= OPTIONS_WRITTEN_OUT &&
+        !choice.options.some((option) => descriptionEmbeds(elements.get(option.id)?.description ?? '').length > 1);
       const texts = fits
         ? choice.options.map((option) => {
             const found = elements.get(option.id);
