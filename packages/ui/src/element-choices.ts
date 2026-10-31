@@ -10,9 +10,13 @@
  * The options are what the select's filter matches among everything loaded, read with no character: an element's own
  * requirements are not asked (a character may be offered fewer), and a filter naming something only a character
  * publishes (`$(…)`) is said to depend on the character rather than offering nothing. Names no game.
+ *
+ * The choices of what the description embeds are listed too, after the element's own: the Battle Master subclass shows
+ * Combat Superiority's text in place (ADR 0069), and its maneuvers, the feature's select, were missing under it.
  */
 
 import {
+  descriptionEmbeds,
   matchesSupports,
   supportsInterpolations,
   type Element,
@@ -20,6 +24,8 @@ import {
   type ElementIndex,
   type SelectRule,
 } from '@incudo/core';
+
+import { MAX_EMBED_DEPTH } from './description.ts';
 
 export interface ElementChoiceOption {
   id: ElementId;
@@ -37,17 +43,22 @@ export interface ElementChoice {
   dependsOnCharacter: boolean;
 }
 
-/** Every choice the element's own rules open, selects offering the same options as one. */
+/**
+ * Every choice the element's own rules open, then those of each element its description embeds, in the order the text
+ * shows them; one element's selects offering the same options are one choice.
+ */
 export function elementChoices(element: Element, elements: ElementIndex): ElementChoice[] {
   const groups: { rules: SelectRule[]; options: ElementChoiceOption[]; dependsOnCharacter: boolean; key: string }[] = [];
-  for (const rule of element.rules) {
-    if (rule.kind !== 'select') continue;
-    const dependsOnCharacter = supportsInterpolations(rule.supports).size > 0;
-    const options = dependsOnCharacter ? [] : optionsOf(rule, elements);
-    const key = `${rule.type}\n${dependsOnCharacter ? `?${rule.name}` : options.map((o) => o.id).join('\n')}`;
-    const group = groups.find((g) => g.key === key);
-    if (group) group.rules.push(rule);
-    else groups.push({ rules: [rule], options, dependsOnCharacter, key });
+  for (const shown of shownElements(element, elements)) {
+    for (const rule of shown.rules) {
+      if (rule.kind !== 'select') continue;
+      const dependsOnCharacter = supportsInterpolations(rule.supports).size > 0;
+      const options = dependsOnCharacter ? [] : optionsOf(rule, elements);
+      const key = `${shown.id}\n${rule.type}\n${dependsOnCharacter ? `?${rule.name}` : options.map((o) => o.id).join('\n')}`;
+      const group = groups.find((g) => g.key === key);
+      if (group) group.rules.push(rule);
+      else groups.push({ rules: [rule], options, dependsOnCharacter, key });
+    }
   }
   return groups.map((group) => ({
     label: sharedLabel(group.rules.map((rule) => rule.name)),
@@ -73,6 +84,24 @@ export function elementChoiceLine(choice: ElementChoice): string {
 }
 
 export const ELEMENT_CHOICES_LABEL = 'Choices';
+
+/** The element, then what its description embeds, depth first, each once and as deep as a description is expanded. */
+function shownElements(element: Element, elements: ElementIndex): Element[] {
+  const out: Element[] = [];
+  const seen = new Set<ElementId>();
+  const visit = (shown: Element, depth: number): void => {
+    if (seen.has(shown.id)) return;
+    seen.add(shown.id);
+    out.push(shown);
+    if (depth >= MAX_EMBED_DEPTH) return;
+    for (const embed of descriptionEmbeds(shown.description ?? '')) {
+      const target = elements.get(embed.id);
+      if (target) visit(target, depth + 1);
+    }
+  };
+  visit(element, 0);
+  return out;
+}
 
 function optionsOf(rule: SelectRule, elements: ElementIndex): ElementChoiceOption[] {
   const found = elements.byType(rule.type).filter(

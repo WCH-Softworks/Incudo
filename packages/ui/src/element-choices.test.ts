@@ -90,6 +90,21 @@ test('an element with no select has no choices', () => {
   assert.deepEqual(elementChoices(feature, indexOf(feature, ...TRICKS)), []);
 });
 
+test("the choices of what the description embeds follow the element's own, each element's apart", () => {
+  // Fails if embeds are not followed (only Gear is listed), or two elements' same options are merged into one choice.
+  const feature = element('F', 'Feature', 'Tricks', { rules: [select('Tricks', 'Trick', 2, 'Trick')] });
+  const other = element('O', 'Feature', 'More tricks', { rules: [select('More tricks', 'Trick', 1, 'Trick')] });
+  const path = element('P', 'Path', 'Trickster', {
+    description: '<p>A path.</p><div element="F"/><div element="O"/><div element="F"/>',
+    rules: [select('Gear', 'Gadget', 1)],
+  });
+  const choices = elementChoices(path, indexOf(path, feature, other, ...TRICKS));
+  assert.deepEqual(
+    choices.map((c) => c.label),
+    ['Gear', 'Tricks', 'More tricks'],
+  );
+});
+
 function indexOf(...elements: Element[]): MapElementIndex {
   const index = new MapElementIndex();
   for (const e of elements) index.add(e);
