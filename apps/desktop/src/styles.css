@@ -3564,6 +3564,25 @@ ul.browse-categories {
   }
 }
 
+/*
+ * Beside the other two, the settled column stays in view as a window of its own and scrolls inside itself. When it
+ * scrolled with the page, the dock stuck at its top and covered the first choices made as the page moved under it: a
+ * Battle Master's maneuvers, listed first, sat under the dock, and pointing at one pointed at the dock.
+ */
+@media (max-height: 860px) and (min-width: 1001px) {
+  .pane.builder {
+    container-type: size;
+  }
+
+  .columns > .settled-column {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100cqh;
+    overflow-y: auto;
+  }
+}
+
 /* A settled answer or a set of values being changed in the middle column (ADR 0124). */
 .settled-edit {
   padding: 12px 14px;
