@@ -1929,11 +1929,13 @@ button.primary:hover:not(:disabled) {
 }
 
 /* A choice's options under the element that opens it (`expandDescriptionWithChoices`): each name a run-in heading
-   at the text's size, as the book prints a maneuver. */
-.picker-description h6 {
+   at the text's size, as the book prints a maneuver. Each is its block's first child, which the `:first-child` rule
+   above strips of its top margin, so it is named again here or it sits flush against the option before it. */
+.picker-description h6,
+.picker-description div > h6:first-child {
   font-size: 1em;
   font-style: italic;
-  margin: 0.75em 0 0.15em;
+  margin: 1.1em 0 0.25em;
 }
 
 .picker-description table {
