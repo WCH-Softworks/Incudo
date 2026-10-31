@@ -1,22 +1,27 @@
 /**
- * What an element asks the character to choose, written after its description wherever a description is shown on its
+ * What an element asks the character to choose, written into its description wherever a description is shown on its
  * own (Browse, the picker and its preview).
  *
  * Found on the 2014 Battle Master's Combat Superiority, which says its maneuvers are "detailed under “Maneuvers”
- * below": in the book they follow the subclass, and in Aurora's content they are the options of the feature's own
- * `select`, which Aurora's app showed only as the choice. `tools/verify/src/description-pointers.test.ts` counts the
- * descriptions like it. The prose is never read: every element with a select gets the block, whatever its text says.
+ * below": in the book they follow the subclass, and in Aurora's content each maneuver is an element of its own, the
+ * options of the feature's `select`, which Aurora's app showed only as the choice. So a choice is written where the
+ * element that opens it is shown, after its own text, embedded or not (the subclass shows Combat Superiority's text in
+ * place, ADR 0069), and its options follow it as the book prints them: each one's name over its whole text.
+ * `tools/verify/src/description-pointers.test.ts` counts the descriptions like it. The prose is never read: every
+ * element with a select gets the block, whatever its text says.
  *
  * The options are what the select's filter matches among everything loaded, read with no character: an element's own
  * requirements are not asked (a character may be offered fewer), and a filter naming something only a character
- * publishes (`$(…)`) is said to depend on the character rather than offering nothing. Names no game.
+ * publishes (`$(…)`) is said to depend on the character rather than offering nothing.
  *
- * The choices of what the description embeds are listed too, after the element's own: the Battle Master subclass shows
- * Combat Superiority's text in place (ADR 0069), and its maneuvers, the feature's select, were missing under it.
+ * An option's text is written out unless the system names a thing of its type by its name (`identifiedByName`, ADR
+ * 0125; the caller passes `printingTypes`) or there are more than `OPTIONS_WRITTEN_OUT`: a feature's maneuvers,
+ * fighting styles or invocations are written out as the book prints them, and one offering tools, languages, spells or
+ * feats is a list of names, as the book prints that. Student of War's 17 tools written out were pages of each tool's
+ * three books. Names no game.
  */
 
 import {
-  descriptionEmbeds,
   matchesSupports,
   supportsInterpolations,
   type Element,
@@ -25,7 +30,7 @@ import {
   type SelectRule,
 } from '@incudo/core';
 
-import { MAX_EMBED_DEPTH } from './description.ts';
+import { expandDescription } from './description.ts';
 
 export interface ElementChoiceOption {
   id: ElementId;
@@ -36,6 +41,8 @@ export interface ElementChoiceOption {
 export interface ElementChoice {
   /** The select's name, or what selects offering the same options share once a trailing "(…)" is set aside. */
   label: string;
+  /** The type the select offers. */
+  type: string;
   /** How many, and from which level when content gates it, in content's order. */
   picks: { number: number; level?: number }[];
   /** Sorted by name. Empty when the options depend on the character. */
@@ -43,25 +50,21 @@ export interface ElementChoice {
   dependsOnCharacter: boolean;
 }
 
-/**
- * Every choice the element's own rules open, then those of each element its description embeds, in the order the text
- * shows them; one element's selects offering the same options are one choice.
- */
+/** Every choice the element's own rules open; selects offering the same options are one choice. */
 export function elementChoices(element: Element, elements: ElementIndex): ElementChoice[] {
   const groups: { rules: SelectRule[]; options: ElementChoiceOption[]; dependsOnCharacter: boolean; key: string }[] = [];
-  for (const shown of shownElements(element, elements)) {
-    for (const rule of shown.rules) {
-      if (rule.kind !== 'select') continue;
-      const dependsOnCharacter = supportsInterpolations(rule.supports).size > 0;
-      const options = dependsOnCharacter ? [] : optionsOf(rule, elements);
-      const key = `${shown.id}\n${rule.type}\n${dependsOnCharacter ? `?${rule.name}` : options.map((o) => o.id).join('\n')}`;
-      const group = groups.find((g) => g.key === key);
-      if (group) group.rules.push(rule);
-      else groups.push({ rules: [rule], options, dependsOnCharacter, key });
-    }
+  for (const rule of element.rules) {
+    if (rule.kind !== 'select') continue;
+    const dependsOnCharacter = supportsInterpolations(rule.supports).size > 0;
+    const options = dependsOnCharacter ? [] : optionsOf(rule, elements);
+    const key = `${rule.type}\n${dependsOnCharacter ? `?${rule.name}` : options.map((o) => o.id).join('\n')}`;
+    const group = groups.find((g) => g.key === key);
+    if (group) group.rules.push(rule);
+    else groups.push({ rules: [rule], options, dependsOnCharacter, key });
   }
   return groups.map((group) => ({
     label: sharedLabel(group.rules.map((rule) => rule.name)),
+    type: group.rules[0]!.type,
     picks: group.rules.map((rule) => (rule.level === undefined ? { number: rule.number } : { number: rule.number, level: rule.level })),
     options: group.options,
     dependsOnCharacter: group.dependsOnCharacter,
@@ -83,24 +86,56 @@ export function elementChoiceLine(choice: ElementChoice): string {
   return choice.picks.length > 1 || choice.picks[0]!.level !== undefined ? `Choose ${how}, from ${of}:` : `Choose ${how} of ${of}:`;
 }
 
-export const ELEMENT_CHOICES_LABEL = 'Choices';
+/** The most options a choice writes out with their text; past it, names. A Warlock's invocations are 81. */
+export const OPTIONS_WRITTEN_OUT = 100;
 
-/** The element, then what its description embeds, depth first, each once and as deep as a description is expanded. */
-function shownElements(element: Element, elements: ElementIndex): Element[] {
-  const out: Element[] = [];
-  const seen = new Set<ElementId>();
-  const visit = (shown: Element, depth: number): void => {
-    if (seen.has(shown.id)) return;
-    seen.add(shown.id);
-    out.push(shown);
-    if (depth >= MAX_EMBED_DEPTH) return;
-    for (const embed of descriptionEmbeds(shown.description ?? '')) {
-      const target = elements.get(embed.id);
-      if (target) visit(target, depth + 1);
-    }
-  };
-  visit(element, 0);
-  return out;
+/** How many names a choice too large to write out lists before "and N more". */
+const NAMES_LISTED = 40;
+
+/**
+ * `expandDescription` with each shown element's choices after its own text: the choice's line, then each option's name
+ * as a heading over its whole text, or the options' names when their type is one of `namedTypes`, there are too many, or
+ * they have no text. Not yet safe to render, as `expandDescription`'s.
+ */
+export function expandDescriptionWithChoices(
+  element: Pick<Element, 'id' | 'description'>,
+  elements: ElementIndex,
+  namedTypes: ReadonlySet<string> = new Set(),
+): string {
+  return expandDescription(element, elements, { after: (shown) => choicesHtml(shown, elements, namedTypes) });
+}
+
+function choicesHtml(element: Element, elements: ElementIndex, namedTypes: ReadonlySet<string>): string {
+  return elementChoices(element, elements)
+    .map((choice) => {
+      // A choice named as its element is (Combat Superiority's maneuvers, under "Combat Superiority") says only how many.
+      const named = choice.label.trim().toLowerCase() === element.name.trim().toLowerCase();
+      const line = `<p><em>${named ? '' : `${escapeHtml(choice.label)}. `}${escapeHtml(elementChoiceLine(choice))}</em></p>`;
+      const fits = !namedTypes.has(choice.type) && choice.options.length <= OPTIONS_WRITTEN_OUT;
+      const texts = fits
+        ? choice.options.map((option) => {
+            const found = elements.get(option.id);
+            return found ? expandDescription(found, elements) : '';
+          })
+        : [];
+      const writtenOut = fits && texts.some(hasText);
+      if (writtenOut) {
+        const entries = choice.options.map(
+          (option, at) => `<div><h6>${escapeHtml(option.label)}</h6>${hasText(texts[at]!) ? texts[at] : ''}</div>`,
+        );
+        return `<div>${line}${entries.join('')}</div>`;
+      }
+      if (!choice.options.length) return `<div>${line}</div>`;
+      const names = choice.options.slice(0, NAMES_LISTED).map((option) => escapeHtml(option.label));
+      const more = choice.options.length - names.length;
+      return `<div>${line}<p>${names.join(', ')}${more > 0 ? `, and ${more.toLocaleString('en')} more` : ''}.</p></div>`;
+    })
+    .join('');
+}
+
+/** Content's own empty paragraph (`<p></p>`, every weapon) is no text. */
+function hasText(html: string): boolean {
+  return html.replace(/<[^>]*>/g, '').trim() !== '';
 }
 
 function optionsOf(rule: SelectRule, elements: ElementIndex): ElementChoiceOption[] {
@@ -128,4 +163,8 @@ function sharedLabel(names: string[]): string {
   if (distinct.length === 1) return distinct[0]!;
   const stems = new Set(distinct.map((name) => name.replace(/\s*\([^()]*\)\s*$/, '').trim()));
   return stems.size === 1 ? [...stems][0]! : distinct.join(', ');
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

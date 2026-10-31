@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 
 import { MapElementIndex, parseSupports, type Element, type Rule } from '@incudo/core';
 
-import { elementChoiceLine, elementChoices } from './element-choices.ts';
+import { elementChoiceLine, elementChoices, expandDescriptionWithChoices, OPTIONS_WRITTEN_OUT } from './element-choices.ts';
 
 function element(id: string, type: string, name: string, extra: Partial<Element> = {}): Element {
   return {
@@ -90,19 +90,40 @@ test('an element with no select has no choices', () => {
   assert.deepEqual(elementChoices(feature, indexOf(feature, ...TRICKS)), []);
 });
 
-test("the choices of what the description embeds follow the element's own, each element's apart", () => {
-  // Fails if embeds are not followed (only Gear is listed), or two elements' same options are merged into one choice.
-  const feature = element('F', 'Feature', 'Tricks', { rules: [select('Tricks', 'Trick', 2, 'Trick')] });
-  const other = element('O', 'Feature', 'More tricks', { rules: [select('More tricks', 'Trick', 1, 'Trick')] });
-  const path = element('P', 'Path', 'Trickster', {
-    description: '<p>A path.</p><div element="F"/><div element="O"/><div element="F"/>',
-    rules: [select('Gear', 'Gadget', 1)],
+test("a choice is written after the text of the element that opens it, embedded or not, each option's name over its text", () => {
+  // Fails if embeds' choices are not written (no Bounce), if they are written at the end rather than inside the embed
+  // (the Aim text after "Closing"), or if an option's text is left out.
+  const tricks = [
+    element('T_A', 'Feature', 'Aim', { supports: ['Trick'], description: '<p>Aim well.</p>' }),
+    element('T_B', 'Feature', 'Bounce', { supports: ['Trick'], description: '<p>Bounce off.</p>' }),
+  ];
+  const feature = element('F', 'Feature', 'Tricks', {
+    description: '<p>Learn tricks.</p>',
+    rules: [select('Tricks (Level 3)', 'Feature', 2, 'Trick', 3), select('Tricks (Level 7)', 'Feature', 1, 'Trick', 7)],
   });
-  const choices = elementChoices(path, indexOf(path, feature, other, ...TRICKS));
-  assert.deepEqual(
-    choices.map((c) => c.label),
-    ['Gear', 'Tricks', 'More tricks'],
+  const path = element('P', 'Path', 'Trickster', { description: '<p>A path.</p><div element="F"/><p>Closing.</p>' });
+  const html = expandDescriptionWithChoices(path, indexOf(path, feature, ...tricks));
+  assert.equal(
+    html,
+    '<p>A path.</p><div><h5>Tricks</h5><p>Learn tricks.</p><div><p><em>Choose 2 at level 3, then 1 more at level 7, from 2 options:</em></p>' +
+      '<div><h6>Aim</h6><p>Aim well.</p></div><div><h6>Bounce</h6><p>Bounce off.</p></div></div></div><p>Closing.</p>',
   );
+});
+
+test('a choice of a type named by name, or of too many options to write out, is their names', () => {
+  // Fails if the tools (a named type, with text) are written out, or the long list is not cut.
+  const many = Array.from({ length: OPTIONS_WRITTEN_OUT + 5 }, (_, at) =>
+    element(`M_${String(at).padStart(3, '0')}`, 'Feature', `Trick ${String(at).padStart(3, '0')}`, { supports: ['Trick'], description: '<p>Text.</p>' }),
+  );
+  const feature = element('F', 'Feature', 'Tools', { rules: [select('Tool', 'Tool', 1), select('Many', 'Feature', 1, 'Trick')] });
+  const html = expandDescriptionWithChoices(
+    feature,
+    indexOf(feature, element('X', 'Tool', 'Hammer', { description: '<p>Hits nails.</p>' }), element('Y', 'Tool', 'Saw'), ...many),
+    new Set(['Tool']),
+  );
+  assert.ok(html.includes('<p><em>Tool. Choose 1 of 2 options:</em></p><p>Hammer, Saw.</p>'), html);
+  assert.ok(html.includes('Trick 039, and 65 more.</p>'), html);
+  assert.ok(!html.includes('<h6>'), html);
 });
 
 function indexOf(...elements: Element[]): MapElementIndex {

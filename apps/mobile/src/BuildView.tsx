@@ -450,7 +450,13 @@ export const BuildView = memo(function BuildView({
         </>
       ) : null}
 
-      <Picker request={grouped(request)} elements={elements} labelOf={labelOf} onClose={() => setRequest(null)} />
+      <Picker
+        request={grouped(request)}
+        elements={elements}
+        labelOf={labelOf}
+        onClose={() => setRequest(null)}
+        namedTypes={builder.namedTypes()}
+      />
       <StartOptionsView
         open={startOptions !== null && state.startOptions.length > 0}
         beginning={startOptions === 'new'}

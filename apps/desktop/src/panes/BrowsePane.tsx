@@ -21,11 +21,11 @@ import {
   type TypeCount,
   type TypeGroup,
 } from '@incudo/ui';
-import { resolveCharacterKind, type ElementId, type ElementIndex, type GameSystem } from '@incudo/core';
+import { printingTypes, resolveCharacterKind, type ElementId, type ElementIndex, type GameSystem } from '@incudo/core';
 import type { ConfiguredSource } from '@incudo/content';
 
 import { useMediaQuery } from '../use-media-query.ts';
-import { AttacksContext, CandidateDescription } from './CandidateDescription.tsx';
+import { AttacksContext, CandidateDescription, NamedTypesContext } from './CandidateDescription.tsx';
 
 /** The complement of the `max-width: 1000px` breakpoint that stacks `.browse-columns`. */
 const SIDE_BY_SIDE = '(min-width: 1001px)';
@@ -80,6 +80,7 @@ export function BrowsePane({
     () => system.characterKinds.map((kind) => resolveCharacterKind(system, kind.id).attacks).find((def) => def !== undefined),
     [system],
   );
+  const namedTypes = useMemo(() => printingTypes(system), [system]);
 
   if (!elements || !catalog || catalog.size === 0) {
     return (
@@ -98,6 +99,7 @@ export function BrowsePane({
 
   return (
     <AttacksContext.Provider value={attacks}>
+    <NamedTypesContext.Provider value={namedTypes}>
     <Browser
       catalog={catalog}
       elements={elements}
@@ -106,6 +108,7 @@ export function BrowsePane({
       onView={onView}
       onOpenSources={onOpenSources}
     />
+    </NamedTypesContext.Provider>
     </AttacksContext.Provider>
   );
 }
@@ -325,7 +328,7 @@ function Detail({
         {detail.typeLabel}
         {detail.book && ` · ${detail.book}`}
       </p>
-      <CandidateDescription id={id} elements={elements} onSelect={onSelect} />
+      <CandidateDescription id={id} elements={elements} />
 
       {detail.offeredBy.length > 0 && (
         <>

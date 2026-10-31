@@ -3,7 +3,7 @@
  * someone new to the game has no name to type), and each option's own text a tap away.
  *
  * What the desktop's `CandidatePicker` is, without hover: the matching and ranking are `searchCandidates`, an option's
- * label is the caller's (`candidateLabel`), and its text is `expandDescription` read into blocks by `htmlToBlocks`, as the
+ * label is the caller's (`candidateLabel`), and its text is `expandDescriptionWithChoices` read into blocks by `htmlToBlocks`, as the
  * sheet reads content's HTML (ADR 0083). It computes nothing.
  */
 
@@ -12,7 +12,7 @@ import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ElementId, ElementIndex } from '@incudo/core';
-import { expandDescription, htmlToBlocks, offerGroupLine, searchCandidates, type OfferGroup } from '@incudo/ui';
+import { expandDescriptionWithChoices, htmlToBlocks, offerGroupLine, searchCandidates, type OfferGroup } from '@incudo/ui';
 
 import { Button } from './controls.tsx';
 import { RichText } from './RichText.tsx';
@@ -44,15 +44,18 @@ export function Picker({
   elements,
   labelOf,
   onClose,
+  namedTypes,
 }: {
   request: PickerRequest | null;
   elements: ElementIndex;
   labelOf: (id: ElementId) => string;
   onClose: () => void;
+  /** The types the system names a thing by: a choice of them is listed by name in an option's details. */
+  namedTypes?: ReadonlySet<string>;
 }) {
   return (
     <Modal visible={request !== null} animationType="slide" onRequestClose={onClose}>
-      {request ? <PickerBody request={request} elements={elements} labelOf={labelOf} onClose={onClose} /> : null}
+      {request ? <PickerBody request={request} elements={elements} labelOf={labelOf} onClose={onClose} namedTypes={namedTypes} /> : null}
     </Modal>
   );
 }
@@ -62,11 +65,13 @@ function PickerBody({
   elements,
   labelOf,
   onClose,
+  namedTypes,
 }: {
   request: PickerRequest;
   elements: ElementIndex;
   labelOf: (id: ElementId) => string;
   onClose: () => void;
+  namedTypes?: ReadonlySet<string>;
 }) {
   const palette = usePalette();
   const [query, setQuery] = useState('');
@@ -156,7 +161,7 @@ function PickerBody({
                 <Button label={open === item.id ? 'Hide' : 'Details'} kind="link" onPress={() => setOpen(open === item.id ? null : item.id)} />
               )}
             </View>
-            {open === item.id ? <Details id={item.id} elements={elements} /> : null}
+            {open === item.id ? <Details id={item.id} elements={elements} namedTypes={namedTypes} /> : null}
           </View>
         )}
       />
@@ -164,11 +169,11 @@ function PickerBody({
   );
 }
 
-/** One element's own text, with what it embeds shown in place (ADR 0069). */
-export function Details({ id, elements }: { id: ElementId; elements: ElementIndex }) {
+/** One element's own text, with what it embeds shown in place (ADR 0069) and what each shown element asks to choose. */
+export function Details({ id, elements, namedTypes }: { id: ElementId; elements: ElementIndex; namedTypes?: ReadonlySet<string> }) {
   const palette = usePalette();
   const element = elements.get(id);
-  const blocks = useMemo(() => (element?.description ? htmlToBlocks(expandDescription(element, elements)) : []), [element, elements]);
+  const blocks = useMemo(() => (element ? htmlToBlocks(expandDescriptionWithChoices(element, elements, namedTypes)) : []), [element, elements, namedTypes]);
   if (!blocks.length) return <Text style={{ color: palette.muted }}>No description available.</Text>;
   return (
     <View style={styles.details}>

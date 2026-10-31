@@ -85,7 +85,7 @@ import { HitPointEditor, CompactHitPoints } from './HitPointEditor.tsx';
 import { ClassLevels } from './ClassLevels.tsx';
 import { PreparedSpells } from './PreparedSpells.tsx';
 import { PublicationsEditor } from './PublicationsEditor.tsx';
-import { AttacksContext } from './CandidateDescription.tsx';
+import { AttacksContext, NamedTypesContext } from './CandidateDescription.tsx';
 import { CandidateNotesContext, CandidatePicker, ChosenCandidate } from './CandidatePicker.tsx';
 import { PreviewDock, PreviewDockProvider } from './PreviewDock.tsx';
 import { CustomFeatures } from './CustomFeatures.tsx';
@@ -128,6 +128,7 @@ export function BuilderPane({
 }): React.JSX.Element {
   const { kind, derived, decisions, steps, picks, declined, preparation, publications, progress, holderGrants } = state;
   const progression = kind.progression;
+  const namedTypes = useMemo(() => builder.namedTypes(), [builder]);
   const nameOf = (id: ElementId): string => loadedName(elements, id);
 
   /**
@@ -267,6 +268,7 @@ export function BuilderPane({
     // Every picker below groups its candidates by the notes the kind marks for it (a spell list by level).
     <CandidateNotesContext.Provider value={kind.candidateNotes}>
     <AttacksContext.Provider value={kind.attacks}>
+    <NamedTypesContext.Provider value={namedTypes}>
     <main className="pane builder">
       <section className="progress-bar">
         <label>
@@ -887,6 +889,7 @@ export function BuilderPane({
         </section>
       )}
     </main>
+    </NamedTypesContext.Provider>
     </AttacksContext.Provider>
     </CandidateNotesContext.Provider>
   );

@@ -28,11 +28,26 @@ export const MAX_EMBED_DEPTH = 4;
  * (the index the caller shows content from: everything loaded for Browse, the character's view for a picker or a kept
  * reference). Empty when the element has no description.
  */
-export function expandDescription(element: Pick<Element, 'id' | 'description'>, elements: ElementIndex): string {
-  return expand(element.description ?? '', elements, [element.id]);
+export function expandDescription(
+  element: Pick<Element, 'id' | 'description'>,
+  elements: ElementIndex,
+  options: ExpandOptions = {},
+): string {
+  const text = expand(element.description ?? '', elements, [element.id], options);
+  const full = options.after && elements.get(element.id);
+  return full ? text + options.after!(full, [element.id]) : text;
 }
 
-function expand(description: string, elements: ElementIndex, path: ElementId[]): string {
+export interface ExpandOptions {
+  /**
+   * HTML written after each element's own text: the element shown, and every one it embeds inside that embed's block.
+   * `path` is the elements on the way to it, itself last. A preview writes an element's choices there
+   * (`expandDescriptionWithChoices`).
+   */
+  after?: (shown: Element, path: ElementId[]) => string;
+}
+
+function expand(description: string, elements: ElementIndex, path: ElementId[], options: ExpandOptions = {}): string {
   const embeds = descriptionEmbeds(description);
   if (!embeds.length) return description;
   let out = '';
@@ -40,20 +55,22 @@ function expand(description: string, elements: ElementIndex, path: ElementId[]):
   for (const embed of embeds) {
     out += description.slice(at, embed.start);
     at = embed.end;
-    out += shown(embed.id, embed.selfClosing, elements, path);
+    out += shown(embed.id, embed.selfClosing, elements, path, options);
   }
   return out + description.slice(at);
 }
 
 /** What stands in place of one marker. A marker that does not close itself keeps its own `</div>` as the partner. */
-function shown(id: ElementId, selfClosing: boolean, elements: ElementIndex, path: ElementId[]): string {
+function shown(id: ElementId, selfClosing: boolean, elements: ElementIndex, path: ElementId[], options: ExpandOptions): string {
   const close = selfClosing ? '</div>' : '';
   const target = elements.get(id);
   if (!target) return note(`${id}: not in the loaded content, so its text is not shown here.`) + (selfClosing ? '' : '<div>');
   const heading = `<h5>${escapeHtml(target.name)}</h5>`;
   if (path.includes(id)) return `<div>${heading}${note('Already shown above.')}${close}`;
   if (path.length > MAX_EMBED_DEPTH) return `<div>${heading}${note('Nested too deeply to show here.')}${close}`;
-  return `<div>${heading}${expand(target.description ?? '', elements, [...path, id])}${close}`;
+  const inner = [...path, id];
+  const after = options.after ? options.after(target, inner) : '';
+  return `<div>${heading}${expand(target.description ?? '', elements, inner, options)}${after}${close}`;
 }
 
 function note(text: string): string {

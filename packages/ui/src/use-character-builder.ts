@@ -631,7 +631,12 @@ export class CharacterBuilder {
     return this.offered.index;
   }
 
-  subscribe = (listener: () => void): (() => void) => {
+  /** The types the system names a thing by (ADR 0125): a preview lists such options by name (`expandDescriptionWithChoices`). */
+  namedTypes(): ReadonlySet<string> {
+    return printingTypes(this.system);
+  }
+
+  subscribe =(listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
