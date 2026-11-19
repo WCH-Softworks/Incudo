@@ -67,3 +67,27 @@ export function systemAttributions(shipped: readonly Pick<GameSystem, 'name' | '
     return text ? [{ system: system.name, text }] : [];
   });
 }
+
+/**
+ * The phone's support link: Ko-fi only, no Patreon (ADR 0132, decision 8, the maintainer's call). Play's Payments policy
+ * allows donation links only for organisations it validates as tax-exempt, and reviewers have objected to an open-source
+ * app's link on that ground; if review objects to this one, this list becomes empty and the phone's About shows no
+ * support section. The desktop shows both.
+ */
+export const PHONE_SUPPORT_LINKS: readonly AboutLink[] = SUPPORT_LINKS.filter((link) => link.url.startsWith('https://ko-fi.com/'));
+
+/** The privacy policy a store listing names (ADR 0132, decision 7), and what it says in one sentence. */
+export const PRIVACY_LINK: AboutLink = {
+  label: 'Privacy policy',
+  text: 'github.com/WCH-Softworks/Incudo/blob/main/docs/PRIVACY.md',
+  url: 'https://github.com/WCH-Softworks/Incudo/blob/main/docs/PRIVACY.md',
+};
+
+export const PRIVACY_TEXT =
+  'Incudo collects nothing about you and sends nothing about you anywhere. ' +
+  'It downloads only the content sources you add, and your characters stay on this device.';
+
+/** "Version 1.0.0": the app's own version, as its build names it. */
+export function aboutVersionLine(version: string): string {
+  return `Version ${version}`;
+}

@@ -12,7 +12,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { ABOUT_URLS, SOURCE_LINK, SUPPORT_LINKS } from '@incudo/ui';
+import { ABOUT_URLS, PHONE_SUPPORT_LINKS, PRIVACY_LINK, SOURCE_LINK, SUPPORT_LINKS } from '@incudo/ui';
+import { existsSync } from 'node:fs';
 import { repoRoot } from './node-system.ts';
 
 const read = (...parts: string[]) => readFile(join(repoRoot(), ...parts), 'utf8');
@@ -59,4 +60,18 @@ test('the window may open exactly the About links, and no other address', async 
   const [only] = opener;
   assert.ok(typeof only === 'object' && only.identifier === 'opener:allow-open-url', JSON.stringify(only));
   assert.deepEqual(only.allow!.map((entry) => entry.url).sort(), [...ABOUT_URLS].sort());
+});
+
+test("the phone's About shows Ko-fi only, and its privacy link is the policy in this repository", async () => {
+  // ADR 0132, decision 8: the maintainer's call, with Play's Payments policy as the reason Patreon is left off.
+  assert.deepEqual(PHONE_SUPPORT_LINKS.map((link) => link.url), ['https://ko-fi.com/willcaphir']);
+  for (const link of PHONE_SUPPORT_LINKS) assert.ok(SUPPORT_LINKS.includes(link), `${link.url} is one of the desktop's`);
+  assert.equal(`https://${PRIVACY_LINK.text}`, PRIVACY_LINK.url);
+  const path = /\/blob\/main\/(.+)$/.exec(PRIVACY_LINK.url)?.[1];
+  assert.ok(path && existsSync(join(repoRoot(), ...path.split('/'))), `${PRIVACY_LINK.url} names a file this repository has`);
+  // The phone's screen shows these and the shipped systems' notices, and is registered.
+  const screen = await read('apps', 'mobile', 'src', 'AboutScreen.tsx');
+  for (const name of ['PHONE_SUPPORT_LINKS', 'PRIVACY_LINK', 'SOURCE_LINK', 'systemAttributions(systems)']) assert.ok(screen.includes(name), name);
+  assert.doesNotMatch(screen, /\bSUPPORT_LINKS\b(?!.*PHONE)/, 'never the desktop list');
+  assert.match(await read('apps', 'mobile', 'src', 'App.tsx'), /<Stack\.Screen name="About" component=\{AboutScreen\}/);
 });

@@ -47,6 +47,7 @@ import {
 } from '@incudo/ui';
 
 import { featureLibrarySchema, loadShippedSystems, schemas } from './boot.ts';
+import { AboutScreen } from './AboutScreen.tsx';
 import { BuildScreen } from './BuildScreen.tsx';
 import { ContentScreen } from './ContentScreen.tsx';
 import { PlatformContext, usePlatform, type Platform, type Screens } from './context.ts';
@@ -219,6 +220,7 @@ export function App() {
             <Stack.Screen name="Build" component={BuildScreen} options={({ route }) => ({ title: route.params.title })} />
             <Stack.Screen name="NewCharacter" component={NewCharacterScreen} options={{ title: 'New character' }} />
             <Stack.Screen name="Content" component={ContentScreen} options={{ title: 'Content' }} />
+            <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Incudo' }} />
           </Stack.Navigator>
         </NavigationContainer>
         {importing ? <ImportLine saves={importing.saves} phase={importing.phase} /> : null}
@@ -321,6 +323,8 @@ function LibraryScreen({ navigation }: NativeStackScreenProps<Screens, 'Library'
         </Pressable>
       ))}
       {state.location ? <Text style={[styles.small, { color: palette.muted }]}>Kept in {state.location}.</Text> : null}
+      {/* About, with the licence notices and the support link: at the foot of a screen that shows no content (ADR 0132). */}
+      <Button label="About Incudo" kind="link" onPress={() => navigation.navigate('About')} />
     </ScrollView>
   );
 }

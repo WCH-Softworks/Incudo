@@ -3,18 +3,35 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "./dist-types",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "customConditions": ["react-native"],
+    "customConditions": [
+      "react-native"
+    ],
     "jsx": "react-jsx",
-    "types": []
+    "types": [],
+    "resolveJsonModule": true
   },
-  "include": ["index.ts", "src/**/*"],
+  "include": [
+    "index.ts",
+    "app.json",
+    "src/**/*"
+  ],
   "references": [
-    { "path": "../../packages/core" },
-    { "path": "../../packages/content" },
-    { "path": "../../packages/aurora-import" },
-    { "path": "../../packages/ui" }
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/content"
+    },
+    {
+      "path": "../../packages/aurora-import"
+    },
+    {
+      "path": "../../packages/ui"
+    }
   ]
 }
