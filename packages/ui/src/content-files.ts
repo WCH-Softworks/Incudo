@@ -42,11 +42,31 @@ export async function addContentFiles(
 /**
  * A file's bytes as text: UTF-8 unless a byte order mark says UTF-16, which some Windows editors write. The mark itself
  * is dropped either way.
+ *
+ * UTF-16 is read here by hand, not through `TextDecoder`: the phone's engine (Hermes) has a UTF-8 `TextDecoder` only,
+ * and `new TextDecoder('utf-16le')` throws there (measured on the emulator, ADR 0083). Code units are joined as they
+ * are, so a surrogate pair stays one character and a lone surrogate stays what the file wrote.
  */
 export function decodeText(bytes: Uint8Array): string {
-  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes);
-  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return decodeUtf16(bytes, true);
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return decodeUtf16(bytes, false);
   return new TextDecoder('utf-8').decode(bytes);
+}
+
+function decodeUtf16(bytes: Uint8Array, littleEndian: boolean): string {
+  const units = Math.floor((bytes.length - 2) / 2);
+  const chunks: string[] = [];
+  // In slices, so a large file never passes more arguments to fromCharCode than an engine takes.
+  for (let start = 0; start < units; start += 8192) {
+    const end = Math.min(units, start + 8192);
+    const codes = new Array<number>(end - start);
+    for (let i = start; i < end; i++) {
+      const at = 2 + i * 2;
+      codes[i - start] = littleEndian ? bytes[at]! | (bytes[at + 1]! << 8) : (bytes[at]! << 8) | bytes[at + 1]!;
+    }
+    chunks.push(String.fromCharCode(...codes));
+  }
+  return chunks.join('');
 }
 
 /** One sentence for what adding some files did, for the Sources pane. */
