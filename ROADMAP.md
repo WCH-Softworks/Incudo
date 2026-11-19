@@ -2114,7 +2114,11 @@ written on a character can be moved into the user's library without being typed 
 
 ---
 
-## Phase 9 — 1.0 🟡
+## Phase 9 — 1.0 ✅
+
+> **Released 2026-11-19:** [Incudo v1.0.0](https://github.com/WCH-Softworks/Incudo/releases/tag/v1.0.0), built from
+> `c8da2ba`, after [v1.0.0-rc.4's check](./docs/release-checks/v1.0.0-rc.4.md) passed. Windows was run by hand; the
+> macOS and Linux installers were built and not run. Next: Beyond 1.0's "1.0.x — The phone app on Google Play".
 
 > **The maintainer's calls, 2026-10-27:** 1.0 is the **desktop** release, and it ships **unsigned** (a code-signing
 > certificate costs too much to make sense now; signing moved to Beyond 1.0's "1.x — macOS, Linux and iOS"). The phone's
