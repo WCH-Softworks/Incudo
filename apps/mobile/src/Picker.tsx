@@ -30,7 +30,10 @@ export interface PickerRequest {
   notes?: ReadonlyMap<ElementId, string>;
   /** A line under an option offered all the same: what it lacks of a prerequisite the kind makes soft (ADR 0124). */
   warnings?: ReadonlyMap<ElementId, string>;
-  /** False when the options are not elements (a written feature's stats), so there is no text to show. */
+  /**
+   * False when the options are not elements (a written feature's stats, a die, an ability), so there is no text to show;
+   * such a list is also kept in the order given, which its view-model chose (d4 before d10), rather than sorted by name.
+   */
   details?: boolean;
   /**
    * The options in groups, shown first; choosing one shows its options, with a way back (ADR 0117: the add list's
@@ -111,7 +114,7 @@ function PickerBody({
       </SafeAreaView>
     );
   }
-  const { matches } = searchCandidates(options, query);
+  const { matches } = searchCandidates(options, query, Infinity, undefined, request.details === false);
 
   return (
     <SafeAreaView style={[styles.page, { backgroundColor: palette.background }]}>
@@ -145,10 +148,12 @@ function PickerBody({
                   onClose();
                 }}
                 accessibilityRole="button"
+                accessibilityState={{ selected: item.id === request.current }}
               >
+                {/* The current answer is bold and ticked: "(chosen)" after it read "Not chosen (chosen)" on an unset value. */}
                 <Text style={[styles.label, { color: palette.text }, item.id === request.current && { fontWeight: '700' }]}>
+                  {item.id === request.current ? '✓ ' : ''}
                   {item.label}
-                  {item.id === request.current ? ' (chosen)' : ''}
                 </Text>
                 {request.notes?.has(item.id) ? (
                   <Text style={[styles.note, { color: palette.muted }]}>{request.notes.get(item.id)}</Text>

@@ -32,12 +32,17 @@ export interface CandidateSearch<Id> {
  * a list of collapsed rows is cheap to render. Pass `limit` only where cutting is acceptable. A non-empty query ranks an exact label match first,
  * then a label starting with it, then anything else containing it, so typing "elf" finds "Elf"
  * before "Half-Elf" before a class feature that merely mentions one in its book title.
+ *
+ * `ordered` keeps the options in the order given wherever the ranking ties, for a list that is not elements and that
+ * its view-model put in order: a die's sides (d4 before d10), the abilities, the modes of a written feature's line. Found
+ * on the phone (ADR 0132's drive): its spell attack editor offered "d10, d12, d4, d6, d8".
  */
 export function searchCandidates<Id>(
   options: CandidateOption<Id>[],
   query: string,
   limit: number = Infinity,
   first?: Id,
+  ordered = false,
 ): CandidateSearch<Id> {
   const q = query.trim().toLowerCase();
   const matching = q ? options.filter((option) => option.label.toLowerCase().includes(q)) : options;
@@ -45,7 +50,7 @@ export function searchCandidates<Id>(
   // (ADR 0124). A query ranks it like any other row.
   const lead = (option: CandidateOption<Id>): number => (!q && first !== undefined && option.id === first ? 0 : 1);
   const sorted = [...matching].sort(
-    (a, b) => lead(a) - lead(b) || rank(a.label, q) - rank(b.label, q) || a.label.localeCompare(b.label),
+    (a, b) => lead(a) - lead(b) || rank(a.label, q) - rank(b.label, q) || (ordered ? 0 : a.label.localeCompare(b.label)),
   );
   return { matches: sorted.slice(0, limit), matchCount: sorted.length };
 }
