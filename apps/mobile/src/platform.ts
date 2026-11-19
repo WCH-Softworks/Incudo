@@ -409,7 +409,13 @@ async function readUri(uris: string | string[], name?: string): Promise<Received
  * Whether the connection is metered — ADR 0100. NetInfo's `isConnectionExpensive` is Android's metered flag for the
  * active network and iOS's expensive one. With no connection there are no details, and nothing is said: a fetch then
  * fails as it would anyway.
+ *
+ * NetInfo is told never to judge reachability itself (ADR 0132, decision 6): its own check fetches a Google address,
+ * and the privacy policy says the app requests only the sources the user adds. Android takes the answer from the
+ * operating system anyway; this makes it hold everywhere, and nothing here asks whether the internet is reachable.
  */
+NetInfo.configure({ reachabilityShouldRun: () => false });
+
 export class MobileConnection {
   async current(): Promise<ConnectionState> {
     try {

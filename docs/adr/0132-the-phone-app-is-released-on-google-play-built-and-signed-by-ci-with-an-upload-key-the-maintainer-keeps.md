@@ -1,6 +1,6 @@
 # 0132 — The phone app is released on Google Play, built and signed by CI with an upload key the maintainer keeps
 
-**Status:** Proposed · 2026-11-19 · ROADMAP Beyond 1.0, "1.0.x — The phone app on Google Play" · builds on
+**Status:** Accepted · 2026-11-19 · the maintainer accepted decisions 1 to 3 as proposed · ROADMAP Beyond 1.0, "1.0.x — The phone app on Google Play" · builds on
 [0083](./0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md),
 [0099](./0099-a-file-shared-to-the-phone-is-added-as-a-picked-one-is-and-receiving-needs-the-app-s-own-build.md) ·
 **format:** none

@@ -1,0 +1,117 @@
+name: Phone release
+
+# Builds the phone app's Android App Bundle for Google Play and signs it with the upload key (ADR 0132).
+#
+# Started by a tag, never by a push: `mobile-vX.Y.Z-rc.N` for a candidate, `mobile-vX.Y.Z` for a release. The desktop's
+# release workflow starts on `v*`, which these never match. The bundle is kept as this run's artifact and published
+# nowhere: the maintainer downloads it and uploads it in the Play Console, to internal testing first. This workflow holds
+# no Play credentials.
+#
+# Signing: Play App Signing holds the key phones install with; this signs with the upload key, from four secrets the
+# maintainer sets (ANDROID_UPLOAD_KEYSTORE, base64 of the keystore file, and its store password, alias and key password).
+# The key is written to the runner's temporary folder and never to the checkout.
+#
+# Built on Linux: on Windows a checkout under a long path breaks the native build at 260 characters (ADR 0132).
+#
+# No rulebook content is bundled: the app is the engine and the shipped system definitions.
+
+on:
+  push:
+    tags: ['mobile-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # Stops before anything is built when the tag does not name the phone's version, or names a commit main lacks.
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.version.outputs.code }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: The tag matches the phone's version
+        id: version
+        run: |
+          code=$(node apps/mobile/scripts/release-version.cjs "$GITHUB_REF_NAME")
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Version code $code"
+      - name: The tagged commit is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME names a commit main does not have"
+            exit 1
+          fi
+
+  ci:
+    # The same jobs as every push to main, on the tagged commit.
+    needs: check
+    uses: ./.github/workflows/ci.yml
+
+  bundle:
+    needs: [check, ci]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v5
+      - run: npm ci
+      - name: The upload key is configured
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::The upload key's secrets are not all set (ADR 0132, decision 1): $name is empty"
+              exit 1
+            fi
+          done
+          echo "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+      - name: The version code for this tag
+        run: node apps/mobile/scripts/release-version.cjs "$GITHUB_REF_NAME" --write
+      - name: Prebuild
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+      - name: Build and sign the bundle
+        working-directory: apps/mobile/android
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:bundleRelease \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/upload.jks" \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+      - name: The bundle is signed with the upload key
+        run: |
+          aab=apps/mobile/android/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify "$aab" | tee "$RUNNER_TEMP/verify.txt" | tail -1
+          grep -q "jar verified" "$RUNNER_TEMP/verify.txt"
+          mv "$aab" "incudo-${GITHUB_REF_NAME#mobile-}-${{ needs.check.outputs.code }}.aab"
+      - name: Forget the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: incudo-android-${{ github.ref_name }}
+          path: incudo-*.aab
+          if-no-files-found: error
+          retention-days: 30
