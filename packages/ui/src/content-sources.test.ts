@@ -55,7 +55,7 @@ test('a load of the same sources is not made again; switching one off makes the 
   const first = sources.getState().loaded['game'];
   assert.equal(await sources.load('game'), first);
   await sources.setEnabled(INDEX, false);
-  assert.equal(sources.getState().loaded['game'], undefined);
+  assert.notEqual(sources.getState().loaded['game'], first, 'the load of the old set is forgotten');
   assert.equal((await sources.load('game')).elements.get('ID_WIDGET'), undefined);
 });
 
@@ -166,4 +166,132 @@ test('a load that will not publish does not end "loading" while the current one 
   assert.equal(loaded.elements.get('ID_WIDGET'), undefined, 'Core was switched off');
   assert.equal(sources.getState().loaded['game'], loaded);
   assert.equal(sources.getState().loading, undefined);
+});
+
+// --- the phone's Content screen says what the desktop's Sources pane says (ADR 0132) -----------------------------------
+
+const TWO = 'https://example.test/two.index';
+/** An index of two files, so one can be switched off; and a conditional host, so an update check asks every file. */
+class TwoFiles implements Fetcher {
+  readonly conditional = true;
+  changed = false;
+  async fetchText(url: string, opts?: { etag?: string }): Promise<FetchResult> {
+    const etag = `"${this.changed && url.endsWith('b.xml') ? 'v2' : 'v1'}:${url}"`;
+    if (opts?.etag === etag) return { url, text: '', notModified: true, etag };
+    if (url.endsWith('.index')) {
+      return { url, etag, text: '<index><info><name>Two</name><update version="1.0.0" /></info><files><file name="a" url="a.xml" /><file name="b" url="b.xml" /></files></index>' };
+    }
+    const id = url.endsWith('a.xml') ? 'ID_A' : 'ID_B';
+    return { url, etag, text: `<elements><element name="${id}" type="Widget" source="Two" id="${id}" /></elements>` };
+  }
+}
+const twoSystems = [{ id: 'game', name: 'Game', suggestedSources: [{ url: TWO, name: 'Two' }] }] as unknown as GameSystem[];
+const file = (name: string, xml: string) => ({ name, bytes: new TextEncoder().encode(xml) });
+
+test("a source's parts are read, one switched off is left out of the next load, and the profile records it", async () => {
+  // Perturbation: `setExcluded` not reloading leaves ID_B offered until something else loads; not persisting forgets it.
+  const storage = new MemoryStorage();
+  const sources = new ContentSources({ fetcher: new TwoFiles(), storage, converter: auroraConverter }, twoSystems);
+  await sources.add('game', twoSystems[0]!.suggestedSources![0]!);
+  const tree = await sources.readParts(TWO);
+  const b = tree.children?.find((part) => part.url.endsWith('b.xml'));
+  assert.ok(b, 'the tree lists the file');
+  await sources.setExcluded(TWO, [b.url]);
+  const loaded = sources.getState().loaded['game']!;
+  assert.ok(loaded.elements.get('ID_A'));
+  assert.equal(loaded.elements.get('ID_B'), undefined);
+  assert.deepEqual((await SourceProfile.load(storage)).find(TWO)?.excluded, [b.url]);
+  await sources.setExcluded(TWO, []);
+  assert.ok(sources.getState().loaded['game']!.elements.get('ID_B'), 'switched on again');
+  assert.equal((await SourceProfile.load(storage)).find(TWO)?.excluded, undefined);
+});
+
+test('a check for updates is reported on the source and changes nothing; a refresh clears it and reports itself', async () => {
+  // Perturbation: a check that refreshed would change the loaded content; a refresh not recording its report says nothing.
+  const host = new TwoFiles();
+  const sources = new ContentSources({ fetcher: host, storage: new MemoryStorage(), converter: auroraConverter }, twoSystems);
+  await sources.add('game', twoSystems[0]!.suggestedSources![0]!);
+  await sources.checkForUpdates(TWO);
+  assert.equal(sources.getState().updates[TWO]?.state, 'current');
+  host.changed = true;
+  const before = sources.getState().loaded['game'];
+  await sources.checkForUpdates(TWO);
+  const status = sources.getState().updates[TWO];
+  assert.equal(status?.state, 'outdated');
+  assert.equal(status?.state === 'outdated' && status.changed, 1);
+  assert.equal(sources.getState().loaded['game'], before, 'a check loads nothing');
+  await sources.refresh(TWO);
+  assert.equal(sources.getState().updates[TWO], undefined, 'a refresh answers the check');
+  const report = sources.getState().refreshes[TWO];
+  assert.ok(report && !('failed' in report) && report.fetched >= 1);
+});
+
+test('an Aurora file the user picked is a source of its own under the system, loaded at once; one that does not read is a line', async () => {
+  // Perturbation: `addFiles` not loading leaves the file's elements unoffered; not reporting a refusal says nothing at all.
+  const storage = new MemoryStorage();
+  const sources = new ContentSources({ fetcher: new TwoFiles(), storage, converter: auroraConverter }, twoSystems);
+  await sources.restore();
+  await sources.addFiles('game', [
+    file('blades.xml', '<elements><element name="Blade" type="Widget" source="Mine" id="ID_BLADE" /></elements>'),
+    file('broken.xml', 'not xml at all'),
+  ]);
+  const results = sources.getState().files!;
+  assert.equal(results.length, 2);
+  assert.ok(results[0]!.added);
+  assert.ok(results[1]!.failed, results[1]!.failed);
+  const [added] = sources.sourcesFor('game');
+  assert.equal(added?.kind, 'file');
+  assert.ok(sources.getState().loaded['game']?.elements.get('ID_BLADE'));
+});
+
+test('of two sources defining one id the later is used, the line says so, and moving one changes which', async () => {
+  // Perturbation: `move` moving among every system's sources, or not loading again, leaves the other definition used.
+  const sources = new ContentSources({ fetcher: new TwoFiles(), storage: new MemoryStorage(), converter: auroraConverter }, twoSystems);
+  await sources.restore();
+  const widget = (word: string) => `<elements><element name="Thing" type="Widget" source="${word}" id="ID_THING"><description>${word}</description></element></elements>`;
+  await sources.addFiles('game', [file('first.xml', widget('First')), file('second.xml', widget('Second'))]);
+  const loaded = () => sources.getState().loaded['game']!;
+  assert.equal(loaded().elements.get('ID_THING')?.source, 'Second');
+  const second = loaded().sources.find((source) => source.name.includes('second'))!;
+  assert.equal(second.overlaps?.[0]?.used, 'this');
+  await sources.move(second.id, 'up');
+  assert.equal(loaded().elements.get('ID_THING')?.source, 'First');
+});
+
+test("a source missing what a switched-off one had names it, from that one's last load", async () => {
+  // Perturbation: `load` without `switchedOff` leaves the line saying only that something is missing (ADR 0090).
+  const sources = new ContentSources({ fetcher: new TwoFiles(), storage: new MemoryStorage(), converter: auroraConverter }, twoSystems);
+  await sources.add('game', twoSystems[0]!.suggestedSources![0]!);
+  await sources.addFiles('game', [file('needs.xml', '<elements><element name="Needs" type="Widget" source="Mine" id="ID_NEEDS"><rules><grant type="Widget" id="ID_A" /></rules></element></elements>')]);
+  await sources.setEnabled(TWO, false);
+  const loaded = await sources.load('game');
+  const needs = loaded.sources.find((source) => source.name.includes('needs'))!;
+  assert.deepEqual(needs.missing?.references, ['ID_A']);
+  assert.equal(needs.switchedOff?.[0]?.sourceId, TWO);
+});
+
+test('switching a source on or off loads its system again when it was loaded, so every line says what it misses now', async () => {
+  // Found on the emulator (ADR 0132's drive): the phone forgot the load and showed no notes until a Build screen loaded
+  // again, where the desktop loads at once. Perturbation: `setEnabled` only forgetting the load fails this.
+  const sources = new ContentSources({ fetcher: new TwoFiles(), storage: new MemoryStorage(), converter: auroraConverter }, twoSystems);
+  await sources.add('game', twoSystems[0]!.suggestedSources![0]!);
+  await sources.addFiles('game', [file('needs.xml', '<elements><element name="Needs" type="Widget" source="Mine" id="ID_NEEDS"><rules><grant type="Widget" id="ID_A" /></rules></element></elements>')]);
+  await sources.setEnabled(TWO, false);
+  // Nothing here asks for a load: the switch started one.
+  for (let i = 0; i < 50 && sources.getState().loaded['game'] === undefined; i++) await new Promise((resolve) => setTimeout(resolve, 10));
+  const needs = sources.getState().loaded['game']?.sources.find((source) => source.name.includes('needs'));
+  assert.deepEqual(needs?.missing?.references, ['ID_A']);
+  assert.equal(needs?.switchedOff?.[0]?.sourceId, TWO);
+});
+
+test('a switch of a system nothing has loaded loads nothing: the phone loads only when asked', async () => {
+  // Perturbation: loading on every switch would download or read a source on the Content screen unasked (ADR 0086).
+  const host = new TwoFiles();
+  const storage = new MemoryStorage();
+  await new ContentSources({ fetcher: host, storage, converter: auroraConverter }, twoSystems).add('game', twoSystems[0]!.suggestedSources![0]!);
+  const sources = new ContentSources({ fetcher: host, storage, converter: auroraConverter }, twoSystems);
+  await sources.restore();
+  await sources.setEnabled(TWO, false);
+  await sources.setEnabled(TWO, true);
+  assert.equal(sources.getState().loaded['game'], undefined);
 });

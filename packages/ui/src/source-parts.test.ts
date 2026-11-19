@@ -159,3 +159,30 @@ test('a byte order mark is dropped, and UTF-16 from a Windows editor is read', (
   for (let i = 0; i < text.length; i++) utf16[2 + i * 2] = text.charCodeAt(i);
   assert.equal(decodeText(utf16), '<elements/>');
 });
+
+test("UTF-16 is read on a phone too, where TextDecoder knows only UTF-8 (Hermes)", () => {
+  // Measured on the emulator (CLAUDE.md, ADR 0083): Hermes's `TextDecoder('utf-16le')` throws. A phone adding an Aurora
+  // file a Windows editor saved as UTF-16 got that error instead of the file. Fails if decodeText asks TextDecoder for it.
+  const Native = globalThis.TextDecoder;
+  globalThis.TextDecoder = class extends Native {
+    constructor(label?: string, options?: ConstructorParameters<typeof TextDecoder>[1]) {
+      if (label && label.toLowerCase() !== 'utf-8') throw new RangeError(`Unknown encoding: ${label}`);
+      super(label, options);
+    }
+  } as typeof TextDecoder;
+  try {
+    const text = '<elements name="Café ✓ 𝔇"/>';
+    const units = [...text].flatMap((ch) => {
+      const code = ch.codePointAt(0)!;
+      if (code < 0x10000) return [code];
+      const v = code - 0x10000;
+      return [0xd800 + (v >> 10), 0xdc00 + (v & 0x3ff)];
+    });
+    const le = new Uint8Array([0xff, 0xfe, ...units.flatMap((u) => [u & 0xff, u >> 8])]);
+    const be = new Uint8Array([0xfe, 0xff, ...units.flatMap((u) => [u >> 8, u & 0xff])]);
+    assert.equal(decodeText(le), text);
+    assert.equal(decodeText(be), text);
+  } finally {
+    globalThis.TextDecoder = Native;
+  }
+});
