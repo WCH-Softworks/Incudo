@@ -134,3 +134,12 @@ test('a stat block line names a row unless its name is the section\'s, one shown
   const guard = view(OLD).sections.find((s) => s.id === 'head')!.rows.find((r) => r.stat === 'guard')!;
   assert.equal(statBlockRowLabel({ label: 'Head' }, guard), 'Guard', 'a print beside a number in force is not the value');
 });
+
+test('a print covers the other paces only when it names each one shown, label and number', () => {
+  // Fails if the section goes whenever the pace's print is its value: a climb a DM gave a beast whose print names another,
+  // or none, was shown nowhere (found on the phone emulator, a burrow speed written on a Wolf).
+  const climber = beast('CLIMBER', 'New Book', '12 (natural)', [add('guard', 12), add('pace', 30), add('pace:climb', 25), add('awareness', 11)]);
+  const other = view(climber).sections.find((s) => s.id === 'other');
+  assert.ok(other, 'kept: the print says climb 20, the beast climbs 25');
+  assert.deepEqual(other.rows.map((r) => [r.label, r.value]), [['Climb', '25']]);
+});
