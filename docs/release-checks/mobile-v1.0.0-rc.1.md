@@ -49,7 +49,9 @@ no `mobile-v` tag yet, so the release build below is a local one signed with a t
 | Build: buy and equip (ADR 0098), grouped list (ADR 0117) | yes | Leather bought for the purse's 10 gp and equipped: AC 15 |
 | Build: an NPC on a creature (ADRs 0057–0062) | yes | a Wolf: CR 1/4, AC 13 (natural armor), HP 11 (2d8+2), speed 40, Perception +3, Stealth +4 |
 | Save and read back | yes | every saved character read in Node with no source: the sheet the phone logged |
-| Not yet | — | the legendary creature, additions, references, written features and the feature library, alignment and deity, Tasha's optional class features on a Ranger, a soft requirement (Warlock), multiclassing off, a refresh, Remove, the metered prompt, a UTF-16 file |
+| Build: an NPC's addition, reference and written feature (ADRs 0063, 0064, 0068) | yes | a Giant Badger with Alert (initiative +5), the Draconic Spirit kept for reference, and "Swift Digger: burrow 10"; saved, read in Node with no source to the phone's checksum |
+| The feature library (ADR 0106) | yes | the feature saved to the library (`incudo-features.json` read back), given to the Wolf, saved: **bug, fixed** (below) |
+| Not yet | — | the legendary creature, alignment and deity, Tasha's optional class features on a Ranger, a soft requirement (Warlock), multiclassing off, a refresh, Remove, the metered prompt, a UTF-16 file |
 
 ## Found, and fixed after the first pass
 
@@ -68,6 +70,10 @@ Each under a test that fails without it, and seen again on the emulator.
 - A challenge rating printed "0.25"; a unit fraction is written 1/4 on every sheet (`sheet.test.ts`).
 - "opened at 1" on a Fighter level taken at character level 2 named the class's own level; the tag is "from level 2",
   the character's, as the list is ordered (`build-view.test.ts`).
+- A speed written on a creature that its print does not name was shown nowhere: a stat block's Other Speeds went
+  whenever the walking speed matched the print. The print covers the section now only when it names each speed shown
+  ("burrow 10"); of the 141 creatures, the two Drake Companions now show the fly 40 their content gives
+  (`sheet-stat-block.test.ts`). The desktop changes with it.
 
 ## The release build
 

@@ -716,10 +716,16 @@ function mergePrinted(
  * line already names the other speeds.
  */
 function dropCoveredByPrint(views: SheetSectionView[], defOf: ReadonlyMap<SheetSectionView, SheetSectionDef>): void {
-  const printedStats = new Set(views.flatMap((view) => view.rows.filter((row) => row.asPrinted).map((row) => row.stat.toLowerCase())));
+  const printText = new Map<string, string>();
+  for (const view of views) for (const row of view.rows) if (row.asPrinted) printText.set(row.stat.toLowerCase(), row.value.toLowerCase());
   for (let at = views.length - 1; at >= 0; at--) {
     const covered = defOf.get(views[at]!)?.coveredByPrint;
-    if (covered !== undefined && printedStats.has(covered.toLowerCase())) views.splice(at, 1);
+    const print = covered === undefined ? undefined : printText.get(covered.toLowerCase());
+    if (print === undefined) continue;
+    // Only what the print names, label and number: a burrow speed a DM writes on a Wolf, whose print says only "40 ft.",
+    // was left out with the rest and shown nowhere.
+    const named = views[at]!.rows.every((row) => print.includes(`${row.label.toLowerCase()} ${row.value.toLowerCase()}`));
+    if (named) views.splice(at, 1);
   }
 }
 
