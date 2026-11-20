@@ -61,3 +61,16 @@ test("the first class's and the background's starting equipment are listed with 
     assert.equal(decision.withRequired, true);
   }
 });
+
+test("an NPC's and a legendary creature's Creature pick is listed with the required decisions, still skippable", { skip: corpusSkip }, async () => {
+  // Fails with `listedWithRequired` taken off either kind's creature step: the choice an NPC is mostly about drops under
+  // Optional (found on the phone emulator), and New character opens on a list with nothing in it.
+  const system = await loadShippedSystem('dnd5e');
+  for (const kind of ['npc', 'legendary']) {
+    const state = new CharacterBuilder(newCharacterOfKind(system, kind), system, await realElements()).getState();
+    const creature = state.decisions.find((d) => d.kind === 'pick' && d.stepId === 'creature');
+    assert.ok(creature, `${kind}: ${state.decisions.map((d) => d.label).join(' | ')}`);
+    assert.equal(creature.blocking, false, kind);
+    assert.ok(decisionGroups(state.decisions).required.includes(creature), `${kind}: shown with the required decisions`);
+  }
+});

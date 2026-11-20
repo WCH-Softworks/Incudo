@@ -2260,6 +2260,9 @@ export class CharacterBuilder {
           // A set asked at the start is answered once the character exists, even by none (ADR 0123).
           startOptions.some((question) => question.stepId === step.id) ||
           picks.some((pick) => pick.stepId === step.id && pick.chosen.length > 0) ||
+          // A starting package taken there (ADR 0087) is no pick, and the step read "nothing to choose" once both were taken.
+          (startingEquipment?.stepId === step.id &&
+            startingEquipment.sources.some((source) => source.status === 'taken' || source.status === 'used')) ||
           (budgets.get(step.id) !== undefined && budgets.get(step.id)!.unassigned.length === 0) ||
           (hitPoints.get(step.id)?.levels.some((level) => level.recorded !== undefined || level.fixedValue !== undefined) ?? false),
         skipped: declined.some((decision) => decision.stepId === step.id),

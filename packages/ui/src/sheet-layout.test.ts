@@ -65,3 +65,12 @@ test('a one-column reader heads each tab once, at its first section', async () =
   ]);
   assert.deepEqual([...tabStarts({ sections })], []);
 });
+
+test('a tab whose first section has the tab\'s name is not headed twice', async () => {
+  // Fails if tabStarts heads a tab whose first section already says its name: the phone read "Spells" over "Spells".
+  const { tabStarts } = await import('./sheet-document.ts');
+  const sections = laidOut(['late', 'loose', 'side', 'head', 'early'].map(view), SHEET).map((s) =>
+    s.id === 'late' ? { ...s, label: 'second' } : s,
+  );
+  assert.deepEqual([...tabStarts({ tabs: SHEET.tabs!, sections })], [['loose', 'First']]);
+});

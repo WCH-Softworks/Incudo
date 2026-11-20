@@ -5,7 +5,12 @@ import { createCharacter, setSpellAttack, type DerivedAttack, type Element, type
 
 import { attackAside, attackHead, attackWarnings } from './sheet-document.ts';
 import { sheetAttack, SPELL_NO_CLASS, SPELL_NO_DAMAGE, SPELL_ROLLS_NOTHING } from './sheet.ts';
-import { givenBlockLabel, spellAttackRefusal, spellAttacksState } from './spell-attacks.ts';
+import { givenBlockLabel, SPELL_ATTACKS_LABEL, spellAttackRefusal, spellAttacksState } from './spell-attacks.ts';
+
+test('a spell row’s warning names the heading its editor is under in both apps', () => {
+  // Perturbation: say "under Spells", the desktop's tab, and the phone, which has no such tab, is pointed nowhere.
+  for (const note of [SPELL_NO_CLASS, SPELL_NO_DAMAGE]) assert.ok(note.endsWith(`under ${SPELL_ATTACKS_LABEL}`), note);
+});
 
 // A spell's attack row as the sheet words it and the editor offers it — ADR 0111. No game: "Charm", "Circle" and "Grit"
 // stand for 5e's spell, a class and an ability.
