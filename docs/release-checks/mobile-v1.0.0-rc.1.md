@@ -97,4 +97,16 @@ Each under a test that fails without it, and seen again on the emulator.
 
 ## The release build
 
-Not yet driven feature by feature: only the measurements above.
+Built again from `b535a44` (every fix above), signed with the throwaway key, installed fresh (the development build and its
+data uninstalled: the signatures differ). A smoke pass, not yet every feature:
+
+| | |
+| --- | --- |
+| Permissions (`aapt dump permissions`) | Internet, network state, Wi-Fi state; and AndroidX's own `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, a signature permission only the app holds, asking the user nothing |
+| Backup | `allowBackup`, `fullBackupContent` and `dataExtractionRules` all in the manifest. A backup was not run |
+| Start | 0.95 s cold; not debuggable (`run-as` refused) |
+| About | version 1.0.0, the notice, the privacy link, Ko-fi |
+| Content | AuroraLegacy added in 50 s, 14,317 entries |
+| Library | sample 19 added from Downloads; all 38 labelled rows of Node's sheet for it on the phone's |
+| Build, Save, Export | a Wolf NPC built and saved, exported to a folder, read in Node: CR 1/4, AC 13 (natural armor), HP 11 (2d8+2), speed 40, AuroraLegacy recorded as its source |
+| Not yet | every other row of the development build's table, and the real phone |
