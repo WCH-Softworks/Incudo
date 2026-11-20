@@ -91,7 +91,7 @@ Each under a test that fails without it, and seen again on the emulator.
 
 - **An unsaved character on the phone is kept nowhere.** The desktop keeps a draft (ADR 0066); the phone keeps the build
   in memory until Save, so Android ending the app in the background (or a development reload, which is how it was found,
-  twice) loses it. Worth a decision before the listing.
+  twice) loses it. Decided: after the listing (the maintainer, 2026-11-20; ROADMAP's 1.0.x item).
 - The additions' explanation on an NPC speaks of "the character's spellcasting classes".
 - A level 1 decision is tagged "from level 1", which says nothing at the first level.
 
