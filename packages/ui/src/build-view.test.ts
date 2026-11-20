@@ -107,7 +107,9 @@ test('hit points are settled only once a level is recorded and none is outstandi
 
 test("a decision's tags: optional, what is left, where it opened; a set has no count", () => {
   // Perturbation: counting a set ("0 left") says the opposite of a set, which may take any number.
-  assert.deepEqual(decisionTags(decision({ kind: 'select', blocking: false, remaining: 2, openedAt: 4 })), ['optional', '2 left', 'opened at 4']);
+  assert.deepEqual(decisionTags(decision({ kind: 'select', blocking: false, remaining: 2, openedAt: 4 })), ['optional', '2 left', 'from level 4']);
+  // Perturbation: write the class's own level and a Fighter 1 taken at character level 2 reads "from level 1".
+  assert.deepEqual(decisionTags(decision({ kind: 'select', blocking: true, remaining: 1, openedAt: 1, opensAt: 2 })), ['1 left', 'from level 2']);
   assert.deepEqual(decisionTags(decision({ kind: 'pick', multiple: true, blocking: false })), ['optional']);
 });
 

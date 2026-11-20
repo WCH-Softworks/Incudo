@@ -135,6 +135,10 @@ test('a value is written as text, a signed number or a number, and a missing one
   assert.equal(formatStatValue(stat(0), true), '+0');
   assert.equal(formatStatValue(stat(-3), true), '-3');
   assert.equal(formatStatValue(stat(5), false), '5');
+  // Perturbation: write String(value) and a Wolf's challenge rating reads "0.25" where its book prints 1/4.
+  assert.equal(formatStatValue(stat(0.25), false), '1/4');
+  assert.equal(formatStatValue(stat(0.125), false), '1/8');
+  assert.equal(formatStatValue(stat(1.5), false), '1.5');
 });
 
 // Fails if an empty section is kept, if the unmet

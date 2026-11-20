@@ -825,7 +825,7 @@
       ],
 
       "buildSteps": [
-        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
+        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "listedWithRequired": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
         { "id": "race", "label": "Race", "types": ["Race"], "pick": true, "description": "The race this one is, if it has one: a dwarf guard, a human bandit. The race adds to its scores and gives its speed, senses, languages and traits. Skip it for a creature, or to build one by hand." },
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one, and what its race adds is added to either.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
@@ -925,7 +925,7 @@
       },
 
       "buildSteps": [
-        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
+        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "listedWithRequired": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
         { "id": "race", "label": "Race", "types": ["Race"], "pick": true, "description": "The race this one is, if it has one: a dwarf guard, a human bandit. The race adds to its scores and gives its speed, senses, languages and traits. Skip it for a creature, or to build one by hand." },
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one, and what its race adds is added to either.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },

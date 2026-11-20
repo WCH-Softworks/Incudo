@@ -48,6 +48,7 @@ import {
   type StatDef,
 } from '@incudo/core';
 
+import { formatProgress } from './character-kinds.ts';
 import { htmlToRuns, runsText } from './html-blocks.ts';
 import { entryName, entryNeedsAttunement } from './inventory.ts';
 import { purseRows, type PurseRow } from './money.ts';
@@ -238,10 +239,13 @@ export interface SheetAttack {
   notes?: string[];
 }
 
-/** A spell row with no class to read its numbers from (ADR 0111). */
-export const SPELL_NO_CLASS = 'No class set: choose the class it is cast as on Build, under Spells';
+/**
+ * A spell row with no class to read its numbers from (ADR 0111). Both sentences name the heading both apps put the
+ * editor under (`SPELL_ATTACKS_LABEL`): "under Spells" named the desktop's tab, which the phone does not have.
+ */
+export const SPELL_NO_CLASS = 'No class set: choose the class it is cast as on Build, under Spell attacks';
 /** A spell row whose damage nothing states and the user has not chosen (ADR 0111). */
-export const SPELL_NO_DAMAGE = 'Damage not set: choose its dice on Build, under Spells';
+export const SPELL_NO_DAMAGE = 'Damage not set: choose its dice on Build, under Spell attacks';
 /** A spell row the user said rolls nothing (ADR 0111). */
 export const SPELL_ROLLS_NOTHING = 'no damage';
 
@@ -385,7 +389,8 @@ export function formatStatValue(stat: ResolvedStat | undefined, signed: boolean)
   if (!stat) return '—';
   if (stat.text !== undefined) return stat.text.trim() === '' ? '—' : stat.text;
   if (signed && stat.value >= 0) return `+${stat.value}`;
-  return String(stat.value);
+  // A quarter is written as a book writes it, 1/4: a challenge rating read "0.25" on every sheet (found on the phone).
+  return formatProgress(stat.value);
 }
 
 /**

@@ -51,17 +51,23 @@ no `mobile-v` tag yet, so the release build below is a local one signed with a t
 | Save and read back | yes | every saved character read in Node with no source: the sheet the phone logged |
 | Not yet | — | the legendary creature, additions, references, written features and the feature library, alignment and deity, Tasha's optional class features on a Ranger, a soft requirement (Warlock), multiclassing off, a refresh, Remove, the metered prompt, a UTF-16 file |
 
-## Found and not fixed (for the maintainer)
+## Found, and fixed after the first pass
 
-- The sheet prints every section's explanation in full; the desktop puts it behind an "i".
-- "Damage not set: choose its dice on Build, under Spells" names the desktop's Spells tab; the phone's heading is
-  "Spell choices".
-- A "Spells" tab heading sits right above the "Spells" section.
-- An NPC's Creature pick is folded under "Optional" (ADR 0123's rule), though it is the main choice of an NPC. The desktop
-  folds it too.
-- "Equipment: nothing to choose" after both starting packages were taken.
-- A challenge rating prints "0.25" on the sheet, where a book prints 1/4.
-- "opened at 1" on a Fighter level taken at character level 2 is the class's own level (ADR 0015), and reads oddly.
+Each under a test that fails without it, and seen again on the emulator.
+
+- The sheet printed every section's explanation in full; it is behind an "i" now, as on the desktop
+  (`phone-sheet.test.ts`).
+- "Damage not set: choose its dice on Build, under Spells" named the desktop's tab; both warnings name the heading both
+  apps put the editor under, "Spell attacks" (`spell-attacks.test.ts`).
+- A "Spells" tab heading sat right above the "Spells" section; a tab whose first section has its name is not headed
+  again (`sheet-layout.test.ts`).
+- An NPC's and a legendary creature's Creature pick was folded under "Optional"; 5e lists it with the required decisions
+  (`listedWithRequired` on the step; `listed-with-required.test.ts`). The desktop changes with it.
+- "Equipment: nothing to choose" after both starting packages were taken; a taken package makes its step "complete"
+  (`starting-equipment.test.ts`).
+- A challenge rating printed "0.25"; a unit fraction is written 1/4 on every sheet (`sheet.test.ts`).
+- "opened at 1" on a Fighter level taken at character level 2 named the class's own level; the tag is "from level 2",
+  the character's, as the list is ordered (`build-view.test.ts`).
 
 ## The release build
 
