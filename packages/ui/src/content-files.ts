@@ -30,13 +30,31 @@ export async function addContentFiles(
   const results: ContentFileResult[] = [];
   for (const file of files) {
     try {
-      const added = await addFileSource(profile, platform, { name: file.name, text: decodeText(file.bytes) }, options);
-      results.push({ name: file.name, added });
+      const text = decodeText(file.bytes);
+      const name = contentFileName(file.name, text);
+      const added = await addFileSource(profile, platform, { name, text }, options);
+      results.push({ name, added });
     } catch (error) {
       results.push({ name: file.name, failed: error instanceof Error ? error.message : String(error) });
     }
   }
   return results;
+}
+
+/**
+ * The name a picked file is added under. Its own, unless it has no extension: then it is not the file's name as the user
+ * knows it but a provider's id ("msf:52" from Android's Downloads, found on the phone emulator), and a file whose root is
+ * `elements` takes the name its own `<info>` gives, else "Added file", with ".xml". It was refused as "not an .xml file"
+ * whatever it held. Anything else keeps its name, and is refused for it as before.
+ */
+export function contentFileName(name: string, text: string): string {
+  if (/\.[^.\s]+$/.test(name.trim())) return name;
+  // The declaration, comments and processing instructions skipped, as `isAuroraSave` does; what follows is the root.
+  const rest = text.slice(0, 4096).replace(/^\s*(?:<\?[\s\S]*?\?>\s*|<!--[\s\S]*?-->\s*|<!DOCTYPE[^>]*>\s*)*/i, '');
+  if (!/^<elements[\s>/]/.test(rest)) return name;
+  const own = /<info>[\s\S]*?<name>([^<]*)<\/name>/.exec(text.slice(0, 8192))?.[1];
+  const clean = (own ?? '').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  return `${clean || 'Added file'}.xml`;
 }
 
 /**
