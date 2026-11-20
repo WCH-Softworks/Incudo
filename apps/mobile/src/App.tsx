@@ -32,6 +32,7 @@ import {
   exportEntry,
   importReceivedSaves,
   importedView,
+  keepLibraryProfile,
   libraryEntryProgress,
   receiveFiles,
   receivedView,
@@ -95,6 +96,9 @@ export function App() {
       storage,
     };
   }, []);
+
+  // The library is told the whole profile as it changes, so a Save records the sources a character draws on (ADR 0028).
+  useEffect(() => keepLibraryProfile(platform.sources, platform.library), [platform]);
 
   // In development, how long each content load took, to compare with ADRs 0085 and 0086's measurements.
   useEffect(() => {

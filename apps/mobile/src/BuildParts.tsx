@@ -14,6 +14,7 @@ import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import type { ElementId, ResolvedCharacterKind, StatDef } from '@incudo/core';
 import {
   LEVEL_HINT,
+  LEVEL_NO_CLASS_HINT,
   LEVEL_UP_OTHER,
   SPLIT_LABEL,
   levelControlView,
@@ -404,7 +405,7 @@ export function ClassLevelsView({
         ) : null}
       </Row>
       {down ? <Button label={down.label} kind="link" onPress={() => builder.setProgress(down.level)} /> : null}
-      {state && !classes ? <Body tone="muted">Choose a class in Open decisions. Further levels can then go to other classes.</Body> : null}
+      {state && !classes ? <Body tone="muted">{LEVEL_NO_CLASS_HINT}</Body> : null}
       {classes && offNote ? <Body tone={classes.classes.length > 1 ? 'danger' : 'muted'}>{offNote}</Body> : null}
       {classes?.options
         .filter((option) => option.taken && option.flag)

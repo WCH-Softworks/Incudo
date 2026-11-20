@@ -51,7 +51,11 @@ no `mobile-v` tag yet, so the release build below is a local one signed with a t
 | Save and read back | yes | every saved character read in Node with no source: the sheet the phone logged |
 | Build: an NPC's addition, reference and written feature (ADRs 0063, 0064, 0068) | yes | a Giant Badger with Alert (initiative +5), the Draconic Spirit kept for reference, and "Swift Digger: burrow 10"; saved, read in Node with no source to the phone's checksum |
 | The feature library (ADR 0106) | yes | the feature saved to the library (`incudo-features.json` read back), given to the Wolf, saved: **bug, fixed** (below) |
-| Not yet | — | the legendary creature, alignment and deity, Tasha's optional class features on a Ranger, a soft requirement (Warlock), multiclassing off, a refresh, Remove, the metered prompt, a UTF-16 file |
+| Build: a legendary creature (ADR 0065) | yes | the homebrew file's Old Stone Drake: Rallying Roar taken beside the Tail Sweep it grants, 3 uses, its lair action and regional effect; the sheet equal to Node's with no source. **Bug, fixed**: no phone save recorded its sources (below) |
+| Build: a 2014 Ranger with multiclassing off (ADRs 0088, 0116, 0129) | yes | "Multiclassing is switched off for this character…"; Deft Explorer taken, its Canny expertise offering Stealth once Stealth was taken; Chaotic Good and Mielikki "complete". Not saved: a development reload lost it (below) |
+| Content: a UTF-16 file, overlaps, move, remove (ADRs 0054, 0056) | yes | **bug, fixed**: picked from Downloads it arrived as "msf:52" and was refused; added as "Homebrew Legendary Test.xml", 8 entries, both copies saying they define the same 8 things; moved up; removed, its note gone |
+| Content: the metered prompt (ADR 0100) | yes | Wi-Fi off: "Refresh AuroraLegacy? … on a metered connection"; on Wi-Fi no question, "Refreshed: 800 downloaded." |
+| Not yet | — | a soft requirement (a Warlock's invocations, ADR 0124) |
 
 ## Found, and fixed after the first pass
 
@@ -74,6 +78,22 @@ Each under a test that fails without it, and seen again on the emulator.
   whenever the walking speed matched the print. The print covers the section now only when it names each speed shown
   ("burrow 10"); of the 141 creatures, the two Drake Companions now show the fly 40 their content gives
   (`sheet-stat-block.test.ts`). The desktop changes with it.
+- A file picked from Android's Downloads arrived named "msf:52" and the Content screen refused it as "not an .xml file".
+  A name with no extension is decided by what the file holds, and an elements file takes the name its own `<info>` gives
+  (`source-parts.test.ts`).
+- No character the phone saved recorded the sources it draws on (`"sources": []`), so "not in your sources" could never
+  be said of one: the phone never told its library the profile. It does now (`keepLibraryProfile`,
+  `content-sources.test.ts`, `phone-sheet.test.ts`); a re-saved drake records its file source.
+- Before a class is chosen the level control said "Further levels can then go to other classes", false with multiclassing
+  off; it says "Choose a class in Open decisions." in both apps (`phone-sheet.test.ts`).
+
+## Found and not fixed (for the maintainer)
+
+- **An unsaved character on the phone is kept nowhere.** The desktop keeps a draft (ADR 0066); the phone keeps the build
+  in memory until Save, so Android ending the app in the background (or a development reload, which is how it was found,
+  twice) loses it. Worth a decision before the listing.
+- The additions' explanation on an NPC speaks of "the character's spellcasting classes".
+- A level 1 decision is tagged "from level 1", which says nothing at the first level.
 
 ## The release build
 

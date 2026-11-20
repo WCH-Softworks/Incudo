@@ -321,3 +321,24 @@ export class ContentSources {
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
+
+/**
+ * Keep a character library told the whole profile, now and whenever it changes (ADR 0028), so a Save records the sources
+ * the character draws on and a card can say which of them moved or went. The desktop calls `setProfile` where it saves
+ * the profile; the phone had no such call, and every character it saved recorded no sources (found on the emulator).
+ * Returns what stops it.
+ */
+export function keepLibraryProfile(
+  sources: Pick<ContentSources, 'subscribe' | 'getState'>,
+  library: { setProfile(profile: readonly ConfiguredSource[]): void },
+): () => void {
+  let told: readonly ConfiguredSource[] | undefined;
+  const tell = (): void => {
+    const profile = sources.getState().sources;
+    if (profile === told) return;
+    told = profile;
+    library.setProfile(profile);
+  };
+  tell();
+  return sources.subscribe(tell);
+}
