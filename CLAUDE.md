@@ -431,7 +431,8 @@ Phase 6's first item and the read half of its second (it builds nothing). Things
   `application/octet-stream` on purpose: `application/zip` makes Android append ".zip". The provider never replaces a
   file ("name (1).incu", reported as such). Expo Go's floating tools button sits over the header's right corner; switch
   it off in its menu before tapping Export in a drive.
-- **No icon or splash**: Expo's stand in, a marked gap (`brand/`'s tile is undecided). Never generate one.
+- **No icon or splash**: Expo's stand in, a marked gap (`brand/`'s tile is undecided). Never generate one. The Play
+  listing waits on them too (ADR 0132).
 
 **A character is played on the phone and the desktop alike, and what is spent is an input on it**
 ([ADR 0084](docs/adr/0084-play-state-is-an-input-on-the-character-and-what-it-tracks-is-read-from-the-sheet.md)),
@@ -577,6 +578,38 @@ Phase 6's last item. Things to know before touching it:
   at once with taken names, the source off; every sheet equals the desktop's import. A fresh emulator imports in 6.3 s
   (3.6 s load); one swapping for hours took minutes, which is the machine. Not run: Expo Go's picker, "Open with", a real
   phone, iOS, a release build.
+
+**The phone app is released on Google Play, built and signed by CI with an upload key the maintainer keeps**
+([ADR 0132](docs/adr/0132-the-phone-app-is-released-on-google-play-built-and-signed-by-ci-with-an-upload-key-the-maintainer-keeps.md),
+2026-11-19; Beyond 1.0's "1.0.x"). Things to know before touching it:
+
+- **A release build was measured first**: AAB 56.4 MB, Hermes bytecode, no launcher, 1.6 s cold on the emulator, and a
+  file shared while the app is closed arrives readable (ADR 0099's gap was the development launcher's).
+- **This checkout's path cannot build the phone on Windows**: under `.claude/worktrees/<name>` CMake passes 260
+  characters, and a `subst` drive breaks Metro. Build from a clone at a short path (`git clone <worktree> C:ib`, pull
+  before each build); Metro may still serve the worktree. CI builds on Linux.
+- **The phone has its own version** (`app.json` = `apps/mobile/package.json`, from 1.0.0) and
+  `versionCode = MAJOR·1e6 + MINOR·1e4 + PATCH·100 + N` (N a candidate's number, 99 the release), computed only by
+  `apps/mobile/scripts/release-version.cjs`. A committed `app.json` holds N = 99; the workflow writes the tag's.
+- **`.github/workflows/mobile-release.yml`** builds the AAB on a `mobile-vX.Y.Z[-rc.N]` tag, signs it with the upload key
+  from four secrets (`ANDROID_UPLOAD_KEYSTORE` and its passwords and alias), refuses an unsigned one and keeps it as an
+  artifact. It publishes nothing; the maintainer uploads to Play by hand. No Play credentials anywhere.
+- **The release manifest asks for Internet and network/Wi-Fi state only**: `blockedPermissions` removes
+  `SYSTEM_ALERT_WINDOW`, external storage and `VIBRATE`, which Expo's template and the dev menu add. **Backup** takes
+  `library/` and `SQLite/` only (`apps/mobile/plugins/backup-rules.cjs`), never `sources/`. **NetInfo never pings**
+  (`reachabilityShouldRun: () => false`). `docs/PRIVACY.md` says all of it, and `mobile-release.test.ts` holds the
+  permission table, the rules, the version and the workflow to the files.
+- **About on the phone** (`AboutScreen.tsx`, from the Characters screen's foot): `about.ts`'s words, every shipped
+  system's notice, the privacy link, and **Ko-fi only** (`PHONE_SUPPORT_LINKS`, the maintainer's call; Play's Payments
+  policy allows donation links only to organisations it validates as tax-exempt, so if review objects that list empties).
+- **The phone's Content screen does what the desktop's Sources pane does**: an Aurora file as a source, parts, a check for
+  updates, moving, and each source's notes; it loads the switched-on sources when it opens, and a switch loads a loaded
+  system again. The words are `source-notes.ts`'s (`updateNote`, `sourceOverlapNote`, `refreshNote`, `partsOffNote`,
+  `partMeta`), which the desktop's pane now prints too.
+- **`decodeText` reads UTF-16 by hand**: Hermes's `TextDecoder` knows UTF-8 only. **The phone's picker keeps a list of
+  values in its given order** (`searchCandidates(…, ordered)` when `details: false`).
+- **The drive's record is `docs/release-checks/mobile-v1.0.0-rc.1.md`**, with what was found and not fixed. Never
+  generate the icon, splash or store graphics: they are the maintainer's.
 
 **A user system may be an overlay of another: a patch applied to its parent on every load and validated as the system it
 makes** ([ADR 0102](docs/adr/0102-an-overlay-is-a-patch-applied-to-its-parent-on-every-load-and-validated-as-the-system-it-makes.md)),
