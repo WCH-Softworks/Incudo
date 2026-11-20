@@ -55,7 +55,7 @@ no `mobile-v` tag yet, so the release build below is a local one signed with a t
 | Build: a 2014 Ranger with multiclassing off (ADRs 0088, 0116, 0129) | yes | "Multiclassing is switched off for this character…"; Deft Explorer taken, its Canny expertise offering Stealth once Stealth was taken; Chaotic Good and Mielikki "complete". Not saved: a development reload lost it (below) |
 | Content: a UTF-16 file, overlaps, move, remove (ADRs 0054, 0056) | yes | **bug, fixed**: picked from Downloads it arrived as "msf:52" and was refused; added as "Homebrew Legendary Test.xml", 8 entries, both copies saying they define the same 8 things; moved up; removed, its note gone |
 | Content: the metered prompt (ADR 0100) | yes | Wi-Fi off: "Refresh AuroraLegacy? … on a metered connection"; on Wi-Fi no question, "Refreshed: 800 downloaded." |
-| Not yet | — | a soft requirement (a Warlock's invocations, ADR 0124) |
+| Build: a soft requirement (ADR 0124) | yes | a Warlock 2's invocations: Agonizing Blast offered with "Needs Eldritch Blast, which this character does not have", and the same line on its settled card |
 
 ## Found, and fixed after the first pass
 
