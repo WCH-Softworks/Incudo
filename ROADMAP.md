@@ -2580,6 +2580,10 @@ An ADR first. Not iOS: that waits for the maintainer's environment, as macOS doe
   (notes, parts, update check, an Aurora file). The emulator drive is under way:
   [docs/release-checks/mobile-v1.0.0-rc.1.md](./docs/release-checks/mobile-v1.0.0-rc.1.md). **Waiting on the
   maintainer**: the icon, splash and store graphics; the Play account, the upload key and the four secrets.
+  *2026-11-20*: the development-build drive is done (eleven bugs fixed), a release build smoke-tested.
+- **A draft of an unsaved character on the phone, after the listing** (the maintainer's call, 2026-11-20). The phone keeps
+  a build in memory until Save, so Android ending the app in the background loses it; the desktop keeps a draft (ADR
+  0066). Found driving the emulator, where a development reload lost a character twice.
 - **Real phones are driven here** (the maintainer's call, 2026-10-12): every feature walked on at least one real Android
   phone, right before the listing.
 - **The emulator drive moved here too** (the maintainer, 2026-10-27: the phone's release is after the desktop 1.0): every
