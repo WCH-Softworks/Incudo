@@ -238,7 +238,7 @@ export function parseAuroraSave(xml: string): AuroraSave {
   const root = findFirst(doc, 'character');
 
   if (!root) {
-    diagnostics.push({ level: 'error', message: 'No <character> element: this is not an Aurora save.' });
+    diagnostics.push({ level: 'error', message: 'This file is not an Aurora save: it records no character.' });
     return empty(diagnostics);
   }
 
@@ -248,13 +248,13 @@ export function parseAuroraSave(xml: string): AuroraSave {
     // older (and probably still readable) or not Aurora's.
     diagnostics.push({
       level: 'warning',
-      message: `Save format version "${version}"; every known Aurora save is 1.0.3. Reading it anyway.`,
+      message: `This save was written in a format Incudo has not seen (version ${version}); it was read anyway.`,
     });
   }
 
   const build = firstChild(root, 'build');
   if (!build) {
-    diagnostics.push({ level: 'error', message: 'No <build> block: there is nothing to import.' });
+    diagnostics.push({ level: 'error', message: 'This save records no build, so there is nothing to import.' });
     return empty(diagnostics, version);
   }
 
@@ -326,7 +326,7 @@ function readElementsTree(node: XmlNode, diagnostics: SaveDiagnostic[]): Element
           // sample saves; say so rather than inventing an owner.
           diagnostics.push({
             level: 'warning',
-            message: `Choice "${name}" (${registered}) is not inside any element, so there is no rule it answers. Skipped.`,
+            message: `The save records a choice for "${name}" that belongs to nothing else it records, so it was left out.`,
             where: 'build/elements',
           });
         } else {
@@ -374,7 +374,7 @@ function readElementsTree(node: XmlNode, diagnostics: SaveDiagnostic[]): Element
 
       diagnostics.push({
         level: 'warning',
-        message: `An <element type="${type}"> has neither id nor registered, so it is neither a choice nor a grant. Skipped.`,
+        message: `The save records an entry of type "${type}" that names nothing, so it was left out.`,
         where: 'build/elements',
       });
     }
@@ -394,7 +394,7 @@ function parseRndhp(raw: string, diagnostics: SaveDiagnostic[]): number[] {
     if (!Number.isFinite(value)) {
       diagnostics.push({
         level: 'warning',
-        message: `Ignored "${trimmed}" in rndhp; it is not a number. That level's hit points will need re-entering.`,
+        message: `A recorded hit point roll, "${trimmed}", is not a number and was left out; that level's hit points need entering again.`,
         where: 'build/elements',
       });
       continue;

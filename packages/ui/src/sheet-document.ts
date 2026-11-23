@@ -148,6 +148,15 @@ export function statBlockRowLabel(section: Pick<SheetSectionView, 'label'>, row:
   return row.label === section.label || row.asPrinted ? undefined : row.label;
 }
 
+/**
+ * The name a sheet writes before a row, or nothing when the row is a creature's own print that names it already: a Senses
+ * line printed "tremorsense 60 ft., passive Perception 11" read "Passive Perception: tremorsense 60 ft., passive
+ * Perception 11" (found on the phone emulator). A print that does not name its row ("30 ft., fly 60 ft.") keeps the label.
+ */
+export function rowLabel(row: Pick<SheetRow, 'label' | 'value' | 'asPrinted'>): string | undefined {
+  return row.asPrinted && row.value.toLowerCase().includes(row.label.toLowerCase()) ? undefined : row.label;
+}
+
 /** "A", "A and B", "A, B and C". */
 function joinNames(names: readonly string[]): string {
   return names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;

@@ -129,6 +129,10 @@ async function receiveOne(library: Library, zip: Pick<ZipCodec, 'unzip'>, file: 
 export function receivedView(outcomes: readonly ReceivedOutcome[]): ReceivedView {
   const added = outcomes.filter((outcome) => outcome.status === 'added');
   const saves = outcomes.flatMap((outcome) => (outcome.status === 'aurora-save' ? [outcome.file] : []));
+  const refused = outcomes.length - added.length - saves.length;
+  // A save is offered for import, not refused: a character and a save shared together read "Some files were not added"
+  // (found on the phone emulator).
+  const savesNoun = saves.length === 1 ? 'an Aurora save' : 'Aurora saves';
   const title =
     added.length === outcomes.length
       ? 'Added to your characters'
@@ -136,9 +140,11 @@ export function receivedView(outcomes: readonly ReceivedOutcome[]): ReceivedView
         ? saves.length === 1
           ? 'An Aurora save'
           : 'Aurora saves'
-        : added.length
-          ? 'Some files were not added'
-          : 'Not added';
+        : refused === 0
+          ? `Added, with ${savesNoun} to import`
+          : refused === outcomes.length
+            ? 'Not added'
+            : 'Some files were not added';
   const view: ReceivedView = { title, lines: outcomes.map((outcome) => outcome.message) };
   if (added.length === 1 && added[0]!.status === 'added') view.open = { name: added[0]!.entry.name, title: added[0]!.title };
   if (saves.length) view.saves = { files: saves, label: saves.length === 1 ? 'Import' : `Import ${saves.length} saves` };

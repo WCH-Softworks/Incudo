@@ -79,7 +79,10 @@ export function decisionTags(decision: OpenDecision): string[] {
   if (!decision.multiple && decision.kind !== 'equipment') tags.push(decision.remaining > 0 ? `${decision.remaining} left` : 'all recorded');
   // The character's level it opened at, as the list is ordered (`opensAt`), and not the class's own: "opened at 1" on a
   // Fighter level taken at character level 2 read as wrong.
-  if (decision.openedAt !== undefined) tags.push(`from level ${decision.opensAt ?? decision.openedAt}`);
+  // Not at level 1, where every character starts: "from level 1" beside a race's choices said nothing (found on the
+  // phone emulator).
+  const level = decision.opensAt ?? decision.openedAt;
+  if (level !== undefined && level > 1) tags.push(`from level ${level}`);
   return tags;
 }
 

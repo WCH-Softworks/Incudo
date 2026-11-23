@@ -21,6 +21,7 @@ import {
   listedUsage,
   PREREQUISITES_UNMET,
   rowAside,
+  rowLabel,
   tabStarts,
   attackAside,
   attackWarnings,
@@ -141,9 +142,17 @@ function Section({ section, level, palette }: { section: SheetSectionView; level
       <SectionHead label={section.label} description={section.description} level={level} palette={palette} />
       {section.rows.map((row) => {
         const aside = rowAside(row);
+        const label = rowLabel(row);
+        if (label === undefined)
+          return (
+            <Text key={row.stat} style={[styles.body, text]} selectable>
+              {row.value}
+              {aside !== undefined ? <Text style={{ color: palette.muted }}>{` (${aside})`}</Text> : null}
+            </Text>
+          );
         return (
           <View key={row.stat} style={styles.row}>
-            <Text style={[styles.rowLabel, text]}>{row.label}</Text>
+            <Text style={[styles.rowLabel, text]}>{label}</Text>
             <Text style={[styles.rowValue, text]} selectable>
               {row.value}
               {aside !== undefined ? <Text style={{ color: palette.muted }}>{` (${aside})`}</Text> : null}

@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import { createCharacter, deriveCharacter, MapElementIndex, resolveCharacterKind, type Element, type GameSystem, type Rule } from '@incudo/core';
 
-import { rowAside, statBlockRowLabel } from './sheet-document.ts';
+import { rowAside, rowLabel, statBlockRowLabel } from './sheet-document.ts';
 import { sheetView } from './sheet.ts';
 
 const num = (value: number) => ({ kind: 'number' as const, value });
@@ -133,6 +133,19 @@ test('a stat block line names a row unless its name is the section\'s, one shown
   assert.equal(statBlockRowLabel({ label: 'Senses' }, awareness), undefined, 'a print says what it is');
   const guard = view(OLD).sections.find((s) => s.id === 'head')!.rows.find((r) => r.stat === 'guard')!;
   assert.equal(statBlockRowLabel({ label: 'Head' }, guard), 'Guard', 'a print beside a number in force is not the value');
+});
+
+test('a row whose print names it is written without its label, on any sheet', () => {
+  // Fails if a print naming its own row keeps the label: the phone and the text export read "Passive Perception: tremorsense
+  // 60 ft., passive Perception 11" (found on the phone emulator). A print that does not name it keeps the label.
+  const head = view(NEW).sections.find((s) => s.id === 'head')!;
+  const awareness = head.rows.find((r) => r.stat === 'awareness')!;
+  assert.equal(awareness.asPrinted, true);
+  assert.equal(rowLabel(awareness), undefined, 'keen nose; awareness 11 names Awareness');
+  const pace = head.rows.find((r) => r.stat === 'pace')!;
+  assert.equal(pace.asPrinted, true);
+  assert.equal(rowLabel(pace), pace.label, '30 ft., climb 20 ft. does not name Pace');
+  assert.equal(rowLabel({ label: 'Awareness', value: '11 (awareness)' }), 'Awareness', 'a number in force keeps its label');
 });
 
 test('a print covers the other paces only when it names each one shown, label and number', () => {

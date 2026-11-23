@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { playRestNote, playTemporaryText, playValue, restEffects, type PlayTracker, type PlayView } from '@incudo/ui';
 
@@ -112,6 +112,9 @@ function Pool({ tracker, actions, palette, named }: { tracker: PlayTracker; acti
     if (!ready) return;
     run(amount);
     setTyped('');
+    // The amount is spent, so the keyboard goes: left up, it covered the trackers below and took the taps meant for the
+    // spell slots (found on the phone emulator, after Lose).
+    Keyboard.dismiss();
   };
   return (
     <View style={styles.pool}>

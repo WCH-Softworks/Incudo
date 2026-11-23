@@ -78,28 +78,31 @@ Each under a test that fails without it, and seen again on the emulator.
 - **`package-lock.json` recorded `expo` as `^58.0.0`** where `apps/mobile/package.json` says `~58.0.26` since the upgrade;
   `npm install` rewrites it, and `npm ci` would refuse the pair. Synced.
 
+## Found after the drive, and fixed
+
+Fixed after the drive, each under a test that fails without the fix; not driven again on the emulator.
+
+- **A creature's printed senses repeated their row's label**: the homebrew drake's Senses read "Passive Perception:
+  tremorsense 60 ft., passive Perception 11" on the phone and in the text export. A print that names its own row is now
+  written without the label (`rowLabel`); the desktop's stat block already left it off.
+- **After Lose on Play the keyboard stayed up** over the trackers below it; taps meant for the spell slots landed on the
+  keyboard. Lose, Regain and setting a temporary amount now put it away.
+- **An import's notes quoted the save's markup**: Notes after importing sample 28 read `An <element type="Alignment">
+  has neither id nor registered…`. The importer's notes that quoted tags, attributes or ids are worded for a player
+  ("The save records an entry of type "Alignment" that names nothing, so it was left out."), shared with the desktop.
+- **A share mixing a character and an Aurora save was titled "Some files were not added"** while nothing was refused. It
+  reads "Added, with an Aurora save to import" now; a refusal among them still reads "Some files were not added".
+- From rc.1: the additions' explanation on an NPC spoke of "the character's spellcasting classes" (it speaks of the
+  creature's own spellcasting features now), and a decision opened at level 1 was tagged "from level 1" (no tag at 1).
+
 ## Found and not fixed (for the maintainer)
 
-- **A creature's printed senses replace its Passive Perception row**, label and all: the homebrew drake's Senses read
-  "Passive Perception: tremorsense 60 ft., passive Perception 11". The NPC's and legendary creature's Senses declare the
-  printed line with `stat: perception:passive` (ADR 0126's "a print of a row's own number is that row's value"), so any
-  creature printing more than its passive Perception reads this way, on every sheet and in the desktop's too. A wording
-  of the system definition's, not of the phone's.
 - **A written feature's line on an NPC sets where the stat starts**: Swift Digger's "burrow 10" made the drake's printed
   burrow 20 read 10 (ADR 0063's set, after a creature's print). As designed; the line was left on Sets, which is easy to
   miss.
-- **After Lose on Play the keyboard stays up** over the trackers below it; taps meant for the spell slots landed on the
-  keyboard. Back hides it. Not new with SDK 58 as far as rc.1 says.
-- **An import's notes are the importer's own diagnostics**: Notes after importing sample 28 reads `An <element
-  type="Alignment"> has neither id nor registered, so it is neither a choice nor a grant. Skipped.`, markup and all. Not
-  plain words for a player; shared with the desktop's import.
-- **A share mixing a character and an Aurora save is titled "Some files were not added"** while the save is being offered
-  for import, not refused. The lines under it say what happened to each.
 - Android's own picker took only one of five long-pressed files in its multi-select (its behaviour, not the app's); each
   was added on its own.
-- Still open from rc.1: an unsaved character on the phone is kept nowhere (after the listing, the maintainer's call); the
-  additions' explanation on an NPC speaks of "the character's spellcasting classes"; a level 1 decision is tagged "from
-  level 1".
+- Still open from rc.1: an unsaved character on the phone is kept nowhere (after the listing, the maintainer's call).
 
 ## The release build
 

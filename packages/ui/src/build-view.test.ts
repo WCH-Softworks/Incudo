@@ -111,6 +111,9 @@ test("a decision's tags: optional, what is left, where it opened; a set has no c
   // Perturbation: write the class's own level and a Fighter 1 taken at character level 2 reads "from level 1".
   assert.deepEqual(decisionTags(decision({ kind: 'select', blocking: true, remaining: 1, openedAt: 1, opensAt: 2 })), ['1 left', 'from level 2']);
   assert.deepEqual(decisionTags(decision({ kind: 'pick', multiple: true, blocking: false })), ['optional']);
+  // Perturbation: tag every level and a race's choices read "from level 1", which every character starts at.
+  assert.deepEqual(decisionTags(decision({ kind: 'select', blocking: true, remaining: 2, openedAt: 1, opensAt: 1 })), ['2 left']);
+  assert.deepEqual(decisionTags(decision({ kind: 'select', blocking: true, remaining: 2, openedAt: 0 })), ['2 left']);
 });
 
 test("a step's status names what holds it shut", () => {

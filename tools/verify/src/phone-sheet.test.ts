@@ -47,3 +47,20 @@ test('the phone says under Open decisions that required spell choices wait furth
   assert.match(build, /\{spellsWaiting \? <Body tone="muted">\{spellsWaiting\}<\/Body> : null\}/);
   assert.match(build, /groups\.owed === 0 && !spellsWaiting \? <Body tone="muted">\{NOTHING_REQUIRED\}/);
 });
+
+test('the phone and the text export leave a row’s label off a print that names it', () => {
+  // Perturbation: write `row.label` before every row again in either, and a creature's senses read "Passive Perception:
+  // tremorsense 60 ft., passive Perception 11" (found on the phone emulator). `rowLabel` itself is held in packages/ui.
+  const markdown = readFileSync(new URL('../../../packages/ui/src/sheet-markdown.ts', import.meta.url), 'utf8');
+  assert.match(source, /const label = rowLabel\(row\);/);
+  assert.doesNotMatch(source, /\{row\.label\}/);
+  assert.match(markdown, /const label = rowLabel\(row\);/);
+  assert.doesNotMatch(markdown, /\$\{e\(row\.label\)\}/);
+});
+
+test('the phone puts the keyboard away once an amount is lost, regained or set', () => {
+  // Perturbation: drop the call and the keyboard stays over the trackers after Lose, taking taps meant for the spell slots
+  // (found on the phone emulator).
+  const play = readFileSync(new URL('../../../apps/mobile/src/PlayPanel.tsx', import.meta.url), 'utf8');
+  assert.match(play, /setTyped\(''\);\s*(?:\/\/[^\n]*\n\s*)*Keyboard\.dismiss\(\);/);
+});

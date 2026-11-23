@@ -362,7 +362,7 @@ function toChoices(
     if (!decision.ruleName) {
       diagnostics.push({
         level: 'warning',
-        message: `A choice of ${decision.registered} on ${decision.ownerId} has no name, so there is no rule to attach it to. Skipped.`,
+        message: `The save records a choice with no name, so it was left out.`,
         where: 'build/elements',
       });
       continue;
