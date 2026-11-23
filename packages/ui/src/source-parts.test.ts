@@ -13,7 +13,7 @@ import { auroraConverter, convertAuroraSource } from '@incudo/aurora-import';
 import { ContentLibrary, SourceProfile, type IndexTreeNode } from '@incudo/content';
 import { MemoryStorage, type ContentBundle, type FetchResult, type Fetcher } from '@incudo/core';
 
-import { addContentFiles, decodeText, describeContentFiles } from './content-files.ts';
+import { addContentFiles, contentFileName, decodeText, describeContentFiles } from './content-files.ts';
 import { excludedWithin, partsView, togglePart, type PartView } from './source-parts.ts';
 
 const CORPUS: Record<string, string[]> = {
@@ -158,4 +158,48 @@ test('a byte order mark is dropped, and UTF-16 from a Windows editor is read', (
   utf16[1] = 0xfe;
   for (let i = 0; i < text.length; i++) utf16[2 + i * 2] = text.charCodeAt(i);
   assert.equal(decodeText(utf16), '<elements/>');
+});
+
+test("UTF-16 is read on a phone too, where TextDecoder knows only UTF-8 (Hermes)", () => {
+  // Measured on the emulator (CLAUDE.md, ADR 0083): Hermes's `TextDecoder('utf-16le')` throws. A phone adding an Aurora
+  // file a Windows editor saved as UTF-16 got that error instead of the file. Fails if decodeText asks TextDecoder for it.
+  const Native = globalThis.TextDecoder;
+  globalThis.TextDecoder = class extends Native {
+    constructor(label?: string, options?: ConstructorParameters<typeof TextDecoder>[1]) {
+      if (label && label.toLowerCase() !== 'utf-8') throw new RangeError(`Unknown encoding: ${label}`);
+      super(label, options);
+    }
+  } as typeof TextDecoder;
+  try {
+    const text = '<elements name="Café ✓ 𝔇"/>';
+    const units = [...text].flatMap((ch) => {
+      const code = ch.codePointAt(0)!;
+      if (code < 0x10000) return [code];
+      const v = code - 0x10000;
+      return [0xd800 + (v >> 10), 0xdc00 + (v & 0x3ff)];
+    });
+    const le = new Uint8Array([0xff, 0xfe, ...units.flatMap((u) => [u & 0xff, u >> 8])]);
+    const be = new Uint8Array([0xfe, 0xff, ...units.flatMap((u) => [u >> 8, u & 0xff])]);
+    assert.equal(decodeText(le), text);
+    assert.equal(decodeText(be), text);
+  } finally {
+    globalThis.TextDecoder = Native;
+  }
+});
+
+test("a picked file a provider names by an id is added by what it holds, under the name its own info gives", async () => {
+  // Found on the phone emulator: a file picked from Android's Downloads arrived as "msf:52" and was refused as "not an
+  // .xml file". Fails if an extensionless name is checked by its extension, or a file that is no elements file is named.
+  const named = '<?xml version="1.0"?>\n<!-- a note -->\n<elements><info><name>Blades: Homebrew</name></info><element name="Blade" type="Magic Item" source="Homebrew" id="ID_HB_BLADE" /></elements>';
+  assert.equal(contentFileName('msf:52', named), 'Blades Homebrew.xml');
+  assert.equal(contentFileName('1000034', HOMEBREW), 'Added file.xml');
+  assert.equal(contentFileName('msf:53', '<character />'), 'msf:53');
+  assert.equal(contentFileName('blades.txt', HOMEBREW), 'blades.txt');
+  const storage = new MemoryStorage();
+  const profile = new SourceProfile(storage);
+  const results = await addContentFiles([{ name: 'msf:52', bytes: new TextEncoder().encode(named) }], profile, { fetcher: fetcher({}), storage, converter: auroraConverter }, {
+    systemId: 'dnd5e',
+  });
+  assert.deepEqual(results.map((r) => [r.name, !!r.added, r.failed]), [['Blades Homebrew.xml', true, undefined]]);
+  assert.deepEqual(profile.sources.map((s) => s.id), ['local:Blades Homebrew.xml']);
 });

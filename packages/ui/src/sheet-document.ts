@@ -351,7 +351,8 @@ export function tabStarts(document: Pick<SheetDocument, 'tabs' | 'sections'>): M
     if (section.tab === undefined || seen.has(section.tab)) continue;
     seen.add(section.tab);
     const label = document.tabs?.find((tab) => tab.id === section.tab)?.label;
-    if (label !== undefined) out.set(section.id, label);
+    // A tab whose first section carries the tab's own name is headed by that section: "Spells" over "Spells" read twice.
+    if (label !== undefined && label.trim().toLowerCase() !== section.label.trim().toLowerCase()) out.set(section.id, label);
   }
   return out;
 }

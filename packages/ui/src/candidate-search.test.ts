@@ -45,3 +45,12 @@ test('matchCount reports the true total even when the limit cuts the list', () =
   assert.equal(result.matches.length, 2);
   assert.equal(result.matchCount, 4);
 });
+
+test('a list given in order keeps it: d4 before d10, with nothing typed and with a query', () => {
+  // Perturbation: dropping `ordered` sorts the phone's die list by label, d10 first (found on the emulator, ADR 0132).
+  const dice = ['d4', 'd6', 'd8', 'd10', 'd12'].map((label) => ({ id: label, label }));
+  assert.deepEqual(searchCandidates(dice, '', Infinity, undefined, true).matches.map((option) => option.label), ['d4', 'd6', 'd8', 'd10', 'd12']);
+  assert.deepEqual(searchCandidates(dice, 'd1', Infinity, undefined, true).matches.map((option) => option.label), ['d10', 'd12']);
+  // Unordered, as content is listed: alphabetically.
+  assert.deepEqual(searchCandidates(dice, '').matches.map((option) => option.label), ['d10', 'd12', 'd4', 'd6', 'd8']);
+});

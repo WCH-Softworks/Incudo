@@ -32,7 +32,14 @@ import { MapElementIndex, systemLineage, type ElementIndex, type GameSystem, typ
 import {
   describeContentFiles,
   missingNote,
+  sourceOverlapNote,
+  partMeta,
+  partsLoadingLine,
+  partsOffNote,
   partsView,
+  PARTS_HINT,
+  refreshNote,
+  updateNote,
   sharedSourceNote,
   togglePart,
   type ContentFileResult,
@@ -567,7 +574,7 @@ function SourceRow({
   // refresh, no parts.
   const homebrew = isHomebrewSource(source);
   const file = isFileSource(source) || homebrew;
-  const off = source.excluded?.length ?? 0;
+  const partsOff = partsOffNote(source.excluded);
 
   return (
     <article className="source">
@@ -606,11 +613,7 @@ function SourceRow({
         )}
       </p>
       {sharedWith && <p className="card-meta">{sharedSourceNote(sharedWith)}</p>}
-      {off > 0 && (
-        <p className="card-meta">
-          {off} {off === 1 ? 'part' : 'parts'} switched off. <strong>Choose parts</strong> shows which.
-        </p>
-      )}
+      {partsOff && <p className="card-meta">{partsOff}</p>}
       <p className="card-meta">
         {homebrew ? '' : source.version ? `version ${source.version}` : 'no version declared'}
         {/* What it contributes, which is the question "see what each source contributes" asks. */}
@@ -709,38 +712,9 @@ function SourceRow({
   );
 }
 
-/** Reporting, never acting. A check that quietly refreshed would be the silent update ADR 0012 refuses. */
+/** Reporting, never acting (ADR 0050). The words are `updateNote`'s. */
 function UpdateNote({ status }: { status: UpdateStatus }): React.JSX.Element {
-  const unreached =
-    status.state !== 'unknown' && status.unanswered ? ` ${status.unanswered} could not be reached.` : '';
-  if (status.state === 'current') {
-    if (status.basis === 'files') {
-      return <p className="card-note">Up to date: none of {status.checked} files has changed.{unreached}</p>;
-    }
-    return (
-      <p className="card-note">
-        The index still says {status.version ?? 'the same version'}. Only the index version could be compared
-        here, and a source can change without it moving.
-      </p>
-    );
-  }
-  if (status.state === 'outdated') {
-    if (status.basis === 'files') {
-      return (
-        <p className="card-note">
-          Updated upstream: {status.changed} of {status.checked} files have changed.{unreached}{' '}
-          <strong>Refresh</strong> fetches them.
-        </p>
-      );
-    }
-    return (
-      <p className="card-note">
-        Updated upstream: you have {status.local ?? 'an unknown version'}, the index now says{' '}
-        {status.remote ?? 'something newer'}. <strong>Refresh</strong> fetches it.
-      </p>
-    );
-  }
-  return <p className="card-note">Could not tell: {status.reason}</p>;
+  return <p className="card-note">{updateNote(status)}</p>;
 }
 
 /**
@@ -789,25 +763,18 @@ function IdList({ ids }: { ids: readonly string[] }): React.JSX.Element {
 }
 
 /**
- * What this source defines that another enabled source also defines — ADR 0054. The one lower in the list is used, and
- * this says which that is; it never says which version is right. Things both define the same way are counted and not
- * listed, because which one is used changes nothing.
+ * What this source defines that another enabled source also defines — ADR 0054. The words are `sourceOverlapNote`'s: which one
+ * is used, never which is right.
  */
 function OverlapNote({ overlap, other }: { overlap: SourceOverlap; other: string }): React.JSX.Element {
-  const differ = overlap.differ.length;
-  const total = differ + overlap.same;
-  const shared = `Also defines ${total.toLocaleString()} ${total === 1 ? 'thing' : 'things'} ${other} defines`;
-  if (!differ) return <p className="card-note">{shared}, the same way.</p>;
-  const used = overlap.used === 'this' ? "This source's" : `${other}'s`;
+  const note = sourceOverlapNote(overlap, other);
+  if (!note.differ.length) return <p className="card-note">{note.summary}</p>;
   return (
     <details className="card-note">
-      <summary>
-        {shared}, {total === 1 ? 'differently' : `${differ.toLocaleString()} of them differently`}. {used} version is
-        used.
-      </summary>
+      <summary>{note.summary}</summary>
       <p>Defined differently:</p>
       <ul>
-        {overlap.differ.map((id) => (
+        {note.differ.map((id) => (
           <li key={id}>
             <code>{id}</code>
           </li>
@@ -817,25 +784,17 @@ function OverlapNote({ overlap, other }: { overlap: SourceOverlap; other: string
   );
 }
 
-/** What a refresh did, in numbers the user can check against what they expected. */
+/** What a refresh did, in numbers the user can check against what they expected. The words are `refreshNote`'s. */
 function RefreshNote({ report }: { report: RefreshReport | { failed: string } }): React.JSX.Element {
-  if ('failed' in report) {
-    return <p className="card-note">Refresh failed, and the saved copy was left as it was: {report.failed}</p>;
-  }
-  const parts = [`${report.fetched} downloaded`];
-  if (report.unchanged) parts.push(`${report.unchanged} unchanged`);
-  if (report.removed) parts.push(`${report.removed} no longer listed and removed`);
+  const note = refreshNote(report);
   return (
     <>
-      <p className="card-note">Refreshed: {parts.join(', ')}.</p>
-      {report.kept.length > 0 && (
+      <p className="card-note">{note.summary}</p>
+      {note.keptSummary && (
         <details className="card-note">
-          <summary>
-            {report.kept.length} {report.kept.length === 1 ? 'file' : 'files'} could not be reached, so the saved
-            copy was kept
-          </summary>
+          <summary>{note.keptSummary}</summary>
           <ul>
-            {report.kept.map((file) => (
+            {note.kept.map((file) => (
               <li key={file.url}>
                 <code>{file.url}</code>: {file.reason}
               </li>
@@ -911,13 +870,8 @@ function PartsChooser({
   return (
     <section className="parts">
       <h4>Parts of {view.name}</h4>
-      <p className="hint">
-        Switch off what you do not want loaded. Anything under a part that is off is left out too. Content that builds
-        on a part you switch off will say what it is missing on the source's line.
-      </p>
-      <p className="card-meta">
-        {view.filesLoading.toLocaleString()} of {view.files.toLocaleString()} files will load.
-      </p>
+      <p className="hint">{PARTS_HINT}</p>
+      <p className="card-meta">{partsLoadingLine(view.filesLoading, view.files)}</p>
       <ul className="parts-tree">
         {view.parts.map((part) => (
           <PartItem key={part.key} part={part} depth={0} onToggle={toggle} />
@@ -960,16 +914,11 @@ function PartItem({
         {part.label}
       </label>
       {part.listedAs !== part.label && <span className="card-meta">{part.listedAs}</span>}
-      {part.isIndex && !part.repeated && (
-        <span className="card-meta">
-          {part.on && part.reachable && part.filesLoading !== part.files
-            ? `${part.filesLoading} of ${part.files} files`
-            : `${part.files} ${part.files === 1 ? 'file' : 'files'}`}
+      {partMeta(part).map((meta) => (
+        <span key={meta} className={part.failed && meta.startsWith('could not') ? 'card-meta bad' : 'card-meta'}>
+          {meta}
         </span>
-      )}
-      {part.repeated && <span className="card-meta">listed again here; it loads once, where it is listed first</span>}
-      {part.tooDeep && <span className="card-meta">too deeply nested to be loaded</span>}
-      {part.failed && <span className="card-meta bad">could not be read: {part.failed}</span>}
+      ))}
     </span>
   );
 

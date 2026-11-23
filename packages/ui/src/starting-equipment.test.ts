@@ -192,6 +192,9 @@ test('taking writes the bag and the purse once, equipping what a free slot takes
   assert.equal(smith.status, 'taken');
   assert.deepEqual(smith.taken!.entries, ['Apron', 'Hammer', 'Tongs', 'Bellows', 'Nail ×20']);
   assert.equal(b.getState().decisions.some((d) => d.id === startingKey('SMITH')), false);
+  // Perturbation: leave a taken package out of the step's `taken` and its line reads "nothing to choose" once both are
+  // taken (found on the phone emulator).
+  assert.equal(b.getState().steps.find((s) => s.id === 'kit')!.taken, true);
 });
 
 test('an option is refused while it owes answers, and writes nothing', () => {

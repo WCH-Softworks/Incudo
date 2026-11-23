@@ -48,6 +48,7 @@ import {
   type StatDef,
 } from '@incudo/core';
 
+import { formatProgress } from './character-kinds.ts';
 import { htmlToRuns, runsText } from './html-blocks.ts';
 import { entryName, entryNeedsAttunement } from './inventory.ts';
 import { purseRows, type PurseRow } from './money.ts';
@@ -238,10 +239,13 @@ export interface SheetAttack {
   notes?: string[];
 }
 
-/** A spell row with no class to read its numbers from (ADR 0111). */
-export const SPELL_NO_CLASS = 'No class set: choose the class it is cast as on Build, under Spells';
+/**
+ * A spell row with no class to read its numbers from (ADR 0111). Both sentences name the heading both apps put the
+ * editor under (`SPELL_ATTACKS_LABEL`): "under Spells" named the desktop's tab, which the phone does not have.
+ */
+export const SPELL_NO_CLASS = 'No class set: choose the class it is cast as on Build, under Spell attacks';
 /** A spell row whose damage nothing states and the user has not chosen (ADR 0111). */
-export const SPELL_NO_DAMAGE = 'Damage not set: choose its dice on Build, under Spells';
+export const SPELL_NO_DAMAGE = 'Damage not set: choose its dice on Build, under Spell attacks';
 /** A spell row the user said rolls nothing (ADR 0111). */
 export const SPELL_ROLLS_NOTHING = 'no damage';
 
@@ -385,7 +389,8 @@ export function formatStatValue(stat: ResolvedStat | undefined, signed: boolean)
   if (!stat) return '—';
   if (stat.text !== undefined) return stat.text.trim() === '' ? '—' : stat.text;
   if (signed && stat.value >= 0) return `+${stat.value}`;
-  return String(stat.value);
+  // A quarter is written as a book writes it, 1/4: a challenge rating read "0.25" on every sheet (found on the phone).
+  return formatProgress(stat.value);
 }
 
 /**
@@ -711,10 +716,16 @@ function mergePrinted(
  * line already names the other speeds.
  */
 function dropCoveredByPrint(views: SheetSectionView[], defOf: ReadonlyMap<SheetSectionView, SheetSectionDef>): void {
-  const printedStats = new Set(views.flatMap((view) => view.rows.filter((row) => row.asPrinted).map((row) => row.stat.toLowerCase())));
+  const printText = new Map<string, string>();
+  for (const view of views) for (const row of view.rows) if (row.asPrinted) printText.set(row.stat.toLowerCase(), row.value.toLowerCase());
   for (let at = views.length - 1; at >= 0; at--) {
     const covered = defOf.get(views[at]!)?.coveredByPrint;
-    if (covered !== undefined && printedStats.has(covered.toLowerCase())) views.splice(at, 1);
+    const print = covered === undefined ? undefined : printText.get(covered.toLowerCase());
+    if (print === undefined) continue;
+    // Only what the print names, label and number: a burrow speed a DM writes on a Wolf, whose print says only "40 ft.",
+    // was left out with the rest and shown nowhere.
+    const named = views[at]!.rows.every((row) => print.includes(`${row.label.toLowerCase()} ${row.value.toLowerCase()}`));
+    if (named) views.splice(at, 1);
   }
 }
 

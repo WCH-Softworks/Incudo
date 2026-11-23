@@ -77,7 +77,9 @@ export function decisionTags(decision: OpenDecision): string[] {
   if (!decision.blocking) tags.push('optional');
   // A starting package is taken whole, so it owes no count (ADR 0087); what an option still owes is on the option.
   if (!decision.multiple && decision.kind !== 'equipment') tags.push(decision.remaining > 0 ? `${decision.remaining} left` : 'all recorded');
-  if (decision.openedAt !== undefined) tags.push(`opened at ${decision.openedAt}`);
+  // The character's level it opened at, as the list is ordered (`opensAt`), and not the class's own: "opened at 1" on a
+  // Fighter level taken at character level 2 read as wrong.
+  if (decision.openedAt !== undefined) tags.push(`from level ${decision.opensAt ?? decision.openedAt}`);
   return tags;
 }
 
@@ -277,6 +279,12 @@ export function levelControlView(
 /** What the level control says under its buttons. */
 export const LEVEL_HINT =
   'What a new level opens arrives in Open decisions, tagged with the level that raised it. Removing a level keeps what was chosen for it: those choices wait under Not counting and count again if the level comes back.';
+
+/**
+ * What the level control says before a class is chosen. It used to add "Further levels can then go to other classes",
+ * which is false of a character with multiclassing switched off (found on the phone emulator).
+ */
+export const LEVEL_NO_CLASS_HINT = 'Choose a class in Open decisions.';
 
 /** What it says beside the class a level up goes to, when another class may be added. */
 export const LEVEL_MULTICLASS_HINT = 'Choose another class here to take this level in it.';
