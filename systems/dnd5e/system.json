@@ -794,8 +794,8 @@
 
       "additions": {
         "types": ["Feat", "Racial Trait", "Class Feature", "Archetype Feature", "Background Feature", "Proficiency", "Language", "Condition", "Spell"],
-        "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is cast as one of the character's spellcasting classes, which you choose (the only one is chosen for you): that class's save DC, attack bonus and spell slots apply to it, and if the class prepares spells it is always prepared. Cast through no class, none of them apply.",
-        "blocks": { "types": ["Spell"], "label": "Cast as", "with": "cast as {name}", "none": "cast through no class" }
+        "description": "Anything from your content, whatever its prerequisites: one whose prerequisites are not met is added and marked. A spell added here is cast through one of the creature's own spellcasting features, which you choose (the only one is chosen for you): its save DC, attack bonus and spell slots apply to the spell. Cast through none, none of them apply.",
+        "blocks": { "types": ["Spell"], "label": "Cast as", "with": "cast as {name}", "none": "cast through no spellcasting" }
       },
 
       "references": {
@@ -825,7 +825,7 @@
       ],
 
       "buildSteps": [
-        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
+        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "listedWithRequired": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
         { "id": "race", "label": "Race", "types": ["Race"], "pick": true, "description": "The race this one is, if it has one: a dwarf guard, a human bandit. The race adds to its scores and gives its speed, senses, languages and traits. Skip it for a creature, or to build one by hand." },
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one, and what its race adds is added to either.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },
@@ -925,7 +925,7 @@
       },
 
       "buildSteps": [
-        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
+        { "id": "creature", "label": "Creature", "types": ["Creature", "Companion"], "pick": true, "listedWithRequired": true, "description": "The creature this one is, if your content has it. Skip it to build one by hand." },
         { "id": "race", "label": "Race", "types": ["Race"], "pick": true, "description": "The race this one is, if it has one: a dwarf guard, a human bandit. The race adds to its scores and gives its speed, senses, languages and traits. Skip it for a creature, or to build one by hand." },
         { "id": "abilities", "label": "Ability Scores", "types": [], "required": true, "description": "What the creature prints, or what you enter. A score you enter replaces the printed one, and what its race adds is added to either.",
           "budget": { "stat": "ability points", "targets": ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"], "methods": ["manual"] } },

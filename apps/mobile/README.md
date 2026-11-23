@@ -1,6 +1,6 @@
 # Incudo mobile
 
-Expo (React Native), SDK 57, run in Expo Go, and in a development build of its own for receiving files. ROADMAP Phase 6; the choices and the numbers behind them are
+Expo (React Native), SDK 58, run in Expo Go, and in a development build of its own for receiving files. ROADMAP Phase 6; the choices and the numbers behind them are
 [ADR 0083](../../docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md).
 
 What it does today: a library of characters kept in the app's own folder, a file added to it through the system's
@@ -31,7 +31,16 @@ somewhere the phone's file picker reaches (its Downloads, a cloud drive), and ta
 
 Expo Go cannot be offered a file by another app (its manifest is Expo's), so receiving one needs the app's own build
 ([ADR 0099](../../docs/adr/0099-a-file-shared-to-the-phone-is-added-as-a-picked-one-is-and-receiving-needs-the-app-s-own-build.md)).
-With the Android SDK and a JDK (`ANDROID_HOME`, `JAVA_HOME`) and an emulator or phone connected:
+With the Android SDK and a JDK (`ANDROID_HOME`, `JAVA_HOME`: Android Studio's bundled one builds it, Java 25 included,
+with no pin) and an emulator or phone connected. On Windows, first name a CMake whose Ninja handles long paths in your
+own `%USERPROFILE%\.gradle\gradle.properties`, never in the repository (the repository's CLAUDE.md, under ADR 0132):
+
+```properties
+android.cmakeVersion=3.31.6
+```
+
+(3.31.6 from Android Studio's SDK Manager, or any CMake on your PATH beside a Ninja of 1.12 or later, by its exact
+version.) Then:
 
 ```bash
 npm run mobile:build:android

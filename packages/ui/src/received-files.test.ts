@@ -190,3 +190,17 @@ test("a provider's id for a file is not quoted as its name", async () => {
   // Fails if any name is quoted whatever its shape ("msf:44" is what Android's Recent files hand the picker).
   assert.deepEqual(outcomes.map((outcome) => outcome.message.split(' is ')[0]), ['The file', 'The file', '"save.dnd5e"']);
 });
+
+test('a character and an Aurora save shared together are not titled as refused', () => {
+  // Fails if the title is "Some files were not added" while nothing was refused (found on the phone emulator): the save is
+  // offered for import under it.
+  const file = { name: 'hero.dnd5e', bytes: new Uint8Array() };
+  const added = { status: 'added' as const, entry: { name: 'a.incu', form: 'zip' as const }, title: 'A', message: 'Added A.' };
+  const save = { status: 'aurora-save' as const, file, message: '"hero.dnd5e" is an Aurora save.' };
+  const refused = { status: 'refused' as const, message: '"x.txt" is not an Incudo character file (.incu).' };
+  assert.equal(receivedView([added, save]).title, 'Added, with an Aurora save to import');
+  assert.equal(receivedView([added, save, save]).title, 'Added, with Aurora saves to import');
+  assert.equal(receivedView([added, save, refused]).title, 'Some files were not added');
+  assert.equal(receivedView([save, refused]).title, 'Some files were not added', 'the save is still offered');
+  assert.equal(receivedView([refused]).title, 'Not added');
+});

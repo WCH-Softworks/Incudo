@@ -26,6 +26,7 @@ import {
   PREREQUISITES_UNMET,
   purseText,
   rowAside,
+  rowLabel,
   type SheetDocument,
 } from './sheet-document.ts';
 import type { SheetListedElement, SheetSectionView } from './sheet.ts';
@@ -130,7 +131,8 @@ function sectionItems(section: SheetSectionView): string[] {
   return [
     ...section.rows.map((row) => {
       const aside = rowAside(row);
-      return `${e(row.label)}: ${e(row.value)}${aside !== undefined ? ` (${e(aside)})` : ''}`;
+      const label = rowLabel(row);
+      return `${label !== undefined ? `${e(label)}: ` : ''}${e(row.value)}${aside !== undefined ? ` (${e(aside)})` : ''}`;
     }),
     ...(section.attacks ?? []).map((attack) => attackHead(attack, `**${e(attack.name)}**`, e)),
     ...entries.map(elementItem),

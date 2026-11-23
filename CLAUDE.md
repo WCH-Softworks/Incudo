@@ -408,9 +408,9 @@ lists a character's attacks, every weapon in its bag with its bonus and damage, 
 receives a file shared to it (ADR 0099, below), an Aurora save imported on a tap (ADR 0101, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
-- **`apps/mobile` is a workspace** (Expo SDK 57, React Native 0.86, React 19.2, run in Expo Go). The install went from
-  45 packages and 6 s to 519 and 69 s; `workspace.test.ts` asserts it is in. The desktop keeps React 19.3 nested;
-  `metro.config.cjs` pins `react` to the app's copy and maps `@repo/systems` and `@repo/schemas` as Vite does. The
+- **`apps/mobile` is a workspace** (Expo SDK 58, React Native 0.88, React 19.3, run in Expo Go). The install went from
+  45 packages and 6 s to 519 and 69 s; `workspace.test.ts` asserts it is in. Since SDK 58 the phone and the desktop
+  use the same React; `metro.config.cjs` still pins `react` to the app's copy and maps `@repo/systems` and `@repo/schemas` as Vite does. The
   package is an ES module (so `tools/verify` can import `@incudo/mobile/zip`), hence the `.cjs` Metro config.
 - **`apps/mobile/src/platform.ts` is the only Expo-aware file**: `Storage` is one SQLite table (measured: a download is
   800 values, 14.75 MB, twenty keys over 255 bytes), the library is the app's own `library/` folder (the maintainer's
@@ -431,7 +431,8 @@ Phase 6's first item and the read half of its second (it builds nothing). Things
   `application/octet-stream` on purpose: `application/zip` makes Android append ".zip". The provider never replaces a
   file ("name (1).incu", reported as such). Expo Go's floating tools button sits over the header's right corner; switch
   it off in its menu before tapping Export in a drive.
-- **No icon or splash**: Expo's stand in, a marked gap (`brand/`'s tile is undecided). Never generate one.
+- **No icon or splash**: Expo's stand in, a marked gap (`brand/`'s tile is undecided). Never generate one. The Play
+  listing waits on them too (ADR 0132).
 
 **A character is played on the phone and the desktop alike, and what is spent is an input on it**
 ([ADR 0084](docs/adr/0084-play-state-is-an-input-on-the-character-and-what-it-tracks-is-read-from-the-sheet.md)),
@@ -577,6 +578,47 @@ Phase 6's last item. Things to know before touching it:
   at once with taken names, the source off; every sheet equals the desktop's import. A fresh emulator imports in 6.3 s
   (3.6 s load); one swapping for hours took minutes, which is the machine. Not run: Expo Go's picker, "Open with", a real
   phone, iOS, a release build.
+
+**The phone app is released on Google Play, built and signed by CI with an upload key the maintainer keeps**
+([ADR 0132](docs/adr/0132-the-phone-app-is-released-on-google-play-built-and-signed-by-ci-with-an-upload-key-the-maintainer-keeps.md),
+2026-11-19; Beyond 1.0's "1.0.x"). Things to know before touching it:
+
+- **A release build was measured first**: AAB 56.4 MB, Hermes bytecode, no launcher, 1.6 s cold on the emulator, and a
+  file shared while the app is closed arrives readable (ADR 0099's gap was the development launcher's).
+- **On Windows the phone builds only with a CMake whose Ninja handles long paths, chosen per machine, never in the
+  repository** (measured 2026-11-23). The native build's object paths pass 260 characters (React Native 0.88's
+  safe-area-context codegen: 264 from a checkout at `C:\ib`, more under `.claude/worktrees/<name>`; the checkout root
+  appears in each path twice, so no short folder fixes it). Windows' long paths are on; what stops it is AGP's default
+  CMake 3.22.1, which bundles Ninja 1.10.2, and Ninja handles long paths from 1.12. Set `android.cmakeVersion=<version>`
+  in `%USERPROFILE%\.gradle\gradle.properties` (Expo's root-project plugin applies it to every native module), naming a
+  CMake the build finds in the SDK or on PATH, by its exact version: the maintainer's machine has it set to its own CMake
+  4.2.1 with winget's Ninja 1.13.2 on PATH; Expo documents the SDK Manager's CMake 3.31.6 (Ninja 1.12.1). With it, full
+  debug and release APKs build from a worktree and run. **Never put the property in `app.json` or the committed
+  `gradle.properties`**: CI builds on Linux, has no such limit, and would fail on a CMake it lacks. No short-path clone,
+  `subst` drive (it breaks Metro) or `buildStagingDirectory` edit is needed; the SDK 58 drive's builds used the last
+  before this was measured. Java 25 (Android Studio's JBR) builds SDK 58 with no `gradle-daemon-jvm.properties` pin.
+- **The phone has its own version** (`app.json` = `apps/mobile/package.json`, from 1.0.0) and
+  `versionCode = MAJOR·1e6 + MINOR·1e4 + PATCH·100 + N` (N a candidate's number, 99 the release), computed only by
+  `apps/mobile/scripts/release-version.cjs`. A committed `app.json` holds N = 99; the workflow writes the tag's.
+- **`.github/workflows/mobile-release.yml`** builds the AAB on a `mobile-vX.Y.Z[-rc.N]` tag, signs it with the upload key
+  from four secrets (`ANDROID_UPLOAD_KEYSTORE` and its passwords and alias), refuses an unsigned one and keeps it as an
+  artifact. It publishes nothing; the maintainer uploads to Play by hand. No Play credentials anywhere.
+- **The release manifest asks for Internet and network/Wi-Fi state only**: `blockedPermissions` removes
+  `SYSTEM_ALERT_WINDOW`, external storage and `VIBRATE`, which Expo's template and the dev menu add. **Backup** takes
+  `library/` and `SQLite/` only (`apps/mobile/plugins/backup-rules.cjs`), never `sources/`. **NetInfo never pings**
+  (`reachabilityShouldRun: () => false`). `docs/PRIVACY.md` says all of it, and `mobile-release.test.ts` holds the
+  permission table, the rules, the version and the workflow to the files.
+- **About on the phone** (`AboutScreen.tsx`, from the Characters screen's foot): `about.ts`'s words, every shipped
+  system's notice, the privacy link, and **Ko-fi only** (`PHONE_SUPPORT_LINKS`, the maintainer's call; Play's Payments
+  policy allows donation links only to organisations it validates as tax-exempt, so if review objects that list empties).
+- **The phone's Content screen does what the desktop's Sources pane does**: an Aurora file as a source, parts, a check for
+  updates, moving, and each source's notes; it loads the switched-on sources when it opens, and a switch loads a loaded
+  system again. The words are `source-notes.ts`'s (`updateNote`, `sourceOverlapNote`, `refreshNote`, `partsOffNote`,
+  `partMeta`), which the desktop's pane now prints too.
+- **`decodeText` reads UTF-16 by hand**: Hermes's `TextDecoder` knows UTF-8 only. **The phone's picker keeps a list of
+  values in its given order** (`searchCandidates(…, ordered)` when `details: false`).
+- **The drive's record is `docs/release-checks/mobile-v1.0.0-rc.1.md`**, with what was found and not fixed. Never
+  generate the icon, splash or store graphics: they are the maintainer's.
 
 **A user system may be an overlay of another: a patch applied to its parent on every load and validated as the system it
 makes** ([ADR 0102](docs/adr/0102-an-overlay-is-a-patch-applied-to-its-parent-on-every-load-and-validated-as-the-system-it-makes.md)),

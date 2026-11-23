@@ -21,6 +21,7 @@
 import { useState } from 'react';
 import {
   LEVEL_HINT,
+  LEVEL_NO_CLASS_HINT,
   LEVEL_MULTICLASS_HINT,
   LEVEL_ROWS_LABEL,
   SPLIT_LABEL,
@@ -176,7 +177,7 @@ export function ClassLevels({
       </div>
 
       {state && state.firstClassId === undefined && (
-        <p className="hint">Choose a class in Open decisions. Further levels can then go to other classes.</p>
+        <p className="hint">{LEVEL_NO_CLASS_HINT}</p>
       )}
 
       {offNote && <p className={classes!.classes.length > 1 ? 'class-flag' : 'hint'}>{offNote}</p>}

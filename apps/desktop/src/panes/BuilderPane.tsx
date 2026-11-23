@@ -932,7 +932,7 @@ function Decision({
     <>
       <div className="decision-head">
         <span className="label">{decision.label}</span>
-        {/* "optional", "2 left" (never for a set), "opened at 4" in the granting element's own track (ADR 0015). */}
+        {/* "optional", "2 left" (never for a set), "from level 4", the character's level it opened at. */}
         {decisionTags(decision).map((tag) => (
           <span key={tag} className={/ left$|^all recorded$/.test(tag) ? 'tag open' : 'tag'}>
             {tag}

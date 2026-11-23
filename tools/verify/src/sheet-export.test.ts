@@ -69,6 +69,7 @@ import {
   newCharacterOfKind,
   openSelfClosingTags,
   packCharacter,
+  rowLabel,
   runsText,
   sheetDocument,
   sheetView,
@@ -147,7 +148,12 @@ function markdownProblems(document: SheetDocument, markdown: string): string[] {
   const e = escapeMarkdown;
   const section = (s: SheetSectionView, level: number): void => {
     if (!lines.has(`${'#'.repeat(level)} ${e(s.label)}`)) problems.push(`no heading for ${s.label}`);
-    for (const row of s.rows) if (![...lines].some((l) => l.startsWith(`- ${e(row.label)}: ${e(row.value)}`))) problems.push(`no row ${row.label}`);
+    for (const row of s.rows) {
+      // A creature's print that names its row is written without the label (`rowLabel`).
+      const label = rowLabel(row);
+      const written = `- ${label !== undefined ? `${e(label)}: ` : ''}${e(row.value)}`;
+      if (![...lines].some((l) => l.startsWith(written))) problems.push(`no row ${row.label}`);
+    }
     // A listed element is written by the name a sheet gives it, in bold when content writes it a sheet line (ADR 0076);
     // one with nothing to say is named on its section's "Also" line (ADR 0126).
     const alsoLines = [...lines].filter((l) => l.startsWith(`- ${e('Also')}: `));

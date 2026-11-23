@@ -11,7 +11,8 @@ name: Phone release
 # maintainer sets (ANDROID_UPLOAD_KEYSTORE, base64 of the keystore file, and its store password, alias and key password).
 # The key is written to the runner's temporary folder and never to the checkout.
 #
-# Built on Linux: on Windows a checkout under a long path breaks the native build at 260 characters (ADR 0132).
+# Built on Linux, which has no 260-character path limit: a Windows build needs a per-machine CMake whose Ninja handles
+# long paths (ADR 0132's note). Never set android.cmakeVersion here: this runner would not have that CMake.
 #
 # No rulebook content is bundled: the app is the engine and the shipped system definitions.
 

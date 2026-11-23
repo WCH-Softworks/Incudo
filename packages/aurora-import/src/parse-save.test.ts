@@ -198,7 +198,7 @@ test('rndhp keeps the numbers and reports the rest rather than shifting the list
   const save = parseAuroraSave(SAVE);
   assert.deepEqual(save.rndhp, [6, 2, 3, 1, 5]);
   assert.equal(
-    save.diagnostics.filter((d) => d.message.includes('rndhp')).length,
+    save.diagnostics.filter((d) => d.message.includes('hit point roll')).length,
     1,
     '"x" is not a number and says so; the empty entry is just formatting',
   );
@@ -207,7 +207,7 @@ test('rndhp keeps the numbers and reports the rest rather than shifting the list
 test('an element that is neither a choice nor a grant is reported, not guessed at', () => {
   const save = parseAuroraSave(SAVE);
   assert.equal(
-    save.diagnostics.filter((d) => d.message.includes('neither id nor registered')).length,
+    save.diagnostics.filter((d) => d.message.includes('names nothing')).length,
     1,
   );
 });
@@ -295,4 +295,17 @@ test('the extension names the system, because that is what Aurora made it mean',
   assert.equal(systemIdForSaveExtension('Someone.dnd5e'), 'dnd5e');
   assert.equal(systemIdForSaveExtension('C:/path/to/Someone.DND5E'), 'dnd5e');
   assert.equal(systemIdForSaveExtension('noextension'), undefined);
+});
+
+test('a note says what happened in words, with no markup or attribute names', () => {
+  // Fails if a note quotes the save's XML again: the phone's Notes read `An <element type="Alignment"> has neither id nor
+  // registered…` after an import (found on the phone emulator). A player reads these.
+  const notes = [
+    ...parseAuroraSave(SAVE).diagnostics,
+    ...parseAuroraSave('<character version="0.9"><build><elements /></build></character>').diagnostics,
+    ...parseAuroraSave('<character version="1.0.3"></character>').diagnostics,
+    ...parseAuroraSave('<notes />').diagnostics,
+  ].map((d) => d.message);
+  assert.ok(notes.length >= 4, notes.join('\n'));
+  for (const note of notes) assert.doesNotMatch(note, /<|>|\brndhp\b|\bregistered\b/, note);
 });

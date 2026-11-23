@@ -13,7 +13,7 @@ import { auroraConverter, convertAuroraSource } from '@incudo/aurora-import';
 import { ContentLibrary, SourceProfile, type IndexTreeNode } from '@incudo/content';
 import { MemoryStorage, type ContentBundle, type FetchResult, type Fetcher } from '@incudo/core';
 
-import { addContentFiles, decodeText, describeContentFiles } from './content-files.ts';
+import { addContentFiles, contentFileName, decodeText, describeContentFiles } from './content-files.ts';
 import { excludedWithin, partsView, togglePart, type PartView } from './source-parts.ts';
 
 const CORPUS: Record<string, string[]> = {
@@ -185,4 +185,21 @@ test("UTF-16 is read on a phone too, where TextDecoder knows only UTF-8 (Hermes)
   } finally {
     globalThis.TextDecoder = Native;
   }
+});
+
+test("a picked file a provider names by an id is added by what it holds, under the name its own info gives", async () => {
+  // Found on the phone emulator: a file picked from Android's Downloads arrived as "msf:52" and was refused as "not an
+  // .xml file". Fails if an extensionless name is checked by its extension, or a file that is no elements file is named.
+  const named = '<?xml version="1.0"?>\n<!-- a note -->\n<elements><info><name>Blades: Homebrew</name></info><element name="Blade" type="Magic Item" source="Homebrew" id="ID_HB_BLADE" /></elements>';
+  assert.equal(contentFileName('msf:52', named), 'Blades Homebrew.xml');
+  assert.equal(contentFileName('1000034', HOMEBREW), 'Added file.xml');
+  assert.equal(contentFileName('msf:53', '<character />'), 'msf:53');
+  assert.equal(contentFileName('blades.txt', HOMEBREW), 'blades.txt');
+  const storage = new MemoryStorage();
+  const profile = new SourceProfile(storage);
+  const results = await addContentFiles([{ name: 'msf:52', bytes: new TextEncoder().encode(named) }], profile, { fetcher: fetcher({}), storage, converter: auroraConverter }, {
+    systemId: 'dnd5e',
+  });
+  assert.deepEqual(results.map((r) => [r.name, !!r.added, r.failed]), [['Blades Homebrew.xml', true, undefined]]);
+  assert.deepEqual(profile.sources.map((s) => s.id), ['local:Blades Homebrew.xml']);
 });

@@ -7,7 +7,8 @@
  * HTML is read by `htmlToBlocks`/`htmlToRuns`, never shown as markup. This computes nothing but layout.
  */
 
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   htmlToBlocks,
@@ -20,6 +21,7 @@ import {
   listedUsage,
   PREREQUISITES_UNMET,
   rowAside,
+  rowLabel,
   tabStarts,
   attackAside,
   attackWarnings,
@@ -137,13 +139,20 @@ function Section({ section, level, palette }: { section: SheetSectionView; level
   const alsoLine = alsoText(also);
   return (
     <View style={[styles.section, { borderColor: palette.border }]}>
-      <Heading text={section.label} level={level} palette={palette} />
-      {section.description ? <Muted text={section.description} palette={palette} /> : null}
+      <SectionHead label={section.label} description={section.description} level={level} palette={palette} />
       {section.rows.map((row) => {
         const aside = rowAside(row);
+        const label = rowLabel(row);
+        if (label === undefined)
+          return (
+            <Text key={row.stat} style={[styles.body, text]} selectable>
+              {row.value}
+              {aside !== undefined ? <Text style={{ color: palette.muted }}>{` (${aside})`}</Text> : null}
+            </Text>
+          );
         return (
           <View key={row.stat} style={styles.row}>
-            <Text style={[styles.rowLabel, text]}>{row.label}</Text>
+            <Text style={[styles.rowLabel, text]}>{label}</Text>
             <Text style={[styles.rowValue, text]} selectable>
               {row.value}
               {aside !== undefined ? <Text style={{ color: palette.muted }}>{` (${aside})`}</Text> : null}
@@ -230,6 +239,33 @@ function Heading({ text, level, palette }: { text: string; level: number; palett
   );
 }
 
+/**
+ * A section's label, with its explanation behind an "i" as the desktop has it (ADR 0126 decision 2): printed in full
+ * under every heading, the explanations were most of a phone's sheet.
+ */
+function SectionHead({ label, description, level, palette }: { label: string; description?: string; level: number; palette: Palette }) {
+  const [open, setOpen] = useState(false);
+  if (!description) return <Heading text={label} level={level} palette={palette} />;
+  return (
+    <View style={{ gap: 4 }}>
+      <View style={styles.headRow}>
+        <Heading text={label} level={level} palette={palette} />
+        <Pressable
+          onPress={() => setOpen(!open)}
+          accessibilityRole="button"
+          accessibilityLabel={`About ${label}`}
+          accessibilityState={{ expanded: open }}
+          hitSlop={12}
+          style={[styles.info, { borderColor: palette.muted }]}
+        >
+          <Text style={{ color: palette.muted, fontSize: 12, fontWeight: '700' }}>i</Text>
+        </Pressable>
+      </View>
+      {open ? <Muted text={description} palette={palette} /> : null}
+    </View>
+  );
+}
+
 function Muted({ text, palette }: { text: string; palette: Palette }) {
   return <Text style={[styles.body, { color: palette.muted }]}>{text}</Text>;
 }
@@ -239,6 +275,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700' },
   lede: { fontSize: 15, marginTop: -8 },
   part: { gap: 10 },
+  headRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  info: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   section: { gap: 6, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
   creature: { gap: 8 },
   reference: { gap: 8 },

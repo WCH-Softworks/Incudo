@@ -9,7 +9,7 @@ import { MemoryStorage, type FetchResult, type Fetcher, type GameSystem } from '
 import { auroraConverter } from '@incudo/aurora-import';
 import { SourceProfile, cachePrefix, readSourceFile } from '@incudo/content';
 
-import { ContentSources } from './content-sources.ts';
+import { ContentSources, keepLibraryProfile } from './content-sources.ts';
 
 const INDEX = 'https://example.test/core.index';
 
@@ -294,4 +294,20 @@ test('a switch of a system nothing has loaded loads nothing: the phone loads onl
   await sources.setEnabled(TWO, false);
   await sources.setEnabled(TWO, true);
   assert.equal(sources.getState().loaded['game'], undefined);
+});
+
+test('a library is told the whole profile when it is read and whenever a source is added', async () => {
+  // Fails if keepLibraryProfile tells the library only once, or never: the phone's every Save recorded no sources.
+  const storage = new MemoryStorage();
+  const sources = new ContentSources({ fetcher: new Host(), storage, converter: auroraConverter }, systems);
+  const told: string[][] = [];
+  const stop = keepLibraryProfile(sources, { setProfile: (profile) => told.push(profile.map((s) => s.id)) });
+  await sources.restore();
+  await sources.add('game', systems[0]!.suggestedSources![0]!);
+  assert.deepEqual(told[0], [], 'told at once, before the profile is read');
+  assert.deepEqual(told[told.length - 1], [INDEX]);
+  stop();
+  const count = told.length;
+  await sources.setEnabled(INDEX, false);
+  assert.equal(told.length, count, 'and told nothing once stopped');
 });
