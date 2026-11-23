@@ -56,7 +56,9 @@
           }
         }
       ],
-      "./plugins/backup-rules.cjs"
+      "./plugins/backup-rules.cjs",
+      "expo-sqlite",
+      "expo-status-bar"
     ]
   }
 }
