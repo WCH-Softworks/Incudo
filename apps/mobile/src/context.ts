@@ -18,6 +18,7 @@ export type Screens = {
   Build: { name: string; title: string } | { systemId: string; kindId: string; title: string };
   NewCharacter: undefined;
   Content: undefined;
+  About: undefined;
 };
 
 export interface Platform {

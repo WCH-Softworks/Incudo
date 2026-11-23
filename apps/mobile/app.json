@@ -2,20 +2,39 @@
   "expo": {
     "name": "Incudo",
     "slug": "incudo",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
-    "platforms": ["android", "ios"],
+    "platforms": [
+      "android",
+      "ios"
+    ],
     "scheme": "incudo",
     "android": {
       "package": "dev.incudo.mobile",
+      "versionCode": 1000099,
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
-          "category": ["DEFAULT", "BROWSABLE"],
+          "category": [
+            "DEFAULT",
+            "BROWSABLE"
+          ],
           "data": [
-            { "scheme": "content", "mimeType": "application/octet-stream" },
-            { "scheme": "content", "mimeType": "application/zip" }
+            {
+              "scheme": "content",
+              "mimeType": "application/octet-stream"
+            },
+            {
+              "scheme": "content",
+              "mimeType": "application/zip"
+            }
           ]
         }
       ]
@@ -26,11 +45,18 @@
         {
           "android": {
             "enabled": true,
-            "singleShareMimeTypes": ["application/octet-stream", "application/zip"],
-            "multipleShareMimeTypes": ["application/octet-stream", "application/zip"]
+            "singleShareMimeTypes": [
+              "application/octet-stream",
+              "application/zip"
+            ],
+            "multipleShareMimeTypes": [
+              "application/octet-stream",
+              "application/zip"
+            ]
           }
         }
-      ]
+      ],
+      "./plugins/backup-rules.cjs"
     ]
   }
 }
