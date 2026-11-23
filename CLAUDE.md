@@ -408,9 +408,9 @@ lists a character's attacks, every weapon in its bag with its bonus and damage, 
 receives a file shared to it (ADR 0099, below), an Aurora save imported on a tap (ADR 0101, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
-- **`apps/mobile` is a workspace** (Expo SDK 57, React Native 0.86, React 19.2, run in Expo Go). The install went from
-  45 packages and 6 s to 519 and 69 s; `workspace.test.ts` asserts it is in. The desktop keeps React 19.3 nested;
-  `metro.config.cjs` pins `react` to the app's copy and maps `@repo/systems` and `@repo/schemas` as Vite does. The
+- **`apps/mobile` is a workspace** (Expo SDK 58, React Native 0.88, React 19.3, run in Expo Go). The install went from
+  45 packages and 6 s to 519 and 69 s; `workspace.test.ts` asserts it is in. Since SDK 58 the phone and the desktop
+  use the same React; `metro.config.cjs` still pins `react` to the app's copy and maps `@repo/systems` and `@repo/schemas` as Vite does. The
   package is an ES module (so `tools/verify` can import `@incudo/mobile/zip`), hence the `.cjs` Metro config.
 - **`apps/mobile/src/platform.ts` is the only Expo-aware file**: `Storage` is one SQLite table (measured: a download is
   800 values, 14.75 MB, twenty keys over 255 bytes), the library is the app's own `library/` folder (the maintainer's
@@ -587,7 +587,13 @@ Phase 6's last item. Things to know before touching it:
   file shared while the app is closed arrives readable (ADR 0099's gap was the development launcher's).
 - **This checkout's path cannot build the phone on Windows**: under `.claude/worktrees/<name>` CMake passes 260
   characters, and a `subst` drive breaks Metro. Build from a clone at a short path (`git clone <worktree> C:ib`, pull
-  before each build); Metro may still serve the worktree. CI builds on Linux.
+  before each build); Metro may still serve the worktree. CI builds on Linux. **Since Expo SDK 58 (2026-11-23) even
+  `C:\ib` is too long**: React Native 0.88's safe-area-context codegen makes a 272-character path under the app's
+  `.cxx`, and AGP's default CMake 3.22.1 ships a Ninja that cannot pass 260 (Windows' long paths are on; that Ninja
+  ignores them). Expo's own answer is the Gradle property `android.cmakeVersion` naming a newer CMake installed from the
+  SDK Manager, which may make the clone unnecessary; not tried yet. The SDK 58 builds were made with a local, uncommitted
+  `buildStagingDirectory` in the generated `android/app/build.gradle`. Java 25 (Android Studio's JBR) builds SDK 58 with
+  no `gradle-daemon-jvm.properties` pin.
 - **The phone has its own version** (`app.json` = `apps/mobile/package.json`, from 1.0.0) and
   `versionCode = MAJOR·1e6 + MINOR·1e4 + PATCH·100 + N` (N a candidate's number, 99 the release), computed only by
   `apps/mobile/scripts/release-version.cjs`. A committed `app.json` holds N = 99; the workflow writes the tag's.
