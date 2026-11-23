@@ -17,11 +17,15 @@ backup rules. **No `mobile-v` tag**: the release build below is a local one sign
 
 ## Building on Windows
 
-- **The CMake path limit is still in the way.** From the short clone, React Native 0.88's safe-area-context codegen
-  makes a 272-character path under the app's `.cxx`, and AGP's default CMake 3.22.1 ships a Ninja that stops at 260.
-  Both builds here used a local, uncommitted `buildStagingDirectory` in the generated `android/app/build.gradle`
-  (`expo prebuild` regenerates the file and drops it, so it is added again after each prebuild). Expo's own answer, a
-  newer CMake from the SDK Manager named by `android.cmakeVersion`, is the maintainer's to install; not tried.
+- **The CMake path limit, as these builds met it.** From the short clone, React Native 0.88's safe-area-context codegen
+  makes a 264-character directory under the app's `.cxx` (the checkout root is in it twice), and AGP's default CMake
+  3.22.1 ships Ninja 1.10.2, which stops at 260 although Windows' long paths are on. Both builds here used a local,
+  uncommitted `buildStagingDirectory` in the generated `android/app/build.gradle`.
+- **Measured after the drive, and what replaces that.** With the staging line removed the failure reproduces in 19 s;
+  with `android.cmakeVersion=4.2.1` (this machine's own CMake, winget's Ninja 1.13.2 on PATH) as a Gradle property the
+  native build succeeds, and full debug and release APKs build from the worktree itself and run on the emulator. The
+  property is set in the user's `%USERPROFILE%\.gradle\gradle.properties`, never in the repository: CI on Linux has no
+  such limit and would fail on a CMake it lacks. No clone or staging folder is needed (CLAUDE.md, under ADR 0132).
 - `expo prebuild` still says `userInterfaceStyle` needs `expo-system-ui`. Dark mode follows the system anyway (below).
 
 ## The development build
@@ -127,6 +131,5 @@ Export › Save to a folder and `adb pull`.
 
 ### Left on the build machine
 
-`C:\ib` (the short-path clone, now at `1ce5c18`, with a regenerated `android/` holding the uncommitted
-`buildStagingDirectory` line) and `C:\ibc` (that staging folder), both from the previous session and both reusable for the
-next build; the throwaway keystore lived only in the session's scratch folder.
+Nothing: the short-path clone and its staging folder were removed after the CMake measurement above, and the throwaway
+keystore lived only in the session's scratch folder.

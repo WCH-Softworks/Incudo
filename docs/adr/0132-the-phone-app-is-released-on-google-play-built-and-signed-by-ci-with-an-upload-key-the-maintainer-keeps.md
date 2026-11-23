@@ -36,6 +36,13 @@ real phone. Before deciding anything, a release build was made and the code was 
   CMake object path over 260 characters (`react-native-safe-area-context`'s codegen). A `subst` drive gets the native part
   through, but Metro then cannot resolve modules across the mapped drive. A clone at a short path (`C:\ib`) builds. CI on
   Linux has no such limit.
+
+  > **Note, 2026-11-23 (Expo SDK 58): the path is not the cause, and no short path is needed.** Windows' long paths are
+  > on; what stops the build is AGP's default CMake 3.22.1, whose Ninja 1.10.2 cannot pass 260 characters (Ninja can
+  > from 1.12). Under SDK 58 even `C:\ib` failed, at 264. Naming a newer CMake per machine, `android.cmakeVersion` in the
+  > user's `%USERPROFILE%\.gradle\gradle.properties` (never in the repository, which Linux CI builds without it), builds
+  > the full debug and release APKs from a worktree. "Built from a short path on Windows" in decision 2 reads "built
+  > with that setting". CLAUDE.md and `docs/release-checks/mobile-v1.0.0-rc.2.md` have the measurement.
 - **The release manifest asks for what the app never uses**: `SYSTEM_ALERT_WINDOW` (the dev menu's) and
   `READ`/`WRITE_EXTERNAL_STORAGE` up to API 32 (files come and go through the system's picker and share sheet). It also
   asks for `INTERNET`, `ACCESS_NETWORK_STATE` and `ACCESS_WIFI_STATE` (NetInfo, ADR 0100), and `VIBRATE`.
