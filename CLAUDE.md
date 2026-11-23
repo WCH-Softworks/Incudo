@@ -3052,6 +3052,10 @@ Two things that follow from the format work, for anyone changing this code:
 
 ## Conventions
 
+- **Never make a second local copy of the repository** (a clone, a copied tree, a `subst` drive or a junction at a short
+  path, a worktree outside `.claude/worktrees/`): the maintainer's rule, after such clones were left on the disk unasked.
+  `.claude/hooks/no-local-clones.mjs`, a PreToolUse hook in `.claude/settings.json`, refuses them;
+  `tools/verify/src/no-local-clones.test.ts` holds what it refuses and what it lets through.
 - Small, focused commits. Explain what you tried that didn't work — often the useful part.
 - Diagnostics over guessing: when content is ambiguous, report it, don't silently pick.
 - When a decision would be expensive to reverse, write an ADR before writing the code.
