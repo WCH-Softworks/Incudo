@@ -80,7 +80,13 @@ Each under a test that fails without it, and seen again on the emulator.
 
 ## Found after the drive, and fixed
 
-Fixed after the drive, each under a test that fails without the fix; not driven again on the emulator.
+Fixed after the drive, each under a test that fails without the fix, and driven on the Pixel 9 Pro emulator in the SDK 58
+development build (this branch's JavaScript served to it, a fresh install): a packed sample shared from Files with sample
+28's save read "Added, with an Aurora save to import"; importing the save (AuroraLegacy added on the way) noted "The save
+records an entry of type "Alignment" that names nothing, so it was left out." and the same for Deity; a new NPC on the
+2025 Imp read Senses "Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 11" and the creature's
+spellcasting wording under Added to this character; Lose 7 on sample 07's Play hid the keyboard (`mInputShown` true, then
+false) and the next tap spent a 1st-level slot; a new Elf's choices carried no "from level 1".
 
 - **A creature's printed senses repeated their row's label**: the homebrew drake's Senses read "Passive Perception:
   tremorsense 60 ft., passive Perception 11" on the phone and in the text export. A print that names its own row is now
