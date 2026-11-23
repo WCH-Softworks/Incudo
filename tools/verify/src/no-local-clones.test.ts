@@ -41,6 +41,7 @@ const refused = [
   'Copy-Item -Recurse . C:/ib',
   'cp -r . /c/ib',
   `xcopy ${root} C:\\ib /E /I`,
+  `robocopy /MIR ${root.replace(/\\/g, '/')} C:/ib`,
 ];
 
 const allowed = [

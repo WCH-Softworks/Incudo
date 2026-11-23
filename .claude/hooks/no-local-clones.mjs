@@ -126,7 +126,8 @@ function copyProblem(seg, facts, cwd) {
     (verb === 'cp' && w.some((a) => /^-[a-z]*[raR][a-z]*$/.test(a)));
   if (!recursive) return null;
   for (const a of w.slice(1)) {
-    if (a.startsWith('-') || (verb !== 'cp' && a.startsWith('/'))) continue;
+    // A Windows switch is a slash and a short word (/E, /MIR, /R:3); a path has more slashes.
+    if (a.startsWith('-') || (verb !== 'cp' && /^\/[a-z]{1,8}(:\S*)?$/i.test(a))) continue;
     const resolved = norm(path.resolve(cwd, a));
     if (facts.roots.has(resolved)) return `it copies the whole repository (${a})`;
     break; // only the first operand is the source
