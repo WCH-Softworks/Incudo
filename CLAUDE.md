@@ -408,9 +408,9 @@ lists a character's attacks, every weapon in its bag with its bonus and damage, 
 receives a file shared to it (ADR 0099, below), an Aurora save imported on a tap (ADR 0101, below)** ([ADR 0083](docs/adr/0083-the-phone-app-is-expo-in-the-workspace-its-storage-is-sqlite-and-its-library-is-its-own-folder.md)),
 Phase 6's first item and the read half of its second (it builds nothing). Things to know before touching it:
 
-- **`apps/mobile` is a workspace** (Expo SDK 57, React Native 0.86, React 19.2, run in Expo Go). The install went from
-  45 packages and 6 s to 519 and 69 s; `workspace.test.ts` asserts it is in. The desktop keeps React 19.3 nested;
-  `metro.config.cjs` pins `react` to the app's copy and maps `@repo/systems` and `@repo/schemas` as Vite does. The
+- **`apps/mobile` is a workspace** (Expo SDK 58, React Native 0.88, React 19.3, run in Expo Go). The install went from
+  45 packages and 6 s to 519 and 69 s; `workspace.test.ts` asserts it is in. Since SDK 58 the phone and the desktop
+  use the same React; `metro.config.cjs` still pins `react` to the app's copy and maps `@repo/systems` and `@repo/schemas` as Vite does. The
   package is an ES module (so `tools/verify` can import `@incudo/mobile/zip`), hence the `.cjs` Metro config.
 - **`apps/mobile/src/platform.ts` is the only Expo-aware file**: `Storage` is one SQLite table (measured: a download is
   800 values, 14.75 MB, twenty keys over 255 bytes), the library is the app's own `library/` folder (the maintainer's
@@ -585,9 +585,18 @@ Phase 6's last item. Things to know before touching it:
 
 - **A release build was measured first**: AAB 56.4 MB, Hermes bytecode, no launcher, 1.6 s cold on the emulator, and a
   file shared while the app is closed arrives readable (ADR 0099's gap was the development launcher's).
-- **This checkout's path cannot build the phone on Windows**: under `.claude/worktrees/<name>` CMake passes 260
-  characters, and a `subst` drive breaks Metro. Build from a clone at a short path (`git clone <worktree> C:ib`, pull
-  before each build); Metro may still serve the worktree. CI builds on Linux.
+- **On Windows the phone builds only with a CMake whose Ninja handles long paths, chosen per machine, never in the
+  repository** (measured 2026-11-23). The native build's object paths pass 260 characters (React Native 0.88's
+  safe-area-context codegen: 264 from a checkout at `C:\ib`, more under `.claude/worktrees/<name>`; the checkout root
+  appears in each path twice, so no short folder fixes it). Windows' long paths are on; what stops it is AGP's default
+  CMake 3.22.1, which bundles Ninja 1.10.2, and Ninja handles long paths from 1.12. Set `android.cmakeVersion=<version>`
+  in `%USERPROFILE%\.gradle\gradle.properties` (Expo's root-project plugin applies it to every native module), naming a
+  CMake the build finds in the SDK or on PATH, by its exact version: the maintainer's machine has it set to its own CMake
+  4.2.1 with winget's Ninja 1.13.2 on PATH; Expo documents the SDK Manager's CMake 3.31.6 (Ninja 1.12.1). With it, full
+  debug and release APKs build from a worktree and run. **Never put the property in `app.json` or the committed
+  `gradle.properties`**: CI builds on Linux, has no such limit, and would fail on a CMake it lacks. No short-path clone,
+  `subst` drive (it breaks Metro) or `buildStagingDirectory` edit is needed; the SDK 58 drive's builds used the last
+  before this was measured. Java 25 (Android Studio's JBR) builds SDK 58 with no `gradle-daemon-jvm.properties` pin.
 - **The phone has its own version** (`app.json` = `apps/mobile/package.json`, from 1.0.0) and
   `versionCode = MAJOR·1e6 + MINOR·1e4 + PATCH·100 + N` (N a candidate's number, 99 the release), computed only by
   `apps/mobile/scripts/release-version.cjs`. A committed `app.json` holds N = 99; the workflow writes the tag's.

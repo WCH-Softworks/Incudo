@@ -90,6 +90,8 @@ test('a choice of the kind’s spell type is on the Spells tab, and everything e
   assert.deepEqual(buildTabs(state).map((t) => [t.id, t.required]), [['build', 1], ['spells', 1], ['details', undefined]]);
   assert.equal(spellsWaitingNote(1), 'One spell choice is waiting on the Spells tab.');
   assert.equal(spellsWaitingNote(0), undefined);
+  assert.equal(spellsWaitingNote(3, 'below'), '3 spell choices are waiting under Spell choices, below.');
+  assert.equal(spellsWaitingNote(0, 'below'), undefined);
 });
 
 test('a settled spell choice stays on the Spells tab', () => {
