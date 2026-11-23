@@ -117,12 +117,15 @@ export function shownTab(preferred: BuildTab, tabs: readonly BuildTabView[]): Bu
   return tabs.some((tab) => tab.id === preferred) ? preferred : 'build';
 }
 
-/** Under the Build tab's open decisions, where spell choices are left waiting on the other tab. */
-export function spellsWaitingNote(required: number): string | undefined {
+/**
+ * Under the open decisions, where required spell choices are left waiting: on the desktop's Spells tab, or on the phone's
+ * one page under the Spell choices heading further down. Without it the phone's Open decisions read "Nothing more has to
+ * be decided." over three spell choices still owed (found on the emulator, mobile-v1.0.0-rc.2).
+ */
+export function spellsWaitingNote(required: number, where: 'tab' | 'below' = 'tab'): string | undefined {
   if (required <= 0) return undefined;
-  return required === 1
-    ? 'One spell choice is waiting on the Spells tab.'
-    : `${required} spell choices are waiting on the Spells tab.`;
+  const place = where === 'tab' ? 'on the Spells tab' : `under ${SPELL_DECISIONS_HEADING}, below`;
+  return required === 1 ? `One spell choice is waiting ${place}.` : `${required} spell choices are waiting ${place}.`;
 }
 
 // --- editing a settled answer in the middle column ------------------------------------

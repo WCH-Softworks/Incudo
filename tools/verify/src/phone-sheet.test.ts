@@ -37,3 +37,13 @@ test('the phone tells its library the profile, so a Save records the sources a c
   const app = readFileSync(new URL('../../../apps/mobile/src/App.tsx', import.meta.url), 'utf8');
   assert.match(app, /keepLibraryProfile\(platform\.sources, platform\.library\)/);
 });
+
+test('the phone says under Open decisions that required spell choices wait further down', () => {
+  // Perturbation: drop the note, or print "Nothing more has to be decided." while spell choices are owed, and this fails.
+  // Found on the emulator (mobile-v1.0.0-rc.2): a level 1 Wizard read "Open decisions (0) Nothing more has to be decided."
+  // with its cantrips and spellbook still to choose under Spell choices.
+  const build = readFileSync(new URL('../../../apps/mobile/src/BuildView.tsx', import.meta.url), 'utf8');
+  assert.match(build, /const spellsWaiting = spellsWaitingNote\(spellGroups\.owed, 'below'\);/);
+  assert.match(build, /\{spellsWaiting \? <Body tone="muted">\{spellsWaiting\}<\/Body> : null\}/);
+  assert.match(build, /groups\.owed === 0 && !spellsWaiting \? <Body tone="muted">\{NOTHING_REQUIRED\}/);
+});
