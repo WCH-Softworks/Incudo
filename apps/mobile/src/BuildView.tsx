@@ -47,6 +47,7 @@ import {
   hasSpellWork,
   SPELL_DECISIONS_HEADING,
   SPELLS_CHOSEN_HEADING,
+  spellsWaitingNote,
   type SettledPick,
   startOptionsSummary,
   loadedName,
@@ -128,6 +129,8 @@ export const BuildView = memo(function BuildView({
   const groups = decisionGroups(buildDecisions);
   // Cantrips before levelled spells: by the lowest spell level each decision offers, the kind's grouping note (ADR 0128).
   const spellGroups = decisionGroups(spellsApart ? byLowestCandidateGroup(content.spells.decisions, kind.candidateNotes, elements) : []);
+  // Required spell choices are further down this page: said under Open decisions, so the build does not read as done.
+  const spellsWaiting = spellsWaitingNote(spellGroups.owed, 'below');
   // One row per answered slot, each with its Change; a set member also with Remove.
   // An answer that lacks a prerequisite the kind makes soft (ADR 0124) says so under it.
   const pickRows = (pick: SettledPick): React.ReactNode => {
@@ -253,7 +256,8 @@ export const BuildView = memo(function BuildView({
 
       <Heading>Open decisions ({groups.owed})</Heading>
       {buildDecisions.length === 0 ? <Body tone="muted">Nothing outstanding.</Body> : null}
-      {buildDecisions.length > 0 && groups.owed === 0 ? <Body tone="muted">{NOTHING_REQUIRED}</Body> : null}
+      {buildDecisions.length > 0 && groups.owed === 0 && !spellsWaiting ? <Body tone="muted">{NOTHING_REQUIRED}</Body> : null}
+      {spellsWaiting ? <Body tone="muted">{spellsWaiting}</Body> : null}
       {groups.required.map(decisionCard)}
       {groups.optional.length > 0 ? (
         <>
