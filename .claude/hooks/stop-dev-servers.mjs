@@ -63,7 +63,9 @@ export function processes() {
   }
 }
 
-const norm = (p) => p.replace(/\\/g, '/').replace(/\/+/g, '/').toLowerCase();
+// Forward slashes, one at a time, case kept: the case is what a folder is found by on Linux; comparisons lowercase.
+const slashes = (p) => p.replace(/\\/g, '/').replace(/\/+/g, '/');
+const norm = (p) => slashes(p).toLowerCase();
 
 /** The repository root holding `dir`: the main checkout, also when `dir` is one of its worktrees. */
 export function repositoryRoot(dir) {
@@ -72,21 +74,29 @@ export function repositoryRoot(dir) {
   return (at >= 0 ? dir.slice(0, at) : dir).replace(/[\\/]+$/, '');
 }
 
-/** The checkout a dev server runs from: the folder holding the node_modules its command names, or undefined. */
-export function devServerCheckout(command) {
-  const n = norm(command);
+/**
+ * The checkout a dev server runs from, spelled as its command spells it: the folder holding the node_modules it names,
+ * or undefined. The case is kept so the folder can be looked for on a filesystem that minds case.
+ */
+export function devServerFolder(command) {
+  const n = slashes(command);
   const isDev =
-    (/\/(?:@expo\/cli|expo)\/bin\/cli\b/.test(n) && /\sstart\b/.test(n)) ||
-    /\/vite\/bin\/vite\.js\b/.test(n) ||
-    /\/node_modules\/\.bin\/vite\b/.test(n) ||
-    (/\/@tauri-apps\/cli\//.test(n) && /\sdev\b/.test(n));
+    (/\/(?:@expo\/cli|expo)\/bin\/cli\b/i.test(n) && /\sstart\b/i.test(n)) ||
+    /\/vite\/bin\/vite\.js\b/i.test(n) ||
+    /\/node_modules\/\.bin\/vite\b/i.test(n) ||
+    (/\/@tauri-apps\/cli\//i.test(n) && /\sdev\b/i.test(n));
   if (!isDev) return undefined;
   // The folder holding the first node_modules: the checkout, or a package inside it (the desktop's Vite runs from
   // apps/desktop/node_modules).
-  const match = /([a-z]:\/[^"]*?|\/[^"\s]*?)\/node_modules\//.exec(n);
+  const match = /([a-z]:\/[^"]*?|\/[^"\s]*?)\/node_modules\//i.exec(n);
   if (!match) return undefined;
-  const worktree = /^(.*?\/\.claude\/worktrees\/[^/]+)/.exec(match[1]);
+  const worktree = /^(.*?\/\.claude\/worktrees\/[^/]+)/i.exec(match[1]);
   return worktree ? worktree[1] : match[1];
+}
+
+/** The same folder lowercased, as every comparison here reads it. */
+export function devServerCheckout(command) {
+  return devServerFolder(command)?.toLowerCase();
 }
 
 /** Whether a server whose folder is `at` belongs to `checkout`: that worktree, or the main checkout outside its worktrees. */
@@ -101,13 +111,15 @@ export function selectServers(mode, list, checkout, now = Date.now()) {
   const own = norm(checkout).replace(/\/$/, '');
   const root = norm(repositoryRoot(checkout)).replace(/\/$/, '');
   return list.filter((p) => {
-    const at = devServerCheckout(p.command);
-    if (at === undefined) return false;
+    const folder = devServerFolder(p.command);
+    if (folder === undefined) return false;
+    const at = folder.toLowerCase();
     if (mode === 'own') return belongs(at, own);
     if (mode === 'stale') {
       const ours = at === root || at.startsWith(`${root}/`);
       if (!ours) return false;
-      const gone = !existsSync(at);
+      // Looked for as the command spells it: lowercased, a live checkout on Linux read as gone (found by CI).
+      const gone = !existsSync(folder);
       const old = Number.isFinite(p.started) && now - p.started > STALE_HOURS * 3600_000;
       return gone || old;
     }

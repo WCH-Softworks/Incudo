@@ -11,6 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const hook = (await import(pathToFileURL(path.join(root, '.claude', 'hooks', 'stop-dev-servers.mjs')).href)) as {
   STALE_HOURS: number;
   devServerCheckout(command: string): string | undefined;
+  devServerFolder(command: string): string | undefined;
   selectServers(mode: string, list: { pid: number; started: number; command: string }[], checkout: string, now?: number): { pid: number }[];
 };
 
@@ -31,6 +32,13 @@ test('a dev server is Metro, Vite or Tauri dev, placed at its checkout, never a 
   assert.equal(hook.devServerCheckout(`"node" "${here}/node_modules/expo/bin/cli" export`), undefined, 'an export is not a server');
   assert.equal(hook.devServerCheckout(`"node" "${repo}/node_modules/@tauri-apps/cli/tauri.js" build`), undefined, 'a build ends');
   assert.equal(hook.devServerCheckout(`node --test --experimental-strip-types tools/verify/src/a.test.ts`), undefined);
+});
+
+test('the folder a server runs from keeps its case, since it is looked for on disk', () => {
+  // Fails if the folder is lowercased before it is looked for: on Linux a live checkout then reads as deleted, and a
+  // session's start stops a server it should keep (CI found it).
+  assert.equal(hook.devServerFolder(metro('/Home/Runner/Work/Repo')), '/Home/Runner/Work/Repo');
+  assert.equal(hook.devServerFolder(vite(here)), here);
 });
 
 test("a turn's end stops its own worktree's servers and no other's", () => {
