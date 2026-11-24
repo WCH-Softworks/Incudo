@@ -55,6 +55,8 @@ const READY: CommandContext = {
   formAvailable: true,
   contentUpdates: true,
   started: true,
+  updaterAvailable: true,
+  updating: false,
 };
 
 function enabledIn(context: CommandContext): Set<CommandId> {
@@ -84,7 +86,7 @@ test('with no library chosen, only what does not need one is enabled', () => {
   const on = enabledIn({ ...READY, library: 'no-location', hasEnabledSource: false });
   assert.deepEqual(
     [...on].sort(),
-    [...NAVIGATION, 'change-system', 'choose-library-folder', 'about'].sort(),
+    [...NAVIGATION, 'change-system', 'choose-library-folder', 'about', 'check-for-updates'].sort(),
   );
   // The three that need somewhere to put a character say no, and Save says no on any pane.
   for (const pane of ['library', 'build'] as Destination[]) {
@@ -531,7 +533,8 @@ test('the native menu model carries each command\'s label and the shortcut to pr
         `${os} ${command.id}`,
       );
     }
-    assert.equal(entries.filter((e) => e.kind === 'separator').length, 3);
+    // File's three, and Help's one between Check for updates and About (ADR 0133).
+    assert.equal(entries.filter((e) => e.kind === 'separator').length, 4);
   }
   const other = menuModel('other').flatMap((menu) => menu.entries);
   const find = (id: CommandId) => other.find((e) => e.kind === 'command' && e.id === id);
@@ -609,9 +612,9 @@ test('a PDF export sits below Print in the File menu, with no shortcut, and a sh
   assert.equal(entry.label, 'Export sheet as PDF…');
   assert.equal(entry.shortcut, undefined);
   // Fails if an absent command is greyed rather than left out, or if leaving one out leaves the rest of the menu changed.
-  assert.deepEqual(absentCommands({ pdfAvailable: true }), []);
-  assert.deepEqual(absentCommands({ pdfAvailable: false }), ['export-sheet-pdf']);
-  const without = menuModel('other', absentCommands({ pdfAvailable: false })).flatMap((menu) => menu.entries);
+  assert.deepEqual(absentCommands({ pdfAvailable: true, updaterAvailable: true }), []);
+  assert.deepEqual(absentCommands({ pdfAvailable: false, updaterAvailable: true }), ['export-sheet-pdf']);
+  const without = menuModel('other', absentCommands({ pdfAvailable: false, updaterAvailable: true })).flatMap((menu) => menu.entries);
   assert.equal(without.some((e) => e.kind === 'command' && e.id === 'export-sheet-pdf'), false);
   assert.deepEqual(without, entries.filter((e) => !(e.kind === 'command' && e.id === 'export-sheet-pdf')));
 });
@@ -679,7 +682,7 @@ test('About Incudo is the Help menu, live on every pane and on none behind a dia
     assert.ok(enabledIn({ ...READY, pane }).has('about'), pane);
   }
   assert.ok(!enabledIn({ ...READY, modal: true }).has('about'));
-  assert.deepEqual(MENUS.at(-1), { label: 'Help', items: ['about'] });
+  assert.deepEqual(MENUS.at(-1), { label: 'Help', items: ['check-for-updates', null, 'about'] });
   const command = COMMANDS.find((candidate) => candidate.id === 'about')!;
   assert.equal(command.label, 'About Incudo');
   assert.equal(command.shortcut, undefined);
@@ -715,4 +718,34 @@ test('before a character is started, nothing acts on the blank one behind Build 
   // Each of them is live somewhere once one is started, so each case above failed on `started`.
   const somewhere = new Set([...enabledIn({ ...READY, pane: 'build' }), ...enabledIn({ ...READY, pane: 'sheet' })]);
   for (const id of acting) assert.ok(somewhere.has(id), id);
+});
+
+// --- updates -----------------------------------------------------------------------------------------------------------
+
+test('Check for updates is in the Help menu above About, live on every pane where the shell can update itself — ADR 0133', () => {
+  // Fails if it is gated on a pane, runs a second check over one in flight, reacts behind a dialog, or takes a key.
+  for (const pane of ['library', 'build', 'sheet', 'sources', 'browse', 'settings'] as Destination[]) {
+    assert.ok(enabledIn({ ...READY, pane }).has('check-for-updates'), pane);
+    assert.ok(enabledIn({ ...READY, pane, started: false, library: 'no-location' }).has('check-for-updates'), pane);
+  }
+  assert.ok(!enabledIn({ ...READY, updating: true }).has('check-for-updates'));
+  assert.ok(!enabledIn({ ...READY, updaterAvailable: false }).has('check-for-updates'));
+  assert.ok(!enabledIn({ ...READY, modal: true }).has('check-for-updates'));
+  const command = COMMANDS.find((candidate) => candidate.id === 'check-for-updates')!;
+  assert.equal(command.label, 'Check for updates…');
+  assert.equal(command.shortcut, undefined);
+  assert.equal(command.destination, undefined);
+});
+
+test('a shell that cannot update itself has no Check for updates item, and its Help menu is About alone', () => {
+  // Fails if the command is greyed rather than left out in the browser build, or leaves a separator behind it.
+  assert.deepEqual(absentCommands({ pdfAvailable: true, updaterAvailable: false }), ['check-for-updates']);
+  assert.deepEqual(absentCommands({ pdfAvailable: false, updaterAvailable: false }), ['export-sheet-pdf', 'check-for-updates']);
+  const help = menuModel('other', absentCommands({ pdfAvailable: true, updaterAvailable: false })).find((menu) => menu.label === 'Help')!;
+  assert.deepEqual(help.entries, [{ kind: 'command', id: 'about', label: 'About Incudo', shortcut: undefined }]);
+  const full = menuModel('other').find((menu) => menu.label === 'Help')!;
+  assert.deepEqual(
+    full.entries.map((entry) => (entry.kind === 'command' ? entry.id : 'separator')),
+    ['check-for-updates', 'separator', 'about'],
+  );
 });

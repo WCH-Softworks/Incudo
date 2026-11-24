@@ -1,6 +1,6 @@
 # Incudo's privacy policy
 
-Effective 2026-11-19. This covers the Incudo app for Android and for desktop computers. It describes what the app does,
+Effective 2026-11-19; the update check below was added on 2026-11-24, for the first desktop release after 1.0.0. This covers the Incudo app for Android and for desktop computers. It describes what the app does,
 read from its source code, which is public: <https://github.com/WCH-Softworks/Incudo>.
 
 ## The short version
@@ -15,6 +15,13 @@ downloads that source's files from the address it names. When you add the source
 files come from GitHub (`raw.githubusercontent.com`). A download is an ordinary request for a file. It carries nothing
 about you or your characters, though the server you download from sees your device's network address, as any server
 does. Checking a source for updates, refreshing it and loading it again ask the same server for the same files.
+
+On the desktop, the app also checks for a newer version of itself: when it starts (unless you switch that off in
+Settings) and when you choose Help, "Check for updates…". A check is one request to GitHub
+(`github.com/WCH-Softworks/Incudo/releases/latest/download/latest.json`) for a small file naming the newest published
+version. It carries nothing about you or your characters; GitHub sees your network address, as any server does. If a
+newer version exists the app asks you first, and only if you agree does it download the installer, from the same
+release on GitHub, check its signature and install it. The Android app does not do this: Google Play updates it.
 
 Nothing else is requested. The app does not check whether you are online by contacting anyone: on Android it asks the
 operating system whether the connection is metered, so that it can ask you before a large download.
@@ -52,7 +59,8 @@ the system's own picker and share sheet, which you operate.
 
 ## Links
 
-The About screen links to Incudo's source code and to the project's donation page. A link opens in your browser, and
+The About screen links to Incudo's source code and to the project's donation page, and the desktop's update question
+links to the new version's release notes on GitHub. A link opens in your browser, and
 nothing is sent until you follow it.
 
 ## Children

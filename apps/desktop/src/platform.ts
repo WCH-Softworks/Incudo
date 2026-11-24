@@ -6,7 +6,7 @@
  * which is also why the folder picker and the directory scan are here rather than inside a
  * component that happens to need them.
  *
- * Eight ports, and two implementations of each where the two builds genuinely differ:
+ * Ten ports, and two implementations of each where the two builds genuinely differ:
  *
  * | port             | Tauri window                    | `npm run desktop` in a browser     |
  * |------------------|---------------------------------|------------------------------------|
@@ -16,6 +16,7 @@
  * | `FilePicker`     | `dialog` + `fs` plugins         | `showOpenFilePicker`               |
  * | `FileSaver`      | `dialog` + `fs` plugins         | `showSaveFilePicker`               |
  * | `PdfWriter`      | `print_to_pdf` (Windows only)   | none                               |
+ * | `AppUpdater`     | `updater` + `process` plugins   | none                               |
  * | `FileDrop`       | the webview's drag-drop event   | `drop` on the window               |
  * | `ZipCodec`      | `CompressionStream`             | `CompressionStream`                |
  * | `CommandHost`    | a native menu (mouse only)      | none                               |
@@ -37,6 +38,7 @@
  */
 
 import type {
+  AppUpdater,
   CharacterStore,
   ContainerForm,
   Fetcher,
@@ -47,6 +49,7 @@ import type {
   FilePicker,
   FileSaveOptions,
   FileSaver,
+  FoundUpdate,
   LibraryEntryRef,
   PaperSize,
   PdfWriter,
@@ -54,6 +57,7 @@ import type {
   SavedFile,
   Storage,
   SourceFiles,
+  UpdateProgress,
   ZipCodec,
   ZipCompressor,
 } from '@incudo/core';
@@ -859,6 +863,51 @@ class UnavailablePdfWriter implements PdfWriter {
   }
 }
 
+/**
+ * The window updating itself — ADR 0133. `check` reads the published release's `latest.json` (the address is in
+ * `tauri.conf.json`, not here), and the plugin answers only with a version newer than this one. `install` downloads what
+ * that check found, has the plugin verify it against the update key in `tauri.conf.json`, installs it, and opens the app
+ * again. On Windows the installer closes the app itself, so the relaunch is for macOS and Linux.
+ */
+class TauriAppUpdater implements AppUpdater {
+  readonly available = true;
+  private found: import('@tauri-apps/plugin-updater').Update | null = null;
+
+  async check(): Promise<FoundUpdate | null> {
+    const { check } = await import('@tauri-apps/plugin-updater');
+    // Release what an earlier check held: each check is a resource in the Rust half.
+    await this.found?.close().catch(() => undefined);
+    this.found = await check({ timeout: 30_000 });
+    return this.found ? { version: this.found.version, date: this.found.date } : null;
+  }
+
+  async install(onProgress?: (progress: UpdateProgress) => void): Promise<void> {
+    const update = this.found;
+    if (!update) throw new Error('There is no update to install. Check for updates again.');
+    let downloaded = 0;
+    let total: number | undefined;
+    await update.downloadAndInstall((event) => {
+      if (event.event === 'Started') total = event.data.contentLength;
+      else if (event.event === 'Progress') downloaded += event.data.chunkLength;
+      onProgress?.({ downloaded, total });
+    });
+    const { relaunch } = await import('@tauri-apps/plugin-process');
+    await relaunch();
+  }
+}
+
+/** No updater in the browser build: a page is updated by reloading it. The command is left out of its menu. */
+class UnavailableAppUpdater implements AppUpdater {
+  readonly available = false;
+  readonly unavailableReason = 'Only the desktop app updates itself. The browser version is updated by reloading the page.';
+  async check(): Promise<FoundUpdate | null> {
+    throw new Error(this.unavailableReason);
+  }
+  async install(): Promise<void> {
+    throw new Error(this.unavailableReason);
+  }
+}
+
 /** The one platform `print_to_pdf` is built for, so far. */
 function onWindows(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -1116,7 +1165,8 @@ class BrowserCommandHost implements CommandHost {
  * Opening a web address in the user's own browser: the About section's links, and nothing else yet.
  *
  * The window cannot follow a link itself (it would replace the app with the page), so Tauri's opener plugin hands it to
- * the system, and `capabilities/default.json` lets it open only the addresses `ABOUT_URLS` lists. A browser tab opens a
+ * the system, and `capabilities/default.json` lets it open only the addresses `ABOUT_URLS` lists and a release's notes
+ * (`RELEASE_NOTES_URL_PATTERN`). A browser tab opens a
  * new tab.
  */
 export interface LinkOpener {
@@ -1146,6 +1196,8 @@ export interface DesktopPlatform {
   saver: FileSaver;
   /** The page as a PDF with no print dialog — "Export sheet as PDF…" (ADR 0079). The Windows window only. */
   pdf: PdfWriter;
+  /** The app updating itself (ADR 0133). The Tauri window only. */
+  updater: AppUpdater;
   /** The files converted content sources are kept as (ADR 0119): the app's own `sources` folder in the window. */
   sources: SourceFiles;
   /** Files dropped on the window: Aurora elements files added as sources (ADR 0056). */
@@ -1180,6 +1232,7 @@ export function createDesktopPlatform(): DesktopPlatform {
       : new UnavailableFileSaver();
 
   const pdf = tauri && onWindows() ? new TauriPdfWriter() : new UnavailablePdfWriter();
+  const updater = tauri ? new TauriAppUpdater() : new UnavailableAppUpdater();
 
   return {
     fetcher: new DesktopFetcher(),
@@ -1188,10 +1241,11 @@ export function createDesktopPlatform(): DesktopPlatform {
     files,
     saver,
     pdf,
+    updater,
     sources: tauri ? new TauriSourceFiles() : new StorageSourceFiles(storage),
     drops: tauri ? new TauriFileDrop() : new BrowserFileDrop(),
     zip,
-    commands: tauri ? new TauriCommandHost(absentCommands({ pdfAvailable: pdf.available })) : new BrowserCommandHost(),
+    commands: tauri ? new TauriCommandHost(absentCommands({ pdfAvailable: pdf.available, updaterAvailable: updater.available })) : new BrowserCommandHost(),
     links: tauri ? new TauriLinkOpener() : new BrowserLinkOpener(),
     shell: tauri ? 'tauri' : 'browser',
   };

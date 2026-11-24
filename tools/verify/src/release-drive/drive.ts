@@ -441,7 +441,7 @@ test('an installed release candidate passes the drive half of docs/RELEASE-CHECK
     // 12. The menus, read and clicked by window messages.
     const menus = stepNamed('menus');
     const native = win32(['-Action', 'menu', '-ProcessId', String(pid)]) as Array<{ label: string; items: Array<{ text: string; id: number; separator: boolean }> }>;
-    const model = menuModel('other', absentCommands({ pdfAvailable: true }));
+    const model = menuModel('other', absentCommands({ pdfAvailable: true, updaterAvailable: true }));
     const label = (text: string) => text.split('\t')[0]!.replace(/&&/g, '&');
     for (const menu of model) {
       const bar = native.find((m) => label(m.label) === menu.label);

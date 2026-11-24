@@ -204,6 +204,17 @@ plugin's `save`, as a copy and the text export do. It needs no capability (an ap
 `webview2-com` and `windows` are the versions wry already builds. On macOS and Linux the command says it is Windows only,
 and the page offers no such command there: "Print sheet…" and its dialog's "Save as PDF" are the PDF.
 
+## Updates (ADR 0133)
+
+The window updates itself through `tauri-plugin-updater` and `tauri-plugin-process`, asked by the page only after the
+user says so (`src/use-updates.ts`, `src/panes/UpdateDialog.tsx`; the words are `packages/ui/src/app-update.ts`'s). The
+capability grants `updater:allow-check`, `updater:allow-download-and-install` and `process:allow-restart`, nothing
+wider; each identifier was checked against the plugins' own manifests in the cargo registry. The download is verified
+against `plugins.updater.pubkey` in `tauri.conf.json`, which is a placeholder until the maintainer generates the key
+pair; the release workflow refuses to build with it. With `bundle.createUpdaterArtifacts` on, `tauri build` needs
+`TAURI_SIGNING_PRIVATE_KEY` (and its password) in the environment; `tauri dev` does not. The browser build has no
+updater and no "Check for updates…" command.
+
 ## Two capabilities, opposite widths, and why
 
 `dialog` and `fs` joined `http` when the library arrived (and `dialog:allow-save` when a copy could be saved), and the filesystem scope is as narrow

@@ -18,9 +18,18 @@ tauri = { version = "2", features = [] }
 # The content transport (ADR 0050). The same reqwest the plugins already build, so no second TLS stack.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "charset"] }
 serde = { version = "1", features = ["derive"] }
+# `generate_context!` writes the `plugins` section of tauri.conf.json (the updater's, ADR 0133) as serde_json values.
+serde_json = "1"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-opener = "2"
+# The updater (ADR 0133): a signed update named by the published release's latest.json, installed only when the user
+# says so. Its own minisign key checks the download; it has nothing to do with Windows or macOS code signing.
+# Held to the minors the locked Tauri 2.11 takes (and the npm packages to the same): the newest updater moves Tauri to
+# 2.12, which wants rustc 1.90. Move them with Tauri, the npm packages beside them, or the CLI refuses the mismatch.
+tauri-plugin-updater = "~2.10"
+# Opens the app again after an update on macOS and Linux (`relaunch`); on Windows the installer does it.
+tauri-plugin-process = "~2.3"
 
 # "Export sheet as PDF…" (ADR 0079): WebView2's PrintToPdfStream, reached through the webview Tauri hands a command. The
 # versions wry already builds, so nothing new is compiled; `Win32_System_Com` is for reading the stream it answers with.

@@ -39,6 +39,7 @@ export * from './element-choices.ts';
 export * from './candidate-label.ts';
 export * from './preview-placement.ts';
 export * from './about.ts';
+export * from './app-update.ts';
 export * from './commands.ts';
 export * from './source-parts.ts';
 export * from './content-files.ts';

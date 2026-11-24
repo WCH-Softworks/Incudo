@@ -154,6 +154,8 @@ const SHIPPED_FORMS: FormMap[] = loadShippedForms();
 import { useBuilder } from './use-builder.ts';
 import { useLibrary } from './use-library.ts';
 import { useCommandHost, type CommandBinder, type CommandHandlers } from './use-commands.ts';
+import { useUpdates, type Updates } from './use-updates.ts';
+import { UpdateDialog } from './panes/UpdateDialog.tsx';
 import { LauncherPane, type SystemSummary } from './panes/LauncherPane.tsx';
 import { LibraryPane } from './panes/LibraryPane.tsx';
 import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
@@ -208,6 +210,20 @@ export function App(): React.JSX.Element {
    * and a `Shell` is per system: it is rebuilt on every switch and the menu should not be.
    */
   const commands = useCommandHost(platform.commands);
+  /**
+   * The app updating itself (ADR 0133). Here too, for the same reason: one window, one version, and the start check and
+   * its dialog belong to neither the launcher nor a system's workspace.
+   */
+  const updates = useUpdates(platform.updater, platform.storage, __INCUDO_VERSION__);
+  const updateDialog = (
+    <UpdateDialog
+      view={updates.view}
+      onAction={updates.act}
+      onOpenLink={(url) =>
+        void platform.links.open(url).catch((error: unknown) => console.error('The link could not be opened.', url, error))
+      }
+    />
+  );
 
   const reboot = useCallback(async (): Promise<Booted> => {
     const shipped = loadShippedSystems();
@@ -276,30 +292,37 @@ export function App(): React.JSX.Element {
 
   if (!system || !character || changing) {
     return (
-      <Launcher
-        booted={booted}
-        current={changing && system ? system.id : undefined}
-        onChoose={(picked) => void choose(picked)}
-        onChanged={(next) => {
-          setBooted(next);
-          // The system in play may have just been removed. Back to the launcher, deliberately
-          // and visibly, rather than leaving a Shell bound to a definition that is gone.
-          if (system && !next.systems.some((s) => s.id === system.id)) setSystem(null);
-        }}
-        reboot={reboot}
-      />
+      <>
+        {updateDialog}
+        <Launcher
+          booted={booted}
+          current={changing && system ? system.id : undefined}
+          onChoose={(picked) => void choose(picked)}
+          onChanged={(next) => {
+            setBooted(next);
+            // The system in play may have just been removed. Back to the launcher, deliberately
+            // and visibly, rather than leaving a Shell bound to a definition that is gone.
+            if (system && !next.systems.some((s) => s.id === system.id)) setSystem(null);
+          }}
+          reboot={reboot}
+        />
+      </>
     );
   }
 
   return (
-    <Shell
-      key={system.id}
-      system={system}
-      initial={character}
-      commands={commands}
-      onChangeSystem={() => setChanging(true)}
-      nameOfSystem={(id) => booted.systems.find((known) => known.id === id)?.name ?? id}
-    />
+    <>
+      {updateDialog}
+      <Shell
+        key={system.id}
+        system={system}
+        initial={character}
+        commands={commands}
+        appUpdates={updates}
+        onChangeSystem={() => setChanging(true)}
+        nameOfSystem={(id) => booted.systems.find((known) => known.id === id)?.name ?? id}
+      />
+    </>
   );
 }
 
@@ -500,12 +523,15 @@ function Shell({
   system,
   initial,
   commands,
+  appUpdates,
   onChangeSystem,
   nameOfSystem,
 }: {
   system: GameSystem;
   initial: LoadedDraft;
   commands: CommandBinder;
+  /** The app updating itself (ADR 0133): its command, its Settings section, and whether its dialog is up. */
+  appUpdates: Updates;
   onChangeSystem: () => void;
   /**
    * A system's name, for saying which one holds something. A system id is the format's key and
@@ -1506,6 +1532,7 @@ function Shell({
     printDraft !== null ||
     officialOpen ||
     refreshOpen ||
+    appUpdates.view !== null ||
     (startOptionsAsk !== null && pane === 'build' && state.startOptions.length > 0 && !contentLoading && !loadLeftNothing) ||
     (pane === 'library' && libraryState.status === 'no-location' && !askDismissed);
   const resolved = resolveCommands({
@@ -1527,6 +1554,8 @@ function Shell({
     formAvailable: formMap !== undefined,
     contentUpdates: notice !== undefined,
     started: edit.started,
+    updaterAvailable: appUpdates.available,
+    updating: appUpdates.busy,
   });
 
   const handlers: CommandHandlers = {
@@ -1552,6 +1581,7 @@ function Shell({
       setPane('settings');
       setShowAbout(true);
     },
+    'check-for-updates': appUpdates.check,
   };
   for (const command of COMMANDS) {
     if (command.destination) handlers[command.id] = () => setPane(command.destination!);
@@ -1794,6 +1824,7 @@ function Shell({
           attributions={systemAttributions(loadShippedSystems().systems)}
           showAbout={showAbout}
           onAboutShown={aboutShown}
+          updates={appUpdates}
           onOpenLink={(url) =>
             void platform.links.open(url).catch((error: unknown) => console.error('The link could not be opened.', url, error))
           }

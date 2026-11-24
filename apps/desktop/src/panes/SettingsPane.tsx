@@ -1,8 +1,8 @@
 /**
  * Settings: the handful of app-level choices that are not about a character or about content.
  *
- * Today that is one thing, the library folder (ADR 0027). It lives here rather than on the
- * library screen because choosing where your characters live is a **setup question, asked
+ * Two things: the library folder (ADR 0027), and in the desktop app whether it looks for updates when it starts (ADR
+ * 0133). The folder lives here rather than on the library screen because choosing where your characters live is a **setup question, asked
  * once** — the first run puts it in front of you as a dialog, and after that it is a setting
  * you go and find, not a button sitting next to "New character" waiting to be misread as
  * something you are supposed to press.
@@ -18,6 +18,10 @@
 import { useEffect, useRef } from 'react';
 import {
   ABOUT_SUMMARY,
+  CHECK_NOW_LABEL,
+  CHECK_ON_START_LABEL,
+  UPDATES_HEADING,
+  UPDATES_HINT,
   SOURCE_LINK,
   SUPPORT_LINKS,
   SUPPORT_TEXT,
@@ -26,6 +30,7 @@ import {
   type AboutLink,
   type SystemAttribution,
 } from '@incudo/ui';
+import type { Updates } from '../use-updates.ts';
 
 export function SettingsPane({
   location,
@@ -37,6 +42,7 @@ export function SettingsPane({
   attributions,
   showAbout,
   onAboutShown,
+  updates,
   onOpenLink,
 }: {
   location: string | null;
@@ -50,6 +56,8 @@ export function SettingsPane({
   /** Help > About Incudo asked for the About section; scrolled into view once, then `onAboutShown`. */
   showAbout: boolean;
   onAboutShown: () => void;
+  /** The app updating itself (ADR 0133). Its section is drawn only where the app can update itself. */
+  updates: Pick<Updates, 'available' | 'busy' | 'preferences' | 'check' | 'setCheckOnStart'>;
   onOpenLink: (url: string) => void;
 }): React.JSX.Element {
   const about = useRef<HTMLElement>(null);
@@ -130,6 +138,26 @@ export function SettingsPane({
           ? 'The desktop app. It can load content from any site.'
           : 'The browser version. Some sites do not let a web page load their files, so a content source that works in the desktop app may fail here.'}
       </p>
+
+      {updates.available && (
+        <>
+          <h3>{UPDATES_HEADING}</h3>
+          <div className="setting">
+            <label>
+              <input
+                type="checkbox"
+                checked={updates.preferences.checkOnStart}
+                onChange={(event) => updates.setCheckOnStart(event.target.checked)}
+              />{' '}
+              {CHECK_ON_START_LABEL}
+            </label>
+            <button type="button" onClick={updates.check} disabled={updates.busy}>
+              {CHECK_NOW_LABEL}
+            </button>
+          </div>
+          <p className="hint">{UPDATES_HINT}</p>
+        </>
+      )}
 
       <section ref={about} className="about" aria-labelledby="about-heading">
         <h3 id="about-heading">About Incudo</h3>
