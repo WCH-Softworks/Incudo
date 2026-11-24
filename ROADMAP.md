@@ -2590,6 +2590,17 @@ An ADR first. Not iOS: that waits for the maintainer's environment, as macOS doe
   user-visible feature walked in the phone's development build on the emulator, as Phase 9's drive item describes, before
   the real phone.
 
+### 1.x — The desktop app updates itself
+For the first release after 1.0.0. 1.0.0 has no updater, so everyone installs that release by hand once; from it on, each
+copy finds the next.
+- *Built on a branch 2026-11-24*: [ADR 0133](./docs/adr/0133-the-desktop-app-updates-itself-from-the-published-release-signed-with-a-key-of-its-own-and-only-when-the-user-says-so.md).
+  Tauri's updater with a minisign key of Incudo's own (not code signing: the installers stay unsigned), `latest.json`
+  written once by the release workflow and read from the newest *published* release only, so a draft or an rc is never
+  offered. The app checks at start (Settings can turn it off) and on Help, "Check for updates…", and downloads and
+  installs only when the user says so. **Waiting on the maintainer**: generating the key pair, pasting the public key
+  into `tauri.conf.json` (the release refuses the placeholder), the two secrets, and publishing the release. **Not
+  done**: an update installed end to end, which needs two signed releases; skipping a version; `.deb`/`.rpm` updates.
+
 ### 1.x — macOS, Linux and iOS
 After 1.0, by the maintainer's call (2026-10-12): none of the three has an environment to run on yet, and testing on them
 is not an immediate priority. Linux will probably come first. Until then every "not on macOS or Linux" and "not iOS" note

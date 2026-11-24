@@ -311,6 +311,40 @@ export interface PdfWriter {
   write(paper: PaperSize): Promise<Uint8Array>;
 }
 
+/** A newer version of the app that the updater found, and nothing downloaded yet. */
+export interface FoundUpdate {
+  /** The version it would install, as the release names it: `1.1.0`. */
+  version: string;
+  /** When it was published, as the release says, when it says. */
+  date?: string;
+}
+
+/** How far a download has got. `total` is absent when the server does not say how large it is. */
+export interface UpdateProgress {
+  downloaded: number;
+  total?: number;
+}
+
+/**
+ * The app updating itself — ADR 0133.
+ *
+ * `check` asks one fixed address which version is published and answers with it only when it is newer than the one
+ * running; it downloads nothing. `install` downloads what the last `check` found, verifies it against the app's own
+ * update key, installs it and opens the app again. **Nothing here decides when**: the caller asks the user first, every
+ * time, and a shell with no updater (the browser build) says so and offers no command for it, as {@link PdfWriter} does.
+ * On Windows the installer closes the app itself, so `install` may never return there.
+ */
+export interface AppUpdater {
+  /** False where this shell cannot update itself. */
+  readonly available: boolean;
+  /** Why, when `available` is false. Shown verbatim, so write it for the user. */
+  readonly unavailableReason?: string;
+  /** The newer published version, or null when the one running is the newest. Throws when the address cannot be read. */
+  check(): Promise<FoundUpdate | null>;
+  /** Download, verify and install what the last `check` found, then open the app again. Throws when any step fails. */
+  install(onProgress?: (progress: UpdateProgress) => void): Promise<void>;
+}
+
 /**
  * Files the user drops on the window — ADR 0056, for adding Aurora elements files as sources.
  *

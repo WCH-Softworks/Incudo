@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { ABOUT_URLS, PHONE_SUPPORT_LINKS, PRIVACY_LINK, SOURCE_LINK, SUPPORT_LINKS } from '@incudo/ui';
+import { ABOUT_URLS, PHONE_SUPPORT_LINKS, PRIVACY_LINK, RELEASE_NOTES_URL_PATTERN, SOURCE_LINK, SUPPORT_LINKS, releaseNotesUrl } from '@incudo/ui';
 import { existsSync } from 'node:fs';
 import { repoRoot } from './node-system.ts';
 
@@ -43,7 +43,7 @@ test('the support links are the Sponsor button\'s', async () => {
   assert.deepEqual([...fromFunding].sort(), SUPPORT_LINKS.map((link) => link.url).sort());
 });
 
-test('the window may open exactly the About links, and no other address', async () => {
+test('the window may open exactly the About links and the release notes, and no other address', async () => {
   const capability = JSON.parse(await read('apps', 'desktop', 'src-tauri', 'capabilities', 'default.json')) as {
     permissions: Array<string | { identifier: string; allow?: Array<{ url: string; path?: string }> }>;
   };
@@ -59,7 +59,10 @@ test('the window may open exactly the About links, and no other address', async 
   assert.equal(opener.length, 1, JSON.stringify(opener));
   const [only] = opener;
   assert.ok(typeof only === 'object' && only.identifier === 'opener:allow-open-url', JSON.stringify(only));
-  assert.deepEqual(only.allow!.map((entry) => entry.url).sort(), [...ABOUT_URLS].sort());
+  // The update dialog's "What is new in …" link (ADR 0133) is a release's page, and only that.
+  assert.deepEqual(only.allow!.map((entry) => entry.url).sort(), [...ABOUT_URLS, RELEASE_NOTES_URL_PATTERN].sort());
+  assert.ok(releaseNotesUrl('1.2.3').startsWith(RELEASE_NOTES_URL_PATTERN.slice(0, -1)));
+  assert.equal(RELEASE_NOTES_URL_PATTERN.indexOf('*'), RELEASE_NOTES_URL_PATTERN.length - 1, 'one wildcard, at the end');
 });
 
 test("the phone's About shows Ko-fi only, and its privacy link is the policy in this repository", async () => {

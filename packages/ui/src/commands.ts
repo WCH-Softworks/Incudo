@@ -54,6 +54,7 @@ export const COMMAND_IDS = [
   'review-content-updates',
   'change-system',
   'about',
+  'check-for-updates',
 ] as const;
 
 export type CommandId = (typeof COMMAND_IDS)[number];
@@ -138,6 +139,9 @@ export const COMMANDS: readonly CommandDef[] = [
   // The About section of Settings (about.ts). Not a destination: that would make it a tab of the header's own. No
   // shortcut, since nothing about it is done often.
   { id: 'about', label: 'About Incudo' },
+  // Asks which version is published and says what it found; nothing is downloaded until the user says so (ADR 0133).
+  // Only where the shell can update itself (`updaterAvailable`): the browser build leaves it out, as it does the PDF export.
+  { id: 'check-for-updates', label: 'Check for updates…' },
 ];
 
 /** `null` is a separator. */
@@ -171,7 +175,7 @@ export const MENUS: MenuLayout = [
     ],
   },
   { label: 'View', items: ['go-library', 'go-build', 'switch-build-tab', 'go-sheet', 'go-sources', 'go-browse', 'go-settings'] },
-  { label: 'Help', items: ['about'] },
+  { label: 'Help', items: ['check-for-updates', null, 'about'] },
 ];
 
 // --- what is possible right now -------------------------------------------------------------
@@ -215,6 +219,10 @@ export interface CommandContext {
   started: boolean;
   /** The open character's copies differ from what its sources load now (ADR 0082). */
   contentUpdates: boolean;
+  /** The shell can update itself (ADR 0133): the Tauri window, not the browser build. */
+  updaterAvailable: boolean;
+  /** An update check or install is running. */
+  updating: boolean;
 }
 
 /** The launcher, or the moment before anything has loaded: every command is unavailable. */
@@ -237,6 +245,8 @@ export const NO_WORKSPACE: CommandContext = {
   formAvailable: false,
   contentUpdates: false,
   started: false,
+  updaterAvailable: false,
+  updating: false,
 };
 
 /**
@@ -305,6 +315,8 @@ const ENABLED: Record<CommandId, (context: CommandContext) => boolean> = {
   'review-content-updates': (c) => (c.pane === 'build' || c.pane === 'sheet') && c.started && c.contentUpdates && !c.contentBusy,
   'change-system': () => true,
   'about': () => true,
+  // On every pane, like About; not while a check or an install is already running, which has its dialog up anyway.
+  'check-for-updates': (c) => c.updaterAvailable && !c.updating,
 };
 
 export interface ResolvedCommand extends CommandDef {
@@ -432,7 +444,7 @@ export interface MenuModel {
  * there and did nothing. See ADR 0037.
  *
  * `absent` names commands this shell does not have at all, which are left out rather than greyed: "Export sheet as PDF…"
- * where no PDF writer exists (ADR 0079 decision 2). A separator left with nothing on one side goes too.
+ * where no PDF writer exists (ADR 0079 decision 2), and "Check for updates…" where the shell cannot update itself (ADR 0133). A separator left with nothing on one side goes too.
  */
 export function menuModel(os: Os, absent: readonly CommandId[] = []): MenuModel[] {
   return MENUS.map((menu) => ({
@@ -462,8 +474,11 @@ function tidySeparators(items: ReadonlyArray<CommandId | null>): Array<CommandId
 }
 
 /** The commands a shell does not have: what `menuModel` leaves out. */
-export function absentCommands(capabilities: { pdfAvailable: boolean }): CommandId[] {
-  return capabilities.pdfAvailable ? [] : ['export-sheet-pdf'];
+export function absentCommands(capabilities: { pdfAvailable: boolean; updaterAvailable: boolean }): CommandId[] {
+  const absent: CommandId[] = [];
+  if (!capabilities.pdfAvailable) absent.push('export-sheet-pdf');
+  if (!capabilities.updaterAvailable) absent.push('check-for-updates');
+  return absent;
 }
 
 // --- the port -------------------------------------------------------------------------------

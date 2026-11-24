@@ -620,6 +620,36 @@ Phase 6's last item. Things to know before touching it:
 - **The drive's record is `docs/release-checks/mobile-v1.0.0-rc.1.md`**, with what was found and not fixed. Never
   generate the icon, splash or store graphics: they are the maintainer's.
 
+**The desktop app updates itself from the newest published release, signed with a key of its own, and only when the user
+says so** ([ADR 0133](docs/adr/0133-the-desktop-app-updates-itself-from-the-published-release-signed-with-a-key-of-its-own-and-only-when-the-user-says-so.md),
+2026-11-24, Proposed; Beyond 1.0's "1.x — The desktop app updates itself"). Things to know before touching it:
+
+- **The update key is not code signing.** `tauri-plugin-updater` checks a minisign signature against `plugins.updater.pubkey`
+  in `tauri.conf.json`; the installers stay unsigned. **The pubkey is the placeholder `REPLACE-WITH-THE-UPDATE-PUBLIC-KEY`
+  until the maintainer runs `npx tauri signer generate`**: `npm test` only says so (an `ℹ` line), and the release's check
+  job (`apps/desktop/scripts/updater-manifest.cjs --check-config`) refuses to build with it. The private key and its
+  password are the secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, never in the repository;
+  with `createUpdaterArtifacts` on, a local `tauri build` needs them in the environment (`tauri dev` does not). A lost
+  private key cannot be reset: no installed copy could be updated again.
+- **One address**, `releases/latest/download/latest.json`, which GitHub serves only from the newest published release that
+  is not a pre-release: a draft or an rc is never offered, and publishing is what ships an update.
+- **`latest.json` is written once by the release's `updater` job** (`updater-manifest.cjs`, after every build), from the
+  release's asset names and `.sig` files, with the release's own download addresses; tauri-action's own is off
+  (`uploadUpdaterJson: false`) because its jobs merge one file with nothing stopping a race. It refuses a release missing
+  any of the four platforms built, naming it. `tools/verify/src/desktop-updater.test.ts` holds the config, the
+  permissions, the workflow and the script.
+- **The plugins are held to the minors the locked Tauri 2.11 takes** (updater `~2.10`, process `~2.3`, the npm packages
+  on the same minors, which the Tauri CLI requires; a test holds the pairs). The newest updater moves Tauri to 2.12, which
+  wants rustc 1.90. `generate_context!` writes the `plugins` section, so `serde_json` is a direct dependency.
+- **It asks.** `AppUpdater` (core's `platform.ts`) checks and installs; `packages/ui/src/app-update.ts` words the dialog and
+  holds the preference (`app/updates` in `Storage`, `checkOnStart`, on by default). A start check is silent unless there is
+  a newer version; Help › "Check for updates…" and Settings' "Check now" say every answer. The command is absent where
+  there is no updater (`absentCommands`), as in the browser build. `use-updates.ts` and `panes/UpdateDialog.tsx` live above
+  `Shell`, so the dialog shows over the launcher too. Permissions: `updater:allow-check`,
+  `updater:allow-download-and-install`, `process:allow-restart`, and the opener may open a release's page.
+- **1.0.0 has no updater**: the first updating release is installed by hand. **Nothing has been updated end to end**: that
+  needs two signed, published releases, and the second's release check must drive it.
+
 **A user system may be an overlay of another: a patch applied to its parent on every load and validated as the system it
 makes** ([ADR 0102](docs/adr/0102-an-overlay-is-a-patch-applied-to-its-parent-on-every-load-and-validated-as-the-system-it-makes.md)),
 Phase 7's first item. Things to know before touching it:

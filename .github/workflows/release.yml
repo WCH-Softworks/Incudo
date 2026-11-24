@@ -10,6 +10,20 @@ name: Release
 # system definitions. The builds are unsigned, and the notes say so. The macOS bundle is signed ad hoc
 # (`bundle.macOS.signingIdentity: "-"` in tauri.conf.json), which proves no publisher: Apple silicon will not run code
 # with no signature at all, and a downloaded app with none reads as "damaged" rather than as unverified.
+#
+# The updates are signed, with a key of Incudo's own that has nothing to do with Windows or Apple (ADR 0133): the app
+# installs an update only when its signature matches the public key in tauri.conf.json. Two repository secrets hold the
+# private half, and nothing else anywhere does:
+#
+#   TAURI_SIGNING_PRIVATE_KEY           the private key `npx tauri signer generate` wrote, its whole text
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  the password it was given
+#
+# Lose the key and no installed copy can be updated again: each would have to be replaced by hand with a build carrying
+# a new public key. Keep it, and its password, where the maintainer keeps the Android upload key (ADR 0132).
+#
+# The last job writes latest.json, the file the app asks for, onto the release. The app asks for it at
+# releases/latest/download/latest.json, which GitHub serves only from the newest *published* release that is not a
+# pre-release: a draft, and an rc, are never offered to anyone.
 
 on:
   push:
@@ -51,6 +65,9 @@ jobs:
             fi
           done
           echo "version=$base" >> "$GITHUB_OUTPUT"
+          # The update key (ADR 0133): no release while tauri.conf.json carries the placeholder, or anything that is not
+          # a minisign public key. Without the real one, every copy installed from this release could never be updated.
+          node apps/desktop/scripts/updater-manifest.cjs --check-config
           if [ -n "${BASH_REMATCH[2]}" ]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
       - name: The tagged commit is on main
         run: |
@@ -103,12 +120,19 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs each update (ADR 0133). The build fails without them, since createUpdaterArtifacts is on.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           args: ${{ matrix.args }}
           tagName: ${{ github.ref_name }}
           releaseName: Incudo ${{ github.ref_name }}
           releaseDraft: true
+          # Each job uploads its installers and their .sig files; the `updater` job below writes latest.json once, from
+          # all of them. The action's own latest.json is merged job by job with nothing stopping two jobs racing, and
+          # its addresses are API asset links rather than the release's own.
+          uploadUpdaterJson: false
           prerelease: ${{ needs.check.outputs.prerelease == 'true' }}
           releaseBody: |
             Incudo ${{ github.ref_name }}, a free, open-source character builder that reads Aurora's content.
@@ -119,4 +143,32 @@ jobs:
 
             No rulebook content is included. Add a content source on the Sources screen; the app suggests the community-maintained AuroraLegacy collection.
 
+            **Updating.** From this version on the app looks for a newer published release when it starts (Settings can turn that off; Help, "Check for updates…" asks at any time) and installs one only when you say so. Copies of 1.0.0 cannot update themselves: install this one by hand once.
+
             Built from ${{ github.sha }}.
+
+  updater:
+    # latest.json, written once every installer and its signature is on the release (ADR 0133). It fails, naming the
+    # platform, rather than write a file missing one; run the failed build again and then this job.
+    needs: [check, installers]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Write latest.json from the release's signatures
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          mkdir -p signatures
+          # The release is a draft, and gh finds a draft by its tag name.
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' > assets.txt
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.sig' --dir signatures
+          node apps/desktop/scripts/updater-manifest.cjs --tag "$TAG" --version "$VERSION" --repo "$GITHUB_REPOSITORY" \n            --assets assets.txt --signatures signatures > latest.json
+          cat latest.json
+          gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
