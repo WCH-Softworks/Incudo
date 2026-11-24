@@ -109,14 +109,27 @@ never a draft and never a pre-release. That address is what keeps an unpublished
 11. **1.0.0 has no updater.** Everyone on 1.0.0 installs the first updating release by hand, once; the release notes say
     so. From then on each copy finds the next.
 
+> **Note, 2026-11-24, after v1.1.0-rc.1 — the release's file list, and what the rc settled.** The rc's draft held 17
+> files where 1.0.0's held 9: the same installers, seven `.sig` files and `latest.json`. By the maintainer's call:
+> the `updater` job now **deletes every `.sig` from the release after uploading `latest.json`** (the signatures are inside
+> it, and nothing else reads them; before the upload, a failed run would lose them); **Windows ships the setup program
+> only** (`bundle.targets` lists `nsis`, `app`, `dmg`, `appimage`, `deb`, `rpm`: no `msi`), whose installer finds an
+> MSI install of the same product and publisher and offers to remove it first (read in the Tauri CLI's NSIS template);
+> the `.rpm` stays, so no Linux family is left out; and the notes open with a table naming the one file for each kind of
+> computer, linked. A release now lists 10 files: six installers, two `.app.tar.gz` the Mac updates download, and
+> `latest.json`. The rc also settled three things decision 3 and "Not verified" left open: tauri-action names the
+> files as `archOf` reads them (`Incudo_aarch64.app.tar.gz`, `Incudo_x64.app.tar.gz` and the rest), `gh` finds the
+> draft by its tag, and the `.deb` and `.rpm` **are** signed (412 and 416 characters), so their keys are written. The
+> Windows installer's signature was checked against the committed public key with Node's own Ed25519 and BLAKE2b, and
+> a copy with one byte changed fails. The Apple silicon build waited twice for a runner GitHub never gave it
+> ("capacity constraints"); a re-run of the failed jobs is the answer.
+
 ## Open questions for the maintainer
 
 - **"Skip this version."** Not built: Not now asks again at the next start, which is mild with one check per start. If
   that proves nagging, a skipped version can be remembered beside `checkOnStart`.
-- **The `.deb` and `.rpm`.** Tauri 2.10's updater installs an AppImage on Linux; whether it signs and installs the
-  `.deb` and `.rpm` depends on the CLI and plugin versions. The manifest writes their keys only if a `.sig` is there, so
-  a user who installed the `.deb` may not be offered updates. Whether to drop them from `targets` or to tell `.deb` users
-  to update through the package is the maintainer's call.
+- **The `.deb` and `.rpm`.** They are signed and named in `latest.json` (the note above). Whether the updater installs
+  one in place has not been run; the maintainer keeps all three Linux formats.
 - **A pre-release channel.** An rc is never offered (decision 2). Testers who want candidates install them by hand. A
   second address for a beta channel is possible later.
 - **An rc's app reads as the final version** (the app's version carries no `-rc`, as before), so a tester on 1.1.0-rc.2
