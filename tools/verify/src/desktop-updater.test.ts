@@ -135,12 +135,10 @@ test('the release workflow signs with the two secrets, refuses the placeholder, 
   }
 });
 
-/** What a release holds after the four builds, named as tauri-action names them. */
+/** What a release holds after the four builds, as v1.1.0-rc.1's did (less its .msi, no longer built). */
 const ASSETS = [
   'Incudo_1.1.0_x64-setup.exe',
   'Incudo_1.1.0_x64-setup.exe.sig',
-  'Incudo_1.1.0_x64_en-US.msi',
-  'Incudo_1.1.0_x64_en-US.msi.sig',
   'Incudo_aarch64.app.tar.gz',
   'Incudo_aarch64.app.tar.gz.sig',
   'Incudo_x64.app.tar.gz',
@@ -150,7 +148,9 @@ const ASSETS = [
   'Incudo_1.1.0_amd64.AppImage',
   'Incudo_1.1.0_amd64.AppImage.sig',
   'Incudo_1.1.0_amd64.deb',
+  'Incudo_1.1.0_amd64.deb.sig',
   'Incudo-1.1.0-1.x86_64.rpm',
+  'Incudo-1.1.0-1.x86_64.rpm.sig',
 ];
 const SIGNED = ASSETS.filter((name) => ASSETS.includes(`${name}.sig`));
 const signatures = Object.fromEntries(SIGNED.map((name) => [name, `sig of ${name}\n`]));
@@ -167,8 +167,9 @@ test("latest.json names every platform's signed installer, by the release's own 
     'darwin-x86_64-app',
     'linux-x86_64',
     'linux-x86_64-appimage',
+    'linux-x86_64-deb',
+    'linux-x86_64-rpm',
     'windows-x86_64',
-    'windows-x86_64-msi',
     'windows-x86_64-nsis',
   ]);
   for (const key of script.REQUIRED_PLATFORMS) assert.ok(manifest.platforms[key], key);
@@ -176,10 +177,15 @@ test("latest.json names every platform's signed installer, by the release's own 
     signature: 'sig of Incudo_1.1.0_x64-setup.exe',
     url: 'https://github.com/WCH-Softworks/Incudo/releases/download/v1.1.0/Incudo_1.1.0_x64-setup.exe',
   });
-  assert.equal(manifest.platforms['windows-x86_64-msi']!.url.endsWith('/Incudo_1.1.0_x64_en-US.msi'), true);
   assert.equal(manifest.platforms['darwin-aarch64']!.url.endsWith('/Incudo_aarch64.app.tar.gz'), true);
-  // An unsigned file (the .dmg, the .deb here) is never offered: the updater would refuse it anyway.
-  assert.doesNotMatch(JSON.stringify(manifest), /\.dmg|\.deb|\.rpm/);
+  assert.equal(manifest.platforms['linux-x86_64-rpm']!.url.endsWith('/Incudo-1.1.0-1.x86_64.rpm'), true);
+  // An unsigned file (the .dmg) is never offered: the updater would refuse it anyway.
+  assert.doesNotMatch(JSON.stringify(manifest), /\.dmg/);
+  // An .msi, if a release ever has one again, goes under its own key, and the plain key stays the setup program.
+  const msi = 'Incudo_1.1.0_x64_en-US.msi';
+  const withMsi = script.buildManifest({ ...input, assets: [...ASSETS, msi], signatures: { ...signatures, [msi]: 'm' } });
+  assert.equal(withMsi.platforms['windows-x86_64-msi']!.signature, 'm');
+  assert.ok(withMsi.platforms['windows-x86_64']!.url.endsWith('-setup.exe'));
 });
 
 test('latest.json is refused, naming why, rather than written missing a platform or guessing a file', () => {
@@ -201,4 +207,30 @@ test('latest.json is refused, naming why, rather than written missing a platform
   assert.equal(script.archOf('Incudo_1.1.0_amd64.AppImage'), 'x86_64');
   assert.equal(script.archOf('Incudo_aarch64.app.tar.gz'), 'aarch64');
   assert.equal(script.archOf('Incudo.app.tar.gz'), undefined);
+});
+
+test('a release lists one installer per kind of computer, a table saying which, and no .sig file', () => {
+  // The maintainer's call (2026-11-24): the setup program and not the .msi on Windows; the AppImage, .deb and .rpm kept so
+  // no family of Linux is left out; the .app bundle because the Mac updates download it.
+  assert.deepEqual((conf.bundle as { targets?: unknown }).targets, ['nsis', 'app', 'dmg', 'appimage', 'deb', 'rpm']);
+  const workflow = read('.github/workflows/release.yml');
+  // The signatures are read into latest.json and then removed: never before the upload, or a failed run loses them.
+  const updater = workflow.slice(workflow.indexOf('\n  updater:'));
+  const upload = updater.indexOf('gh release upload "$TAG" latest.json');
+  const remove = updater.indexOf('gh release delete-asset "$TAG" "$name"');
+  assert.ok(upload > 0 && remove > upload, 'the .sig files go only after latest.json is up');
+  assert.match(updater.slice(remove - 120, remove), /\*\.sig\)/, 'and only the .sig files');
+  // The table names each file as the build names it, with this release's version.
+  for (const file of [
+    'Incudo_${{ needs.check.outputs.version }}_x64-setup.exe',
+    'Incudo_${{ needs.check.outputs.version }}_aarch64.dmg',
+    'Incudo_${{ needs.check.outputs.version }}_x64.dmg',
+    'Incudo_${{ needs.check.outputs.version }}_amd64.AppImage',
+    'Incudo_${{ needs.check.outputs.version }}_amd64.deb',
+    'Incudo-${{ needs.check.outputs.version }}-1.x86_64.rpm',
+  ]) {
+    assert.ok(workflow.includes(`[${file}](`), file);
+    assert.ok(workflow.includes(`/releases/download/\${{ github.ref_name }}/${file})`), `${file} links to itself`);
+  }
+  assert.doesNotMatch(workflow, /\.msi\]/, 'no .msi offered');
 });

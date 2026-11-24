@@ -636,7 +636,9 @@ says so** ([ADR 0133](docs/adr/0133-the-desktop-app-updates-itself-from-the-publ
 - **`latest.json` is written once by the release's `updater` job** (`updater-manifest.cjs`, after every build), from the
   release's asset names and `.sig` files, with the release's own download addresses; tauri-action's own is off
   (`uploadUpdaterJson: false`) because its jobs merge one file with nothing stopping a race. It refuses a release missing
-  any of the four platforms built, naming it. `tools/verify/src/desktop-updater.test.ts` holds the config, the
+  any of the four platforms built, naming it, and then deletes the release's `.sig` files (their text is in `latest.json`).
+  Windows ships the setup program only (`bundle.targets` has no `msi`); a release lists 10 files, under a table of which
+  file is for which computer. `tools/verify/src/desktop-updater.test.ts` holds the config, the
   permissions, the workflow and the script.
 - **The plugins are held to the minors the locked Tauri 2.11 takes** (updater `~2.10`, process `~2.3`, the npm packages
   on the same minors, which the Tauri CLI requires; a test holds the pairs). The newest updater moves Tauri to 2.12, which

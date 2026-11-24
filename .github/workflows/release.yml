@@ -137,19 +137,33 @@ jobs:
           releaseBody: |
             Incudo ${{ github.ref_name }}, a free, open-source character builder that reads Aurora's content.
 
+            **Which file do I want?**
+
+            | Computer | Download |
+            |---|---|
+            | Windows | [Incudo_${{ needs.check.outputs.version }}_x64-setup.exe](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/Incudo_${{ needs.check.outputs.version }}_x64-setup.exe) |
+            | Mac with Apple silicon (M1 and later) | [Incudo_${{ needs.check.outputs.version }}_aarch64.dmg](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/Incudo_${{ needs.check.outputs.version }}_aarch64.dmg) |
+            | Mac with an Intel processor | [Incudo_${{ needs.check.outputs.version }}_x64.dmg](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/Incudo_${{ needs.check.outputs.version }}_x64.dmg) |
+            | Linux, any distribution | [Incudo_${{ needs.check.outputs.version }}_amd64.AppImage](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/Incudo_${{ needs.check.outputs.version }}_amd64.AppImage) (the one that updates itself) |
+            | Linux, Debian or Ubuntu | [Incudo_${{ needs.check.outputs.version }}_amd64.deb](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/Incudo_${{ needs.check.outputs.version }}_amd64.deb) |
+            | Linux, Fedora, openSUSE and other RPM systems | [Incudo-${{ needs.check.outputs.version }}-1.x86_64.rpm](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/Incudo-${{ needs.check.outputs.version }}-1.x86_64.rpm) |
+
+            The two `.app.tar.gz` files and `latest.json` are what the app itself downloads to update; there is no need to download them.
+
             **These installers are not signed.** Windows SmartScreen will say the publisher is unknown ("More info", then "Run anyway"). On macOS the app carries only an ad-hoc signature, so macOS refuses it the first time it is opened: then open System Settings, Privacy & Security, and press "Open Anyway" beside Incudo. On Linux, make the AppImage executable before running it, or install the .deb or .rpm.
 
             **Which platforms were tried:** only Windows has been run by hand. The macOS (Apple silicon and Intel) and Linux builds were produced by this workflow and have not been installed or opened by anyone yet. Reports from those platforms are welcome as issues.
 
             No rulebook content is included. Add a content source on the Sources screen; the app suggests the community-maintained AuroraLegacy collection.
 
-            **Updating.** From this version on the app looks for a newer published release when it starts (Settings can turn that off; Help, "Check for updates…" asks at any time) and installs one only when you say so. Copies of 1.0.0 cannot update themselves: install this one by hand once.
+            **Updating.** From 1.1.0 on the app looks for a newer published release when it starts (Settings can turn that off; Help, "Check for updates…" asks at any time) and installs one only when you say so. Copies of 1.0.0 cannot update themselves: install a later one by hand once. Windows is now offered as the setup program only; if you installed 1.0.0 from the `.msi`, the setup program finds it and offers to remove it first, and you should say yes.
 
             Built from ${{ github.sha }}.
 
   updater:
     # latest.json, written once every installer and its signature is on the release (ADR 0133). It fails, naming the
-    # platform, rather than write a file missing one; run the failed build again and then this job.
+    # platform, rather than write a file missing one; run the failed build again and then this job. It then removes the
+    # .sig files, whose text latest.json carries, so the release lists what a person downloads and latest.json.
     needs: [check, installers]
     runs-on: ubuntu-latest
     permissions:
@@ -172,3 +186,8 @@ jobs:
           node apps/desktop/scripts/updater-manifest.cjs --tag "$TAG" --version "$VERSION" --repo "$GITHUB_REPOSITORY" \n            --assets assets.txt --signatures signatures > latest.json
           cat latest.json
           gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
+          # The signatures are inside latest.json now, and nobody downloads a .sig: take them off the release so its list
+          # is the installers. Only after the upload, so a failed run leaves them for the next one to read.
+          while read -r name; do
+            case "$name" in *.sig) gh release delete-asset "$TAG" "$name" --repo "$GITHUB_REPOSITORY" --yes ;; esac
+          done < assets.txt
