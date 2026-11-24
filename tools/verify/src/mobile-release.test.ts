@@ -17,7 +17,7 @@ const require = createRequire(import.meta.url);
 const read = (...parts: string[]): string => readFileSync(join(root, ...parts), 'utf8');
 
 const app = JSON.parse(read('apps', 'mobile', 'app.json')) as {
-  expo: { version: string; plugins: unknown[]; android: { versionCode: number; blockedPermissions: string[] } };
+  expo: { version: string; plugins: unknown[]; android: { package: string; versionCode: number; blockedPermissions: string[] } };
 };
 const pkg = JSON.parse(read('apps', 'mobile', 'package.json')) as { version: string };
 const { parseTag, versionCode, RELEASE } = require(join(mobile, 'scripts', 'release-version.cjs')) as {
@@ -30,6 +30,11 @@ const backup = require(join(mobile, 'plugins', 'backup-rules.cjs')) as {
   DATA_EXTRACTION_RULES: string;
   FULL_BACKUP_CONTENT: string;
 };
+
+test("the package name is the one Play knows the app by, and never changes", () => {
+  // Play ties a listing to its package name for good: another name is another app, with none of its installs or reviews.
+  assert.equal(app.expo.android.package, "com.wchsoftworks.incudo");
+});
 
 test("the phone's version is one number, and the committed code is the release's", () => {
   assert.equal(app.expo.version, pkg.version, 'app.json and apps/mobile/package.json name the same version');

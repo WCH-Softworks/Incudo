@@ -11,7 +11,7 @@
     ],
     "scheme": "incudo",
     "android": {
-      "package": "dev.incudo.mobile",
+      "package": "com.wchsoftworks.incudo",
       "versionCode": 1000099,
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",

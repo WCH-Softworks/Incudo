@@ -151,6 +151,12 @@ and deity), 0088 (multiclassing off). They are the drive's (decision 9).
    phone.
 10. **Not iOS** (ROADMAP "1.x — macOS, Linux and iOS"). Minifying and resource shrinking stay off for the first listing;
     a size pass comes after it, measured.
+11. **The Android package is `com.wchsoftworks.incudo`** (the maintainer's call, 2026-11-24, before the app was created
+    in the Play Console). It was `dev.incudo.mobile`, which reads as the domain `incudo.dev`, a domain the project does
+    not own; a package name is a domain reversed, Play may ask the developer to verify it, and a listing keeps its
+    package for good. The desktop's Tauri identifier `dev.incudo.desktop` is not changed: it names the folder where an
+    installed desktop keeps its sources and settings, and the desktop has shipped. `mobile-release.test.ts` holds the
+    package name.
 
 ## Consequences
 
