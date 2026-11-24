@@ -32,7 +32,7 @@ So Expo Go cannot be offered a file by another app, by any route, and nothing in
 
 1. **The phone app gets a development build of its own, and Expo Go stays** (the maintainer's choice, asked before the
    run model changed). `expo-dev-client` is a dependency; `app.json` names the Android package `dev.incudo.mobile` (the
-   desktop is `dev.incudo.desktop`), the scheme `incudo`, and `expo-sharing`'s plugin with Android enabled.
+   desktop is `dev.incudo.desktop`; *since ADR 0132's decision 11, 2026-11-24, the phone's is `com.wchsoftworks.incudo`*), the scheme `incudo`, and `expo-sharing`'s plugin with Android enabled.
    `npm run mobile:build:android` (`expo run:android`) generates `apps/mobile/android`, which stays ignored (Continuous
    Native Generation: the config is the source, the folder is output), builds it and installs it, and `npm run
    mobile:build` serves it. Everything else still runs in Expo Go (`npm run mobile`), where receiving is simply absent:

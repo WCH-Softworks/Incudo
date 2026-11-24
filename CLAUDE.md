@@ -510,7 +510,7 @@ the rest of Phase 6's import/export item. Things to know before touching it:
 
 - **Measured first, on the emulator:** Expo Go registers no `SEND` filter and is not offered for `application/octet-stream`,
   which is what Android types both a `.incu` and a `.dnd5e`. So **the phone app has a development build of its own**
-  (`expo-dev-client`, the maintainer's choice; `app.json` names `dev.incudo.mobile`, the scheme `incudo`, `expo-sharing`'s
+  (`expo-dev-client`, the maintainer's choice; `app.json` names `com.wchsoftworks.incudo`, the scheme `incudo`, `expo-sharing`'s
   plugin for `SEND`/`SEND_MULTIPLE` and a `VIEW` intent filter on `content`, both for `application/octet-stream` and
   `application/zip`). `apps/mobile/android` is generated and ignored; build it again after a change to `app.json` or a
   native dependency. **Expo Go stays:** `npm run mobile` is `expo start --go`, said explicitly because with the dev client

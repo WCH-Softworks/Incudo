@@ -47,7 +47,7 @@ npm run mobile:build:android
 ```
 
 generates `android/` from `app.json` (ignored: the config is the source), builds it with Gradle (minutes the first time)
-and installs Incudo as an app of its own, `dev.incudo.mobile`. Then
+and installs Incudo as an app of its own, `com.wchsoftworks.incudo`. Then
 
 ```bash
 npm run mobile:build
