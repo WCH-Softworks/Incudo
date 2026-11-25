@@ -13,6 +13,14 @@ on:
   # `release.yml` runs these same two jobs on the tagged commit before it builds any installer.
   workflow_call:
 
+# A newer push to the same branch or pull request stops the run it supersedes: only the newest commit's result is
+# read. The event is in the group so a daily scheduled run (which skips `build`) never cancels a push's run on main,
+# nor the other way round. Called from `release.yml`, the ref is the release's tag, which no other run shares; the
+# name is spelled out rather than `github.workflow`, which is the caller's there.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     # Nothing new to learn on a schedule: this job reads no upstream content.
