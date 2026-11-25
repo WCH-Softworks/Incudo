@@ -3,17 +3,19 @@
  *
  * A renderer of `StartingEquipmentState`, as the desktop's `StartingEquipment.tsx` is: what each option gives, what it
  * still owes and whether a package can be taken back are `packages/ui/src/starting-equipment.ts`'s, and every sentence
- * is its. A choice's bundles are buttons, one marked; a pick's slot opens the shared picker.
+ * is its. Each line whose bundles are alternatives is its own group, headed "Choose one:" and marked down its edge,
+ * its bundles radio rows; a pick's slot opens the shared picker.
  */
 
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import type { ElementId } from '@incudo/core';
 import {
   purseLine,
   startingMissingNote,
   startingOwedNote,
+  STARTING_CHOOSE_ONE,
   STARTING_EQUIPMENT_HINT,
   STARTING_UNLISTED,
   type CharacterBuilder,
@@ -80,16 +82,23 @@ function OptionCard({
       {option.lines.map((line) => (
         <View key={line.key} style={{ gap: 4 }}>
           {line.kind === 'items' ? (
-            line.text ? <Body>{line.text}</Body> : null
+            line.text ? <Body>{`• ${line.text}`}</Body> : null
           ) : (
-            line.alternatives.map((alternative) => (
-              <Button
-                key={alternative.index}
-                label={`${line.chosen === alternative.index ? '● ' : '○ '}${alternative.text}`}
-                kind="link"
-                onPress={() => builder.chooseStartingAlternative(forId, option.id, line.key, alternative.index)}
-              />
-            ))
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel={STARTING_CHOOSE_ONE}
+              style={{ borderLeftColor: palette.accent, borderLeftWidth: 3, paddingLeft: 8, paddingVertical: 2, gap: 2 }}
+            >
+              <Text style={{ color: palette.muted, fontWeight: '600' }}>{STARTING_CHOOSE_ONE}</Text>
+              {line.alternatives.map((alternative) => (
+                <Radio
+                  key={alternative.index}
+                  label={alternative.text}
+                  checked={line.chosen === alternative.index}
+                  onPress={() => builder.chooseStartingAlternative(forId, option.id, line.key, alternative.index)}
+                />
+              ))}
+            </View>
           )}
           {line.picks.map((p) =>
             p.chosen.map((chosen, slot) => (
@@ -129,6 +138,35 @@ function OptionCard({
         {option.owed > 0 ? <Tag label={startingOwedNote(option.owed)} /> : null}
       </Row>
     </View>
+  );
+}
+
+/** One bundle of a choice: a circle, filled when it is the one chosen, and the bundle's words. */
+function Radio({ label, checked, onPress }: { label: string; checked: boolean; onPress: () => void }) {
+  const palette = usePalette();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked }}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}
+    >
+      <View
+        style={{
+          width: 18,
+          height: 18,
+          marginTop: 1,
+          borderRadius: 9,
+          borderWidth: 2,
+          borderColor: checked ? palette.accent : palette.muted,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {checked ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: palette.accent }} /> : null}
+      </View>
+      <Text style={{ flex: 1, color: palette.text, fontWeight: checked ? '600' : '400' }}>{label}</Text>
+    </Pressable>
   );
 }
 
