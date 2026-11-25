@@ -2844,8 +2844,9 @@ many Aurora imports are creatures built as player characters. Things to know bef
 - **Every direction; nothing recorded** about the conversion, no format number moved beyond what the records need.
 - **Desktop: Change kind… on a library card** (`LibraryPane.tsx`, `changeKindFromLibrary` in `App.tsx`) opens the file as
   Open does, then `panes/ConvertKind.tsx` over Build; the result replaces `working.character` and keeps the entry and
-  the baseline, so it is an unsaved edit (ADR 0120). Phone: the Build screen's Change kind… and `ConvertKindView.tsx`,
-  typechecked, not driven.
+  the baseline, so it is an unsaved edit (ADR 0120). The dialog stays mounted: read its kind through `conversionTarget`,
+  or reopened after a conversion it converts to the kind the character already is and throws. Phone: the Build screen's
+  Change kind… and `ConvertKindView.tsx`, typechecked, not driven. Driven in the Tauri window on Windows (2026-11-25).
 - Tests: `packages/ui/src/kind-conversion.test.ts` (each case failing under its named perturbation) and
   `tools/verify/src/kind-conversion.test.ts` (every sample to every other kind, both ways of ticking: valid, nothing
   stray, no new error, copies read as shown, the same reopened with no source; and back again). The oracle is untouched.

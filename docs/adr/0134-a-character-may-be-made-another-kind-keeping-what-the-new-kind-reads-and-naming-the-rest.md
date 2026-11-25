@@ -96,5 +96,11 @@ kind, against AuroraLegacy at the corpus head (2026-11-25):
   and race.
 - A converted creature does not pick a creature: the NPC has none until the DM picks one, and a typed armour class and
   hit points then replace its print. Unticking them gives the creature's numbers instead.
+- **Driven in the Tauri window on Windows (2026-11-25)**, by DOM events over the debug port and not with real input: a
+  Fighter 5 sample imported, Change kind… to Legendary Creature read, Cancel leaving the file and the bar unchanged, the
+  conversion confirmed with one number and one pick unticked, saved, and reopened with every source off to the same Sheet
+  and a byte-identical text export; New character then asked first. It found one crash, fixed since: the dialog stays
+  mounted, so reopened after a conversion it still held the kind just converted to (`conversionTarget` now falls back to
+  the first target).
 - Not done: a stat block for what was lost (the old sheet is gone once saved; Save a copy first keeps it), and guessing a
   challenge rating from a level, which nothing in content states.

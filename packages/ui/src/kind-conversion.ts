@@ -113,6 +113,14 @@ export function kindConversionTargets(system: GameSystem, kindId: string): Array
     .map((def) => ({ id: def.id, name: resolveCharacterKind(system, def.id).name }));
 }
 
+/**
+ * The kind a confirmation converts to: the one the user chose while it is still a target, else the first target. A
+ * dialog that stays mounted keeps its last choice, which after a conversion is the character's own kind.
+ */
+export function conversionTarget(targets: Array<{ id: string }>, chosen: string | undefined): string | undefined {
+  return chosen && targets.some((t) => t.id === chosen) ? chosen : targets[0]?.id;
+}
+
 /** The confirmation's title and lead: what is about to happen, in words. */
 export function conversionPrompt(conversion: KindConversion, name: string): { title: string; lead: string; confirm: string } {
   const who = name.trim() ? `“${name.trim()}”` : 'This character';
@@ -144,7 +152,7 @@ export function convertCharacterKind(
   elements: ElementIndex,
   options: KindConversionOptions = {},
 ): KindConversion {
-  if (character.kind === toKindId) throw new Error(`The character is already a ${toKindId}.`);
+  if (character.kind === toKindId) throw new Error(`The character is already ${resolveCharacterKind(system, toKindId).name}.`);
   const from = resolveCharacterKind(system, character.kind);
   const to = resolveCharacterKind(system, toKindId);
   const before = deriveCharacter(character, system, elements);

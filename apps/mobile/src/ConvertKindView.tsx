@@ -15,6 +15,7 @@ import {
   CONVERSION_COPIES_HEADING,
   CONVERSION_UNSAVED_NOTE,
   conversionPrompt,
+  conversionTarget,
   convertUnticking,
   copyLine,
   kindConversionTargets,
@@ -40,7 +41,8 @@ export function ConvertKindView({
 }) {
   const palette = usePalette();
   const targets = useMemo(() => kindConversionTargets(system, character.kind), [system, character.kind]);
-  const [to, setTo] = useState<string | undefined>(undefined);
+  const [chosen, setTo] = useState<string | undefined>(undefined);
+  const to = conversionTarget(targets, chosen);
   const [skipCopies, setSkipCopies] = useState<StatKey[]>([]);
   const [skipAdditions, setSkipAdditions] = useState<ElementId[]>([]);
   useEffect(() => {

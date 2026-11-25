@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 
 import { createCharacter, deriveCharacter, MapElementIndex, type Character, type Element, type GameSystem, type Rule } from '@incudo/core';
 
-import { CONVERSION_UNSAVED_NOTE, conversionPrompt, convertCharacterKind, convertUnticking, copyLine, kindConversionTargets } from './kind-conversion.ts';
+import { CONVERSION_UNSAVED_NOTE, conversionPrompt, conversionTarget, convertCharacterKind, convertUnticking, copyLine, kindConversionTargets } from './kind-conversion.ts';
 
 function element(id: string, type: string, rules: Rule[] = [], setters: Record<string, string> = {}): Element {
   return {
@@ -106,7 +106,15 @@ function wanderer(): Character {
 test('the targets are every other kind, and a conversion to its own kind is refused', () => {
   // Fails if the character's own kind is offered.
   assert.deepEqual(kindConversionTargets(system, 'wanderer'), [{ id: 'beast', name: 'Beast' }]);
-  assert.throws(() => convertCharacterKind(wanderer(), system, 'wanderer', index));
+  assert.throws(() => convertCharacterKind(wanderer(), system, 'wanderer', index), /already Wanderer/);
+});
+
+test("a confirmation left holding the character's own kind converts to the first target instead", () => {
+  // Fails if the chosen kind is used unchecked: the dialog reopened after a conversion converted to its own kind and threw.
+  const targets = kindConversionTargets(system, 'beast');
+  assert.equal(conversionTarget(targets, 'beast'), 'wanderer');
+  assert.equal(conversionTarget(targets, undefined), 'wanderer');
+  assert.equal(conversionTarget(kindConversionTargets(system, 'wanderer'), 'beast'), 'beast');
 });
 
 test('a choice of a type the new kind does not list is dropped and named; the original is untouched', () => {
