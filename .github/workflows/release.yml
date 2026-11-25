@@ -102,16 +102,17 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v5
+      # No Rust cache, and an npm cache only on Linux. A cache saved on a tag is visible to that tag alone, and main never
+      # builds Rust or installs on Windows or macOS, so a release found no cache to restore ("No cache found." on all
+      # three for v1.1.0) and saved about 1.8 GB that no later run could read, filling the repository's 10 GB store and
+      # pushing out the Linux npm cache every pull request uses. Linux restores that cache, saved on main.
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
+          cache: ${{ startsWith(matrix.platform, 'ubuntu') && 'npm' || '' }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ startsWith(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri -> target
       - name: Linux build dependencies
         if: startsWith(matrix.platform, 'ubuntu')
         run: |

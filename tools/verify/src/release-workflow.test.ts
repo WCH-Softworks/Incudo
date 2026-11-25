@@ -73,6 +73,13 @@ test('the release runs ci.yml first and leaves a draft', () => {
   assert.doesNotMatch(workflow, /branches:/, 'a push to a branch does not');
 });
 
+test('the installers save no cache only a tag could read', () => {
+  // A cache saved on a tag is visible to that tag alone, and main builds no Rust: a Rust cache here never restored and
+  // filled the repository's cache store. npm is cached on Linux only, where main's cache restores.
+  assert.doesNotMatch(workflow, /rust-cache/, 'no Rust cache');
+  assert.match(workflow, /cache: \$\{\{ startsWith\(matrix\.platform, 'ubuntu'\) && 'npm' \|\| '' \}\}/, 'npm cached on Linux only');
+});
+
 test('macOS builds both chips in one job, signed ad hoc', () => {
   assert.match(workflow, /args: '--target aarch64-apple-darwin'\s*then: '--target x86_64-apple-darwin'/, 'one matrix entry, Apple silicon then Intel');
   assert.equal(workflow.match(/platform: macos-latest/g)?.length, 1, 'one macOS job: two waited on runners');
