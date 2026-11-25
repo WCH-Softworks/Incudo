@@ -83,7 +83,10 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   installers:
-    needs: [check, ci]
+    # Built beside CI rather than after it: CI is six minutes of a release's half hour, and nothing an installer holds
+    # depends on its result. What does is the update file, so `updater` waits for CI as well: a release whose CI fails
+    # keeps its installers on a draft nobody is offered (no latest.json), for the maintainer to delete.
+    needs: [check]
     permissions:
       contents: write
     strategy:
@@ -192,7 +195,8 @@ jobs:
     # latest.json, written once every installer and its signature is on the release (ADR 0133). It fails, naming the
     # platform, rather than write a file missing one; run the failed build again and then this job. It then removes the
     # .sig files, whose text latest.json carries, so the release lists what a person downloads and latest.json.
-    needs: [check, installers]
+    # Waits for CI too: without a green run on the tagged commit, against today's content, no copy is offered the update.
+    needs: [check, ci, installers]
     runs-on: ubuntu-latest
     permissions:
       contents: write

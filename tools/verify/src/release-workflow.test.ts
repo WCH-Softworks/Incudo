@@ -11,7 +11,7 @@
  *
  * Perturbation: give any one of the three files another version, or a `-rc` suffix, and this fails naming it; loosen or
  * tighten the workflow's tag pattern (drop the `$`, allow `-beta`) and the tag cases fail; drop `workflow_call` from
- * `ci.yml`, `releaseDraft: true`, either macOS target or the ad-hoc signing identity, and the case about it fails.
+ * `ci.yml`, CI from what the update file waits for, `releaseDraft: true`, either macOS target or the ad-hoc signing identity, and the case about it fails.
  */
 
 import assert from 'node:assert/strict';
@@ -67,7 +67,9 @@ test('the tag pattern accepts vX.Y.Z and vX.Y.Z-rc.N, and nothing else', () => {
 test('the release runs ci.yml first and leaves a draft', () => {
   assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/, 'release.yml calls ci.yml');
   assert.match(read('.github/workflows/ci.yml'), /^\s*workflow_call:/m, 'ci.yml can be called');
-  assert.match(workflow, /needs: \[check, ci\]/, 'the installers wait for the check and CI');
+  // The installers build beside CI; the update file, the one thing that offers a release to installed copies, waits for it.
+  assert.match(workflow, /installers:\n(?:\s*#.*\n)*\s*needs: \[check\]\n/, 'the installers wait for the check only');
+  assert.match(workflow, /updater:\n(?:\s*#.*\n)*\s*needs: \[check, ci, installers\]\n/, 'latest.json waits for CI and every installer');
   assert.match(workflow, /releaseDraft: true/, 'the release is a draft');
   assert.match(workflow, /tags: \['v\*'\]/, 'a tag starts it');
   assert.doesNotMatch(workflow, /branches:/, 'a push to a branch does not');
