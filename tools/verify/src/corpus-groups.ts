@@ -42,7 +42,7 @@ export const CORPUS_GROUPS = {
     label: 'characters: the samples against Aurora, built and rebuilt, multiclassed, prepared, offered and equipped, and what a save of one holds',
     files: [
       'ability-score-set', 'additions', 'aurora-oracle', 'builder-rebuild', 'campaign-options', 'candidate-overlaps',
-      'class-levels', 'class-options', 'decision-order', 'hit-dice', 'imported-sources', 'inventory-editor',
+      'class-levels', 'class-options', 'decision-order', 'hit-dice', 'imported-sources', 'inventory-editor', 'kind-conversion',
       'inventory-editor-build', 'inventory-groups', 'library', 'listed-with-required', 'multiclass', 'multiclass-flag',
       'multiclass-hit-dice', 'multiclass-option', 'multiclass-split', 'npc-creatures', 'npc-races',
       'optional-feature-offer', 'optional-feature-step', 'own-requirements', 'pc-custom-features', 'phone-aurora-import',

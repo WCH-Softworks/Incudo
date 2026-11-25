@@ -32,6 +32,7 @@ import {
 
 import { schemas } from './boot.ts';
 import { BuildView } from './BuildView.tsx';
+import { ConvertKindView } from './ConvertKindView.tsx';
 import { Body, Button } from './controls.tsx';
 import { usePlatform, type Screens } from './context.ts';
 import { usePalette } from './theme.ts';
@@ -136,12 +137,16 @@ function Building({
   const current = useRef(start.character);
   const advanced = useRef(preferences.showAdvanced);
   advanced.current = preferences.showAdvanced;
+  // A change of kind (ADR 0134) hands the builder a new character, which a new builder starts from.
+  const [converted, setConverted] = useState(0);
+  const [converting, setConverting] = useState(false);
   const builder = useMemo(
     () =>
       new CharacterBuilder(current.current, start.system, elements, {
         showAdvanced: advanced.current,
       }),
-    [elements, start.system],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [elements, start.system, converted],
   );
   useEffect(() => {
     builder.setShowAdvanced(preferences.showAdvanced);
@@ -248,6 +253,23 @@ function Building({
           <Body tone="danger">{content.message}</Body>
         </View>
       ) : null}
+      {start.system.characterKinds.length > 1 ? (
+        <View style={styles.notice}>
+          <Button label="Change kind…" onPress={() => setConverting(true)} />
+        </View>
+      ) : null}
+      <ConvertKindView
+        open={converting}
+        character={state.character}
+        system={start.system}
+        elements={elements}
+        onConvert={(character) => {
+          current.current = character;
+          setConverting(false);
+          setConverted((n) => n + 1);
+        }}
+        onClose={() => setConverting(false)}
+      />
       <BuildView
         builder={builder}
         state={state}

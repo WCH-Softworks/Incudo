@@ -78,3 +78,4 @@ export * from './candidate-overlaps.ts';
 export * from './soft-requirements.ts';
 export * from './build-layout.ts';
 export * from './homebrew.ts';
+export * from './kind-conversion.ts';

@@ -2827,6 +2827,29 @@ sidekick class content exists anywhere a user has it, so the kind and its four s
 before 1.0; do not bring back `setterStats.read`, `levelRoll.dieStat`/`from`, `trackDice` or a kind's `available` without
 content that needs them.
 
+**A character may be made another kind, keeping what the new kind reads and naming the rest**
+([ADR 0134](docs/adr/0134-a-character-may-be-made-another-kind-keeping-what-the-new-kind-reads-and-naming-the-rest.md)):
+many Aurora imports are creatures built as player characters. Things to know before touching it:
+
+- **`convertCharacterKind` (`packages/ui/src/kind-conversion.ts`) is the one rule**, pure and kind-agnostic: each record is
+  kept only where the target kind declares what reads it (element types and steps for a choice, progression, level rolls
+  and budgets, inventory, starting equipment, preparation, attacks, freeform, custom features, additions, references,
+  play trackers, holders), and what goes is worded in `lost` by heading. A pick whose pool closed is found by deriving
+  the result as the new kind (`uncounted`, `closed`), never by a second copy of the engine's rule. Do not set
+  `character.kind` anywhere else: a choice under a key no pool owns keeps counting (ADR 0096).
+- **Two offers, ticked by default** (the maintainer's calls): `copies`, a number the old kind worked out that a target
+  budget lets the user type, typed so the new sheet reads it (corrected by deriving; a copy, never a derivation), and
+  `additions`, a dropped pick (or a prepared spell) of a type the target's `additions` lists. `convertUnticking` is what a
+  confirmation shows: the offers read from the conversion that makes every one, so unticking hides nothing.
+- **Every direction; nothing recorded** about the conversion, no format number moved beyond what the records need.
+- **Desktop: Change kind… on a library card** (`LibraryPane.tsx`, `changeKindFromLibrary` in `App.tsx`) opens the file as
+  Open does, then `panes/ConvertKind.tsx` over Build; the result replaces `working.character` and keeps the entry and
+  the baseline, so it is an unsaved edit (ADR 0120). Phone: the Build screen's Change kind… and `ConvertKindView.tsx`,
+  typechecked, not driven.
+- Tests: `packages/ui/src/kind-conversion.test.ts` (each case failing under its named perturbation) and
+  `tools/verify/src/kind-conversion.test.ts` (every sample to every other kind, both ways of ticking: valid, nothing
+  stray, no new error, copies read as shown, the same reopened with no source; and back again). The oracle is untouched.
+
 **A pool never offers what the character already has** (by id, and since ADR 0125 by printing: Acid Splash from the
 2024 book once it has the Player's Handbook's, for the types a system marks `identifiedByName`). `candidatesFor` has always excluded a
 pool's own `chosen`; `collectPendingChoices` widens that to every element the character holds,
