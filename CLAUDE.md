@@ -35,8 +35,8 @@ after the command that ran it; it is `aurora-oracle.test.ts` now.
 
 **No test names a machine, a path or a person.** The real-content tests read **the current official
 repository**, AuroraLegacy/elements, from `.corpus/` at the repository root: `npm run corpus:sync`
-fetches it, CI checks the same repository out into the same place with no `ref:` so it is always its
-head, and a daily schedule catches an upstream change while this repository is quiet
+fetches it, CI checks the same repository out into the same place at its head, read once at the start of each run
+and never pinned, so it is always its head, and a daily schedule catches an upstream change while this repository is quiet
 ([ADR 0042](docs/adr/0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md)).
 A green run means "works with today's official content". Nothing depends on anyone's Aurora install,
 which updates itself while it is open and is read by nobody else. With no `.corpus/` the tests that need

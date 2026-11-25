@@ -8,7 +8,7 @@ on:
     # The official content moves whether or not this repository does, and a green run means "works
     # with today's official content" (ADR 0042). A daily run of `aurora-corpus` is what notices an
     # upstream change while nothing here is happening. Scheduled runs only ever use the default branch.
-    # It skips the suite when neither main nor upstream has moved since a full run passed (`already-tested`).
+    # It skips the suite when neither main nor upstream has moved since a full run passed (`plan`).
     - cron: '23 6 * * *'
   workflow_dispatch:
   # `release.yml` runs these same two jobs on the tagged commit before it builds any installer.
@@ -39,31 +39,61 @@ jobs:
       - name: Test
         run: npm test
 
-  already-tested:
-    # The daily run exists to notice the official content moving while this repository is quiet. When a full run of
-    # `aurora-corpus` has already passed on main's commit against upstream's current head, the two things it reads are
-    # the ones it would read again, and the run ends here. Any other pair, an upstream commit included, runs the full
-    # suite as before. A full run that passes on main records its pair (the last step of `aurora-corpus`) as a cache
-    # entry with nothing in it but its name.
+  plan:
+    # What the corpus jobs read, decided once so all three groups read the same: upstream's current head, the size of
+    # the suite, and on the daily schedule whether there is anything to run.
+    #
+    # The daily run exists to notice the official content moving while this repository is quiet. When a full run has
+    # already passed on main's commit against upstream's current head, the two things it reads are the ones it would
+    # read again, and the run ends here. Any other pair, an upstream commit included, runs the full suite as before. A
+    # full run that passes on main records its pair (the last step of `aurora-corpus`) as a cache entry with nothing in
+    # it but its name.
     #
     # What a skip does not see: a change on the runner itself (a newer Node 22, a new Ubuntu image) on a day nothing
     # else moved. The next push or upstream commit sees it. A record GitHub has evicted, or one not read for seven days,
     # is simply absent, and absent means the full suite runs: a lost record costs a run, never a check.
-    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     outputs:
+      corpus: ${{ steps.head.outputs.sha }}
+      suite: ${{ steps.suite.outputs.suite }}
       tested: ${{ steps.record.outputs.cache-hit }}
     steps:
+      - uses: actions/checkout@v5
+        with:
+          # A pull request's checkout is its merge commit, whose first parent is the base: two commits are
+          # enough to see what the pull request changes.
+          fetch-depth: 2
       - name: The official content's current head
         id: head
-        # No checkout: one request for the head's commit id. If it fails the id is empty, no record matches, and the
-        # full suite runs and reads the content itself.
+        # One request for the head's commit id, which every group then checks out: the head now, read once, so the three
+        # cannot read three commits if upstream moves mid-run. If it fails the id is empty, each group checks out the
+        # head itself, and no record is saved.
         run: |
           sha=$(git ls-remote https://github.com/AuroraLegacy/elements.git HEAD | cut -f1 || true)
           echo "AuroraLegacy/elements at ${sha:-(not read)}"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      # Two sizes of the suite (`INCUDO_CORPUS_SUITE`, tools/verify/src/real-data.ts). A pull request runs the quick
+      # suite: the same tests, with a sweep over the samples reading a handful chosen by what they are, a sweep
+      # over every creature or race an even dozen, and the report-only measurements, the perturbations and the
+      # whole-corpus loader comparisons skipped. The budgets, the oracle's invariants over all thirty samples and
+      # the manifest's checks are never abridged. A pull request that touches the converter, the content loader or
+      # a schema runs the full suite, as does everything else: a push to main, the daily schedule, a manual run,
+      # and a release through `workflow_call`, whose event is the tag push.
+      - name: Which suite this run is
+        id: suite
+        run: |
+          suite=full
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            suite=quick
+            if git diff --name-only HEAD^1 HEAD | grep -qE '^(packages/aurora-import|packages/content|schemas)/'; then
+              suite=full
+              echo "This pull request touches the converter, the content loader or a schema: the full suite."
+            fi
+          fi
+          echo "suite=$suite" >> "$GITHUB_OUTPUT"
       - name: Has a full run passed on this pair
         id: record
+        if: github.event_name == 'schedule'
         uses: actions/cache/restore@v5
         with:
           path: .corpus-tested
@@ -73,38 +103,36 @@ jobs:
         env:
           TESTED: ${{ steps.record.outputs.cache-hit }}
           CORPUS: ${{ steps.head.outputs.sha }}
+          SUITE: ${{ steps.suite.outputs.suite }}
         run: |
           if [ "$TESTED" = true ]; then
             line="A full run already passed on this commit against AuroraLegacy/elements at \`$CORPUS\`: nothing to run."
           else
-            line="No full run has passed on this commit against AuroraLegacy/elements at \`${CORPUS:-unknown}\`: running it."
+            line="Corpus: AuroraLegacy/elements at \`${CORPUS:-the head each group checks out}\`, the $SUITE suite."
           fi
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
-  aurora-corpus:
+  corpus:
     # The real-content suite: every test that needs the official Aurora content or a real save, run
     # against the current head of AuroraLegacy/elements. See ADR 0005 and ADR 0042.
     #
-    # On the daily schedule it runs only when `already-tested` found no full run that passed on the same pair. On every
-    # other event that job is skipped, and `!cancelled()` lets this one run after a skipped (or failed) need.
-    needs: already-tested
-    if: ${{ !cancelled() && needs.already-tested.outputs.tested != 'true' }}
-    #
-    # Two sizes of it (`INCUDO_CORPUS_SUITE`, tools/verify/src/real-data.ts). A pull request runs the quick
-    # suite: the same tests, with a sweep over the samples reading a handful chosen by what they are, a sweep
-    # over every creature or race an even dozen, and the report-only measurements, the perturbations and the
-    # whole-corpus loader comparisons skipped. The budgets, the oracle's invariants over all thirty samples and
-    # the manifest's checks are never abridged. A pull request that touches the converter, the content loader or
-    # a schema runs the full suite, as does everything else: a push to main, the daily schedule, a manual run,
-    # and a release through `workflow_call`, whose event is the tag push.
+    # In three groups by subject, one job each, listed in tools/verify/src/corpus-groups.ts with a test that every
+    # tools/verify file is in exactly one: together they are the whole suite, and the slowest sets the time (about a
+    # third of the six minutes it took in one job). `aurora-corpus` below is the check that says all three passed.
+    needs: plan
+    if: needs.plan.outputs.tested != 'true'
+    name: corpus (${{ matrix.group }})
+    strategy:
+      # Every group finishes and reports, so one red run names every subject that failed.
+      fail-fast: false
+      matrix:
+        group: [content, characters, sheet]
     runs-on: ubuntu-latest
+    env:
+      INCUDO_CORPUS_SUITE: ${{ needs.plan.outputs.suite }}
     steps:
       - uses: actions/checkout@v5
-        with:
-          # A pull request's checkout is its merge commit, whose first parent is the base: two commits are
-          # enough to see what the pull request changes.
-          fetch-depth: 2
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -115,8 +143,9 @@ jobs:
         with:
           repository: AuroraLegacy/elements
           path: .corpus
-          # No `ref:` on purpose. This is the default branch's current head, every run. Pinning it
-          # would make the job reproducible and would stop it doing the one thing it is for.
+          # Upstream's current head, as `plan` read it at the start of this run (empty: the head now). Never a commit
+          # written here: pinning it would make the job reproducible and would stop it doing the one thing it is for.
+          ref: ${{ needs.plan.outputs.corpus }}
       - name: Checkout the older, pinned corpus
         uses: actions/checkout@v5
         with:
@@ -126,22 +155,11 @@ jobs:
           # against content as it was, and "as it was" must be the same commit everywhere. `BASE_CORPUS_COMMIT` in
           # tools/verify/src/corpus-checkout.ts is the same id, and `content-refresh.test.ts` fails if they differ.
           ref: 87e8dfa11c3808169db9d60177a09977585ebe03
-      - name: Which suite this run is
-        run: |
-          suite=full
-          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            suite=quick
-            if git diff --name-only HEAD^1 HEAD | grep -qE '^(packages/aurora-import|packages/content|schemas)/'; then
-              suite=full
-              echo "This pull request touches the converter, the content loader or a schema: the full suite."
-            fi
-          fi
-          echo "INCUDO_CORPUS_SUITE=$suite" >> "$GITHUB_ENV"
       - name: Which corpus commit is this run reading
         run: |
           sha=$(git -C .corpus rev-parse HEAD)
           echo "AuroraLegacy/elements at $sha"
-          echo "Corpus: AuroraLegacy/elements at \`$sha\`, the $INCUDO_CORPUS_SUITE suite" >> "$GITHUB_STEP_SUMMARY"
+          echo "Corpus: AuroraLegacy/elements at \`$sha\`, the $INCUDO_CORPUS_SUITE suite, ${{ matrix.group }}" >> "$GITHUB_STEP_SUMMARY"
       # The numbers are the baseline in CLAUDE.md, spelled out so a change to any of them is a
       # deliberate edit to this file rather than a silent drift. `corpus.test.ts` reads them from
       # the environment, falls back to the same four when a variable is absent, and fails if this
@@ -189,20 +207,41 @@ jobs:
           INCUDO_REQUIRE_SAVES: 1
           # The same for the older corpus checked out above: a job that lost it would skip the refresh measurement.
           INCUDO_REQUIRE_BASE_CORPUS: 1
-        # Only tools/verify: the packages' own tests read no corpus, and the build job has already run them.
-        run: npm run test:verify
-      # The pair this run proved, for `already-tested` to find. Only a full suite that passed, and only on main: a cache
-      # saved on a pull request or a release tag is visible to that ref alone, and the schedule reads main's.
+        # Only tools/verify, this group's files: the packages' own tests read no corpus, and the build job has already
+        # run them. The list goes into an array first, so a group that cannot be listed fails here rather than running
+        # `node --test` on nothing.
+        run: |
+          mapfile -t files < <(node --experimental-strip-types tools/verify/src/corpus-groups.ts "${{ matrix.group }}")
+          [ "${#files[@]}" -gt 0 ]
+          node --test --experimental-strip-types "${files[@]}"
+
+  aurora-corpus:
+    # The check the main branch's rules require: every corpus group passed. On the daily schedule, when `plan` found
+    # the pair already tested, it is skipped with the groups. `!cancelled()` lets it run, and fail, when a group or the
+    # plan failed, rather than be skipped and read as nothing.
+    needs: [plan, corpus]
+    if: ${{ !cancelled() && needs.plan.outputs.tested != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every corpus group passed
+        env:
+          PLAN: ${{ needs.plan.result }}
+          GROUPS: ${{ needs.corpus.result }}
+        run: |
+          echo "plan: $PLAN, corpus groups: $GROUPS"
+          [ "$PLAN" = success ] && [ "$GROUPS" = success ]
+      # The pair this run proved, for the daily run's `plan` to find. Only a full suite that passed, only on main (a
+      # cache saved on a pull request or a release tag is visible to that ref alone, and the schedule reads main's), and
+      # only when the groups read the head `plan` named.
       - name: The pair this run passed on
         id: passed
-        if: github.ref == 'refs/heads/main' && env.INCUDO_CORPUS_SUITE == 'full'
+        if: github.ref == 'refs/heads/main' && needs.plan.outputs.suite == 'full' && needs.plan.outputs.corpus != ''
         run: |
           mkdir -p .corpus-tested
-          git -C .corpus rev-parse HEAD > .corpus-tested/corpus
-          echo "sha=$(git -C .corpus rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "${{ needs.plan.outputs.corpus }}" > .corpus-tested/corpus
       - name: Record it
         if: steps.passed.outcome == 'success'
         uses: actions/cache/save@v5
         with:
           path: .corpus-tested
-          key: corpus-tested-${{ github.sha }}-${{ steps.passed.outputs.sha }}
+          key: corpus-tested-${{ github.sha }}-${{ needs.plan.outputs.corpus }}
