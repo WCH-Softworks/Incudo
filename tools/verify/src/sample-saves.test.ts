@@ -36,16 +36,16 @@ function textIn(xml: string, section: string, tag: string): string | undefined {
 }
 
 test('the manifest lists exactly the sample files that are there', () => {
-  const manifest = readManifest();
+  const manifest = readManifest('all');
   const listed = manifest.samples.map((s) => s.file).sort();
-  assert.deepEqual(listed, sampleFileNames(), 'a sample without a manifest entry, or an entry without a sample');
+  assert.deepEqual(listed, sampleFileNames('all'), 'a sample without a manifest entry, or an entry without a sample');
   assert.equal(new Set(manifest.samples.map((s) => s.id)).size, manifest.samples.length, 'ids are unique');
   assert.ok(manifest.samples.length > 0, 'there are samples at all');
 });
 
 test('every sample is generic: named by number, with no portrait, no path, no person and no exclusion list', async () => {
   const problems: string[] = [];
-  for (const sample of readManifest().samples) {
+  for (const sample of readManifest('all').samples) {
     const label = sample.id;
     const file = samplePath(sample);
     const xml = await readFile(file, 'utf8');
@@ -101,7 +101,7 @@ function runsOf(names: string[]): SampleClassRun[] {
 
 test('each sample is the character its manifest entry says it is', { skip: corpusSkip || savesSkip }, async () => {
   const corpus = await realElements();
-  for (const sample of readManifest().samples) {
+  for (const sample of readManifest('all').samples) {
     const imported = importAuroraCharacter(parseAuroraSave(await readFile(samplePath(sample), 'utf8')), {
       index: corpus,
       systemId: 'dnd5e',

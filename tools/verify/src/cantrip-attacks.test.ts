@@ -22,8 +22,8 @@ import { CharacterBuilder, newCharacterOfKind, packCharacter, SPELL_NO_DAMAGE } 
 
 import { summarize } from './derived-summary.ts';
 import { loadSchemas, loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
-import { SAMPLES_DIR } from './sample-saves.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
+import { SAMPLES_DIR, sampleFileNames } from './sample-saves.ts';
 
 const PHB = 'Player’s Handbook';
 const ATTACK = 'Spell Attack';
@@ -32,7 +32,7 @@ const SAVE = 'Spell Saving Throw';
 const isCantrip = (e: Element): boolean => e.type === 'Spell' && e.setters['level']?.value.trim() === '0';
 const tagged = (e: Element): boolean => e.supports.includes(ATTACK) || e.supports.includes(SAVE);
 
-test('what content says about a cantrip attack (report)', { skip: corpusSkip }, async (t) => {
+test('what content says about a cantrip attack (report)', { skip: corpusSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   t.diagnostic(await corpusProvenance());
   const cantrips = elements.byType('Spell').filter(isCantrip);
@@ -57,7 +57,7 @@ test('held tagged cantrips in the samples, and the block that holds each (report
   const corpus = await realElements();
   let held = 0;
   let unblocked = 0;
-  for (const file of (await readdir(SAMPLES_DIR)).filter((n) => extname(n) === '.dnd5e').sort()) {
+  for (const file of sampleFileNames()) {
     const imported = importAuroraCharacter(parseAuroraSave(await readFile(join(SAMPLES_DIR, file), 'utf8')), { index: corpus, systemId: 'dnd5e' });
     const index = new LayeredElementIndex([new BundleElementIndex(imported.generated), corpus]);
     const derived = deriveCharacter(imported.character, system, index);

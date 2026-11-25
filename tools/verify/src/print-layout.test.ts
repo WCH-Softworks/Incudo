@@ -77,7 +77,7 @@ import {
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip, sweep } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -283,7 +283,7 @@ test('every creature as an NPC and as a legendary creature: what a printed stat 
   for (const kindId of ['npc', 'legendary']) {
     const kind = resolveCharacterKind(system, kindId);
     const step = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget && !s.multiple)!;
-    const creatures = step.types.flatMap((type) => elements.byType(type));
+    const creatures = sweep(step.types.flatMap((type) => elements.byType(type)));
     const census = new Census();
     for (const creature of creatures) {
       const builder = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
@@ -306,7 +306,7 @@ function tableShapes(html: string): { columns: number; rows: number }[] {
   });
 }
 
-test('a character keeping every text its kind may keep: how long a kept text and its tables run on paper', { skip: corpusSkip }, async (t) => {
+test('a character keeping every text its kind may keep: how long a kept text and its tables run on paper', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();

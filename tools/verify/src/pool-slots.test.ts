@@ -25,7 +25,7 @@ import { CharacterBuilder, newCharacterOfKind } from '@incudo/ui';
 import { runOracle } from './aurora-oracle.ts';
 import { summarize } from './derived-summary.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -46,7 +46,7 @@ function levelOrderMisfits(rules: readonly { number: number }[], picks: readonly
   return misfits;
 }
 
-test('the corpus: select pools with more than one rule, and how their rules differ', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('the corpus: select pools with more than one rule, and how their rules differ', { skip: corpusSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   let groups = 0;

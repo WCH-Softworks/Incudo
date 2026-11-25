@@ -25,7 +25,7 @@ import { requirementContextFor, type Element, type GrantRule, type RequirementCo
 import { CharacterBuilder, newCharacterOfKind } from '@incudo/ui';
 
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, measureSkip } from './real-data.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
 
@@ -62,7 +62,7 @@ function classStats(e: Element): Set<string> {
   return out;
 }
 
-test('optional class features a rule of "gated on what the character has" would offer', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('optional class features a rule of "gated on what the character has" would offer', { skip: corpusSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();

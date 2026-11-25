@@ -55,6 +55,7 @@ import { readContainer, writeContainer } from './node-save.ts';
 import { nodeZipCodec } from './node-zip.ts';
 import { loadSchemas } from './node-system.ts';
 import { AURORA_INDEX, SAVES_DIR, realElements, requireSaves, savesSkip } from './real-data.ts';
+import { sampleFileNames } from './sample-saves.ts';
 
 /** A `CharacterStore` over a real directory; the same dozen lines `library.test.ts` carries. */
 class NodeCharacterStore implements CharacterStore {
@@ -138,9 +139,7 @@ test(
 
     // Sorted, so that "save 3/9" in a failure is the same save every time and in every test
     // that labels them this way (`private-saves.ts`).
-    const saves = (await readdir(SAVES_DIR))
-      .filter((name) => extname(name).toLowerCase() === '.dnd5e')
-      .sort()
+    const saves = sampleFileNames()
       .map((name) => join(SAVES_DIR, name));
     assert.ok(saves.length > 0, 'there is at least one .dnd5e save to copy');
 

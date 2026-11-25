@@ -27,7 +27,7 @@ import { CharacterBuilder, candidateOverlaps, newCharacterOfKind } from '@incudo
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 function tally(values: string[], limit = 14): string {
@@ -45,7 +45,7 @@ function levelOf(ruleKey: string, derived: ReturnType<typeof deriveCharacter>): 
   return derived.gateLevels.get(owner) ?? derived.progress.value;
 }
 
-test('how often an offered candidate gives what the character already has', { skip: savesSkip }, async (t) => {
+test('how often an offered candidate gives what the character already has', { skip: savesSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   t.diagnostic(corpusProvenance());
   let slots = 0;

@@ -64,7 +64,7 @@ import { CharacterBuilder, fillPlaceholders, packCharacter, type BuilderState, t
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadCorpus } from './corpus.ts';
-import { corpusProvenance, corpusSkip, requireCorpus, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const tally = (into: Map<string, number>, key: string, by = 1): void => void into.set(key, (into.get(key) ?? 0) + by);
@@ -129,7 +129,7 @@ function describedAt(sheet: RawSheet, level: number): string | undefined {
 let shared: Promise<Awaited<ReturnType<typeof loadWithSheets>>> | undefined;
 const load = (): Promise<Awaited<ReturnType<typeof loadWithSheets>>> => (shared ??= loadWithSheets());
 
-test('what content writes in <sheet>, and what the importer keeps of it', { skip: corpusSkip }, async (t) => {
+test('what content writes in <sheet>, and what the importer keeps of it', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const { elements, raw } = await load();
   const sheetAttributes = new Map<string, number>();
@@ -231,7 +231,7 @@ test('every <description> a <sheet> writes reaches the element, in order, with i
   assert.deepEqual(differ, []);
 });
 
-test('on the samples: what the sheet lists that has a hint, what it would say, and what it names', { skip: corpusSkip || savesSkip }, async (t) => {
+test('on the samples: what the sheet lists that has a hint, what it would say, and what it names', { skip: corpusSkip || savesSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const { elements, raw } = await load();
   const hiddenNames = new Map<string, number>();

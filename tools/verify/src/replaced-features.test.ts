@@ -44,7 +44,7 @@ import { CharacterBuilder, newCharacterOfKind } from '@incudo/ui';
 
 import { differenceLines, runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 function tally(values: string[], limit = 10): string {
@@ -110,7 +110,7 @@ test('what content says with an element\'s own requirements, and what grants the
   t.diagnostic(`items of category Optional Class Features: ${optional.length}; granting a negated id: ${replacing.length} (${replacing.map((e) => e.name).join('; ')})`);
 });
 
-test('what the samples hold whose own requirements are false, and whether Aurora holds it', { skip: savesSkip }, async (t) => {
+test('what the samples hold whose own requirements are false, and whether Aurora holds it', { skip: savesSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   let total = 0;
   const rows: string[] = [];
@@ -178,7 +178,7 @@ test('read with Aurora\'s [character:N] and [type:X], which false own requiremen
   for (const line of lines) t.diagnostic(`  ${line}`);
 });
 
-test('what a level 4 2024 Fighter is offered of the 2024 general feats', { skip: corpusSkip }, async (t) => {
+test('what a level 4 2024 Fighter is offered of the 2024 general feats', { skip: corpusSkip || measureSkip }, async (t) => {
   // A case built by name: the 2024 Human and Fighter. Its level 4 feat choice is the decision offering the most feats.
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
@@ -201,7 +201,7 @@ test('what a level 4 2024 Fighter is offered of the 2024 general feats', { skip:
   );
 });
 
-test('a 2014 Ranger with and without the Deft Explorer item', { skip: corpusSkip }, async (t) => {
+test('a 2014 Ranger with and without the Deft Explorer item', { skip: corpusSkip || measureSkip }, async (t) => {
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
   const kind = resolveCharacterKind(system, 'pc');

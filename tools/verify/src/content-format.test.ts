@@ -27,7 +27,7 @@ import {
 
 import { GOLDEN_DIR } from './fixture-character.ts';
 import { loadShippedSystem, schemasDirectory } from './node-system.ts';
-import { corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusSkip, realElements, savesSkip, loaderSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 async function schema(): Promise<JsonSchema> {
@@ -70,7 +70,7 @@ test('the checker and the schema refuse the same broken files, each with a sente
   }
 });
 
-test('every element of the corpus reads as the content format, by the schema', { skip: corpusSkip }, async () => {
+test('every element of the corpus reads as the content format, by the schema', { skip: corpusSkip || loaderSkip }, async () => {
   const elements = [...(await realElements()).all()];
   const { problems } = checkContentBundle({ formatVersion: 1, elements }, { schema: await schema() });
   assert.deepEqual(problems, []);

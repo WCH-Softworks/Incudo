@@ -22,7 +22,7 @@ import {
 import { MemoryStorage, type Fetcher } from '@incudo/core';
 
 import { corpusFetcher, loadCorpus } from './corpus.ts';
-import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus, loaderSkip } from './real-data.ts';
 
 function flatten(node: IndexTreeNode, out: IndexTreeNode[] = []): IndexTreeNode[] {
   for (const child of node.children ?? []) {
@@ -40,7 +40,7 @@ function recording(asked: string[]): (fetcher: Fetcher) => Fetcher {
   });
 }
 
-test('the tree of parts is exactly what a conversion of the corpus reads', { skip: corpusSkip }, async (t) => {
+test('the tree of parts is exactly what a conversion of the corpus reads', { skip: corpusSkip || loaderSkip }, async (t) => {
   const location = requireCorpus();
   t.diagnostic(corpusProvenance());
   const asked: string[] = [];
@@ -60,7 +60,7 @@ test('the tree of parts is exactly what a conversion of the corpus reads', { ski
   );
 });
 
-test('switching a book off drops exactly its files from the load', { skip: corpusSkip }, async (t) => {
+test('switching a book off drops exactly its files from the load', { skip: corpusSkip || loaderSkip }, async (t) => {
   const location = requireCorpus();
   const full = await loadCorpus(location);
   const tree = full.bundle.source!.parts!;
@@ -84,7 +84,7 @@ test('switching a book off drops exactly its files from the load', { skip: corpu
   t.diagnostic(`switched off ${book.title ?? book.name} (${bookFiles.size} files): ${full.filesLoaded} files became ${without.filesLoaded}`);
 });
 
-test('a corpus file added on its own loads to what the corpus load made of it', { skip: corpusSkip }, async (t) => {
+test('a corpus file added on its own loads to what the corpus load made of it', { skip: corpusSkip || loaderSkip }, async (t) => {
   const location = requireCorpus();
   const disk = corpusFetcher(location);
   const full = await loadCorpus(location);

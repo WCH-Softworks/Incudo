@@ -15,7 +15,7 @@ import { parseAuroraIndex } from '@incudo/aurora-import';
 import { ContentLibrary } from '@incudo/content';
 
 import { convertCorpus, corpusFetcher, type CorpusLocation } from './corpus.ts';
-import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus, loaderSkip } from './real-data.ts';
 
 async function load(location: CorpusLocation, urls: string[]): Promise<ContentLibrary> {
   const library = new ContentLibrary();
@@ -37,7 +37,7 @@ function shape(library: ContentLibrary, skip: ReadonlySet<string>): Map<string, 
 const missed = (library: ContentLibrary): number =>
   library.diagnostics.filter((d) => d.message.startsWith('An addition targets')).length;
 
-test('the corpus split into sources loads the same forwards, backwards and whole', { skip: corpusSkip }, async (t) => {
+test('the corpus split into sources loads the same forwards, backwards and whole', { skip: corpusSkip || loaderSkip }, async (t) => {
   const location = requireCorpus();
   const top = parseAuroraIndex((await corpusFetcher(location).fetchText(location.index)).text, location.index, { resolveByName: location.layout === 'aurora-folder' });
   const groups = top.files.filter((ref) => ref.isIndex).map((ref) => ref.url);

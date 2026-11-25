@@ -21,7 +21,7 @@ import { loadSources, readSourceFile, type ConfiguredSource } from '@incudo/cont
 
 import { corpusFetcher } from './corpus.ts';
 import { repoRoot, schemasDirectory } from './node-system.ts';
-import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus, loaderSkip } from './real-data.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
 
@@ -38,7 +38,7 @@ class CountingFetcher implements Fetcher {
   }
 }
 
-test('a source loads from the file its conversion was kept as what the conversion made, reading nothing', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('a source loads from the file its conversion was kept as what the conversion made, reading nothing', { skip: corpusSkip || loaderSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const location = requireCorpus();
   const fetcher = new CountingFetcher(corpusFetcher(location));

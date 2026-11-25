@@ -26,7 +26,7 @@ import { BundleElementIndex, readCharacterContainer, resolveCharacterKind } from
 import { CharacterBuilder, packCharacter, readUsage, type PlayTracker, type PlayView, type SheetListedElement } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -57,7 +57,7 @@ test('what an Aurora save records of play', { skip: savesSkip }, async (t: Diagn
   t.diagnostic(`element names that might be play state: ${playLike.length ? playLike.join(', ') : 'none'}`);
 });
 
-test("what content's usage hints say", { skip: corpusSkip }, async (t: Diagnostic) => {
+test("what content's usage hints say", { skip: corpusSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const shapes = new Map<string, number>();
@@ -80,7 +80,7 @@ test("what content's usage hints say", { skip: corpusSkip }, async (t: Diagnosti
   t.diagnostic(`a count per rest or per day: ${perRest}; a name and no count: ${named}; anything else: ${other}`);
 });
 
-test('what the samples would track', { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
+test('what the samples would track', { skip: corpusSkip || savesSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const perShape = new Map<string, number>();

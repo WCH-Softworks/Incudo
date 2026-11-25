@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import type { Element, ElementExtension } from '@incudo/core';
 
 import { convertCorpus, isGenerated } from './corpus.ts';
-import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus, measureSkip } from './real-data.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -32,7 +32,7 @@ function* nodes(value: unknown): Generator<Record<string, unknown>> {
   }
 }
 
-test('every Aurora construct read past the conversion, counted over the corpus', { skip: corpusSkip }, async (t) => {
+test('every Aurora construct read past the conversion, counted over the corpus', { skip: corpusSkip || measureSkip }, async (t) => {
   const location = requireCorpus();
   const { bundle } = await convertCorpus(location);
   // The files' own elements as the converter wrote them, and the appends it turned into extensions.

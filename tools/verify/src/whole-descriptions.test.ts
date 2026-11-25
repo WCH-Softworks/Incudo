@@ -17,7 +17,7 @@ import { BundleElementIndex, readCharacterContainer } from '@incudo/core';
 import { CharacterBuilder, expandDescription, packCharacter, sheetDocument } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 /** A description as a reader sees it: tags out, entities decoded roughly, whitespace collapsed. */
@@ -32,7 +32,7 @@ function plain(html: string): string {
 /** About what a printed page in two columns holds at the print layout's size, for an order of magnitude only. */
 const PAGE = 6000;
 
-test('what each sample would gain from its listed elements’ whole descriptions (report)', { skip: savesSkip || corpusSkip }, async (t) => {
+test('what each sample would gain from its listed elements’ whole descriptions (report)', { skip: savesSkip || corpusSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   const totals: number[] = [];
   let withText = 0;

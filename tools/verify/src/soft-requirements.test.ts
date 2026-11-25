@@ -19,7 +19,7 @@ import { resolveCharacterKind, type RequirementExpr } from '@incudo/core';
 import { CharacterBuilder, newCharacterOfKind } from '@incudo/ui';
 
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, measureSkip } from './real-data.ts';
 
 const PHB = 'Player’s Handbook';
 
@@ -32,7 +32,7 @@ function terms(expr: RequirementExpr | undefined, negated = false, into: Array<[
   return into;
 }
 
-test('which requirements name an element of a soft type (report)', { skip: corpusSkip }, async (t) => {
+test('which requirements name an element of a soft type (report)', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();

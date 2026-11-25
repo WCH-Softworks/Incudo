@@ -33,7 +33,7 @@ import { BundleElementIndex, readCharacterContainer, type Element, type StatExpr
 import { CharacterBuilder, packCharacter, rowAside, sheetDocument, sheetMarkdown, type BuilderState } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const tally = (into: Map<string, number>, key: string): void => void into.set(key, (into.get(key) ?? 0) + 1);
@@ -52,7 +52,7 @@ function refs(expr: StatExpr | undefined, into: Set<string> = new Set()): Set<st
   return into;
 }
 
-test('on the samples: which sheet rows an element the sheet leaves out moves', { skip: corpusSkip || savesSkip }, async (t) => {
+test('on the samples: which sheet rows an element the sheet leaves out moves', { skip: corpusSkip || savesSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
 

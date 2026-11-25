@@ -31,7 +31,7 @@ import { CharacterBuilder, newCharacterOfKind, sheetDocument } from '@incudo/ui'
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -123,7 +123,7 @@ test('the samples: a save or skill row\'s proficiency, as multiples of the bonus
   assert.deepEqual(wrongMarks, [], 'every save and skill row is marked as its proficiency stat reads');
 });
 
-test('every creature as an NPC: its rows, as multiples of its bonus', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('every creature as an NPC: its rows, as multiples of its bonus', { skip: corpusSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();

@@ -29,7 +29,7 @@ import { createMobileZipCodec } from '@incudo/mobile/zip';
 import { runOracle } from './aurora-oracle.ts';
 import { loadCorpus } from './corpus.ts';
 import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip, measureSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -65,7 +65,7 @@ function decisionKind(decision: BuilderState['decisions'][number]): string {
   return decision.multiple ? `${decision.kind} (set)` : decision.kind;
 }
 
-test('what loading the corpus costs, as an app loads it', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('what loading the corpus costs, as an app loads it', { skip: corpusSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const location = requireCorpus();
   const root = location.root ?? join(location.index, '..');
@@ -101,7 +101,7 @@ test('what loading the corpus costs, as an app loads it', { skip: corpusSkip }, 
   );
 });
 
-test('what the builder shows a fresh character of each kind', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('what the builder shows a fresh character of each kind', { skip: corpusSkip || measureSkip }, async (t: Diagnostic) => {
   const elements = await realElements();
   for (const systemId of ['dnd5e', 'cairn']) {
     const system = await (systemId === 'cairn' ? loadFixtureSystem(systemId) : loadShippedSystem(systemId));
@@ -129,7 +129,7 @@ test('what the builder shows a fresh character of each kind', { skip: corpusSkip
   }
 });
 
-test('what the builder shows each sample, and what saving one costs', { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
+test('what the builder shows each sample, and what saving one costs', { skip: corpusSkip || savesSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const zip = createMobileZipCodec();

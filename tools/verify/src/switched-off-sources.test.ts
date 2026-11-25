@@ -24,11 +24,11 @@ import {
 } from '@incudo/content';
 
 import { convertCorpus, corpusFetcher, readCorpusIndex } from './corpus.ts';
-import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus, loaderSkip } from './real-data.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
 
-test('a switched-off source is named for exactly what it declares of what a line is missing', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('a switched-off source is named for exactly what it declares of what a line is missing', { skip: corpusSkip || loaderSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const location = requireCorpus();
   const fetcher = corpusFetcher(location);

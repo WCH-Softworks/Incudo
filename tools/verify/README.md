@@ -13,6 +13,12 @@ commit) and again whenever you want today's content. Without `.corpus/` they ski
 the same repository out into the same place, always at its head, and runs the whole suite daily too
 ([ADR 0042](../../docs/adr/0042-the-tests-read-the-current-official-corpus-and-a-moving-corpus-fails-only-what-must-hold-against-any-corpus.md)).
 
+`npm run test:verify` runs only this folder's tests. **A pull request's CI runs them quick**
+(`INCUDO_CORPUS_SUITE=quick`, `real-data.ts`): sample sweeps read the six `QUICK_SAMPLES`, creature and race sweeps an
+even dozen (`sweep()`), and measurements (`measureSkip`) and whole-corpus loader comparisons (`loaderSkip`) skip. The
+budgets, the oracle over all thirty samples and the manifest checks are never abridged. A push to main, the schedule,
+a release, and a pull request touching the converter, the loader or a schema run the full suite.
+
 ## What is here
 
 | | |

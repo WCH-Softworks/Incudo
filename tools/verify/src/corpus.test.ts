@@ -188,8 +188,16 @@ test('the corpus job reads the current official repository, always, and runs the
   assert.equal(current.length, 1, 'one step checks out .corpus');
   assert.doesNotMatch(current[0]!, /^\s*ref:/m, 'the corpus checkout must not name a ref');
   assert.match(job, /^\s*path:\s*\.corpus\s*$/m, 'the checkout goes where the local sync puts it');
-  // Every real-content test, not only the budget file.
-  assert.match(job, /^\s*run:\s*npm test\s*$/m, 'the job runs the whole suite');
+  // Every real-content test, not only the budget file: the script runs every tools/ test, which is where they all are.
+  assert.match(job, /^\s*run:\s*npm run test:verify\s*$/m, 'the job runs the whole tools/verify suite');
+  const scripts = (JSON.parse(await readFile(join(repoRoot(), 'package.json'), 'utf8')) as { scripts: Record<string, string> }).scripts;
+  assert.match(scripts['test:verify'] ?? '', /--test .*"tools\/\*\/src\/\*\*\/\*\.test\.ts"/, 'test:verify runs every tools/ test');
+  // Abridged only for a pull request that leaves the converter, the loader and the schemas alone; a push to main, the
+  // schedule and a release run the full suite. The step starts from full and says quick only for a pull request.
+  assert.match(job, /^\s*suite=full\s*$/m, 'the suite starts full');
+  assert.match(job, /if \[ "\$GITHUB_EVENT_NAME" = pull_request \]; then\s*\n\s*suite=quick\s*$/m, 'only a pull request runs quick');
+  assert.match(job, /packages\/aurora-import\|packages\/content\|schemas/, 'a pull request touching the converter, loader or schemas runs full');
+  assert.match(job, /echo "INCUDO_CORPUS_SUITE=\$suite" >> "\$GITHUB_ENV"/, 'the suite reaches the tests');
   // And it requires the samples, so an empty saves folder is a failure and not a skip.
   assert.match(job, /^\s*INCUDO_REQUIRE_SAVES:\s*1\s*$/m, 'the job requires the sample saves');
   // A schedule, so upstream changes are noticed while this repository is quiet.

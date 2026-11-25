@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path';
 import { parseAuroraSave } from '@incudo/aurora-import';
 import type { Element } from '@incudo/core';
 
-import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const ITEM_TYPES = ['Item', 'Weapon', 'Armor', 'Magic Item'];
@@ -53,7 +53,7 @@ async function xmlFiles(root: string): Promise<string[]> {
   return out;
 }
 
-test('how content states starting equipment', { skip: corpusSkip }, async (t) => {
+test('how content states starting equipment', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const index = await realElements();
   const itemIds = new Set(ITEM_TYPES.flatMap((type) => index.byType(type).map((e) => e.id)));
@@ -84,7 +84,7 @@ test('how content states starting equipment', { skip: corpusSkip }, async (t) =>
   t.diagnostic(`items: ${itemIds.size}; priced in ${tally(costs)}`);
 });
 
-test('what a pack holds is written in an <extract> block, which the parser does not read', { skip: corpusSkip }, async (t) => {
+test('what a pack holds is written in an <extract> block, which the parser does not read', { skip: corpusSkip || measureSkip }, async (t) => {
   const location = requireCorpus();
   const files = await xmlFiles(location.root ?? dirname(location.index));
   let blocks = 0;
@@ -103,7 +103,7 @@ test('what a pack holds is written in an <extract> block, which the parser does 
   t.diagnostic(`  on: ${tally(names)}`);
 });
 
-test('what the samples record of money', { skip: savesSkip }, async (t) => {
+test('what the samples record of money', { skip: savesSkip || measureSkip }, async (t) => {
   const manifest = await readManifest();
   const counts: string[] = [];
   for (const entry of manifest.samples) {

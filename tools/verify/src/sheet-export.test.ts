@@ -81,7 +81,7 @@ import {
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, sweep } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const tally = (into: Map<string, number>, key: string, by = 1): void => void into.set(key, (into.get(key) ?? 0) + by);
@@ -409,7 +409,7 @@ test('every creature as an NPC and as a legendary creature: what its sheet holds
   for (const kindId of ['npc', 'legendary']) {
     const kind = resolveCharacterKind(system, kindId);
     const step = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget && !s.multiple)!;
-    const creatures = step.types.flatMap((type) => elements.byType(type));
+    const creatures = sweep(step.types.flatMap((type) => elements.byType(type)));
     const c = census();
     const differ: string[] = [];
     let rows = 0;

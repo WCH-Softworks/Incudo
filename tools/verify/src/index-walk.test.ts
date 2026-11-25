@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import type { Fetcher } from '@incudo/core';
 
 import { convertCorpus } from './corpus.ts';
-import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus, loaderSkip } from './real-data.ts';
 
 /** A few milliseconds, fixed per URL and unrelated to the order it was asked in. */
 function jitter(url: string): number {
@@ -33,7 +33,7 @@ function delayed(fetcher: Fetcher): Fetcher {
   };
 }
 
-test('the corpus converts the same with its indexes fetched ahead as walked one at a time', { skip: corpusSkip }, async (t) => {
+test('the corpus converts the same with its indexes fetched ahead as walked one at a time', { skip: corpusSkip || loaderSkip }, async (t) => {
   const location = requireCorpus();
   const oneAtATime = await convertCorpus(location, { concurrency: 1 });
   const asked: string[] = [];

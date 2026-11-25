@@ -42,7 +42,7 @@ import {
 import { newCharacterOfKind } from '@incudo/ui';
 
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const CATEGORY = 'Optional Class Features';
@@ -123,7 +123,7 @@ test('the converter makes every optional class feature an option of its own type
   assert.deepEqual(items.filter((e) => /equip this item to/i.test(e.description ?? '')).map((e) => e.name), []);
 });
 
-test('the optional class feature items, and how their prerequisites are written', { skip: corpusSkip }, async (t) => {
+test('the optional class feature items, and how their prerequisites are written', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const all = [...elements.all()];
@@ -181,7 +181,7 @@ test('the optional class feature items, and how their prerequisites are written'
   );
 });
 
-test('what else is hidden from the inventory, and what else shares a category of hidden items', { skip: corpusSkip }, async (t) => {
+test('what else is hidden from the inventory, and what else shares a category of hidden items', { skip: corpusSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   const all = [...elements.all()];
   const hidden = all.filter((e) => e.setters[HIDDEN]);
@@ -200,7 +200,7 @@ test('what else is hidden from the inventory, and what else shares a category of
   t.diagnostic(`items whose own description says to equip it to enable it: ${equipToEnable.length}, by category ${tally(equipToEnable.map((e) => e.setters['category']?.value ?? '(none)'))}`);
 });
 
-test('what the samples carry of these items, or of anything hidden', { skip: savesSkip }, async (t) => {
+test('what the samples carry of these items, or of anything hidden', { skip: savesSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   const rows: string[] = [];
   let entries = 0;
@@ -221,7 +221,7 @@ test('what the samples carry of these items, or of anything hidden', { skip: sav
   for (const row of rows) t.diagnostic(`  ${row}`);
 });
 
-test('how many of the items give anything to a level 20 character of each class they name, by edition', { skip: corpusSkip }, async (t) => {
+test('how many of the items give anything to a level 20 character of each class they name, by edition', { skip: corpusSkip || measureSkip }, async (t) => {
   // An item gives something when one of its conditional grants holds (its unconditional ones are the replacement
   // markers). Asked of a level 20 single-class character with the item's grants read against its derivation.
   const system = await loadShippedSystem('dnd5e');

@@ -46,7 +46,7 @@ import {
 } from '@incudo/core';
 import { descriptionText, expandDescription } from '@incudo/ui';
 
-import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, measureSkip } from './real-data.ts';
 
 /** Types a class's walk follows into. */
 const WALKED = new Set(['Archetype', 'Class Feature', 'Archetype Feature']);
@@ -155,7 +155,7 @@ function selectName(name: string): string {
   return name.replace(/\s*\([^()]*\)\s*$/, '').trim();
 }
 
-test('the options class and subclass features point at, and whether a preview can show their text', { skip: corpusSkip }, async (t) => {
+test('the options class and subclass features point at, and whether a preview can show their text', { skip: corpusSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   t.diagnostic(corpusProvenance());
   const all = [...elements.all()];

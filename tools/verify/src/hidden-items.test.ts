@@ -33,7 +33,7 @@ import { runOracle } from './aurora-oracle.ts';
 import { CharacterBuilder, newCharacterOfKind, sheetDocument, sheetMarkdown, type BuilderState } from '@incudo/ui';
 
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const HIDDEN = 'inventory-hidden';
@@ -83,7 +83,7 @@ function shape(e: Element, elements: { get(id: string): Element | undefined }): 
     .join(' + ');
 }
 
-test('the additional features and score adjustments, and what they are', { skip: corpusSkip }, async (t) => {
+test('the additional features and score adjustments, and what they are', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const all = [...elements.all()];
@@ -175,7 +175,7 @@ function lines(state: BuilderState): Set<string> {
   return new Set(sheetMarkdown(sheetDocument(state)).split('\n').filter((l) => l.trim()));
 }
 
-test('each option of the two families taken on a fresh character: what it gives, opens and shows', { skip: corpusSkip }, async (t) => {
+test('each option of the two families taken on a fresh character: what it gives, opens and shows', { skip: corpusSkip || measureSkip }, async (t) => {
   const system = await loadShippedSystem('dnd5e');
   const { builder, elements } = await baseline(4);
   const before = builder.getState();
@@ -207,7 +207,7 @@ test('each option of the two families taken on a fresh character: what it gives,
   }
 });
 
-test('the feat unlockers: how many feats a character qualifies for with each taken', { skip: corpusSkip }, async (t) => {
+test('the feat unlockers: how many feats a character qualifies for with each taken', { skip: corpusSkip || measureSkip }, async (t) => {
   // A level 1 character with the scores a new one has; the unlocker is asked of every feat whose requirements name its
   // marker, before and after it is taken.
   const system = await loadShippedSystem('dnd5e');
@@ -346,7 +346,7 @@ test('the Companion Selection taken from its step holds the creature chosen, sho
   assert.equal(after.character.choices.some((c) => c.ruleKey === select.id), false, 'its answer goes with it');
 });
 
-test('which samples show another speed now that the sheet declares them', { skip: savesSkip }, async (t) => {
+test('which samples show another speed now that the sheet declares them', { skip: savesSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   const rows: string[] = [];
   for (const sample of readManifest().samples) {
