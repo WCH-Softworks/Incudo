@@ -133,7 +133,7 @@ jobs:
           # Each job uploads its installers and their .sig files; the `updater` job below writes latest.json once, from
           # all of them. The action's own latest.json is merged job by job with nothing stopping two jobs racing, and
           # its addresses are API asset links rather than the release's own.
-          uploadUpdaterJson: false
+          includeUpdaterJson: false
           prerelease: ${{ needs.check.outputs.prerelease == 'true' }}
           releaseBody: |
             Incudo ${{ github.ref_name }}, a free, open-source character builder that reads Aurora's content.
@@ -160,6 +160,15 @@ jobs:
             **Updating.** From 1.1.0 on the app looks for a newer published release when it starts (Settings can turn that off; Help, "Check for updates…" asks at any time) and installs one only when you say so. Copies of 1.0.0 cannot update themselves: install a later one by hand once. Windows is now offered as the setup program only; if you installed 1.0.0 from the `.msi`, the setup program finds it and offers to remove it first, and you should say yes.
 
             Built from ${{ github.sha }}.
+      - name: Unmount what the Apple silicon build left
+        # bundle_dmg.sh mounts the image it lays out; on v1.1.0-rc.3 the Intel build's own dmg failed right after the
+        # Apple silicon one succeeded in the same job. Whatever is still mounted under the app's name is detached first.
+        if: matrix.then
+        run: |
+          hdiutil info
+          for volume in /Volumes/Incudo*; do
+            if [ -d "$volume" ]; then hdiutil detach "$volume" -force || true; fi
+          done
       - name: The Intel Mac build
         # The same build for the matrix entry's second target. The release exists by now, so it takes no body.
         if: matrix.then
@@ -170,11 +179,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
-          args: ${{ matrix.then }}
+          # --verbose prints bundle_dmg.sh's own output, which a failure otherwise hides.
+          args: ${{ matrix.then }} --verbose
           tagName: ${{ github.ref_name }}
           releaseName: Incudo ${{ github.ref_name }}
           releaseDraft: true
-          uploadUpdaterJson: false
+          includeUpdaterJson: false
           prerelease: ${{ needs.check.outputs.prerelease == 'true' }}
 
   updater:
