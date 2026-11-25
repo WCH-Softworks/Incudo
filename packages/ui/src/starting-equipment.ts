@@ -284,6 +284,8 @@ export const STARTING_EQUIPMENT_HEADING = 'Starting equipment';
 export const STARTING_EQUIPMENT_HINT =
   'Take one option. Its items go into the bag, worn or held where a free slot takes them, and its coins into the purse. ' +
   'It can be taken back until any of it is used.';
+/** Above each line of an option whose bundles are alternatives: one of them is taken, the rest are not. */
+export const STARTING_CHOOSE_ONE = 'Choose one:';
 /** Above what a book lists that no loaded content has. */
 export const STARTING_UNLISTED = 'Also listed, and not in any loaded content:';
 

@@ -2603,6 +2603,14 @@ ul.browse-categories {
 .starting-lines > li {
   margin: 0.2rem 0;
 }
+.starting-choice {
+  display: block;
+  border-left: 2px solid var(--line);
+  padding-left: 0.5rem;
+}
+.starting-choice > .hint {
+  display: block;
+}
 .starting-choice label {
   display: block;
 }

@@ -14,6 +14,7 @@ import {
   purseLine,
   startingMissingNote,
   startingOwedNote,
+  STARTING_CHOOSE_ONE,
   STARTING_EQUIPMENT_HINT,
   STARTING_UNLISTED,
   type CharacterBuilder,
@@ -77,7 +78,8 @@ function StartingOptionCard({
             {line.kind === 'items' ? (
               line.text && <span>{line.text}</span>
             ) : (
-              <span className="starting-choice">
+              <span className="starting-choice" role="radiogroup" aria-label={STARTING_CHOOSE_ONE}>
+                <span className="hint">{STARTING_CHOOSE_ONE}</span>
                 {line.alternatives.map((alternative) => (
                   <label key={alternative.index}>
                     <input
