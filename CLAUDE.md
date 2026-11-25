@@ -155,6 +155,15 @@ version in `tauri.conf.json`, `Cargo.toml` and `apps/desktop/package.json` (the 
 `tauri-action`, and leaves a **draft** release for the maintainer to publish. Unsigned, and its notes say so and say
 only Windows was ever run by hand.
 
+**A release is tagged `vX.Y.Z` directly, and a tag is never reused** (the maintainer's call, 2026-11-25). The maintainer
+tests the draft and publishes it; nothing is offered to installed copies until then. If the build or the testing fails,
+the draft is deleted, the fix goes through a PR **that also moves the version to the next patch** (all three files,
+which the tag must match), and that patch is tagged: never delete and re-push a version tag, which anyone may already
+have fetched. `-rc.N` stays accepted for when others should try a build (published as a pre-release, which the updater
+never offers); it is not the default. A draft's files are not at `releases/download/<tag>/…`: until published, its
+addresses use an `untagged-…` name (`gh release view <tag> --json url`) and need a signed-in browser or `gh release
+download`.
+
 That does **not** mean nothing is a public API. Two things are, and they need real versioning
 discipline: the **system definition format** (users author these — ADR 0011) and the **`.incu`
 save format** (users' own files — ADR 0012). Both carry `formatVersion`. Package versions do not
