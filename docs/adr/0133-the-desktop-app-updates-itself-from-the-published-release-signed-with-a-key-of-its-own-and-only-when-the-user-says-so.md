@@ -116,13 +116,19 @@ never a draft and never a pre-release. That address is what keeps an unpublished
 > only** (`bundle.targets` lists `nsis`, `app`, `dmg`, `appimage`, `deb`, `rpm`: no `msi`), whose installer finds an
 > MSI install of the same product and publisher and offers to remove it first (read in the Tauri CLI's NSIS template);
 > the `.rpm` stays, so no Linux family is left out; and the notes open with a table naming the one file for each kind of
-> computer, linked. A release now lists 10 files: six installers, two `.app.tar.gz` the Mac updates download, and
+> computer, linked. A release now lists 9 files: six installers, two `.app.tar.gz` the Mac updates download, and
 > `latest.json`. The rc also settled three things decision 3 and "Not verified" left open: tauri-action names the
 > files as `archOf` reads them (`Incudo_aarch64.app.tar.gz`, `Incudo_x64.app.tar.gz` and the rest), `gh` finds the
 > draft by its tag, and the `.deb` and `.rpm` **are** signed (412 and 416 characters), so their keys are written. The
 > Windows installer's signature was checked against the committed public key with Node's own Ed25519 and BLAKE2b, and
 > a copy with one byte changed fails. The Apple silicon build waited twice for a runner GitHub never gave it
 > ("capacity constraints"); a re-run of the failed jobs is the answer.
+>
+> **Note, 2026-11-25, after v1.1.0-rc.2 — both Macs build in one job.** rc.2 met the same wait: across the two
+> candidates the Apple silicon job was left without a runner in five of seven tries, the Intel one, on the same
+> `macos-latest` label, in none. The matrix now has one macOS entry that builds Apple silicon and then Intel (`then`,
+> a second tauri-action step), so a tag waits for one Mac runner, not two. The files and their names are unchanged;
+> the Mac half takes about twice as long. Held by `release-workflow.test.ts`.
 
 ## Open questions for the maintainer
 

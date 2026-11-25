@@ -92,10 +92,11 @@ jobs:
         include:
           - platform: windows-latest
             args: ''
+          # Both Macs build in one job, Apple silicon then Intel: as two jobs, the Apple silicon one waited for a runner
+          # and was cancelled in five of seven tries across the 1.1.0 candidates, while the Intel one always got one.
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
-          - platform: macos-latest
-            args: '--target x86_64-apple-darwin'
+            then: '--target x86_64-apple-darwin'
           - platform: ubuntu-22.04
             args: ''
     runs-on: ${{ matrix.platform }}
@@ -159,6 +160,22 @@ jobs:
             **Updating.** From 1.1.0 on the app looks for a newer published release when it starts (Settings can turn that off; Help, "Check for updates…" asks at any time) and installs one only when you say so. Copies of 1.0.0 cannot update themselves: install a later one by hand once. Windows is now offered as the setup program only; if you installed 1.0.0 from the `.msi`, the setup program finds it and offers to remove it first, and you should say yes.
 
             Built from ${{ github.sha }}.
+      - name: The Intel Mac build
+        # The same build for the matrix entry's second target. The release exists by now, so it takes no body.
+        if: matrix.then
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          args: ${{ matrix.then }}
+          tagName: ${{ github.ref_name }}
+          releaseName: Incudo ${{ github.ref_name }}
+          releaseDraft: true
+          uploadUpdaterJson: false
+          prerelease: ${{ needs.check.outputs.prerelease == 'true' }}
 
   updater:
     # latest.json, written once every installer and its signature is on the release (ADR 0133). It fails, naming the
