@@ -635,7 +635,7 @@ says so** ([ADR 0133](docs/adr/0133-the-desktop-app-updates-itself-from-the-publ
   is not a pre-release: a draft or an rc is never offered, and publishing is what ships an update.
 - **`latest.json` is written once by the release's `updater` job** (`updater-manifest.cjs`, after every build), from the
   release's asset names and `.sig` files, with the release's own download addresses; tauri-action's own is off
-  (`uploadUpdaterJson: false`) because its jobs merge one file with nothing stopping a race. It refuses a release missing
+  (`includeUpdaterJson: false`) because its jobs merge one file with nothing stopping a race. It refuses a release missing
   any of the four platforms built, naming it, and then deletes the release's `.sig` files (their text is in `latest.json`).
   Windows ships the setup program only (`bundle.targets` has no `msi`); a release lists 10 files, under a table of which
   file is for which computer. `tools/verify/src/desktop-updater.test.ts` holds the config, the

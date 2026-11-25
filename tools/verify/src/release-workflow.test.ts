@@ -78,7 +78,10 @@ test('macOS builds both chips in one job, signed ad hoc', () => {
   assert.equal(workflow.match(/platform: macos-latest/g)?.length, 1, 'one macOS job: two waited on runners');
   assert.match(workflow, /if: matrix\.then\s*uses: tauri-apps\/tauri-action@v0/, 'a second build step for the second target');
   assert.equal(workflow.match(/args: \$\{\{ matrix\.then \}\}/g)?.length, 1);
-  assert.equal(workflow.match(/uploadUpdaterJson: false/g)?.length, 2, 'neither build writes its own latest.json');
+  const unmount = workflow.indexOf('- name: Unmount what the Apple silicon build left');
+  assert.ok(unmount > 0 && unmount < workflow.indexOf('- name: The Intel Mac build'), 'the first build\'s image is detached before the second');
+  assert.match(workflow.slice(unmount), /hdiutil detach "\$volume" -force/);
+  assert.equal(workflow.match(/includeUpdaterJson: false/g)?.length, 2, 'neither build writes its own latest.json');
   assert.equal(workflow.match(/TAURI_SIGNING_PRIVATE_KEY: \$\{\{ secrets\.TAURI_SIGNING_PRIVATE_KEY \}\}/g)?.length, 2, 'both builds sign their updates');
   const config = JSON.parse(read('apps/desktop/src-tauri/tauri.conf.json')) as { bundle: { macOS?: { signingIdentity?: string } } };
   assert.equal(config.bundle.macOS?.signingIdentity, '-', 'an ad-hoc identity, or Apple silicon reads the app as damaged');

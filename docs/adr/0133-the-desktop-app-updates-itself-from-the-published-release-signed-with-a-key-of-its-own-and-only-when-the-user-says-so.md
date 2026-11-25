@@ -40,7 +40,7 @@ What Tauri 2's updater is (its documentation and `tauri-plugin-updater`):
 
 What `tauri-apps/tauri-action` does with `latest.json` (its `upload-version-json.ts`, read on its `dev` branch):
 
-- `uploadUpdaterJson` defaults to true. **Each build job** lists the release's assets, downloads any `latest.json`
+- `includeUpdaterJson` defaults to true. **Each build job** lists the release's assets, downloads any `latest.json`
   there, keeps its `platforms`, adds its own, **deletes the asset and uploads the new one**. Nothing stops two of the
   four parallel jobs reading the same copy: the last to upload wins and the other's platform is gone, with every job
   green.
@@ -62,7 +62,7 @@ never a draft and never a pre-release. That address is what keeps an unpublished
    is never offered, because GitHub never serves either there. Publishing the release is what offers it.
    `windows.installMode` is `passive`: the installer shows its progress and asks nothing.
 3. **`latest.json` is written once, by the workflow, after every installer is built** (`apps/desktop/scripts/
-   updater-manifest.cjs`, the release's last job `updater`), and tauri-action's own is off (`uploadUpdaterJson: false`).
+   updater-manifest.cjs`, the release's last job `updater`), and tauri-action's own is off (`includeUpdaterJson: false`).
    It reads the release's asset names and `.sig` files and writes, per platform, the release's own address
    (`releases/download/<tag>/<file>`, which answers once the draft is published) and the signature text: the plain key
    (`windows-x86_64` is the NSIS installer, `darwin-<chip>` the `.app.tar.gz`, `linux-x86_64` the AppImage) and the
@@ -129,6 +129,14 @@ never a draft and never a pre-release. That address is what keeps an unpublished
 > `macos-latest` label, in none. The matrix now has one macOS entry that builds Apple silicon and then Intel (`then`,
 > a second tauri-action step), so a tag waits for one Mac runner, not two. The files and their names are unchanged;
 > the Mac half takes about twice as long. Held by `release-workflow.test.ts`.
+>
+> **Note, 2026-11-25, after v1.1.0-rc.3 — two things the rc found.** The one Mac job got a runner at once, built
+> Apple silicon, and failed at the Intel `.dmg` (`bundle_dmg.sh`, with no output of its own). The image the first build
+> mounted is the likely cause and is not confirmed: a step now detaches anything mounted under the app's name between the
+> two, and the Intel build runs with `--verbose`. And the rc showed that **tauri-action has no input called
+> `uploadUpdaterJson`**: its log warns about an unexpected input, and with the `updater` job skipped the release held the
+> action's own `latest.json`. The input is `includeUpdaterJson`. Through rc.1 and rc.2 the action wrote its own file and
+> the `updater` job overwrote it, so what was published was right, with the race decision 3 avoids still underneath.
 
 ## Open questions for the maintainer
 

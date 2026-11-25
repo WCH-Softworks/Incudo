@@ -7,7 +7,7 @@
  * build with it (`--check-config`), and the first test here says so by name, so it cannot be forgotten into a release.
  *
  * Perturbation: give the endpoint another address, set createUpdaterArtifacts false, grant `updater:default` or
- * `process:default`, drop either secret or `uploadUpdaterJson: false` from release.yml, drop `--check-config` from its
+ * `process:default`, drop either secret or `includeUpdaterJson: false` from release.yml, drop `--check-config` from its
  * check job, move the Rust plugin off the npm package's minor, or make `buildManifest` accept a release missing a
  * platform, and the case about it fails.
  */
@@ -121,7 +121,10 @@ test('the release workflow signs with the two secrets, refuses the placeholder, 
   const workflow = read('.github/workflows/release.yml');
   assert.match(workflow, /TAURI_SIGNING_PRIVATE_KEY: \$\{\{ secrets\.TAURI_SIGNING_PRIVATE_KEY \}\}/);
   assert.match(workflow, /TAURI_SIGNING_PRIVATE_KEY_PASSWORD: \$\{\{ secrets\.TAURI_SIGNING_PRIVATE_KEY_PASSWORD \}\}/);
-  assert.match(workflow, /uploadUpdaterJson: false/, "the action's racy latest.json is off");
+  assert.match(workflow, /includeUpdaterJson: false/, "the action's racy latest.json is off");
+  // tauri-action warns about an input it does not have and carries on: `uploadUpdaterJson` was written here through
+  // three candidates, and the action wrote its own latest.json in every one of them.
+  assert.doesNotMatch(workflow, /uploadUpdaterJson/, 'not an input tauri-action has');
   const check = workflow.slice(workflow.indexOf('  check:'), workflow.indexOf('  ci:'));
   assert.match(check, /updater-manifest\.cjs --check-config/, 'the check job refuses the placeholder before anything builds');
   const updater = workflow.slice(workflow.indexOf('\n  updater:'));
