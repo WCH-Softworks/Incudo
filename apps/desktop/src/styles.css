@@ -886,6 +886,7 @@ dialog.ask h2 {
 }
 
 dialog.print-options fieldset,
+dialog.convert-kind fieldset,
 dialog.start-options fieldset {
   margin: 0 0 12px;
   padding: 0;
@@ -893,6 +894,7 @@ dialog.start-options fieldset {
 }
 
 dialog.print-options legend,
+dialog.convert-kind legend,
 dialog.start-options legend {
   padding: 0;
   margin-bottom: 4px;
@@ -900,6 +902,7 @@ dialog.start-options legend {
 }
 
 dialog.print-options label,
+dialog.convert-kind fieldset label,
 dialog.start-options label {
   display: flex;
   gap: 8px;
@@ -913,12 +916,14 @@ dialog.official-sheet code {
 }
 
 /* A review can list dozens of elements (ADR 0082): it scrolls inside the window rather than past it. */
-dialog.content-refresh {
+dialog.content-refresh,
+dialog.convert-kind {
   max-height: 85vh;
   overflow: auto;
 }
 
-dialog.content-refresh h3 {
+dialog.content-refresh h3,
+dialog.convert-kind h3 {
   margin: 14px 0 4px;
   font-size: 13px;
 }

@@ -158,6 +158,7 @@ import { useUpdates, type Updates } from './use-updates.ts';
 import { UpdateDialog } from './panes/UpdateDialog.tsx';
 import { LauncherPane, type SystemSummary } from './panes/LauncherPane.tsx';
 import { LibraryPane } from './panes/LibraryPane.tsx';
+import { ConvertKindDialog } from './panes/ConvertKind.tsx';
 import { SourcesPane, type SourcesActions } from './panes/SourcesPane.tsx';
 import { BuilderPane, type StartOptionsAsk } from './panes/BuilderPane.tsx';
 import { SheetPane } from './panes/SheetPane.tsx';
@@ -1121,13 +1122,13 @@ function Shell({
   );
 
   const readFromLibrary = useCallback(
-    async (entry: LibraryEntry) => {
+    async (entry: LibraryEntry): Promise<string | undefined> => {
       const opened = await library.open(entry.name);
-      if (!opened) return;
+      if (!opened) return undefined;
       // A kind this system does not declare, or a file that does not derive, would throw in the builder and blank the window.
       const missing = characterOpenProblem(system, opened.character, opened.elements, schemas);
       setLibraryNotice(missing);
-      if (missing) return;
+      if (missing) return undefined;
       setWorking({
         character: opened.character,
         embedded: opened.elements,
@@ -1146,6 +1147,7 @@ function Shell({
           : null,
       );
       setPane('build');
+      return opened.character.id;
     },
     [library, system],
   );
@@ -1160,6 +1162,27 @@ function Shell({
       if (outcome === 'show') setPane('build');
       else if (outcome === 'ask') setReplacing({ replacement: { kind: 'open', name: entry.title }, run: () => void readFromLibrary(entry) });
       else void readFromLibrary(entry);
+    },
+    [working, edit, readFromLibrary],
+  );
+
+  /**
+   * Change kind… on a library card (ADR 0134): the card's character is opened as Open opens it, asking first about unsaved
+   * changes to another, and the confirmation is shown over Build once that character is on screen.
+   */
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const changeKindFromLibrary = useCallback(
+    (entry: LibraryEntry) => {
+      const outcome = openOutcome(working, edit, entry);
+      const convert = (id: string | undefined): void => {
+        if (id !== undefined) setConvertingId(id);
+      };
+      if (outcome === 'show') {
+        setPane('build');
+        convert(working.character.id);
+      } else if (outcome === 'ask') {
+        setReplacing({ replacement: { kind: 'open', name: entry.title }, run: () => void readFromLibrary(entry).then(convert) });
+      } else void readFromLibrary(entry).then(convert);
     },
     [working, edit, readFromLibrary],
   );
@@ -1526,7 +1549,9 @@ function Shell({
   const loadLeftNothing =
     !contentLoading && mySources.some((source) => source.enabled) && !contentLoaded && working.embedded === undefined;
 
+  const converting = convertingId !== null && convertingId === state.character.id && pane === 'build' && !contentLoading;
   const modal =
+    converting ||
     renamePrompt !== null ||
     replacing !== null ||
     printDraft !== null ||
@@ -1651,6 +1676,7 @@ function Shell({
           onChooseFolder={() => void chooseFolder()}
           onRefresh={() => void library.refresh()}
           onOpen={openFromLibrary}
+          onChangeKind={system.characterKinds.length > 1 ? changeKindFromLibrary : undefined}
           onNew={startNew}
           kinds={kinds}
           newKind={newKind}
@@ -1868,6 +1894,21 @@ function Shell({
         onPaper={(paper) => setPrintDraft((draft) => draft && withPaper(draft, paper))}
         onPrint={() => void finishPrint('print')}
         onCancel={() => void finishPrint('cancel')}
+      />
+      <ConvertKindDialog
+        open={converting}
+        character={state.character}
+        system={system}
+        elements={elements}
+        onConvert={(converted) => {
+          // An unsaved edit of the same file (ADR 0120): the entry and the baseline stay, so Save writes it and New
+          // character or Open asks first.
+          setWorking((previous) => ({ ...previous, character: converted }));
+          setConvertingId(null);
+          setSavedTo(null);
+          setSaveNote(null);
+        }}
+        onCancel={() => setConvertingId(null)}
       />
       <ReplaceDialog
         prompt={prompt}

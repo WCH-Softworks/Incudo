@@ -26,6 +26,7 @@ export function LibraryPane({
   onChooseFolder,
   onRefresh,
   onOpen,
+  onChangeKind,
   onNew,
   kinds,
   newKind,
@@ -57,6 +58,8 @@ export function LibraryPane({
   onChooseFolder: () => void;
   onRefresh: () => void;
   onOpen: (entry: LibraryEntry) => void;
+  /** Change kind… on a card (ADR 0134); absent where the system declares one kind. */
+  onChangeKind?: (entry: LibraryEntry) => void;
   onNew: () => void;
   /** The kinds this system lets you start, default first. A chooser appears only when there is a choice. */
   kinds: readonly KindChoice[];
@@ -269,6 +272,7 @@ export function LibraryPane({
               kind={describeKind(entry)}
               kept={describeReferences(entry)}
               onOpen={() => onOpen(entry)}
+              onChangeKind={onChangeKind && (() => onChangeKind(entry))}
               onRemove={() => onRemove(entry)}
             />
           </li>
@@ -420,6 +424,7 @@ function CharacterCard({
   kind,
   kept,
   onOpen,
+  onChangeKind,
   onRemove,
 }: {
   entry: LibraryEntry;
@@ -428,6 +433,8 @@ function CharacterCard({
   /** "For reference: Kraken", from the ui package; undefined when the character keeps nothing. */
   kept: string | undefined;
   onOpen: () => void;
+  /** Opens the character and asks before making it another kind (ADR 0134); absent where the system has one kind. */
+  onChangeKind?: () => void;
   onRemove: () => void;
 }): React.JSX.Element {
   const moved = entry.sourceStatuses.filter((status) => status.state === 'moved');
@@ -492,6 +499,11 @@ function CharacterCard({
           <button type="button" onClick={onOpen} disabled={entry.broken}>
             Open
           </button>
+          {onChangeKind && (
+            <button type="button" onClick={onChangeKind} disabled={entry.broken}>
+              Change kind…
+            </button>
+          )}
           <RemoveButton name={entry.title} onRemove={onRemove} />
         </div>
       </div>
