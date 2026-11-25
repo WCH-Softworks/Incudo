@@ -25,7 +25,7 @@ import {
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 function tally(values: string[]): string {
@@ -62,7 +62,7 @@ function itemsOf(index: ElementIndex, types: readonly string[]): Element[] {
   return types.flatMap((type) => index.byType(type));
 }
 
-test('what an inventory editor would offer', { skip: corpusSkip }, async (t) => {
+test('what an inventory editor would offer', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const index = await realElements();
   const { pc, itemTypes } = await setting();
@@ -107,7 +107,7 @@ test('what an inventory editor would offer', { skip: corpusSkip }, async (t) => 
   t.diagnostic(`  setters naming a stack: ${tally(offered.flatMap((e) => Object.keys(e.setters).filter((k) => /stack|bundle|amount|quantity/i.test(k))))}`);
 });
 
-test('which magic items are made from another item, and how many hosts each admits', { skip: corpusSkip }, async (t) => {
+test('which magic items are made from another item, and how many hosts each admits', { skip: corpusSkip || measureSkip }, async (t) => {
   const index = await realElements();
   const { itemTypes } = await setting();
   const items = itemsOf(index, itemTypes);
@@ -139,7 +139,7 @@ test('which magic items are made from another item, and how many hosts each admi
   t.diagnostic(`  of them requiring attunement: ${attunes}`);
 });
 
-test('what <extract> lists, as an editor would open it', { skip: corpusSkip }, async (t) => {
+test('what <extract> lists, as an editor would open it', { skip: corpusSkip || measureSkip }, async (t) => {
   const location = requireCorpus();
   const root = location.root ?? dirname(location.index);
   const index = await realElements();

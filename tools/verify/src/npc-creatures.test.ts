@@ -46,7 +46,7 @@ import {
 import { CharacterBuilder, newCharacterOfKind, packCharacter } from '@incudo/ui';
 
 import { loadSchemas } from './node-system.ts';
-import { corpusSkip, realElements } from './real-data.ts';
+import { corpusSkip, realElements, sweep } from './real-data.ts';
 
 const skip = corpusSkip;
 const SCORES = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
@@ -73,7 +73,7 @@ function npcOn(system: GameSystem, elements: ElementIndex, creature: Element): C
 test('every creature, built as an NPC, starts at the six scores it prints and asks for none', { skip }, async (t) => {
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   assert.ok(creatures.length > 0, 'the corpus has creatures');
 
   const offered = new CharacterBuilder(newCharacterOfKind(system, 'npc'), system, elements)
@@ -114,7 +114,7 @@ test("a creature's armour class, hit points and speed come from its own rules, a
   // display text. A disagreement is upstream's, and this counts them.
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const tally = new Map<string, { agree: number; differ: string[]; unreadable: number }>();
   for (const stat of ['ac', 'hp', 'speed']) tally.set(stat, { agree: 0, differ: [], unreadable: 0 });
 
@@ -208,7 +208,7 @@ test("every creature's armour class, hit points and speed start where its rules 
   // the engine stops publishing `starts` (the step's rows count nothing as stated and it opens).
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const from = startsFrom(system);
   const wrong: string[] = [];
   const stillOpen: string[] = [];
@@ -281,7 +281,7 @@ test("every creature's NPC starts at the challenge rating it prints, and a typed
   // creatures above CR 4 have a proficiency bonus of +2), or if the engine reads `character.progress` alone.
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const wrong: string[] = [];
   const unnoted: string[] = [];
   let printed = 0;
@@ -335,7 +335,7 @@ test("every creature's named traits, actions and reactions reach its NPC, and it
   // "Healer Only" and a "Warrior Only" feature, each requiring a variant trait the bare NPC does not hold.
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const missing: string[] = [];
   const lostOnReopen: string[] = [];
   const unresolved = new Set<string>();
@@ -379,7 +379,7 @@ test("every creature's named traits, actions and reactions can be removed, and i
   // a removed id from its holder (the save embeds what the NPC no longer has).
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const stillHeld: string[] = [];
   const embedded: string[] = [];
   const reopenedDiffers: string[] = [];
@@ -438,7 +438,7 @@ test("every creature's other speeds, saving throws and skills are what its own r
   // skill's derivation stops reading its proficiency (the rule and the NPC's stat still agree; the bonus does not).
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const read = startsFromAll(system);
   // Only stats that start somewhere: `initiative` is the system's Dexterity modifier and reads no rule, so a
   // creature's `companion:initiative` is reported with the rest nothing reads.
@@ -506,7 +506,7 @@ test("a creature's printed speeds, saving throws, skills and passive Perception 
   // read a skill against the wrong ability, would agree with almost none.
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const kind = resolveCharacterKind(system, 'npc');
   const byLabel = new Map(kind.stats.filter((s) => s.label).map((s) => [s.label!.toLowerCase(), s.name]));
   const speeds = new Set(sectionStats(kind, 'speeds'));
@@ -658,7 +658,7 @@ test("a feature the DM writes sets or adds to every creature's numbers, a typed 
   // if the feature is not in the save (the reopened NPC reads the creature's speed).
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const npc = kind(system);
   assert.ok(npc.customFeatures, 'the 5e NPC may carry features its DM writes');
   // Not the ability scores, for any kind: they are the character's own inputs, with an editor of their own. Read off
@@ -716,7 +716,7 @@ test("every creature's NPC marks the saves and skills it is proficient in, and a
   // stops replacing the creature's print (the skill stays), or if the save does not keep it.
   const system = await fiveE();
   const elements = await realElements();
-  const creatures = creatureStep(system).types.flatMap((type) => elements.byType(type));
+  const creatures = sweep(creatureStep(system).types.flatMap((type) => elements.byType(type)));
   const npc = kind(system);
   const saves = sectionStats(npc, 'saves');
   const skills = sectionStats(npc, 'skills');

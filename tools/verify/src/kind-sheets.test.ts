@@ -50,7 +50,7 @@ import { CharacterBuilder, companionsView, newCharacterOfKind, sheetView, type S
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, sweep } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const SYSTEMS = ['dnd5e', 'cairn'];
@@ -215,7 +215,7 @@ for (const kindId of ['npc', 'legendary']) test(`a creature's ${kindId} prints i
   const npc = resolveCharacterKind(system, kindId);
   const elements = await realElements();
   const creatureTypes = new Set(npc.buildSteps.find((s) => s.id === 'creature')?.types ?? []);
-  const creatures = [...elements.all()].filter((e) => creatureTypes.has(e.type));
+  const creatures = sweep([...elements.all()].filter((e) => creatureTypes.has(e.type)));
   const printed = new Set(npc.sheet.sections.flatMap((s) => s.printed ?? []).map((p) => p.setter.toLowerCase()));
   const statSetters = new Set((npc.setterStats ?? []).map((s) => s.setter.toLowerCase()));
   const grantSetters = new Set((npc.setterGrants ?? []).map((s) => s.setter.toLowerCase()));

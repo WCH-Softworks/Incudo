@@ -24,7 +24,7 @@ import { declaredBlocks, type Element, type ElementIndex, type GameSystem } from
 import { CharacterBuilder, newCharacterOfKind, type BuilderState } from '@incudo/ui';
 
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, measureSkip } from './real-data.ts';
 
 const PHB24 = 'Player’s Handbook (2024)';
 const PHB = 'Player’s Handbook';
@@ -51,7 +51,7 @@ function preparedColumn(html: string): number[] | undefined {
   return out;
 }
 
-test('on the corpus: where each 2024 class states how many spells it prepares', { skip: corpusSkip }, async (t) => {
+test('on the corpus: where each 2024 class states how many spells it prepares', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const all = [...(await realElements()).all()];
   for (const element of all) {

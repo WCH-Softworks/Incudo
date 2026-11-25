@@ -44,7 +44,7 @@ import {
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, sweep } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -212,7 +212,7 @@ test('every creature as an NPC and as a legendary creature: the parts of each sh
     const step = kind.buildSteps.find((s) => (s.required || s.pick) && s.types.length > 0 && !s.budget && !s.multiple)!;
     const sheets: SheetParts[] = [];
     const problems: (string | undefined)[] = [];
-    for (const creature of step.types.flatMap((type) => elements.byType(type))) {
+    for (const creature of sweep(step.types.flatMap((type) => elements.byType(type)))) {
       const builder = new CharacterBuilder(newCharacterOfKind(system, kindId), system, elements);
       builder.choose(`build/${step.id}`, [creature.id]);
       builder.setName(creature.name);

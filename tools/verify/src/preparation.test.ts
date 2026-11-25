@@ -32,7 +32,7 @@ import type { AuroraSave } from '@incudo/aurora-import';
 
 import { preparationViolations, runOracle, type OracleRun } from './aurora-oracle.ts';
 import { readManifest, sampleFileNames, SAMPLES_DIR } from './sample-saves.ts';
-import { realElements, requireCorpus, requireSaves, savesSkip } from './real-data.ts';
+import { realElements, requireCorpus, requireSaves, savesSkip, measureSkip } from './real-data.ts';
 
 // --- the check itself, with no corpus -------------------------------------------
 
@@ -212,14 +212,14 @@ test('every sample agrees with Aurora about its prepared lists', { skip: savesSk
   assert.deepEqual(failing(all, (m) => m.run), []);
 });
 
-test('perturbation: without the importer copying the flags, every sample that records one fails, and no other', { skip: savesSkip }, async () => {
+test('perturbation: without the importer copying the flags, every sample that records one fails, and no other', { skip: savesSkip || measureSkip }, async () => {
   const all = await samples();
   const expected = all.filter((m) => m.flagged).map((m) => m.id).sort();
   assert.ok(expected.length > 0);
   assert.deepEqual(failing(all, (m) => rederived(m, { prepared: false })), expected);
 });
 
-test('perturbation: a limit that names the wrong stat fails every sample whose screen showed a count', { skip: savesSkip }, async () => {
+test('perturbation: a limit that names the wrong stat fails every sample whose screen showed a count', { skip: savesSkip || measureSkip }, async () => {
   const all = await samples();
   const expected = all.filter((m) => m.readout.some((n) => n > 0)).map((m) => m.id).sort();
   assert.ok(expected.length > 0);
@@ -228,7 +228,7 @@ test('perturbation: a limit that names the wrong stat fails every sample whose s
   assert.deepEqual(failing(all, wrong), expected);
 });
 
-test('perturbation: a limit one too low fails the same samples, so no sample agrees by accident', { skip: savesSkip }, async () => {
+test('perturbation: a limit one too low fails the same samples, so no sample agrees by accident', { skip: savesSkip || measureSkip }, async () => {
   const all = await samples();
   const expected = all.filter((m) => m.readout.some((n) => n > 0)).map((m) => m.id).sort();
   const shifted = (m: Measured) => {
@@ -240,7 +240,7 @@ test('perturbation: a limit one too low fails the same samples, so no sample agr
   assert.deepEqual(failing(all, shifted), expected);
 });
 
-test('perturbation: reading :half as nothing fails the samples with a half-caster that prepares, and no other', { skip: savesSkip }, async () => {
+test('perturbation: reading :half as nothing fails the samples with a half-caster that prepares, and no other', { skip: savesSkip || measureSkip }, async () => {
   const all = await samples();
   // The classes whose limit content writes with :half, found in the corpus and not named here.
   const corpus = await realElements();
@@ -267,7 +267,7 @@ test('perturbation: reading :half as nothing fails the samples with a half-caste
   assert.deepEqual(failing(all, before), expected);
 });
 
-test('perturbation: a block with no book prepares from its list, and the book blocks notice', { skip: savesSkip }, async () => {
+test('perturbation: a block with no book prepares from its list, and the book blocks notice', { skip: savesSkip || measureSkip }, async () => {
   const all = await samples();
   const books = all.filter((m) => m.run.derived.preparation.some((b) => b.mode === 'held')).map((m) => m.id).sort();
   assert.ok(books.length > 0);
@@ -276,7 +276,7 @@ test('perturbation: a block with no book prepares from its list, and the book bl
   assert.deepEqual(failing(all, noBook), books);
 });
 
-test('perturbation: a list filter that offers only first-level spells drops what Aurora lists above it', { skip: savesSkip }, async () => {
+test('perturbation: a list filter that offers only first-level spells drops what Aurora lists above it', { skip: savesSkip || measureSkip }, async () => {
   const all = await samples();
   // A list block whose save lists a spell of a level above the first.
   const expected = all
@@ -294,7 +294,7 @@ test('perturbation: a list filter that offers only first-level spells drops what
   assert.deepEqual(failing(all, firstOnly), expected);
 });
 
-test('perturbation: what content makes always prepared must not count against the limit', { skip: savesSkip }, async () => {
+test('perturbation: what content makes always prepared must not count against the limit', { skip: savesSkip || measureSkip }, async () => {
   const all = await samples();
   // Problems a list can have: past its limit, or holding what its block cannot prepare.
   const trouble = (run: OracleRun): number =>

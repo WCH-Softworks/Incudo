@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import type { ContentLibrary } from '@incudo/content';
 
 import { analyseCorpus, loadCorpusSources, readCorpusIndex, type CorpusLocation } from './corpus.ts';
-import { corpusProvenance, corpusSkip, requireCorpus } from './real-data.ts';
+import { corpusProvenance, corpusSkip, requireCorpus, loaderSkip } from './real-data.ts';
 
 function load(location: CorpusLocation, urls: string[]): Promise<ContentLibrary> {
   return loadCorpusSources(location, urls);
@@ -34,7 +34,7 @@ function compare(library: ContentLibrary, sources: string[], label: string): { r
   return { references: reported.size, additions };
 }
 
-test('what each source is reported as missing is, together, what the load is missing', { skip: corpusSkip }, async (t) => {
+test('what each source is reported as missing is, together, what the load is missing', { skip: corpusSkip || loaderSkip }, async (t) => {
   const location = requireCorpus();
   const top = await readCorpusIndex(location, location.index);
   const groups = top.files.filter((ref) => ref.isIndex).map((ref) => ref.url);

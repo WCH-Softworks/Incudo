@@ -38,7 +38,7 @@ import {
 import { CharacterBuilder, newCharacterOfKind, packCharacter, sheetDocument, sheetMarkdown, type BuilderState } from '@incudo/ui';
 
 import { loadSchemas } from './node-system.ts';
-import { corpusSkip, realElements } from './real-data.ts';
+import { corpusSkip, realElements, sweep } from './real-data.ts';
 
 const skip = corpusSkip;
 const SCORES = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
@@ -110,7 +110,7 @@ test('the NPC and the legendary creature offer every race content does not reser
 test('on a race alone an NPC derives what a player character derives from it, and its sheet names it', { skip }, async (t) => {
   const system = await fiveE();
   const elements = await realElements();
-  const races = await offeredRaces(system, elements);
+  const races = sweep(await offeredRaces(system, elements));
 
   const wrong: string[] = [];
   const unlistedVision: string[] = [];
@@ -164,7 +164,7 @@ test('on a race alone an NPC derives what a player character derives from it, an
 test('an NPC built on a race opens with no source to the same sheet', { skip }, async () => {
   const system = await fiveE();
   const elements = await realElements();
-  const races = await offeredRaces(system, elements);
+  const races = sweep(await offeredRaces(system, elements));
   const differ: string[] = [];
   for (const race of races) {
     const state = onRace(system, elements, 'npc', race).getState();

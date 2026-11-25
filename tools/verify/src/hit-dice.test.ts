@@ -28,7 +28,7 @@ import { dieSides, trackProgress } from '@incudo/core';
 import { CharacterBuilder, listedAside, listedName, sheetDocument, sheetMarkdown } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { samplePath, samplesWhere, type SampleEntry } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -43,7 +43,7 @@ function splitLevels(sample: SampleEntry): Map<string, number> {
   return out;
 }
 
-test("the corpus: which elements carry a hit die, and what else names hit dice", { skip: corpusSkip }, async (t: Diagnostic) => {
+test("the corpus: which elements carry a hit die, and what else names hit dice", { skip: corpusSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const values = new Map<string, number>();
@@ -81,7 +81,7 @@ test("the corpus: which elements carry a hit die, and what else names hit dice",
   t.diagnostic(`sheet descriptions with a placeholder naming hit dice: ${placeholders}`);
 });
 
-test("the samples: what each held class's hit dice would read", { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
+test("the samples: what each held class's hit dice would read", { skip: corpusSkip || savesSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   let samples = 0;

@@ -33,9 +33,21 @@ jobs:
   aurora-corpus:
     # The real-content suite: every test that needs the official Aurora content or a real save, run
     # against the current head of AuroraLegacy/elements. See ADR 0005 and ADR 0042.
+    #
+    # Two sizes of it (`INCUDO_CORPUS_SUITE`, tools/verify/src/real-data.ts). A pull request runs the quick
+    # suite: the same tests, with a sweep over the samples reading a handful chosen by what they are, a sweep
+    # over every creature or race an even dozen, and the report-only measurements, the perturbations and the
+    # whole-corpus loader comparisons skipped. The budgets, the oracle's invariants over all thirty samples and
+    # the manifest's checks are never abridged. A pull request that touches the converter, the content loader or
+    # a schema runs the full suite, as does everything else: a push to main, the daily schedule, a manual run,
+    # and a release through `workflow_call`, whose event is the tag push.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # A pull request's checkout is its merge commit, whose first parent is the base: two commits are
+          # enough to see what the pull request changes.
+          fetch-depth: 2
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -57,11 +69,22 @@ jobs:
           # against content as it was, and "as it was" must be the same commit everywhere. `BASE_CORPUS_COMMIT` in
           # tools/verify/src/corpus-checkout.ts is the same id, and `content-refresh.test.ts` fails if they differ.
           ref: 87e8dfa11c3808169db9d60177a09977585ebe03
+      - name: Which suite this run is
+        run: |
+          suite=full
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            suite=quick
+            if git diff --name-only HEAD^1 HEAD | grep -qE '^(packages/aurora-import|packages/content|schemas)/'; then
+              suite=full
+              echo "This pull request touches the converter, the content loader or a schema: the full suite."
+            fi
+          fi
+          echo "INCUDO_CORPUS_SUITE=$suite" >> "$GITHUB_ENV"
       - name: Which corpus commit is this run reading
         run: |
           sha=$(git -C .corpus rev-parse HEAD)
           echo "AuroraLegacy/elements at $sha"
-          echo "Corpus: AuroraLegacy/elements at \`$sha\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Corpus: AuroraLegacy/elements at \`$sha\`, the $INCUDO_CORPUS_SUITE suite" >> "$GITHUB_STEP_SUMMARY"
       # The numbers are the baseline in CLAUDE.md, spelled out so a change to any of them is a
       # deliberate edit to this file rather than a silent drift. `corpus.test.ts` reads them from
       # the environment, falls back to the same four when a variable is absent, and fails if this
@@ -109,4 +132,5 @@ jobs:
           INCUDO_REQUIRE_SAVES: 1
           # The same for the older corpus checked out above: a job that lost it would skip the refresh measurement.
           INCUDO_REQUIRE_BASE_CORPUS: 1
-        run: npm test
+        # Only tools/verify: the packages' own tests read no corpus, and the build job has already run them.
+        run: npm run test:verify

@@ -28,7 +28,7 @@ import assert from 'node:assert/strict';
 import { resolveCharacterKind, type Element } from '@incudo/core';
 
 import { loadShippedSystem } from './node-system.ts';
-import { corpusSkip, corpusProvenance, realElements } from './real-data.ts';
+import { corpusSkip, corpusProvenance, realElements, measureSkip } from './real-data.ts';
 
 /** The types any kind of the system lets a user add, in the order the system declares element types. */
 async function addableTypes(): Promise<{ types: string[]; kinds: Map<string, number> }> {
@@ -64,7 +64,7 @@ test('the types a user may add are declared and shared by the kinds', async () =
   }
 });
 
-test('what the first editor could write of the addable types', { skip: corpusSkip }, async (t) => {
+test('what the first editor could write of the addable types', { skip: corpusSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   const { types } = await addableTypes();
   t.diagnostic(corpusProvenance());

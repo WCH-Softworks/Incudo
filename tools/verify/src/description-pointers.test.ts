@@ -31,7 +31,7 @@ import { test } from 'node:test';
 import { descriptionEmbeds, matchesSupports, type Element, type ElementIndex, type SelectRule } from '@incudo/core';
 import { descriptionText } from '@incudo/ui';
 
-import { corpusProvenance, corpusSkip, realElements } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, measureSkip } from './real-data.ts';
 
 /**
  * A pointer: "below" or "above" after a word that makes it one ("the table below", "described above", "see below") or
@@ -189,7 +189,7 @@ function other(sentence: string): { category: Category } {
   return { category: OTHER_BOOK.test(sentence) ? 'another book' : 'nothing findable' };
 }
 
-test('descriptions that point at text elsewhere, and what they can be pointing at', { skip: corpusSkip }, async (t) => {
+test('descriptions that point at text elsewhere, and what they can be pointing at', { skip: corpusSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   t.diagnostic(corpusProvenance());
   const all = [...elements.all()];

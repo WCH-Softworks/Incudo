@@ -141,9 +141,9 @@ test(
     const location = requireCorpus();
     requireSaves();
 
-    const names = sampleFileNames();
+    const names = sampleFileNames('all');
     assert.ok(names.length > 0, 'there is at least one .dnd5e save to check');
-    const manifest = readManifest();
+    const manifest = readManifest('all');
     const recordedAt = manifest.recordedAt?.slice(0, 12) ?? 'no commit';
     const byId = new Map(manifest.samples.map((sample) => [sample.id, sample]));
 

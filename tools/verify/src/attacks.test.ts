@@ -30,7 +30,7 @@ import { CharacterBuilder, newCharacterOfKind, sheetView } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 function tally(values: readonly string[], limit = 15): string {
@@ -70,7 +70,7 @@ export function auroraAttacks(xml: string): AuroraAttack[] {
 
 const weapons = (elements: ElementIndex): Element[] => [...elements.all()].filter((e) => e.type === 'Weapon');
 
-test('weapons: what content states about each one', { skip: corpusSkip }, async (t) => {
+test('weapons: what content states about each one', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const all = weapons(elements);

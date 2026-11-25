@@ -25,7 +25,7 @@ import { CharacterBuilder, packCharacter, sheetDocument } from '@incudo/ui';
 
 import { loadCorpus } from './corpus.ts';
 import { repoRoot } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip, measureSkip } from './real-data.ts';
 import { runOracle } from './aurora-oracle.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 import { nodeZipCodec } from './node-zip.ts';
@@ -118,7 +118,7 @@ test('the committed fixture container, the size of a character with no content t
   assert.ok(bytes > 0);
 });
 
-test('how big a packed .incu is, and how long opening one with no source takes here', { skip: corpusSkip || savesSkip }, async (t) => {
+test('how big a packed .incu is, and how long opening one with no source takes here', { skip: corpusSkip || savesSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const zipped: number[] = [];
@@ -157,7 +157,7 @@ test('how big a packed .incu is, and how long opening one with no source takes h
 /** The URL the app adds AuroraLegacy by, and so the name of the file it is kept as. */
 const AURORA_LEGACY_INDEX = 'https://raw.githubusercontent.com/AuroraLegacy/elements/master/core.index';
 
-test('what a full AuroraLegacy download fetches, and the file its conversion is kept as', { skip: corpusSkip }, async (t) => {
+test('what a full AuroraLegacy download fetches, and the file its conversion is kept as', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const fetched = new Map<string, number>();
   const wrap = (inner: Fetcher): Fetcher => ({

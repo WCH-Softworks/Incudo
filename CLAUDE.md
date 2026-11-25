@@ -18,6 +18,7 @@ npm run typecheck      # tsc --build --force
 npm run corpus:sync    # fetch/fast-forward the official AuroraLegacy/elements into .corpus/ (gitignored)
 npm test               # node --test, no build step. Includes the real-content suite below once
                        # `.corpus/` exists; without it those tests skip and say to run corpus:sync.
+npm run test:verify    # tools/verify only (every real-content test); INCUDO_CORPUS_SUITE=quick is a PR's run
 npm run fixtures:rebuild   # regenerate tools/verify/fixtures/aelin/ after a format change
 npm run mobile         # the phone app's dev server (Expo Go); mobile:android opens it on an emulator or USB phone
 npm run mobile:build:android   # build and install the phone app's own development build (Gradle; receives shared files)
@@ -100,6 +101,19 @@ change, same checkout, and only an engine change can move it. `builder-rebuild.t
 `rogue-wizard-aurora.test.ts` find a save by what it is, a class split, not by name.
 `INCUDO_ORACLE_DETAIL=1` adds every difference message to the report, and those name content (elements,
 spells, stats), never a character.
+
+**A pull request runs the quick corpus suite; everything else runs it full** (2026-11-24, measured on CI: the full job
+took 4 to 6½ minutes, 186 corpus tests, ~30 files each importing all thirty samples). `INCUDO_CORPUS_SUITE=quick`
+(`real-data.ts`; unset or `full` is full, anything else fails) abridges, never weakens: a sweep over the samples reads
+`QUICK_SAMPLES` (six, chosen by what they are, `sample-saves.ts`); a sweep over every creature or race reads an even
+dozen (`sweep()`); a measurement (`ℹ` lines and nothing asserted beyond "something was read") or a perturbation skips
+(`measureSkip`); a whole-corpus loader comparison skips (`loaderSkip`). **Never abridged:** the budgets, the oracle's
+invariants over all thirty samples, the manifest and anonymity checks. ci.yml runs full on a push to main, the schedule,
+a manual run and a release, and on a pull request touching `packages/aurora-import`, `packages/content` or `schemas`.
+Locally `npm run test:verify` was 56 s quick and 148 s full. **A new test:** reach the samples through
+`readManifest()`, `samplesWhere` or `sampleFileNames()` (never a `readdir` of the folder), wrap a list of many like
+things in `sweep()`, end a measurement's skip with `|| measureSkip`, and assert no count of what a sweep read.
+`readManifest('all')` is for a check that is about the whole set.
 
 ## Hard constraints
 

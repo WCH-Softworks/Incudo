@@ -34,7 +34,7 @@ import {
 import { expandDescription, packCharacter } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
-import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, requireCorpus, savesSkip, measureSkip } from './real-data.ts';
 import { SAMPLES_DIR, sampleFileNames } from './sample-saves.ts';
 
 /** Every embedding marker in a description, whatever its spacing or quotes: the shape is measured, not assumed. */
@@ -91,7 +91,7 @@ function opening(element: Element): string {
   return inner === element.name.trim().toLowerCase() ? 'a heading with its own name' : 'another heading';
 }
 
-test('what descriptions embed, read from content alone', { skip: corpusSkip }, async (t) => {
+test('what descriptions embed, read from content alone', { skip: corpusSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   t.diagnostic(corpusProvenance());
   const all = [...elements.all()];

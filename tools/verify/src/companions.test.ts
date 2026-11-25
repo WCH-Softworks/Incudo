@@ -43,7 +43,7 @@ import { CharacterBuilder, companionsView, newCharacterOfKind, packCharacter } f
 import { runOracle } from './aurora-oracle.ts';
 import { summarize } from './derived-summary.ts';
 import { loadSchemas, loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, sweep } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const ABILITIES = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
@@ -121,7 +121,7 @@ test('every creature a player character holds has a scope with its print, its ru
   const s = await setting();
   const elements = await realElements();
   const way = openingEverything(s, elements);
-  const creatures = [...s.types].flatMap((type) => elements.byType(type));
+  const creatures = sweep([...s.types].flatMap((type) => elements.byType(type)));
   assert.ok(creatures.length > 0);
   const namespaced = [...new Set(creatures.flatMap((c) => c.rules.flatMap((r) => (r.kind === 'stat' && r.name.toLowerCase().startsWith(s.prefix) ? [r.name.toLowerCase()] : []))))];
   const numbers = namespaced.filter((n) => !n.endsWith(':proficiency'));
@@ -186,6 +186,7 @@ test('a held creature that does not take its holder\'s bonus takes its own chall
   const elements = await realElements();
   const way = openingEverything(s, elements);
   const above: string[] = [];
+  // Not swept: it asks for the few creatures above challenge 4, and is cheap.
   for (const creature of [...s.types].flatMap((type) => elements.byType(type))) {
     const derived = holding(s, elements, [{ ruleKey: way.ruleKey, elementIds: [creature.id] }]);
     if (!derived.elementIds.has(creature.id)) continue;
@@ -212,7 +213,7 @@ test('a held creature\'s stat block marks the saves and skills it is proficient 
   const labels = new Map<string, number>();
   const fixed: string[] = [];
   const wrong: string[] = [];
-  for (const creature of [...s.types].flatMap((type) => elements.byType(type))) {
+  for (const creature of sweep([...s.types].flatMap((type) => elements.byType(type)))) {
     const derived = holding(s, elements, [{ ruleKey: way.ruleKey, elementIds: [creature.id] }]);
     if (!derived.elementIds.has(creature.id)) continue;
     const scope = derived.companions[0]!;

@@ -40,7 +40,7 @@ import { CharacterBuilder, candidateLabel, newCharacterOfKind, preparationOption
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const PHB = 'Player’s Handbook';
@@ -87,7 +87,7 @@ function byName(elements: Iterable<Element>): Element[][] {
   return [...groups.values()].filter((group) => group.length > 1);
 }
 
-test('how often one name is declared more than once, and whether content links the printings (report)', { skip: corpusSkip }, async (t) => {
+test('how often one name is declared more than once, and whether content links the printings (report)', { skip: corpusSkip || measureSkip }, async (t) => {
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
@@ -228,7 +228,7 @@ test('a 2014 Cleric preparing one printing of a spell is not offered the other t
   );
 });
 
-test("the NPC's Traits offer, told apart by what gives each trait (report)", { skip: corpusSkip }, async (t) => {
+test("the NPC's Traits offer, told apart by what gives each trait (report)", { skip: corpusSkip || measureSkip }, async (t) => {
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
   const b = new CharacterBuilder(newCharacterOfKind(system, 'npc'), system, elements);

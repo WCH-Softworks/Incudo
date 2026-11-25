@@ -42,6 +42,7 @@ import { summarize } from './derived-summary.ts';
 import { loadSchemas } from './node-system.ts';
 import { saveLabel, unnamed } from './private-saves.ts';
 import { SAVES_DIR, realElements, requireSaves, savesSkip } from './real-data.ts';
+import { sampleFileNames } from './sample-saves.ts';
 
 async function shippedSystem(): Promise<GameSystem> {
   const path = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'systems', 'dnd5e', 'system.json');
@@ -57,9 +58,7 @@ test(
     requireSaves();
     const system = await shippedSystem();
     const corpus = await realElements();
-    const files = (await readdir(SAVES_DIR))
-      .filter((name) => extname(name).toLowerCase() === '.dnd5e')
-      .sort();
+    const files = sampleFileNames();
     assert.ok(files.length > 0, 'there is at least one .dnd5e save to rebuild');
 
     let rebuilt = 0;

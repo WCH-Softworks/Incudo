@@ -52,7 +52,7 @@ import { CharacterBuilder, newCharacterOfKind, packCharacter } from '@incudo/ui'
 import { runOracle } from './aurora-oracle.ts';
 import { summarize } from './derived-summary.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const ABILITIES = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
@@ -221,7 +221,7 @@ test('the creatures a player character\'s own content offers, and what one would
   t.diagnostic(`creatures whose type setter is Beast: ${beasts.length}, by book ${tally(beasts.map((b) => b.source), 6)}`);
 });
 
-test('what the samples hold of creatures, and what their elements print of what an NPC keeps', { skip: savesSkip }, async (t) => {
+test('what the samples hold of creatures, and what their elements print of what an NPC keeps', { skip: savesSkip || measureSkip }, async (t) => {
   const elements = await realElements();
   const { pc, creatureTypes, kept } = await kinds();
   const listed = new Set(pc.sheet.sections.flatMap((s) => s.types ?? []));

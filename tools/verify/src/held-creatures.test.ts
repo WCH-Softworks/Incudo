@@ -42,7 +42,7 @@ import { newCharacterOfKind } from '@incudo/ui';
 
 import { runOracle } from './aurora-oracle.ts';
 import { loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { readManifest, samplePath } from './sample-saves.ts';
 
 const ABILITIES = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
@@ -205,7 +205,7 @@ test('what content writes for a creature, in its holder\'s derivation', { skip: 
   t.diagnostic(`elements naming a sidekick (a lookup by name, the roadmap's other half): ${sidekicks.length}, of ${tally(sidekicks.map((e) => e.type))}`);
 });
 
-test('a player character holding each creature, against the NPC built on it', { skip: corpusSkip }, async (t) => {
+test('a player character holding each creature, against the NPC built on it', { skip: corpusSkip || measureSkip }, async (t) => {
   const s = await setting();
   const elements = await realElements();
   const creatures = [...s.creatureTypes].flatMap((type) => elements.byType(type));
@@ -300,7 +300,7 @@ function recordedCompanion(xml: string): { name: string; scores: number[]; saves
   return { name: block[1]!, scores, saves, skills };
 }
 
-test('the samples that hold a creature, against the stat block Aurora recorded', { skip: savesSkip }, async (t) => {
+test('the samples that hold a creature, against the stat block Aurora recorded', { skip: savesSkip || measureSkip }, async (t) => {
   const s = await setting();
   const elements = await realElements();
   let holding = 0;

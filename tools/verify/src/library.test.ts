@@ -47,6 +47,7 @@ import { assertNoneReported, assertSameSummary, saveLabel, unnamed } from './pri
 import { readContainer, writeContainer } from './node-save.ts';
 import { loadSchemas } from './node-system.ts';
 import { AURORA_INDEX, SAVES_DIR, corpusSkip, realElements, requireSaves, savesSkip } from './real-data.ts';
+import { sampleFileNames } from './sample-saves.ts';
 
 /**
  * A `CharacterStore` over a real directory.
@@ -106,9 +107,7 @@ test(
 
     // Sorted, so that "save 3/9" in a failure is the same save every time and in every test
     // that labels them this way (`private-saves.ts`).
-    const saves = (await readdir(SAVES_DIR))
-      .filter((name) => extname(name).toLowerCase() === '.dnd5e')
-      .sort()
+    const saves = sampleFileNames()
       .map((name) => join(SAVES_DIR, name));
     assert.ok(saves.length > 0, 'there is at least one .dnd5e save to list');
 
@@ -299,8 +298,7 @@ test(
     requireSaves();
     const system = await shippedSystem();
     const corpus = await realElements();
-    const saves = (await readdir(SAVES_DIR))
-      .filter((name) => extname(name).toLowerCase() === '.dnd5e')
+    const saves = sampleFileNames()
       .map((name) => join(SAVES_DIR, name));
 
     const dir = await mkdtemp(join(tmpdir(), 'incudo-filter-'));

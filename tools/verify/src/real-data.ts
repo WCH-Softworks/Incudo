@@ -91,6 +91,65 @@ export function requireSaves(): string {
   return savesFolder;
 }
 
+/**
+ * How much of the real-content suite a run does: `full` (the default, and what `main`, the nightly schedule and a
+ * release run) or `quick` (what a pull request runs). Quick is the same tests, abridged two ways, and nothing it does
+ * run is weaker than in full:
+ *
+ * - **A sweep over the samples reads a few of them**, chosen by what they are (`QUICK_SAMPLES` in `sample-saves.ts`),
+ *   not all thirty. The checks that are the point of the samples still read every one: `aurora-oracle.test.ts` (the
+ *   invariants against Aurora) and `sample-saves.test.ts` (anonymity, the manifest).
+ * - **A measurement is skipped** (`measureSkip`): a test that reports numbers as `ℹ` lines and asserts nothing beyond
+ *   "something was read" (ADR 0042), or a perturbation proving another check bites. It is evidence for a decision, not
+ *   a guard on one, and the full suite still runs it after every merge.
+ *
+ * Any other value fails, as a mistyped corpus path does: a run that meant `full` must not quietly do less.
+ */
+export type CorpusSuite = 'quick' | 'full';
+
+export function corpusSuiteOf(env: Record<string, string | undefined>): CorpusSuite {
+  const value = env['INCUDO_CORPUS_SUITE'];
+  if (value === undefined || value === '' || value === 'full') return 'full';
+  if (value === 'quick') return 'quick';
+  throw new Error(`INCUDO_CORPUS_SUITE is "${value}"; it is "quick" or "full" (the default).`);
+}
+
+export const corpusSuite: CorpusSuite = corpusSuiteOf(process.env);
+
+/**
+ * Why a measurement is not running, or `false` when it should. It goes last in a skip, after what the test needs
+ * (`{ skip: corpusSkip || savesSkip || measureSkip }`), so a run with no corpus still says to sync one.
+ */
+export const measureSkip: string | false =
+  corpusSuite === 'quick'
+    ? 'a measurement: the full corpus suite runs it (main, nightly, release), a pull request does not'
+    : false;
+
+/**
+ * Why a check that loads or converts the whole corpus twice, to hold two ways of doing it to the same result (cached
+ * and fresh, walked and prefetched, one source and split), is not running, or `false` when it should. Only the
+ * converter, the loader and the formats can make two such loads differ, and CI runs the full suite on any pull request
+ * that touches them (ci.yml), so a quick run skips these.
+ */
+export const loaderSkip: string | false =
+  corpusSuite === 'quick'
+    ? 'a whole-corpus loader check: the full suite runs it, and so does a pull request that touches the converter, the loader or a format'
+    : false;
+
+/** How many items a quick run's `sweep` keeps. */
+export const QUICK_SWEEP = 12;
+
+/**
+ * What a sweep over many like things (every creature, every element of a type) reads: all of them in a full run, and
+ * in a quick one `QUICK_SWEEP` of them spread evenly through the list as given, its first and last included, so the
+ * same ones every time. A test that sweeps must not assert how many it read.
+ */
+export function sweep<T>(items: readonly T[]): T[] {
+  if (corpusSuite === 'full' || items.length <= QUICK_SWEEP) return [...items];
+  const step = (items.length - 1) / (QUICK_SWEEP - 1);
+  return Array.from({ length: QUICK_SWEEP }, (_, i) => items[Math.round(i * step)]!);
+}
+
 /** Whether the corpus came from the environment (an explicit choice) or from the repository's own checkout. */
 export const corpusSource: 'environment' | 'checkout' | 'none' = source;
 

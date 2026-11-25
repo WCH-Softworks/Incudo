@@ -46,7 +46,7 @@ import {
 
 import { runOracle, type OracleRun } from './aurora-oracle.ts';
 import { loadFixtureSystem, loadShippedSystem } from './node-system.ts';
-import { corpusProvenance, corpusSkip, realElements, savesSkip } from './real-data.ts';
+import { corpusProvenance, corpusSkip, realElements, savesSkip, measureSkip } from './real-data.ts';
 import { samplePath, samplesWhere } from './sample-saves.ts';
 
 type Diagnostic = { diagnostic: (s: string) => void };
@@ -320,7 +320,7 @@ function freeformFamilies(readings: SampleReading[]): string {
   return [...on].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([f, n]) => `${f} ${n}`).join(', ') || 'none';
 }
 
-test('the samples against the 2014 fillable sheet: what the sheet document fills, and where the form does not fit', { skip: corpusSkip || savesSkip }, async (t: Diagnostic) => {
+test('the samples against the 2014 fillable sheet: what the sheet document fills, and where the form does not fit', { skip: corpusSkip || savesSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const elements = await realElements();
   const readings: SampleReading[] = [];
@@ -360,7 +360,7 @@ test('the samples against the 2014 fillable sheet: what the sheet document fills
   t.diagnostic(`characters the form's font (Helvetica, WinAnsi, not embedded) cannot write: on ${readings.filter((r) => r.outside.size).length} samples, ${[...outside].map((c) => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(' ') || 'none'}`);
 });
 
-test('the other kinds: no official form, and what the document gives a clean sheet', { skip: corpusSkip }, async (t: Diagnostic) => {
+test('the other kinds: no official form, and what the document gives a clean sheet', { skip: corpusSkip || measureSkip }, async (t: Diagnostic) => {
   t.diagnostic(corpusProvenance());
   const system = await loadShippedSystem('dnd5e');
   const elements = await realElements();
