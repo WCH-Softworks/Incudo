@@ -237,3 +237,14 @@ test('a release lists one installer per kind of computer, a table saying which, 
   }
   assert.doesNotMatch(workflow, /\.msi\]/, 'no .msi offered');
 });
+
+test('an address that answers with no update file is "no update", not a failure', () => {
+  // Every release before 1.1.0 has no latest.json, so GitHub answers 404 and the plugin says
+  // `Error::ReleaseNotFound`'s sentence; the window reads that as "up to date". The sentence is the
+  // locked plugin's (tauri-plugin-updater 2.10.1, src/error.rs): when the minor moves, read it again there.
+  // Fails if the adapter stops catching it (a missing file reads as a bug) or the wording drifts from it.
+  const platform = read('apps/desktop/src/platform.ts');
+  assert.match(platform, /const NO_UPDATE_FILE = 'Could not fetch a valid release JSON from the remote';/);
+  assert.match(platform, /if \(String\(error\)\.includes\(NO_UPDATE_FILE\)\) return null;/);
+  assert.match(read('apps/desktop/src-tauri/Cargo.toml'), /^tauri-plugin-updater = "~2\.10"/m, 'the sentence was read off 2.10');
+});
