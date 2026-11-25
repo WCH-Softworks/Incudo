@@ -128,7 +128,7 @@ test('the release workflow signs with the two secrets, refuses the placeholder, 
   const check = workflow.slice(workflow.indexOf('  check:'), workflow.indexOf('  ci:'));
   assert.match(check, /updater-manifest\.cjs --check-config/, 'the check job refuses the placeholder before anything builds');
   const updater = workflow.slice(workflow.indexOf('\n  updater:'));
-  assert.match(updater, /needs: \[check, installers\]/);
+  assert.match(updater, /needs: \[check, ci, installers\]/, 'latest.json waits for CI as well as every installer');
   assert.match(updater, /contents: write/);
   assert.match(updater, /updater-manifest\.cjs --tag "\$TAG" --version "\$VERSION"/);
   assert.match(updater, /gh release upload "\$TAG" latest\.json --repo "\$GITHUB_REPOSITORY" --clobber/);
