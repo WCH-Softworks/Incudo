@@ -48,7 +48,7 @@ export function useUpdates(updater: AppUpdater, storage: Storage, currentVersion
       running.current = true;
       setStatus({ kind: 'checking', manual });
       try {
-        setStatus(await checkForUpdate(updater, manual, (error) => console.warn('The update check at start failed.', error)));
+        setStatus(await checkForUpdate(updater, manual, (error) => console.warn('The update check failed.', error)));
       } finally {
         running.current = false;
       }

@@ -12,6 +12,7 @@ import {
   DEFAULT_UPDATE_PREFERENCES,
   UPDATE_IDLE,
   UPDATE_PREFERENCES_KEY,
+  CHECK_FAILED,
   checkForUpdate,
   installUpdate,
   parseUpdatePreferences,
@@ -82,15 +83,15 @@ test('a check someone asked for says each answer: checking, up to date, or why i
   assert.deepEqual(await checkForUpdate(updater, true), { kind: 'current' });
   assert.equal(updateDialog({ kind: 'current' }, '1.0.0')!.lede, 'Version 1.0.0 is the newest published version.');
   assert.equal(updateDialog({ kind: 'checking', manual: true }, '1.0.0')!.title, 'Checking for updates');
-  updater.checkError = new Error('The address could not be reached.');
-  const failed = await checkForUpdate(updater, true);
-  assert.deepEqual(failed, { kind: 'failed', stage: 'check', message: 'The address could not be reached.' });
+  updater.checkError = new Error('error sending request for url (https://github.com/…)');
+  const logged: unknown[] = [];
+  const failed = await checkForUpdate(updater, true, (error) => logged.push(error));
+  // The updater's own words go to the log, never on screen.
+  assert.deepEqual(failed, { kind: 'failed', stage: 'check', message: CHECK_FAILED });
+  assert.equal(logged.length, 1);
   const view = updateDialog(failed, '1.0.0')!;
   assert.equal(view.title, 'Could not check for updates');
   assert.deepEqual(view.buttons.map((button) => button.action), ['retry-check', 'close']);
-  // An error with no words still gets a sentence.
-  updater.checkError = new Error('');
-  assert.equal(((await checkForUpdate(updater, true)) as { message: string }).message, 'No reason was given.');
 });
 
 test('a shell with no updater never checks, and says why only when asked', async () => {

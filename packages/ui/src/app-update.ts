@@ -58,14 +58,20 @@ function messageOf(error: unknown): string {
 }
 
 /**
+ * What a failed check says. No update published is not a failure (the updater answers null for it); this is the address
+ * not answering, or answering with a file that does not read, and a person can only retry or look again later.
+ */
+export const CHECK_FAILED = 'Incudo could not get the update information from github.com.';
+
+/**
  * Ask which version is published. Never throws: a failure is a status. A start check (`manual` false) that finds
- * nothing new or cannot reach the address ends `idle`, so nothing is drawn; the failure is handed to `onQuietFailure`
- * for a log line.
+ * nothing new or cannot reach the address ends `idle`, so nothing is drawn. Every failure is handed to `onFailure` for a
+ * log line: what the updater said is for the log, and the dialog says {@link CHECK_FAILED} instead.
  */
 export async function checkForUpdate(
   updater: AppUpdater,
   manual: boolean,
-  onQuietFailure?: (error: unknown) => void,
+  onFailure?: (error: unknown) => void,
 ): Promise<UpdateStatus> {
   if (!updater.available) {
     return manual ? { kind: 'failed', stage: 'check', message: updater.unavailableReason ?? 'This build cannot update itself.' } : UPDATE_IDLE;
@@ -75,9 +81,8 @@ export async function checkForUpdate(
     if (update) return { kind: 'found', update };
     return manual ? { kind: 'current' } : UPDATE_IDLE;
   } catch (error) {
-    if (manual) return { kind: 'failed', stage: 'check', message: messageOf(error) };
-    onQuietFailure?.(error);
-    return UPDATE_IDLE;
+    onFailure?.(error);
+    return manual ? { kind: 'failed', stage: 'check', message: CHECK_FAILED } : UPDATE_IDLE;
   }
 }
 
@@ -182,7 +187,7 @@ export function updateDialog(status: UpdateStatus, currentVersion: string): Upda
         ? {
             title: 'Could not check for updates',
             lede: status.message,
-            notes: ['Incudo looks for updates on github.com. Check the connection and try again.'],
+            notes: ['Check the connection and try again.'],
             buttons: [
               { action: 'retry-check', label: 'Try again' },
               { action: 'close', label: 'Close' },

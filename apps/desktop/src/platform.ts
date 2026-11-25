@@ -869,6 +869,9 @@ class UnavailablePdfWriter implements PdfWriter {
  * that check found, has the plugin verify it against the update key in `tauri.conf.json`, installs it, and opens the app
  * again. On Windows the installer closes the app itself, so the relaunch is for macOS and Linux.
  */
+/** `tauri-plugin-updater`'s `Error::ReleaseNotFound`: every endpoint answered with a status that was not a success. */
+const NO_UPDATE_FILE = 'Could not fetch a valid release JSON from the remote';
+
 class TauriAppUpdater implements AppUpdater {
   readonly available = true;
   private found: import('@tauri-apps/plugin-updater').Update | null = null;
@@ -877,7 +880,15 @@ class TauriAppUpdater implements AppUpdater {
     const { check } = await import('@tauri-apps/plugin-updater');
     // Release what an earlier check held: each check is a resource in the Rust half.
     await this.found?.close().catch(() => undefined);
-    this.found = await check({ timeout: 30_000 });
+    try {
+      this.found = await check({ timeout: 30_000 });
+    } catch (error) {
+      // The plugin's words when the address answered but not with an update file: GitHub's 404 before the newest
+      // published release carries one (every release before 1.1.0). Nothing newer can be installed, so that is
+      // "no update", not a failure; a failure is the address not answering or answering with a broken file.
+      if (String(error).includes(NO_UPDATE_FILE)) return null;
+      throw error;
+    }
     return this.found ? { version: this.found.version, date: this.found.date } : null;
   }
 
