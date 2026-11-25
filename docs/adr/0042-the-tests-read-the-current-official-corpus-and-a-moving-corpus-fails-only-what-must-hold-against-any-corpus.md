@@ -224,3 +224,18 @@ maintainer's own saves are gone. Two things this ADR did not say:
   now fails on each of those things, and it caught a path the first cleaning missed (in fifteen files).
 - **Armour class is held to what a person read off Aurora's screen**, since it agrees on all thirty. Hit
   points and speed are reported against the same readout and fail nothing (ROADMAP Phase 2).
+
+
+## Update, 2026-11-25: the suite runs in three jobs, and the daily run skips a pair already tested
+
+The decision stands. Two things in how CI carries it out changed:
+
+- **The suite is three jobs by subject** (the content and the repository, characters, the sheet; tools/verify/src/corpus-groups.ts,
+  with a test that every tools/verify file is in exactly one), and `aurora-corpus` is now the check that says all three
+  passed. So the three read one commit, a `plan` job reads upstream's head once with `git ls-remote` and each group checks
+  out that commit: the head at the start of the run, never a commit written in the file. The guard test now holds that
+  the `.corpus` checkout's only `ref:` is the plan's.
+- **The daily run skips a pair a full run already passed.** A full run that passes on main saves an empty cache entry
+  named after main's commit and the corpus commit; the schedule looks it up and, found, runs nothing. A new upstream
+  commit always runs the full suite. What a skip does not see: a runner change (Node, Ubuntu) on a day neither commit
+  moved, which the next push or upstream commit sees.

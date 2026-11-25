@@ -175,29 +175,43 @@ test('ci.yml states the same budgets this file falls back to', async () => {
 });
 
 test('the corpus job reads the current official repository, always, and runs the whole suite', async () => {
-  const workflow = await readFile(join(repoRoot(), '.github', 'workflows', 'ci.yml'), 'utf8');
-  const job = workflow.slice(workflow.indexOf('\n  aurora-corpus:'));
-  assert.ok(job.length > 0, 'ci.yml has an aurora-corpus job');
+  const workflow = (await readFile(join(repoRoot(), '.github', 'workflows', 'ci.yml'), 'utf8')).replace(/\r\n/g, '\n');
+  // The suite runs in the `corpus` matrix (one job per group, corpus-groups.ts), from what the `plan` job decides.
+  const jobOf = (name: string): string => {
+    const start = workflow.indexOf(`\n  ${name}:\n`);
+    assert.ok(start >= 0, `ci.yml has a ${name} job`);
+    const rest = workflow.slice(start + 1);
+    const next = rest.slice(1).search(/\n  [a-z][a-z-]*:\n/);
+    return next < 0 ? rest : rest.slice(0, next + 1);
+  };
+  const job = jobOf('corpus');
+  const plan = jobOf('plan');
 
   // The same repository the local sync script fetches: two copies of a name drift.
   assert.match(job, new RegExp(`^\\s*repository:\\s*${CORPUS_REPOSITORY}\\s*$`, 'm'));
-  // No pin. A `ref:` on the `.corpus` checkout would make the job reproducible and stop it noticing upstream (ADR 0042).
-  // The step that checks out `.corpus-base` is pinned on purpose (ADR 0082), so the steps are read one at a time.
+  assert.match(plan, new RegExp(`git ls-remote https://github\\.com/${CORPUS_REPOSITORY}\\.git HEAD`));
+  // No pin. A commit written on the `.corpus` checkout would make the job reproducible and stop it noticing upstream
+  // (ADR 0042). Its only `ref:` is the head the plan read at the start of the run (`git ls-remote … HEAD`), so the three
+  // groups read one commit. The step that checks out `.corpus-base` is pinned on purpose (ADR 0082), so the steps are
+  // read one at a time.
   const steps = job.split(/\n\s*- (?=name:|uses:|run:)/).map((step) => step.split('\n').filter((line) => !line.trim().startsWith('#')).join('\n'));
   const current = steps.filter((step) => /^\s*path:\s*\.corpus\s*$/m.test(step));
   assert.equal(current.length, 1, 'one step checks out .corpus');
-  assert.doesNotMatch(current[0]!, /^\s*ref:/m, 'the corpus checkout must not name a ref');
+  const refs = [...current[0]!.matchAll(/^\s*ref:\s*(.*)$/gm)].map((match) => match[1]!.trim());
+  assert.deepEqual(refs, ['${{ needs.plan.outputs.corpus }}'], "the corpus checkout names no ref but the head the plan read");
   assert.match(job, /^\s*path:\s*\.corpus\s*$/m, 'the checkout goes where the local sync puts it');
-  // Every real-content test, not only the budget file: the script runs every tools/ test, which is where they all are.
-  assert.match(job, /^\s*run:\s*npm run test:verify\s*$/m, 'the job runs the whole tools/verify suite');
+  // Every real-content test, not only the budget file: the groups together are every tools/ test (corpus-groups.test.ts
+  // holds that), which is where they all are.
+  assert.match(job, /corpus-groups\.ts "\$\{\{ matrix\.group \}\}"/, "each group runs its group's tools/verify files");
   const scripts = (JSON.parse(await readFile(join(repoRoot(), 'package.json'), 'utf8')) as { scripts: Record<string, string> }).scripts;
   assert.match(scripts['test:verify'] ?? '', /--test .*"tools\/\*\/src\/\*\*\/\*\.test\.ts"/, 'test:verify runs every tools/ test');
   // Abridged only for a pull request that leaves the converter, the loader and the schemas alone; a push to main, the
   // schedule and a release run the full suite. The step starts from full and says quick only for a pull request.
-  assert.match(job, /^\s*suite=full\s*$/m, 'the suite starts full');
-  assert.match(job, /if \[ "\$GITHUB_EVENT_NAME" = pull_request \]; then\s*\n\s*suite=quick\s*$/m, 'only a pull request runs quick');
-  assert.match(job, /packages\/aurora-import\|packages\/content\|schemas/, 'a pull request touching the converter, loader or schemas runs full');
-  assert.match(job, /echo "INCUDO_CORPUS_SUITE=\$suite" >> "\$GITHUB_ENV"/, 'the suite reaches the tests');
+  assert.match(plan, /^\s*suite=full\s*$/m, 'the suite starts full');
+  assert.match(plan, /if \[ "\$GITHUB_EVENT_NAME" = pull_request \]; then\s*\n\s*suite=quick\s*$/m, 'only a pull request runs quick');
+  assert.match(plan, /packages\/aurora-import\|packages\/content\|schemas/, 'a pull request touching the converter, loader or schemas runs full');
+  assert.match(plan, /echo "suite=\$suite" >> "\$GITHUB_OUTPUT"/, 'the plan publishes the suite');
+  assert.match(job, /INCUDO_CORPUS_SUITE: \$\{\{ needs\.plan\.outputs\.suite \}\}/, 'the suite reaches the tests');
   // And it requires the samples, so an empty saves folder is a failure and not a skip.
   assert.match(job, /^\s*INCUDO_REQUIRE_SAVES:\s*1\s*$/m, 'the job requires the sample saves');
   // A schedule, so upstream changes are noticed while this repository is quiet.
