@@ -8,6 +8,7 @@ on:
     # The official content moves whether or not this repository does, and a green run means "works
     # with today's official content" (ADR 0042). A daily run of `aurora-corpus` is what notices an
     # upstream change while nothing here is happening. Scheduled runs only ever use the default branch.
+    # It skips the suite when neither main nor upstream has moved since a full run passed (`already-tested`).
     - cron: '23 6 * * *'
   workflow_dispatch:
   # `release.yml` runs these same two jobs on the tagged commit before it builds any installer.
@@ -38,9 +39,57 @@ jobs:
       - name: Test
         run: npm test
 
+  already-tested:
+    # The daily run exists to notice the official content moving while this repository is quiet. When a full run of
+    # `aurora-corpus` has already passed on main's commit against upstream's current head, the two things it reads are
+    # the ones it would read again, and the run ends here. Any other pair, an upstream commit included, runs the full
+    # suite as before. A full run that passes on main records its pair (the last step of `aurora-corpus`) as a cache
+    # entry with nothing in it but its name.
+    #
+    # What a skip does not see: a change on the runner itself (a newer Node 22, a new Ubuntu image) on a day nothing
+    # else moved. The next push or upstream commit sees it. A record GitHub has evicted, or one not read for seven days,
+    # is simply absent, and absent means the full suite runs: a lost record costs a run, never a check.
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      tested: ${{ steps.record.outputs.cache-hit }}
+    steps:
+      - name: The official content's current head
+        id: head
+        # No checkout: one request for the head's commit id. If it fails the id is empty, no record matches, and the
+        # full suite runs and reads the content itself.
+        run: |
+          sha=$(git ls-remote https://github.com/AuroraLegacy/elements.git HEAD | cut -f1 || true)
+          echo "AuroraLegacy/elements at ${sha:-(not read)}"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Has a full run passed on this pair
+        id: record
+        uses: actions/cache/restore@v5
+        with:
+          path: .corpus-tested
+          key: corpus-tested-${{ github.sha }}-${{ steps.head.outputs.sha || 'unknown' }}
+          lookup-only: true
+      - name: What this run does
+        env:
+          TESTED: ${{ steps.record.outputs.cache-hit }}
+          CORPUS: ${{ steps.head.outputs.sha }}
+        run: |
+          if [ "$TESTED" = true ]; then
+            line="A full run already passed on this commit against AuroraLegacy/elements at \`$CORPUS\`: nothing to run."
+          else
+            line="No full run has passed on this commit against AuroraLegacy/elements at \`${CORPUS:-unknown}\`: running it."
+          fi
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+
   aurora-corpus:
     # The real-content suite: every test that needs the official Aurora content or a real save, run
     # against the current head of AuroraLegacy/elements. See ADR 0005 and ADR 0042.
+    #
+    # On the daily schedule it runs only when `already-tested` found no full run that passed on the same pair. On every
+    # other event that job is skipped, and `!cancelled()` lets this one run after a skipped (or failed) need.
+    needs: already-tested
+    if: ${{ !cancelled() && needs.already-tested.outputs.tested != 'true' }}
     #
     # Two sizes of it (`INCUDO_CORPUS_SUITE`, tools/verify/src/real-data.ts). A pull request runs the quick
     # suite: the same tests, with a sweep over the samples reading a handful chosen by what they are, a sweep
@@ -142,3 +191,18 @@ jobs:
           INCUDO_REQUIRE_BASE_CORPUS: 1
         # Only tools/verify: the packages' own tests read no corpus, and the build job has already run them.
         run: npm run test:verify
+      # The pair this run proved, for `already-tested` to find. Only a full suite that passed, and only on main: a cache
+      # saved on a pull request or a release tag is visible to that ref alone, and the schedule reads main's.
+      - name: The pair this run passed on
+        id: passed
+        if: github.ref == 'refs/heads/main' && env.INCUDO_CORPUS_SUITE == 'full'
+        run: |
+          mkdir -p .corpus-tested
+          git -C .corpus rev-parse HEAD > .corpus-tested/corpus
+          echo "sha=$(git -C .corpus rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Record it
+        if: steps.passed.outcome == 'success'
+        uses: actions/cache/save@v5
+        with:
+          path: .corpus-tested
+          key: corpus-tested-${{ github.sha }}-${{ steps.passed.outputs.sha }}
