@@ -381,3 +381,40 @@ test("the store listing's text is in the repository and fits Play, and nothing b
   const files = readdirSync(metadata, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile());
   assert.deepEqual(files.map((entry) => entry.name).filter((name) => !name.endsWith('.txt')), [], 'no image, icon or screenshot');
 });
+
+/**
+ * Plain YAML values in a workflow that YAML would read as something else, by line: a ": " or " #" inside an unquoted
+ * value (a mapping, a comment). Block scalars (`run: |`) are skipped. A broken workflow is found only by pushing it: a
+ * failed run named by its path, and no Run workflow button.
+ */
+function plainValueSlips(text: string): string[] {
+  const out: string[] = [];
+  let block = -1;
+  text.replace(/\r\n/g, '\n').split('\n').forEach((line, i) => {
+    const indent = line.length - line.trimStart().length;
+    if (block >= 0 && (line.trim() === '' || indent > block)) return;
+    block = -1;
+    const entry = /^(\s*)(?:- )?[\w.-]+: (.*)$/.exec(line);
+    if (!entry || line.trimStart().startsWith('#')) return;
+    const value = entry[2]!;
+    if (/^[|>][-+]?$/.test(value)) {
+      block = indent;
+      return;
+    }
+    if (/^['"[{&*!]|^\$\{\{.*\}\}$/.test(value)) return;
+    if (/: /.test(value) || / #/.test(value)) out.push(`line ${i + 1}: ${line.trim()}`);
+  });
+  return out;
+}
+
+test('every workflow reads as YAML as written: no unquoted value holds ": " or " #"', () => {
+  const folder = join(root, '.github', 'workflows');
+  for (const file of readdirSync(folder).filter((name) => /\.ya?ml$/.test(name))) {
+    assert.deepEqual(plainValueSlips(readFileSync(join(folder, file), 'utf8')), [], file);
+  }
+  // The slip that kept Phone promote off the Actions tab, and what is not one.
+  assert.deepEqual(plainValueSlips('    description: Production only, when completed: the fraction\n'), [
+    'line 1: description: Production only, when completed: the fraction',
+  ]);
+  assert.deepEqual(plainValueSlips("    description: 'Quoted: fine'\n    run: |\n      echo \"a: b\"\n    name: Plain\n"), []);
+});
