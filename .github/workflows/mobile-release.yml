@@ -3,9 +3,14 @@ name: Phone release
 # Builds the phone app's Android App Bundle, signs it with the upload key (ADR 0132) and uploads it to Google Play with
 # fastlane once the maintainer approves the run (ADR 0135).
 #
-# Started by a tag, never by a push: `mobile-vX.Y.Z-rc.N` for a candidate, which goes to internal testing, and
+# Started by a tag, never by a branch push: `mobile-vX.Y.Z-rc.N` for a candidate, which goes to internal testing, and
 # `mobile-vX.Y.Z` for a release, which goes to closed testing (Play's `alpha` track) until the app has production access.
 # The desktop's release workflow starts on `v*`, which these never match.
+#
+# A tag pushed by a person starts it. So does `mobile-tag.yml`, which creates the tag from the Actions tab and then
+# starts this workflow on that tag with workflow_dispatch: a tag created with GITHUB_TOKEN starts no workflow, but a
+# dispatch does. A dispatch is refused unless its ref is a tag, so the same checks hold either way. Only a dispatch can
+# ask for the store listing's text to go with the bundle (`listing`); a pushed tag never uploads it.
 #
 # The `release` job runs in the `play` environment, whose only required reviewer is the maintainer, and every secret it
 # reads is that environment's: the upload key (ANDROID_UPLOAD_KEYSTORE, base64 of the keystore file, and its store
@@ -25,6 +30,13 @@ name: Phone release
 on:
   push:
     tags: ['mobile-v*']
+  workflow_dispatch:
+    inputs:
+      listing:
+        description: Also upload the store listing's text from apps/mobile/play/metadata
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -43,6 +55,11 @@ jobs:
       track: ${{ steps.track.outputs.track }}
       status: ${{ steps.track.outputs.status }}
     steps:
+      - name: Started from a tag
+        if: github.ref_type != 'tag'
+        run: |
+          echo "::error::Start the phone release on a mobile-v tag, not on $GITHUB_REF_NAME"
+          exit 1
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -64,6 +81,9 @@ jobs:
           fi
       - name: The release notes are written
         run: node apps/mobile/scripts/release-notes.cjs "$GITHUB_REF_NAME"
+      - name: The listing fits Play
+        if: inputs.listing
+        run: node apps/mobile/scripts/release-notes.cjs --listing
       - name: The track and the status
         id: track
         env:
@@ -178,7 +198,7 @@ jobs:
           SUPPLY_RELEASE_STATUS: ${{ needs.check.outputs.status }}
           SUPPLY_METADATA_PATH: metadata
           SUPPLY_SKIP_UPLOAD_APK: 'true'
-          SUPPLY_SKIP_UPLOAD_METADATA: 'true'
+          SUPPLY_SKIP_UPLOAD_METADATA: ${{ inputs.listing && 'false' || 'true' }}
           SUPPLY_SKIP_UPLOAD_IMAGES: 'true'
           SUPPLY_SKIP_UPLOAD_SCREENSHOTS: 'true'
           FASTLANE_OPT_OUT_USAGE: 'YES'

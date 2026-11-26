@@ -631,7 +631,12 @@ Phase 6's last item. Things to know before touching it:
   candidate to internal testing and a release to closed testing, as a draft unless `PLAY_RELEASE_STATUS` is `completed`.
   The guide is `docs/PLAY-RELEASE.md`. Also built: one release at a time, the built manifest's permissions checked
   (`scripts/check-permissions.cjs`), native debug symbols in the AAB (`plugins/debug-symbols.cjs`), and
-  `mobile-check.yml` building the phone on pull requests.
+  `mobile-check.yml` building the phone on pull requests. Since 2026-11-26: `mobile-promote.yml` moves a build Play holds
+  forward a track (internal, alpha, production only when chosen, staged by `rollout`) from main with no build;
+  `mobile-tag.yml` tags main's head from the Actions tab and starts the release with `gh workflow run --ref <tag>`
+  (a `GITHUB_TOKEN` tag starts no workflow; `mobile-release.yml` takes a dispatch on a tag only); the listing text is
+  `play/metadata/en-US/{title,short_description,full_description}.txt`, checked by `release-notes.cjs --listing` and
+  uploaded only when a run's `listing` input asks.
 - **The release manifest asks for Internet and network/Wi-Fi state only**: `blockedPermissions` removes
   `SYSTEM_ALERT_WINDOW`, external storage and `VIBRATE`, which Expo's template and the dev menu add. **Backup** takes
   `library/` and `SQLite/` only (`apps/mobile/plugins/backup-rules.cjs`), never `sources/`. **NetInfo never pings**

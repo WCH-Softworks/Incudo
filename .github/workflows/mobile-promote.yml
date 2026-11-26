@@ -1,0 +1,168 @@
+name: Phone promote
+
+# Moves a phone build Google Play already holds from one track to the next (ADR 0135, decision 6): internal testing,
+# then closed testing (Play's `alpha` track), then production. It never builds and never uploads a bundle: fastlane's
+# `supply` promotes the release that holds the version code, with the release notes it was uploaded with.
+#
+# Started by hand from the Actions tab, on main. The `promote` job runs in the `play` environment, so it waits for the
+# maintainer's approval and reads PLAY_SERVICE_ACCOUNT_JSON only then; the `play` environment's deployment rules must
+# let main use it (docs/PLAY-RELEASE.md). Production is never a default: it is reached only when `to` says so, and the
+# service account needs Play's production permission for it.
+#
+# The status is the repository variable PLAY_RELEASE_STATUS, `draft` when unset, as for an upload (decision 5). A draft
+# waits in the Play Console. `completed` on a testing track reaches its testers at once; on production it is a staged
+# rollout to the `rollout` fraction, and the maintainer moves it to 100% in the Console.
+#
+# The store listing's text (`apps/mobile/play/metadata/<language>/*.txt`) is uploaded with the promotion only when
+# `listing` is ticked, and checked against Play's limits first. Images and screenshots are never uploaded from here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version code (1000101) or the tag that built it (mobile-v1.0.1-rc.1)
+        required: true
+        type: string
+      from:
+        description: The track that holds it now
+        required: true
+        default: internal
+        type: choice
+        options: [internal, alpha]
+      to:
+        description: The track to move it to (alpha is closed testing; production only when chosen here)
+        required: true
+        default: alpha
+        type: choice
+        options: [alpha, production]
+      rollout:
+        description: Production only, when the status is completed: the fraction of users to start with (0.01 to 0.99)
+        required: false
+        default: '0.1'
+        type: string
+      listing:
+        description: Also upload the store listing's text from apps/mobile/play/metadata
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# One promotion at a time, and never cancelled halfway.
+concurrency:
+  group: mobile-promote
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # Reads no secret: everything that can be refused is refused before the approval is asked for.
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.plan.outputs.code }}
+      status: ${{ steps.plan.outputs.status }}
+      rollout: ${{ steps.plan.outputs.rollout }}
+    steps:
+      - name: Started on main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Promote from main, not $GITHUB_REF_NAME: the play environment and the listing are main's"
+          exit 1
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: The version code, the tracks and the status
+        id: plan
+        env:
+          VERSION: ${{ inputs.version }}
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+          ROLLOUT: ${{ inputs.rollout }}
+          STATUS: ${{ vars.PLAY_RELEASE_STATUS || 'draft' }}
+        run: |
+          case "$VERSION" in
+            mobile-v*)
+              code=$(node -e '
+                const { parseTag, versionCode } = require("./apps/mobile/scripts/release-version.cjs");
+                const { version, candidate } = parseTag(process.argv[1]);
+                console.log(versionCode(version, candidate));
+              ' "$VERSION") ;;
+            *) code="$VERSION" ;;
+          esac
+          if ! [[ "$code" =~ ^[1-9][0-9]{6,9}$ ]]; then
+            echo "::error::$VERSION is neither a version code nor a mobile-v tag"
+            exit 1
+          fi
+          # Forward only: internal, then alpha (closed testing), then production.
+          order="internal alpha production"
+          rank() { local i=0; for t in $order; do [ "$t" = "$1" ] && echo $i; i=$((i + 1)); done; }
+          if [ "$(rank "$TO")" -le "$(rank "$FROM")" ]; then
+            echo "::error::A build moves forward only: $FROM to $TO is not"
+            exit 1
+          fi
+          case "$STATUS" in
+            draft|completed) ;;
+            *) echo "::error::PLAY_RELEASE_STATUS is $STATUS, and a promotion is draft or completed"; exit 1 ;;
+          esac
+          rollout=
+          if [ "$TO" = production ] && [ "$STATUS" = completed ]; then
+            # Staged: Play takes a fraction above 0 and below 1, and the Console takes it to 100%.
+            if ! [[ "$ROLLOUT" =~ ^0\.[0-9]*[1-9][0-9]*$ ]]; then
+              echo "::error::A production rollout starts at a fraction between 0 and 1, and $ROLLOUT is not one"
+              exit 1
+            fi
+            rollout="$ROLLOUT"
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "rollout=$rollout" >> "$GITHUB_OUTPUT"
+          echo "Moves $code from $FROM to $TO as $STATUS${rollout:+, rolled out to $rollout} once approved"
+      - name: The listing fits Play
+        if: inputs.listing
+        run: node apps/mobile/scripts/release-notes.cjs --listing
+
+  promote:
+    # Waits for the maintainer's approval before its first step: the `play` environment holds the service account's key.
+    needs: check
+    runs-on: ubuntu-latest
+    environment: play
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: apps/mobile/play
+      - name: Promote on Google Play
+        working-directory: apps/mobile/play
+        env:
+          SUPPLY_JSON_KEY_DATA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          SUPPLY_PACKAGE_NAME: com.wchsoftworks.incudo
+          SUPPLY_TRACK: ${{ inputs.from }}
+          SUPPLY_TRACK_PROMOTE_TO: ${{ inputs.to }}
+          SUPPLY_TRACK_PROMOTE_RELEASE_STATUS: ${{ needs.check.outputs.status }}
+          SUPPLY_VERSION_CODE: ${{ needs.check.outputs.code }}
+          SUPPLY_SKIP_UPLOAD_APK: 'true'
+          SUPPLY_SKIP_UPLOAD_AAB: 'true'
+          SUPPLY_SKIP_UPLOAD_CHANGELOGS: 'true'
+          SUPPLY_SKIP_UPLOAD_IMAGES: 'true'
+          SUPPLY_SKIP_UPLOAD_SCREENSHOTS: 'true'
+          SUPPLY_SKIP_UPLOAD_METADATA: ${{ inputs.listing && 'false' || 'true' }}
+          ROLLOUT: ${{ needs.check.outputs.rollout }}
+          LISTING: ${{ inputs.listing }}
+          FASTLANE_OPT_OUT_USAGE: 'YES'
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+        run: |
+          if [ -z "$SUPPLY_JSON_KEY_DATA" ]; then
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON is not set in the play environment (docs/PLAY-RELEASE.md)"
+            exit 1
+          fi
+          # The metadata folder is named only for a listing upload: with no folder, supply reads nothing from it.
+          if [ "$LISTING" = true ]; then
+            export SUPPLY_METADATA_PATH=metadata
+          fi
+          # supply's rollout has no environment variable, so it is an argument, and only for a staged production release.
+          args=()
+          if [ -n "$ROLLOUT" ]; then args+=(--rollout "$ROLLOUT"); fi
+          bundle exec fastlane supply "${args[@]}"

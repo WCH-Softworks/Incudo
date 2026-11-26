@@ -4,11 +4,13 @@ How a tag becomes a build on Google Play, and what the maintainer sets up once. 
 [ADR 0132](adr/0132-the-phone-app-is-released-on-google-play-built-and-signed-by-ci-with-an-upload-key-the-maintainer-keeps.md)
 (the bundle, its version code and its upload key) and
 [ADR 0135](adr/0135-ci-uploads-the-phone-s-bundle-to-google-play-after-the-maintainer-approves-the-run.md) (the upload).
-The workflow is `.github/workflows/mobile-release.yml`.
+The workflows are `.github/workflows/mobile-release.yml` (build and upload), `mobile-tag.yml` (make the tag from the
+Actions tab) and `mobile-promote.yml` (move a build to the next track).
 
 ## What happens on a tag
 
-1. A tag `mobile-vX.Y.Z-rc.N` (a candidate) or `mobile-vX.Y.Z` (a release) starts the run. It stops at once when the
+1. A tag `mobile-vX.Y.Z-rc.N` (a candidate) or `mobile-vX.Y.Z` (a release) starts the run, whether it was pushed or
+   made by **Phone tag** in the Actions tab. It stops at once when the
    tag's version is not the one in `apps/mobile/app.json` and `apps/mobile/package.json`, when the tagged commit is not on
    main, or when the tag's release notes are missing or too long.
 2. The same checks as every push to main run on the tagged commit.
@@ -33,7 +35,8 @@ uploaded by hand), so the first tag CI can upload is `mobile-v1.0.1-rc.1`.
 In the repository's **Settings › Environments**, create `play`:
 
 - **Required reviewers**: the maintainer.
-- **Deployment branches and tags**: add a tag rule `mobile-v*`, so no other ref can use the environment.
+- **Deployment branches and tags**: choose **Selected branches and tags**, then add a tag rule `mobile-v*` (the release)
+  and a branch rule `main` (a promotion), so no other ref can use the environment.
 - **Environment secrets**, all text:
 
   | Secret | What it holds |
@@ -68,7 +71,8 @@ this app only.
    `PLAY_SERVICE_ACCOUNT_JSON`, then delete the file.
 5. In the Play Console, open **Users and permissions › Invite new users** and enter the service account's email
    (`incudo-play-publisher@<project>.iam.gserviceaccount.com`). Under **App permissions**, add Incudo only and tick
-   **Release apps to testing tracks**. Leave production off until the app has production access.
+   **Release apps to testing tracks**. Leave production off until the app has production access; a promotion to
+   production needs **Release to production, exclude devices, and use Play App Signing** too.
 
 ### The release status
 
@@ -84,11 +88,14 @@ app and an approved run should go straight to testers. Any other value stops the
 2. Write the release notes: `apps/mobile/play/metadata/en-US/changelogs/<version code>.txt`, at most 500 characters, for
    the tag you will push. `node apps/mobile/scripts/release-notes.cjs mobile-v1.0.1-rc.1` checks them. Each candidate
    has its own code, so each has its own file.
-3. Merge that through a pull request, then tag the merge commit on main and push the tag:
+3. Merge that through a pull request, then make the tag on main's head from the Actions tab: **Actions › Phone tag ›
+   Run workflow**, on `main`, with the candidate number (leave it empty for the release itself). It refuses a tag that
+   exists or whose release notes are missing, creates it, and starts **Phone release** on it. Tick **listing** to send
+   the store listing's text with the bundle. Or tag the merge commit and push it yourself, which never sends the listing:
 
    ```bash
-   git tag mobile-v1.0.1-rc.1 <commit>
-   git push origin mobile-v1.0.1-rc.1
+   git tag mobile-v1.0.1-rc.2 <commit>
+   git push origin mobile-v1.0.1-rc.2
    ```
 
 4. Approve the run in the Actions tab when its checks are green.
@@ -97,10 +104,41 @@ app and an approved run should go straight to testers. Any other value stops the
 A tag is never reused. If a run fails after the upload, or the build is wrong, fix it through a pull request and tag the
 next candidate. Play refuses a version code it has already been given, even for a draft that was discarded.
 
+## Promoting a build
+
+A build on internal testing moves to closed testing, and one on closed testing to production, without building again:
+**Actions › Phone promote › Run workflow**, on `main`.
+
+- **version**: the version code Play shows for it (`1000102`) or the tag that built it (`mobile-v1.0.1-rc.2`).
+- **from** and **to**: the track it is on and the one to move it to. A build only moves forward, and production is
+  never the default: it is reached only when you choose it.
+- **rollout**: for production only, when `PLAY_RELEASE_STATUS` is `completed`: the fraction of users who get it first
+  (`0.1` is 10%). Move it to 100% in the Play Console under the production release.
+- **listing**: tick it to send the store listing's text with the promotion.
+
+The run checks all of it, then waits for approval as a release does. It moves the release with the notes it was uploaded
+with. With `PLAY_RELEASE_STATUS` unset the moved release is a draft, and the Console's **Review release › Start rollout**
+sends it. A promotion of a tag made before `mobile-promote.yml` existed works the same: it runs from main.
+
+## The store listing
+
+The listing's text is in the repository: `apps/mobile/play/metadata/en-US/title.txt` (at most 30 characters),
+`short_description.txt` (80) and `full_description.txt` (4000). `node apps/mobile/scripts/release-notes.cjs --listing`
+checks the limits, and so does `mobile-release.test.ts`. Change it through a pull request.
+
+It reaches Play only when a run is asked to: the **listing** input of **Phone tag** (which passes it to the release) or
+of **Phone promote**. A pushed tag never sends it. A run that sends it replaces the Console's text with the repository's,
+so an edit made in the Console is lost unless it is copied here first. The icon, the feature graphic and the
+screenshots are never uploaded by these workflows; they are a person's work and are added in the Console.
+
 ## When it fails
 
-- **Before the approval**: the run names the problem (the tag, the release notes or a check). Nothing was built or
-  uploaded. Fix it and push the next tag.
+- **Before the approval**: the run names the problem (the tag, the release notes, the listing or a check). Nothing was
+  built or uploaded. Fix it and make the next tag.
+- **"Phone tag" says the tag exists**: a tag is never reused. Take the next candidate number, or move the version for a
+  release, with its release notes.
+- **A promotion says the track "doesn't have any releases"**: no release on **from** holds that version code. Check the
+  code in the Console's track page.
 - **"is not signed with the upload key"**: the keystore secret or its alias names a different key than the one Play
   expects. Check the alias, and compare the key's SHA-256 with **Setup › App signing › Upload key certificate** in the
   Play Console.
