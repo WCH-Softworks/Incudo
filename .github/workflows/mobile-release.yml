@@ -1,15 +1,21 @@
 name: Phone release
 
-# Builds the phone app's Android App Bundle for Google Play and signs it with the upload key (ADR 0132).
+# Builds the phone app's Android App Bundle, signs it with the upload key (ADR 0132) and uploads it to Google Play with
+# fastlane once the maintainer approves the run (ADR 0135).
 #
-# Started by a tag, never by a push: `mobile-vX.Y.Z-rc.N` for a candidate, `mobile-vX.Y.Z` for a release. The desktop's
-# release workflow starts on `v*`, which these never match. The bundle is kept as this run's artifact and published
-# nowhere: the maintainer downloads it and uploads it in the Play Console, to internal testing first. This workflow holds
-# no Play credentials.
+# Started by a tag, never by a push: `mobile-vX.Y.Z-rc.N` for a candidate, which goes to internal testing, and
+# `mobile-vX.Y.Z` for a release, which goes to closed testing (Play's `alpha` track) until the app has production access.
+# The desktop's release workflow starts on `v*`, which these never match.
 #
-# Signing: Play App Signing holds the key phones install with; this signs with the upload key, from four secrets the
-# maintainer sets (ANDROID_UPLOAD_KEYSTORE, base64 of the keystore file, and its store password, alias and key password).
-# The key is written to the runner's temporary folder and never to the checkout.
+# The `release` job runs in the `play` environment, whose only required reviewer is the maintainer, and every secret it
+# reads is that environment's: the upload key (ANDROID_UPLOAD_KEYSTORE, base64 of the keystore file, and its store
+# password, alias and key password) and PLAY_SERVICE_ACCOUNT_JSON, the `incudo-play-publisher` service account's key. So
+# nothing is built with the key, and nothing reaches Play, until the maintainer approves the run in the Actions tab. The
+# key is written to the runner's temporary folder and never to the checkout.
+#
+# An upload is a draft until the repository variable PLAY_RELEASE_STATUS says `completed` (ADR 0135, decision 5). The
+# release notes are `apps/mobile/play/metadata/<language>/changelogs/<version code>.txt`, checked before anything is
+# built. `docs/PLAY-RELEASE.md` is the maintainer's guide.
 #
 # Built on Linux, which has no 260-character path limit: a Windows build needs a per-machine CMake whose Ninja handles
 # long paths (ADR 0132's note). Never set android.cmakeVersion here: this runner would not have that CMake.
@@ -34,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.version.outputs.code }}
+      track: ${{ steps.track.outputs.track }}
+      status: ${{ steps.track.outputs.status }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -54,15 +62,35 @@ jobs:
             echo "::error::$GITHUB_REF_NAME names a commit main does not have"
             exit 1
           fi
+      - name: The release notes are written
+        run: node apps/mobile/scripts/release-notes.cjs "$GITHUB_REF_NAME"
+      - name: The track and the status
+        id: track
+        env:
+          STATUS: ${{ vars.PLAY_RELEASE_STATUS || 'draft' }}
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-rc.*) track=internal ;;
+            *) track=alpha ;;
+          esac
+          case "$STATUS" in
+            draft|completed) ;;
+            *) echo "::error::PLAY_RELEASE_STATUS is $STATUS, and an upload is draft or completed"; exit 1 ;;
+          esac
+          echo "track=$track" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "Uploads to the $track track as $STATUS once approved"
 
   ci:
     # The same jobs as every push to main, on the tagged commit.
     needs: check
     uses: ./.github/workflows/ci.yml
 
-  bundle:
+  release:
+    # Waits for the maintainer's approval before its first step: the `play` environment holds every secret below.
     needs: [check, ci]
     runs-on: ubuntu-latest
+    environment: play
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -84,7 +112,7 @@ jobs:
         run: |
           for name in KEYSTORE STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::The upload key's secrets are not all set (ADR 0132, decision 1): $name is empty"
+              echo "::error::The upload key's secrets are not all set in the play environment: $name is empty"
               exit 1
             fi
           done
@@ -110,10 +138,20 @@ jobs:
         working-directory: apps/mobile
         run: node scripts/check-permissions.cjs
       - name: The bundle is signed with the upload key and carries its native debug symbols
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
         run: |
           aab=apps/mobile/android/app/build/outputs/bundle/release/app-release.aab
           jarsigner -verify "$aab" | tee "$RUNNER_TEMP/verify.txt" | tail -1
           grep -q "jar verified" "$RUNNER_TEMP/verify.txt"
+          # Signed by the upload key and not by the template's debug key, which "jar verified" would pass too.
+          want=$(keytool -list -v -keystore "$RUNNER_TEMP/upload.jks" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" | grep -m1 'SHA256:' | awk '{print $2}')
+          got=$(keytool -printcert -jarfile "$aab" | grep -m1 'SHA256:' | awk '{print $2}')
+          if [ -z "$want" ] || [ "$want" != "$got" ]; then
+            echo "::error::The bundle is not signed with the upload key (signed by ${got:-nothing})"
+            exit 1
+          fi
           # Written by apps/mobile/plugins/debug-symbols.cjs; Play reads them from the bundle (ADR 0135, decision 8).
           unzip -l "$aab" | grep -q "BUNDLE-METADATA/com.android.tools.build.debugsymbols/"
           mv "$aab" "incudo-${GITHUB_REF_NAME#mobile-}-${{ needs.check.outputs.code }}.aab"
@@ -126,3 +164,31 @@ jobs:
           path: incudo-*.aab
           if-no-files-found: error
           retention-days: 90
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: apps/mobile/play
+      - name: Upload to Google Play
+        working-directory: apps/mobile/play
+        env:
+          SUPPLY_JSON_KEY_DATA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          SUPPLY_PACKAGE_NAME: com.wchsoftworks.incudo
+          SUPPLY_TRACK: ${{ needs.check.outputs.track }}
+          SUPPLY_RELEASE_STATUS: ${{ needs.check.outputs.status }}
+          SUPPLY_METADATA_PATH: metadata
+          SUPPLY_SKIP_UPLOAD_APK: 'true'
+          SUPPLY_SKIP_UPLOAD_METADATA: 'true'
+          SUPPLY_SKIP_UPLOAD_IMAGES: 'true'
+          SUPPLY_SKIP_UPLOAD_SCREENSHOTS: 'true'
+          FASTLANE_OPT_OUT_USAGE: 'YES'
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+        run: |
+          if [ -z "$SUPPLY_JSON_KEY_DATA" ]; then
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON is not set in the play environment (docs/PLAY-RELEASE.md)"
+            exit 1
+          fi
+          SUPPLY_AAB=$(ls "$GITHUB_WORKSPACE"/incudo-*.aab)
+          SUPPLY_VERSION_NAME="${GITHUB_REF_NAME#mobile-v}"
+          export SUPPLY_AAB SUPPLY_VERSION_NAME
+          bundle exec fastlane supply

@@ -91,7 +91,23 @@ number. Every push also builds an unsigned release and checks the merged manifes
   (`ndk.debugSymbolLevel 'SYMBOL_TABLE'` in the generated `app/build.gradle`). `.github/workflows/mobile-check.yml` runs
   Metro (`expo export --platform android`, about 20 s locally) on every pull request, and the release build without
   the upload key on one touching `apps/mobile`, the root `package.json`, the lockfile or a phone workflow.
-  `mobile-release.test.ts` holds all of it. Not a required check. Decisions 1 to 7, 10 and 11 are not built yet.
+  `mobile-release.test.ts` holds all of it. Not a required check.
+- **Decisions 1 to 3, 5, 7 (release notes), 10 and 11, 2026-11-26.** The bundle job became `release`, in the `play`
+  environment. **One change from decision 3:** the build waits for the approval as well as the upload. The upload key's
+  secrets moved into the environment, and a job can read an environment's secrets only by running in it, so signing
+  needs the approval. Splitting the signing and the upload into two jobs in the environment would ask for two approvals,
+  twelve minutes apart. So the approval comes before the build, and what runs before it reads no secret: the tag, the
+  release notes, the track and the status are checked, and ci.yml runs. fastlane 2.241.2 is pinned in
+  `apps/mobile/play/Gemfile` and its lock. It runs `supply` with the bundle and the release notes only, and leaves the
+  listing, images and screenshots alone until the listing is in the repository. A candidate goes to `internal`, a
+  release to `alpha`, as a draft unless the repository variable `PLAY_RELEASE_STATUS` is `completed`. The release notes
+  are `apps/mobile/play/metadata/en-US/changelogs/<code>.txt`, checked by `apps/mobile/scripts/release-notes.cjs`
+  before the build, because fastlane uploads an empty text when the file is missing. The signing check also compares
+  the bundle's signer with the upload key, since `jarsigner -verify` passes the template's debug key too. The phone
+  moved to 1.0.1 (code 1 000 199): Play holds 1 000 099, so the first tag is `mobile-v1.0.1-rc.1`.
+  `docs/PLAY-RELEASE.md` is the guide. Not run against Play yet: the first approved tag is the test. Decisions 4 (the
+  service account) and 10 (reading Play's code) were the maintainer's and are done. Decision 6 (promotion) and the rest
+  of 7 (the listing) are the next pull request.
 
 ## Evidence
 
