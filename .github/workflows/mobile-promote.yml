@@ -36,7 +36,7 @@ on:
         type: choice
         options: [alpha, production]
       rollout:
-        description: Production only, when the status is completed: the fraction of users to start with (0.01 to 0.99)
+        description: Production only, when the status is completed, the fraction of users to start with (0.01 to 0.99)
         required: false
         default: '0.1'
         type: string
