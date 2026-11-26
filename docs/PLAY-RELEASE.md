@@ -93,8 +93,9 @@ app and an approved run should go straight to testers. Any other value stops the
 2. Write the release notes: `apps/mobile/play/metadata/en-US/changelogs/<version code>.txt`, at most 500 characters, for
    the tag you will make. `node apps/mobile/scripts/release-notes.cjs mobile-v1.0.1` checks them. A candidate has a code
    of its own, so it needs a file of its own.
-3. Merge that through a pull request, then make the tag on main's head from the Actions tab: **Actions › Phone tag ›
-   Run workflow**, on `main`, leaving the candidate empty for the release (a number only for a candidate). It refuses
+3. Merge that through a pull request. That is the release: **Tag on merge** sees the new version in `app.json` and starts
+   **Phone tag** on main, ticking **listing** when the pull request changed the listing's text. Nothing else to run.
+   Phone tag can still be run by hand: **Actions › Phone tag › Run workflow**, on `main`, leaving the candidate empty for the release (a number only for a candidate). It refuses
    a tag that exists or whose release notes are missing, creates it, and starts **Phone release** on it. Tick
    **listing** to send the store listing's text with the bundle. Or tag the merge commit and push it yourself, which
    never sends the listing:

@@ -1,0 +1,104 @@
+name: Tag on merge
+
+# Merging a pull request that moves an app's version is the release: this tags it and starts that release, so nobody
+# pushes a tag by hand (the maintainer's call, 2026-11-26). The draft release (desktop) and the `play` environment's
+# approval (phone) still hold everything before anyone is offered it.
+#
+#   desktop  the pull request changed apps/desktop/src-tauri/tauri.conf.json and `vX.Y.Z` for its version does not exist:
+#            the three version files are checked to agree, `vX.Y.Z` is created at the merge commit and release.yml is
+#            started on it.
+#   phone    the pull request changed apps/mobile/app.json and `mobile-vX.Y.Z` does not exist: Phone tag (mobile-tag.yml)
+#            is started on main, which checks the version, the release notes and that the tag is new before it makes the
+#            tag and starts the phone's release. `listing` is asked for when the pull request changed the store listing's
+#            text (apps/mobile/play/metadata/<language>/*.txt, not the changelogs).
+#
+# A version that already has its tag is left alone, so a pull request touching the file for another reason, or a second
+# merge of the same version, tags nothing. A candidate (`-rc.N`) is never made here: that stays Phone tag's `candidate`
+# input, or a tag pushed by hand.
+#
+# Why it starts the runs itself: a tag created with GITHUB_TOKEN starts no workflow (GitHub's rule against runs starting
+# runs), but a workflow_dispatch is the one event GITHUB_TOKEN may start, so release.yml and mobile-tag.yml take one.
+# It runs on a pull request's event, never on a push, and only for a pull request merged from this repository.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: tag-on-merge
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: What the pull request changed
+        id: changed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          MERGED: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          files=$(git diff --name-only "$BASE" "$MERGED")
+          has() { if grep -qE "$1" <<< "$files"; then echo true; else echo false; fi; }
+          echo "desktop=$(has '^apps/desktop/src-tauri/tauri\.conf\.json$')" >> "$GITHUB_OUTPUT"
+          echo "phone=$(has '^apps/mobile/app\.json$')" >> "$GITHUB_OUTPUT"
+          echo "listing=$(has '^apps/mobile/play/metadata/[^/]+/[^/]+\.txt$')" >> "$GITHUB_OUTPUT"
+      - name: The desktop's version
+        id: desktop
+        if: steps.changed.outputs.desktop == 'true'
+        run: |
+          conf=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          tag="v$conf"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "$tag exists already: nothing to release for the desktop"
+            exit 0
+          fi
+          # The same three files release.yml holds the tag to, checked before a tag exists that could not be used.
+          cargo=$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)
+          pkg=$(node -p "require('./apps/desktop/package.json').version")
+          if [ "$cargo" != "$conf" ] || [ "$pkg" != "$conf" ]; then
+            echo "::error::tauri.conf.json says $conf, Cargo.toml $cargo and apps/desktop/package.json $pkg: no tag"
+            exit 1
+          fi
+          if ! [[ "$conf" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::The desktop's version $conf is not X.Y.Z: no tag"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Tag the desktop release and start it
+        if: steps.desktop.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.desktop.outputs.tag }}
+          MERGED: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$MERGED"
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG"
+          echo "Tagged $TAG at $MERGED and started the desktop release" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Start Phone tag
+        # Even when the desktop's step refused: the two releases are independent.
+        if: ${{ !cancelled() && steps.changed.outputs.phone == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LISTING: ${{ steps.changed.outputs.listing }}
+        run: |
+          version=$(node -p 'require("./apps/mobile/app.json").expo.version')
+          if git ls-remote --exit-code --tags origin "refs/tags/mobile-v$version" > /dev/null; then
+            echo "mobile-v$version exists already: nothing to release for the phone"
+            exit 0
+          fi
+          gh workflow run mobile-tag.yml --repo "$GITHUB_REPOSITORY" --ref main -f "listing=$LISTING"
+          echo "Started Phone tag for mobile-v$version (listing: $LISTING)" | tee -a "$GITHUB_STEP_SUMMARY"

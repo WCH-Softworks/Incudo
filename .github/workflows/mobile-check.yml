@@ -5,7 +5,8 @@ name: Phone check
 #
 # `bundle` runs Metro over the app on every pull request: every package under packages/ is in the phone's JavaScript, so
 # any of them can break it, and it takes under a minute. `gradle` builds the release bundle only when the pull request
-# touches what the native build reads: apps/mobile, the root package.json or the lockfile. It is the release workflow's
+# touches what the native build reads: apps/mobile, the root package.json, the lockfile, or this workflow or the release
+# workflow (Phone tag and Phone promote build nothing). It is the release workflow's
 # build without the upload key (React Native's template signs a release with its debug key), so a bundle that cannot be
 # built, a permission a library added or the debug symbols going missing is found here, not on a tag.
 
@@ -48,7 +49,7 @@ jobs:
           build=true
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             build=false
-            if git diff --name-only HEAD^1 HEAD | grep -qE '^(apps/mobile/|package\.json$|package-lock\.json$|\.github/workflows/mobile-)'; then
+            if git diff --name-only HEAD^1 HEAD | grep -qE '^(apps/mobile/|package\.json$|package-lock\.json$|\.github/workflows/mobile-(check|release)\.yml$)'; then
               build=true
             fi
           fi

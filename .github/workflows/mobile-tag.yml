@@ -1,7 +1,8 @@
 name: Phone tag
 
 # Tags main's head for a phone release from the Actions tab, then starts the release on that tag (ADR 0135), so a
-# release needs no git on the maintainer's machine. `docs/PLAY-RELEASE.md` is the guide.
+# release needs no git on the maintainer's machine. `docs/PLAY-RELEASE.md` is the guide. `tag-on-merge.yml` starts it
+# too, when a merged pull request moves `app.json`'s version to one with no tag yet.
 #
 # The version is `apps/mobile/app.json`'s on main. An empty `candidate`, the default, tags the release itself,
 # `mobile-vX.Y.Z`: a release is tagged directly, as the desktop's is. A number N tags `mobile-vX.Y.Z-rc.N`, only for when

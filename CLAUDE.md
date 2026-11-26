@@ -172,7 +172,12 @@ version in `tauri.conf.json`, `Cargo.toml` and `apps/desktop/package.json` (the 
 `tauri-action`, and leaves a **draft** release for the maintainer to publish. Unsigned, and its notes say so and say
 only Windows was ever run by hand.
 
-**A release is tagged `vX.Y.Z` directly, and a tag is never reused** (the maintainer's call, 2026-11-25). The maintainer
+**Merging the pull request that moves a version is the release** (the maintainer's call, 2026-11-26):
+`.github/workflows/tag-on-merge.yml`, on a merged pull request that changed `tauri.conf.json` or `apps/mobile/app.json`
+to a version with no tag yet, creates `vX.Y.Z` at the merge commit and dispatches `release.yml` on it (which takes a
+dispatch only on a tag), or starts Phone tag on main (with `listing` when the listing text changed). Nobody pushes a release
+tag by hand; an rc stays a hand-pushed tag or Phone tag's `candidate`. **A release is tagged `vX.Y.Z` directly, and a tag
+is never reused** (the maintainer's call, 2026-11-25). The maintainer
 tests the draft and publishes it; nothing is offered to installed copies until then. If the build or the testing fails,
 the draft is deleted, the fix goes through a PR **that also moves the version to the next patch** (all three files,
 which the tag must match), and that patch is tagged: never delete and re-push a version tag, which anyone may already

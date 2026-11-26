@@ -35,7 +35,8 @@ export const CORPUS_GROUPS = {
       'optional-features', 'printings', 'private-saves', 'publications', 'received-files', 'release-check',
       'release-workflow', 'ritual-filter', 'sample-saves', 'schemas', 'source-parts', 'starting-equipment-content',
       'starting-equipment-prose', 'stop-dev-servers', 'support-links', 'switched-off-sources', 'system-guide',
-      'system-loading', 'system-new', 'system-overlay', 'system-warnings', 'test-output', 'user-systems', 'workspace',
+      'system-loading', 'system-new', 'system-overlay', 'system-warnings', 'tag-on-merge', 'test-output',
+      'user-systems', 'workspace',
     ],
   },
   characters: {
