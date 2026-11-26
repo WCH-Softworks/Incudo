@@ -57,6 +57,7 @@
         }
       ],
       "./plugins/backup-rules.cjs",
+      "./plugins/debug-symbols.cjs",
       "expo-sqlite",
       "expo-status-bar"
     ]

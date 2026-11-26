@@ -23,6 +23,11 @@ on:
 permissions:
   contents: read
 
+# One phone release at a time, and never cancelled halfway: a second tag waits for the first (ADR 0135, decision 8).
+concurrency:
+  group: mobile-release
+  cancel-in-progress: false
+
 jobs:
   check:
     # Stops before anything is built when the tag does not name the phone's version, or names a commit main lacks.
@@ -101,11 +106,16 @@ jobs:
             -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
-      - name: The bundle is signed with the upload key
+      - name: The release asks for exactly the permissions ADR 0132 lists
+        working-directory: apps/mobile
+        run: node scripts/check-permissions.cjs
+      - name: The bundle is signed with the upload key and carries its native debug symbols
         run: |
           aab=apps/mobile/android/app/build/outputs/bundle/release/app-release.aab
           jarsigner -verify "$aab" | tee "$RUNNER_TEMP/verify.txt" | tail -1
           grep -q "jar verified" "$RUNNER_TEMP/verify.txt"
+          # Written by apps/mobile/plugins/debug-symbols.cjs; Play reads them from the bundle (ADR 0135, decision 8).
+          unzip -l "$aab" | grep -q "BUNDLE-METADATA/com.android.tools.build.debugsymbols/"
           mv "$aab" "incudo-${GITHUB_REF_NAME#mobile-}-${{ needs.check.outputs.code }}.aab"
       - name: Forget the key
         if: always()
@@ -115,4 +125,4 @@ jobs:
           name: incudo-android-${{ github.ref_name }}
           path: incudo-*.aab
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
