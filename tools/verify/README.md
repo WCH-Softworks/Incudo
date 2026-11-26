@@ -16,7 +16,7 @@ the same repository out into the same place, always at its head, and runs the wh
 `npm run test:verify` runs only this folder's tests. **A pull request's CI runs them quick**
 (`INCUDO_CORPUS_SUITE=quick`, `real-data.ts`): sample sweeps read the six `QUICK_SAMPLES`, creature and race sweeps an
 even dozen (`sweep()`), and measurements (`measureSkip`) and whole-corpus loader comparisons (`loaderSkip`) skip. The
-budgets, the oracle over all thirty samples and the manifest checks are never abridged. A push to main, the schedule,
+budgets, the oracle over all thirty samples and the manifest checks are never abridged. The schedule, a manual run,
 a release, and a pull request touching the converter, the loader or a schema run the full suite.
 
 ## What is here

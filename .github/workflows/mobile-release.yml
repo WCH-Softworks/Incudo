@@ -103,8 +103,13 @@ jobs:
           echo "Uploads to the $track track as $STATUS once approved"
 
   ci:
-    # The same jobs as every push to main, on the tagged commit.
+    # The same jobs as a pull request's, on the tagged commit, skipped when a full run already passed on the same files
+    # against the corpus head read now (ci.yml's `plan`), such as the desktop tag's on the same commit. `actions: read`
+    # lets it look.
     needs: check
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/ci.yml
 
   release:
