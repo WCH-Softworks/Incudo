@@ -5,6 +5,10 @@
 [0099](./0099-a-file-shared-to-the-phone-is-added-as-a-picked-one-is-and-receiving-needs-the-app-s-own-build.md) ·
 **format:** none
 
+> **Note, 2026-11-26:** decision 2's "uploaded by hand" is amended by
+> [ADR 0135](./0135-ci-uploads-the-phone-s-bundle-to-google-play-after-the-maintainer-approves-the-run.md) (Proposed):
+> CI uploads the bundle after the maintainer approves the run.
+
 ## Context
 
 The desktop 1.0 shipped on 2026-11-19. The phone app (`apps/mobile`, Expo SDK 57, React Native 0.86) had only ever run
