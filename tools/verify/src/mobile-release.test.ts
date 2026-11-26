@@ -8,7 +8,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
@@ -38,8 +39,10 @@ const permissions = require(join(mobile, 'scripts', 'check-permissions.cjs')) as
 };
 const notes = require(join(mobile, 'scripts', 'release-notes.cjs')) as {
   LIMIT: number;
+  LISTING_LIMITS: Record<string, number>;
   languages: (metadata?: string) => string[];
   noteProblems: (text: string, where: string) => string[];
+  listingProblems: (metadata?: string) => string[];
   tagProblems: (tag: string, metadata?: string) => string[];
 };
 const backup = require(join(mobile, 'plugins', 'backup-rules.cjs')) as {
@@ -149,15 +152,19 @@ test('only an approved run reads a secret, and it uploads the signed bundle with
     'PLAY_SERVICE_ACCOUNT_JSON',
   ]);
   assert.match(job, new RegExp(`SUPPLY_PACKAGE_NAME: ${app.expo.android.package.replace(/\./g, '\\.')}\n`), 'the package Play knows');
-  for (const skip of ['APK', 'METADATA', 'IMAGES', 'SCREENSHOTS']) {
+  for (const skip of ['APK', 'IMAGES', 'SCREENSHOTS']) {
     assert.match(job, new RegExp(`SUPPLY_SKIP_UPLOAD_${skip}: 'true'`), `the upload leaves ${skip.toLowerCase()} alone`);
   }
   assert.doesNotMatch(job, /SUPPLY_SKIP_UPLOAD_CHANGELOGS/, 'the release notes go with it');
+  // The listing's text goes only when a dispatch asks for it; a pushed tag has no inputs, so it never does.
+  assert.match(job, /SUPPLY_SKIP_UPLOAD_METADATA: \$\{\{ inputs\.listing && 'false' \|\| 'true' \}\}\n/);
   const kept = job.indexOf('actions/upload-artifact');
   const upload = job.indexOf('bundle exec fastlane supply');
   assert.ok(kept > 0 && kept < upload, 'the bundle is kept before the upload, so a failed upload loses nothing');
-  // A candidate goes to internal testing and a release to closed testing; a draft unless the variable says otherwise.
-  assert.match(workflow, /\*-rc\.\*\) track=internal ;;\n\s+\*\) track=alpha ;;/);
+  // Every tag, release or candidate, goes to internal testing, and is promoted from there; a draft unless the variable
+  // says otherwise.
+  assert.match(workflow, /^          track=internal\n/m);
+  assert.equal([...workflow.matchAll(/track=[a-z]/g)].length, 1, 'no tag goes anywhere else');
   assert.match(workflow, /STATUS: \$\{\{ vars\.PLAY_RELEASE_STATUS \|\| 'draft' \}\}/);
   assert.match(workflow, /draft\|completed\) ;;/, 'any other status stops the run');
 });
@@ -183,8 +190,10 @@ test('every release note fits Play, and a tag with none stops before anything is
   assert.deepEqual(notes.noteProblems('', 'x.txt'), ['x.txt is empty']);
   assert.deepEqual(notes.noteProblems('é'.repeat(notes.LIMIT), 'x.txt'), [], 'characters, not bytes');
   assert.deepEqual(notes.noteProblems('a'.repeat(notes.LIMIT + 1), 'x.txt'), [`x.txt is ${notes.LIMIT + 1} characters, and Play takes ${notes.LIMIT}`]);
+  // A release is tagged directly, so the committed version's release has its notes before it is merged.
+  assert.deepEqual(notes.tagProblems(`mobile-v${app.expo.version}`, metadata), [], "the committed version's release notes");
   const unwritten = `mobile-v${app.expo.version}-rc.98`;
-  assert.match(notes.tagProblems(unwritten, metadata).join('\n'), /changelogs\/\d+\.txt is missing/);
+  assert.match(notes.tagProblems(unwritten, metadata).join('\n'), /changelogs[\\/]\d+\.txt is missing/, 'a path in the platform\'s separators');
 });
 
 test("the build is checked for the permissions the policy lists, and nothing else", () => {
@@ -241,4 +250,134 @@ test('a pull request bundles the phone with Metro, and builds it with Gradle whe
   assert.ok(build > 0 && build < check, 'the permissions are read off the build it made');
   assert.match(workflow, /BUNDLE-METADATA\/com\.android\.tools\.build\.debugsymbols\//);
   assert.doesNotMatch(workflow, /secrets\./, 'a pull request never sees a secret');
+});
+
+/** The text of a workflow, with Windows line ends read as Unix ones. */
+const workflowText = (name: string): string => read('.github', 'workflows', name).replace(/\r\n/g, '\n');
+
+test('a release started by a dispatch runs only on a tag, and only a dispatch may take the listing with it', () => {
+  const workflow = workflowText('mobile-release.yml');
+  assert.match(workflow, /^  workflow_dispatch:\n    inputs:\n      listing:\n(?:        .+\n)*?        default: false\n        type: boolean$/m);
+  const ref = workflow.indexOf("if: github.ref_type != 'tag'");
+  const checkout = workflow.indexOf('actions/checkout');
+  assert.ok(ref > 0 && ref < checkout, 'a dispatch on a branch stops before anything is read');
+  assert.match(workflow, /      - name: The listing fits Play\n        if: inputs\.listing\n        run: node apps\/mobile\/scripts\/release-notes\.cjs --listing\n/, 'checked only when asked for');
+  const listing = workflow.indexOf('release-notes.cjs --listing');
+  const ci = workflow.indexOf('\n  ci:\n');
+  assert.ok(listing > 0 && listing < ci, 'and before anything is built');
+});
+
+test('a promotion moves a build Play holds, never builds or uploads one, and reaches production only when chosen', () => {
+  const workflow = workflowText('mobile-promote.yml');
+  assert.match(workflow, /^on:\n  workflow_dispatch:\n/m, 'started by hand');
+  assert.doesNotMatch(workflow, /^  (push|pull_request|schedule|workflow_run):/m, 'and by nothing else');
+  // The tracks, forward only, with production never the default.
+  assert.match(workflow, /      from:\n(?:        .+\n)*?        default: internal\n        type: choice\n        options: \[internal, alpha\]\n/);
+  assert.match(workflow, /      to:\n(?:        .+\n)*?        default: alpha\n        type: choice\n        options: \[alpha, production\]\n/);
+  assert.match(workflow, /order="internal alpha production"/);
+  assert.match(workflow, /if \[ "\$\(rank "\$TO"\)" -le "\$\(rank "\$FROM"\)" \]; then/, 'a build moves forward only');
+  assert.match(workflow, /      listing:\n(?:        .+\n)*?        default: false\n        type: boolean\n/, 'the listing is opt-in');
+  const promote = workflow.indexOf('\n  promote:\n');
+  assert.ok(promote > 0, 'the job that promotes');
+  const before = workflow.slice(0, promote);
+  const job = workflow.slice(promote);
+  assert.match(job, /^    needs: check\n    runs-on: ubuntu-latest\n    environment: play$/m, 'it waits in the play environment');
+  assert.doesNotMatch(before, /secrets\./, 'nothing before it reads a secret');
+  const secrets = [...new Set([...workflow.matchAll(/secrets\.([A-Z_]+)/g)].map((m) => m[1]))];
+  assert.deepEqual(secrets, ['PLAY_SERVICE_ACCOUNT_JSON'], 'never the upload key');
+  assert.match(before, /if: github\.ref != 'refs\/heads\/main'\n\s+run: \|\n.+\n\s+exit 1/, 'started on main only');
+  // Never a build, never a bundle.
+  assert.doesNotMatch(workflow, /gradlew|expo prebuild|SUPPLY_AAB:|upload-artifact|actions\/setup-java/);
+  for (const skip of ['APK', 'AAB', 'CHANGELOGS', 'IMAGES', 'SCREENSHOTS']) {
+    assert.match(job, new RegExp(`SUPPLY_SKIP_UPLOAD_${skip}: 'true'\n`), `the promotion leaves ${skip.toLowerCase()} alone`);
+  }
+  assert.match(job, /SUPPLY_SKIP_UPLOAD_METADATA: \$\{\{ inputs\.listing && 'false' \|\| 'true' \}\}\n/);
+  assert.match(job, /SUPPLY_TRACK: \$\{\{ inputs\.from \}\}\n\s+SUPPLY_TRACK_PROMOTE_TO: \$\{\{ inputs\.to \}\}\n/, "fastlane's promotion");
+  assert.match(job, /SUPPLY_TRACK_PROMOTE_RELEASE_STATUS: \$\{\{ needs\.check\.outputs\.status \}\}\n/);
+  assert.match(job, /SUPPLY_VERSION_CODE: \$\{\{ needs\.check\.outputs\.code \}\}\n/, 'the release that holds that code');
+  assert.match(job, new RegExp(`SUPPLY_PACKAGE_NAME: ${app.expo.android.package.replace(/\./g, '\\.')}\n`));
+  assert.match(job, /bundle exec fastlane supply "\$\{args\[@\]\}"/);
+  // A draft unless the variable says completed; a completed production release is staged at a fraction below 1.
+  assert.match(before, /STATUS: \$\{\{ vars\.PLAY_RELEASE_STATUS \|\| 'draft' \}\}/);
+  assert.match(before, /draft\|completed\) ;;/, 'any other status stops the run');
+  assert.match(before, /if \[ "\$TO" = production \] && \[ "\$STATUS" = completed \]; then/);
+  const fraction = /\[\[ "\$ROLLOUT" =~ (\S+) \]\]/.exec(before)?.[1];
+  assert.ok(fraction, 'the rollout is checked');
+  const staged = new RegExp(fraction);
+  for (const good of ['0.1', '0.05', '0.99']) assert.match(good, staged, `${good} is a staged fraction`);
+  for (const bad of ['0', '0.0', '0.00', '1', '1.0', '.5', '0.5x', '']) assert.doesNotMatch(bad, staged, `${bad} is not`);
+  const listing = workflow.indexOf('release-notes.cjs --listing');
+  assert.ok(listing > 0 && listing < promote, 'the listing is checked before the approval');
+});
+
+test('a tag made from the Actions tab names the app on main, is new, has its notes, and starts the release on itself', () => {
+  const workflow = workflowText('mobile-tag.yml');
+  assert.match(workflow, /^on:\n  workflow_dispatch:\n    inputs:\n      candidate:\n(?:        .+\n)*?        default: ''\n        type: string\n/m);
+  // A release is tagged directly, as the desktop's is; a candidate is not the default and says so.
+  assert.match(workflow, /      candidate:\n        description: Leave empty to tag the release mobile-vX\.Y\.Z \(the default\)\./);
+  assert.match(workflow, /      candidate:\n(?:        .+\n)*?        required: false\n/);
+  assert.doesNotMatch(workflow, /^  (push|pull_request|schedule|workflow_run):/m);
+  assert.match(workflow, /^permissions:\n  contents: write\n  actions: write\n\n/m, 'it writes a tag and starts a run, nothing else');
+  assert.doesNotMatch(workflow, /secrets\.|environment:/, 'no secret and no environment: the release asks for the approval');
+  const steps = [
+    "if: github.ref != 'refs/heads/main'",
+    'require("./apps/mobile/app.json").expo.version',
+    'release-version.cjs "$tag"',
+    'release-notes.cjs "$TAG"',
+    'git ls-remote --exit-code --tags origin "refs/tags/$TAG"',
+    'gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$GITHUB_SHA"',
+    'gh workflow run mobile-release.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG"',
+  ].map((step) => [step, workflow.indexOf(step)] as const);
+  for (const [step, at] of steps) assert.ok(at > 0, `it runs ${step}`);
+  for (let i = 1; i < steps.length; i++) assert.ok(steps[i]![1] > steps[i - 1]![1], `${steps[i]![0]} after ${steps[i - 1]![0]}`);
+  // An empty candidate is the release; a number is a candidate, exactly the ones parseTag takes.
+  assert.match(workflow, /if \[ -z "\$CANDIDATE" \]; then\n\s+tag="mobile-v\$version"\n/);
+  const range = /\[\[ "\$CANDIDATE" =~ (\S+) \]\]/.exec(workflow)?.[1];
+  assert.ok(range, 'the candidate is checked');
+  for (let n = 0; n <= 100; n++) {
+    let takes = true;
+    try {
+      parseTag(`mobile-v1.0.0-rc.${n}`);
+    } catch {
+      takes = false;
+    }
+    assert.equal(new RegExp(range).test(String(n)), takes, `candidate ${n}`);
+  }
+  assert.doesNotMatch('01', new RegExp(range), 'no leading zero');
+  // The release it starts takes a dispatch.
+  assert.match(workflowText('mobile-release.yml'), /^  workflow_dispatch:\n/m);
+});
+
+test("the store listing's text is in the repository and fits Play, and nothing but text is there", () => {
+  assert.deepEqual(notes.LISTING_LIMITS, { title: 30, short_description: 80, full_description: 4000 }, "Play's limits");
+  const metadata = join(mobile, 'play', 'metadata');
+  assert.deepEqual(notes.listingProblems(metadata), [], 'every language folder has a listing that fits');
+  for (const language of notes.languages(metadata)) {
+    for (const name of Object.keys(notes.LISTING_LIMITS)) {
+      const text = readFileSync(join(metadata, language, `${name}.txt`), 'utf8');
+      assert.doesNotMatch(text, /<[a-z]/i, `${language}/${name}.txt is plain text`);
+    }
+  }
+  // Each limit, at it and one past it, an empty file and a missing one, in a folder of their own.
+  const scratch = mkdtempSync(join(tmpdir(), 'incudo-listing-'));
+  try {
+    mkdirSync(join(scratch, 'en-US'));
+    const write = (name: string, text: string) => writeFileSync(join(scratch, 'en-US', `${name}.txt`), text);
+    for (const [name, limit] of Object.entries(notes.LISTING_LIMITS)) write(name, 'é'.repeat(limit));
+    assert.deepEqual(notes.listingProblems(scratch), [], 'at every limit, in characters');
+    for (const [name, limit] of Object.entries(notes.LISTING_LIMITS)) {
+      write(name, 'a'.repeat(limit + 1));
+      assert.match(notes.listingProblems(scratch).join('\n'), new RegExp(`${name}\\.txt is ${limit + 1} characters, and Play takes ${limit}`));
+      write(name, 'a'.repeat(limit));
+    }
+    write('title', '  \n');
+    assert.match(notes.listingProblems(scratch).join('\n'), /title\.txt is empty/);
+    rmSync(join(scratch, 'en-US', 'title.txt'));
+    assert.match(notes.listingProblems(scratch).join('\n'), /title\.txt is missing/);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+  // Never artwork: every file under the metadata is text.
+  const files = readdirSync(metadata, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile());
+  assert.deepEqual(files.map((entry) => entry.name).filter((name) => !name.endsWith('.txt')), [], 'no image, icon or screenshot');
 });

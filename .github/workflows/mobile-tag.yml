@@ -1,0 +1,98 @@
+name: Phone tag
+
+# Tags main's head for a phone release from the Actions tab, then starts the release on that tag (ADR 0135), so a
+# release needs no git on the maintainer's machine. `docs/PLAY-RELEASE.md` is the guide.
+#
+# The version is `apps/mobile/app.json`'s on main. An empty `candidate`, the default, tags the release itself,
+# `mobile-vX.Y.Z`: a release is tagged directly, as the desktop's is. A number N tags `mobile-vX.Y.Z-rc.N`, only for when
+# others should try a build before the release. It refuses before creating anything when the tag already exists (a tag is never
+# reused: Play refuses a version code it has been given) or when that version code's release notes are missing.
+#
+# Why it starts the release itself: a tag created with GITHUB_TOKEN starts no workflow (GitHub's rule against runs
+# starting runs), so the release's `push: tags` would never fire. A workflow_dispatch is the one event GITHUB_TOKEN may
+# start, so this runs `gh workflow run mobile-release.yml --ref <tag>`, and the release runs on the tag exactly as a
+# pushed tag's run does, with the same checks. That needs no personal token or app key in the repository, which a tag
+# pushed with another credential would. The tag is lightweight, created through the API at the commit this run was
+# started on.
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: Leave empty to tag the release mobile-vX.Y.Z (the default). A candidate number (1 to 98) tags mobile-vX.Y.Z-rc.N, only for when others should try a build first
+        required: false
+        default: ''
+        type: string
+      listing:
+        description: Also upload the store listing's text with the bundle
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: mobile-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Started on main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Tag from main, not $GITHUB_REF_NAME: a phone release is a commit main has"
+          exit 1
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: The tag for the app's version
+        id: tag
+        env:
+          CANDIDATE: ${{ inputs.candidate }}
+        run: |
+          version=$(node -p 'require("./apps/mobile/app.json").expo.version')
+          if [ -z "$CANDIDATE" ]; then
+            tag="mobile-v$version"
+          elif [[ "$CANDIDATE" =~ ^([1-9]|[1-8][0-9]|9[0-8])$ ]]; then
+            tag="mobile-v$version-rc.$CANDIDATE"
+          else
+            echo "::error::The candidate is a number from 1 to 98, or empty for the release, and $CANDIDATE is not"
+            exit 1
+          fi
+          # The same check the release starts with: the tag names app.json's and package.json's version.
+          code=$(node apps/mobile/scripts/release-version.cjs "$tag")
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Tag $tag, version code $code, at $GITHUB_SHA"
+      - name: The release notes are written
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: node apps/mobile/scripts/release-notes.cjs "$TAG"
+      - name: The listing fits Play
+        if: inputs.listing
+        run: node apps/mobile/scripts/release-notes.cjs --listing
+      - name: The tag is new
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            echo "::error::$TAG exists already, and a tag is never reused: move the version or take the next candidate"
+            exit 1
+          fi
+      - name: Create the tag on main's head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$GITHUB_SHA"
+      - name: Start the release on the tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          LISTING: ${{ inputs.listing }}
+        run: |
+          gh workflow run mobile-release.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG" -f "listing=$LISTING"
+          echo "Started the phone release on $TAG: approve it in the Actions tab when its checks are green"

@@ -1,0 +1,3 @@
+Change a character's kind from its Build screen: a creature built as a player character can become an NPC, keeping what the new kind uses and naming what it drops.
+Each starting equipment choice is grouped and headed "Choose one:".
+Crash reports now name the app's own functions.

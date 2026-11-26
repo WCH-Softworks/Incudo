@@ -627,11 +627,20 @@ Phase 6's last item. Things to know before touching it:
   from four secrets (`ANDROID_UPLOAD_KEYSTORE` and its passwords and alias), refuses an unsigned one and keeps it as an
   artifact. It publishes nothing; the maintainer uploads to Play by hand. No Play credentials anywhere. *Since ADR 0135 (accepted 2026-11-26)* that changed: after
   the maintainer approves the run in the `play` environment, which holds every secret, the `release` job builds, signs
-  and uploads with fastlane (`apps/mobile/play/`: the pinned Gemfile and the release notes per version code), a
-  candidate to internal testing and a release to closed testing, as a draft unless `PLAY_RELEASE_STATUS` is `completed`.
+  and uploads with fastlane (`apps/mobile/play/`: the pinned Gemfile and the release notes per version code),
+  every tag to internal testing (a release went to closed testing until 2026-11-26), as a draft unless
+  `PLAY_RELEASE_STATUS` is `completed`.
   The guide is `docs/PLAY-RELEASE.md`. Also built: one release at a time, the built manifest's permissions checked
   (`scripts/check-permissions.cjs`), native debug symbols in the AAB (`plugins/debug-symbols.cjs`), and
-  `mobile-check.yml` building the phone on pull requests.
+  `mobile-check.yml` building the phone on pull requests. Since 2026-11-26: `mobile-promote.yml` moves a build Play holds
+  forward a track (internal, alpha, production only when chosen, staged by `rollout`) from main with no build;
+  `mobile-tag.yml` tags main's head from the Actions tab and starts the release with `gh workflow run --ref <tag>`
+  (a `GITHUB_TOKEN` tag starts no workflow; `mobile-release.yml` takes a dispatch on a tag only); the listing text is
+  `play/metadata/en-US/{title,short_description,full_description}.txt`, checked by `release-notes.cjs --listing` and
+  uploaded only when a run's `listing` input asks. **A phone release is tagged `mobile-vX.Y.Z` directly, as the desktop's
+  is** (the maintainer's call, 2026-11-26): every tag goes to internal testing and is promoted from there; a failed build
+  or test moves the phone to the next patch through a PR (version, code, notes), never a reused tag; `-rc.N` only when
+  others should try a build first.
 - **The release manifest asks for Internet and network/Wi-Fi state only**: `blockedPermissions` removes
   `SYSTEM_ALERT_WINDOW`, external storage and `VIBRATE`, which Expo's template and the dev menu add. **Backup** takes
   `library/` and `SQLite/` only (`apps/mobile/plugins/backup-rules.cjs`), never `sources/`. **NetInfo never pings**

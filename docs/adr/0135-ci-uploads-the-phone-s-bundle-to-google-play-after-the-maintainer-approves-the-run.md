@@ -108,6 +108,47 @@ number. Every push also builds an unsigned release and checks the merged manifes
   `docs/PLAY-RELEASE.md` is the guide. Not run against Play yet: the first approved tag is the test. Decisions 4 (the
   service account) and 10 (reading Play's code) were the maintainer's and are done. Decision 6 (promotion) and the rest
   of 7 (the listing) are the next pull request.
+- **Decision 6 and the rest of 7 (the listing text), and a tag made from the Actions tab, 2026-11-26.**
+  `.github/workflows/mobile-promote.yml` is started by hand on main with a version code or the tag that built it, the
+  track it is on (`internal` or `alpha`) and the track to move it to (`alpha` or `production`; forward only, and
+  production only when chosen). Its `check` job reads no secret and refuses before the approval: a ref other than main,
+  a code that is not one, a move backwards, a status other than draft or completed, a production rollout fraction
+  outside 0 to 1. The `promote` job runs in the `play` environment and runs the pinned fastlane's `supply` with
+  `SUPPLY_TRACK`, `SUPPLY_TRACK_PROMOTE_TO`, `SUPPLY_VERSION_CODE` and `SUPPLY_TRACK_PROMOTE_RELEASE_STATUS`, every
+  upload skipped (bundle, APK, release notes, images, screenshots): read in fastlane 2.241.2's `uploader.rb`, a run that
+  uploads no binary promotes the release holding that code. The status is `PLAY_RELEASE_STATUS`, draft when unset; a
+  completed production release is staged at the `rollout` input, passed as `--rollout` because supply's rollout has no
+  environment variable, and the maintainer takes it to 100% in the Console. **Why main and not the tag:** the build's
+  tag rule alone would make each promotion need the workflow file at that tag, and `mobile-v1.0.1-rc.1` was tagged
+  before it existed; so the `play` environment's deployment rules add main, and every run still waits for the approval.
+  The listing is `apps/mobile/play/metadata/en-US/title.txt`, `short_description.txt` and `full_description.txt`, in
+  plain words from the README and `about.ts` (free, MIT, open source, reads Aurora content, works offline, ships no
+  rulebook text; no support link, which Play's policy ADR 0132 decision 8 names would put at risk).
+  `release-notes.cjs --listing` holds it to Play's 30, 80 and 4000 characters, none empty. It is uploaded only when a
+  run's `listing` input is ticked (promote, or a release started from `mobile-tag.yml`), checked before the approval;
+  a pushed tag never uploads it. Images and screenshots stay unuploaded: none are in the repository, and none are made
+  here. `.github/workflows/mobile-tag.yml` is started on main with a candidate number (empty for the release): it
+  reads the version from `app.json`, runs `release-version.cjs` and `release-notes.cjs` on the tag it would make,
+  refuses one that exists, creates it at the run's commit through the API, and starts `mobile-release.yml` on it with
+  `gh workflow run --ref <tag>`. **Why a dispatch:** a tag created with `GITHUB_TOKEN` starts no workflow, and a
+  `workflow_dispatch` is the one event that token may start, so no personal token or app key is added to the
+  repository. `mobile-release.yml` gained `workflow_dispatch` (with `listing`) and refuses a dispatch whose ref is not a
+  tag; its other checks are unchanged. `mobile-release.test.ts` holds both workflows, the release's dispatch and the
+  listing's limits, each assertion failing under its named perturbation (21, run 2026-11-26). Not run against Play or
+  on Actions: the first promotion and the first tag made from the Actions tab are the test.
+- **One change from decision 1, 2026-11-26 (the maintainer's call): every tag goes to internal testing, and a release is
+  tagged `mobile-vX.Y.Z` directly.** Decision 1 sent a candidate to internal testing and a release to closed testing.
+  With promotion built, that made a candidate the only way to try a build before closed testers got it, and candidate
+  tags pile up that never go further, as the desktop's did before its rule (CLAUDE.md, "A release is tagged vX.Y.Z
+  directly", 2026-11-25). The phone now follows the same rule. `mobile-release.yml` uploads every tag to `internal`, as a
+  draft unless `PLAY_RELEASE_STATUS` is `completed`, and `mobile-promote.yml` moves it to `alpha` and then production.
+  `mobile-tag.yml`'s candidate stays optional, empty by default (the release), and its description says a candidate is
+  only for when others should try a build first. A failed build or test is fixed through a pull request that moves the
+  phone to the next patch (version, code with N = 99, release notes); a tag is never reused or pushed again.
+  `mobile-v1.0.1-rc.1` (code 1 000 101) is the one candidate CI uploaded, so the next tag is `mobile-v1.0.1`
+  (1 000 199), whose notes repeat 1 000 101's: 1.0.1's content is unchanged. `mobile-release.test.ts` holds the one
+  track, the tag workflow's default and description, and the committed version's release notes, each failing under its
+  perturbation (6).
 
 ## Evidence
 
