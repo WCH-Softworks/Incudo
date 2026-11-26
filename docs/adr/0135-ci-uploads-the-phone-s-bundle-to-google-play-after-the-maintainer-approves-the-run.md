@@ -136,6 +136,19 @@ number. Every push also builds an unsigned release and checks the merged manifes
   tag; its other checks are unchanged. `mobile-release.test.ts` holds both workflows, the release's dispatch and the
   listing's limits, each assertion failing under its named perturbation (21, run 2026-11-26). Not run against Play or
   on Actions: the first promotion and the first tag made from the Actions tab are the test.
+- **One change from decision 1, 2026-11-26 (the maintainer's call): every tag goes to internal testing, and a release is
+  tagged `mobile-vX.Y.Z` directly.** Decision 1 sent a candidate to internal testing and a release to closed testing.
+  With promotion built, that made a candidate the only way to try a build before closed testers got it, and candidate
+  tags pile up that never go further, as the desktop's did before its rule (CLAUDE.md, "A release is tagged vX.Y.Z
+  directly", 2026-11-25). The phone now follows the same rule. `mobile-release.yml` uploads every tag to `internal`, as a
+  draft unless `PLAY_RELEASE_STATUS` is `completed`, and `mobile-promote.yml` moves it to `alpha` and then production.
+  `mobile-tag.yml`'s candidate stays optional, empty by default (the release), and its description says a candidate is
+  only for when others should try a build first. A failed build or test is fixed through a pull request that moves the
+  phone to the next patch (version, code with N = 99, release notes); a tag is never reused or pushed again.
+  `mobile-v1.0.1-rc.1` (code 1 000 101) is the one candidate CI uploaded, so the next tag is `mobile-v1.0.1`
+  (1 000 199), whose notes repeat 1 000 101's: 1.0.1's content is unchanged. `mobile-release.test.ts` holds the one
+  track, the tag workflow's default and description, and the committed version's release notes, each failing under its
+  perturbation (6).
 
 ## Evidence
 

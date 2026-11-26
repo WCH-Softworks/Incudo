@@ -3,8 +3,9 @@ name: Phone tag
 # Tags main's head for a phone release from the Actions tab, then starts the release on that tag (ADR 0135), so a
 # release needs no git on the maintainer's machine. `docs/PLAY-RELEASE.md` is the guide.
 #
-# The version is `apps/mobile/app.json`'s on main. An empty `candidate` tags the release itself, `mobile-vX.Y.Z`; a
-# number N tags `mobile-vX.Y.Z-rc.N`. It refuses before creating anything when the tag already exists (a tag is never
+# The version is `apps/mobile/app.json`'s on main. An empty `candidate`, the default, tags the release itself,
+# `mobile-vX.Y.Z`: a release is tagged directly, as the desktop's is. A number N tags `mobile-vX.Y.Z-rc.N`, only for when
+# others should try a build before the release. It refuses before creating anything when the tag already exists (a tag is never
 # reused: Play refuses a version code it has been given) or when that version code's release notes are missing.
 #
 # Why it starts the release itself: a tag created with GITHUB_TOKEN starts no workflow (GitHub's rule against runs
@@ -18,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       candidate:
-        description: Candidate number (1 to 98) for mobile-vX.Y.Z-rc.N; leave empty to tag the release mobile-vX.Y.Z
+        description: Leave empty to tag the release mobile-vX.Y.Z (the default). A candidate number (1 to 98) tags mobile-vX.Y.Z-rc.N, only for when others should try a build first
         required: false
         default: ''
         type: string

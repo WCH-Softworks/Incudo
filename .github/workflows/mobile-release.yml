@@ -3,8 +3,11 @@ name: Phone release
 # Builds the phone app's Android App Bundle, signs it with the upload key (ADR 0132) and uploads it to Google Play with
 # fastlane once the maintainer approves the run (ADR 0135).
 #
-# Started by a tag, never by a branch push: `mobile-vX.Y.Z-rc.N` for a candidate, which goes to internal testing, and
-# `mobile-vX.Y.Z` for a release, which goes to closed testing (Play's `alpha` track) until the app has production access.
+# Started by a tag, never by a branch push: `mobile-vX.Y.Z` for a release, tagged directly, and `mobile-vX.Y.Z-rc.N` for
+# a candidate, only when others should try a build before the release. Every tag's upload goes to internal testing, and
+# `mobile-promote.yml` moves it on to closed testing (Play's `alpha` track) and production (the maintainer's call,
+# 2026-11-26, as the desktop's: no candidate tags that go nowhere). A tag is never reused: a failed build or test is
+# fixed through a pull request that moves the phone to the next patch.
 # The desktop's release workflow starts on `v*`, which these never match.
 #
 # A tag pushed by a person starts it. So does `mobile-tag.yml`, which creates the tag from the Actions tab and then
@@ -89,10 +92,8 @@ jobs:
         env:
           STATUS: ${{ vars.PLAY_RELEASE_STATUS || 'draft' }}
         run: |
-          case "$GITHUB_REF_NAME" in
-            *-rc.*) track=internal ;;
-            *) track=alpha ;;
-          esac
+          # Every tag goes to internal testing first; Phone promote moves it from there.
+          track=internal
           case "$STATUS" in
             draft|completed) ;;
             *) echo "::error::PLAY_RELEASE_STATUS is $STATUS, and an upload is draft or completed"; exit 1 ;;

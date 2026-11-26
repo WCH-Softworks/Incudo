@@ -161,8 +161,10 @@ test('only an approved run reads a secret, and it uploads the signed bundle with
   const kept = job.indexOf('actions/upload-artifact');
   const upload = job.indexOf('bundle exec fastlane supply');
   assert.ok(kept > 0 && kept < upload, 'the bundle is kept before the upload, so a failed upload loses nothing');
-  // A candidate goes to internal testing and a release to closed testing; a draft unless the variable says otherwise.
-  assert.match(workflow, /\*-rc\.\*\) track=internal ;;\n\s+\*\) track=alpha ;;/);
+  // Every tag, release or candidate, goes to internal testing, and is promoted from there; a draft unless the variable
+  // says otherwise.
+  assert.match(workflow, /^          track=internal\n/m);
+  assert.equal([...workflow.matchAll(/track=[a-z]/g)].length, 1, 'no tag goes anywhere else');
   assert.match(workflow, /STATUS: \$\{\{ vars\.PLAY_RELEASE_STATUS \|\| 'draft' \}\}/);
   assert.match(workflow, /draft\|completed\) ;;/, 'any other status stops the run');
 });
@@ -188,6 +190,8 @@ test('every release note fits Play, and a tag with none stops before anything is
   assert.deepEqual(notes.noteProblems('', 'x.txt'), ['x.txt is empty']);
   assert.deepEqual(notes.noteProblems('é'.repeat(notes.LIMIT), 'x.txt'), [], 'characters, not bytes');
   assert.deepEqual(notes.noteProblems('a'.repeat(notes.LIMIT + 1), 'x.txt'), [`x.txt is ${notes.LIMIT + 1} characters, and Play takes ${notes.LIMIT}`]);
+  // A release is tagged directly, so the committed version's release has its notes before it is merged.
+  assert.deepEqual(notes.tagProblems(`mobile-v${app.expo.version}`, metadata), [], "the committed version's release notes");
   const unwritten = `mobile-v${app.expo.version}-rc.98`;
   assert.match(notes.tagProblems(unwritten, metadata).join('\n'), /changelogs[\\/]\d+\.txt is missing/, 'a path in the platform\'s separators');
 });
@@ -309,6 +313,9 @@ test('a promotion moves a build Play holds, never builds or uploads one, and rea
 test('a tag made from the Actions tab names the app on main, is new, has its notes, and starts the release on itself', () => {
   const workflow = workflowText('mobile-tag.yml');
   assert.match(workflow, /^on:\n  workflow_dispatch:\n    inputs:\n      candidate:\n(?:        .+\n)*?        default: ''\n        type: string\n/m);
+  // A release is tagged directly, as the desktop's is; a candidate is not the default and says so.
+  assert.match(workflow, /      candidate:\n        description: Leave empty to tag the release mobile-vX\.Y\.Z \(the default\)\./);
+  assert.match(workflow, /      candidate:\n(?:        .+\n)*?        required: false\n/);
   assert.doesNotMatch(workflow, /^  (push|pull_request|schedule|workflow_run):/m);
   assert.match(workflow, /^permissions:\n  contents: write\n  actions: write\n\n/m, 'it writes a tag and starts a run, nothing else');
   assert.doesNotMatch(workflow, /secrets\.|environment:/, 'no secret and no environment: the release asks for the approval');
