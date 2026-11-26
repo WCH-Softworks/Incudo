@@ -108,8 +108,11 @@ took 4 to 6½ minutes, 186 corpus tests, ~30 files each importing all thirty sam
 `QUICK_SAMPLES` (six, chosen by what they are, `sample-saves.ts`); a sweep over every creature or race reads an even
 dozen (`sweep()`); a measurement (`ℹ` lines and nothing asserted beyond "something was read") or a perturbation skips
 (`measureSkip`); a whole-corpus loader comparison skips (`loaderSkip`). **Never abridged:** the budgets, the oracle's
-invariants over all thirty samples, the manifest and anonymity checks. ci.yml runs full on a push to main, the schedule,
-a manual run and a release, and on a pull request touching `packages/aurora-import`, `packages/content` or `schemas`.
+invariants over all thirty samples, the manifest and anonymity checks. ci.yml runs full on the schedule, a manual run and a
+release, and on a pull request touching `packages/aurora-import`, `packages/content` or `schemas`. **No push runs CI**
+(the maintainer's call, 2026-11-26): a branch push runs nothing, and main changes only by a pull request. A full run that
+passes uploads a `ci-passed-<tree>-<corpus head>` artifact, and the schedule and a release tag skip everything when one
+exists for their files and today's head, so a desktop and a phone tag on one commit run the suite once.
 Locally `npm run test:verify` was 56 s quick and 148 s full. **A new test:** reach the samples through
 `readManifest()`, `samplesWhere` or `sampleFileNames()` (never a `readdir` of the folder), wrap a list of many like
 things in `sweep()`, end a measurement's skip with `|| measureSkip`, and assert no count of what a sweep read.

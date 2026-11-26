@@ -78,8 +78,13 @@ jobs:
           fi
 
   ci:
-    # The same jobs as every push to main, on the tagged commit: typecheck, tests, and the real-content suite.
+    # The same jobs as a pull request's, on the tagged commit: typecheck, tests, and the full real-content suite. Skipped
+    # when a full run already passed on the same files against the corpus head read now (ci.yml's `plan`): the run this
+    # one would repeat, such as a phone tag's on the same commit or the daily run's. `actions: read` lets it look.
     needs: check
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/ci.yml
 
   installers:

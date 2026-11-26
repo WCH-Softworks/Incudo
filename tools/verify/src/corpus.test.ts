@@ -205,8 +205,8 @@ test('the corpus job reads the current official repository, always, and runs the
   assert.match(job, /corpus-groups\.ts "\$\{\{ matrix\.group \}\}"/, "each group runs its group's tools/verify files");
   const scripts = (JSON.parse(await readFile(join(repoRoot(), 'package.json'), 'utf8')) as { scripts: Record<string, string> }).scripts;
   assert.match(scripts['test:verify'] ?? '', /--test .*"tools\/\*\/src\/\*\*\/\*\.test\.ts"/, 'test:verify runs every tools/ test');
-  // Abridged only for a pull request that leaves the converter, the loader and the schemas alone; a push to main, the
-  // schedule and a release run the full suite. The step starts from full and says quick only for a pull request.
+  // Abridged only for a pull request that leaves the converter, the loader and the schemas alone; the schedule, a
+  // manual run and a release run the full suite. The step starts from full and says quick only for a pull request.
   assert.match(plan, /^\s*suite=full\s*$/m, 'the suite starts full');
   assert.match(plan, /if \[ "\$GITHUB_EVENT_NAME" = pull_request \]; then\s*\n\s*suite=quick\s*$/m, 'only a pull request runs quick');
   assert.match(plan, /packages\/aurora-import\|packages\/content\|schemas/, 'a pull request touching the converter, loader or schemas runs full');

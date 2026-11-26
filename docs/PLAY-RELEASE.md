@@ -13,7 +13,8 @@ Actions tab) and `mobile-promote.yml` (move a build to the next track).
    was pushed or made by **Phone tag** in the Actions tab. It stops at once when the tag's version is not the one in
    `apps/mobile/app.json` and `apps/mobile/package.json`, when the tagged commit is not on main, or when the tag's
    release notes are missing or too long.
-2. The same checks as every push to main run on the tagged commit.
+2. The same checks as a pull request's run on the tagged commit, in full, unless a full run already passed on the same
+   files against today's Aurora content (the desktop's tag on the same commit, or the daily run): then they are skipped.
 3. The `release` job waits for approval. GitHub shows **Review deployments** on the run's page in the Actions tab and
    emails the reviewer. Nothing has been built with the key yet, and nothing can reach Play before the approval.
 4. Once approved, the job builds the bundle (about 12 minutes) and signs it with the upload key. It checks the

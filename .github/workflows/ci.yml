@@ -1,31 +1,34 @@
 name: CI
 
+# No push trigger: a push to a branch runs nothing, and main changes only by a pull request, which ran this already
+# (the maintainer's call, 2026-11-26). What runs it is a pull request, the daily schedule, a manual run, and a release
+# tag through `workflow_call`.
 on:
-  push:
-    branches: [main]
   pull_request:
   schedule:
     # The official content moves whether or not this repository does, and a green run means "works
     # with today's official content" (ADR 0042). A daily run of `aurora-corpus` is what notices an
     # upstream change while nothing here is happening. Scheduled runs only ever use the default branch.
-    # It skips the suite when neither main nor upstream has moved since a full run passed (`plan`).
+    # It skips everything when a full run already passed on main's files against upstream's head (`plan`).
     - cron: '23 6 * * *'
   workflow_dispatch:
-  # `release.yml` runs these same two jobs on the tagged commit before it builds any installer.
+  # `release.yml` and `mobile-release.yml` run this on the tagged commit before they build anything.
   workflow_call:
 
-# A newer push to the same branch or pull request stops the run it supersedes: only the newest commit's result is
-# read. The event is in the group so a daily scheduled run (which skips `build`) never cancels a push's run on main,
-# nor the other way round. Called from `release.yml`, the ref is the release's tag, which no other run shares; the
-# name is spelled out rather than `github.workflow`, which is the caller's there.
+# A newer push to the same pull request stops the run it supersedes: only the newest commit's result is read. The event
+# is in the group so a daily scheduled run never cancels a manual one on main, nor the other way round. Called from a
+# release, the ref is the release's tag, which no other run shares; the name is spelled out rather than
+# `github.workflow`, which is the caller's there.
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    # Nothing new to learn on a schedule: this job reads no upstream content.
-    if: github.event_name != 'schedule'
+    # Skipped only when `plan` found a full run that already passed on these files against this corpus head: the run
+    # this one would repeat. `!cancelled()` keeps a failed plan from skipping it: an unread record runs the job.
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.tested != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -40,23 +43,31 @@ jobs:
         run: npm test
 
   plan:
-    # What the corpus jobs read, decided once so all three groups read the same: upstream's current head, the size of
-    # the suite, and on the daily schedule whether there is anything to run.
+    # What the other jobs read, decided once so all three groups read the same: upstream's current head, the size of
+    # the suite, and on the daily schedule and a release tag whether there is anything to run.
     #
-    # The daily run exists to notice the official content moving while this repository is quiet. When a full run has
-    # already passed on main's commit against upstream's current head, the two things it reads are the ones it would
-    # read again, and the run ends here. Any other pair, an upstream commit included, runs the full suite as before. A
-    # full run that passes on main records its pair (the last step of `aurora-corpus`) as a cache entry with nothing in
-    # it but its name.
+    # A run reads two things: this repository's files and upstream's head. When a full run (`build` and every group,
+    # the full suite) has already passed on the same files, by their git tree, against the same head, running again
+    # repeats it, and on the schedule or a tag the run ends here. That is a desktop tag and a phone tag on one commit, a
+    # tag on what the daily run already checked, or a quiet day. Any other pair, an upstream commit included, runs in
+    # full. A full run that passes records its pair (the last step of `aurora-corpus`) as an artifact with nothing in it
+    # but its name, which any later run of the repository can find; a pull request from a fork records none and its
+    # records are never read.
     #
+    # A pull request and a manual run never skip: a pull request runs its own checks, and a manual run is someone asking.
     # What a skip does not see: a change on the runner itself (a newer Node 22, a new Ubuntu image) on a day nothing
-    # else moved. The next push or upstream commit sees it. A record GitHub has evicted, or one not read for seven days,
-    # is simply absent, and absent means the full suite runs: a lost record costs a run, never a check.
+    # else moved. A record past its 30 days is simply absent, and absent means the full run: a lost record costs a run,
+    # never a check.
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To list the repository's artifacts for a record.
+      actions: read
     outputs:
       corpus: ${{ steps.head.outputs.sha }}
       suite: ${{ steps.suite.outputs.suite }}
-      tested: ${{ steps.record.outputs.cache-hit }}
+      record: ${{ steps.record.outputs.name }}
+      tested: ${{ steps.record.outputs.tested }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -77,8 +88,8 @@ jobs:
       # over every creature or race an even dozen, and the report-only measurements, the perturbations and the
       # whole-corpus loader comparisons skipped. The budgets, the oracle's invariants over all thirty samples and
       # the manifest's checks are never abridged. A pull request that touches the converter, the content loader or
-      # a schema runs the full suite, as does everything else: a push to main, the daily schedule, a manual run,
-      # and a release through `workflow_call`, whose event is the tag push.
+      # a schema runs the full suite, as does everything else: the daily schedule, a manual run, and a release
+      # through `workflow_call`, whose event is the tag push or the dispatch Phone tag starts.
       - name: Which suite this run is
         id: suite
         run: |
@@ -91,22 +102,33 @@ jobs:
             fi
           fi
           echo "suite=$suite" >> "$GITHUB_OUTPUT"
+      # The record's name is the pair: the checkout's tree (a pull request's is its merge result) and the head read
+      # above. A record counts only when it is unexpired and its run was this repository's own, never a fork's.
       - name: Has a full run passed on this pair
         id: record
-        if: github.event_name == 'schedule'
-        uses: actions/cache/restore@v5
-        with:
-          path: .corpus-tested
-          key: corpus-tested-${{ github.sha }}-${{ steps.head.outputs.sha || 'unknown' }}
-          lookup-only: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CORPUS: ${{ steps.head.outputs.sha }}
+          LOOK: ${{ github.event_name == 'schedule' || github.ref_type == 'tag' }}
+        run: |
+          name=
+          if [ -n "$CORPUS" ]; then name="ci-passed-$(git rev-parse 'HEAD^{tree}')-$CORPUS"; fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          tested=false
+          if [ "$LOOK" = true ] && [ -n "$name" ]; then
+            found=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$name&per_page=20" \
+              --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_repository_id == .workflow_run.repository_id)] | length' || echo 0)
+            if [ "${found:-0}" -gt 0 ]; then tested=true; fi
+          fi
+          echo "tested=$tested" >> "$GITHUB_OUTPUT"
       - name: What this run does
         env:
-          TESTED: ${{ steps.record.outputs.cache-hit }}
+          TESTED: ${{ steps.record.outputs.tested }}
           CORPUS: ${{ steps.head.outputs.sha }}
           SUITE: ${{ steps.suite.outputs.suite }}
         run: |
           if [ "$TESTED" = true ]; then
-            line="A full run already passed on this commit against AuroraLegacy/elements at \`$CORPUS\`: nothing to run."
+            line="A full run already passed on these files against AuroraLegacy/elements at \`$CORPUS\`: nothing to run again."
           else
             line="Corpus: AuroraLegacy/elements at \`${CORPUS:-the head each group checks out}\`, the $SUITE suite."
           fi
@@ -216,10 +238,10 @@ jobs:
           node --test --experimental-strip-types "${files[@]}"
 
   aurora-corpus:
-    # The check the main branch's rules require: every corpus group passed. On the daily schedule, when `plan` found
-    # the pair already tested, it is skipped with the groups. `!cancelled()` lets it run, and fail, when a group or the
-    # plan failed, rather than be skipped and read as nothing.
-    needs: [plan, corpus]
+    # The check the main branch's rules require: every corpus group passed. When `plan` found the pair already tested,
+    # it is skipped with the groups. `!cancelled()` lets it run, and fail, when a group or the plan failed, rather than
+    # be skipped and read as nothing. It waits for `build` too, only to know whether to record the run.
+    needs: [plan, build, corpus]
     if: ${{ !cancelled() && needs.plan.outputs.tested != 'true' }}
     runs-on: ubuntu-latest
     steps:
@@ -230,18 +252,20 @@ jobs:
         run: |
           echo "plan: $PLAN, corpus groups: $GROUPS"
           [ "$PLAN" = success ] && [ "$GROUPS" = success ]
-      # The pair this run proved, for the daily run's `plan` to find. Only a full suite that passed, only on main (a
-      # cache saved on a pull request or a release tag is visible to that ref alone, and the schedule reads main's), and
-      # only when the groups read the head `plan` named.
+      # The pair this run proved, for a later schedule or tag's `plan` to find: only a full suite, only with `build`
+      # passed as well, only when the groups read the head `plan` named, and never from a fork's pull request.
       - name: The pair this run passed on
         id: passed
-        if: github.ref == 'refs/heads/main' && needs.plan.outputs.suite == 'full' && needs.plan.outputs.corpus != ''
+        if: >-
+          needs.plan.outputs.suite == 'full' && needs.plan.outputs.record != '' && needs.build.result == 'success' &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         run: |
-          mkdir -p .corpus-tested
-          echo "${{ needs.plan.outputs.corpus }}" > .corpus-tested/corpus
+          mkdir -p .ci-passed
+          echo "${{ needs.plan.outputs.record }}" > .ci-passed/record
       - name: Record it
         if: steps.passed.outcome == 'success'
-        uses: actions/cache/save@v5
+        uses: actions/upload-artifact@v4
         with:
-          path: .corpus-tested
-          key: corpus-tested-${{ github.sha }}-${{ needs.plan.outputs.corpus }}
+          name: ${{ needs.plan.outputs.record }}
+          path: .ci-passed
+          retention-days: 30
