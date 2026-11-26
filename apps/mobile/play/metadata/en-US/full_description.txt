@@ -3,7 +3,7 @@ Incudo is a character builder for tabletop role-playing games. It is free, open 
 Build player characters and NPCs step by step, then read and play the finished sheet on your phone.
 
 Any game system
-The app has no built-in knowledge of one game. A game is described by a system definition, a data file. It comes with one for the fifth edition rules of the System Reference Document 5.2.1. You can copy it and change it, or write your own.
+The app has no built-in knowledge of one game. A game is described by a system definition, a data file. It comes with one for the fifth edition rules of the System Reference Document 5.2.1. You can copy it and change it, or write your own (in the desktop app, for now).
 
 Reads Aurora content
 Incudo reads content written for Aurora Builder, including the community content maintained by AuroraLegacy, and imports Aurora saved characters. Incudo is not made by, or affiliated with, the makers of Aurora Builder.
