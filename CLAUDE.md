@@ -625,10 +625,13 @@ Phase 6's last item. Things to know before touching it:
   `apps/mobile/scripts/release-version.cjs`. A committed `app.json` holds N = 99; the workflow writes the tag's.
 - **`.github/workflows/mobile-release.yml`** builds the AAB on a `mobile-vX.Y.Z[-rc.N]` tag, signs it with the upload key
   from four secrets (`ANDROID_UPLOAD_KEYSTORE` and its passwords and alias), refuses an unsigned one and keeps it as an
-  artifact. It publishes nothing; the maintainer uploads to Play by hand. No Play credentials anywhere. *Since ADR 0135
-  (accepted 2026-11-26) that is changing*: CI will upload with fastlane from a `play` environment the maintainer approves.
-  Built so far: one release at a time, the built manifest's permissions checked (`scripts/check-permissions.cjs`), native
-  debug symbols in the AAB (`plugins/debug-symbols.cjs`), and `mobile-check.yml` building the phone on pull requests.
+  artifact. It publishes nothing; the maintainer uploads to Play by hand. No Play credentials anywhere. *Since ADR 0135 (accepted 2026-11-26)* that changed: after
+  the maintainer approves the run in the `play` environment, which holds every secret, the `release` job builds, signs
+  and uploads with fastlane (`apps/mobile/play/`: the pinned Gemfile and the release notes per version code), a
+  candidate to internal testing and a release to closed testing, as a draft unless `PLAY_RELEASE_STATUS` is `completed`.
+  The guide is `docs/PLAY-RELEASE.md`. Also built: one release at a time, the built manifest's permissions checked
+  (`scripts/check-permissions.cjs`), native debug symbols in the AAB (`plugins/debug-symbols.cjs`), and
+  `mobile-check.yml` building the phone on pull requests.
 - **The release manifest asks for Internet and network/Wi-Fi state only**: `blockedPermissions` removes
   `SYSTEM_ALERT_WINDOW`, external storage and `VIBRATE`, which Expo's template and the dev menu add. **Backup** takes
   `library/` and `SQLite/` only (`apps/mobile/plugins/backup-rules.cjs`), never `sources/`. **NetInfo never pings**

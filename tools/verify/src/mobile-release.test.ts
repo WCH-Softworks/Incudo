@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
@@ -35,6 +35,12 @@ const permissions = require(join(mobile, 'scripts', 'check-permissions.cjs')) as
   OWN: (pkg: string) => string[];
   requested: (manifest: string) => string[];
   problems: (names: string[], pkg: string) => string[];
+};
+const notes = require(join(mobile, 'scripts', 'release-notes.cjs')) as {
+  LIMIT: number;
+  languages: (metadata?: string) => string[];
+  noteProblems: (text: string, where: string) => string[];
+  tagProblems: (tag: string, metadata?: string) => string[];
 };
 const backup = require(join(mobile, 'plugins', 'backup-rules.cjs')) as {
   INCLUDED: string[];
@@ -110,20 +116,75 @@ test('NetInfo never checks reachability by requesting an address of its own', ()
   assert.doesNotMatch(platform, /isInternetReachable/);
 });
 
-test('the phone workflow starts on its own tags, checks the version first, signs from secrets and publishes nothing', () => {
+test('the phone workflow starts on its own tags and checks the version and the release notes first', () => {
   const workflow = read('.github', 'workflows', 'mobile-release.yml').replace(/\r\n/g, '\n');
   assert.match(workflow, /^on:\n  push:\n    tags: \['mobile-v\*'\]$/m, 'only mobile-v tags');
   // The desktop's starts on `v*`; a phone tag must never be one.
   assert.match(read('.github', 'workflows', 'release.yml'), /tags: \['v\*'\]/);
   assert.ok(!'mobile-v1.0.0'.startsWith('v'));
   const check = workflow.indexOf('release-version.cjs "$GITHUB_REF_NAME")');
+  const notes = workflow.indexOf('release-notes.cjs "$GITHUB_REF_NAME"');
+  const ci = workflow.indexOf('\n  ci:\n');
   const write = workflow.indexOf('release-version.cjs "$GITHUB_REF_NAME" --write');
   const prebuild = workflow.indexOf('expo prebuild');
-  assert.ok(check > 0 && check < write && write < prebuild, 'the tag is checked, then its code written, then prebuild');
-  const secrets = new Set([...workflow.matchAll(/secrets\.([A-Z_]+)/g)].map((m) => m[1]));
-  assert.deepEqual([...secrets].sort(), ['ANDROID_UPLOAD_KEYSTORE', 'ANDROID_UPLOAD_KEYSTORE_PASSWORD', 'ANDROID_UPLOAD_KEY_ALIAS', 'ANDROID_UPLOAD_KEY_PASSWORD']);
-  assert.doesNotMatch(workflow, /contents: write|r0adkll|upload-google-play|SERVICE_ACCOUNT/, 'publishes nowhere');
+  assert.ok(check > 0 && check < notes && notes < ci, 'the tag and its notes are checked before anything runs');
+  assert.ok(ci < write && write < prebuild, 'then its code is written, then prebuild');
   assert.match(workflow, /grep -q "jar verified"/, 'an unsigned bundle fails the run');
+  assert.match(workflow, /keytool -printcert -jarfile "\$aab"/, "a bundle signed by any key but the upload key fails the run");
+});
+
+test('only an approved run reads a secret, and it uploads the signed bundle with fastlane', () => {
+  const workflow = read('.github', 'workflows', 'mobile-release.yml').replace(/\r\n/g, '\n');
+  const release = workflow.indexOf('\n  release:\n');
+  assert.ok(release > 0, 'the job that signs and uploads');
+  const job = workflow.slice(release);
+  assert.match(job, /^    needs: \[check, ci\]\n    runs-on: ubuntu-latest\n    environment: play$/m, 'it waits in the play environment');
+  assert.doesNotMatch(workflow.slice(0, release), /secrets\./, 'nothing before it reads a secret');
+  const secrets = new Set([...workflow.matchAll(/secrets\.([A-Z_]+)/g)].map((m) => m[1]));
+  assert.deepEqual([...secrets].sort(), [
+    'ANDROID_UPLOAD_KEYSTORE',
+    'ANDROID_UPLOAD_KEYSTORE_PASSWORD',
+    'ANDROID_UPLOAD_KEY_ALIAS',
+    'ANDROID_UPLOAD_KEY_PASSWORD',
+    'PLAY_SERVICE_ACCOUNT_JSON',
+  ]);
+  assert.match(job, new RegExp(`SUPPLY_PACKAGE_NAME: ${app.expo.android.package.replace(/\./g, '\\.')}\n`), 'the package Play knows');
+  for (const skip of ['APK', 'METADATA', 'IMAGES', 'SCREENSHOTS']) {
+    assert.match(job, new RegExp(`SUPPLY_SKIP_UPLOAD_${skip}: 'true'`), `the upload leaves ${skip.toLowerCase()} alone`);
+  }
+  assert.doesNotMatch(job, /SUPPLY_SKIP_UPLOAD_CHANGELOGS/, 'the release notes go with it');
+  const kept = job.indexOf('actions/upload-artifact');
+  const upload = job.indexOf('bundle exec fastlane supply');
+  assert.ok(kept > 0 && kept < upload, 'the bundle is kept before the upload, so a failed upload loses nothing');
+  // A candidate goes to internal testing and a release to closed testing; a draft unless the variable says otherwise.
+  assert.match(workflow, /\*-rc\.\*\) track=internal ;;\n\s+\*\) track=alpha ;;/);
+  assert.match(workflow, /STATUS: \$\{\{ vars\.PLAY_RELEASE_STATUS \|\| 'draft' \}\}/);
+  assert.match(workflow, /draft\|completed\) ;;/, 'any other status stops the run');
+});
+
+test('fastlane is pinned to one version, in the Gemfile and its lock', () => {
+  const gemfile = read('apps', 'mobile', 'play', 'Gemfile');
+  const version = /^gem "fastlane", "(\d+\.\d+\.\d+)"$/m.exec(gemfile)?.[1];
+  assert.ok(version, 'an exact version');
+  assert.match(read('apps', 'mobile', 'play', 'Gemfile.lock'), new RegExp(`^    fastlane \\(${version.replace(/\./g, '\\.')}\\)$`, 'm'));
+});
+
+test('every release note fits Play, and a tag with none stops before anything is built', () => {
+  const metadata = join(mobile, 'play', 'metadata');
+  const found = notes.languages(metadata);
+  assert.ok(found.length > 0, 'a language folder');
+  for (const language of found) {
+    const folder = join(metadata, language, 'changelogs');
+    for (const file of readdirSync(folder)) {
+      assert.match(file, /^\d+\.txt$/, `${language}/${file} is named by its version code`);
+      assert.deepEqual(notes.noteProblems(readFileSync(join(folder, file), 'utf8'), file), []);
+    }
+  }
+  assert.deepEqual(notes.noteProblems('', 'x.txt'), ['x.txt is empty']);
+  assert.deepEqual(notes.noteProblems('é'.repeat(notes.LIMIT), 'x.txt'), [], 'characters, not bytes');
+  assert.deepEqual(notes.noteProblems('a'.repeat(notes.LIMIT + 1), 'x.txt'), [`x.txt is ${notes.LIMIT + 1} characters, and Play takes ${notes.LIMIT}`]);
+  const unwritten = `mobile-v${app.expo.version}-rc.98`;
+  assert.match(notes.tagProblems(unwritten, metadata).join('\n'), /changelogs\/\d+\.txt is missing/);
 });
 
 test("the build is checked for the permissions the policy lists, and nothing else", () => {

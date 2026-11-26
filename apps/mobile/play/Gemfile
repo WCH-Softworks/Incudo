@@ -1,0 +1,6 @@
+# fastlane uploads the phone's bundle to Google Play (ADR 0135, decision 2). Only the release workflow's upload step
+# installs it; nothing the app ships is Ruby. Pinned here and in Gemfile.lock: change the version by editing this line
+# and running `bundle lock --update fastlane` in this folder.
+source "https://rubygems.org"
+
+gem "fastlane", "2.241.2"

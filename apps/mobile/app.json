@@ -2,7 +2,7 @@
   "expo": {
     "name": "Incudo",
     "slug": "incudo",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
     "platforms": [
@@ -12,7 +12,7 @@
     "scheme": "incudo",
     "android": {
       "package": "com.wchsoftworks.incudo",
-      "versionCode": 1000099,
+      "versionCode": 1000199,
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
