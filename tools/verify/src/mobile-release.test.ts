@@ -164,9 +164,9 @@ test('only an approved run reads a secret, and it uploads the signed bundle with
 
 test('fastlane is pinned to one version, in the Gemfile and its lock', () => {
   const gemfile = read('apps', 'mobile', 'play', 'Gemfile');
-  const pinned = /^gem "fastlane", "(\d+\.\d+\.\d+)"$/m.exec(gemfile);
-  assert.ok(pinned, 'an exact version');
-  assert.match(read('apps', 'mobile', 'play', 'Gemfile.lock'), new RegExp(`^    fastlane \\(${pinned[1].replace(/\./g, '\\.')}\\)$`, 'm'));
+  const version = /^gem "fastlane", "(\d+\.\d+\.\d+)"$/m.exec(gemfile)?.[1];
+  assert.ok(version, 'an exact version');
+  assert.match(read('apps', 'mobile', 'play', 'Gemfile.lock'), new RegExp(`^    fastlane \\(${version.replace(/\./g, '\\.')}\\)$`, 'm'));
 });
 
 test('every release note fits Play, and a tag with none stops before anything is built', () => {
