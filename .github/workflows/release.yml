@@ -2,9 +2,12 @@ name: Release
 
 # Builds the desktop installers and attaches them to one GitHub Release (ROADMAP Phase 9).
 #
-# Started by a tag, never by a push: `vX.Y.Z-rc.N` makes a pre-release, a plain `vX.Y.Z` a release. Deciding that a
-# release exists is the maintainer's call, made by pushing the tag. The release is created as a **draft**: nothing is
-# public until someone reads it and presses Publish on GitHub.
+# Started by a tag, never by a branch push: `vX.Y.Z-rc.N` makes a pre-release, a plain `vX.Y.Z` a release. Deciding
+# that a release exists is the maintainer's call, made by merging the pull request that moves the version:
+# `tag-on-merge.yml` then creates `vX.Y.Z` at the merge commit and starts this with a dispatch on the tag (a tag created
+# with GITHUB_TOKEN starts no workflow). A tag pushed by hand still starts it, an rc included. A dispatch is refused
+# unless its ref is a tag, so the same checks hold either way. The release is created as a **draft**: nothing is public
+# until someone reads it and presses Publish on GitHub.
 #
 # Nothing goes to npm (CLAUDE.md), and no rulebook content is bundled: an installer is the engine and the shipped
 # system definitions. The builds are unsigned, and the notes say so. The macOS bundle is signed ad hoc
@@ -28,6 +31,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -41,6 +45,11 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
+      - name: Started from a tag
+        if: github.ref_type != 'tag'
+        run: |
+          echo "::error::Start the desktop release on a v tag, not on $GITHUB_REF_NAME"
+          exit 1
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
