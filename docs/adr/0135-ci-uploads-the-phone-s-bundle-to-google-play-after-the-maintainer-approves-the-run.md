@@ -1,6 +1,6 @@
 # 0135 — CI uploads the phone's bundle to Google Play after the maintainer approves the run
 
-**Status:** Proposed · 2026-11-26 · the maintainer's answers to the plan's questions are recorded below · amends
+**Status:** Accepted · 2026-11-26 · the maintainer merged it as proposed; their answers to the plan's questions are recorded below · amends
 [0132](./0132-the-phone-app-is-released-on-google-play-built-and-signed-by-ci-with-an-upload-key-the-maintainer-keeps.md)
 decision 2 ("CI holds no Play credentials and publishes nothing") · **format:** none
 
@@ -81,6 +81,17 @@ number. Every push also builds an unsigned release and checks the merged manifes
 - The phone's release no longer needs the browser for an upload. It still needs it for review answers, the App content
   forms and, while the account is personal, the closed test's testers.
 - Ruby is installed on the upload job's runner. Nothing ships it.
+
+## Built
+
+- **Decisions 8 and 9, 2026-11-26.** `mobile-release.yml` runs one release at a time and is never cancelled halfway,
+  reads the built release manifests with `apps/mobile/scripts/check-permissions.cjs` (exactly ADR 0132's three, plus
+  AndroidX's own receiver permission), checks that the bundle carries `BUNDLE-METADATA/com.android.tools.build.debugsymbols/`,
+  and keeps the bundle 90 days. The symbols are written by `apps/mobile/plugins/debug-symbols.cjs`
+  (`ndk.debugSymbolLevel 'SYMBOL_TABLE'` in the generated `app/build.gradle`). `.github/workflows/mobile-check.yml` runs
+  Metro (`expo export --platform android`, about 20 s locally) on every pull request, and the release build without
+  the upload key on one touching `apps/mobile`, the root `package.json`, the lockfile or a phone workflow.
+  `mobile-release.test.ts` holds all of it. Not a required check. Decisions 1 to 7, 10 and 11 are not built yet.
 
 ## Evidence
 

@@ -1,8 +1,9 @@
 /**
  * What ADR 0132 settles for the phone's Google Play release, held where a committed file can hold it: the version and
  * its code, the permissions the release asks for, what Android backs up, NetInfo's reachability check, and the privacy
- * policy's account of all of it. A release build's own manifest is read in the release check (`aapt dump
- * permissions`), since CI builds none.
+ * policy's account of all of it. A release build's own manifest is read by `apps/mobile/scripts/check-permissions.cjs`,
+ * which the release workflow and the pull-request Android check run after building (ADR 0135, decision 8); what is held
+ * here is that they do, and that its list is the policy's.
  */
 
 import { test } from 'node:test';
@@ -24,6 +25,16 @@ const { parseTag, versionCode, RELEASE } = require(join(mobile, 'scripts', 'rele
   parseTag: (tag: string) => { version: string; candidate?: number };
   versionCode: (version: string, candidate?: number) => number;
   RELEASE: number;
+};
+const symbols = require(join(mobile, 'plugins', 'debug-symbols.cjs')) as {
+  addDebugSymbols: (contents: string) => string;
+  LEVEL: string;
+};
+const permissions = require(join(mobile, 'scripts', 'check-permissions.cjs')) as {
+  USED: string[];
+  OWN: (pkg: string) => string[];
+  requested: (manifest: string) => string[];
+  problems: (names: string[], pkg: string) => string[];
 };
 const backup = require(join(mobile, 'plugins', 'backup-rules.cjs')) as {
   INCLUDED: string[];
@@ -113,4 +124,60 @@ test('the phone workflow starts on its own tags, checks the version first, signs
   assert.deepEqual([...secrets].sort(), ['ANDROID_UPLOAD_KEYSTORE', 'ANDROID_UPLOAD_KEYSTORE_PASSWORD', 'ANDROID_UPLOAD_KEY_ALIAS', 'ANDROID_UPLOAD_KEY_PASSWORD']);
   assert.doesNotMatch(workflow, /contents: write|r0adkll|upload-google-play|SERVICE_ACCOUNT/, 'publishes nowhere');
   assert.match(workflow, /grep -q "jar verified"/, 'an unsigned bundle fails the run');
+});
+
+test("the build is checked for the permissions the policy lists, and nothing else", () => {
+  assert.deepEqual([...permissions.USED].sort(), Object.keys(KEPT).sort(), 'the checker allows exactly the kept ones');
+  const pkg = app.expo.android.package;
+  const manifest = `<manifest>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <permission android:name="${pkg}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" android:protectionLevel="signature" />
+    <uses-permission android:name="${pkg}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+  </manifest>`;
+  assert.deepEqual(permissions.problems(permissions.requested(manifest), pkg), [], 'a release build as measured passes');
+  const added = manifest.replace('</manifest>', '<uses-permission android:name="android.permission.VIBRATE" /></manifest>');
+  assert.deepEqual(permissions.problems(permissions.requested(added), pkg), [
+    'asks for android.permission.VIBRATE, which ADR 0132 decision 4 does not list',
+  ]);
+  const lost = manifest.replace(/<uses-permission android:name="android.permission.INTERNET" \/>/, '');
+  assert.deepEqual(permissions.problems(permissions.requested(lost), pkg), [
+    'does not ask for android.permission.INTERNET, which the app uses',
+  ]);
+});
+
+test("the release bundle carries its native debug symbols, written into the generated build file once", () => {
+  assert.ok(app.expo.plugins.includes('./plugins/debug-symbols.cjs'), 'app.json applies the plugin');
+  // The shape `expo prebuild` writes for SDK 58's template.
+  const template = `android {\n    defaultConfig {\n        applicationId 'com.wchsoftworks.incudo'\n        versionCode 1000099\n    }\n}\n`;
+  const written = symbols.addDebugSymbols(template);
+  assert.match(written, /defaultConfig \{\n        ndk \{ debugSymbolLevel 'SYMBOL_TABLE' \}\n        applicationId/);
+  assert.equal(symbols.addDebugSymbols(written), written, 'a second prebuild over the same file adds nothing');
+  assert.throws(() => symbols.addDebugSymbols('android {\n}\n'), /no defaultConfig/, 'a template it cannot read fails the prebuild');
+});
+
+test('the release workflow runs one at a time, checks the built permissions and symbols, and keeps the bundle 90 days', () => {
+  const workflow = read('.github', 'workflows', 'mobile-release.yml').replace(/\r\n/g, '\n');
+  assert.match(workflow, /^concurrency:\n  group: mobile-release\n  cancel-in-progress: false$/m);
+  const build = workflow.indexOf(':app:bundleRelease');
+  const check = workflow.indexOf('node scripts/check-permissions.cjs');
+  const sign = workflow.indexOf('grep -q "jar verified"');
+  assert.ok(build > 0 && build < check && check < sign, 'built, then its permissions read, then its signature');
+  assert.match(workflow, /grep -q "BUNDLE-METADATA\/com\.android\.tools\.build\.debugsymbols\/"/);
+  assert.match(workflow, /retention-days: 90/);
+});
+
+test('a pull request bundles the phone with Metro, and builds it with Gradle when it touches what the native build reads', () => {
+  const workflow = read('.github', 'workflows', 'mobile-check.yml').replace(/\r\n/g, '\n');
+  assert.match(workflow, /^on:\n  pull_request:\n/m);
+  assert.match(workflow, /npx expo export --platform android/);
+  for (const path of ['apps/mobile/', 'package\\.json$', 'package-lock\\.json$']) {
+    assert.ok(workflow.includes(path), `the native build runs when ${path} changes`);
+  }
+  const build = workflow.indexOf(':app:bundleRelease');
+  const check = workflow.indexOf('node scripts/check-permissions.cjs');
+  assert.ok(build > 0 && build < check, 'the permissions are read off the build it made');
+  assert.match(workflow, /BUNDLE-METADATA\/com\.android\.tools\.build\.debugsymbols\//);
+  assert.doesNotMatch(workflow, /secrets\./, 'a pull request never sees a secret');
 });

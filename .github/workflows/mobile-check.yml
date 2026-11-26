@@ -1,0 +1,90 @@
+name: Phone check
+
+# The phone's Android build, checked before a pull request merges rather than first on a release tag (ADR 0135,
+# decision 9). Not a required check: `build` and `aurora-corpus` in ci.yml stay the only ones.
+#
+# `bundle` runs Metro over the app on every pull request: every package under packages/ is in the phone's JavaScript, so
+# any of them can break it, and it takes under a minute. `gradle` builds the release bundle only when the pull request
+# touches what the native build reads: apps/mobile, the root package.json or the lockfile. It is the release workflow's
+# build without the upload key (React Native's template signs a release with its debug key), so a bundle that cannot be
+# built, a permission a library added or the debug symbols going missing is found here, not on a tag.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Metro bundles the phone app for Android
+        working-directory: apps/mobile
+        run: npx expo export --platform android --output-dir "$RUNNER_TEMP/export"
+
+  gradle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # A pull request's checkout is its merge commit, whose first parent is the base: two commits are enough to see
+          # what it changes.
+          fetch-depth: 2
+      - name: Does this pull request touch the native build
+        id: native
+        run: |
+          build=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            build=false
+            if git diff --name-only HEAD^1 HEAD | grep -qE '^(apps/mobile/|package\.json$|package-lock\.json$|\.github/workflows/mobile-)'; then
+              build=true
+            fi
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          if [ "$build" = true ]; then line="Builds the release bundle."; else line="Nothing the native build reads changed: no Gradle build."; fi
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v5
+        if: steps.native.outputs.build == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        if: steps.native.outputs.build == 'true'
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v5
+        if: steps.native.outputs.build == 'true'
+      - if: steps.native.outputs.build == 'true'
+        run: npm ci
+      - name: Prebuild
+        if: steps.native.outputs.build == 'true'
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+      - name: Build the release bundle
+        if: steps.native.outputs.build == 'true'
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:bundleRelease
+      - name: The release asks for exactly the permissions ADR 0132 lists
+        if: steps.native.outputs.build == 'true'
+        working-directory: apps/mobile
+        run: node scripts/check-permissions.cjs
+      - name: The bundle carries its native debug symbols
+        if: steps.native.outputs.build == 'true'
+        run: |
+          aab=apps/mobile/android/app/build/outputs/bundle/release/app-release.aab
+          ls -l "$aab"
+          unzip -l "$aab" | grep -q "BUNDLE-METADATA/com.android.tools.build.debugsymbols/"
